@@ -103,6 +103,7 @@ def create_mock_run(
     run.branch = "codex/pr-10"
     run.revision = 1
     run.epoch = 1
+    run.requested_catalog_id = None
     run.lease_owner = "worker-1"
     run.lease_token = uuid4()
     run.lease_expires_at = utc_now()

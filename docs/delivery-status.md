@@ -23,6 +23,11 @@ delivery state; the durable `@codex` request contract lives in
   session's final message is stored on the session. Pull requests can also be
   enrolled as already implemented by hand. Verified against a mocked Jules
   transport only.
+- Catalog designation (2026-09-16): `@auto-run:<catalog key or kind>` and the
+  `catalog` field of manual enrollment pick the catalog for a run; the project
+  selection stays the default and the seeded Codex catalog the fallback. A
+  designated catalog is remembered on the run across resumes. Refused webhook
+  triggers record their reason on the webhook delivery.
 - No Linear integration: Hub is the single source of truth for run state. A
   `linear` connector provider exists only so the connectors UI can store one.
 
@@ -72,7 +77,7 @@ catalog policy editing.
 ## Explicitly deferred
 
 - Automatic planning/WBS generation and dynamic agent selection.
-- Per-pull-request catalog selection (waits for a work router), Jules pushes
+- Automatic catalog routing (designation is explicit for now), Jules pushes
   to existing pull request branches, reports kept in git history, a hub ingest
   endpoint for agents, and richer quota history. Open items are tracked in the
   [AI Catalog Implementation Notes](ai-catalog-implementation-notes.md#known-limitations-and-remaining-work).

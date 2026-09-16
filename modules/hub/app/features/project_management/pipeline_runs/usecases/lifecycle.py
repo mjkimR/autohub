@@ -16,7 +16,10 @@ from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.ai_catalogs.services import AICatalogService
 from app.features.project_management.pipeline_runs.adapters.base import DeliveryTarget
 from app.features.project_management.pipeline_runs.adapters.codex_github_mention import CodexGithubMentionAdapter
-from app.features.project_management.pipeline_runs.adapters.registry import resolve_execution_adapter
+from app.features.project_management.pipeline_runs.adapters.registry import (
+    resolve_execution_adapter,
+    supports_pipeline_delivery,
+)
 from app.features.project_management.pipeline_runs.github import read_pull_request
 from app.features.project_management.pipeline_runs.models import (
     ExecutionAttempt,
@@ -168,12 +171,13 @@ class PipelineRunUseCase:
                     raise ProjectError(409, "Project changed during pull request enrollment; retry")
                 if await self.repo.get_active_for_pull(session, project_id, snapshot.number, lock=True) is not None:
                     raise ProjectError(409, ACTIVE_RUN_CONFLICT)
-                catalog = await self._project_catalog(session, project)
+                catalog = await self.resolve_catalog(session, project, request.catalog)
                 run = await self.repo.create(
                     session,
                     PipelineRun(
                         project_id=project_id,
                         ai_catalog_id=catalog.id,
+                        requested_catalog_id=catalog.id if request.catalog is not None else None,
                         project_revision=project.revision,
                         github_repository=project.github_repository,
                         github_connector_id=project.github_connector_id,
@@ -679,6 +683,38 @@ class PipelineRunUseCase:
         await session.flush()
         return PipelineRunRead.model_validate(run)
 
+    async def resolve_catalog(self, session: AsyncSession, project: Project, designation: str | None) -> AICatalog:
+        """The catalog for new pull request work: the designated one, else the project's selection.
+
+        A designation is a catalog key, or a kind when exactly one enabled catalog has it. This is the one place
+        that maps a request to a catalog, so a router can replace it later.
+        """
+        if designation is None:
+            return await self._project_catalog(session, project)
+        catalogs = AICatalogRepository()
+        catalog = await catalogs.get_by_key(session, designation)
+        if catalog is None:
+            candidates = [item for item in await catalogs.list_by_kind(session, designation.lower()) if item.enabled]
+            if len(candidates) > 1:
+                keys = ", ".join(item.key for item in candidates)
+                raise ProjectError(422, f"'{designation}' matches several AI catalogs ({keys}); name one by key")
+            if not candidates:
+                raise ProjectError(422, f"No AI catalog is named or of kind '{designation}'")
+            catalog = candidates[0]
+        if not catalog.enabled:
+            raise ProjectError(422, f"AI catalog '{catalog.key}' is disabled")
+        if not supports_pipeline_delivery(catalog.adapter):
+            raise ProjectError(422, f"AI catalog '{catalog.key}' cannot deliver pull request work")
+        return catalog
+
+    async def _run_catalog(self, session: AsyncSession, project: Project, run: PipelineRun) -> AICatalog:
+        """A run's catalog for further deliveries: its designated catalog while that exists, else the project's."""
+        if run.requested_catalog_id is not None:
+            requested = await AICatalogRepository().get(session, run.requested_catalog_id)
+            if requested is not None and supports_pipeline_delivery(requested.adapter):
+                return requested
+        return await self._project_catalog(session, project)
+
     async def _project_catalog(self, session: AsyncSession, project: Project) -> AICatalog:
         """The catalog for a project's pull request work: its selection, else the seeded Codex catalog.
 
@@ -967,8 +1003,8 @@ class PipelineRunUseCase:
             run.pause_reason = None
             # The operator's resume accepts settings changes; later ticks follow the current project.
             run.project_revision = project_revision
-            # The new attempt is delivered through the project's current catalog selection.
-            run.ai_catalog_id = (await self._project_catalog(session, project)).id
+            # The new attempt keeps a catalog designated at enrollment, else follows the project's current selection.
+            run.ai_catalog_id = (await self._run_catalog(session, project, run)).id
             run.revision += 1
             await session.flush()
             return PipelineRunRead.model_validate(run)

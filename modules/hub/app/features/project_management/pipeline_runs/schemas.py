@@ -35,6 +35,13 @@ class PullRequestSnapshot(BaseModel):
 
 class EnrollPullRequest(BaseModel):
     pull_number: int = Field(gt=0)
+    catalog: str | None = Field(
+        default=None,
+        max_length=100,
+        pattern=r"^[A-Za-z0-9_.-]+$",
+        description="AI catalog to deliver this run: a catalog key, or a kind ('codex') when exactly one enabled "
+        "catalog has it; empty follows the project's selection",
+    )
     implemented: bool = Field(
         default=False,
         description="The pull request already holds its implementation (for example, an agent session opened it); "
@@ -47,6 +54,7 @@ class PipelineRunRead(UUIDSchemaMixin, TimestampSchemaMixin):
 
     project_id: UUID
     ai_catalog_id: UUID
+    requested_catalog_id: UUID | None = None
     project_revision: int
     pull_number: int
     pull_url: str

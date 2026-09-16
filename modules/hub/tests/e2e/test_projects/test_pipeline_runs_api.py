@@ -642,6 +642,115 @@ async def test_project_catalog_selection_routes_enrollment_to_pipeline_capable_c
     response = await enroll(client, project)
     assert_status_code(response, 201)
     assert response.json()["ai_catalog_id"] == team_codex_id
+    assert response.json()["requested_catalog_id"] is None
+
+
+async def add_catalog(session, key: str, kind: str, adapter: str, *, enabled: bool = True) -> str:
+    from app.features.ai_catalogs.models import AICatalog, AICatalogState
+
+    catalog = AICatalog(
+        key=key,
+        name=key,
+        kind=kind,
+        adapter=adapter,
+        enabled=enabled,
+        availability_state=AICatalogState.NORMAL,
+        revision=1,
+    )
+    session.add(catalog)
+    await session.flush()
+    catalog_id = str(catalog.id)
+    await session.commit()
+    return catalog_id
+
+
+async def enroll_with(client, project: dict, catalog: str, number: int = 7) -> httpx.Response:
+    return await client.post(f"/api/v1/projects/{project['id']}/runs", json={"pull_number": number, "catalog": catalog})
+
+
+class TestCatalogDesignation:
+    async def test_a_designated_key_is_used_and_remembered(self, client, project, github, session):
+        team_codex_id = await add_catalog(session, "team-codex", "codex", "codex-github-mention")
+
+        response = await enroll_with(client, project, "team-codex")
+
+        assert_status_code(response, 201)
+        assert response.json()["ai_catalog_id"] == team_codex_id
+        assert response.json()["requested_catalog_id"] == team_codex_id
+
+    async def test_a_kind_resolves_when_exactly_one_enabled_catalog_has_it(self, client, project, github, session):
+        # The test database has no seeded catalogs; one enabled Codex catalog and a disabled twin stand in.
+        personal_codex = await add_catalog(session, "personal-codex", "codex", "codex-github-mention")
+        await add_catalog(session, "old-codex", "codex", "codex-github-mention", enabled=False)
+
+        response = await enroll_with(client, project, "Codex")
+
+        assert_status_code(response, 201)
+        assert response.json()["requested_catalog_id"] == personal_codex
+
+    async def test_an_ambiguous_kind_is_refused(self, client, project, github, session):
+        await add_catalog(session, "personal-codex", "codex", "codex-github-mention")
+        await add_catalog(session, "team-codex", "codex", "codex-github-mention")
+
+        response = await enroll_with(client, project, "codex")
+
+        assert_status_code(response, 422)
+        assert "matches several AI catalogs" in response.json()["detail"]
+
+    @pytest.mark.parametrize(
+        ("catalog", "detail"),
+        [
+            ("jules", "cannot deliver pull request work"),
+            ("personal-jules", "cannot deliver pull request work"),
+            ("gemini", "No AI catalog is named or of kind 'gemini'"),
+        ],
+    )
+    async def test_catalogs_that_cannot_take_the_work_are_refused(
+        self, client, project, github, session, catalog, detail
+    ):
+        await add_catalog(session, "personal-jules", "jules", "jules-api")
+
+        response = await enroll_with(client, project, catalog)
+
+        assert_status_code(response, 422)
+        assert detail in response.json()["detail"]
+
+    async def test_a_disabled_catalog_is_refused_by_key(self, client, project, github, session):
+        await add_catalog(session, "old-codex", "codex", "codex-github-mention", enabled=False)
+
+        response = await enroll_with(client, project, "old-codex")
+
+        assert_status_code(response, 422)
+        assert response.json()["detail"] == "AI catalog 'old-codex' is disabled"
+
+    async def test_a_resumed_run_keeps_its_designated_catalog_over_the_project_selection(
+        self, client, project, github, session
+    ):
+        team_codex_id = await add_catalog(session, "team-codex", "codex", "codex-github-mention")
+        other_codex_id = await add_catalog(session, "other-codex", "codex", "codex-github-mention")
+        run = (await enroll_with(client, project, "team-codex")).json()
+        # The project now prefers another catalog; the run was enrolled for team-codex and stays there.
+        selected = await client.put(
+            f"/api/v1/projects/{project['id']}",
+            json={
+                "name": project["name"],
+                "enabled": True,
+                "expected_revision": project["revision"],
+                "github": {**project["github"], "ai_catalog_id": other_codex_id},
+            },
+        )
+        assert_status_code(selected, 200)
+        root = f"/api/v1/pipeline-runs/{run['id']}"
+        assert_status_code(await client.post(f"{root}/pause"), 200)
+
+        resumed = await client.post(f"{root}/resume")
+
+        assert_status_code(resumed, 200)
+        assert resumed.json()["ai_catalog_id"] == team_codex_id
+
+        # A run without a designation follows the project's current selection on resume.
+        plain = (await enroll(client, project, 8)).json()
+        assert plain["ai_catalog_id"] == other_codex_id
 
 
 async def test_runs_waiting_for_admission_do_not_hold_catalog_capacity(client, project, github, session):

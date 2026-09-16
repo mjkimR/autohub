@@ -227,4 +227,4 @@ gcloud scheduler jobs create http auto-hub-dispatcher-tick \
      - `Workflow runs`
    - After creating, check `Recent Deliveries` to confirm Ping delivery returns 200/202 OK.
 4. **End-to-End Testing**
-   - Enroll a project and pull request in the UI (or include `@auto-run` in the PR description / comments) to verify automated dispatch and CI monitoring progression.
+   - Enroll a project and pull request in the UI (or include `@auto-run`, optionally `@auto-run:<catalog key or kind>`, in the PR description / comments) to verify automated dispatch and CI monitoring progression.

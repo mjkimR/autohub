@@ -207,6 +207,34 @@ or the pull request already has an active run.
   their work type, repository, state, links, adopted pipeline run, result
   summary, failure detail, and a `total_count`.
 
+## Choosing the catalog for a pull request
+
+Routing is by designation for now; a router that picks catalogs by itself is
+deferred. A run's catalog is resolved once, at enrollment, in this order:
+
+1. **Designated**: `@auto-run:<catalog>` in the pull request body or a comment,
+   or `catalog` on `POST /api/v1/projects/{id}/runs` (the Enroll PR dialog's
+   "AI Catalog" select). `<catalog>` is a catalog key (`personal-codex`) or a
+   kind (`codex`, `jules`) when exactly one enabled catalog has that kind. A
+   designation that names no catalog, an ambiguous kind, a disabled catalog, or
+   a catalog whose adapter cannot deliver pull request work is refused with
+   422. A webhook trigger that is refused records the reason on the webhook
+   delivery instead.
+2. **Project default**: the project's AI catalog selection
+   (**Projects → Edit → Advanced automation**).
+3. **Seeded**: `personal-codex`.
+
+A designated catalog is stored on the run (`requested_catalog_id`) and kept
+across project changes and resumes. A run without one follows the project's
+current selection when it is resumed, as before. Adopted session pull requests
+never carry a designation; they use the project default so CI fixes have a
+pipeline-capable catalog.
+
+The designation names an account, not a model: neither the Codex mention nor
+the Jules session API takes a model parameter. When a provider does, its model
+settings belong on the catalog, so `@auto-run:<catalog>` stays the single way
+to choose.
+
 ## Operator controls
 
 **Settings → AI Catalogs** is the authoritative UI:

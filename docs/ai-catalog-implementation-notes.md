@@ -149,6 +149,21 @@ work_type == task
 
 The run belongs to the project's catalog (Codex by default), so CI fixes and conflict fixes are delivered by the project's adapter as for any other run. Adoption runs after the session's own transaction commits and touches GitHub only through the standard enrollment read.
 
+### Catalog Designation (`PipelineRunUseCase.resolve_catalog`)
+
+```text
+designation None → _project_catalog (project.ai_catalog_id, else seeded personal-codex)
+designation set  → get_by_key(designation)
+                   └ none → enabled catalogs of kind designation.lower()
+                             ├ several → 422 "matches several AI catalogs (…); name one by key"
+                             └ none    → 422 "No AI catalog is named or of kind '…'"
+                 → disabled → 422; adapter without pipeline delivery → 422
+```
+
+- `EnrollPullRequest.catalog` carries the designation; the webhook parses it from `@auto-run:<catalog>` (`AUTO_RUN_TRIGGER`, group `catalog`). A refused webhook enrollment is still a processed delivery with `failure_detail = "Enrollment skipped: …"`.
+- The resolved catalog is stored in `pipeline_runs.ai_catalog_id`; a designation is also kept in `requested_catalog_id`. `_run_catalog` (used by resume) prefers the requested catalog while it exists and can deliver, else the project's current selection.
+- `resolve_catalog` is the single chokepoint for mapping a request to a catalog, so a router can replace it without touching enrollment or the webhook.
+
 ## Policy Summary
 
 Detailed rules are documented in [AI Catalog Gateway](ai-catalogs.md). Here, only implementation details are highlighted.
@@ -292,7 +307,7 @@ Connector providers are `github`, `jules`, `linear`. For `jules`, the API key is
 - [ ] Title-based reconciliation only checks the latest 300 sessions. Unconfirmed sessions older than that fail after 1 hour.
 - [ ] The session list pages by offset but has no filtering (for example by state or schedule).
 - [ ] 30-day ledger cleanup only runs when inserting new records.
-- [ ] Catalogs are selected per project. Choosing a catalog per pull request or task is deferred until a router decides where each piece of work goes.
+- [x] Catalogs are selected per project, and a pull request can designate one (`@auto-run:<key or kind>`, `catalog` on enrollment). Automatic routing is deferred; `resolve_catalog` is where it would go.
 - [x] Jules task sessions' pull requests are adopted into the pipeline (`implemented=True` enrollment). Applying `changeSet.gitPatch` to an existing PR branch remains unimplemented.
 - [ ] A report is only kept as the session's final message. If a report should live in git history, add a delivery mode where Jules writes `reports/<date>.md` and the hub reads the file from the pull request head before closing it.
 - [ ] Jules cannot post to the hub itself. A hub ingest endpoint with a per-session token is possible (Jules calls GitHub with an environment token today) but was deferred: prompt-dependent delivery still needs the polling reconciliation that exists now.

@@ -1124,6 +1124,11 @@ export interface components {
 			/** Pull Number */
 			pull_number: number;
 			/**
+			 * Catalog
+			 * @description AI catalog to deliver this run: a catalog key, or a kind ('codex') when exactly one enabled catalog has it; empty follows the project's selection
+			 */
+			catalog?: string | null;
+			/**
 			 * Implemented
 			 * @description The pull request already holds its implementation (for example, an agent session opened it); skip the implementation request and start by observing CI
 			 * @default false
@@ -1599,6 +1604,8 @@ export interface components {
 			 * Format: uuid
 			 */
 			ai_catalog_id: string;
+			/** Requested Catalog Id */
+			requested_catalog_id?: string | null;
 			/** Project Revision */
 			project_revision: number;
 			/** Pull Number */

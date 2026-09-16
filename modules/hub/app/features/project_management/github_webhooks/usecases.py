@@ -13,7 +13,8 @@ from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy.exc import IntegrityError
 
-AUTO_RUN_TRIGGER = re.compile(r"@auto-run\b", re.IGNORECASE)
+# `@auto-run` enrolls the pull request; `@auto-run:<catalog key or kind>` also names the catalog that delivers it.
+AUTO_RUN_TRIGGER = re.compile(r"@auto-run(?::(?P<catalog>[A-Za-z0-9_.-]+))?\b", re.IGNORECASE)
 
 
 class GitHubWebhookUseCase:
@@ -54,7 +55,9 @@ class GitHubWebhookUseCase:
                 return
 
             trigger_text = _extract_trigger_text(event, payload)
-            has_trigger = bool(trigger_text and AUTO_RUN_TRIGGER.search(trigger_text))
+            trigger = AUTO_RUN_TRIGGER.search(trigger_text) if trigger_text else None
+            has_trigger = trigger is not None
+            catalog = trigger.group("catalog") if trigger is not None else None
 
             async with AsyncTransaction() as session:
                 project = await self.repo.project_for_repository(session, repository)
@@ -75,11 +78,15 @@ class GitHubWebhookUseCase:
                 and pull_number is not None
             ):
                 try:
-                    new_run = await self.lifecycle.enroll(project.id, EnrollPullRequest(pull_number=pull_number))
+                    new_run = await self.lifecycle.enroll(
+                        project.id, EnrollPullRequest(pull_number=pull_number, catalog=catalog)
+                    )
                     await self.lifecycle.manual_advance(new_run.id, self.lifecycle.observer)
-                except ProjectError:
-                    # e.g. concurrent enrollment or already enrolled
-                    pass
+                except ProjectError as exc:
+                    # e.g. concurrent enrollment, already enrolled, or a catalog that cannot take the work.
+                    # The delivery is still processed; the reason is kept where operators can find it.
+                    await self._finish(delivery_id, "processed", f"Enrollment skipped: {exc.detail}")
+                    return
 
             await self._finish(delivery_id, "processed")
         except Exception:

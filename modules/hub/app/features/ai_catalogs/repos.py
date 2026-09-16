@@ -44,6 +44,10 @@ class AICatalogRepository:
     async def get(self, session: AsyncSession, catalog_id: UUID, *, lock: bool = False) -> AICatalog | None:
         return await session.get(AICatalog, catalog_id, with_for_update=lock)
 
+    async def list_by_kind(self, session: AsyncSession, kind: str) -> Sequence[AICatalog]:
+        rows = await session.scalars(select(AICatalog).where(AICatalog.kind == kind).order_by(AICatalog.key))
+        return rows.all()
+
     async def get_by_key(self, session: AsyncSession, key: str, *, lock: bool = False) -> AICatalog | None:
         return (
             await session.scalars(

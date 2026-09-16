@@ -68,6 +68,11 @@ class PipelineRun(Base, UUIDMixin, TimestampMixin):
     ai_catalog_id: Mapped[UUID] = mapped_column(
         ForeignKey("ai_catalogs.id", ondelete="RESTRICT"), nullable=False, index=True
     )
+    # A catalog named at enrollment (`@auto-run:<key or kind>` or the enroll request); it outlives project changes
+    # and resumes. Empty means the run follows the project's catalog selection.
+    requested_catalog_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("ai_catalogs.id", ondelete="SET NULL"), nullable=True
+    )
     project_revision: Mapped[int] = mapped_column(Integer, nullable=False)
     # The GitHub binding captured at enrollment; a resume may adopt newer project settings only while it still holds.
     github_repository: Mapped[str | None] = mapped_column(String(255), nullable=True)

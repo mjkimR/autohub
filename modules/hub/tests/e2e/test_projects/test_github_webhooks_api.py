@@ -64,6 +64,14 @@ def test_auto_run_regex_matching():
     assert not AUTO_RUN_TRIGGER.search("no trigger here")
 
 
+def test_auto_run_names_a_catalog_by_key_or_kind():
+    assert AUTO_RUN_TRIGGER.search("@auto-run please").group("catalog") is None
+    assert AUTO_RUN_TRIGGER.search("@auto-run:codex please").group("catalog") == "codex"
+    assert AUTO_RUN_TRIGGER.search("ship it @auto-run:personal-jules").group("catalog") == "personal-jules"
+    # A bare colon designates nothing.
+    assert AUTO_RUN_TRIGGER.search("@auto-run: now").group("catalog") is None
+
+
 def test_extract_trigger_text():
     # PR opened with body
     assert (
@@ -130,6 +138,57 @@ async def test_webhook_pr_opened_with_auto_run_enrolls_and_advances():
     lifecycle.enroll.assert_awaited_once_with(project.id, EnrollPullRequest(pull_number=42))
     lifecycle.manual_advance.assert_awaited_once_with(new_run.id, lifecycle.observer)
     webhook._finish.assert_awaited_once_with("del-1", "processed")
+
+
+def make_webhook(*, enroll):
+    repo = MagicMock()
+    runs = MagicMock()
+    lifecycle = MagicMock()
+    lifecycle.observer = MagicMock()
+    repo.project_for_repository = AsyncMock(return_value=MagicMock(id=uuid4(), enabled=True))
+    runs.get_active_for_pull = AsyncMock(return_value=None)
+    lifecycle.enroll = enroll
+    lifecycle.manual_advance = AsyncMock()
+    webhook = GitHubWebhookUseCase(repo, runs, lifecycle)
+    webhook._finish = AsyncMock()
+    return webhook, lifecycle
+
+
+async def test_webhook_trigger_passes_the_named_catalog_to_enrollment():
+    new_run = MagicMock(id=uuid4())
+    webhook, lifecycle = make_webhook(enroll=AsyncMock(return_value=new_run))
+    payload = {
+        "action": "created",
+        "repository": {"full_name": "owner/app"},
+        "issue": {"number": 15, "pull_request": {"html_url": "https://..."}},
+        "comment": {"body": "@auto-run:codex take this one"},
+    }
+
+    await webhook.process("del-2", payload, event="issue_comment")
+
+    project_id = lifecycle.enroll.await_args.args[0]
+    lifecycle.enroll.assert_awaited_once_with(project_id, EnrollPullRequest(pull_number=15, catalog="codex"))
+    webhook._finish.assert_awaited_once_with("del-2", "processed")
+
+
+async def test_webhook_records_why_a_trigger_did_not_enroll():
+    from app.features.project_management.projects.services import ProjectError
+
+    webhook, lifecycle = make_webhook(
+        enroll=AsyncMock(side_effect=ProjectError(422, "AI catalog 'personal-jules' cannot deliver pull request work"))
+    )
+    payload = {
+        "action": "opened",
+        "repository": {"full_name": "owner/app"},
+        "pull_request": {"number": 42, "body": "@auto-run:jules"},
+    }
+
+    await webhook.process("del-3", payload, event="pull_request")
+
+    lifecycle.manual_advance.assert_not_awaited()
+    webhook._finish.assert_awaited_once_with(
+        "del-3", "processed", "Enrollment skipped: AI catalog 'personal-jules' cannot deliver pull request work"
+    )
 
 
 async def test_webhook_pr_opened_without_auto_run_is_ignored():

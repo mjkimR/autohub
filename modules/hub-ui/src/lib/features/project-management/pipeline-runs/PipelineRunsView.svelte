@@ -50,6 +50,8 @@
 
 	let runs = $state<PipelineRun[]>([]);
 	let projects = $state<Project[]>([]);
+	// Catalogs that can deliver pull request work, offered when enrolling by hand.
+	let pipelineCatalogs = $state<components['schemas']['AICatalogRead'][]>([]);
 	let loading = $state(true);
 	let searchQuery = $state('');
 	let selectedProjectId = $state<string>('');
@@ -67,6 +69,7 @@
 	let acquireProjectId = $state('');
 	let enrollPullNumber = $state<number>(1);
 	let enrollImplemented = $state(false);
+	let enrollCatalog = $state('');
 
 	// Attach PR Dialog
 	let isAttachPrOpen = $state(false);
@@ -105,6 +108,15 @@
 			}
 		} catch {
 			// ignore
+		}
+	}
+
+	async function loadCatalogs() {
+		try {
+			const res = await api.GET('/api/v1/ai-catalogs');
+			pipelineCatalogs = (res.data?.items ?? []).filter((item) => item.pipeline_delivery);
+		} catch {
+			// The select then only offers the project default.
 		}
 	}
 
@@ -305,7 +317,11 @@
 		try {
 			const res = await api.POST('/api/v1/projects/{project_id}/runs', {
 				params: { path: { project_id: acquireProjectId } },
-				body: { pull_number: Number(enrollPullNumber), implemented: enrollImplemented }
+				body: {
+					pull_number: Number(enrollPullNumber),
+					implemented: enrollImplemented,
+					catalog: enrollCatalog || null
+				}
 			});
 			if (res.error) {
 				const detail = (res.error as { detail?: string }).detail || 'Failed to enroll pull request';
@@ -324,6 +340,7 @@
 
 	onMount(() => {
 		loadProjects();
+		loadCatalogs();
 		loadRuns();
 	});
 </script>
@@ -345,6 +362,7 @@
 					acquireProjectId = selectedProjectId || (projects[0]?.id ?? '');
 					enrollPullNumber = 1;
 					enrollImplemented = false;
+					enrollCatalog = '';
 					isAcquireOpen = true;
 				}}
 				class="gap-1.5"
@@ -798,6 +816,27 @@
 						placeholder="e.g. 42"
 						required
 					/>
+				</div>
+
+				<div class="space-y-1.5">
+					<label for="enrollCatalog" class="text-xs font-semibold text-muted-foreground uppercase">
+						AI Catalog
+					</label>
+					<select
+						id="enrollCatalog"
+						bind:value={enrollCatalog}
+						class="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
+					>
+						<option value="">Project default</option>
+						{#each pipelineCatalogs as catalog (catalog.id)}
+							<option value={catalog.key}>{catalog.name} ({catalog.kind})</option>
+						{/each}
+					</select>
+					<p class="text-xs text-muted-foreground">
+						The same choice can be made in a PR body or comment with <code
+							>@auto-run:&lt;key or kind&gt;</code
+						>.
+					</p>
 				</div>
 
 				<label class="flex items-center justify-between gap-3 text-sm">
