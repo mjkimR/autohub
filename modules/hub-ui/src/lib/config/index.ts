@@ -7,3 +7,12 @@ export function apiBaseUrl(): string {
 	}
 	return '';
 }
+
+export async function hashApiKey(key: string): Promise<string> {
+	const trimmed = key.trim();
+	if (!trimmed) return '';
+	const msgBuffer = new TextEncoder().encode(trimmed);
+	const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}

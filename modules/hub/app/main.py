@@ -1,3 +1,8 @@
+# ruff: noqa: E402
+from app_layer_base.config_util import load_env
+
+load_env()
+
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -38,6 +43,7 @@ def get_lifespan():
 
 def create_app():
     """Create the FastAPI app and include the router."""
+    load_env()
     lifespan = get_lifespan()
     app = FastAPI(
         title="ExampleApp",
@@ -96,8 +102,5 @@ def create_app():
 
 if __name__ == "__main__":
     import uvicorn
-    from app_layer_base.config_util import load_env
-
-    load_env()
 
     uvicorn.run(create_app(), host="localhost", port=8389)

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { session } from '$lib/stores/session.svelte';
 	import { api } from '$lib/api';
+	import { hashApiKey } from '$lib/config';
 	import { toast } from 'svelte-sonner';
 	import { Server, KeyRound, Lock, AlertCircle, Loader2 } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -30,15 +31,16 @@
 		errorMsg = null;
 
 		try {
+			const hashedKey = await hashApiKey(key);
 			const res = await api.GET('/api/v1/tasks/specs', {
-				headers: { 'X-API-Key': key }
+				headers: { 'X-API-Key': hashedKey }
 			});
 
 			if (res.error) {
 				errorMsg = 'Authentication failed. Please check your API key.';
 				toast.error('Authentication failed');
 			} else {
-				session.setApiKey(key);
+				session.setApiKey(hashedKey);
 				apiKey = '';
 				toast.success('Authenticated successfully');
 			}
