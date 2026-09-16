@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -11,6 +11,7 @@ from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.ai_catalogs.schemas import SetAvailabilityRequest, UpdatePolicyConfigRequest
 from app.features.configuration.connectors.models import Connector
 from app.features.project_management.projects.services import ProjectError
+from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -166,7 +167,7 @@ class AICatalogService:
         catalog = await self.repo.get(session, catalog_id, lock=True)
         if catalog is None:
             raise ProjectError(409, "AI catalog was removed")
-        await quota_policy_for(catalog).on_quota_signal(session, catalog, utc(observed_at), datetime.now(UTC))
+        await quota_policy_for(catalog).on_quota_signal(session, catalog, utc(observed_at), get_current_utc_time())
         await session.flush()
         return catalog
 

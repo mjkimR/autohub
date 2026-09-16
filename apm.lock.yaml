@@ -1,9 +1,15 @@
 lockfile_version: '1'
 apm_version: 0.30.0
 dependencies:
-- repo_url: _local/agents
+- repo_url: mjkimr/app-common
+  materialization_repo_url: mjkimR/app-common
   name: app-common
+  host: github.com
+  resolved_commit: 7084f74720c9d3f13dce16d3d3321897f0496e34
+  resolved_ref: 7084f74720c9d3f13dce16d3d3321897f0496e34
   version: 0.1.0
+  virtual_path: agents
+  is_virtual: true
   package_type: skill_bundle
   deployed_files:
   - .agents/skills/app-common
@@ -11,10 +17,13 @@ dependencies:
   - .agents/skills/app-common/catalog.json
   - .agents/skills/app-common/references/ai/index.md
   - .agents/skills/app-common/references/ai/setup.md
+  - .agents/skills/app-common/references/backend/commands.md
   - .agents/skills/app-common/references/backend/errors.md
   - .agents/skills/app-common/references/backend/hooks.md
   - .agents/skills/app-common/references/backend/index.md
+  - .agents/skills/app-common/references/backend/session.md
   - .agents/skills/app-common/references/backend/setup.md
+  - .agents/skills/app-common/references/backend/time.md
   - .agents/skills/app-common/references/http/index.md
   - .agents/skills/app-common/references/http/setup.md
   - .agents/skills/app-common/references/local-dev/index.md
@@ -40,10 +49,13 @@ dependencies:
   - .claude/skills/app-common/catalog.json
   - .claude/skills/app-common/references/ai/index.md
   - .claude/skills/app-common/references/ai/setup.md
+  - .claude/skills/app-common/references/backend/commands.md
   - .claude/skills/app-common/references/backend/errors.md
   - .claude/skills/app-common/references/backend/hooks.md
   - .claude/skills/app-common/references/backend/index.md
+  - .claude/skills/app-common/references/backend/session.md
   - .claude/skills/app-common/references/backend/setup.md
+  - .claude/skills/app-common/references/backend/time.md
   - .claude/skills/app-common/references/http/index.md
   - .claude/skills/app-common/references/http/setup.md
   - .claude/skills/app-common/references/local-dev/index.md
@@ -65,15 +77,18 @@ dependencies:
   - .claude/skills/app-common/references/vector/index.md
   - .claude/skills/app-common/references/vector/setup.md
   deployed_file_hashes:
-    .agents/skills/app-common/SKILL.md: sha256:10f40032bf7eba358fd7bd4c5eada3c0f09ef2c1ba9d46e5b976df01cdea31ef
-    .agents/skills/app-common/catalog.json: sha256:d8a275b7e8296cc8be1666d7da80f122a87a99b7c095a7ab94c0dd08b50a352a
+    .agents/skills/app-common/SKILL.md: sha256:23373232906d94f276b90ea06370e085d6f24e7e611cb4425666ba70f2d09ba7
+    .agents/skills/app-common/catalog.json: sha256:4be7f7b541c8cfc133def7483d9bf9082bd8341522df6c27ecd585683488840f
     .agents/skills/app-common/references/ai/index.md: sha256:b0d06c6732eaeeeed8f2687ae32a1cc4e6efa6f8bec72eca769307a62be3b3f1
     .agents/skills/app-common/references/ai/setup.md: sha256:6f70eb4719f7fa59c490a08310343055fb1123002a5b5c6cd0fe63dbddaaa89d
-    .agents/skills/app-common/references/backend/errors.md: sha256:f102a8e67a4cf2f24947e4c7a894dc3741c346b972c44c26f6255ae264bc08f4
+    .agents/skills/app-common/references/backend/commands.md: sha256:7c307472b0929ad5b9040d1befda539857245acde25b93e06292ae5bdc142ddd
+    .agents/skills/app-common/references/backend/errors.md: sha256:fb1cafc68376ffacc939e47fd1e488620bc8e43cccc53d4b785c1fb1ad0b1285
     .agents/skills/app-common/references/backend/hooks.md: sha256:317e25da4046607c8c0b387967f9033d8e3a52db04395fb9ca11ae62d17e980f
-    .agents/skills/app-common/references/backend/index.md: sha256:424e91453b143c194dd6f299f72a2d1a7a20e126d3dea0157856d0b2ed71ced7
+    .agents/skills/app-common/references/backend/index.md: sha256:7410c647f81de0e8e858e6331915d6289290140a23d0927db8319c334989344f
+    .agents/skills/app-common/references/backend/session.md: sha256:aeeb62f3902e611ef61128db1903191dae5fdb64bbb618f19a17cc9bccb2a213
     .agents/skills/app-common/references/backend/setup.md: sha256:388174bcb3ac6a139bae503e40799ed990f4d569ff7c9466ccbd7f5f767834d1
-    .agents/skills/app-common/references/http/index.md: sha256:b5257ff16ae29ef6b74579c00ef4233e33a0ac40435495315d247c52b65d7de2
+    .agents/skills/app-common/references/backend/time.md: sha256:66e7d3864504bf09a987ba82baf1f24f538ef90bce064e1155324720a975f1e7
+    .agents/skills/app-common/references/http/index.md: sha256:b5deee51bf8716c6ef2cfc854167a24cbca4657597086824134fd99dbb5f1e6b
     .agents/skills/app-common/references/http/setup.md: sha256:9b4376363d90173da942a8b67e7c93c20bbc61439fd3316cec3e67e756643095
     .agents/skills/app-common/references/local-dev/index.md: sha256:1d8f8392a099774f559536cf8432b1f73cc28860c34f259eae7a1df0c74263b1
     .agents/skills/app-common/references/mcp/index.md: sha256:3f239f60fc3eaed552f90af6772e706e509fb3bcb188e16a4acf7b0aec23155b
@@ -81,27 +96,30 @@ dependencies:
     .agents/skills/app-common/references/outbox/setup.md: sha256:141f6e84896621e6e5314a144c7332c55a7a5533ce1c49a5e618dd685bd46428
     .agents/skills/app-common/references/storage/index.md: sha256:d4ea4923267d14cbc640c5629252faecbbe7638fca91c83009a86863e5773b9f
     .agents/skills/app-common/references/storage/setup.md: sha256:67ceef61b440e56d2c15434f5c0d0e969ca0984316ed76b2528e00e4b37d7f0e
-    .agents/skills/app-common/references/testing/index.md: sha256:5bbed7804a370179e5e54751b811db2f17173d277484458a89cc44938936f13e
+    .agents/skills/app-common/references/testing/index.md: sha256:e761e4bd086d9ce3ca4db0c14c3e26fda58c88c542cd9fa1d30d420edf3e6d06
     .agents/skills/app-common/references/ui/api.md: sha256:c2423a6e7384bf830f78fd2a552408ff695d89e145cc8d7024610c90c078df61
     .agents/skills/app-common/references/ui/checklist.md: sha256:ccdae1575c19f8c41acc044b1e3dc7753ccd7d15507950ec849fece9d4f98661
     .agents/skills/app-common/references/ui/components.md: sha256:3ba319c21a68ea3f607c270045fe8120e694e73fadc8d16b1f62e8f7694d6f61
     .agents/skills/app-common/references/ui/index.md: sha256:32505a9e0db80eaf8255bd87555555086bbb1766ab679300f80cd55368f3dd2a
     .agents/skills/app-common/references/ui/runes.md: sha256:1a981c14faee991c60331b7698d36be5dcdc01f6bac1b935f3b574dbca88b0dc
     .agents/skills/app-common/references/ui/setup.md: sha256:4ea7a80aea4c130a6b19b23ee2659a79a5cd2133196b5cacb87361c2e2265555
-    .agents/skills/app-common/references/update/index.md: sha256:7ef0a3cf0270021e9c04bf9c28a0cb02095e468a2aac2b898f3ac44e8a50fde2
+    .agents/skills/app-common/references/update/index.md: sha256:1ebd31f5cc3b9eb2b9617a590971a272c33a2f60e5d45964404540a9a6ec9625
     .agents/skills/app-common/references/user/index.md: sha256:7c2bbe53b2509dbaf00c045d06d5c78a8c5260358bfd3a5537e6aa86702e10bb
     .agents/skills/app-common/references/user/setup.md: sha256:2287bcaef9ce535e5793ad76e184344a3bd8f825e6403d083a2d0bcba76f6510
     .agents/skills/app-common/references/vector/index.md: sha256:41039509ff5c04b52bcec7452e5318640d03690b38e20e9af7ec987f969c148c
     .agents/skills/app-common/references/vector/setup.md: sha256:68eedb57f7a64b8b15ae59dc413614e946c147186c1f846f4956ddf6f61301cc
-    .claude/skills/app-common/SKILL.md: sha256:10f40032bf7eba358fd7bd4c5eada3c0f09ef2c1ba9d46e5b976df01cdea31ef
-    .claude/skills/app-common/catalog.json: sha256:d8a275b7e8296cc8be1666d7da80f122a87a99b7c095a7ab94c0dd08b50a352a
+    .claude/skills/app-common/SKILL.md: sha256:23373232906d94f276b90ea06370e085d6f24e7e611cb4425666ba70f2d09ba7
+    .claude/skills/app-common/catalog.json: sha256:4be7f7b541c8cfc133def7483d9bf9082bd8341522df6c27ecd585683488840f
     .claude/skills/app-common/references/ai/index.md: sha256:b0d06c6732eaeeeed8f2687ae32a1cc4e6efa6f8bec72eca769307a62be3b3f1
     .claude/skills/app-common/references/ai/setup.md: sha256:6f70eb4719f7fa59c490a08310343055fb1123002a5b5c6cd0fe63dbddaaa89d
-    .claude/skills/app-common/references/backend/errors.md: sha256:f102a8e67a4cf2f24947e4c7a894dc3741c346b972c44c26f6255ae264bc08f4
+    .claude/skills/app-common/references/backend/commands.md: sha256:7c307472b0929ad5b9040d1befda539857245acde25b93e06292ae5bdc142ddd
+    .claude/skills/app-common/references/backend/errors.md: sha256:fb1cafc68376ffacc939e47fd1e488620bc8e43cccc53d4b785c1fb1ad0b1285
     .claude/skills/app-common/references/backend/hooks.md: sha256:317e25da4046607c8c0b387967f9033d8e3a52db04395fb9ca11ae62d17e980f
-    .claude/skills/app-common/references/backend/index.md: sha256:424e91453b143c194dd6f299f72a2d1a7a20e126d3dea0157856d0b2ed71ced7
+    .claude/skills/app-common/references/backend/index.md: sha256:7410c647f81de0e8e858e6331915d6289290140a23d0927db8319c334989344f
+    .claude/skills/app-common/references/backend/session.md: sha256:aeeb62f3902e611ef61128db1903191dae5fdb64bbb618f19a17cc9bccb2a213
     .claude/skills/app-common/references/backend/setup.md: sha256:388174bcb3ac6a139bae503e40799ed990f4d569ff7c9466ccbd7f5f767834d1
-    .claude/skills/app-common/references/http/index.md: sha256:b5257ff16ae29ef6b74579c00ef4233e33a0ac40435495315d247c52b65d7de2
+    .claude/skills/app-common/references/backend/time.md: sha256:66e7d3864504bf09a987ba82baf1f24f538ef90bce064e1155324720a975f1e7
+    .claude/skills/app-common/references/http/index.md: sha256:b5deee51bf8716c6ef2cfc854167a24cbca4657597086824134fd99dbb5f1e6b
     .claude/skills/app-common/references/http/setup.md: sha256:9b4376363d90173da942a8b67e7c93c20bbc61439fd3316cec3e67e756643095
     .claude/skills/app-common/references/local-dev/index.md: sha256:1d8f8392a099774f559536cf8432b1f73cc28860c34f259eae7a1df0c74263b1
     .claude/skills/app-common/references/mcp/index.md: sha256:3f239f60fc3eaed552f90af6772e706e509fb3bcb188e16a4acf7b0aec23155b
@@ -109,20 +127,19 @@ dependencies:
     .claude/skills/app-common/references/outbox/setup.md: sha256:141f6e84896621e6e5314a144c7332c55a7a5533ce1c49a5e618dd685bd46428
     .claude/skills/app-common/references/storage/index.md: sha256:d4ea4923267d14cbc640c5629252faecbbe7638fca91c83009a86863e5773b9f
     .claude/skills/app-common/references/storage/setup.md: sha256:67ceef61b440e56d2c15434f5c0d0e969ca0984316ed76b2528e00e4b37d7f0e
-    .claude/skills/app-common/references/testing/index.md: sha256:5bbed7804a370179e5e54751b811db2f17173d277484458a89cc44938936f13e
+    .claude/skills/app-common/references/testing/index.md: sha256:e761e4bd086d9ce3ca4db0c14c3e26fda58c88c542cd9fa1d30d420edf3e6d06
     .claude/skills/app-common/references/ui/api.md: sha256:c2423a6e7384bf830f78fd2a552408ff695d89e145cc8d7024610c90c078df61
     .claude/skills/app-common/references/ui/checklist.md: sha256:ccdae1575c19f8c41acc044b1e3dc7753ccd7d15507950ec849fece9d4f98661
     .claude/skills/app-common/references/ui/components.md: sha256:3ba319c21a68ea3f607c270045fe8120e694e73fadc8d16b1f62e8f7694d6f61
     .claude/skills/app-common/references/ui/index.md: sha256:32505a9e0db80eaf8255bd87555555086bbb1766ab679300f80cd55368f3dd2a
     .claude/skills/app-common/references/ui/runes.md: sha256:1a981c14faee991c60331b7698d36be5dcdc01f6bac1b935f3b574dbca88b0dc
     .claude/skills/app-common/references/ui/setup.md: sha256:4ea7a80aea4c130a6b19b23ee2659a79a5cd2133196b5cacb87361c2e2265555
-    .claude/skills/app-common/references/update/index.md: sha256:7ef0a3cf0270021e9c04bf9c28a0cb02095e468a2aac2b898f3ac44e8a50fde2
+    .claude/skills/app-common/references/update/index.md: sha256:1ebd31f5cc3b9eb2b9617a590971a272c33a2f60e5d45964404540a9a6ec9625
     .claude/skills/app-common/references/user/index.md: sha256:7c2bbe53b2509dbaf00c045d06d5c78a8c5260358bfd3a5537e6aa86702e10bb
     .claude/skills/app-common/references/user/setup.md: sha256:2287bcaef9ce535e5793ad76e184344a3bd8f825e6403d083a2d0bcba76f6510
     .claude/skills/app-common/references/vector/index.md: sha256:41039509ff5c04b52bcec7452e5318640d03690b38e20e9af7ec987f969c148c
     .claude/skills/app-common/references/vector/setup.md: sha256:68eedb57f7a64b8b15ae59dc413614e946c147186c1f846f4956ddf6f61301cc
-  source: local
-  local_path: ../app-common/agents
+  content_hash: sha256:5946ca46f3b075ec77702991decf8a1113c00cdbb8609d293a771b054f61c32e
   skill_subset:
   - app-common
 deployments:
@@ -132,8 +149,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: null
 - kind: project-relative
   target: claude
@@ -141,26 +158,26 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:10f40032bf7eba358fd7bd4c5eada3c0f09ef2c1ba9d46e5b976df01cdea31ef
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:23373232906d94f276b90ea06370e085d6f24e7e611cb4425666ba70f2d09ba7
 - kind: project-relative
   target: claude
   value: .claude/skills/app-common/catalog.json
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:d8a275b7e8296cc8be1666d7da80f122a87a99b7c095a7ab94c0dd08b50a352a
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:4be7f7b541c8cfc133def7483d9bf9082bd8341522df6c27ecd585683488840f
 - kind: project-relative
   target: claude
   value: .claude/skills/app-common/references/ai/index.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:b0d06c6732eaeeeed8f2687ae32a1cc4e6efa6f8bec72eca769307a62be3b3f1
 - kind: project-relative
   target: claude
@@ -168,26 +185,35 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:6f70eb4719f7fa59c490a08310343055fb1123002a5b5c6cd0fe63dbddaaa89d
+- kind: project-relative
+  target: claude
+  value: .claude/skills/app-common/references/backend/commands.md
+  runtime: null
+  scope: project
+  owners:
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:7c307472b0929ad5b9040d1befda539857245acde25b93e06292ae5bdc142ddd
 - kind: project-relative
   target: claude
   value: .claude/skills/app-common/references/backend/errors.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:f102a8e67a4cf2f24947e4c7a894dc3741c346b972c44c26f6255ae264bc08f4
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:fb1cafc68376ffacc939e47fd1e488620bc8e43cccc53d4b785c1fb1ad0b1285
 - kind: project-relative
   target: claude
   value: .claude/skills/app-common/references/backend/hooks.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:317e25da4046607c8c0b387967f9033d8e3a52db04395fb9ca11ae62d17e980f
 - kind: project-relative
   target: claude
@@ -195,35 +221,53 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:424e91453b143c194dd6f299f72a2d1a7a20e126d3dea0157856d0b2ed71ced7
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:7410c647f81de0e8e858e6331915d6289290140a23d0927db8319c334989344f
+- kind: project-relative
+  target: claude
+  value: .claude/skills/app-common/references/backend/session.md
+  runtime: null
+  scope: project
+  owners:
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:aeeb62f3902e611ef61128db1903191dae5fdb64bbb618f19a17cc9bccb2a213
 - kind: project-relative
   target: claude
   value: .claude/skills/app-common/references/backend/setup.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:388174bcb3ac6a139bae503e40799ed990f4d569ff7c9466ccbd7f5f767834d1
+- kind: project-relative
+  target: claude
+  value: .claude/skills/app-common/references/backend/time.md
+  runtime: null
+  scope: project
+  owners:
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:66e7d3864504bf09a987ba82baf1f24f538ef90bce064e1155324720a975f1e7
 - kind: project-relative
   target: claude
   value: .claude/skills/app-common/references/http/index.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:b5257ff16ae29ef6b74579c00ef4233e33a0ac40435495315d247c52b65d7de2
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:b5deee51bf8716c6ef2cfc854167a24cbca4657597086824134fd99dbb5f1e6b
 - kind: project-relative
   target: claude
   value: .claude/skills/app-common/references/http/setup.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:9b4376363d90173da942a8b67e7c93c20bbc61439fd3316cec3e67e756643095
 - kind: project-relative
   target: claude
@@ -231,8 +275,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:1d8f8392a099774f559536cf8432b1f73cc28860c34f259eae7a1df0c74263b1
 - kind: project-relative
   target: claude
@@ -240,8 +284,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:3f239f60fc3eaed552f90af6772e706e509fb3bcb188e16a4acf7b0aec23155b
 - kind: project-relative
   target: claude
@@ -249,8 +293,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:233503f04f88304a641da84e844243602fc870da0542182bd0fb9c0ef12c3c15
 - kind: project-relative
   target: claude
@@ -258,8 +302,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:141f6e84896621e6e5314a144c7332c55a7a5533ce1c49a5e618dd685bd46428
 - kind: project-relative
   target: claude
@@ -267,8 +311,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:d4ea4923267d14cbc640c5629252faecbbe7638fca91c83009a86863e5773b9f
 - kind: project-relative
   target: claude
@@ -276,8 +320,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:67ceef61b440e56d2c15434f5c0d0e969ca0984316ed76b2528e00e4b37d7f0e
 - kind: project-relative
   target: claude
@@ -285,17 +329,17 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:5bbed7804a370179e5e54751b811db2f17173d277484458a89cc44938936f13e
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:e761e4bd086d9ce3ca4db0c14c3e26fda58c88c542cd9fa1d30d420edf3e6d06
 - kind: project-relative
   target: claude
   value: .claude/skills/app-common/references/ui/api.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:c2423a6e7384bf830f78fd2a552408ff695d89e145cc8d7024610c90c078df61
 - kind: project-relative
   target: claude
@@ -303,8 +347,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:ccdae1575c19f8c41acc044b1e3dc7753ccd7d15507950ec849fece9d4f98661
 - kind: project-relative
   target: claude
@@ -312,8 +356,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:3ba319c21a68ea3f607c270045fe8120e694e73fadc8d16b1f62e8f7694d6f61
 - kind: project-relative
   target: claude
@@ -321,8 +365,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:32505a9e0db80eaf8255bd87555555086bbb1766ab679300f80cd55368f3dd2a
 - kind: project-relative
   target: claude
@@ -330,8 +374,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:1a981c14faee991c60331b7698d36be5dcdc01f6bac1b935f3b574dbca88b0dc
 - kind: project-relative
   target: claude
@@ -339,8 +383,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:4ea7a80aea4c130a6b19b23ee2659a79a5cd2133196b5cacb87361c2e2265555
 - kind: project-relative
   target: claude
@@ -348,17 +392,17 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:7ef0a3cf0270021e9c04bf9c28a0cb02095e468a2aac2b898f3ac44e8a50fde2
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:1ebd31f5cc3b9eb2b9617a590971a272c33a2f60e5d45964404540a9a6ec9625
 - kind: project-relative
   target: claude
   value: .claude/skills/app-common/references/user/index.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:7c2bbe53b2509dbaf00c045d06d5c78a8c5260358bfd3a5537e6aa86702e10bb
 - kind: project-relative
   target: claude
@@ -366,8 +410,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:2287bcaef9ce535e5793ad76e184344a3bd8f825e6403d083a2d0bcba76f6510
 - kind: project-relative
   target: claude
@@ -375,8 +419,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:41039509ff5c04b52bcec7452e5318640d03690b38e20e9af7ec987f969c148c
 - kind: project-relative
   target: claude
@@ -384,8 +428,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:68eedb57f7a64b8b15ae59dc413614e946c147186c1f846f4956ddf6f61301cc
 - kind: project-relative
   target: codex
@@ -393,8 +437,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: null
 - kind: project-relative
   target: codex
@@ -402,26 +446,26 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:10f40032bf7eba358fd7bd4c5eada3c0f09ef2c1ba9d46e5b976df01cdea31ef
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:23373232906d94f276b90ea06370e085d6f24e7e611cb4425666ba70f2d09ba7
 - kind: project-relative
   target: codex
   value: .agents/skills/app-common/catalog.json
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:d8a275b7e8296cc8be1666d7da80f122a87a99b7c095a7ab94c0dd08b50a352a
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:4be7f7b541c8cfc133def7483d9bf9082bd8341522df6c27ecd585683488840f
 - kind: project-relative
   target: codex
   value: .agents/skills/app-common/references/ai/index.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:b0d06c6732eaeeeed8f2687ae32a1cc4e6efa6f8bec72eca769307a62be3b3f1
 - kind: project-relative
   target: codex
@@ -429,26 +473,35 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:6f70eb4719f7fa59c490a08310343055fb1123002a5b5c6cd0fe63dbddaaa89d
+- kind: project-relative
+  target: codex
+  value: .agents/skills/app-common/references/backend/commands.md
+  runtime: null
+  scope: project
+  owners:
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:7c307472b0929ad5b9040d1befda539857245acde25b93e06292ae5bdc142ddd
 - kind: project-relative
   target: codex
   value: .agents/skills/app-common/references/backend/errors.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:f102a8e67a4cf2f24947e4c7a894dc3741c346b972c44c26f6255ae264bc08f4
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:fb1cafc68376ffacc939e47fd1e488620bc8e43cccc53d4b785c1fb1ad0b1285
 - kind: project-relative
   target: codex
   value: .agents/skills/app-common/references/backend/hooks.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:317e25da4046607c8c0b387967f9033d8e3a52db04395fb9ca11ae62d17e980f
 - kind: project-relative
   target: codex
@@ -456,35 +509,53 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:424e91453b143c194dd6f299f72a2d1a7a20e126d3dea0157856d0b2ed71ced7
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:7410c647f81de0e8e858e6331915d6289290140a23d0927db8319c334989344f
+- kind: project-relative
+  target: codex
+  value: .agents/skills/app-common/references/backend/session.md
+  runtime: null
+  scope: project
+  owners:
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:aeeb62f3902e611ef61128db1903191dae5fdb64bbb618f19a17cc9bccb2a213
 - kind: project-relative
   target: codex
   value: .agents/skills/app-common/references/backend/setup.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:388174bcb3ac6a139bae503e40799ed990f4d569ff7c9466ccbd7f5f767834d1
+- kind: project-relative
+  target: codex
+  value: .agents/skills/app-common/references/backend/time.md
+  runtime: null
+  scope: project
+  owners:
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:66e7d3864504bf09a987ba82baf1f24f538ef90bce064e1155324720a975f1e7
 - kind: project-relative
   target: codex
   value: .agents/skills/app-common/references/http/index.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:b5257ff16ae29ef6b74579c00ef4233e33a0ac40435495315d247c52b65d7de2
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:b5deee51bf8716c6ef2cfc854167a24cbca4657597086824134fd99dbb5f1e6b
 - kind: project-relative
   target: codex
   value: .agents/skills/app-common/references/http/setup.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:9b4376363d90173da942a8b67e7c93c20bbc61439fd3316cec3e67e756643095
 - kind: project-relative
   target: codex
@@ -492,8 +563,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:1d8f8392a099774f559536cf8432b1f73cc28860c34f259eae7a1df0c74263b1
 - kind: project-relative
   target: codex
@@ -501,8 +572,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:3f239f60fc3eaed552f90af6772e706e509fb3bcb188e16a4acf7b0aec23155b
 - kind: project-relative
   target: codex
@@ -510,8 +581,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:233503f04f88304a641da84e844243602fc870da0542182bd0fb9c0ef12c3c15
 - kind: project-relative
   target: codex
@@ -519,8 +590,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:141f6e84896621e6e5314a144c7332c55a7a5533ce1c49a5e618dd685bd46428
 - kind: project-relative
   target: codex
@@ -528,8 +599,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:d4ea4923267d14cbc640c5629252faecbbe7638fca91c83009a86863e5773b9f
 - kind: project-relative
   target: codex
@@ -537,8 +608,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:67ceef61b440e56d2c15434f5c0d0e969ca0984316ed76b2528e00e4b37d7f0e
 - kind: project-relative
   target: codex
@@ -546,17 +617,17 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:5bbed7804a370179e5e54751b811db2f17173d277484458a89cc44938936f13e
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:e761e4bd086d9ce3ca4db0c14c3e26fda58c88c542cd9fa1d30d420edf3e6d06
 - kind: project-relative
   target: codex
   value: .agents/skills/app-common/references/ui/api.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:c2423a6e7384bf830f78fd2a552408ff695d89e145cc8d7024610c90c078df61
 - kind: project-relative
   target: codex
@@ -564,8 +635,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:ccdae1575c19f8c41acc044b1e3dc7753ccd7d15507950ec849fece9d4f98661
 - kind: project-relative
   target: codex
@@ -573,8 +644,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:3ba319c21a68ea3f607c270045fe8120e694e73fadc8d16b1f62e8f7694d6f61
 - kind: project-relative
   target: codex
@@ -582,8 +653,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:32505a9e0db80eaf8255bd87555555086bbb1766ab679300f80cd55368f3dd2a
 - kind: project-relative
   target: codex
@@ -591,8 +662,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:1a981c14faee991c60331b7698d36be5dcdc01f6bac1b935f3b574dbca88b0dc
 - kind: project-relative
   target: codex
@@ -600,8 +671,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:4ea7a80aea4c130a6b19b23ee2659a79a5cd2133196b5cacb87361c2e2265555
 - kind: project-relative
   target: codex
@@ -609,17 +680,17 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
-  content_hash: sha256:7ef0a3cf0270021e9c04bf9c28a0cb02095e468a2aac2b898f3ac44e8a50fde2
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
+  content_hash: sha256:1ebd31f5cc3b9eb2b9617a590971a272c33a2f60e5d45964404540a9a6ec9625
 - kind: project-relative
   target: codex
   value: .agents/skills/app-common/references/user/index.md
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:7c2bbe53b2509dbaf00c045d06d5c78a8c5260358bfd3a5537e6aa86702e10bb
 - kind: project-relative
   target: codex
@@ -627,8 +698,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:2287bcaef9ce535e5793ad76e184344a3bd8f825e6403d083a2d0bcba76f6510
 - kind: project-relative
   target: codex
@@ -636,8 +707,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:41039509ff5c04b52bcec7452e5318640d03690b38e20e9af7ec987f969c148c
 - kind: project-relative
   target: codex
@@ -645,6 +716,6 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - ../app-common/agents
-  active_owner: ../app-common/agents
+  - mjkimr/app-common/agents
+  active_owner: mjkimr/app-common/agents
   content_hash: sha256:68eedb57f7a64b8b15ae59dc413614e946c147186c1f846f4956ddf6f61301cc

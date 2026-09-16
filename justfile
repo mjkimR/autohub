@@ -35,15 +35,28 @@ lint module="all":
     if should_run "$target" "hub"; then
         path=$(resolve_module_path "hub")
         echo "Linting Python backend ($path)..."
-        uv run --directory "$path" ruff format
-        uv run --directory "$path" ruff check --fix
+        uv run --no-sync app-tools run lint --fix --path "$path"
     fi
 
     if should_run "$target" "hub-ui"; then
         path=$(resolve_module_path "hub-ui")
         echo "Linting Svelte frontend ($path)..."
         activate_frontend_node
-        npm --prefix "$path" run lint
+        uv run --no-sync app-tools run npm --path "$path" -- run lint
+    fi
+
+# Check formatting, lint, and architecture without modifying files
+lint-check module="all":
+    #!/usr/bin/env bash
+    set -e
+    source ./scripts/_lib.sh
+    target=$(resolve_module "{{ module }}")
+    if should_run "$target" "hub"; then
+        uv run --no-sync app-tools run lint --path "$(resolve_module_path hub)"
+    fi
+    if should_run "$target" "hub-ui"; then
+        activate_frontend_node
+        uv run --no-sync app-tools run npm --path "$(resolve_module_path hub-ui)" -- run lint
     fi
 
 # Run static type checks for a specific module (all, hub, or hub-ui)
@@ -56,15 +69,15 @@ check module="all":
     if should_run "$target" "hub"; then
         path=$(resolve_module_path "hub")
         echo "Type checking Python backend ($path)..."
-        uv run pyright --project "$path"
+        uv run --no-sync app-tools run pyright -- --project "$path"
     fi
 
     if should_run "$target" "hub-ui"; then
         path=$(resolve_module_path "hub-ui")
         echo "Checking and compiling Svelte frontend ($path)..."
         activate_frontend_node
-        npm --prefix "$path" run check
-        npm --prefix "$path" run build
+        uv run --no-sync app-tools run npm --path "$path" -- run check
+        uv run --no-sync app-tools run npm --path "$path" -- run build
     fi
 
 # Install pre-commit hooks
@@ -100,7 +113,7 @@ build-ui:
     source ./scripts/_lib.sh
     path=$(resolve_module_path "hub-ui")
     activate_frontend_node
-    npm --prefix "$path" run build
+    uv run --no-sync app-tools run npm --path "$path" -- run build
 
 # Build docker image for a specific module or all modules
 docker-build module="all" tag="latest":
@@ -144,7 +157,7 @@ test-ui:
     source ./scripts/_lib.sh
     path=$(resolve_module_path "hub-ui")
     activate_frontend_node
-    npm --prefix "$path" test
+    uv run --no-sync app-tools run npm --path "$path" -- test
 
 # Generate OpenAPI client for the frontend UI module from Python backend schema
 gen-ui-api:

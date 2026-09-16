@@ -55,6 +55,7 @@ from app.features.project_management.projects.models import Project
 from app.features.project_management.projects.schemas import ProjectRead
 from app.features.project_management.projects.services import ProjectError, ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -189,7 +190,7 @@ class PipelineRunUseCase:
             raise ProjectError(409, ACTIVE_RUN_CONFLICT) from None
 
     async def acquire_lease(self, run_id: UUID, request: LeaseRequest) -> LeaseGrant:
-        now = datetime.now(UTC)
+        now = get_current_utc_time()
         token = uuid4()
         async with AsyncTransaction() as session:
             run = await self.repo.acquire_lease(
@@ -205,7 +206,7 @@ class PipelineRunUseCase:
             return self._lease_grant(run)
 
     async def renew_lease(self, run_id: UUID, request: LeaseMutation) -> LeaseGrant:
-        now = datetime.now(UTC)
+        now = get_current_utc_time()
         async with AsyncTransaction() as session:
             run = await self.repo.renew_lease(
                 session,
@@ -220,7 +221,7 @@ class PipelineRunUseCase:
             return self._lease_grant(run)
 
     async def release_lease(self, run_id: UUID, request: LeaseMutation) -> None:
-        now = datetime.now(UTC)
+        now = get_current_utc_time()
         async with AsyncTransaction() as session:
             run = await self.repo.release_lease(
                 session,
@@ -253,7 +254,7 @@ class PipelineRunUseCase:
     async def prepare_implementation(
         self, run_id: UUID, request: PrepareImplementationAttempt
     ) -> PreparedImplementationAttempt:
-        now = datetime.now(UTC)
+        now = get_current_utc_time()
         async with AsyncTransaction() as session:
             run = await self.repo.get_leased(
                 session,
@@ -318,7 +319,7 @@ class PipelineRunUseCase:
         token: UUID,
         observer: PipelineObservationService,
     ) -> PipelineRunRead:
-        now = datetime.now(UTC)
+        now = get_current_utc_time()
         async with AsyncTransaction() as session:
             run = await self.repo.get_leased(
                 session,
@@ -681,7 +682,7 @@ class PipelineRunUseCase:
 
     async def dispatch_implementation(self, run_id: UUID, *, owner: str, token: UUID) -> PipelineRunRead:
         """Reconcile then make one delivery through the catalog's adapter, retaining state across uncertain writes."""
-        now = datetime.now(UTC)
+        now = get_current_utc_time()
         async with AsyncTransaction() as session:
             run = await self.repo.get_leased(session, run_id, owner=owner, token=token, now=now)
             if run is None:
@@ -755,7 +756,7 @@ class PipelineRunUseCase:
 
         posted_at = receipt.posted_at
         async with AsyncTransaction() as session:
-            run = await self.repo.get_leased(session, run_id, owner=owner, token=token, now=datetime.now(UTC))
+            run = await self.repo.get_leased(session, run_id, owner=owner, token=token, now=get_current_utc_time())
             if run is None:
                 await self._raise_lease_conflict(session, run_id, "record delivery")
             attempt = await self.repo.active_attempt(session, run.id)
@@ -781,7 +782,7 @@ class PipelineRunUseCase:
 
     async def _guard_dispatch(self, run_id: UUID, owner: str, token: UUID, expected_revision: int) -> None:
         """Reserve a lease longer than the bounded I/O and recheck authorization before posting."""
-        now = datetime.now(UTC)
+        now = get_current_utc_time()
         async with AsyncTransaction() as session:
             run = await self.repo.get_leased(session, run_id, owner=owner, token=token, now=now)
             if run is None:
@@ -793,7 +794,7 @@ class PipelineRunUseCase:
                 raise ProjectError(409, "Project changed before delivery")
             if self.ai_catalogs is not None:
                 await self.ai_catalogs.require_dispatchable(session, run.ai_catalog_id, now)
-            now = datetime.now(UTC)
+            now = get_current_utc_time()
             renewed = await self.repo.renew_lease(
                 session,
                 run_id,
@@ -903,7 +904,7 @@ class PipelineRunUseCase:
             project = await self.projects.get(session, run.project_id)
             if not project.enabled or project.revision != project_revision:
                 raise ProjectError(409, "Project changed while resuming; reload and retry")
-            now = datetime.now(UTC)
+            now = get_current_utc_time()
             if pr["state"] == "closed":
                 await self._finish_closed_pull(session, run, pr, now)
                 return PipelineRunRead.model_validate(run)
@@ -948,7 +949,7 @@ class PipelineRunUseCase:
             return PipelineRunRead.model_validate(run)
 
     async def cancel_run(self, run_id: UUID) -> PipelineRunRead:
-        now = datetime.now(UTC)
+        now = get_current_utc_time()
         async with AsyncTransaction() as session:
             run = await self.repo.get(session, run_id)
             if run is None:
@@ -995,7 +996,7 @@ class PipelineRunUseCase:
     async def complete_attempt(
         self, run_id: UUID, attempt_id: UUID, request: CompleteAttemptRequest
     ) -> ExecutionAttemptRead:
-        now = datetime.now(UTC)
+        now = get_current_utc_time()
         async with AsyncTransaction() as session:
             run = await self.repo.get(session, run_id)
             if run is None:

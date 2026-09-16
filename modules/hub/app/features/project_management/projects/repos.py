@@ -4,6 +4,7 @@ from app.features.configuration.connectors.models import Connector
 from app.features.project_management.pipeline_runs.models import PipelineRun
 from app.features.project_management.projects.models import Project
 from app.features.scheduling.schedule_configs.models import ScheduleConfig
+from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,7 +45,7 @@ class ProjectRepository:
         await session.flush()
 
     async def create_dispatch_schedule(self, session: AsyncSession, project: Project) -> ScheduleConfig:
-        from datetime import UTC, datetime, timedelta
+        from datetime import timedelta
 
         schedule = ScheduleConfig(
             name=f"Dispatch {project.name}",
@@ -53,7 +54,7 @@ class ProjectRepository:
             interval_seconds=_dispatch_interval(project),
             payload={"project_id": str(project.id)},
             enabled=project.enabled,
-            next_run_at=datetime.now(UTC) + timedelta(seconds=60),
+            next_run_at=get_current_utc_time() + timedelta(seconds=60),
         )
         session.add(schedule)
         await session.flush()

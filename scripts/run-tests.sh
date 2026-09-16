@@ -22,11 +22,5 @@ done
 
 DEFAULT_PYTEST_OPTIONS="-q --tb=short --disable-warnings --no-header"
 PYTEST_OPTIONS="${PYTEST_OPTIONS:-$DEFAULT_PYTEST_OPTIONS}"
-PROGRESS_LINE_FILTER='^[\.sFxFw]*\s+\[.*\]$'
 
-tmp="$(mktemp)"
-trap 'rm -f "$tmp"' EXIT
-status=0
-uv run --directory "$hub_path" pytest $PYTEST_OPTIONS --db-type "$DB_TYPE" "${UPDATED_PATHS[@]}" >"$tmp" 2>&1 || status=$?
-grep -vE "$PROGRESS_LINE_FILTER" "$tmp" || true
-exit "$status"
+uv run --no-sync app-tools run pytest --path "$hub_path" -- $PYTEST_OPTIONS --db-type "$DB_TYPE" "${UPDATED_PATHS[@]}"

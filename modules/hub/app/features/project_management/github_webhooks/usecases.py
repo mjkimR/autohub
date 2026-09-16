@@ -1,7 +1,6 @@
 import hashlib
 import hmac
 import re
-from datetime import UTC, datetime
 from typing import Any
 
 from app.features.project_management.github_webhooks.models import GitHubWebhookDelivery
@@ -11,6 +10,7 @@ from app.features.project_management.pipeline_runs.schemas import EnrollPullRequ
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.projects.services import ProjectError
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy.exc import IntegrityError
 
 AUTO_RUN_TRIGGER = re.compile(r"@auto-run\b", re.IGNORECASE)
@@ -92,7 +92,7 @@ class GitHubWebhookUseCase:
             delivery = await self.repo.get(session, delivery_id)
             if delivery is not None:
                 delivery.status = status
-                delivery.processed_at = datetime.now(UTC)
+                delivery.processed_at = get_current_utc_time()
                 delivery.failure_detail = failure_detail
                 await session.flush()
 

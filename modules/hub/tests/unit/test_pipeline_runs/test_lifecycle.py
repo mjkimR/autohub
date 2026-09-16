@@ -514,11 +514,6 @@ async def test_silent_watchdog_uses_an_exact_fixed_clock(monkeypatch, elapsed, e
 
     frozen_now = datetime(2026, 9, 14, 12, tzinfo=UTC)
 
-    class FrozenDateTime(datetime):
-        @classmethod
-        def now(cls, tz=None):
-            return frozen_now if tz else frozen_now.replace(tzinfo=None)
-
     run = create_mock_run()
     repo, projects, observer = MagicMock(), MagicMock(), MagicMock()
     attempt = MagicMock(spec=ExecutionAttempt)
@@ -539,7 +534,7 @@ async def test_silent_watchdog_uses_an_exact_fixed_clock(monkeypatch, elapsed, e
     tx = MagicMock()
     tx.__aenter__ = AsyncMock(return_value=AsyncMock())
     tx.__aexit__ = AsyncMock(return_value=None)
-    monkeypatch.setattr(lifecycle, "datetime", FrozenDateTime)
+    monkeypatch.setattr(lifecycle, "get_current_utc_time", lambda: frozen_now)
     monkeypatch.setattr(lifecycle, "AsyncTransaction", lambda: tx)
     monkeypatch.setattr(lifecycle, "resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter()))
 

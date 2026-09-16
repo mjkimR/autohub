@@ -1,5 +1,4 @@
 import asyncio
-from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -15,6 +14,7 @@ from app.features.project_management.projects.observation import resolve_project
 from app.features.project_management.projects.repos import PROJECT_OBSERVATION_TASK, ProjectRepository
 from app.features.project_management.projects.schemas import ProjectObservationPayload
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
 from pydantic import ValidationError
 
@@ -46,7 +46,7 @@ class PipelineObservationService:
         async with create_github_client(token) as client:
             reader = GitHubActionsReader(client)
             pulls = [await reader.observe_pull(config, number) for number in config.pull_numbers]
-        return PipelineObservation(observed_at=datetime.now(UTC), config=config, pulls=pulls)
+        return PipelineObservation(observed_at=get_current_utc_time(), config=config, pulls=pulls)
 
     async def find_pull_request(self, connector_id: UUID, repository: str, head_branch: str) -> dict[str, Any] | None:
         token = await self.get_token(connector_id, "github")

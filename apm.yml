@@ -3,7 +3,8 @@ version: 0.1.0
 targets: [claude, codex]
 dependencies:
   apm:
-    # Workbench uses the sibling checkout, including unpublished main changes.
-    # For standalone use, replace path with git/ref/path as documented in README.
-    - path: ../app-common/agents
+    # Match the pushed app-common commit pinned in the Python dependencies.
+    - git: mjkimR/app-common
+      path: agents
+      ref: 7084f74720c9d3f13dce16d3d3321897f0496e34
       skills: [app-common]

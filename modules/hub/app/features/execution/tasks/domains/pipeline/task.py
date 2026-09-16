@@ -1,5 +1,4 @@
 import asyncio
-from datetime import UTC, datetime
 
 from app.common.config import get_scheduler_defaults
 from app.features.ai_catalogs.repos import AICatalogRepository
@@ -26,6 +25,7 @@ from app.features.project_management.projects.repos import (
 from app.features.project_management.projects.schemas import ProjectDispatchPayload, ProjectObservationPayload
 from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.utils.time_util import get_current_utc_time
 
 
 @task(name=OBSERVATION_TASK)
@@ -110,7 +110,7 @@ async def dispatch_project_task(payload: ProjectDispatchPayload) -> None:
                 session,
                 payload.project_id,
                 limit=batch_limit,
-                ready_at=datetime.now(UTC),
+                ready_at=get_current_utc_time(),
                 states=states,
             )
         # Finish every worker and its lease cleanup even when another worker fails.

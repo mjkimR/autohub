@@ -14,7 +14,7 @@ The reconcile logic itself lives in
 :mod:`app.features.execution.tasks.domains.appointment_chain.reconcile`.
 """
 
-from datetime import UTC, date, datetime
+from datetime import date
 from uuid import UUID
 
 from app.features.execution.task_states import store as task_state_store
@@ -29,6 +29,7 @@ from app.features.execution.tasks.domains.appointment_chain.reconcile import (
 )
 from app.features.execution.tasks.domains.appointment_chain.schemas import ChainConfig, ChainState
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.utils.time_util import get_current_utc_time
 
 
 @task(name="calendar.reconcile_chain")
@@ -36,7 +37,7 @@ async def reconcile_chain_task(payload: ChainConfig) -> None:
     meta = get_task_meta()
     if meta is None:
         raise RuntimeError("calendar.reconcile_chain must run inside a task context (needs the config id).")
-    await run_reconcile(payload, config_id=meta.config_id, today=datetime.now(UTC).date())
+    await run_reconcile(payload, config_id=meta.config_id, today=get_current_utc_time().date())
 
 
 async def run_reconcile(config: ChainConfig, *, config_id: UUID, today: date) -> list[ReconcileAction]:

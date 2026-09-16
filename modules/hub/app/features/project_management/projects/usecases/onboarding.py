@@ -1,5 +1,4 @@
 import asyncio
-from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -10,6 +9,7 @@ from app.features.project_management.projects.schemas import ConnectionCheck, Co
 from app.features.project_management.projects.services import ProjectError
 from app.features.project_management.projects.usecases.crud import ProjectUseCase
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
 
 
@@ -84,7 +84,7 @@ class CheckProjectUseCase:
         has_passed = any(check.status == "passed" for check in checks)
         has_failed = any(check.status == "failed" for check in checks)
         report = ConnectionCheck(
-            checked_at=datetime.now(UTC),
+            checked_at=get_current_utc_time(),
             project_revision=project.revision,
             ready=has_passed and not has_failed,
             checks=checks,

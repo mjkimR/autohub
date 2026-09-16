@@ -157,6 +157,24 @@
       "packages": [
         "app-tools"
       ]
+    },
+    "backend/time": {
+      "path": "references/backend/time.md",
+      "packages": [
+        "app-layer-base"
+      ]
+    },
+    "backend/commands": {
+      "path": "references/backend/commands.md",
+      "packages": [
+        "app-layer-base"
+      ]
+    },
+    "backend/session": {
+      "path": "references/backend/session.md",
+      "packages": [
+        "app-layer-base"
+      ]
     }
   }
 }

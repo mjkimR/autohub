@@ -1,5 +1,4 @@
 import uuid
-from datetime import UTC, datetime
 from typing import Annotated
 
 from app.features.execution.dispatchers.services import DispatcherService
@@ -9,6 +8,7 @@ from app.features.scheduling.schedule_jobs.schemas import ScheduleJobCreate, Sch
 from app.features.scheduling.schedule_jobs.services import ScheduleJobService
 from app_layer_base.base.usecases.base import BaseUseCase
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
 
 
@@ -23,7 +23,7 @@ class DispatchUseCase(BaseUseCase):
 
     async def execute(self) -> int:
         """Receive a trigger request, execute due schedules, and return the number of dispatched schedules."""
-        now = datetime.now(UTC)
+        now = get_current_utc_time()
         run_id = uuid.uuid4()
         schedule_jobs = []
 

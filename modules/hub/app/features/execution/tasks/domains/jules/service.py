@@ -3,7 +3,7 @@
 The hub keeps only session state and links; reports and changes stay in Jules or the pull requests it opens.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -25,6 +25,7 @@ from app.features.execution.tasks.domains.jules.client import (
 )
 from app.features.project_management.projects.services import ProjectError
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.utils.time_util import get_current_utc_time
 from pydantic import BaseModel, ConfigDict, Field
 
 SESSION_MARKER = "hub-session"
@@ -64,21 +65,21 @@ class JulesSessionService:
             title = f"{payload.title} [{SESSION_MARKER}:{session_id}]"
             async with AsyncTransaction() as session:
                 admission = await self.catalogs.request_dispatch(
-                    session, catalog_id, None, f"session:{session_id}", datetime.now(UTC)
+                    session, catalog_id, None, f"session:{session_id}", get_current_utc_time()
                 )
-                if admission.rejection is not None:
-                    # Keep what the policy recorded while rejecting, such as a daily hold it has just reached.
-                    await session.commit()
-                    raise ProjectError(409, admission.rejection)
-                session.add(
-                    AICatalogSession(
-                        id=session_id,
-                        ai_catalog_id=catalog_id,
-                        schedule_config_id=schedule_config_id,
-                        title=title,
-                        state=SESSION_DISPATCHING,
+                if admission.rejection is None:
+                    session.add(
+                        AICatalogSession(
+                            id=session_id,
+                            ai_catalog_id=catalog_id,
+                            schedule_config_id=schedule_config_id,
+                            title=title,
+                            state=SESSION_DISPATCHING,
+                        )
                     )
-                )
+            # Leave the transaction successfully so policy holds survive a rejected admission.
+            if admission.rejection is not None:
+                raise ProjectError(409, admission.rejection)
             try:
                 remote = await client.create_session(
                     repository=payload.repository,
@@ -93,7 +94,7 @@ class JulesSessionService:
             async with AsyncTransaction() as session:
                 row = await session.get(AICatalogSession, session_id, with_for_update=True)
                 if row is not None:
-                    self._apply(row, remote, datetime.now(UTC))
+                    self._apply(row, remote, get_current_utc_time())
         return session_id
 
     async def sync(self, catalog_key: str) -> None:
@@ -137,7 +138,7 @@ class JulesSessionService:
             except JulesApiError:
                 # Observation retries on the next run; it never blocks starting new work.
                 continue
-            now = datetime.now(UTC)
+            now = get_current_utc_time()
             async with AsyncTransaction() as session:
                 row = await session.get(AICatalogSession, session_id, with_for_update=True)
                 if row is None or row.state in SESSION_TERMINAL_STATES:
@@ -160,7 +161,7 @@ class JulesSessionService:
                 row.failure_detail = str(exc)
             if exc.status_code == 429:
                 # Jules does not document its limit error; a 429 is treated as its task cap being reached.
-                await self.catalogs.record_quota_event(session, catalog_id, datetime.now(UTC))
+                await self.catalogs.record_quota_event(session, catalog_id, get_current_utc_time())
 
     @staticmethod
     def _apply(row: AICatalogSession, remote: dict[str, Any], now: datetime) -> None:

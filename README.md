@@ -52,26 +52,33 @@ just check
 just test
 ```
 
+Lint, checks, builds, and tests use `app-tools run` to print compact results and
+save complete output at the printed `log:` path. Backend lint includes app-common
+architecture checks; `just lint-check` checks both modules without changing files.
+Initialize the Python development environment with `just init hub` before using
+these commands, including frontend-only checks.
+
 For connector credential encryption setup, refer to the [Hub module documentation](modules/hub/README.md#connector-credential-encryption).
 
 ## Agent skills
 
 Microsoft APM 0.30.0 installs the `app-common` skill with `just skills` (also run
 by backend initialization). `just link-skills` remains a compatibility entry point.
-The manifest uses `../app-common/agents`, the sibling workbench checkout; after
-source changes run `apm install` to refresh the snapshot and lockfile, then
-`apm audit --ci`. Normal setup uses `apm install --frozen`.
+`apm.yml` pins the Git dependency to the same pushed commit as the Python packages;
+no sibling app-common checkout is required. Install APM with
+`uv tool install apm-cli==0.30.0`. Private repositories require Git credentials in
+local and cloud agent environments.
 
-For a standalone checkout, replace the local dependency in `apm.yml` with:
+Normal setup runs `apm install --frozen`. To adopt a newer skill version, change
+`ref` in `apm.yml` to the intended pushed commit, then run:
 
-```yaml
-    - git: mjkimR/app-common
-      path: agents
-      ref: <release-tag>
-      skills: [app-common]
+```sh
+apm install --refresh
+apm audit --ci
 ```
 
-Use a published ref containing the APM collection layout, then run `apm install`.
-Track the manifest, lockfile, and `.agents/skills/app-common/` and
-`.claude/skills/app-common/` copies together. Ignore `apm_modules/`; never edit
-installed copies. This setup does not use a project `.apm/` directory.
+From workbench, `just skills-refresh autohub` performs both steps. Refresh honors
+the declared ref; it does not advance a pinned commit to main automatically.
+Track `apm.yml`, `apm.lock.yaml`, and the deployed skill files together. Ignore
+`apm_modules/`; never edit installed copies. This setup does not use a project
+`.apm/` directory. Keep the skill ref aligned when updating app-common packages.

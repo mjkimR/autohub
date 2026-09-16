@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import datetime
 from inspect import iscoroutinefunction
 from typing import Annotated
 from uuid import UUID
@@ -17,6 +17,7 @@ from app.features.scheduling.schedule_jobs.schemas import ScheduleJobRead
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.core.log import logger
 from app_layer_base.core.traceback import get_exception_traceback_str
+from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -239,7 +240,7 @@ class DispatcherService:
                 error_trace = get_exception_traceback_str(e)
                 logger.error(f"{prefix} failed (Request ID: {run_id}): {e}\n{error_trace}")
 
-            finished_at = datetime.now(UTC)
+            finished_at = get_current_utc_time()
 
             # Update schedule job
             async with AsyncTransaction() as session:
@@ -255,7 +256,6 @@ class DispatcherService:
                     )
                 )
                 result = await session.execute(update_stmt)
-                await session.commit()
                 if result.rowcount == 0:  # type: ignore
                     logger.error(f"{prefix} Failed to update ScheduleJob - not found")
 
