@@ -1,20 +1,21 @@
 # Python
-__pycache__/
-*.py[oc]
-*.pyo
-*.pyd
-.Python
+**/__pycache__/
+**/*.py[oc]
+**/*.pyo
+**/*.pyd
+**/.Python
 
 # Virtual environments
 .venv/
+**/.venv/
 
 # Build / dist
-build/
-dist/
-wheels/
-*.egg-info/
-node_modules/
-.svelte-kit/
+**/build/
+**/dist/
+**/wheels/
+**/*.egg-info/
+**/node_modules/
+**/.svelte-kit/
 
 # Tests
 tests/
@@ -41,12 +42,15 @@ docker/helper/
 .agents/
 .claude/
 .ruff_cache/
+**/.ruff_cache/
 
 # Env files
 .env
 .env.*
 !.env.example
 
-# README
+# README & Docs
 README.md
 **/README.md
+docs/
+
