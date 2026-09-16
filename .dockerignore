@@ -30,14 +30,17 @@ logs/
 .gitignore
 
 # Docker
-docker/*.Dockerfile
 docker/build_*.sh
+docker/helper/
 .dockerignore
 
-# CI/CD & IDE
+# CI/CD & IDE / AI Agents
 .github/
 .vscode/
 .idea/
+.agents/
+.claude/
+.ruff_cache/
 
 # Env files
 .env

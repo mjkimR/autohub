@@ -3,7 +3,8 @@ FROM node:22-slim AS frontend-builder
 WORKDIR /app/modules/hub-ui
 
 COPY modules/hub-ui/package*.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 COPY modules/hub-ui ./
 RUN npm run build
@@ -11,12 +12,11 @@ RUN npm run build
 # ---- Backend Builder Stage ----
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS backend-builder
 ENV TZ=UTC
-ENV PYTHONDONTWRITEBYTECODE=1
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
 
 RUN apt-get update \
-    && apt-get install -y \
-    build-essential \
-    git \
+    && apt-get install -y --no-install-recommends git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -32,22 +32,26 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ---- Final Stage ----
 FROM python:3.13-slim AS runtime
 ENV TZ=UTC
-ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/app/.venv/bin:$PATH"
 
+# Non-root user setup
+RUN groupadd -g 1000 appuser && useradd -u 1000 -g appuser -m appuser
+
 WORKDIR /app/modules/hub
-COPY --from=backend-builder /app/.venv /app/.venv
-COPY --from=frontend-builder /app/modules/hub-ui/build ./ui_dist
-COPY modules/hub/app ./app
-COPY modules/hub/alembic.ini ./alembic.ini
-COPY modules/hub/migrations ./migrations
-COPY templates/github-actions /app/templates/github-actions
-COPY docker/run_hub.sh ./run_hub.sh
-RUN chmod +x run_hub.sh
+COPY --from=backend-builder --chown=appuser:appuser /app/.venv /app/.venv
+COPY --from=frontend-builder --chown=appuser:appuser /app/modules/hub-ui/build ./ui_dist
+COPY --chown=appuser:appuser modules/hub/app ./app
+COPY --chown=appuser:appuser modules/hub/alembic.ini ./alembic.ini
+COPY --chown=appuser:appuser modules/hub/migrations ./migrations
+COPY --chown=appuser:appuser templates/github-actions /app/templates/github-actions
+COPY --chmod=755 docker/run_hub.sh ./run_hub.sh
+
+USER appuser
 
 ENV WORKERS=3
 ENV TIMEOUT=1200
 
 ENTRYPOINT ["./run_hub.sh"]
+
 
