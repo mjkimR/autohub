@@ -24,10 +24,10 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "main" }
-app-error = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-error", rev = "main" }
-app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "main" }
-app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "main" }
+app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "7084f74720c9d3f13dce16d3d3321897f0496e34" }
+app-error = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-error", rev = "7084f74720c9d3f13dce16d3d3321897f0496e34" }
+app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "7084f74720c9d3f13dce16d3d3321897f0496e34" }
+app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "7084f74720c9d3f13dce16d3d3321897f0496e34" }
 
 [dependency-groups]
 dev = [

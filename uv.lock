@@ -74,12 +74,12 @@ wheels = [
 [[package]]
 name = "app-error"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-error&rev=main#0e9fe4adf9ed942e223e7b52b3ca76e99e79db27" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-error&rev=7084f74720c9d3f13dce16d3d3321897f0496e34#7084f74720c9d3f13dce16d3d3321897f0496e34" }
 
 [[package]]
 name = "app-layer-base"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-layer-base&rev=main#0e9fe4adf9ed942e223e7b52b3ca76e99e79db27" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-layer-base&rev=7084f74720c9d3f13dce16d3d3321897f0496e34#7084f74720c9d3f13dce16d3d3321897f0496e34" }
 dependencies = [
     { name = "app-error" },
     { name = "dotenv" },
@@ -95,7 +95,7 @@ dependencies = [
 [[package]]
 name = "app-testing-base"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=main#0e9fe4adf9ed942e223e7b52b3ca76e99e79db27" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=7084f74720c9d3f13dce16d3d3321897f0496e34#7084f74720c9d3f13dce16d3d3321897f0496e34" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "app-layer-base" },
@@ -111,7 +111,7 @@ dependencies = [
 [[package]]
 name = "app-tools"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=main#0e9fe4adf9ed942e223e7b52b3ca76e99e79db27" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=7084f74720c9d3f13dce16d3d3321897f0496e34#7084f74720c9d3f13dce16d3d3321897f0496e34" }
 dependencies = [
     { name = "app-error" },
     { name = "click" },
@@ -1414,7 +1414,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.18.3" },
-    { name = "app-layer-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-layer-base&rev=main" },
+    { name = "app-layer-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-layer-base&rev=7084f74720c9d3f13dce16d3d3321897f0496e34" },
     { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "cachetools", specifier = ">=7.0.0" },
     { name = "croniter", specifier = ">=6.0.0" },
@@ -1434,8 +1434,8 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "aiosqlite" },
-    { name = "app-testing-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=main" },
-    { name = "app-tools", git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=main" },
+    { name = "app-testing-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=7084f74720c9d3f13dce16d3d3321897f0496e34" },
+    { name = "app-tools", git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=7084f74720c9d3f13dce16d3d3321897f0496e34" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
     { name = "pytest-mock", specifier = ">=3.14.0" },
