@@ -30,7 +30,7 @@ def list_fixtures(module_path):
             tree = ast.parse(content)
             fixtures_in_file = []
             for node in ast.walk(tree):
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                     is_fixture = False
                     actual_name = node.name
 

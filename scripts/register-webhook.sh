@@ -10,15 +10,15 @@ if [[ -z "$REPO" ]]; then
 fi
 
 echo "==> Fetching Auto Hub configuration from Google Cloud..."
-SERVICE_NAME="auto-hub"
+SERVICE_NAME="autohub"
 REGION="${REGION:-us-west1}"
 
-SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" --region="$REGION" --format="value(status.url)" 2>/dev/null || echo "https://auto-hub-y2hhy3omua-du.a.run.app")
-SECRETS_JSON=$(gcloud secrets versions access latest --secret=auto-hub-secrets 2>/dev/null || echo "")
+SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" --region="$REGION" --format="value(status.url)" 2>/dev/null || echo "https://autohub-y2hhy3omua-du.a.run.app")
+SECRETS_JSON=$(gcloud secrets versions access latest --secret=autohub-secrets 2>/dev/null || echo "")
 WEBHOOK_SECRET=$(SECRETS_JSON="$SECRETS_JSON" python3 -c 'import json, os; print(json.loads(os.environ["SECRETS_JSON"])["GITHUB_WEBHOOK_SECRET"])' 2>/dev/null || echo "")
 
 if [[ -z "$WEBHOOK_SECRET" ]]; then
-  echo "Error: Could not retrieve GITHUB_WEBHOOK_SECRET from auto-hub-secrets."
+  echo "Error: Could not retrieve GITHUB_WEBHOOK_SECRET from autohub-secrets."
   echo "Please make sure you are logged into gcloud and have permissions."
   exit 1
 fi

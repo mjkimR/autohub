@@ -336,7 +336,7 @@ async def test_attach_pr_transitions_to_awaiting_ci():
     repo.get = AsyncMock(return_value=mock_run)
 
     mock_project = MagicMock()
-    mock_project.github_repository = "org/auto-hub"
+    mock_project.github_repository = "org/autohub"
     projects.get = AsyncMock(return_value=mock_project)
 
     mock_attempt = MagicMock(spec=ExecutionAttempt)

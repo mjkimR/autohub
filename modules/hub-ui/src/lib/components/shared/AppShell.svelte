@@ -99,7 +99,7 @@
 				<Server class="size-5" />
 			</div>
 			<div>
-				<div class="font-bold tracking-tight text-sidebar-foreground">Auto-Hub</div>
+				<div class="font-bold tracking-tight text-sidebar-foreground">Autohub</div>
 				<div class="text-[11px] font-medium text-muted-foreground">Scheduler Manager</div>
 			</div>
 		</div>
@@ -191,7 +191,7 @@
 		>
 			<div class="flex items-center gap-2">
 				<span class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-					Auto-Hub
+					Autohub
 				</span>
 				<span class="text-muted-foreground/60">/</span>
 				<span class="text-sm font-semibold text-foreground capitalize">

@@ -11,13 +11,13 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null || true)}"
 REGION="${REGION:-us-west1}"
-SERVICE_NAME="${SERVICE_NAME:-auto-hub}"
-REPO_NAME="${REPO_NAME:-auto-hub}"
+SERVICE_NAME="${SERVICE_NAME:-autohub}"
+REPO_NAME="${REPO_NAME:-autohub}"
 DB_CONNECTION_NAME="${DB_CONNECTION_NAME:-}"
 TAG="${TAG:-latest}"
 SETUP_SCHEDULER="${SETUP_SCHEDULER:-true}"
 KEEP_VERSIONS="${KEEP_VERSIONS:-2}"
-SA_NAME="${SA_NAME:-auto-hub-sa}"
+SA_NAME="${SA_NAME:-autohub-sa}"
 
 usage() {
   cat <<EOF
@@ -28,8 +28,8 @@ Build and deploy Auto Hub to Google Cloud Run using Cloud Build.
 Options:
   -p, --project PROJECT_ID     GCP Project ID (default: current gcloud project)
   -r, --region REGION          GCP Region (default: us-west1)
-  -s, --service NAME           Cloud Run service name (default: auto-hub)
-  -a, --service-account NAME   Dedicated Service Account name (default: auto-hub-sa)
+  -s, --service NAME           Cloud Run service name (default: autohub)
+  -a, --service-account NAME   Dedicated Service Account name (default: autohub-sa)
   -c, --connection-name NAME   Cloud SQL Connection Name (PROJECT:REGION:INSTANCE)
   -t, --tag TAG                Image tag (default: latest)
   -k, --keep-versions N        Number of image versions to retain (default: 2)
@@ -139,7 +139,7 @@ DEPLOY_ARGS=(
   --memory=1Gi
   --cpu=1
   --service-account="$SA_EMAIL"
-  --set-secrets="APP_SECRETS_JSON=auto-hub-secrets:latest"
+  --set-secrets="APP_SECRETS_JSON=autohub-secrets:latest"
 )
 
 if [[ -n "$DB_CONNECTION_NAME" ]]; then
@@ -158,7 +158,7 @@ if [[ "$SETUP_SCHEDULER" == "true" ]]; then
   JOB_NAME="${SERVICE_NAME}-dispatcher-tick"
   echo "==> Configuring Cloud Scheduler job: $JOB_NAME..."
 
-  APP_SECRETS_JSON=$(gcloud secrets versions access latest --secret=auto-hub-secrets --project="$PROJECT_ID" 2>/dev/null || true)
+  APP_SECRETS_JSON=$(gcloud secrets versions access latest --secret=autohub-secrets --project="$PROJECT_ID" 2>/dev/null || true)
   APP_SECRET=$(APP_SECRETS_JSON="$APP_SECRETS_JSON" python3 -c 'import json, os; print(json.loads(os.environ["APP_SECRETS_JSON"])["APP_SECRET_KEY"])' 2>/dev/null || true)
   if [[ -n "$APP_SECRET" ]]; then
     if gcloud scheduler jobs describe "$JOB_NAME" --location="$REGION" --project="$PROJECT_ID" >/dev/null 2>&1; then
@@ -185,7 +185,7 @@ if [[ "$SETUP_SCHEDULER" == "true" ]]; then
       echo "  - Created new Cloud Scheduler job."
     fi
   else
-    echo "  - Warning: auto-hub-secrets not found. Cloud Scheduler job skipped."
+    echo "  - Warning: autohub-secrets not found. Cloud Scheduler job skipped."
   fi
 fi
 

@@ -12,7 +12,7 @@ DB_USER="${DB_USER:-hub_user}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 DB_NAME="${DB_NAME:-auto_hub}"
 DATABASE_URL="${DATABASE_URL:-}"
-SA_NAME="${SA_NAME:-auto-hub-sa}"
+SA_NAME="${SA_NAME:-autohub-sa}"
 RAW_APP_SECRET="${APP_SECRET:-${APP_SECRET_KEY:-}}"
 
 usage() {
@@ -25,7 +25,7 @@ Options:
   -p, --project PROJECT_ID     GCP Project ID (default: current gcloud project)
   -r, --region REGION          GCP Region (default: us-west1)
   -s, --app-secret SECRET      Plaintext App Secret Key (will be SHA-256 hashed before storing)
-  -a, --service-account NAME   Dedicated Service Account name (default: auto-hub-sa)
+  -a, --service-account NAME   Dedicated Service Account name (default: autohub-sa)
   -b, --database-url URL       Full PostgreSQL connection URL (e.g. Aiven/external DB)
   -c, --connection-name NAME   Cloud SQL Connection Name (PROJECT:REGION:INSTANCE)
   -u, --db-user USER           Database username (default: hub_user, for Cloud SQL)
@@ -123,21 +123,21 @@ WEBHOOK_SECRET_VAL=$(openssl rand -hex 20)
 
 # 3. Database URL
 if [[ -n "$DATABASE_URL" ]]; then
-  # Normalize postgres:// or postgresql:// to postgresql+asyncpg://
+  # Normalize postgres://, postgresql://, or postgresql+asyncpg:// to postgresql+psycopg://
   if [[ "$DATABASE_URL" =~ ^postgres:// ]]; then
-    DATABASE_URL="postgresql+asyncpg://${DATABASE_URL#postgres://}"
+    DATABASE_URL="postgresql+psycopg://${DATABASE_URL#postgres://}"
   elif [[ "$DATABASE_URL" =~ ^postgresql:// ]]; then
-    DATABASE_URL="postgresql+asyncpg://${DATABASE_URL#postgresql://}"
+    DATABASE_URL="postgresql+psycopg://${DATABASE_URL#postgresql://}"
+  elif [[ "$DATABASE_URL" =~ ^postgresql\+asyncpg:// ]]; then
+    DATABASE_URL="postgresql+psycopg://${DATABASE_URL#postgresql+asyncpg://}"
   fi
-  # Normalize sslmode= to ssl= for asyncpg driver
-  DATABASE_URL="${DATABASE_URL//sslmode=/ssl=}"
   echo "  - Storing provided DATABASE_URL..."
 elif [[ -n "$DB_CONNECTION_NAME" ]]; then
   if [[ -z "$DB_PASSWORD" ]]; then
     read -rsp "Enter password for database user '$DB_USER': " DB_PASSWORD
     echo ""
   fi
-  DATABASE_URL="postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@/${DB_NAME}?host=/cloudsql/${DB_CONNECTION_NAME}"
+  DATABASE_URL="postgresql+psycopg://${DB_USER}:${DB_PASSWORD}@/${DB_NAME}?host=/cloudsql/${DB_CONNECTION_NAME}"
 else
   echo "Error: --database-url or --connection-name is required for the Auto Hub secret bundle." >&2
   exit 1
@@ -154,7 +154,7 @@ SECRETS_JSON=$( \
   python3 -c 'import json, os; print(json.dumps({"APP_SECRET_KEY": os.environ["APP_SECRET_VAL"], "DATABASE_URL": os.environ["DATABASE_URL"], "GITHUB_WEBHOOK_SECRET": os.environ["WEBHOOK_SECRET_VAL"], "CONNECTOR_CREDENTIAL_KEY": os.environ["CONNECTOR_KEY_VAL"], "CONNECTOR_CREDENTIAL_KEY_VERSION": "1"}, separators=(",", ":")))' \
 )
 
-create_or_update_secret "auto-hub-secrets" "$SECRETS_JSON" "true"
+create_or_update_secret "autohub-secrets" "$SECRETS_JSON" "true"
 
 
 # 5. Create dedicated Service Account & grant secretAccessor role
@@ -175,6 +175,6 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
 
 echo "==> Secret Manager setup completed successfully!"
 echo "    Dedicated Service Account: $SA_EMAIL"
-echo "    Secret bundle: auto-hub-secrets"
+echo "    Secret bundle: autohub-secrets"
 echo "    Save this plaintext API key securely for UI/Scheduler authentication:"
 echo "    $LOGIN_KEY"

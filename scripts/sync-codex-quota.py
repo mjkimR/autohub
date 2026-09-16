@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Send the blocking local Codex reset time to Auto-Hub's global AI catalog."""
+"""Send the blocking local Codex reset time to Autohub's global AI catalog."""
 
 from __future__ import annotations
 
@@ -14,7 +14,9 @@ from urllib.request import Request, urlopen
 
 def rpc(process: subprocess.Popen[str], request_id: int, method: str, params: dict | None = None) -> dict:
     assert process.stdin is not None and process.stdout is not None
-    process.stdin.write(json.dumps({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params or {}}) + "\n")
+    process.stdin.write(
+        json.dumps({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params or {}}) + "\n"
+    )
     process.stdin.flush()
     while line := process.stdout.readline():
         message = json.loads(line)
@@ -31,9 +33,14 @@ def hub_url() -> str:
     service = os.getenv("HUB_CLOUD_RUN_SERVICE")
     region = os.getenv("HUB_CLOUD_RUN_REGION")
     if service and region:
-        return subprocess.check_output(
-            ["gcloud", "run", "services", "describe", service, "--region", region, "--format=value(status.url)"], text=True
-        ).strip().rstrip("/")
+        return (
+            subprocess.check_output(
+                ["gcloud", "run", "services", "describe", service, "--region", region, "--format=value(status.url)"],
+                text=True,
+            )
+            .strip()
+            .rstrip("/")
+        )
     raise RuntimeError("Set HUB_API_URL, or HUB_CLOUD_RUN_SERVICE and HUB_CLOUD_RUN_REGION")
 
 
@@ -51,14 +58,16 @@ def blocking_reset(rate_limits: dict) -> int:
             raise RuntimeError("Codex reported an invalid quota window")
         used = window.get("usedPercent")
         reset = window.get("resetsAt")
-        if not isinstance(used, (int, float)) or isinstance(used, bool):
+        if not isinstance(used, int | float) or isinstance(used, bool):
             raise RuntimeError("Codex reported an invalid quota usage")
         if used >= 100:
             if not isinstance(reset, int) or isinstance(reset, bool) or reset <= 0:
                 raise RuntimeError("Codex did not report a valid blocking reset time")
             blocking.append(window)
     if len(blocking) != 1:
-        raise RuntimeError("Codex did not report exactly one blocking reset window; use the UI to set the time explicitly")
+        raise RuntimeError(
+            "Codex did not report exactly one blocking reset window; use the UI to set the time explicitly"
+        )
     return int(blocking[0]["resetsAt"])
 
 
@@ -68,7 +77,7 @@ def main() -> int:
         raise RuntimeError("Set HUB_API_KEY; this helper never reads or prints deployment secrets")
     process = subprocess.Popen(["codex", "app-server"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
     try:
-        rpc(process, 1, "initialize", {"clientInfo": {"name": "auto-hub", "version": "1"}})
+        rpc(process, 1, "initialize", {"clientInfo": {"name": "autohub", "version": "1"}})
         result = rpc(process, 2, "account/rateLimits/read")
     finally:
         process.terminate()

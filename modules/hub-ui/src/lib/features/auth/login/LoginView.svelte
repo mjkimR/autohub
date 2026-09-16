@@ -77,7 +77,7 @@
 			>
 				<Server class="size-7" />
 			</div>
-			<CardTitle class="text-2xl font-bold tracking-tight">Auto-Hub Manager</CardTitle>
+			<CardTitle class="text-2xl font-bold tracking-tight">Autohub Manager</CardTitle>
 			<CardDescription class="text-sm text-muted-foreground">
 				Enter your Scheduler API Key to access the orchestrator
 			</CardDescription>
@@ -137,6 +137,6 @@
 	<footer
 		class="mt-8 text-center text-xs font-semibold tracking-widest text-muted-foreground/60 uppercase"
 	>
-		Auto-Hub Svelte • High Performance Cloud Scheduler UI
+		Autohub Svelte • High Performance Cloud Scheduler UI
 	</footer>
 </div>

@@ -1,6 +1,6 @@
 # Hub UI (Svelte 5)
 
-Frontend management console for **Auto-Hub Scheduler Manager**, built with:
+Frontend management console for **Autohub Scheduler Manager**, built with:
 
 - **Framework**: Svelte 5 (Runes mode), SvelteKit 2 SPA mode
 - **Bundler**: Vite 8
