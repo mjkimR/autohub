@@ -1,8 +1,7 @@
-from datetime import UTC, datetime, timedelta
-
 import pytest
 from app.features.ai_catalogs.models import AICatalog, AICatalogKind, AICatalogSession, AICatalogState
 from app.features.configuration.connectors.models import Connector
+from app_testing_base import hours_ago, hours_later
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -59,7 +58,7 @@ class TestAICatalogsAPI:
         session.add(catalog("test-catalog-avail"))
         await session.commit()
 
-        future_time = datetime.now(UTC) + timedelta(hours=2)
+        future_time = hours_later(2)
         payload = {
             "available_at": future_time.isoformat(),
             "note": "Temporary quota reset hold",
@@ -73,7 +72,7 @@ class TestAICatalogsAPI:
         assert data["availability_note"] == "Temporary quota reset hold"
         assert data["availability_source"] == "manual"
 
-        past_time = datetime.now(UTC) - timedelta(hours=1)
+        past_time = hours_ago(1)
         response = await client.put(
             f"{self._base_url}/test-catalog-avail/availability",
             json={"available_at": past_time.isoformat()},
@@ -243,7 +242,7 @@ class TestAICatalogsAPI:
     async def test_catalog_not_found(self, client: AsyncClient):
         response = await client.put(
             f"{self._base_url}/non-existent/availability",
-            json={"available_at": (datetime.now(UTC) + timedelta(hours=1)).isoformat()},
+            json={"available_at": (hours_later(1)).isoformat()},
         )
         assert_status_code(response, 404)
         assert "AI catalog not found" in response.json().get("detail", str(response.json()))

@@ -18,6 +18,7 @@ from app.features.scheduling.schedule_configs.models import ScheduleConfig
 from app.features.scheduling.schedule_configs.schemas import ScheduleConfigRead
 from app.features.scheduling.schedule_jobs.models import ScheduleJobStatus
 from app.features.scheduling.schedule_jobs.schemas import ScheduleJobRead
+from app_testing_base import utc_now
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -36,7 +37,7 @@ def _make_schedule_config(**kwargs) -> MagicMock:
 
 def _make_schedule_config_read(**kwargs) -> ScheduleConfigRead:
     """Create a minimal ScheduleConfigRead DTO."""
-    now = datetime.now(UTC)
+    now = utc_now()
     return ScheduleConfigRead(
         id=kwargs.get("id", uuid.uuid4()),
         name=kwargs.get("name", "test-schedule"),
@@ -56,7 +57,7 @@ def _make_schedule_config_read(**kwargs) -> ScheduleConfigRead:
 
 def _make_schedule_job_read(**kwargs) -> ScheduleJobRead:
     """Create a minimal ScheduleJobRead DTO."""
-    now = datetime.now(UTC)
+    now = utc_now()
     return ScheduleJobRead(
         id=kwargs.get("id", uuid.uuid4()),
         name=kwargs.get("name", "test-schedule"),

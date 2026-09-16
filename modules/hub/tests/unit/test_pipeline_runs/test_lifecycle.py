@@ -22,6 +22,7 @@ from app.features.project_management.pipeline_runs.schemas import (
 )
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.projects.services import ProjectError
+from app_testing_base import hours_ago, hours_later, utc_now
 
 pytestmark = pytest.mark.unit
 LIFECYCLE = "app.features.project_management.pipeline_runs.usecases.lifecycle"
@@ -104,11 +105,11 @@ def create_mock_run(
     run.epoch = 1
     run.lease_owner = "worker-1"
     run.lease_token = uuid4()
-    run.lease_expires_at = datetime.now(UTC)
+    run.lease_expires_at = utc_now()
     run.next_action_at = None
     run.quota_block_count = 0
-    run.created_at = datetime.now(UTC)
-    run.updated_at = datetime.now(UTC)
+    run.created_at = utc_now()
+    run.updated_at = utc_now()
     return run
 
 
@@ -127,7 +128,7 @@ async def test_quota_reply_sets_a_global_catalog_hold_without_a_run_retry_cap(de
     attempt.request_snapshot = {"pull_request": run.pull_snapshot}
     delivery = MagicMock(spec=ExecutionDelivery)
     delivery.delivery_number = delivery_number
-    delivery.posted_at = datetime.now(UTC)
+    delivery.posted_at = utc_now()
 
     repo.get_leased = AsyncMock(return_value=run)
     repo.active_attempt = AsyncMock(return_value=attempt)
@@ -171,7 +172,7 @@ async def test_manual_advance_dispatches_a_prepared_implementation():
         run_id=run.id,
         owner="manual:test",
         token=uuid4(),
-        expires_at=datetime.now(UTC),
+        expires_at=utc_now(),
         run_revision=run.revision,
     )
     expected = MagicMock()
@@ -203,7 +204,7 @@ async def test_manual_advance_prepares_and_dispatches_a_queued_run():
         run_id=queued_run.id,
         owner="manual:test",
         token=uuid4(),
-        expires_at=datetime.now(UTC),
+        expires_at=utc_now(),
         run_revision=queued_run.revision,
     )
     expected = MagicMock()
@@ -383,12 +384,12 @@ async def test_complete_attempt_records_result():
     mock_attempt.external_correlation_id = None
     mock_attempt.external_status = None
     mock_attempt.conversation_url = None
-    mock_attempt.started_at = datetime.now(UTC)
+    mock_attempt.started_at = utc_now()
     mock_attempt.finished_at = None
     mock_attempt.failure_code = None
     mock_attempt.failure_detail = None
-    mock_attempt.created_at = datetime.now(UTC)
-    mock_attempt.updated_at = datetime.now(UTC)
+    mock_attempt.created_at = utc_now()
+    mock_attempt.updated_at = utc_now()
 
     repo.get_attempt = AsyncMock(return_value=mock_attempt)
 
@@ -439,7 +440,7 @@ async def test_manual_advance_leases_and_advances():
 
 async def test_dispatch_waits_until_next_action_without_reading_github(monkeypatch):
     run = create_mock_run(state=PipelineRunState.DISPATCHING)
-    run.next_action_at = datetime.now(UTC) + timedelta(hours=5)
+    run.next_action_at = hours_later(5)
     repo = MagicMock()
     repo.get_leased = AsyncMock(return_value=run)
     projects = MagicMock()
@@ -471,7 +472,7 @@ async def test_pushed_head_wins_over_watchdog_and_quota_replies(monkeypatch, ela
     attempt.request_snapshot = {"pull_request": run.pull_snapshot}
     repo.active_attempt = AsyncMock(return_value=attempt)
     delivery = MagicMock(spec=ExecutionDelivery)
-    delivery.posted_at = datetime.now(UTC) - timedelta(hours=elapsed_hours)
+    delivery.posted_at = hours_ago(elapsed_hours)
     repo.latest_delivery = AsyncMock(return_value=delivery)
     repo.create_delivery = AsyncMock()
     projects = MagicMock()

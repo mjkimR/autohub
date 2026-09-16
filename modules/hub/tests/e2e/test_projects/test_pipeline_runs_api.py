@@ -9,6 +9,7 @@ from app.features.project_management.pipeline_runs.models import PipelineRun, Pi
 from app.features.project_management.pipeline_runs.usecases import lifecycle as run_usecases
 from app.features.project_management.pipelines import services
 from app.features.project_management.projects.models import ProjectConnection
+from app_testing_base import hours_ago, hours_later, utc_now
 from sqlalchemy import update
 from tests.utils.assertions import assert_status_code
 
@@ -98,6 +99,28 @@ async def enroll(client, project: dict, number: int = 7) -> httpx.Response:
 
 
 class TestPullRequestEnrollment:
+    async def test_enrolls_an_implemented_pull_request_straight_into_ci_observation(self, client, project, github):
+        response = await client.post(
+            f"/api/v1/projects/{project['id']}/runs", json={"pull_number": 7, "implemented": True}
+        )
+
+        assert_status_code(response, 201)
+        run = response.json()
+        assert run["state"] == "awaiting_ci"
+        attempts = await client.get(f"/api/v1/pipeline-runs/{run['id']}/attempts")
+        assert_status_code(attempts, 200)
+        [attempt] = attempts.json()["items"]
+        assert (attempt["kind"], attempt["state"], attempt["external_status"]) == (
+            "implementation",
+            "running",
+            "implemented-externally",
+        )
+        assert attempt["request_snapshot"]["pull_request"]["head_sha"] == HEAD
+        # Nothing was sent: the pull request already holds its implementation.
+        deliveries = await client.get(f"/api/v1/pipeline-runs/{run['id']}/attempts/{attempt['id']}/deliveries")
+        assert_status_code(deliveries, 200)
+        assert deliveries.json() == []
+
     async def test_enrolls_an_open_pull_request_with_its_linked_issues(self, client, project, github):
         response = await enroll(client, project)
 
@@ -463,7 +486,7 @@ class TestRunRecovery:
                         {
                             "id": 123,
                             "body": json.loads(request.content)["body"],
-                            "created_at": datetime.now(UTC).isoformat(),
+                            "created_at": utc_now().isoformat(),
                         }
                     )
                     return httpx.Response(201, json=comments[-1])
@@ -513,7 +536,7 @@ class TestRunRecovery:
         from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 
         run, _ = await prepare_run(client, project)
-        due = datetime.now(UTC) + timedelta(hours=5)
+        due = hours_later(5)
         await session.execute(update(PipelineRun).where(PipelineRun.id == UUID(run["id"])).values(next_action_at=due))
         await session.commit()
         reads = len(github.paths)
@@ -538,7 +561,7 @@ async def test_ready_batch_filters_before_limit(client, project, github, session
     from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 
     first = (await enroll(client, project)).json()
-    now = datetime.now(UTC)
+    now = utc_now()
     values: dict = {"state": excluded} if excluded in ("paused", "blocked") else {}
     if excluded == "future":
         values["next_action_at"] = now + timedelta(hours=5)
@@ -559,7 +582,7 @@ async def test_catalog_hold_gates_only_dispatching_runs(client, project, github,
 
     observing = (await enroll(client, project)).json()
     waiting = (await enroll(client, project, 8)).json()
-    now = datetime.now(UTC)
+    now = utc_now()
     await session.execute(
         update(PipelineRun).where(PipelineRun.id == UUID(observing["id"])).values(state="awaiting_ci")
     )
@@ -729,7 +752,7 @@ def mention_github(github, monkeypatch):
                     {
                         "id": len(comments) + 100,
                         "body": json.loads(request.content)["body"],
-                        "created_at": datetime.now(UTC).isoformat(),
+                        "created_at": utc_now().isoformat(),
                         "user": {"login": "connector-user"},
                     }
                 )
@@ -776,7 +799,7 @@ async def test_reconciled_delivery_preserves_time_and_processes_existing_quota_r
 
     run, attempt = await prepare_run(client, project)
     root = f"/api/v1/pipeline-runs/{run['id']}"
-    posted_at = datetime.now(UTC) - timedelta(hours=5)
+    posted_at = hours_ago(5)
     replied_at = posted_at + timedelta(minutes=1)
     mention_github.extend(
         [
@@ -821,7 +844,7 @@ async def test_probe_window_starts_when_the_probe_mention_is_delivered(client, p
     await session.execute(
         update(AICatalog)
         .where(AICatalog.id == UUID(run["ai_catalog_id"]))
-        .values(availability_state=AICatalogState.QUOTA_BLOCKED, available_at=datetime.now(UTC) - timedelta(minutes=1))
+        .values(availability_state=AICatalogState.QUOTA_BLOCKED, available_at=utc_now() - timedelta(minutes=1))
     )
     await session.commit()
 
@@ -891,7 +914,7 @@ async def test_expired_dispatcher_cannot_post_after_another_worker_takes_over(
         await session.execute(
             update(PipelineRun)
             .where(PipelineRun.id == UUID(run["id"]))
-            .values(lease_expires_at=datetime.now(UTC) - timedelta(seconds=1))
+            .values(lease_expires_at=utc_now() - timedelta(seconds=1))
         )
         await session.commit()
         second = await client.post(f"{root}/advance")

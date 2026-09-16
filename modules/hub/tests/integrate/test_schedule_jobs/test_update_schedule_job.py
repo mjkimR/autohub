@@ -1,11 +1,10 @@
-from datetime import UTC, datetime
-
 import pytest
 from app.features.scheduling.schedule_jobs.models import ScheduleJob, ScheduleJobStatus
 from app.features.scheduling.schedule_jobs.repos import ScheduleJobRepository
 from app.features.scheduling.schedule_jobs.schemas import ScheduleJobPatch, ScheduleJobPut
 from app.features.scheduling.schedule_jobs.services import ScheduleJobContextKwargs
 from app.features.scheduling.schedule_jobs.usecases.crud import PatchScheduleJobUseCase, PutScheduleJobUseCase
+from app_testing_base import utc_now
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.utils.fastapi import resolve_dependency
@@ -18,7 +17,7 @@ class TestUpdateScheduleJob:
         session: AsyncSession,
         make_db,
     ):
-        now = datetime.now(UTC)
+        now = utc_now()
         job: ScheduleJob = await make_db(
             ScheduleJobRepository,
             name="put_target_job",
@@ -51,7 +50,7 @@ class TestUpdateScheduleJob:
         session: AsyncSession,
         make_db,
     ):
-        now = datetime.now(UTC)
+        now = utc_now()
         job: ScheduleJob = await make_db(
             ScheduleJobRepository,
             name="patch_target_job",
@@ -84,7 +83,7 @@ class TestUpdateScheduleJob:
         session: AsyncSession,
         make_db,
     ):
-        now = datetime.now(UTC)
+        now = utc_now()
         job: ScheduleJob = await make_db(
             ScheduleJobRepository,
             name="old_job_name",

@@ -67,6 +67,7 @@ class TestProjectWrite:
             "auto_fix_ci": True,
             "auto_fix_conflicts": True,
             "auto_enroll_on_trigger": True,
+            "auto_enroll_sessions": True,
             "dispatch_interval_seconds": 60,
         }
 

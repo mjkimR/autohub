@@ -4,7 +4,13 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from app.features.ai_catalogs.models import AICatalog, AICatalogKind, AICatalogSession, AICatalogState
+from app.features.ai_catalogs.models import (
+    SESSION_WORK_TYPES,
+    AICatalog,
+    AICatalogKind,
+    AICatalogSession,
+    AICatalogState,
+)
 from app.features.ai_catalogs.policies.base import hold_state, utc
 from app.features.ai_catalogs.policies.registry import find_quota_policy, quota_policy_for
 from app.features.ai_catalogs.repos import AICatalogRepository
@@ -17,6 +23,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Kinds whose provider the hub calls directly: they hold their own connector and track provider sessions.
 CATALOG_CONNECTOR_PROVIDERS: dict[str, str] = {AICatalogKind.JULES: "jules"}
+# Session work types each kind supports. Codex has no session API the hub can read, so it has none.
+CATALOG_SESSION_WORK_TYPES: dict[str, tuple[str, ...]] = {AICatalogKind.JULES: SESSION_WORK_TYPES}
 
 
 @dataclass(frozen=True)

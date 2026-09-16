@@ -1,10 +1,9 @@
-from datetime import UTC, datetime
-
 import pytest
 from app.features.scheduling.schedule_jobs.models import ScheduleJob, ScheduleJobStatus
 from app.features.scheduling.schedule_jobs.repos import ScheduleJobRepository
 from app.features.scheduling.schedule_jobs.services import ScheduleJobContextKwargs
 from app.features.scheduling.schedule_jobs.usecases.crud import DeleteScheduleJobUseCase
+from app_testing_base import utc_now
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.utils.fastapi import resolve_dependency
@@ -21,8 +20,8 @@ class TestDeleteScheduleJob:
             ScheduleJobRepository,
             name="delete_target_job",
             status=ScheduleJobStatus.SUCCESS,
-            started_at=datetime.now(UTC),
-            finished_at=datetime.now(UTC),
+            started_at=utc_now(),
+            finished_at=utc_now(),
         )
 
         use_case = resolve_dependency(DeleteScheduleJobUseCase)

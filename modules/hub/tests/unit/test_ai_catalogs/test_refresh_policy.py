@@ -9,6 +9,7 @@ from app.features.ai_catalogs.policies.codex_window import CodexWindowPolicy, Co
 from app.features.ai_catalogs.schemas import SetAvailabilityRequest
 from app.features.ai_catalogs.services import AICatalogService
 from app.features.project_management.projects.services import ProjectError
+from app_testing_base import days_later, utc_now
 
 pytestmark = pytest.mark.unit
 
@@ -237,16 +238,14 @@ async def test_disabled_catalog_keeps_its_hold_through_re_enabling():
     catalog = make_catalog()
     service = make_service(catalog)
     session = AsyncMock()
-    hold = datetime.now(UTC) + timedelta(days=1)
+    hold = days_later(1)
 
-    await service.set_enabled(session, "personal-codex", False, datetime.now(UTC))
-    await service.set_availability(
-        session, "personal-codex", SetAvailabilityRequest(available_at=hold), datetime.now(UTC)
-    )
+    await service.set_enabled(session, "personal-codex", False, utc_now())
+    await service.set_availability(session, "personal-codex", SetAvailabilityRequest(available_at=hold), utc_now())
     assert catalog.availability_state == AICatalogState.DISABLED
     assert catalog.available_at == hold
 
-    await service.set_enabled(session, "personal-codex", True, datetime.now(UTC))
+    await service.set_enabled(session, "personal-codex", True, utc_now())
     assert catalog.availability_state == AICatalogState.QUOTA_BLOCKED
     assert catalog.available_at == hold
 

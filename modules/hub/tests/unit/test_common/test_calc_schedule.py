@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from app.common.utils.calc_schedule import calc_next_run
+from app_testing_base import utc_now
 
 
 class TestCalcNextRun:
@@ -59,9 +60,9 @@ class TestCalcNextRun:
 
     def test_default_now_uses_utc(self):
         """When `now` is omitted the function should default to the current UTC time."""
-        before = datetime.now(UTC)
+        before = utc_now()
         result = calc_next_run(cron_expression=None, interval_seconds=60)
-        after = datetime.now(UTC)
+        after = utc_now()
 
         assert before + timedelta(seconds=60) <= result <= after + timedelta(seconds=60)
 

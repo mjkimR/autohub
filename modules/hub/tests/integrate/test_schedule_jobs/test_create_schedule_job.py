@@ -1,11 +1,10 @@
-from datetime import UTC, datetime
-
 import pytest
 from app.features.scheduling.schedule_configs.repos import ScheduleConfigRepository
 from app.features.scheduling.schedule_jobs.models import ScheduleJob, ScheduleJobStatus
 from app.features.scheduling.schedule_jobs.schemas import ScheduleJobCreate
 from app.features.scheduling.schedule_jobs.services import ScheduleJobContextKwargs
 from app.features.scheduling.schedule_jobs.usecases.crud import CreateScheduleJobUseCase
+from app_testing_base import utc_now
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.utils.fastapi import resolve_dependency
@@ -28,7 +27,7 @@ class TestCreateScheduleJob:
         use_case = resolve_dependency(CreateScheduleJobUseCase)
         context: ScheduleJobContextKwargs = {}
 
-        now = datetime.now(UTC)
+        now = utc_now()
         job_in = ScheduleJobCreate(
             name="test_job",
             schedule_config_id=config.id,
@@ -54,7 +53,7 @@ class TestCreateScheduleJob:
         use_case = resolve_dependency(CreateScheduleJobUseCase)
         context: ScheduleJobContextKwargs = {}
 
-        now = datetime.now(UTC)
+        now = utc_now()
         job_in = ScheduleJobCreate(
             name="orphan_job",
             schedule_config_id=None,
@@ -77,7 +76,7 @@ class TestCreateScheduleJob:
         use_case = resolve_dependency(CreateScheduleJobUseCase)
         context: ScheduleJobContextKwargs = {}
 
-        now = datetime.now(UTC)
+        now = utc_now()
         job_in = ScheduleJobCreate(
             name="failed_job",
             schedule_config_id=None,

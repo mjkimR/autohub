@@ -5,7 +5,7 @@ Provides make_db, make_db_batch, make_api, and make_api_batch fixtures
 using explicit, reproducible schema defaults aligned with app-testing conventions.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
 from typing import Any, get_args, get_origin
 from uuid import UUID, uuid4
@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 import pytest
 from app_layer_base.base.models.mixin import Base
 from app_layer_base.base.repos.base import BaseRepository
-from app_testing_base import random_string, resolve_dependency
+from app_testing_base import random_string, resolve_dependency, utc_now
 from httpx import AsyncClient
 from pydantic import BaseModel
 from pydantic_core import PydanticUndefined
@@ -45,7 +45,7 @@ def _generate_default_for_type(annotation: Any, field_name: str) -> Any:
     if annotation is list:
         return []
     if annotation is datetime:
-        return datetime.now(UTC)
+        return utc_now()
     if annotation is UUID:
         return uuid4()
     if isinstance(annotation, type) and issubclass(annotation, Enum):

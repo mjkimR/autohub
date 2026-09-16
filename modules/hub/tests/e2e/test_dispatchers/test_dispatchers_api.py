@@ -7,7 +7,7 @@ Tests the POST /api/v1/dispatchers/trigger endpoint covering:
 - Disabled / future / expired configs are skipped
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -15,6 +15,7 @@ from app.features.scheduling.schedule_configs.models import ScheduleConfig
 from app.features.scheduling.schedule_configs.repos import ScheduleConfigRepository
 from app.features.scheduling.schedule_jobs.models import ScheduleJob, ScheduleJobStatus
 from app.features.scheduling.schedule_jobs.repos import ScheduleJobRepository
+from app_testing_base import hours_later, utc_now
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,7 +49,7 @@ class TestDispatcherTriggerAPI:
         session: AsyncSession,
     ):
         """A single due config should result in dispatched=1 and a ScheduleJob record."""
-        past = datetime.now(UTC) - timedelta(minutes=5)
+        past = utc_now() - timedelta(minutes=5)
         config: ScheduleConfig = await make_db(
             ScheduleConfigRepository,
             _use_default=True,
@@ -90,7 +91,7 @@ class TestDispatcherTriggerAPI:
         make_db_batch,
     ):
         """Multiple due configs should all be dispatched."""
-        past = datetime.now(UTC) - timedelta(minutes=1)
+        past = utc_now() - timedelta(minutes=1)
         await make_db_batch(
             ScheduleConfigRepository,
             3,
@@ -116,7 +117,7 @@ class TestDispatcherTriggerAPI:
         make_db,
     ):
         """Disabled configs must not be dispatched."""
-        past = datetime.now(UTC) - timedelta(minutes=5)
+        past = utc_now() - timedelta(minutes=5)
         await make_db(
             ScheduleConfigRepository,
             _use_default=True,
@@ -139,7 +140,7 @@ class TestDispatcherTriggerAPI:
         make_db,
     ):
         """Configs whose next_run_at is in the future must not be dispatched."""
-        future = datetime.now(UTC) + timedelta(hours=1)
+        future = hours_later(1)
         await make_db(
             ScheduleConfigRepository,
             _use_default=True,
@@ -161,7 +162,7 @@ class TestDispatcherTriggerAPI:
         make_db,
     ):
         """Configs whose end_at has already passed must not be dispatched."""
-        now = datetime.now(UTC)
+        now = utc_now()
         await make_db(
             ScheduleConfigRepository,
             _use_default=True,
@@ -184,7 +185,7 @@ class TestDispatcherTriggerAPI:
         make_db,
     ):
         """Configs whose start_at has not been reached must not be dispatched."""
-        now = datetime.now(UTC)
+        now = utc_now()
         await make_db(
             ScheduleConfigRepository,
             _use_default=True,
@@ -212,7 +213,7 @@ class TestDispatcherTriggerAPI:
         session: AsyncSession,
     ):
         """After dispatch, next_run_at on the config should be updated to a future time."""
-        past = datetime.now(UTC) - timedelta(minutes=5)
+        past = utc_now() - timedelta(minutes=5)
         config: ScheduleConfig = await make_db(
             ScheduleConfigRepository,
             _use_default=True,
@@ -234,7 +235,7 @@ class TestDispatcherTriggerAPI:
         next_run_at = config.next_run_at
         if next_run_at.tzinfo is None:
             next_run_at = next_run_at.replace(tzinfo=UTC)
-        assert next_run_at > datetime.now(UTC)
+        assert next_run_at > utc_now()
 
     # ------------------------------------------------------------------
     # Retry jobs
@@ -248,7 +249,7 @@ class TestDispatcherTriggerAPI:
     ):
         """A failed job with retry_need=True should be retried on the next trigger."""
         # Create a config that is NOT due (future next_run_at) so only the retry path runs
-        future = datetime.now(UTC) + timedelta(hours=1)
+        future = hours_later(1)
         config: ScheduleConfig = await make_db(
             ScheduleConfigRepository,
             _use_default=True,
@@ -266,7 +267,7 @@ class TestDispatcherTriggerAPI:
             retry_need=True,
             retry_attempts=0,
             retry_max=3,
-            started_at=datetime.now(UTC) - timedelta(minutes=10),
+            started_at=utc_now() - timedelta(minutes=10),
         )
 
         with patch("app.features.execution.dispatchers.services.task_registry") as mock_registry:
@@ -285,7 +286,7 @@ class TestDispatcherTriggerAPI:
         session: AsyncSession,
     ):
         """A failed job that has exhausted retry_max should NOT be retried."""
-        future = datetime.now(UTC) + timedelta(hours=1)
+        future = hours_later(1)
         config: ScheduleConfig = await make_db(
             ScheduleConfigRepository,
             _use_default=True,
@@ -302,7 +303,7 @@ class TestDispatcherTriggerAPI:
             retry_need=True,
             retry_attempts=3,
             retry_max=3,
-            started_at=datetime.now(UTC) - timedelta(minutes=10),
+            started_at=utc_now() - timedelta(minutes=10),
         )
 
         with patch("app.features.execution.dispatchers.services.task_registry") as mock_registry:
@@ -326,7 +327,7 @@ class TestDispatcherTriggerAPI:
         session: AsyncSession,
     ):
         """When the dispatched task raises an exception, the ScheduleJob should be FAILURE."""
-        past = datetime.now(UTC) - timedelta(minutes=5)
+        past = utc_now() - timedelta(minutes=5)
         config: ScheduleConfig = await make_db(
             ScheduleConfigRepository,
             _use_default=True,

@@ -1,5 +1,5 @@
 from copy import deepcopy
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from uuid import UUID
 
 import httpx
@@ -9,6 +9,7 @@ from app.features.execution.tasks.domains.pipeline import task as pipeline_task
 from app.features.project_management.pipelines import services
 from app.features.scheduling.schedule_configs.models import ScheduleConfig
 from app.features.scheduling.schedule_jobs.models import ScheduleJob
+from app_testing_base import utc_now
 from sqlalchemy import select, update
 from tests.utils.assertions import assert_status_code
 
@@ -218,7 +219,7 @@ class TestPipelineObservationAPI:
         await session.execute(
             update(ScheduleConfig)
             .where(ScheduleConfig.id == UUID(schedule_id))
-            .values(next_run_at=datetime.now(UTC) - timedelta(seconds=1))
+            .values(next_run_at=utc_now() - timedelta(seconds=1))
         )
         await session.commit()
         response = await client.get(f"/api/v1/pipelines/observations/{schedule_id}")
@@ -241,7 +242,7 @@ class TestPipelineObservationAPI:
         await session.execute(
             update(ScheduleConfig)
             .where(ScheduleConfig.id == UUID(schedule_id))
-            .values(next_run_at=datetime.now(UTC) - timedelta(seconds=1))
+            .values(next_run_at=utc_now() - timedelta(seconds=1))
         )
         await session.commit()
         response = await client.post("/api/v1/dispatchers/trigger")

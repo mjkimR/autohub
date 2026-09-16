@@ -180,14 +180,39 @@ class PipelineRunUseCase:
                         pull_number=snapshot.number,
                         pull_url=snapshot.url,
                         pull_snapshot=snapshot.model_dump(mode="json"),
-                        state=PipelineRunState.QUEUED,
+                        state=PipelineRunState.AWAITING_CI if request.implemented else PipelineRunState.QUEUED,
                         branch=snapshot.head_ref,
                         revision=1,
                     ),
                 )
+                if request.implemented:
+                    await self._record_external_implementation(session, run, repository)
                 return PipelineRunRead.model_validate(run)
         except IntegrityError:
             raise ProjectError(409, ACTIVE_RUN_CONFLICT) from None
+
+    async def _record_external_implementation(self, session: AsyncSession, run: PipelineRun, repository: str) -> None:
+        """Adopt a pull request implemented outside the pipeline: its attempt is already running, nothing is sent.
+
+        The attempt carries the standard implementation request so a CI failure can derive a fix request from it,
+        which the project's catalog then delivers as usual.
+        """
+        implementation_request, request_digest, idempotency_key = self._build_implementation_request(run, repository)
+        await self.repo.create_attempt(
+            session,
+            ExecutionAttempt(
+                pipeline_run_id=run.id,
+                attempt_number=await self.repo.next_attempt_number(session, run.id),
+                epoch=run.epoch,
+                kind=ExecutionAttemptKind.IMPLEMENTATION,
+                state=ExecutionAttemptState.RUNNING,
+                request_snapshot=implementation_request.model_dump(mode="json"),
+                request_digest=request_digest,
+                idempotency_key=idempotency_key,
+                external_status="implemented-externally",
+                started_at=get_current_utc_time(),
+            ),
+        )
 
     async def acquire_lease(self, run_id: UUID, request: LeaseRequest) -> LeaseGrant:
         now = get_current_utc_time()

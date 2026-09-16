@@ -72,6 +72,7 @@
 	let autoFixCi = $state(true);
 	let autoFixConflicts = $state(true);
 	let autoEnrollOnTrigger = $state(true);
+	let autoEnrollSessions = $state(true);
 	let dispatchIntervalSeconds = $state('60');
 	let aiCatalogId = $state('');
 
@@ -183,6 +184,7 @@
 			autoFixCi = project.github.automation?.auto_fix_ci ?? true;
 			autoFixConflicts = project.github.automation?.auto_fix_conflicts ?? true;
 			autoEnrollOnTrigger = project.github.automation?.auto_enroll_on_trigger ?? true;
+			autoEnrollSessions = project.github.automation?.auto_enroll_sessions ?? true;
 			dispatchIntervalSeconds = String(project.github.automation?.dispatch_interval_seconds ?? 60);
 			aiCatalogId = project.github.ai_catalog_id ?? '';
 		} else {
@@ -196,6 +198,7 @@
 			autoFixCi = true;
 			autoFixConflicts = true;
 			autoEnrollOnTrigger = true;
+			autoEnrollSessions = true;
 			dispatchIntervalSeconds = '60';
 			aiCatalogId = '';
 		}
@@ -234,6 +237,7 @@
 								auto_fix_ci: autoFixCi,
 								auto_fix_conflicts: autoFixConflicts,
 								auto_enroll_on_trigger: autoEnrollOnTrigger,
+								auto_enroll_sessions: autoEnrollSessions,
 								dispatch_interval_seconds: Number(dispatchIntervalSeconds)
 							}
 						}
@@ -839,6 +843,21 @@
 										<input
 											type="checkbox"
 											bind:checked={autoEnrollOnTrigger}
+											class="size-4 rounded border-border text-primary focus:ring-primary"
+										/>
+									</label>
+									<label class="flex items-center justify-between gap-3 text-sm">
+										<span>
+											<span class="font-medium text-foreground"
+												>Adopt PRs opened by agent sessions</span
+											>
+											<span class="mt-0.5 block text-xs text-muted-foreground"
+												>A task session's PR enters the pipeline at CI observation.</span
+											>
+										</span>
+										<input
+											type="checkbox"
+											bind:checked={autoEnrollSessions}
 											class="size-4 rounded border-border text-primary focus:ring-primary"
 										/>
 									</label>

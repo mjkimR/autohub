@@ -8,15 +8,23 @@ from app.features.execution.tasks.domains.jules.service import (
     JulesSessionService,
     JulesSyncPayload,
 )
+from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
+from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
+from app.features.project_management.pipelines.repos import PipelineObservationRepository
+from app.features.project_management.pipelines.services import PipelineObservationService
+from app.features.project_management.projects.repos import ProjectRepository
+from app.features.project_management.projects.services import ProjectService
 
 JULES_SESSION_TASK = "jules.session"
 JULES_SYNC_TASK = "jules.sync_sessions"
 
 
 def _service() -> JulesSessionService:
-    return JulesSessionService(
-        AICatalogService(AICatalogRepository()), ConnectorCredentialCipher(get_credential_key_provider())
-    )
+    cipher = ConnectorCredentialCipher(get_credential_key_provider())
+    catalogs = AICatalogService(AICatalogRepository())
+    observer = PipelineObservationService(PipelineObservationRepository(), cipher)
+    runs = PipelineRunUseCase(PipelineRunRepository(), ProjectService(ProjectRepository()), observer, catalogs)
+    return JulesSessionService(catalogs, cipher, runs)
 
 
 @task(name=JULES_SESSION_TASK)
@@ -30,5 +38,6 @@ async def start_jules_session_task(payload: JulesSessionPayload) -> None:
 
 @task(name=JULES_SYNC_TASK)
 async def sync_jules_sessions_task(payload: JulesSyncPayload) -> None:
-    """Refresh unfinished Jules sessions so finished ones release catalog concurrency. Starts nothing."""
+    """Refresh unfinished Jules sessions: finished ones release concurrency, deliver reports, and get their pull
+    requests adopted into the pipeline. Starts no Jules work."""
     await _service().sync(payload.catalog_key)

@@ -59,12 +59,18 @@ class AICatalogDispatch(Base, UUIDMixin, TimestampMixin):
 
 SESSION_DISPATCHING = "dispatching"
 SESSION_TERMINAL_STATES = ("completed", "failed")
+# What a session is for: "task" work converges on a pull request the hub adopts into the project's pipeline;
+# a "report" ends as text the hub stores from the session itself.
+SESSION_WORK_TYPE_TASK = "task"
+SESSION_WORK_TYPE_REPORT = "report"
+SESSION_WORK_TYPES = (SESSION_WORK_TYPE_TASK, SESSION_WORK_TYPE_REPORT)
 
 
 class AICatalogSession(Base, UUIDMixin, TimestampMixin):
     """A provider session the hub started outside the pull request pipeline, tracked until it ends.
 
-    Only state and links are kept; reports and changes stay with the provider or the pull requests it opens.
+    A task session's changes stay in the pull request it opens, which the hub adopts into the pipeline run linked
+    here. A report session's final message is kept as ``result_summary``; nothing else of the session is stored.
     """
 
     __tablename__ = "ai_catalog_sessions"
@@ -77,10 +83,19 @@ class AICatalogSession(Base, UUIDMixin, TimestampMixin):
     )
     # Unique per session, so an unconfirmed create can be found again by title.
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    work_type: Mapped[str] = mapped_column(String(20), nullable=False, default=SESSION_WORK_TYPE_TASK)
+    # GitHub "owner/repo" the session works in; a task session's pull request is adopted by the matching project.
+    repository: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # "dispatching" until the provider confirms the session, then its state in lower case.
     state: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
     external_name: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
     url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     pull_request_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    # The pipeline run that adopted a task session's pull request.
+    pipeline_run_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("pipeline_runs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    # The session's final message, kept once it completes; a report session's deliverable.
+    result_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     failure_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

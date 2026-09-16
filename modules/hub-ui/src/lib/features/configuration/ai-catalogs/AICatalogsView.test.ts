@@ -32,7 +32,8 @@ const codex = {
 	kind: 'codex',
 	adapter: 'codex-github-mention',
 	connector_provider: null,
-	pipeline_delivery: true
+	pipeline_delivery: true,
+	session_work_types: []
 };
 const jules = {
 	...base,
@@ -42,7 +43,8 @@ const jules = {
 	kind: 'jules',
 	adapter: 'jules-api',
 	connector_provider: 'jules',
-	pipeline_delivery: false
+	pipeline_delivery: false,
+	session_work_types: ['task', 'report']
 };
 const connectors = [
 	{ id: 'k1', name: 'Jules key', provider: 'jules', enabled: true },
@@ -52,11 +54,28 @@ const sessions = [
 	{
 		id: 's1',
 		title: 'Weekly hygiene report [hub-session:abc]',
-		state: 'in_progress',
+		work_type: 'report',
+		repository: 'owner/app',
+		state: 'completed',
 		url: 'https://jules.google/session/1',
 		pull_request_url: null,
+		pipeline_run_id: null,
+		result_summary: '## Weekly report\n\n- 3 stale dependencies',
 		failure_detail: null,
 		created_at: '2026-09-15T00:00:00Z'
+	},
+	{
+		id: 's2',
+		title: 'Tidy dependencies [hub-session:def]',
+		work_type: 'task',
+		repository: 'owner/app',
+		state: 'completed',
+		url: 'https://jules.google/session/2',
+		pull_request_url: 'https://github.com/owner/app/pull/9',
+		pipeline_run_id: 'run-9',
+		result_summary: null,
+		failure_detail: null,
+		created_at: '2026-09-14T00:00:00Z'
 	}
 ];
 
@@ -185,8 +204,14 @@ test('pages through sessions and hides their reconciliation marker', async () =>
 	await user.click(screen.getByRole('button', { name: 'Sessions' }));
 
 	expect(await screen.findByText('Weekly hygiene report')).toBeTruthy();
-	expect(screen.getByText('in progress')).toBeTruthy();
-	expect(screen.getByText('1–1 of 45')).toBeTruthy();
+	expect(screen.getByText('report')).toBeTruthy();
+	expect(screen.getByText('1–2 of 45')).toBeTruthy();
+	// A report keeps its final message; a task links the pipeline run that adopted its pull request.
+	expect(screen.getByText(/3 stale dependencies/)).toBeTruthy();
+	expect(screen.getByRole('link', { name: 'Pipeline run' })).toHaveProperty(
+		'href',
+		expect.stringContaining('/projects/runs')
+	);
 	expect(api.GET).toHaveBeenCalledWith('/api/v1/ai-catalogs/{catalog_key}/sessions', {
 		params: { path: { catalog_key: 'personal-jules' }, query: { offset: 0, limit: 20 } }
 	});

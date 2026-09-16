@@ -881,6 +881,11 @@ export interface components {
 			 * @default false
 			 */
 			pipeline_delivery: boolean;
+			/**
+			 * Session Work Types
+			 * @description Work types the catalog's scheduled sessions can do: 'task' (adopted pull requests), 'report'
+			 */
+			session_work_types?: string[];
 		};
 		/** AICatalogSessionList */
 		AICatalogSessionList: {
@@ -910,6 +915,10 @@ export interface components {
 			schedule_config_id: string | null;
 			/** Title */
 			title: string;
+			/** Work Type */
+			work_type: string;
+			/** Repository */
+			repository: string | null;
 			/** State */
 			state: string;
 			/** External Name */
@@ -918,6 +927,10 @@ export interface components {
 			url: string | null;
 			/** Pull Request Url */
 			pull_request_url: string | null;
+			/** Pipeline Run Id */
+			pipeline_run_id: string | null;
+			/** Result Summary */
+			result_summary: string | null;
 			/** Failure Detail */
 			failure_detail: string | null;
 			/** Observed At */
@@ -1110,6 +1123,12 @@ export interface components {
 		EnrollPullRequest: {
 			/** Pull Number */
 			pull_number: number;
+			/**
+			 * Implemented
+			 * @description The pull request already holds its implementation (for example, an agent session opened it); skip the implementation request and start by observing CI
+			 * @default false
+			 */
+			implemented: boolean;
 		};
 		/**
 		 * ExecutionAttemptKind
@@ -1284,6 +1303,11 @@ export interface components {
 			 * @default true
 			 */
 			auto_enroll_on_trigger: boolean;
+			/**
+			 * Auto Enroll Sessions
+			 * @default true
+			 */
+			auto_enroll_sessions: boolean;
 			/**
 			 * Dispatch Interval Seconds
 			 * @default 60

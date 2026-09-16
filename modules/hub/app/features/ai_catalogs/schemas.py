@@ -35,6 +35,10 @@ class AICatalogRead(UUIDSchemaMixin, TimestampSchemaMixin):
     pipeline_delivery: bool = Field(
         default=False, description="Whether the catalog's adapter can deliver pull request pipeline work"
     )
+    session_work_types: list[str] = Field(
+        default_factory=list,
+        description="Work types the catalog's scheduled sessions can do: 'task' (adopted pull requests), 'report'",
+    )
 
 
 class AICatalogList(BaseModel):
@@ -46,10 +50,14 @@ class AICatalogSessionRead(UUIDSchemaMixin, TimestampSchemaMixin):
 
     schedule_config_id: UUID | None
     title: str
+    work_type: str
+    repository: str | None
     state: str
     external_name: str | None
     url: str | None
     pull_request_url: str | None
+    pipeline_run_id: UUID | None
+    result_summary: str | None
     failure_detail: str | None
     observed_at: datetime | None
 

@@ -49,8 +49,8 @@
 		<DialogHeader>
 			<DialogTitle>{catalog.name} sessions</DialogTitle>
 			<DialogDescription>
-				Sessions this catalog started, most recent first. Reports and changes stay with the provider
-				or the pull requests it opens.
+				Sessions this catalog started, most recent first. A task session's pull request is adopted
+				into its project's pipeline; a report session's final message is kept here.
 			</DialogDescription>
 		</DialogHeader>
 		{#if loading}
@@ -63,17 +63,28 @@
 					<li class="rounded-md border border-border/80 p-3 text-sm">
 						<div class="flex items-start justify-between gap-3">
 							<span class="font-medium">{sessionTitle(item.title)}</span>
-							<Badge variant={item.state === 'failed' ? 'destructive' : 'secondary'}
-								>{item.state.replaceAll('_', ' ')}</Badge
-							>
+							<span class="flex shrink-0 gap-1">
+								<Badge variant="outline">{item.work_type}</Badge>
+								<Badge variant={item.state === 'failed' ? 'destructive' : 'secondary'}
+									>{item.state.replaceAll('_', ' ')}</Badge
+								>
+							</span>
 						</div>
 						<p class="mt-1 text-xs text-muted-foreground">
-							Started {new Date(item.created_at).toLocaleString()}
+							Started {new Date(item.created_at).toLocaleString()}{#if item.repository}
+								· {item.repository}{/if}
 						</p>
 						{#if item.failure_detail}
 							<p class="mt-1 text-xs text-destructive">{item.failure_detail}</p>
 						{/if}
-						{#if item.url || item.pull_request_url}
+						{#if item.result_summary}
+							<details class="mt-2 text-xs">
+								<summary class="cursor-pointer text-muted-foreground">Result</summary>
+								<pre
+									class="mt-1 max-h-60 overflow-auto rounded bg-muted p-2 font-sans whitespace-pre-wrap">{item.result_summary}</pre>
+							</details>
+						{/if}
+						{#if item.url || item.pull_request_url || item.pipeline_run_id}
 							<div class="mt-2 flex flex-wrap gap-3 text-xs">
 								{#if item.url}
 									<a class="text-primary underline" href={item.url} target="_blank" rel="noreferrer"
@@ -87,6 +98,9 @@
 										target="_blank"
 										rel="noreferrer">Pull request</a
 									>
+								{/if}
+								{#if item.pipeline_run_id}
+									<a class="text-primary underline" href="/projects/runs">Pipeline run</a>
 								{/if}
 							</div>
 						{/if}

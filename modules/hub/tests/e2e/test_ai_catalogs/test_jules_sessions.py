@@ -1,5 +1,4 @@
 import json
-from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -19,8 +18,18 @@ from app.features.configuration.connectors.models import Connector
 from app.features.execution.tasks.domains.jules import service as jules_service
 from app.features.execution.tasks.domains.jules.client import JULES_API_BASE_URL
 from app.features.execution.tasks.domains.jules.service import JulesSessionPayload, JulesSessionService
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.pipeline_runs.models import ExecutionAttempt, PipelineRun
+from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
+from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
+from app.features.project_management.pipelines import services as pipeline_services
+from app.features.project_management.pipelines.repos import PipelineObservationRepository
+from app.features.project_management.pipelines.services import PipelineObservationService
+from app.features.project_management.projects.repos import ProjectRepository
+from app.features.project_management.projects.services import ProjectError, ProjectService
+from app_testing_base import hours_ago
 from sqlalchemy import select
+
+from tests.utils.assertions import assert_status_code
 
 pytestmark = pytest.mark.e2e
 
@@ -88,7 +97,92 @@ async def make_catalog(session, *, limit: int = 100, with_connector: bool = True
 def make_service() -> JulesSessionService:
     cipher = MagicMock()
     cipher.decrypt = AsyncMock(return_value={"token": "jules-key"})
-    return JulesSessionService(AICatalogService(AICatalogRepository()), cipher)
+    catalogs = AICatalogService(AICatalogRepository())
+    observer = PipelineObservationService(PipelineObservationRepository(), cipher)
+    runs = PipelineRunUseCase(PipelineRunRepository(), ProjectService(ProjectRepository()), observer, catalogs)
+    return JulesSessionService(catalogs, cipher, runs)
+
+
+PULL_REQUEST_NUMBER = 9
+PULL_REQUEST_URL = f"https://github.com/owner/app/pull/{PULL_REQUEST_NUMBER}"
+
+
+@pytest.fixture
+def github(monkeypatch) -> list[str]:
+    """A GitHub API that serves the pull request a Jules session opened and records what was read."""
+    paths: list[str] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET", "Adoption must never mutate GitHub"
+        paths.append(request.url.path)
+        if request.url.path != f"/repos/owner/app/pulls/{PULL_REQUEST_NUMBER}":
+            return httpx.Response(404, json={"message": "not found"})
+        return httpx.Response(
+            200,
+            json={
+                "number": PULL_REQUEST_NUMBER,
+                "state": "open",
+                "html_url": PULL_REQUEST_URL,
+                "title": "Tidy stale dependencies",
+                "body": "Opened by Jules.",
+                "head": {"ref": "jules/tidy", "sha": "a" * 40, "repo": {"full_name": "owner/app"}},
+                "base": {"ref": "main", "sha": "b" * 40, "repo": {"full_name": "owner/app"}},
+            },
+        )
+
+    monkeypatch.setattr(
+        pipeline_services,
+        "create_github_client",
+        lambda token: httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(respond)),
+    )
+    return paths
+
+
+@pytest.fixture
+async def project(client, github) -> dict:
+    connector = await client.post(
+        "/api/v1/connectors",
+        json={"name": "github-account", "provider": "github", "credentials": {"token": "github-test-token"}},
+    )
+    assert_status_code(connector, 201)
+    response = await client.post(
+        "/api/v1/projects",
+        json={
+            "name": "Application",
+            "repository": "owner/app",
+            "github_connector_id": connector.json()["id"],
+            "verification": {"workflow": "ci.yml", "required_jobs": ["lint"], "event": "pull_request"},
+        },
+    )
+    assert_status_code(response, 201)
+    return response.json()
+
+
+def completed_session(name: str, *, pull_request_url: str | None = None) -> dict:
+    remote: dict = {"name": name, "state": "COMPLETED", "url": f"https://jules.google/{name}"}
+    if pull_request_url is not None:
+        remote["outputs"] = [{"pullRequest": {"url": pull_request_url}}]
+    return remote
+
+
+def activities(*messages: str) -> dict:
+    return {"activities": [{"agentMessaged": {"message": message}} for message in messages]}
+
+
+async def track(
+    session, catalog, *, work_type: str, name: str, repository: str | None = "owner/app"
+) -> AICatalogSession:
+    row = AICatalogSession(
+        ai_catalog_id=catalog.id,
+        title=f"{work_type} session",
+        work_type=work_type,
+        repository=repository,
+        state="in_progress",
+        external_name=name,
+    )
+    session.add(row)
+    await session.commit()
+    return row
 
 
 def payload(catalog_key: str, **overrides) -> JulesSessionPayload:
@@ -126,8 +220,11 @@ async def test_an_admitted_session_is_created_counted_and_tracked(client, sessio
     }
     assert body["automationMode"] == "AUTO_CREATE_PR"
     assert body["title"] == f"Weekly hygiene report [hub-session:{session_id}]"
+    assert body["prompt"].startswith("Report stale dependencies.\n\n")
+    assert "open one pull request" in body["prompt"]
     [tracked] = await sessions_of(session, catalog.id)
     assert (tracked.id, tracked.state, tracked.external_name) == (session_id, "queued", "sessions/42")
+    assert (tracked.work_type, tracked.repository) == ("task", "owner/app")
     ledger = await session.scalars(
         select(AICatalogDispatch.dispatch_key).where(AICatalogDispatch.ai_catalog_id == catalog.id)
     )
@@ -140,7 +237,7 @@ async def test_reaching_the_daily_limit_holds_the_catalog_without_calling_jules(
         AICatalogDispatch(
             ai_catalog_id=catalog.id,
             dispatch_key="session:earlier",
-            admitted_at=datetime.now(UTC) - timedelta(hours=1),
+            admitted_at=hours_ago(1),
         )
     )
     await session.commit()
@@ -192,12 +289,9 @@ async def test_sync_adopts_an_unconfirmed_session_and_releases_a_finished_one(cl
     )
     jules.responses[("GET", "/v1alpha/sessions/7")] = (
         200,
-        {
-            "name": "sessions/7",
-            "state": "COMPLETED",
-            "outputs": [{"pullRequest": {"url": "https://github.com/owner/app/pull/9"}}],
-        },
+        completed_session("sessions/7", pull_request_url="https://github.com/owner/app/pull/9"),
     )
+    jules.responses[("GET", "/v1alpha/sessions/7/activities")] = (200, activities("Working…", "Opened PR #9."))
 
     await make_service().sync(catalog.key)
 
@@ -207,6 +301,10 @@ async def test_sync_adopts_an_unconfirmed_session_and_releases_a_finished_one(cl
         "completed",
         "https://github.com/owner/app/pull/9",
     )
+    assert tracked[running_id].result_summary == "Opened PR #9."
+    # No project owns owner/app here, so the pull request stays a link.
+    assert tracked[running_id].pipeline_run_id is None
+    assert tracked[running_id].failure_detail == "No project is connected to the session's repository"
     assert await AICatalogRepository().active_dispatch_count(session, catalog.id) == 1
 
 
@@ -218,3 +316,134 @@ async def test_a_catalog_without_a_jules_connector_is_rejected(client, session, 
 
     assert rejected.value.status_code == 422
     assert jules.requests == []
+
+
+async def test_a_completed_task_session_has_its_pull_request_adopted_as_implemented(
+    client, session, jules, github, project
+):
+    catalog = await make_catalog(session)
+    row = await track(session, catalog, work_type="task", name="sessions/21")
+    jules.responses[("GET", "/v1alpha/sessions/21")] = (
+        200,
+        completed_session("sessions/21", pull_request_url=PULL_REQUEST_URL),
+    )
+    jules.responses[("GET", "/v1alpha/sessions/21/activities")] = (200, activities("Tidied dependencies."))
+
+    await make_service().sync(catalog.key)
+
+    [tracked] = await sessions_of(session, catalog.id)
+    assert tracked.id == row.id and tracked.failure_detail is None
+    assert tracked.result_summary == "Tidied dependencies."
+    run = await session.get(PipelineRun, tracked.pipeline_run_id)
+    assert run is not None
+    assert (run.state, run.pull_number, run.branch, str(run.project_id)) == (
+        "awaiting_ci",
+        PULL_REQUEST_NUMBER,
+        "jules/tidy",
+        project["id"],
+    )
+    [attempt] = (
+        await session.scalars(select(ExecutionAttempt).where(ExecutionAttempt.pipeline_run_id == run.id))
+    ).all()
+    assert (attempt.kind, attempt.state, attempt.external_status) == (
+        "implementation",
+        "running",
+        "implemented-externally",
+    )
+    assert github == [f"/repos/owner/app/pulls/{PULL_REQUEST_NUMBER}"]
+
+    # A later sync leaves the finished session and its run alone.
+    await make_service().sync(catalog.key)
+    assert len(github) == 1
+
+
+async def test_a_completed_report_session_keeps_its_final_message_and_opens_nothing(
+    client, session, jules, github, project
+):
+    catalog = await make_catalog(session)
+    await track(session, catalog, work_type="report", name="sessions/22")
+    jules.responses[("GET", "/v1alpha/sessions/22")] = (200, completed_session("sessions/22"))
+    jules.responses[("GET", "/v1alpha/sessions/22/activities")] = (
+        200,
+        activities("Collecting…", "## Weekly report\n\n- 3 stale dependencies"),
+    )
+
+    await make_service().sync(catalog.key)
+
+    [tracked] = await sessions_of(session, catalog.id)
+    assert tracked.state == "completed"
+    assert tracked.result_summary == "## Weekly report\n\n- 3 stale dependencies"
+    assert (tracked.pull_request_url, tracked.pipeline_run_id, tracked.failure_detail) == (None, None, None)
+    assert github == []
+    assert (await session.scalars(select(PipelineRun))).all() == []
+
+
+async def test_a_task_session_without_a_pull_request_is_noted(client, session, jules, github, project):
+    catalog = await make_catalog(session)
+    await track(session, catalog, work_type="task", name="sessions/23")
+    jules.responses[("GET", "/v1alpha/sessions/23")] = (200, completed_session("sessions/23"))
+    jules.responses[("GET", "/v1alpha/sessions/23/activities")] = (200, activities("Nothing to change."))
+
+    await make_service().sync(catalog.key)
+
+    [tracked] = await sessions_of(session, catalog.id)
+    assert tracked.result_summary == "Nothing to change."
+    assert tracked.failure_detail == "Task session completed without opening a pull request"
+    assert (await session.scalars(select(PipelineRun))).all() == []
+
+
+async def test_a_project_can_opt_out_of_adopting_session_pull_requests(client, session, jules, github, project):
+    automation = {**project["github"]["automation"], "auto_enroll_sessions": False}
+    updated = await client.put(
+        f"/api/v1/projects/{project['id']}",
+        json={
+            "name": project["name"],
+            "enabled": True,
+            "expected_revision": project["revision"],
+            "github": {**project["github"], "automation": automation},
+        },
+    )
+    assert_status_code(updated, 200)
+    catalog = await make_catalog(session)
+    await track(session, catalog, work_type="task", name="sessions/24")
+    jules.responses[("GET", "/v1alpha/sessions/24")] = (
+        200,
+        completed_session("sessions/24", pull_request_url=PULL_REQUEST_URL),
+    )
+    jules.responses[("GET", "/v1alpha/sessions/24/activities")] = (200, activities("Done."))
+
+    await make_service().sync(catalog.key)
+
+    [tracked] = await sessions_of(session, catalog.id)
+    assert tracked.pipeline_run_id is None
+    assert tracked.failure_detail == "The project does not adopt session pull requests"
+    assert github == []
+
+
+async def test_a_pull_request_outside_the_session_repository_is_not_adopted(client, session, jules, github, project):
+    catalog = await make_catalog(session)
+    await track(session, catalog, work_type="task", name="sessions/25", repository="owner/other")
+    jules.responses[("GET", "/v1alpha/sessions/25")] = (
+        200,
+        completed_session("sessions/25", pull_request_url=PULL_REQUEST_URL),
+    )
+    jules.responses[("GET", "/v1alpha/sessions/25/activities")] = (200, activities("Done."))
+
+    await make_service().sync(catalog.key)
+
+    [tracked] = await sessions_of(session, catalog.id)
+    assert tracked.pipeline_run_id is None
+    assert tracked.failure_detail == "Pull request is not in the session's repository"
+    assert github == []
+
+
+async def test_an_unreadable_activity_log_leaves_the_summary_empty(client, session, jules, github, project):
+    catalog = await make_catalog(session)
+    await track(session, catalog, work_type="report", name="sessions/26")
+    jules.responses[("GET", "/v1alpha/sessions/26")] = (200, completed_session("sessions/26"))
+    jules.responses[("GET", "/v1alpha/sessions/26/activities")] = (500, {"error": "boom"})
+
+    await make_service().sync(catalog.key)
+
+    [tracked] = await sessions_of(session, catalog.id)
+    assert (tracked.state, tracked.result_summary) == ("completed", None)

@@ -24,6 +24,8 @@ class GitHubAutomationConfig(BaseModel):
     auto_fix_ci: bool = True
     auto_fix_conflicts: bool = True
     auto_enroll_on_trigger: bool = True
+    # Adopt pull requests opened by the hub's own agent sessions (for example Jules task sessions) into the pipeline.
+    auto_enroll_sessions: bool = True
     dispatch_interval_seconds: int = Field(default=60, ge=30, le=3600)
 
 

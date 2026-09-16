@@ -11,7 +11,7 @@ Two catalogs are seeded:
 | Key | Kind | Adapter | Used by |
 | --- | --- | --- | --- |
 | `personal-codex` | `codex` | `codex-github-mention` | The pull request pipeline (every enrolled run) |
-| `personal-jules` | `jules` | `jules-api` | Scheduled Jules sessions (`jules.session`); pull request delivery is not implemented (501) |
+| `personal-jules` | `jules` | `jules-api` | Scheduled Jules sessions (`jules.session`): task sessions whose pull requests are adopted into the pipeline, and report sessions. Direct pull request delivery is not implemented (501) |
 
 Code structure, flows, design decisions, and open work are described in
 [AI Catalog Implementation Notes](ai-catalog-implementation-notes.md).
@@ -167,15 +167,31 @@ probe.
 
 ## Jules scheduled sessions
 
-Jules cannot push to an existing pull request branch, so it runs scheduled
-report and hygiene sessions instead of pipeline work. The hub tracks only
-session state and links in `ai_catalog_sessions`; results stay in Jules or in
-the pull requests it opens.
+Jules cannot push to an existing pull request branch, so it never receives
+pipeline work directly. Instead the hub starts scheduled sessions and follows
+them to the end. Work is organised on two axes:
+
+- **Provider** (the catalog's `kind` and `adapter`) decides how the hub can
+  observe an agent. Codex has no readable session API, so all of its work goes
+  through pull requests. Jules has one, so its sessions are read directly.
+- **Work type** (`work_type` on a session) decides what a session delivers.
+  `task` work converges on a pull request; a `report` is text.
+
+| Work type | Jules delivers | The hub does on completion |
+| --- | --- | --- |
+| `task` | A pull request from a new branch (`auto_create_pr` defaults on) | Adopts the pull request into the project connected to the repository as an already implemented run: it enters the pipeline at `awaiting_ci`, CI fixes go through the project's catalog (Codex), and merge follows the project's automation |
+| `report` | Its final session message (`auto_create_pr` defaults off) | Stores the final message as `result_summary` |
+
+Both work types keep the session's final message; the session list shows it.
+Adoption is skipped, and the reason recorded on the session, when the pull
+request is not in the session's repository, no enabled project is connected to
+that repository, the project's `auto_enroll_sessions` automation flag is off,
+or the pull request already has an active run.
 
 | Task | Payload | Behavior |
 | --- | --- | --- |
-| `jules.session` | `catalog_key`, `repository` (`owner/repo`), `starting_branch`, `title`, `prompt`, `auto_create_pr` | Refreshes unfinished sessions, asks for admission under `session:<id>`, then creates one Jules session |
-| `jules.sync_sessions` | `catalog_key` | Refreshes unfinished sessions so finished ones release concurrency |
+| `jules.session` | `catalog_key`, `repository` (`owner/repo`), `starting_branch`, `title`, `prompt`, `work_type` (`task` default, or `report`), `auto_create_pr` (optional override) | Refreshes unfinished sessions, asks for admission under `session:<id>`, then creates one Jules session whose prompt ends with the work type's delivery contract |
+| `jules.sync_sessions` | `catalog_key` | Refreshes unfinished sessions: finished ones release concurrency, reports are stored, and task pull requests are adopted |
 
 - The catalog needs an enabled `jules` connector whose credentials hold the API
   key as `token`.
@@ -188,7 +204,8 @@ the pull requests it opens.
 - Any other 4xx marks the session `failed`.
 - `GET /api/v1/ai-catalogs/{key}/sessions?offset=&limit=` pages through the
   catalog's sessions, most recent first (default limit 50, at most 100), with
-  their state, links, failure detail, and a `total_count`.
+  their work type, repository, state, links, adopted pipeline run, result
+  summary, failure detail, and a `total_count`.
 
 ## Operator controls
 
@@ -201,7 +218,13 @@ the pull requests it opens.
 - review a catalog's recent sessions.
 
 **Projects → Edit → Advanced automation** selects the AI catalog that receives
-the project's pull request work.
+the project's pull request work and whether pull requests opened by agent
+sessions are adopted into the pipeline.
+
+**Projects → Pipeline runs → Enroll PR** can mark a pull request as already
+implemented (`implemented: true` on `POST /api/v1/projects/{id}/runs`), which
+enrolls it at `awaiting_ci` without an implementation request. Session adoption
+uses the same path.
 
 An explicit reset time replaces `available_at` for every piece of work on the
 catalog, even while disabled. Clearing a hold records a refresh at that moment;

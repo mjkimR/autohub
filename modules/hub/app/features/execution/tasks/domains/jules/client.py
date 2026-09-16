@@ -9,6 +9,8 @@ JULES_API_BASE_URL = "https://jules.googleapis.com/v1alpha/"
 SESSION_NAME = re.compile(r"sessions/[A-Za-z0-9_-]+")
 # Reconciliation looks only at recent sessions; an older unconfirmed create is presumed lost by the caller.
 LIST_PAGE_LIMIT = 3
+# A session's activity log is read once, at completion, for its final message; longer logs keep only the tail.
+ACTIVITY_PAGE_LIMIT = 10
 
 
 class JulesApiError(RuntimeError):
@@ -67,6 +69,26 @@ class JulesClient:
             raise JulesApiError("Jules session name is invalid")
         return await self._request("GET", name)
 
+    async def final_agent_message(self, name: str) -> str | None:
+        """The session's last message to the user, which a report session is told to make its deliverable."""
+        if not SESSION_NAME.fullmatch(name):
+            raise JulesApiError("Jules session name is invalid")
+        message: str | None = None
+        page_token: str | None = None
+        for _ in range(ACTIVITY_PAGE_LIMIT):
+            params: dict[str, str | int] = {"pageSize": 100}
+            if page_token:
+                params["pageToken"] = page_token
+            page = await self._request("GET", f"{name}/activities", params=params)
+            for activity in page.get("activities") or []:
+                text = _agent_message(activity)
+                if text is not None:
+                    message = text
+            page_token = page.get("nextPageToken")
+            if not isinstance(page_token, str) or not page_token:
+                break
+        return message
+
     async def find_session_by_title(self, title: str) -> dict[str, Any] | None:
         """Session creation has no idempotency key, so an unconfirmed create is found again by its unique title."""
         page_token: str | None = None
@@ -82,3 +104,15 @@ class JulesClient:
             if not isinstance(page_token, str) or not page_token:
                 return None
         return None
+
+
+def _agent_message(activity: Any) -> str | None:
+    payload = activity.get("agentMessaged") if isinstance(activity, dict) else None
+    if not isinstance(payload, dict):
+        return None
+    # The v1alpha field name has drifted between "message" and "agentMessage"; accept both.
+    for key in ("message", "agentMessage", "text"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None

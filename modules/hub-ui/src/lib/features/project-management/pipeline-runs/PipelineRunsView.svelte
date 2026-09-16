@@ -66,6 +66,7 @@
 	let isAcquiring = $state(false);
 	let acquireProjectId = $state('');
 	let enrollPullNumber = $state<number>(1);
+	let enrollImplemented = $state(false);
 
 	// Attach PR Dialog
 	let isAttachPrOpen = $state(false);
@@ -304,7 +305,7 @@
 		try {
 			const res = await api.POST('/api/v1/projects/{project_id}/runs', {
 				params: { path: { project_id: acquireProjectId } },
-				body: { pull_number: Number(enrollPullNumber) }
+				body: { pull_number: Number(enrollPullNumber), implemented: enrollImplemented }
 			});
 			if (res.error) {
 				const detail = (res.error as { detail?: string }).detail || 'Failed to enroll pull request';
@@ -343,6 +344,7 @@
 				onclick={() => {
 					acquireProjectId = selectedProjectId || (projects[0]?.id ?? '');
 					enrollPullNumber = 1;
+					enrollImplemented = false;
 					isAcquireOpen = true;
 				}}
 				class="gap-1.5"
@@ -797,6 +799,20 @@
 						required
 					/>
 				</div>
+
+				<label class="flex items-center justify-between gap-3 text-sm">
+					<span>
+						<span class="font-medium text-foreground">Already implemented</span>
+						<span class="mt-0.5 block text-xs text-muted-foreground"
+							>Skip the implementation request and start at CI observation.</span
+						>
+					</span>
+					<input
+						type="checkbox"
+						bind:checked={enrollImplemented}
+						class="size-4 rounded border-border text-primary focus:ring-primary"
+					/>
+				</label>
 
 				<DialogFooter class="pt-2">
 					<Button type="button" variant="outline" onclick={() => (isAcquireOpen = false)}>

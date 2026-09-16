@@ -64,7 +64,7 @@ test('enrolls the selected project and refreshes the run list', async () => {
 	await waitFor(() =>
 		expect(api.POST).toHaveBeenCalledWith('/api/v1/projects/{project_id}/runs', {
 			params: { path: { project_id: 'project-1' } },
-			body: { pull_number: 42 }
+			body: { pull_number: 42, implemented: false }
 		})
 	);
 });

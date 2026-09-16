@@ -35,6 +35,11 @@ class PullRequestSnapshot(BaseModel):
 
 class EnrollPullRequest(BaseModel):
     pull_number: int = Field(gt=0)
+    implemented: bool = Field(
+        default=False,
+        description="The pull request already holds its implementation (for example, an agent session opened it); "
+        "skip the implementation request and start by observing CI",
+    )
 
 
 class PipelineRunRead(UUIDSchemaMixin, TimestampSchemaMixin):

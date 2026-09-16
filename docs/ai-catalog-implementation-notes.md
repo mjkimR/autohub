@@ -87,8 +87,9 @@ When rejected, the caller commits the transaction (`session.commit()`) before ra
 ### Session Tracking (`ai_catalog_sessions`)
 
 - Tracks provider sessions initiated by Hub outside the pull request pipeline until completion. Currently used only for Jules.
+- `work_type` is `task` or `report` (`SESSION_WORK_TYPES`); `repository` is the GitHub repository the session worked in.
 - The state remains `dispatching` until creation is confirmed; once confirmed, the provider's state is stored in lowercase.
-- Result bodies are not stored; only URLs and pull request links are retained.
+- On completion the session's final agent message is stored as `result_summary` (the deliverable of a report). A task session's pull request is adopted into the matching project's pipeline and linked through `pipeline_run_id`; when adoption is skipped, `failure_detail` says why. Nothing else of the session's output is stored.
 
 ## Flows
 
@@ -130,6 +131,23 @@ Processing in `_observe`:
 - Sessions lacking an external name are reconciled by scanning recent sessions via `find_session_by_title` (latest 3 pages × 100 items).
 - Sessions that remain unlocated after 1 hour are marked as `failed`.
 - Lookup errors are ignored so observation failures do not prevent starting new tasks.
+- A session observed as `COMPLETED` has its activities read (`GET sessions/{id}/activities`, up to 10 pages) for the last `agentMessaged` text, stored as `result_summary`. A failed read leaves it empty; it is not retried.
+
+### Session Completion (`JulesSessionService._complete` / `_adopt_pull_request`)
+
+```text
+work_type == report → result_summary only
+work_type == task
+  ├ no outputs[].pullRequest.url → failure_detail = "Task session completed without opening a pull request"
+  ├ URL repository != session.repository → not adopted
+  ├ no enabled project for the repository, or automation.auto_enroll_sessions == false → not adopted
+  └ PipelineRunUseCase.enroll(project, EnrollPullRequest(pull_number, implemented=True))
+       ├ run created at awaiting_ci with one RUNNING implementation attempt (external_status
+       │ "implemented-externally", standard request snapshot so a CI failure derives a ci-fix from it)
+       └ ProjectError (already enrolled, project disabled, …) → failure_detail
+```
+
+The run belongs to the project's catalog (Codex by default), so CI fixes and conflict fixes are delivered by the project's adapter as for any other run. Adoption runs after the session's own transaction commits and touches GitHub only through the standard enrollment read.
 
 ## Policy Summary
 
@@ -188,8 +206,8 @@ Detailed rules are documented in [AI Catalog Gateway](ai-catalogs.md). Here, onl
 
 | Method | Path (`/api/v1/ai-catalogs`) | Description |
 | --- | --- | --- |
-| GET | `` | List catalogs. Includes `effective_concurrency`, `held_run_count`, `active_dispatch_count`, `open_session_count`, and the capability flags `connector_provider` and `pipeline_delivery` |
-| GET | `/{key}/sessions?offset=&limit=` | A page of tracked sessions, most recent first, with `total_count` (default limit 50, max 100). Ties on `created_at` are broken by `id`, so pages never overlap |
+| GET | `` | List catalogs. Includes `effective_concurrency`, `held_run_count`, `active_dispatch_count`, `open_session_count`, and the capability flags `connector_provider`, `pipeline_delivery`, and `session_work_types` |
+| GET | `/{key}/sessions?offset=&limit=` | A page of tracked sessions, most recent first, with `total_count` (default limit 50, max 100). Ties on `created_at` are broken by `id`, so pages never overlap. Each item carries `work_type`, `repository`, `pipeline_run_id`, and `result_summary` |
 | PUT / DELETE | `/{key}/availability` | Manually set / clear hold |
 | PUT | `/{key}/enabled` | Enable or disable catalog |
 | PUT | `/{key}/policy-config` | Validate and normalize via kind policy's `validate_config()` before saving |
@@ -197,10 +215,11 @@ Detailed rules are documented in [AI Catalog Gateway](ai-catalogs.md). Here, onl
 
 Scheduled Tasks:
 - `jules.session`
-  - payload: `catalog_key`, `repository` (`owner/repo`), `starting_branch`, `title`, `prompt`, `auto_create_pr`
+  - payload: `catalog_key`, `repository` (`owner/repo`), `starting_branch`, `title`, `prompt`, `work_type` (`task` | `report`, default `task`), `auto_create_pr` (optional; defaults to true for `task`, false for `report`)
+  - The prompt sent to Jules is the operator's prompt followed by the work type's delivery contract (`TASK_DELIVERY_INSTRUCTIONS` / `REPORT_DELIVERY_INSTRUCTIONS`).
 - `jules.sync_sessions`
   - payload: `catalog_key`
-  - Keep interval short because releasing concurrency slots after session termination depends on this task's frequency.
+  - Keep interval short: releasing concurrency slots, storing reports, and adopting pull requests all depend on this task's frequency.
 
 Connector providers are `github`, `jules`, `linear`. For `jules`, the API key is stored in `token`.
 
@@ -213,6 +232,9 @@ Connector providers are `github`, `jules`, `linear`. For `jules`, the API key is
 | Confirm pipeline delivery **before** admission | The ledger key (`delivery:<id>`) must remain idempotent across retries to prevent duplicate counting. |
 | Return 501 for unimplemented adapters **before** admission | Prevents tasks that cannot be executed from consuming quota and concurrency slots. |
 | Use Jules for scheduled sessions rather than PR pipelines | The Jules API (v1alpha) cannot push to existing PR branches; `AUTO_CREATE_PR` always creates a new branch and PR. |
+| Two axes: provider capability × work type, one pipeline per work type | Providers differ in what the hub can observe (Codex: pull requests only; Jules: a session API too), work differs in what it delivers (a pull request or text). Task work shares the single pull request pipeline whatever opened the pull request; reports are stored from the session. Combinations a provider cannot serve are refused before admission, like the `jules-api` 501. |
+| Branch on the session's `work_type` at completion, not on the pull request | The hub knows a session's purpose when it creates it. Deciding at pull request close would depend on prompt compliance (labels, paths) and would run CI for every report. |
+| Adopt a session's pull request as an already implemented run | The pipeline's implementation step would ask Codex to implement a pull request Jules already implemented. Entering at `awaiting_ci` with a synthetic RUNNING attempt keeps CI fixes, conflict fixes, and merge on the existing path. |
 | Include `[hub-session:<id>]` in Jules session title | Jules session creation API lacks idempotency keys; titles enable reconciling uncertain creations. |
 | Treat Jules 429 as quota events | Provider rate-limit error payload schema is undocumented; waiting conservatively is safer, and operators can manually clear holds. |
 | Default daily quota window to `rolling` | Jules official documentation specifies a "rolling 24 hour window". |
@@ -260,7 +282,8 @@ Connector providers are `github`, `jules`, `linear`. For `jules`, the API key is
 - [ ] **Exact meaning of Jules 429.** Cannot distinguish daily limit vs. concurrency limit. Currently applies a 24-hour rolling hold in both cases. Requires inspecting actual responses to separate behaviors.
 - [ ] **Definition of one Jules "task".** Unclear whether `sendMessage` or repeated PR comments count toward the daily limit.
 - [ ] **Jules behavior at concurrency limit.** Unclear whether requests queue (`QUEUED`) or reject immediately.
-- [ ] **Completion without output.** Cases of `COMPLETED` status without `outputs` have been observed; currently treated as normal completion.
+- [ ] **Completion without output.** Cases of `COMPLETED` status without `outputs` have been observed; currently treated as normal completion (a task session then records "completed without opening a pull request").
+- [ ] **`outputs[].pullRequest.url` and `agentMessaged.message` shapes.** Adoption and report storage read these v1alpha fields; neither has been confirmed against a live `AUTO_CREATE_PR` session. Run one before relying on adoption.
 - [ ] **Live invocation verification.** Execute live runs of the real Jules API and post-refactor Codex pipeline end-to-end.
 
 ### Code
@@ -270,7 +293,7 @@ Connector providers are `github`, `jules`, `linear`. For `jules`, the API key is
 - [ ] The session list pages by offset but has no filtering (for example by state or schedule).
 - [ ] 30-day ledger cleanup only runs when inserting new records.
 - [ ] Catalogs are selected per project. Choosing a catalog per pull request or task is deferred until a router decides where each piece of work goes.
-- [ ] Integrating Jules into the PR pipeline has two alternatives to choose between when needed:
-  - Hub applies `changeSet.gitPatch` to the PR branch
-  - Track child PRs created by Jules
+- [x] Jules task sessions' pull requests are adopted into the pipeline (`implemented=True` enrollment). Applying `changeSet.gitPatch` to an existing PR branch remains unimplemented.
+- [ ] A report is only kept as the session's final message. If a report should live in git history, add a delivery mode where Jules writes `reports/<date>.md` and the hub reads the file from the pull request head before closing it.
+- [ ] Jules cannot post to the hub itself. A hub ingest endpoint with a per-session token is possible (Jules calls GitHub with an environment token today) but was deferred: prompt-dependent delivery still needs the polling reconciliation that exists now.
 - [ ] `alembic check` reports 2 comment discrepancies with models: `pipeline_runs.pull_snapshot`, `schedule_configs.next_run_at`. Unrelated to AI Catalog.
