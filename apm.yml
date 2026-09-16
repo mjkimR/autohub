@@ -1,0 +1,9 @@
+name: autohub
+version: 0.1.0
+targets: [claude, codex]
+dependencies:
+  apm:
+    # Workbench uses the sibling checkout, including unpublished main changes.
+    # For standalone use, replace path with git/ref/path as documented in README.
+    - path: ../app-common/agents
+      skills: [app-common]

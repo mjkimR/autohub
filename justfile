@@ -15,7 +15,7 @@ init module="all":
         echo "Initializing Python backend ($path)..."
         uv sync
         just hooks-install
-        just link-skills
+        just skills
     fi
 
     if should_run "$target" "hub-ui"; then
@@ -28,6 +28,7 @@ init module="all":
 # Run linters for a specific module (all, hub, or hub-ui)
 lint module="all":
     #!/usr/bin/env bash
+    set -e
     source ./scripts/_lib.sh
     target=$(resolve_module "{{ module }}")
 
@@ -48,13 +49,14 @@ lint module="all":
 # Run static type checks for a specific module (all, hub, or hub-ui)
 check module="all":
     #!/usr/bin/env bash
+    set -e
     source ./scripts/_lib.sh
     target=$(resolve_module "{{ module }}")
 
     if should_run "$target" "hub"; then
         path=$(resolve_module_path "hub")
         echo "Type checking Python backend ($path)..."
-        uv run --directory "$path" pyright
+        uv run pyright --project "$path"
     fi
 
     if should_run "$target" "hub-ui"; then
@@ -152,7 +154,11 @@ gen-ui-api:
 sync-codex-quota:
     @uv run python ./scripts/sync-codex-quota.py
 
-# Link or install agent skills from app-common
+# Install locked agent skills through Microsoft APM
+skills:
+    @bash ./scripts/install-skills.sh
+
+# Compatibility entry point; arguments are passed to apm install
 link-skills +args="":
     @bash ./scripts/install-skills.sh {{ args }}
 
@@ -171,4 +177,3 @@ register-webhook repo:
 # Update API key across Secret Manager, Cloud Scheduler, Cloud Run, and local .env
 update-api-key key="":
     @bash ./scripts/update-api-key.sh {{ key }}
-

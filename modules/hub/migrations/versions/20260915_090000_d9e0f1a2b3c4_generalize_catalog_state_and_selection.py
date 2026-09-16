@@ -52,7 +52,7 @@ def upgrade() -> None:
     catalogs = _catalogs_with_state()
     bind = op.get_bind()
     for row in bind.execute(sa.select(catalogs).where(catalogs.c.kind == "codex")).mappings().all():
-        state = {name: _iso(row[name]) for name in TIMESTAMP_STATE}
+        state: dict[str, str | int | None] = {name: _iso(row[name]) for name in TIMESTAMP_STATE}
         state["short_refresh_failure_count"] = int(row["short_refresh_failure_count"] or 0)
         bind.execute(catalogs.update().where(catalogs.c.id == row["id"]).values(policy_state=state))
     with op.batch_alter_table("ai_catalogs") as batch:
@@ -100,7 +100,7 @@ def downgrade() -> None:
     bind = op.get_bind()
     for row in bind.execute(sa.select(catalogs.c.id, catalogs.c.policy_state)).mappings().all():
         state = row["policy_state"] or {}
-        values = {
+        values: dict[str, datetime | int | None] = {
             name: datetime.fromisoformat(state[name]) if isinstance(state.get(name), str) else None
             for name in TIMESTAMP_STATE
         }

@@ -53,3 +53,25 @@ just test
 ```
 
 For connector credential encryption setup, refer to the [Hub module documentation](modules/hub/README.md#connector-credential-encryption).
+
+## Agent skills
+
+Microsoft APM 0.30.0 installs the `app-common` skill with `just skills` (also run
+by backend initialization). `just link-skills` remains a compatibility entry point.
+The manifest uses `../app-common/agents`, the sibling workbench checkout; after
+source changes run `apm install` to refresh the snapshot and lockfile, then
+`apm audit --ci`. Normal setup uses `apm install --frozen`.
+
+For a standalone checkout, replace the local dependency in `apm.yml` with:
+
+```yaml
+    - git: mjkimR/app-common
+      path: agents
+      ref: <release-tag>
+      skills: [app-common]
+```
+
+Use a published ref containing the APM collection layout, then run `apm install`.
+Track the manifest, lockfile, and `.agents/skills/app-common/` and
+`.claude/skills/app-common/` copies together. Ignore `apm_modules/`; never edit
+installed copies. This setup does not use a project `.apm/` directory.

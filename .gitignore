@@ -21,6 +21,13 @@ wheels/
 .agents/*
 !.agents/skills/
 .agents/skills/*
+!.agents/skills/app-common/
+!.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/app-common/
+apm_modules/
 
 # Credentials. Keep keys outside the repo (e.g. ~/.config/scheduler-mgr/sa-key.json).
 # Google's SA key download lands in the repo root as <project>-<keyid>.json, so the

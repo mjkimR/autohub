@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from unittest.mock import ANY, AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -60,7 +61,7 @@ async def test_catalog_kind_without_a_quota_policy_is_never_admitted():
     with pytest.raises(ProjectError):
         await service.request_dispatch(AsyncMock(), uuid4(), uuid4(), "delivery:new", T0)
 
-    service.repo.active_dispatch_count.assert_not_awaited()
+    cast(AsyncMock, service.repo.active_dispatch_count).assert_not_awaited()
     # Listing and switching still work: such a catalog simply has no capacity and no recovery state.
     assert AICatalogService.effective_concurrency(catalog) == 0
     await service.set_enabled(AsyncMock(), "retired", False, T0)
@@ -102,11 +103,11 @@ async def test_only_admitted_work_enters_the_dispatch_ledger():
     service = make_service(catalog)
 
     await service.request_dispatch(AsyncMock(), uuid4(), uuid4(), "delivery:admitted", T0)
-    service.repo.reserve_dispatch.assert_awaited_once_with(ANY, ANY, "delivery:admitted", T0)
+    cast(AsyncMock, service.repo.reserve_dispatch).assert_awaited_once_with(ANY, ANY, "delivery:admitted", T0)
 
     service.repo.active_dispatch_count = AsyncMock(return_value=1)
     await service.request_dispatch(AsyncMock(), uuid4(), uuid4(), "delivery:rejected", T0)
-    service.repo.reserve_dispatch.assert_awaited_once()
+    cast(AsyncMock, service.repo.reserve_dispatch).assert_awaited_once()
 
 
 async def test_unexpired_hold_is_returned_as_a_rejection_without_consulting_the_policy():
@@ -119,7 +120,7 @@ async def test_unexpired_hold_is_returned_as_a_rejection_without_consulting_the_
 
     assert admission.rejection == "AI catalog is quota-blocked; wait for its refresh time"
     assert catalog.availability_state == AICatalogState.QUOTA_BLOCKED
-    service.repo.active_dispatch_count.assert_not_awaited()
+    cast(AsyncMock, service.repo.active_dispatch_count).assert_not_awaited()
 
 
 async def test_each_hold_re_anchors_on_the_probe_through_short_then_long_cycles():

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -51,12 +52,13 @@ async def test_reaching_the_limit_holds_until_the_oldest_task_ages_out_of_the_ro
     oldest = T0 - timedelta(hours=20)
     policy = make_policy([oldest, T0 - timedelta(hours=10), T0 - timedelta(hours=1)])
     dispatch_key = "session:retried"
+    session = AsyncMock()
 
-    assert await policy.admit(AsyncMock(), catalog, dispatch_key, T0) == DAILY_LIMIT_REJECTION
+    assert await policy.admit(session, catalog, dispatch_key, T0) == DAILY_LIMIT_REJECTION
 
     # Retried work already in the ledger must not count against itself.
-    policy.repo.dispatch_times_since.assert_awaited_once_with(
-        policy.repo.dispatch_times_since.await_args.args[0],
+    cast(AsyncMock, policy.repo.dispatch_times_since).assert_awaited_once_with(
+        session,
         catalog.id,
         T0 - timedelta(days=1),
         exclude_dispatch_key=dispatch_key,
@@ -85,7 +87,9 @@ async def test_calendar_window_counts_from_local_midnight_and_resets_at_the_next
 
     assert await policy.admit(AsyncMock(), catalog, "session:new", T0) == DAILY_LIMIT_REJECTION
 
-    assert policy.repo.dispatch_times_since.await_args.args[2] == local_midnight
+    call = cast(AsyncMock, policy.repo.dispatch_times_since).await_args
+    assert call is not None
+    assert call.args[2] == local_midnight
     assert catalog.available_at == local_midnight + timedelta(days=1) + JITTER
 
 
