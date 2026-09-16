@@ -6,6 +6,7 @@ from app.features.configuration.connectors.api.v1 import router as v1_connectors
 from app.features.configuration.system_configs.api.v1 import router as v1_system_configs_router
 from app.features.execution.dispatchers.api.v1 import router as v1_dispatchers_router
 from app.features.execution.tasks.api.v1 import router as v1_tasks_router
+from app.features.project_management.agent_schedules.api.v1 import router as v1_agent_schedules_router
 from app.features.project_management.github_webhooks.api import router as github_webhooks_router
 from app.features.project_management.pipeline_runs.api.v1 import router as v1_pipeline_runs_router
 from app.features.project_management.pipelines.api.v1 import router as v1_pipelines_router
@@ -43,6 +44,7 @@ v1_router.include_router(v1_connectors_router)
 v1_router.include_router(v1_pipelines_router)
 v1_router.include_router(v1_pipeline_runs_router)
 v1_router.include_router(v1_projects_router)
+v1_router.include_router(v1_agent_schedules_router)
 v1_router.include_router(v1_schedule_configs_router)
 v1_router.include_router(v1_system_configs_router)
 v1_router.include_router(v1_ai_catalogs_router)

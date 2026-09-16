@@ -21,7 +21,7 @@ from app_layer_base.base.services.base import (
     BaseUpdateServiceMixin,
 )
 from app_layer_base.base.services.exists_check_hook import ExistsCheckHook
-from app_layer_base.base.services.hooks import CreateHook, Operation, UpdateHook
+from app_layer_base.base.services.hooks import CreateHook, DeleteHook, Operation, UpdateHook
 from app_layer_base.base.services.unique_constraints_hook import UniqueConstraintHook
 from fastapi import Depends
 from pydantic import BaseModel
@@ -115,6 +115,39 @@ class ScheduleConfigNextRunHook(
         return fields
 
 
+class ManagedScheduleHook(
+    UpdateHook[ScheduleConfig, ScheduleConfigContextKwargs], DeleteHook[ScheduleConfigContextKwargs]
+):
+    """A schedule owned by a project agent schedule is edited through that owner, never here."""
+
+    @staticmethod
+    async def _refuse_if_managed(session, pk: PrimaryKeyType) -> None:
+        from app.features.project_management.agent_schedules.repos import AgentScheduleRepository
+        from app.features.project_management.projects.services import ProjectError
+
+        owner = await AgentScheduleRepository().owner_of_config(session, pk)
+        if owner is not None:
+            raise ProjectError(409, "This schedule is managed by a project agent schedule; edit or delete it there")
+
+    @asynccontextmanager
+    async def update_context(
+        self,
+        op: Operation[ScheduleConfigContextKwargs],
+        pk: PrimaryKeyType,
+        data: BaseModel,
+        partial: bool = True,
+    ) -> AsyncGenerator[None]:
+        await self._refuse_if_managed(op.session, pk)
+        yield
+
+    @asynccontextmanager
+    async def delete_context(
+        self, op: Operation[ScheduleConfigContextKwargs], pk: PrimaryKeyType
+    ) -> AsyncGenerator[None]:
+        await self._refuse_if_managed(op.session, pk)
+        yield
+
+
 class ScheduleConfigService(
     BaseCreateServiceMixin[ScheduleConfigRepository, ScheduleConfig, ScheduleConfigCreate, ScheduleConfigContextKwargs],
     BaseGetMultiServiceMixin[ScheduleConfigRepository, ScheduleConfig, ScheduleConfigContextKwargs],
@@ -129,6 +162,7 @@ class ScheduleConfigService(
         # Contexts are entered in this order and exited in reverse.
         self.hooks = (
             ExistsCheckHook(),  # Reject update/delete of a row that does not exist
+            ManagedScheduleHook(),  # Reject update/delete of a schedule a project agent schedule owns
             ScheduleConfigUniqueHook(),  # Reject duplicate names before create/update
             ScheduleConfigNextRunHook(),  # Keep next_run_at consistent with cron/interval
         )

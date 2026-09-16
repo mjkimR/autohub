@@ -59,6 +59,7 @@ Jules session ──────────► │ 4. Record ledger on pass (ai
 | `execution/tasks/domains/jules/client.py` | Jules REST v1alpha client |
 | `execution/tasks/domains/jules/service.py` | Jules session initiation and synchronization |
 | `execution/tasks/domains/jules/task.py` | Scheduled tasks `jules.session`, `jules.sync_sessions` |
+| `project_management/agent_schedules/` | Project-owned agent schedules: `ProjectAgentSchedule` rows that derive and own one `ScheduleConfig` each, the per-catalog sync entry, and their API |
 
 ## Core Concepts
 
@@ -149,6 +150,24 @@ work_type == task
 
 The run belongs to the project's catalog (Codex by default), so CI fixes and conflict fixes are delivered by the project's adapter as for any other run. Adoption runs after the session's own transaction commits and touches GitHub only through the standard enrollment read.
 
+### Agent Schedules (`AgentScheduleService`, `AgentScheduleRepository`)
+
+```text
+create/update → project must have github_repository
+             → catalog.kind in SESSION_TASKS and work_type in CATALOG_SESSION_WORK_TYPES[kind], catalog enabled
+             → derived payload validated with JulesSessionPayload before any write
+             → write_config: ScheduleConfig(name "Agent <id8>: <title> (<project>)", task_func by kind,
+               payload = session_payload(project, row, catalog), enabled = row.enabled and project.enabled,
+               next_run_at recomputed only when the trigger changed)
+             → ensure_sync_schedule(catalog): one "<kind>.sync_sessions" entry per catalog while any row uses it
+delete       → row and owned config removed, sync entry removed with the last row
+run_now      → owned config.next_run_at = NULL (the dispatcher's "run immediately" sentinel)
+```
+
+- `ProjectService.update` calls `AgentScheduleRepository.resync_project`, and `ProjectService.delete` calls `delete_for_project`. The repository module imports models only, so the project service can use it without a cycle (`AgentScheduleService` depends on `ProjectService`).
+- `ManagedScheduleHook` on `ScheduleConfigService` refuses update and delete of an owned config with 409; reads are untouched.
+- Sessions link to schedules through `AICatalogSession.schedule_config_id`; `AICatalogRepository.list_sessions_for_schedule` feeds `recent_sessions`.
+
 ### Catalog Designation (`PipelineRunUseCase.resolve_catalog`)
 
 ```text
@@ -228,7 +247,9 @@ Detailed rules are documented in [AI Catalog Gateway](ai-catalogs.md). Here, onl
 | PUT | `/{key}/policy-config` | Validate and normalize via kind policy's `validate_config()` before saving |
 | PUT | `/{key}/connector` | Only allows connectors for matching provider (`CATALOG_CONNECTOR_PROVIDERS`) |
 
-Scheduled Tasks:
+Project agent schedules (`/api/v1/projects/{id}/agent-schedules`): list, create, get, put, delete, and `run-now`; see [AI Catalog Gateway](ai-catalogs.md#project-agent-schedules).
+
+Scheduled Tasks (written by agent schedules; hand-written entries still work):
 - `jules.session`
   - payload: `catalog_key`, `repository` (`owner/repo`), `starting_branch`, `title`, `prompt`, `work_type` (`task` | `report`, default `task`), `auto_create_pr` (optional; defaults to true for `task`, false for `report`)
   - The prompt sent to Jules is the operator's prompt followed by the work type's delivery contract (`TASK_DELIVERY_INSTRUCTIONS` / `REPORT_DELIVERY_INSTRUCTIONS`).

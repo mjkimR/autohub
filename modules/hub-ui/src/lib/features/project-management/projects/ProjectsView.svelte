@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
+	import AgentSchedulesDialog from '$lib/features/project-management/agent-schedules/AgentSchedulesDialog.svelte';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -48,6 +49,7 @@
 	let projects = $state<Project[]>([]);
 	let connectors = $state<Connector[]>([]);
 	let catalogs = $state<AICatalog[]>([]);
+	let schedulesProject = $state<Project | null>(null);
 	let loading = $state(true);
 	let searchQuery = $state('');
 
@@ -558,6 +560,16 @@
 									<Button
 										variant="ghost"
 										size="icon"
+										onclick={() => (schedulesProject = project)}
+										class="size-8 text-muted-foreground hover:text-foreground"
+										title="Agent Schedules"
+										aria-label="Agent Schedules"
+									>
+										<CalendarClock class="size-4" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
 										onclick={() => openEdit(project)}
 										class="size-8 text-muted-foreground hover:text-foreground"
 										title="Configure Project"
@@ -583,6 +595,14 @@
 			</TableBody>
 		</Table>
 	</div>
+
+	{#if schedulesProject}
+		<AgentSchedulesDialog
+			project={schedulesProject}
+			{catalogs}
+			onclose={() => (schedulesProject = null)}
+		/>
+	{/if}
 
 	<!-- Create Project Dialog -->
 	<Dialog bind:open={isCreateOpen}>

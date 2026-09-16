@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from app.features.ai_catalogs.models import AICatalog
+from app.features.project_management.agent_schedules.repos import AgentScheduleRepository
 from app.features.project_management.pipelines.schemas import PipelineObservationConfig
 from app.features.project_management.projects.models import Project
 from app.features.project_management.projects.repos import PROJECT_OBSERVATION_TASK, ProjectRepository
@@ -111,6 +112,8 @@ class ProjectService:
         project.last_check = None
         saved = await self.repo.save(session, project)
         await self.repo.sync_dispatch_schedules(session, saved)
+        # Owned agent schedules derive their payload and enabled state from the project.
+        await AgentScheduleRepository().resync_project(session, saved)
         return saved
 
     async def delete(self, session: AsyncSession, project_id: UUID) -> None:
@@ -120,6 +123,7 @@ class ProjectService:
         if await self.repo.has_pipeline_runs(session, project_id):
             raise ProjectError(409, "Pipeline run history prevents deleting this project")
         await self.repo.delete_dispatch_schedules(session, project_id)
+        await AgentScheduleRepository().delete_for_project(session, project_id)
         await self.repo.delete(session, project)
 
     async def import_schedule(self, session: AsyncSession, schedule_id: UUID) -> Project:

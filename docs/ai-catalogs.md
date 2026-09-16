@@ -207,6 +207,36 @@ or the pull request already has an active run.
   their work type, repository, state, links, adopted pipeline run, result
   summary, failure detail, and a `total_count`.
 
+## Project agent schedules
+
+Operators do not write `jules.session` schedules by hand. A project owns
+**agent schedules** (`project_agent_schedules`), each holding what an operator
+decides: the catalog, the work type, a title, the prompt, the starting branch,
+an enabled switch, and one trigger (cron or interval). Each row owns exactly
+one generic `ScheduleConfig`, which the hub derives from the row and the
+project on every save:
+
+- `task_func` comes from the catalog's kind (`jules` → `jules.session`);
+- the payload is the project's repository plus the row's fields;
+- the entry is enabled only while both the schedule and the project are;
+- a trigger change recomputes `next_run_at`, other edits leave it alone.
+
+While any agent schedule uses a catalog, the hub keeps one
+`jules.sync_sessions` entry for that catalog (every 5 minutes) and removes it
+with the last schedule. Project edits (name, repository, enabled) flow into the
+owned entries, and deleting a project removes them.
+
+| Method | Path (`/api/v1/projects/{id}/agent-schedules`) | Description |
+| --- | --- | --- |
+| GET | `` | The project's schedules with `next_run_at`, `last_run_at`, and the 5 most recent sessions each started |
+| POST | `` | Create; 422 when the project has no repository, the catalog is disabled, or its kind cannot run that work type |
+| PUT / DELETE | `/{schedule_id}` | Rewrite or remove the schedule and its owned entry |
+| POST | `/{schedule_id}/run-now` | Make the entry due on the dispatcher's next tick (422 while disabled) |
+
+The generic schedule API refuses to patch, put, or delete an owned entry (409)
+and the schedule screen marks it "Project Managed"; reading stays open. The UI
+lives in **Projects → Agent Schedules** on each project row.
+
 ## Choosing the catalog for a pull request
 
 Routing is by designation for now; a router that picks catalogs by itself is
@@ -244,6 +274,9 @@ to choose.
   `PUT /api/v1/ai-catalogs/{key}/policy-config`);
 - assign a Jules connector (`PUT /api/v1/ai-catalogs/{key}/connector`);
 - review a catalog's recent sessions.
+
+**Projects → Agent Schedules** creates and edits a project's recurring agent
+sessions (see [Project agent schedules](#project-agent-schedules)).
 
 **Projects → Edit → Advanced automation** selects the AI catalog that receives
 the project's pull request work and whether pull requests opened by agent

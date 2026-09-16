@@ -28,6 +28,10 @@ delivery state; the durable `@codex` request contract lives in
   selection stays the default and the seeded Codex catalog the fallback. A
   designated catalog is remembered on the run across resumes. Refused webhook
   triggers record their reason on the webhook delivery.
+- Project agent schedules (2026-09-16): a project owns its recurring agent
+  sessions; each row derives and owns one scheduler entry, the per-catalog
+  session sync entry is kept automatically, and the generic schedule API
+  refuses to edit owned entries. UI under Projects → Agent Schedules.
 - No Linear integration: Hub is the single source of truth for run state. A
   `linear` connector provider exists only so the connectors UI can store one.
 

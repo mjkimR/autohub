@@ -156,6 +156,18 @@ class AICatalogRepository:
         )
         return rows.all()
 
+    async def list_sessions_for_schedule(
+        self, session: AsyncSession, schedule_config_id: UUID, limit: int
+    ) -> Sequence[AICatalogSession]:
+        """The most recent sessions a schedule started."""
+        rows = await session.scalars(
+            select(AICatalogSession)
+            .where(AICatalogSession.schedule_config_id == schedule_config_id)
+            .order_by(AICatalogSession.created_at.desc(), AICatalogSession.id)
+            .limit(limit)
+        )
+        return rows.all()
+
     async def list_sessions(
         self, session: AsyncSession, catalog_id: UUID, *, offset: int, limit: int
     ) -> tuple[Sequence[AICatalogSession], int]:

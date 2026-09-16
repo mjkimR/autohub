@@ -84,11 +84,17 @@
 		)
 	);
 
+	// Schedules the hub derives from a project: its dispatcher, its agent schedules, and the session sync they
+	// need. The backend refuses edits to agent-schedule entries; they are changed from the project instead.
+	const PROJECT_MANAGED_TASKS = new Set([
+		'pipeline.dispatch_project',
+		'pipeline.observe_project',
+		'jules.session',
+		'jules.sync_sessions'
+	]);
+
 	function isProjectManaged(config: ScheduleConfig): boolean {
-		return (
-			config.task_func === 'pipeline.dispatch_project' ||
-			config.task_func === 'pipeline.observe_project'
-		);
+		return PROJECT_MANAGED_TASKS.has(config.task_func);
 	}
 
 	async function loadConfigs() {
