@@ -46,6 +46,7 @@ class AgentScheduleService:
 
     async def create(self, session: AsyncSession, project_id: UUID, data: AgentScheduleWrite) -> ProjectAgentSchedule:
         project = await self.projects.get(session, project_id, lock=True)
+        await self.repo.lock_catalogs(session, [data.ai_catalog_id])
         catalog = await self._catalog_for(session, project, data)
         # The owned config needs the schedule's id for its name, and the schedule needs the config's id to be
         # flushed, so the id is assigned up front and write_config flushes both in order.
@@ -60,8 +61,10 @@ class AgentScheduleService:
     ) -> ProjectAgentSchedule:
         project = await self.projects.get(session, project_id, lock=True)
         schedule = await self.get(session, project_id, schedule_id)
-        catalog = await self._catalog_for(session, project, data)
         previous_catalog_id = schedule.ai_catalog_id
+        await self.repo.lock_catalogs(session, [previous_catalog_id, data.ai_catalog_id])
+        # A schedule already on a catalog may be edited while that catalog is disabled; its entry stays paused.
+        catalog = await self._catalog_for(session, project, data, keep_disabled=previous_catalog_id)
         for field, value in data.model_dump().items():
             setattr(schedule, field, value)
         await self.repo.write_config(session, project, schedule, catalog)
@@ -71,6 +74,7 @@ class AgentScheduleService:
         return schedule
 
     async def delete(self, session: AsyncSession, project_id: UUID, schedule_id: UUID) -> None:
+        await self.projects.get(session, project_id, lock=True)
         schedule = await self.get(session, project_id, schedule_id)
         await self.repo.delete(session, schedule)
 
@@ -81,12 +85,15 @@ class AgentScheduleService:
         if config is None:
             raise ProjectError(409, "The agent schedule's scheduler entry is missing; save it again")
         if not config.enabled:
-            raise ProjectError(422, "Enable the agent schedule (and its project) before running it")
+            raise ProjectError(422, "Enable the agent schedule, its project, and its catalog before running it")
         config.next_run_at = None
         await session.flush()
         return schedule
 
-    async def _catalog_for(self, session: AsyncSession, project: Project, data: AgentScheduleWrite) -> AICatalog:
+    async def _catalog_for(
+        self, session: AsyncSession, project: Project, data: AgentScheduleWrite, *, keep_disabled: UUID | None = None
+    ) -> AICatalog:
+        """The catalog the schedule may use; ``keep_disabled`` names the one it is on, which may be disabled."""
         if project.github_repository is None:
             raise ProjectError(422, "Connect the project to a GitHub repository before scheduling agent sessions")
         catalog = await self.catalogs.get(session, data.ai_catalog_id)
@@ -94,7 +101,7 @@ class AgentScheduleService:
             raise ProjectError(422, "AI catalog not found")
         if catalog.kind not in SESSION_TASKS or data.work_type not in CATALOG_SESSION_WORK_TYPES.get(catalog.kind, ()):
             raise ProjectError(422, f"AI catalog '{catalog.key}' cannot run scheduled {data.work_type} sessions")
-        if not catalog.enabled:
+        if not catalog.enabled and catalog.id != keep_disabled:
             raise ProjectError(422, f"AI catalog '{catalog.key}' is disabled")
         # Validate the derived payload against the task's own contract before anything is written.
         probe = ProjectAgentSchedule(project_id=project.id, **data.model_dump())

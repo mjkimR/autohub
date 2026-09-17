@@ -9,8 +9,8 @@ JULES_API_BASE_URL = "https://jules.googleapis.com/v1alpha/"
 SESSION_NAME = re.compile(r"sessions/[A-Za-z0-9_-]+")
 # Reconciliation looks only at recent sessions; an older unconfirmed create is presumed lost by the caller.
 LIST_PAGE_LIMIT = 3
-# A session's activity log is read once, at completion, for its final message; longer logs keep only the tail.
-ACTIVITY_PAGE_LIMIT = 10
+# A session's activity log is read once, at completion, for its final message; a longer log yields none.
+ACTIVITY_PAGE_LIMIT = 50
 
 
 class JulesApiError(RuntimeError):
@@ -70,7 +70,11 @@ class JulesClient:
         return await self._request("GET", name)
 
     async def final_agent_message(self, name: str) -> str | None:
-        """The session's last message to the user, which a report session is told to make its deliverable."""
+        """The session's last message to the user, which a report session is told to make its deliverable.
+
+        Activities are listed oldest first, so the whole log is walked and the last agent message kept. A log
+        longer than the page budget yields no message rather than one from the middle of the session.
+        """
         if not SESSION_NAME.fullmatch(name):
             raise JulesApiError("Jules session name is invalid")
         message: str | None = None
@@ -86,8 +90,8 @@ class JulesClient:
                     message = text
             page_token = page.get("nextPageToken")
             if not isinstance(page_token, str) or not page_token:
-                break
-        return message
+                return message
+        return None
 
     async def find_session_by_title(self, title: str) -> dict[str, Any] | None:
         """Session creation has no idempotency key, so an unconfirmed create is found again by its unique title."""

@@ -137,18 +137,24 @@ Processing in `_observe`:
 ### Session Completion (`JulesSessionService._complete` / `_adopt_pull_request`)
 
 ```text
-work_type == report → result_summary only
-work_type == task
-  ├ no outputs[].pullRequest.url → failure_detail = "Task session completed without opening a pull request"
+_apply: remote state in STALLED_STATES (awaiting_plan_approval, awaiting_user_feedback, paused)
+        → state = failed, failure_detail names the state (the slot is released; nobody answers a scheduled session)
+_complete (in the observation transaction)
+  work_type == report → result_summary only
+  work_type == task, no outputs[].pullRequest.url → failure_detail = "Task session completed without opening a pull request"
+adoption pass (after the loop, over list_sessions_awaiting_adoption: completed task sessions with a pull request,
+               pipeline_run_id NULL and failure_detail NULL — so a crash before the verdict is retried next sync)
   ├ URL repository != session.repository → not adopted
   ├ no enabled project for the repository, or automation.auto_enroll_sessions == false → not adopted
-  └ PipelineRunUseCase.enroll(project, EnrollPullRequest(pull_number, implemented=True))
-       ├ run created at awaiting_ci with one RUNNING implementation attempt (external_status
-       │ "implemented-externally", standard request snapshot so a CI failure derives a ci-fix from it)
-       └ ProjectError (already enrolled, project disabled, …) → failure_detail
+  ├ PipelineRunUseCase.enroll(project, EnrollPullRequest(pull_number, implemented=True))
+  │    ├ run created at awaiting_ci with one RUNNING implementation attempt (external_status
+  │    │ "implemented-externally", standard request snapshot so a CI failure derives a ci-fix from it)
+  │    └ ProjectError → the pull request's active run, if somebody enrolled it first, is linked instead;
+  │      otherwise (project disabled, closed pull request, …) → failure_detail
+  └ any other exception → logged, failure_detail = "Pull request adoption failed: …"; the sync continues
 ```
 
-The run belongs to the project's catalog (Codex by default), so CI fixes and conflict fixes are delivered by the project's adapter as for any other run. Adoption runs after the session's own transaction commits and touches GitHub only through the standard enrollment read.
+The run belongs to the project's catalog (Codex by default), so CI fixes and conflict fixes are delivered by the project's adapter as for any other run. Adoption runs after the session's own transaction commits and touches GitHub only through the standard enrollment read. Resuming an adopted run whose last attempt is the external implementation returns it to `awaiting_ci` instead of replaying that attempt's request.
 
 ### Agent Schedules (`AgentScheduleService`, `AgentScheduleRepository`)
 
@@ -157,16 +163,20 @@ create/update → project must have github_repository
              → catalog.kind in SESSION_TASKS and work_type in CATALOG_SESSION_WORK_TYPES[kind], catalog enabled
              → derived payload validated with JulesSessionPayload before any write
              → write_config: ScheduleConfig(name "Agent <id8>: <title> (<project>)", task_func by kind,
-               payload = session_payload(project, row, catalog), enabled = row.enabled and project.enabled,
-               next_run_at recomputed only when the trigger changed)
-             → ensure_sync_schedule(catalog): one "<kind>.sync_sessions" entry per catalog while any row uses it
+               payload = session_payload(project, row, catalog),
+               enabled = row.enabled and project.enabled and catalog.enabled and project has a repository,
+               next_run_at recomputed when the trigger changed or the entry turned on)
+             → ensure_sync_schedule(catalog): one hub-named "<kind>.sync_sessions" entry ("Agent sync: <key>")
+               per catalog while any row uses it; operator entries for the catalog are not touched
+lock order   → project FOR UPDATE, then catalogs FOR UPDATE in id order (lock_catalogs), then config rows;
+               AICatalogService.set_enabled locks its catalog first too, so the two writers never deadlock
 delete       → row and owned config removed, sync entry removed with the last row
 run_now      → owned config.next_run_at = NULL (the dispatcher's "run immediately" sentinel)
 ```
 
-- `ProjectService.update` calls `AgentScheduleRepository.resync_project`, and `ProjectService.delete` calls `delete_for_project`. The repository module imports models only, so the project service can use it without a cycle (`AgentScheduleService` depends on `ProjectService`).
+- `ProjectService.update` calls `AgentScheduleRepository.resync_project`, `ProjectService.delete` calls `delete_for_project`, and `AICatalogService.set_enabled` calls `resync_catalog`. The repository module imports models only, so the project service can use it without a cycle (`AgentScheduleService` depends on `ProjectService`).
 - `ManagedScheduleHook` on `ScheduleConfigService` refuses update and delete of an owned config with 409; reads are untouched.
-- Sessions link to schedules through `AICatalogSession.schedule_config_id`; `AICatalogRepository.list_sessions_for_schedule` feeds `recent_sessions`.
+- Sessions link to schedules through `AICatalogSession.schedule_config_id`; `AICatalogRepository.list_recent_sessions_for_schedules` feeds `recent_sessions` for a whole listing in one window-function query.
 
 ### Catalog Designation (`PipelineRunUseCase.resolve_catalog`)
 
@@ -179,8 +189,8 @@ designation set  → get_by_key(designation)
                  → disabled → 422; adapter without pipeline delivery → 422
 ```
 
-- `EnrollPullRequest.catalog` carries the designation; the webhook parses it from `@auto-run:<catalog>` (`AUTO_RUN_TRIGGER`, group `catalog`). A refused webhook enrollment is still a processed delivery with `failure_detail = "Enrollment skipped: …"`.
-- The resolved catalog is stored in `pipeline_runs.ai_catalog_id`; a designation is also kept in `requested_catalog_id`. `_run_catalog` (used by resume) prefers the requested catalog while it exists and can deliver, else the project's current selection.
+- `EnrollPullRequest.catalog` carries the designation; the webhook parses it from `@auto-run:<catalog>` (`AUTO_RUN_TRIGGER`, group `catalog`). A refused webhook enrollment is still a processed delivery with `failure_detail = "Enrollment skipped: …"`; an enrollment whose first dispatch is refused (a quota hold, say) records `"Enrolled; first dispatch deferred: …"` and the scheduler dispatches the run later.
+- The resolved catalog is stored in `pipeline_runs.ai_catalog_id`; a designation is also kept in `requested_catalog_id`. `_run_catalog` (used by resume) prefers the requested catalog while it exists, is enabled, and can deliver, else the project's current selection.
 - `resolve_catalog` is the single chokepoint for mapping a request to a catalog, so a router can replace it without touching enrollment or the webhook.
 
 ## Policy Summary

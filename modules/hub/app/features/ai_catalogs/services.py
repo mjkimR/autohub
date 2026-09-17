@@ -16,6 +16,7 @@ from app.features.ai_catalogs.policies.registry import find_quota_policy, quota_
 from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.ai_catalogs.schemas import SetAvailabilityRequest, UpdatePolicyConfigRequest
 from app.features.configuration.connectors.models import Connector
+from app.features.project_management.agent_schedules.repos import AgentScheduleRepository
 from app.features.project_management.projects.services import ProjectError
 from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
@@ -47,6 +48,8 @@ def _dispatch_rejection(catalog: AICatalog, now: datetime) -> str | None:
 class AICatalogService:
     def __init__(self, repo: Annotated[AICatalogRepository, Depends()]) -> None:
         self.repo = repo
+        # Owned agent schedules follow the catalog's enabled switch; see set_enabled.
+        self.agent_schedules = AgentScheduleRepository()
 
     @staticmethod
     def effective_concurrency(catalog: AICatalog) -> int:
@@ -138,6 +141,8 @@ class AICatalogService:
         await self._override_policy_state(session, catalog, now)
         catalog.revision += 1
         await session.flush()
+        # Agent schedules on this catalog pause with it and resume from a fresh due time.
+        await self.agent_schedules.resync_catalog(session, catalog)
         return catalog
 
     async def update_policy_config(

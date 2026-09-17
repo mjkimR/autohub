@@ -63,6 +63,8 @@ from fastapi import Depends
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Marks the synthetic attempt of a pull request implemented outside the pipeline; nothing was sent for it.
+EXTERNAL_IMPLEMENTATION_STATUS = "implemented-externally"
 ACTIVE_RUN_CONFLICT = "This pull request already has an active pipeline run"
 DISPATCH_IO_SECONDS = 30
 DISPATCH_LEASE_SECONDS = 90
@@ -213,7 +215,7 @@ class PipelineRunUseCase:
                 request_snapshot=implementation_request.model_dump(mode="json"),
                 request_digest=request_digest,
                 idempotency_key=idempotency_key,
-                external_status="implemented-externally",
+                external_status=EXTERNAL_IMPLEMENTATION_STATUS,
                 started_at=get_current_utc_time(),
             ),
         )
@@ -708,10 +710,10 @@ class PipelineRunUseCase:
         return catalog
 
     async def _run_catalog(self, session: AsyncSession, project: Project, run: PipelineRun) -> AICatalog:
-        """A run's catalog for further deliveries: its designated catalog while that exists, else the project's."""
+        """A run's catalog for further deliveries: its designated catalog while that is usable, else the project's."""
         if run.requested_catalog_id is not None:
             requested = await AICatalogRepository().get(session, run.requested_catalog_id)
-            if requested is not None and supports_pipeline_delivery(requested.adapter):
+            if requested is not None and requested.enabled and supports_pipeline_delivery(requested.adapter):
                 return requested
         return await self._project_catalog(session, project)
 
@@ -933,6 +935,9 @@ class PipelineRunUseCase:
                 project.github_repository,
                 run.pull_number,
             )
+            # A pull request implemented outside the pipeline has nothing to re-send: its resume goes back to
+            # watching CI. Only attempts the pipeline itself delivered are replayed.
+            external = attempts[-1].external_status == EXTERNAL_IMPLEMENTATION_STATUS if attempts else False
             if attempts:
                 previous = attempts[-1]
                 prior = ImplementationRequest.model_validate(previous.request_snapshot)
@@ -971,6 +976,15 @@ class PipelineRunUseCase:
                 return PipelineRunRead.model_validate(run)
             if pull.head_ref != run.branch:
                 raise ProjectError(409, "Pull request branch changed; enroll it again")
+            if external:
+                run.state = PipelineRunState.AWAITING_CI
+                run.next_action_at = None
+                run.pause_reason = None
+                run.project_revision = project_revision
+                run.ai_catalog_id = (await self._run_catalog(session, project, run)).id
+                run.revision += 1
+                await session.flush()
+                return PipelineRunRead.model_validate(run)
             active = await self.repo.active_attempt(session, run.id)
             if active is not None:
                 active.state = ExecutionAttemptState.FAILED

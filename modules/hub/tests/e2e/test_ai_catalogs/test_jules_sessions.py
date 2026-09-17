@@ -447,3 +447,93 @@ async def test_an_unreadable_activity_log_leaves_the_summary_empty(client, sessi
 
     [tracked] = await sessions_of(session, catalog.id)
     assert (tracked.state, tracked.result_summary) == ("completed", None)
+
+
+async def test_a_session_waiting_for_a_person_is_failed_and_releases_its_slot(client, session, jules):
+    catalog = await make_catalog(session)
+    await track(session, catalog, work_type="report", name="sessions/31")
+    jules.responses[("GET", "/v1alpha/sessions/31")] = (
+        200,
+        {"name": "sessions/31", "state": "AWAITING_USER_FEEDBACK", "url": "https://jules.google/sessions/31"},
+    )
+
+    await make_service().sync(catalog.key)
+
+    [tracked] = await sessions_of(session, catalog.id)
+    assert tracked.state == "failed"
+    assert "awaiting_user_feedback" in (tracked.failure_detail or "")
+    assert await AICatalogRepository().open_session_count(session, catalog.id) == 0
+
+
+async def test_adoption_left_unfinished_by_a_crash_is_retried_on_the_next_sync(client, session, jules, github, project):
+    catalog = await make_catalog(session)
+    # A session completed with a pull request but no verdict: the hub stopped between completion and adoption.
+    row = await track(session, catalog, work_type="task", name="sessions/41")
+    row.state = "completed"
+    row.pull_request_url = PULL_REQUEST_URL
+    await session.commit()
+
+    await make_service().sync(catalog.key)
+
+    [tracked] = await sessions_of(session, catalog.id)
+    assert tracked.pipeline_run_id is not None and tracked.failure_detail is None
+    assert github == [f"/repos/owner/app/pulls/{PULL_REQUEST_NUMBER}"]
+
+
+async def test_an_unexpected_adoption_error_is_recorded_and_does_not_stop_the_sync(
+    client, session, jules, github, project, monkeypatch
+):
+    catalog = await make_catalog(session)
+    row = await track(session, catalog, work_type="task", name="sessions/42")
+    row.state = "completed"
+    row.pull_request_url = PULL_REQUEST_URL
+    await session.commit()
+    service = make_service()
+
+    async def explode(*args, **kwargs):
+        raise RuntimeError("credential store unreachable")
+
+    monkeypatch.setattr(service.runs, "enroll", explode)
+
+    await service.sync(catalog.key)
+
+    [tracked] = await sessions_of(session, catalog.id)
+    assert tracked.pipeline_run_id is None
+    assert tracked.failure_detail == "Pull request adoption failed: credential store unreachable"
+
+
+async def test_a_pull_request_enrolled_by_someone_else_is_linked_to_the_session(
+    client, session, jules, github, project
+):
+    catalog = await make_catalog(session)
+    enrolled = await client.post(
+        f"/api/v1/projects/{project['id']}/runs", json={"pull_number": PULL_REQUEST_NUMBER, "implemented": True}
+    )
+    assert_status_code(enrolled, 201)
+    row = await track(session, catalog, work_type="task", name="sessions/43")
+    row.state = "completed"
+    row.pull_request_url = PULL_REQUEST_URL
+    await session.commit()
+
+    await make_service().sync(catalog.key)
+
+    [tracked] = await sessions_of(session, catalog.id)
+    assert (str(tracked.pipeline_run_id), tracked.failure_detail) == (enrolled.json()["id"], None)
+
+
+async def test_a_final_message_past_the_page_budget_is_not_guessed(client, session, jules, monkeypatch):
+    from app.features.execution.tasks.domains.jules import client as jules_client
+
+    monkeypatch.setattr(jules_client, "ACTIVITY_PAGE_LIMIT", 1)
+    catalog = await make_catalog(session)
+    await track(session, catalog, work_type="report", name="sessions/44")
+    jules.responses[("GET", "/v1alpha/sessions/44")] = (200, completed_session("sessions/44"))
+    jules.responses[("GET", "/v1alpha/sessions/44/activities")] = (
+        200,
+        {**activities("Halfway there."), "nextPageToken": "page-2"},
+    )
+
+    await make_service().sync(catalog.key)
+
+    [tracked] = await sessions_of(session, catalog.id)
+    assert (tracked.state, tracked.result_summary) == ("completed", None)

@@ -135,3 +135,26 @@ test('run now queues the schedule', async () => {
 		)
 	);
 });
+
+test('shows the field message when the hub rejects the schedule as invalid', async () => {
+	const user = userEvent.setup();
+	const { toast } = await import('svelte-sonner');
+	api.POST.mockResolvedValue({
+		error: {
+			detail: [{ loc: ['body'], msg: 'Value error, Invalid cron expression', type: 'value_error' }]
+		}
+	});
+	render(AgentSchedulesDialog, {
+		props: { project, catalogs: [jules], onclose: vi.fn() } as never
+	});
+	await screen.findByText('Weekly hygiene');
+
+	await user.click(screen.getByRole('button', { name: 'New schedule' }));
+	await user.type(screen.getByLabelText('Title'), 'Broken');
+	await user.type(screen.getByLabelText('Prompt'), 'Anything');
+	await user.click(screen.getByRole('button', { name: 'Create schedule' }));
+
+	await waitFor(() =>
+		expect(toast.error).toHaveBeenCalledWith('Value error, Invalid cron expression')
+	);
+});

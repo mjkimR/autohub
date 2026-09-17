@@ -114,7 +114,9 @@
 	async function loadCatalogs() {
 		try {
 			const res = await api.GET('/api/v1/ai-catalogs');
-			pipelineCatalogs = (res.data?.items ?? []).filter((item) => item.pipeline_delivery);
+			pipelineCatalogs = (res.data?.items ?? []).filter(
+				(item) => item.pipeline_delivery && item.enabled
+			);
 		} catch {
 			// The select then only offers the project default.
 		}
@@ -338,10 +340,31 @@
 		}
 	}
 
+	/** A link such as a catalog session's "Pipeline run" names a run to open: `/projects/runs?run=<id>`. */
+	async function openLinkedRun() {
+		let runId: string | null;
+		try {
+			runId = new URLSearchParams(window.location.search).get('run');
+		} catch {
+			return;
+		}
+		if (!runId) return;
+		const res = await api.GET('/api/v1/pipeline-runs/{run_id}', {
+			params: { path: { run_id: runId } }
+		});
+		if (!res.data) {
+			toast.error('The linked pipeline run was not found');
+			return;
+		}
+		selectedProjectId = res.data.project_id;
+		await loadRuns();
+		openAttempts(res.data);
+	}
+
 	onMount(() => {
 		loadProjects();
 		loadCatalogs();
-		loadRuns();
+		loadRuns().then(openLinkedRun);
 	});
 </script>
 

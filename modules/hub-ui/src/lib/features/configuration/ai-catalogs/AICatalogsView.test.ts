@@ -210,7 +210,7 @@ test('pages through sessions and hides their reconciliation marker', async () =>
 	expect(screen.getByText(/3 stale dependencies/)).toBeTruthy();
 	expect(screen.getByRole('link', { name: 'Pipeline run' })).toHaveProperty(
 		'href',
-		expect.stringContaining('/projects/runs')
+		expect.stringContaining('/projects/runs?run=run-9')
 	);
 	expect(api.GET).toHaveBeenCalledWith('/api/v1/ai-catalogs/{catalog_key}/sessions', {
 		params: { path: { catalog_key: 'personal-jules' }, query: { offset: 0, limit: 20 } }

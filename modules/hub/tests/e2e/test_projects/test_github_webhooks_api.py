@@ -191,6 +191,24 @@ async def test_webhook_records_why_a_trigger_did_not_enroll():
     )
 
 
+async def test_webhook_notes_a_deferred_first_dispatch_after_enrolling():
+    from app.features.project_management.projects.services import ProjectError
+
+    webhook, lifecycle = make_webhook(enroll=AsyncMock(return_value=MagicMock(id=uuid4())))
+    lifecycle.manual_advance = AsyncMock(side_effect=ProjectError(409, "AI catalog is quota-blocked"))
+    payload = {
+        "action": "opened",
+        "repository": {"full_name": "owner/app"},
+        "pull_request": {"number": 42, "body": "@auto-run"},
+    }
+
+    await webhook.process("del-4", payload, event="pull_request")
+
+    webhook._finish.assert_awaited_once_with(
+        "del-4", "processed", "Enrolled; first dispatch deferred: AI catalog is quota-blocked"
+    )
+
+
 async def test_webhook_pr_opened_without_auto_run_is_ignored():
     repo = MagicMock()
     runs = MagicMock()

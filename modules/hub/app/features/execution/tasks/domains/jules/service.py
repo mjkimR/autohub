@@ -5,6 +5,7 @@ adopts into the matching project's pipeline (CI, fixes through the project's cat
 session's final message, which the hub stores. Nothing else of a session's output is kept.
 """
 
+import logging
 import re
 from datetime import datetime, timedelta
 from typing import Any, Literal
@@ -37,9 +38,14 @@ from app_layer_base.utils.time_util import get_current_utc_time
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 
+logger = logging.getLogger(__name__)
+
 SESSION_MARKER = "hub-session"
 # Past this age an unconfirmed create that reconciliation cannot find is presumed lost.
 UNCONFIRMED_SESSION_TIMEOUT = timedelta(hours=1)
+# Jules states that wait for a person to answer. Nobody answers a scheduled session, so they are failed at once
+# instead of holding the catalog's concurrency for good.
+STALLED_STATES = ("awaiting_plan_approval", "awaiting_user_feedback", "paused")
 PULL_REQUEST_URL = re.compile(r"^https://github\.com/(?P<repository>[^/]+/[^/]+)/pull/(?P<number>\d+)(?:[/?#].*)?$")
 REPORT_DELIVERY_INSTRUCTIONS = (
     "Deliver the full report as your final message in this session. Do not create branches, commits, or "
@@ -73,6 +79,8 @@ class JulesSessionPayload(BaseModel):
     def _default_pull_request_mode(self) -> "JulesSessionPayload":
         if self.auto_create_pr is None:
             self.auto_create_pr = self.work_type == SESSION_WORK_TYPE_TASK
+        elif self.auto_create_pr and self.work_type == SESSION_WORK_TYPE_REPORT:
+            raise ValueError("A report session cannot open a pull request; its deliverable is the final message")
         return self
 
     @property
@@ -189,7 +197,6 @@ class JulesSessionService:
                 continue
             final_message = await self._final_message(client, remote)
             now = get_current_utc_time()
-            adoption: tuple[str | None, str | None] | None = None
             async with AsyncTransaction() as session:
                 row = await session.get(AICatalogSession, session_id, with_for_update=True)
                 if row is None or row.state in SESSION_TERMINAL_STATES:
@@ -197,13 +204,20 @@ class JulesSessionService:
                 if remote is not None:
                     self._apply(row, remote, now)
                     if row.state == "completed":
-                        adoption = self._complete(row, final_message)
+                        self._complete(row, final_message)
                 elif now - utc(created_at) >= UNCONFIRMED_SESSION_TIMEOUT:
                     row.state = "failed"
                     row.failure_detail = "Jules never confirmed the session; its creation is presumed lost"
                     row.observed_at = now
-            if adoption is not None:
-                await self._adopt_pull_request(session_id, *adoption)
+        # Adoption is a separate pass over every completed task session that still has neither a run nor a
+        # verdict, so a crash or an unexpected error after completion is retried on the next sync.
+        async with AsyncTransaction() as session:
+            pending = [
+                (row.id, row.repository, row.pull_request_url)
+                for row in await self.catalogs.repo.list_sessions_awaiting_adoption(session, catalog_id)
+            ]
+        for session_id, repository, pull_request_url in pending:
+            await self._adopt_pull_request(session_id, repository, pull_request_url)
 
     @staticmethod
     async def _final_message(client: JulesClient, remote: dict[str, Any] | None) -> str | None:
@@ -219,53 +233,62 @@ class JulesSessionService:
             return None
 
     @staticmethod
-    def _complete(row: AICatalogSession, final_message: str | None) -> tuple[str | None, str | None] | None:
-        """Record a completed session's deliverable; returns the pull request to adopt for task work."""
+    def _complete(row: AICatalogSession, final_message: str | None) -> None:
+        """Record a completed session's deliverable. A task session's pull request is adopted in a later pass."""
         row.result_summary = final_message
-        if row.work_type != SESSION_WORK_TYPE_TASK:
-            return None
-        if row.pull_request_url is None:
+        if row.work_type == SESSION_WORK_TYPE_TASK and row.pull_request_url is None:
             row.failure_detail = "Task session completed without opening a pull request"
-            return None
-        if row.pipeline_run_id is not None:
-            return None
-        return row.repository, row.pull_request_url
 
     async def _adopt_pull_request(self, session_id: UUID, repository: str | None, pull_request_url: str) -> None:
-        """Enroll a task session's pull request into its project's pipeline as already implemented."""
+        """Enroll a task session's pull request into its project's pipeline as already implemented.
+
+        Every outcome is written to the session, so one bad adoption never stops the sync and is never retried
+        blindly; only a crash before the write leaves the session for the next pass.
+        """
         detail: str | None = None
         run_id: UUID | None = None
-        match = PULL_REQUEST_URL.match(pull_request_url)
-        if self.runs is None:
-            detail = "Pull request adoption is not available in this context"
-        elif match is None or (repository is not None and match["repository"].lower() != repository):
-            detail = "Pull request is not in the session's repository"
-        else:
-            target = match["repository"].lower()
-            async with AsyncTransaction() as session:
-                project = await session.scalar(select(Project).where(Project.github_repository == target))
-                project_id = project.id if project is not None else None
-                adoptable = (
-                    project is not None and project.enabled and project.automation.get("auto_enroll_sessions", True)
-                )
-            if project_id is None:
-                detail = "No project is connected to the session's repository"
-            elif not adoptable:
-                detail = "The project does not adopt session pull requests"
-            else:
-                try:
-                    run = await self.runs.enroll(
-                        project_id, EnrollPullRequest(pull_number=int(match["number"]), implemented=True)
-                    )
-                    run_id = run.id
-                except ProjectError as exc:
-                    detail = f"Pull request was not adopted: {exc.detail}"
+        try:
+            run_id, detail = await self._enroll_pull_request(repository, pull_request_url)
+        except Exception as exc:  # The verdict must reach the row whatever failed.
+            logger.exception("Adopting the pull request of Jules session %s failed", session_id)
+            detail = f"Pull request adoption failed: {exc}"
         async with AsyncTransaction() as session:
             row = await session.get(AICatalogSession, session_id, with_for_update=True)
             if row is None:
                 return
             row.pipeline_run_id = run_id
             row.failure_detail = detail
+
+    async def _enroll_pull_request(
+        self, repository: str | None, pull_request_url: str
+    ) -> tuple[UUID | None, str | None]:
+        """The adopted run's id, or the reason there is none."""
+        match = PULL_REQUEST_URL.match(pull_request_url)
+        if self.runs is None:
+            return None, "Pull request adoption is not available in this context"
+        if match is None or (repository is not None and match["repository"].lower() != repository):
+            return None, "Pull request is not in the session's repository"
+        target = match["repository"].lower()
+        async with AsyncTransaction() as session:
+            project = await session.scalar(select(Project).where(Project.github_repository == target))
+            project_id = project.id if project is not None else None
+            adoptable = project is not None and project.enabled and project.automation.get("auto_enroll_sessions", True)
+        if project_id is None:
+            return None, "No project is connected to the session's repository"
+        if not adoptable:
+            return None, "The project does not adopt session pull requests"
+        pull_number = int(match["number"])
+        try:
+            run = await self.runs.enroll(project_id, EnrollPullRequest(pull_number=pull_number, implemented=True))
+        except ProjectError as exc:
+            # Somebody enrolled the pull request first (a comment trigger, the API); that run is the session's.
+            async with AsyncTransaction() as session:
+                existing = await self.runs.repo.get_active_for_pull(session, project_id, pull_number)
+                existing_id = existing.id if existing is not None else None
+            if existing_id is not None:
+                return existing_id, None
+            return None, f"Pull request was not adopted: {exc.detail}"
+        return run.id, None
 
     async def _record_create_failure(self, session_id: UUID, catalog_id: UUID, exc: JulesApiError) -> None:
         if exc.status_code is None or exc.status_code >= 500:
@@ -288,6 +311,9 @@ class JulesSessionService:
         state = remote.get("state")
         if isinstance(state, str) and state:
             row.state = state.lower()[:40]
+            if row.state in STALLED_STATES:
+                row.failure_detail = f"Jules is waiting for input the hub cannot give (session state: {row.state})"
+                row.state = "failed"
         url = remote.get("url")
         if isinstance(url, str):
             row.url = url[:2048]

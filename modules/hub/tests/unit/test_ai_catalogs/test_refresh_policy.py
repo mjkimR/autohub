@@ -43,7 +43,9 @@ def make_service(catalog: AICatalog) -> AICatalogService:
     repo.get_by_key = AsyncMock(return_value=catalog)
     repo.active_dispatch_count = AsyncMock(return_value=0)
     repo.reserve_dispatch = AsyncMock()
-    return AICatalogService(repo)
+    service = AICatalogService(repo)
+    service.agent_schedules = MagicMock(resync_catalog=AsyncMock())
+    return service
 
 
 async def deliver_probe_at_hold_end(service: AICatalogService, catalog: AICatalog) -> datetime:

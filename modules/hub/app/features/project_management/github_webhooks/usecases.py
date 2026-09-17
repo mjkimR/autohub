@@ -81,11 +81,16 @@ class GitHubWebhookUseCase:
                     new_run = await self.lifecycle.enroll(
                         project.id, EnrollPullRequest(pull_number=pull_number, catalog=catalog)
                     )
-                    await self.lifecycle.manual_advance(new_run.id, self.lifecycle.observer)
                 except ProjectError as exc:
                     # e.g. concurrent enrollment, already enrolled, or a catalog that cannot take the work.
                     # The delivery is still processed; the reason is kept where operators can find it.
                     await self._finish(delivery_id, "processed", f"Enrollment skipped: {exc.detail}")
+                    return
+                try:
+                    await self.lifecycle.manual_advance(new_run.id, self.lifecycle.observer)
+                except ProjectError as exc:
+                    # The run exists; the scheduler dispatches it once the reason (a quota hold, say) clears.
+                    await self._finish(delivery_id, "processed", f"Enrolled; first dispatch deferred: {exc.detail}")
                     return
 
             await self._finish(delivery_id, "processed")

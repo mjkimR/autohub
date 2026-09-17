@@ -9,6 +9,23 @@ vi.mock('$lib/api', () => ({ api }));
 vi.mock('svelte-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 const project = { id: 'project-1', name: 'Scheduler', enabled: true, revision: 1 };
+const catalogs = [
+	{
+		id: 'c1',
+		key: 'personal-codex',
+		name: 'Personal Codex',
+		enabled: true,
+		pipeline_delivery: true
+	},
+	{ id: 'c2', key: 'old-codex', name: 'Old Codex', enabled: false, pipeline_delivery: true },
+	{
+		id: 'c3',
+		key: 'personal-jules',
+		name: 'Personal Jules',
+		enabled: true,
+		pipeline_delivery: false
+	}
+];
 const run = {
 	id: 'run-1',
 	project_id: 'project-1',
@@ -29,12 +46,17 @@ beforeEach(() => {
 	api.GET.mockImplementation((path: string) => {
 		if (path === '/api/v1/projects') return Promise.resolve({ data: { items: [project] } });
 		if (path === '/api/v1/pipeline-runs') return Promise.resolve({ data: { items: [run] } });
+		if (path === '/api/v1/ai-catalogs') return Promise.resolve({ data: { items: catalogs } });
+		if (path === '/api/v1/pipeline-runs/{run_id}') return Promise.resolve({ data: run });
 		return Promise.resolve({ data: { items: [] } });
 	});
 	api.POST.mockResolvedValue({ data: { ...run, state: 'paused' } });
 });
 
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	document.body.style.removeProperty('pointer-events');
+});
 
 test('renders current run state and pauses the selected run', async () => {
 	const user = userEvent.setup();
@@ -67,4 +89,28 @@ test('enrolls the selected project and refreshes the run list', async () => {
 			body: { pull_number: 42, implemented: false, catalog: null }
 		})
 	);
+});
+
+test('offers only enabled catalogs that deliver pull request work', async () => {
+	const user = userEvent.setup();
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+
+	await user.click(screen.getByRole('button', { name: /Enroll PR/ }));
+
+	const select = (await screen.findByLabelText('AI Catalog')) as HTMLSelectElement;
+	expect(Array.from(select.options).map((o) => o.value)).toEqual(['', 'personal-codex']);
+});
+
+test('opens the run named in the page URL', async () => {
+	window.history.replaceState({}, '', '/projects/runs?run=run-1');
+	render(PipelineRunsView);
+
+	await screen.findByText('Ship the feature');
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs/{run_id}/attempts', {
+			params: { path: { run_id: 'run-1' } }
+		})
+	);
+	window.history.replaceState({}, '', '/projects/runs');
 });

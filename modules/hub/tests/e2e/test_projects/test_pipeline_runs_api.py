@@ -1190,3 +1190,38 @@ async def test_invalid_comment_time_is_not_replaced_by_recovery_time(client, pro
     assert len(mention_github) == 1
     deliveries = (await client.get(f"{root}/attempts/{attempt['id']}/deliveries")).json()
     assert deliveries[0]["posted_at"] is None
+
+
+class TestImplementedRunRecovery:
+    async def test_resuming_an_implemented_run_returns_to_ci_observation_without_sending(self, client, project, github):
+        run = (
+            await client.post(f"/api/v1/projects/{project['id']}/runs", json={"pull_number": 7, "implemented": True})
+        ).json()
+        root = f"/api/v1/pipeline-runs/{run['id']}"
+        assert_status_code(await client.post(f"{root}/pause"), 200)
+
+        resumed = await client.post(f"{root}/resume")
+
+        assert_status_code(resumed, 200)
+        assert resumed.json()["state"] == "awaiting_ci"
+        [attempt] = (await client.get(f"{root}/attempts")).json()["items"]
+        assert attempt["external_status"] == "implemented-externally"
+        deliveries = await client.get(f"{root}/attempts/{attempt['id']}/deliveries")
+        assert deliveries.json() == []
+
+    async def test_a_designated_catalog_disabled_later_gives_way_to_the_project_catalog(
+        self, client, project, github, session
+    ):
+        personal_codex = await add_catalog(session, "personal-codex", "codex", "codex-github-mention")
+        team_codex = await add_catalog(session, "team-codex", "codex", "codex-github-mention")
+        run = (await enroll_with(client, project, "team-codex")).json()
+        assert run["ai_catalog_id"] == team_codex
+        root = f"/api/v1/pipeline-runs/{run['id']}"
+        assert_status_code(await client.post(f"{root}/pause"), 200)
+        assert_status_code(await client.put("/api/v1/ai-catalogs/team-codex/enabled", json={"enabled": False}), 200)
+
+        resumed = await client.post(f"{root}/resume")
+
+        assert_status_code(resumed, 200)
+        assert resumed.json()["ai_catalog_id"] == personal_codex
+        assert resumed.json()["requested_catalog_id"] == team_codex

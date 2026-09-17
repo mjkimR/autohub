@@ -4,7 +4,7 @@ Everything that derives a ``ScheduleConfig`` from a project and an agent schedul
 can keep owned schedules in step without importing the agent-schedule service (which depends on the project service).
 """
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from datetime import timedelta
 from uuid import UUID
 
@@ -40,6 +40,10 @@ def _config_name(project: Project, schedule: ProjectAgentSchedule) -> str:
     return f"Agent {schedule.id.hex[:8]}: {schedule.title} ({project.name})"
 
 
+def _sync_config_name(catalog: AICatalog) -> str:
+    return f"Agent sync: {catalog.key}"
+
+
 class AgentScheduleRepository:
     async def get(self, session: AsyncSession, schedule_id: UUID, *, lock: bool = False) -> ProjectAgentSchedule | None:
         return await session.get(ProjectAgentSchedule, schedule_id, with_for_update=lock)
@@ -70,10 +74,20 @@ class AgentScheduleRepository:
     async def write_config(
         self, session: AsyncSession, project: Project, schedule: ProjectAgentSchedule, catalog: AICatalog
     ) -> ScheduleConfig:
-        """Create or rewrite the owned schedule from its agent schedule. The trigger change recomputes the next run."""
+        """Create or rewrite the owned schedule from its agent schedule.
+
+        The next run is recomputed when the trigger changes and when the entry turns on, so a stale due time from
+        before it was disabled never fires the moment it is re-enabled.
+        """
         config = await session.get(ScheduleConfig, schedule.schedule_config_id) if schedule.schedule_config_id else None
-        trigger_changed = config is None or (
-            config.cron_expression != schedule.cron_expression or config.interval_seconds != schedule.interval_seconds
+        # A project that lost its GitHub connection has no repository to start sessions on.
+        enabled = bool(
+            schedule.enabled and project.enabled and catalog.enabled and project.github_repository is not None
+        )
+        recompute_next_run = config is None or (
+            config.cron_expression != schedule.cron_expression
+            or config.interval_seconds != schedule.interval_seconds
+            or (enabled and not config.enabled)
         )
         if config is None:
             config = ScheduleConfig(task_func=SESSION_TASKS[catalog.kind])
@@ -84,8 +98,8 @@ class AgentScheduleRepository:
         config.cron_expression = schedule.cron_expression
         config.interval_seconds = schedule.interval_seconds
         config.payload = session_payload(project, schedule, catalog)
-        config.enabled = schedule.enabled and project.enabled
-        if trigger_changed:
+        config.enabled = enabled
+        if recompute_next_run:
             config.next_run_at = calc_next_run(schedule.cron_expression, schedule.interval_seconds)
         await session.flush([config])
         schedule.schedule_config_id = config.id
@@ -99,7 +113,27 @@ class AgentScheduleRepository:
             if catalog is not None:
                 await self.write_config(session, project, schedule, catalog)
 
+    async def resync_catalog(self, session: AsyncSession, catalog: AICatalog) -> None:
+        """Rewrite every owned schedule after a catalog change (enabled)."""
+        rows = await session.scalars(
+            select(ProjectAgentSchedule).where(ProjectAgentSchedule.ai_catalog_id == catalog.id)
+        )
+        for schedule in rows.all():
+            project = await session.get(Project, schedule.project_id)
+            if project is not None:
+                await self.write_config(session, project, schedule, catalog)
+
+    async def lock_catalogs(self, session: AsyncSession, catalog_ids: Iterable[UUID]) -> None:
+        """Lock catalogs in id order before their owned configs are written.
+
+        Every writer takes catalog locks before config rows (the catalog service locks its catalog first, then
+        rewrites configs), so taking them here first, in one order, rules out deadlocks between the two paths.
+        """
+        for catalog_id in sorted(set(catalog_ids)):
+            await session.get(AICatalog, catalog_id, with_for_update=True)
+
     async def delete(self, session: AsyncSession, schedule: ProjectAgentSchedule) -> None:
+        await self.lock_catalogs(session, [schedule.ai_catalog_id])
         config = await session.get(ScheduleConfig, schedule.schedule_config_id)
         catalog_id = schedule.ai_catalog_id
         await session.delete(schedule)
@@ -113,14 +147,19 @@ class AgentScheduleRepository:
             await self.delete(session, schedule)
 
     async def ensure_sync_schedule(self, session: AsyncSession, catalog_id: UUID) -> None:
-        """Keep exactly one sync schedule per catalog while any agent schedule uses it, and none otherwise."""
-        catalog = await session.get(AICatalog, catalog_id)
+        """Keep exactly one hub-owned sync schedule per catalog while any agent schedule uses it, none otherwise.
+
+        Only the entry the hub named is managed; an operator's own sync entry for the catalog is left alone.
+        The caller holds the catalog lock (``lock_catalogs``), which serializes writers for one catalog.
+        """
+        catalog = await session.get(AICatalog, catalog_id, with_for_update=True)
         if catalog is None or (task := SYNC_TASKS.get(catalog.kind)) is None:
             return
         existing = (
             await session.scalars(
                 select(ScheduleConfig).where(
                     ScheduleConfig.task_func == task,
+                    ScheduleConfig.name == _sync_config_name(catalog),
                     ScheduleConfig.payload["catalog_key"].as_string() == catalog.key,
                 )
             )
@@ -129,7 +168,7 @@ class AgentScheduleRepository:
         if wanted and not existing:
             session.add(
                 ScheduleConfig(
-                    name=f"Sync sessions: {catalog.key}",
+                    name=_sync_config_name(catalog),
                     description=f"Follows {catalog.name} sessions started by agent schedules to the end",
                     task_func=task,
                     interval_seconds=SYNC_INTERVAL_SECONDS,

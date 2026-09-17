@@ -100,7 +100,10 @@
 									>
 								{/if}
 								{#if item.pipeline_run_id}
-									<a class="text-primary underline" href="/projects/runs">Pipeline run</a>
+									<a
+										class="text-primary underline"
+										href={`/projects/runs?run=${item.pipeline_run_id}`}>Pipeline run</a
+									>
 								{/if}
 							</div>
 						{/if}

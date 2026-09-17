@@ -1,9 +1,11 @@
+import builtins
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from uuid import UUID
 
 from app.features.ai_catalogs.models import (
     SESSION_TERMINAL_STATES,
+    SESSION_WORK_TYPE_TASK,
     AICatalog,
     AICatalogDispatch,
     AICatalogSession,
@@ -17,6 +19,7 @@ from app.features.project_management.pipeline_runs.models import (
 )
 from sqlalchemy import ColumnElement, and_, delete, func, not_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 # Quota windows span at most a day; older ledger entries are only history.
 DISPATCH_LEDGER_RETENTION = timedelta(days=30)
@@ -156,17 +159,56 @@ class AICatalogRepository:
         )
         return rows.all()
 
-    async def list_sessions_for_schedule(
-        self, session: AsyncSession, schedule_config_id: UUID, limit: int
+    async def list_sessions_awaiting_adoption(
+        self, session: AsyncSession, catalog_id: UUID
     ) -> Sequence[AICatalogSession]:
-        """The most recent sessions a schedule started."""
+        """Completed task sessions with a pull request but neither a run nor a recorded reason for none."""
         rows = await session.scalars(
             select(AICatalogSession)
-            .where(AICatalogSession.schedule_config_id == schedule_config_id)
-            .order_by(AICatalogSession.created_at.desc(), AICatalogSession.id)
-            .limit(limit)
+            .where(
+                AICatalogSession.ai_catalog_id == catalog_id,
+                AICatalogSession.state == "completed",
+                AICatalogSession.work_type == SESSION_WORK_TYPE_TASK,
+                AICatalogSession.pull_request_url.is_not(None),
+                AICatalogSession.pipeline_run_id.is_(None),
+                AICatalogSession.failure_detail.is_(None),
+            )
+            .order_by(AICatalogSession.created_at)
         )
         return rows.all()
+
+    async def list_recent_sessions_for_schedules(
+        self, session: AsyncSession, schedule_config_ids: Sequence[UUID], limit_each: int
+    ) -> dict[UUID, "builtins.list[AICatalogSession]"]:
+        """The most recent sessions each schedule started, newest first, in one query.
+
+        The annotation is spelled through ``builtins`` because this class's ``list`` method shadows the name.
+        """
+        if not schedule_config_ids:
+            return {}
+        rank = (
+            func.row_number()
+            .over(
+                partition_by=AICatalogSession.schedule_config_id,
+                order_by=(AICatalogSession.created_at.desc(), AICatalogSession.id),
+            )
+            .label("rank")
+        )
+        ranked = (
+            select(AICatalogSession, rank)
+            .where(AICatalogSession.schedule_config_id.in_(schedule_config_ids))
+            .subquery()
+        )
+        aliased_session = aliased(AICatalogSession, ranked)
+        rows = await session.scalars(
+            select(aliased_session)
+            .where(ranked.c.rank <= limit_each)
+            .order_by(ranked.c.schedule_config_id, ranked.c.rank)
+        )
+        recent: dict[UUID, builtins.list[AICatalogSession]] = {config_id: [] for config_id in schedule_config_ids}
+        for row in rows.all():
+            recent[row.schedule_config_id].append(row)
+        return recent
 
     async def list_sessions(
         self, session: AsyncSession, catalog_id: UUID, *, offset: int, limit: int

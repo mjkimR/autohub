@@ -102,7 +102,11 @@ async def test_creating_a_schedule_derives_its_scheduler_entry_and_the_catalog_s
     assert (config.cron_expression, config.enabled) == ("0 9 * * 1", True)
     assert "Application" in config.name
     [sync] = await configs_by_task(session, "jules.sync_sessions")
-    assert (sync.payload, sync.interval_seconds) == ({"catalog_key": "personal-jules"}, 300)
+    assert (sync.name, sync.payload, sync.interval_seconds) == (
+        "Agent sync: personal-jules",
+        {"catalog_key": "personal-jules"},
+        300,
+    )
 
     listing = await client.get(f"/api/v1/projects/{project['id']}/agent-schedules")
     assert_status_code(listing, 200)
@@ -220,6 +224,80 @@ async def test_project_changes_flow_into_owned_entries(client, session, project,
     assert config.enabled is False
     listing = (await client.get(root)).json()["items"]
     assert listing[0]["enabled"] is True
+
+
+async def test_re_enabling_a_schedule_recomputes_its_next_run(client, session, project, jules):
+    root = f"/api/v1/projects/{project['id']}/agent-schedules"
+    created = (await client.post(root, json=payload(jules, enabled=False))).json()
+    [config] = await configs_by_task(session, "jules.session")
+    # A stale due time left over from before the pause must not fire the moment the schedule turns on.
+    config.next_run_at = None
+    await session.commit()
+
+    enabled = await client.put(f"{root}/{created['id']}", json=payload(jules, enabled=True))
+
+    assert_status_code(enabled, 200)
+    assert enabled.json()["next_run_at"] is not None
+
+
+async def test_disabling_the_catalog_pauses_its_agent_schedules(client, session, project, jules):
+    root = f"/api/v1/projects/{project['id']}/agent-schedules"
+    created = (await client.post(root, json=payload(jules))).json()
+
+    disabled = await client.put("/api/v1/ai-catalogs/personal-jules/enabled", json={"enabled": False})
+    assert_status_code(disabled, 200)
+    [config] = await configs_by_task(session, "jules.session")
+    assert config.enabled is False
+    assert (await client.get(root)).json()["items"][0]["enabled"] is True
+    refused = await client.post(f"{root}/{created['id']}/run-now")
+    assert_status_code(refused, 422)
+    # The schedule stays editable while its catalog is off; its entry simply stays paused.
+    renamed = await client.put(f"{root}/{created['id']}", json=payload(jules, title="Renamed while paused"))
+    assert_status_code(renamed, 200)
+    [config] = await configs_by_task(session, "jules.session")
+    assert (config.enabled, config.payload["title"]) == (False, "Renamed while paused")
+    config.next_run_at = None
+    await session.commit()
+
+    enabled = await client.put("/api/v1/ai-catalogs/personal-jules/enabled", json={"enabled": True})
+    assert_status_code(enabled, 200)
+    [config] = await configs_by_task(session, "jules.session")
+    assert config.enabled is True and config.next_run_at is not None
+
+
+async def test_an_operator_sync_entry_for_the_catalog_is_left_alone(client, session, project, jules):
+    session.add(
+        ScheduleConfig(
+            name="My own jules sync",
+            task_func="jules.sync_sessions",
+            interval_seconds=600,
+            payload={"catalog_key": "personal-jules"},
+            enabled=False,
+        )
+    )
+    await session.commit()
+    root = f"/api/v1/projects/{project['id']}/agent-schedules"
+
+    created = (await client.post(root, json=payload(jules))).json()
+    names = sorted(config.name for config in await configs_by_task(session, "jules.sync_sessions"))
+    assert names == ["Agent sync: personal-jules", "My own jules sync"]
+
+    assert_status_code(await client.delete(f"{root}/{created['id']}"), 204)
+    names = [config.name for config in await configs_by_task(session, "jules.sync_sessions")]
+    assert names == ["My own jules sync"]
+
+
+async def test_disconnecting_the_project_from_github_pauses_its_agent_schedules(client, session, project, jules):
+    await client.post(f"/api/v1/projects/{project['id']}/agent-schedules", json=payload(jules))
+
+    disconnected = await client.put(
+        f"/api/v1/projects/{project['id']}",
+        json={"name": project["name"], "enabled": True, "expected_revision": project["revision"], "github": None},
+    )
+    assert_status_code(disconnected, 200)
+
+    [config] = await configs_by_task(session, "jules.session")
+    assert config.enabled is False and config.payload["repository"] is None
 
 
 async def test_the_generic_schedule_api_refuses_to_touch_an_owned_entry(client, session, project, jules):

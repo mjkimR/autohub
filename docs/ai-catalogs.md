@@ -202,6 +202,22 @@ or the pull request already has an active run.
 - A 429 on create marks the session `failed` and is recorded as a quota event.
   Jules does not document its limit error, so this is conservative.
 - Any other 4xx marks the session `failed`.
+- A session Jules parks waiting for a person (`awaiting_plan_approval`,
+  `awaiting_user_feedback`, `paused`) is marked `failed` at once with the state
+  in `failure_detail`; nobody answers a scheduled session, and leaving it open
+  would hold the catalog's concurrency for good.
+- Task pull requests are adopted in a separate pass of every sync over
+  completed task sessions that have a pull request but neither a run nor a
+  verdict, so a crash between completion and adoption is retried on the next
+  sync. Every adoption outcome, including an unexpected error, is written to
+  `failure_detail`, and one failed adoption never stops the sync. A pull
+  request somebody enrolled first (a comment trigger, the API) is linked to the
+  session through its existing active run instead of being reported as a
+  failure.
+- A report session's final message is read by walking its whole activity log
+  (up to 50 pages of 100). A longer log stores no summary rather than a message
+  from the middle of the session. A report session cannot be asked to open a
+  pull request (`auto_create_pr: true` is rejected).
 - `GET /api/v1/ai-catalogs/{key}/sessions?offset=&limit=` pages through the
   catalog's sessions, most recent first (default limit 50, at most 100), with
   their work type, repository, state, links, adopted pipeline run, result
@@ -218,13 +234,20 @@ project on every save:
 
 - `task_func` comes from the catalog's kind (`jules` → `jules.session`);
 - the payload is the project's repository plus the row's fields;
-- the entry is enabled only while both the schedule and the project are;
-- a trigger change recomputes `next_run_at`, other edits leave it alone.
+- the entry is enabled only while the schedule, the project, and the catalog
+  all are, and the project still has a GitHub repository;
+- `next_run_at` is recomputed when the trigger changes and when the entry turns
+  back on, so a due time left over from before a pause never fires on its own;
+  other edits leave it alone.
 
 While any agent schedule uses a catalog, the hub keeps one
-`jules.sync_sessions` entry for that catalog (every 5 minutes) and removes it
-with the last schedule. Project edits (name, repository, enabled) flow into the
-owned entries, and deleting a project removes them.
+`jules.sync_sessions` entry named `Agent sync: <catalog key>` for that catalog
+(every 5 minutes) and removes it with the last schedule; a sync entry an
+operator created for the same catalog is left alone. Project edits (name,
+repository, enabled) and catalog enable/disable flow into the owned entries,
+and deleting a project removes them. A schedule whose catalog was disabled
+stays editable (its entry simply stays paused); only moving it to another
+disabled catalog is refused.
 
 | Method | Path (`/api/v1/projects/{id}/agent-schedules`) | Description |
 | --- | --- | --- |
@@ -255,10 +278,13 @@ deferred. A run's catalog is resolved once, at enrollment, in this order:
 3. **Seeded**: `personal-codex`.
 
 A designated catalog is stored on the run (`requested_catalog_id`) and kept
-across project changes and resumes. A run without one follows the project's
-current selection when it is resumed, as before. Adopted session pull requests
-never carry a designation; they use the project default so CI fixes have a
-pipeline-capable catalog.
+across project changes and resumes while it is enabled and can deliver pull
+request work; a resume of a run whose designated catalog was disabled in the
+meantime falls back to the project's current selection (the designation stays
+recorded). A run without one follows the project's current selection when it
+is resumed, as before. Adopted session pull requests never carry a
+designation; they use the project default so CI fixes have a pipeline-capable
+catalog.
 
 The designation names an account, not a model: neither the Codex mention nor
 the Jules session API takes a model parameter. When a provider does, its model
@@ -285,7 +311,8 @@ sessions are adopted into the pipeline.
 **Projects → Pipeline runs → Enroll PR** can mark a pull request as already
 implemented (`implemented: true` on `POST /api/v1/projects/{id}/runs`), which
 enrolls it at `awaiting_ci` without an implementation request. Session adoption
-uses the same path.
+uses the same path. Resuming such a run while its only attempt is the external
+implementation returns it to `awaiting_ci`; nothing is re-sent.
 
 An explicit reset time replaces `available_at` for every piece of work on the
 catalog, even while disabled. Clearing a hold records a refresh at that moment;

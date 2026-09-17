@@ -58,8 +58,17 @@
 		if (workTypes.length > 0 && !workTypes.includes(workType)) workType = workTypes[0];
 	});
 
+	/** The hub's error detail: a message, or a list of field errors for a request that failed validation. */
 	function detail(error: unknown, fallback: string): string {
-		return (error as { detail?: string } | undefined)?.detail ?? fallback;
+		const value = (error as { detail?: unknown } | undefined)?.detail;
+		if (typeof value === 'string') return value;
+		if (Array.isArray(value)) {
+			const messages = value
+				.map((item) => (item as { msg?: string })?.msg)
+				.filter((msg): msg is string => typeof msg === 'string');
+			if (messages.length > 0) return messages.join('; ');
+		}
+		return fallback;
 	}
 
 	async function load() {
@@ -101,7 +110,7 @@
 		enabled = schedule.enabled;
 		triggerKind = schedule.cron_expression ? 'cron' : 'interval';
 		cronExpression = schedule.cron_expression ?? '0 9 * * 1';
-		intervalMinutes = String(Math.max(1, Math.round((schedule.interval_seconds ?? 3600) / 60)));
+		intervalMinutes = String((schedule.interval_seconds ?? 3600) / 60);
 		formOpen = true;
 	}
 
@@ -115,7 +124,7 @@
 			starting_branch: startingBranch.trim() || 'main',
 			enabled,
 			cron_expression: triggerKind === 'cron' ? cronExpression.trim() : null,
-			interval_seconds: triggerKind === 'interval' ? Number(intervalMinutes) * 60 : null
+			interval_seconds: triggerKind === 'interval' ? Math.round(Number(intervalMinutes) * 60) : null
 		};
 		saving = true;
 		try {
@@ -170,11 +179,17 @@
 
 	function trigger(schedule: AgentSchedule): string {
 		if (schedule.cron_expression) return `cron ${schedule.cron_expression}`;
-		return `every ${Math.round((schedule.interval_seconds ?? 0) / 60)} min`;
+		const minutes = (schedule.interval_seconds ?? 0) / 60;
+		return `every ${Number.isInteger(minutes) ? minutes : minutes.toFixed(1)} min`;
 	}
 
-	function when(value: string | null | undefined): string {
-		return value ? new Date(value).toLocaleString() : 'due now';
+	function when(value: string | null | undefined, fallback: string): string {
+		return value ? new Date(value).toLocaleString() : fallback;
+	}
+
+	/** An entry without a due time runs on the next tick, unless the entry itself is paused. */
+	function nextRun(schedule: AgentSchedule): string {
+		return when(schedule.next_run_at, schedule.enabled && project.enabled ? 'due now' : 'paused');
 	}
 
 	onMount(load);
@@ -281,7 +296,14 @@
 							<label for="asInterval" class="text-xs font-semibold text-muted-foreground uppercase"
 								>Every (minutes)</label
 							>
-							<Input id="asInterval" type="number" min="1" bind:value={intervalMinutes} required />
+							<Input
+								id="asInterval"
+								type="number"
+								min="1"
+								step="any"
+								bind:value={intervalMinutes}
+								required
+							/>
 						</div>
 					{/if}
 				</div>
@@ -319,9 +341,9 @@
 							<div>
 								<span class="font-medium">{item.title}</span>
 								<p class="mt-0.5 text-xs text-muted-foreground">
-									{trigger(item)} · next {when(item.next_run_at)}
+									{trigger(item)} · next {nextRun(item)}
 									{#if item.last_run_at}
-										· last {when(item.last_run_at)}{/if}
+										· last {when(item.last_run_at, 'never')}{/if}
 								</p>
 							</div>
 							<span class="flex shrink-0 gap-1">
