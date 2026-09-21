@@ -23,6 +23,16 @@ When API definitions change, run `just gen-ui-api` to regenerate the client SDK.
 Frontend commands activate the Node version in `.nvmrc` through nvm; if that version is not installed, `nvm use` fails and `just gen-ui-api` exits with status 3 without further output.
 The Frontend strictly consumes the generated SDK.
 
+Frontend lint includes the shared app-common file-size policy: Svelte components
+allow 500 counted lines, TypeScript 400, and routes 200. Blank lines and JS/TS
+comment-only lines are excluded; markup, styles, and HTML/CSS comments count.
+Generated shadcn primitives, tests, and declarations are excluded. An overage is
+an error: split a cohesive component/helper out, or record an exact-file exception
+with a reason and finite ceiling in `modules/hub-ui/eslint.config.js`. Do not turn
+off the rule or automatically raise ceilings. See the installed app-common
+`ui/structure` guide after `just skills`. CI enforces the same policy through
+`just lint-check hub-ui`.
+
 ## Existing Scheduler Foundation
 
 The backend follows the `API → UseCase → Service → Repository` clean architecture flow.

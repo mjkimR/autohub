@@ -57,6 +57,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	cleanup();
+	vi.restoreAllMocks();
 	document.body.style.removeProperty('pointer-events');
 });
 
@@ -73,6 +74,33 @@ test('renders current run state and pauses the selected run', async () => {
 			params: { path: { run_id: 'run-1' } },
 			body: { reason: 'Paused via UI' }
 		})
+	);
+});
+
+test.each([
+	{ label: 'Advance Run', state: 'implementing', action: 'advance' },
+	{ label: 'Resume Run', state: 'paused', action: 'resume' },
+	{ label: 'Cancel Run', state: 'implementing', action: 'cancel' }
+])('$label acts on the selected row and refreshes the list', async ({ label, state, action }) => {
+	const previous = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation((path: string) =>
+		path === '/api/v1/pipeline-runs'
+			? Promise.resolve({ data: { items: [{ ...run, state }], total_count: 1 } })
+			: previous(path)
+	);
+	vi.spyOn(window, 'confirm').mockReturnValue(true);
+	const user = userEvent.setup();
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+	await user.click(screen.getByRole('button', { name: label }));
+
+	await waitFor(() =>
+		expect(api.POST).toHaveBeenCalledWith(`/api/v1/pipeline-runs/{run_id}/${action}`, {
+			params: { path: { run_id: 'run-1' } }
+		})
+	);
+	await waitFor(() =>
+		expect(api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs')).toHaveLength(2)
 	);
 });
 

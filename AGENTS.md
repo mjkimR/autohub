@@ -38,6 +38,12 @@ We use **just** as the primary command runner and task orchestrator.
 - **Tech Stack**: Svelte 5 (Runes forced mode), SvelteKit 2 (SPA), TypeScript, Tailwind CSS v4, shadcn-svelte (bits-ui), openapi-fetch, zod.
 - **Styling**: Tailwind CSS v4 CSS-first design system in `src/routes/layout.css`, OKLCH tokens, dark/light theme with `mode-watcher`.
 - **Client Integration**: Import typed client resources from `$lib/api` (`api` client generated via `just gen-ui-api`).
+- **File Size**: The shared `@app-common/eslint-config/structure` preset fails lint
+  above 500 counted lines for Svelte, 400 for TypeScript, and 200 for routes.
+  Split by responsibility first; any exception needs an exact file path, reason,
+  and finite ceiling in `modules/hub-ui/eslint.config.js`. Do not disable the rule
+  or automatically increase ceilings to pass. Read the installed app-common
+  `ui/structure` guide; generated shadcn primitives are excluded, authored UI is not.
 
 ---
 
@@ -47,5 +53,4 @@ We use **just** as the primary command runner and task orchestrator.
 2. **Commits**: Concise, imperative, and **no emojis** (e.g., "Add user-defined timeout").
 3. **Pre-flight Checks**: Always run `just lint` and verification builds before proposing a final solution.
 4. **Git Commit**: Do not execute `git commit` commands or perform commits automatically unless explicitly requested or approved by the user.
-
 

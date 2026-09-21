@@ -5,6 +5,7 @@ import svelte from 'eslint-plugin-svelte';
 import { defineConfig, includeIgnoreFile } from 'eslint/config';
 import globals from 'globals';
 import ts from 'typescript-eslint';
+import { structure } from '@app-common/eslint-config/structure';
 
 const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
 
@@ -15,6 +16,10 @@ export default defineConfig(
 	svelte.configs.recommended,
 	prettier,
 	svelte.configs.prettier,
+	...structure({
+		// shadcn-svelte primitives are generated; authored views and shared components stay checked.
+		ignores: ['src/lib/components/ui/**']
+	}),
 	{
 		languageOptions: { globals: { ...globals.browser, ...globals.node } },
 		rules: {
