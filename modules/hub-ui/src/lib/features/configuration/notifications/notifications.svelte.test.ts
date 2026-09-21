@@ -16,7 +16,7 @@ test.each(['create', 'update', 'setEnabled', 'remove', 'sendTest'] as const)(
 	'network failure during %s is handled and allows retry',
 	async (action) => {
 		const state = new NotificationChannelsState();
-		const form = { name: 'Phone', chatId: '42', botToken: 'test-token' };
+		const form = { name: 'Phone', chatId: '42', botToken: 'test-token', minLevel: 'info' as const };
 		const actions = {
 			create: () => state.create(form),
 			update: () => state.update('n1', form),

@@ -16,7 +16,10 @@ const phone = {
 	name: 'My phone',
 	kind: 'telegram',
 	enabled: true,
+	min_level: 'info' as const,
 	chat_id: '424242',
+	created_at: '2026-09-21T00:00:00Z',
+	updated_at: '2026-09-21T00:00:00Z',
 	last_sent_at: null,
 	last_error: 'Telegram returned HTTP 400: Bad Request: chat not found'
 };
@@ -51,6 +54,7 @@ test('explains the setup when no channel exists and adds a Telegram channel', as
 				name: 'My phone',
 				kind: 'telegram',
 				enabled: true,
+				min_level: 'info',
 				chat_id: '424242',
 				bot_token: '123:secret'
 			}
@@ -78,7 +82,7 @@ test('shows the last failure, reports an undelivered test, and keeps the token o
 	await waitFor(() =>
 		expect(api.PATCH).toHaveBeenCalledWith('/api/v1/notification-channels/{channel_id}', {
 			params: { path: { channel_id: 'n1' } },
-			body: { name: 'My phone', chat_id: '-100777' }
+			body: { name: 'My phone', min_level: 'info', chat_id: '-100777' }
 		})
 	);
 });

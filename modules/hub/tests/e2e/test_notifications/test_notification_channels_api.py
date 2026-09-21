@@ -12,11 +12,12 @@ ROOT = "/api/v1/notification-channels"
 
 
 async def test_a_channel_seals_its_bot_token_and_never_returns_it(client, session, channel):
-    assert (channel["name"], channel["kind"], channel["chat_id"], channel["enabled"]) == (
+    assert (channel["name"], channel["kind"], channel["chat_id"], channel["enabled"], channel["min_level"]) == (
         "My phone",
         "telegram",
         "424242",
         True,
+        "info",
     )
     assert "bot_token" not in channel and "bot-secret" not in json.dumps(channel)
     stored = await session.get(NotificationChannel, UUID(channel["id"]))
@@ -73,3 +74,54 @@ async def test_a_deleted_or_unknown_channel_is_not_found(client, channel):
     assert_status_code(await client.post(f"{ROOT}/{channel['id']}/test"), 404)
     assert_status_code(await client.patch(f"{ROOT}/{channel['id']}", json={"enabled": True}), 404)
     assert (await client.get(ROOT)).json()["items"] == []
+
+
+async def test_channel_min_level_can_be_customized_and_filters_broadcasts(
+    client, channel, telegram, credential_key_provider
+):
+    assert channel["min_level"] == "info"
+
+    patched = await client.patch(f"{ROOT}/{channel['id']}", json={"min_level": "error"})
+    assert_status_code(patched, 200)
+    assert patched.json()["min_level"] == "error"
+
+    created = await client.post(
+        ROOT,
+        json={"name": "Second channel", "chat_id": "888888", "bot_token": "token2", "min_level": "warning"},
+    )
+    assert_status_code(created, 201)
+
+    from app.features.configuration.connectors.crypto import ConnectorCredentialCipher
+    from app.features.notifications.notifier import Notifier
+    from app.features.notifications.repos import NotificationChannelRepository
+    from app.features.notifications.services import NotificationChannelService
+
+    notifier = Notifier(
+        NotificationChannelService(
+            NotificationChannelRepository(),
+            ConnectorCredentialCipher(credential_key_provider),
+        )
+    )
+
+    telegram.requests.clear()
+    await notifier.send("Informational event", level="info")
+    assert telegram.requests == []
+
+    telegram.requests.clear()
+    await notifier.send("Warning event", level="warning")
+    assert len(telegram.requests) == 1
+    assert json.loads(telegram.requests[0].content)["chat_id"] == "888888"
+    assert "⚠️ [WARNING] Warning event" in telegram.texts
+
+    telegram.requests.clear()
+    await notifier.send("Error event", level="error")
+    assert len(telegram.requests) == 2
+    chat_ids = {json.loads(req.content)["chat_id"] for req in telegram.requests}
+    assert chat_ids == {"424242", "888888"}
+    assert all("🚨 [ERROR] Error event" in t for t in telegram.texts)
+
+    telegram.requests.clear()
+    test_res = await client.post(f"{ROOT}/{channel['id']}/test")
+    assert_status_code(test_res, 200)
+    assert len(telegram.requests) == 1
+    assert json.loads(telegram.requests[0].content)["chat_id"] == "424242"

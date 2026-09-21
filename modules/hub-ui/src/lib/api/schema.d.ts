@@ -2100,6 +2100,12 @@ export interface components {
 			 */
 			enabled: boolean;
 			/**
+			 * Min Level
+			 * @default info
+			 * @enum {string}
+			 */
+			min_level: 'debug' | 'info' | 'warning' | 'error' | 'critical';
+			/**
 			 * Chat Id
 			 * @description Telegram chat the bot posts to
 			 */
@@ -2121,6 +2127,8 @@ export interface components {
 			name?: string | null;
 			/** Enabled */
 			enabled?: boolean | null;
+			/** Min Level */
+			min_level?: ('debug' | 'info' | 'warning' | 'error' | 'critical') | null;
 			/** Chat Id */
 			chat_id?: string | null;
 			/** Bot Token */
@@ -2149,6 +2157,11 @@ export interface components {
 			kind: string;
 			/** Enabled */
 			enabled: boolean;
+			/**
+			 * Min Level
+			 * @enum {string}
+			 */
+			min_level: 'debug' | 'info' | 'warning' | 'error' | 'critical';
 			/** Chat Id */
 			chat_id: string | null;
 			/** Last Sent At */

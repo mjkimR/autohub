@@ -66,7 +66,7 @@ async def test_a_stopped_run_is_announced_once_and_again_when_it_stops_anew(clie
 
     [text] = telegram.texts
     assert text == (
-        f"Auto Hub: run blocked - {run.github_repository}#42\n{run.pull_url}\nReason: CI failed twice; resume manually"
+        f"🚨 [ERROR] Auto Hub: run blocked - {run.github_repository}#42\n{run.pull_url}\nReason: CI failed twice; resume manually"
     )
 
     await session.refresh(run)
@@ -166,7 +166,7 @@ async def test_a_run_waiting_on_rejected_credentials_is_announced_once_and_recov
     assert_status_code(await client.post(TRIGGER), 200)
 
     [text] = telegram.texts
-    assert text.startswith(f"Auto Hub: run waiting - {run.github_repository}#42")
+    assert text.startswith(f"⚠️ [WARNING] Auto Hub: run waiting - {run.github_repository}#42")
     assert "connector token was rejected" in text
     await session.refresh(run)
     assert (run.state, run.pause_reason) == (PipelineRunState.AWAITING_CI, GITHUB_AUTH_WAIT_REASON)

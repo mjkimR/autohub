@@ -93,7 +93,8 @@ class TickHousekeepingUseCase:
             if tick_status(previous, now) == "stale" and previous is not None:
                 await self.notifier.send(
                     f"Auto Hub: the scheduler trigger fired again after {_minutes(now - previous)} minutes of silence. "
-                    "No run advanced on a timer in between."
+                    "No run advanced on a timer in between.",
+                    level="info",
                 )
         except Exception:
             logger.exception("Recording the dispatcher tick failed")
@@ -116,7 +117,8 @@ class TickHousekeepingUseCase:
                 heartbeat.data = {**data, "stale_notice_at": now.isoformat()}
             await self.notifier.send(
                 f"Auto Hub: the scheduler trigger has not fired for {_minutes(now - last_tick)} minutes. "
-                "Runs only advance on webhooks until it does; check the Cloud Scheduler job."
+                "Runs only advance on webhooks until it does; check the Cloud Scheduler job.",
+                level="warning",
             )
         except Exception:
             logger.exception("Checking for a stopped scheduler trigger failed")
@@ -151,7 +153,7 @@ class TickHousekeepingUseCase:
         try:
             webhooks = GitHubWebhookUseCase(self.deliveries, self.runs, self.lifecycle)
             for notice in await webhooks.sweep_stalled(get_current_utc_time()):
-                await self.notifier.send(f"Auto Hub: {notice}")
+                await self.notifier.send(f"Auto Hub: {notice}", level="error")
         except Exception:
             logger.exception("Sweeping stalled GitHub webhook deliveries failed")
 
@@ -162,9 +164,10 @@ class TickHousekeepingUseCase:
                 stops = []
                 for run in await self.runs.list_unannounced_stops(session, since=now - STOP_NOTICE_HORIZON):
                     project = await session.get(Project, run.project_id)
-                    stops.append((run.id, run.revision, _stop_notice(run, project)))
-            for run_id, revision, text in stops:
-                deliveries = await self.notifier.send(text)
+                    level = "warning" if run.state in IN_FLIGHT_RUN_STATES else "error"
+                    stops.append((run.id, run.revision, _stop_notice(run, project), level))
+            for run_id, revision, text, level in stops:
+                deliveries = await self.notifier.send(text, level=level)
                 # Undelivered stops stay unannounced, so a channel added or repaired later still hears of them.
                 if any(delivery.error is None for delivery in deliveries):
                     async with AsyncTransaction() as session:

@@ -39,6 +39,7 @@ class NotificationChannelService:
             name=data.name,
             kind=data.kind,
             enabled=data.enabled,
+            min_level=data.min_level,
             config={"chat_id": data.chat_id.strip()},
             credentials_ciphertext=sealed.ciphertext,
             credentials_nonce=sealed.nonce,
@@ -58,6 +59,8 @@ class NotificationChannelService:
             channel.name = data.name
         if data.enabled is not None:
             channel.enabled = data.enabled
+        if data.min_level is not None:
+            channel.min_level = data.min_level
         if data.chat_id is not None:
             channel.config = {**(channel.config or {}), "chat_id": data.chat_id.strip()}
         if data.bot_token is not None:

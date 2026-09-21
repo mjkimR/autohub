@@ -4,8 +4,14 @@ import { responseData } from '$lib/api/pagination';
 import { toast } from 'svelte-sonner';
 
 export type NotificationChannel = components['schemas']['NotificationChannelRead'];
+export type NotificationLevel = NotificationChannel['min_level'];
 
-export type ChannelForm = { name: string; chatId: string; botToken: string };
+export type ChannelForm = {
+	name: string;
+	chatId: string;
+	botToken: string;
+	minLevel: NotificationLevel;
+};
 
 export class NotificationChannelsState {
 	items = $state<NotificationChannel[]>([]);
@@ -36,6 +42,7 @@ export class NotificationChannelsState {
 					name: form.name.trim(),
 					kind: 'telegram',
 					enabled: true,
+					min_level: form.minLevel,
 					chat_id: form.chatId.trim(),
 					bot_token: form.botToken.trim()
 				}
@@ -63,6 +70,7 @@ export class NotificationChannelsState {
 				params: { path: { channel_id: id } },
 				body: {
 					name: form.name.trim(),
+					min_level: form.minLevel,
 					chat_id: form.chatId.trim(),
 					...(form.botToken.trim() ? { bot_token: form.botToken.trim() } : {})
 				}

@@ -13,7 +13,9 @@ connectors: a connector authenticates the hub *to* a provider it works with, a c
 - The only kind today is `telegram`: the destination `chat_id` is stored as plain configuration, the bot token is
   sealed with the same AES-GCM key as connector credentials (bound to the channel, so a sealed token can never be
   replayed as a connector credential) and is never returned by the API.
-- Every enabled channel receives every notice. A test goes to the one named channel even when it is disabled.
+- Every enabled channel receives notices at or above its configured minimum level (`min_level`: `debug`, `info`,
+  `warning`, `error`, `critical`). The default is `info`. A test goes to the one named channel even when it is
+  disabled, regardless of minimum level.
 - Each channel records `last_sent_at` and `last_error`; a delivery that succeeds clears the error.
 
 ### Telegram setup
@@ -22,21 +24,23 @@ connectors: a connector authenticates the hub *to* a provider it works with, a c
 2. Send any message to the new bot, so it is allowed to write to you.
 3. Open `https://api.telegram.org/bot<TOKEN>/getUpdates` and copy `result[].message.chat.id`.
    A group chat works too: add the bot to the group, post a message, and use the (negative) group chat id.
-4. Add the channel in **Settings → Notifications** and press **Send test**.
+4. Add the channel in **Settings → Notifications**, pick its minimum notification level, and press **Send test**.
 
 ## What is announced
 
 Housekeeping runs on every dispatcher tick (`POST /api/v1/dispatchers/trigger`), around the schedules the tick
-executes. Each step logs its own failure and never fails the tick.
+executes. Each step logs its own failure and never fails the tick. Every outgoing message is tagged with its level
+(e.g., `🚨 [ERROR]`, `⚠️ [WARNING]`, `ℹ️ [INFO]`).
 
-| Notice | When |
-| --- | --- |
-| Run stopped | A pipeline run is `paused`, `blocked`, or `failed` at a revision nobody was told about. The notice names the repository, pull request, and pause reason. |
-| Run waiting | An in-flight run holds a reason it waits on GitHub for: a merge blocked by a review, branch rule, or draft, or a rejected connector token. See [Architecture](architecture.md#github-failures). |
-| Trigger resumed | A tick arrives more than 10 minutes after the previous one. |
-| Trigger stopped | A GitHub webhook arrives while the last tick is more than 10 minutes old; at most once per hour. |
-| Login lockout | A caller failed to sign in five times within a minute and is locked out for five minutes. See [Development & Operations](development.md). |
-| `@auto-run` lost | A replayed `@auto-run` delivery failed again (see below). |
+| Notice | Level | When |
+| --- | --- | --- |
+| Run stopped | `error` | A pipeline run is `paused`, `blocked`, or `failed` at a revision nobody was told about. The notice names the repository, pull request, and pause reason. |
+| Run waiting | `warning` | An in-flight run holds a reason it waits on GitHub for: a merge blocked by a review, branch rule, or draft, or a rejected connector token. See [Architecture](architecture.md#github-failures). |
+| Trigger resumed | `info` | A tick arrives more than 10 minutes after the previous one. |
+| Trigger stopped | `warning` | A GitHub webhook arrives while the last tick is more than 10 minutes old; at most once per hour. |
+| Login lockout | `warning` | A caller failed to sign in five times within a minute and is locked out for five minutes. See [Development & Operations](development.md). |
+| `@auto-run` lost | `error` | A replayed `@auto-run` delivery failed again (see below). |
+| Channel test | `info` | A test notice sent manually via the dashboard or API. |
 
 A stopped run is marked announced (`pipeline_runs.notified_revision`) only when at least one channel accepted the
 notice, so a stop that could not be delivered is retried by the next tick and a channel added later still hears of

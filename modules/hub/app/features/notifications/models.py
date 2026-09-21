@@ -18,6 +18,7 @@ class NotificationChannel(Base, UUIDMixin, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     kind: Mapped[str] = mapped_column(String(30), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    min_level: Mapped[str] = mapped_column(String(20), nullable=False, default="info")
     # Non-secret destination settings; a Telegram channel keeps its ``chat_id`` here.
     config: Mapped[dict] = mapped_column(JSON_VARIANT, nullable=False, default=dict)
     # The channel's secret (a Telegram bot token), sealed like connector credentials.

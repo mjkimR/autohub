@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Annotated
 from uuid import UUID
 
+from app.features.notifications.schemas import NotificationLevel, is_level_enabled
 from app.features.notifications.services import NotificationChannelService
 from app.features.notifications.telegram import TelegramError, create_telegram_client, send_telegram_message
 from app_layer_base.core.database.transaction import AsyncTransaction
@@ -17,6 +18,20 @@ class Delivery:
     error: str | None
 
 
+LEVEL_PREFIXES: dict[str, str] = {
+    "debug": "🔍 [DEBUG]",
+    "info": "ℹ️ [INFO]",  # noqa: RUF001
+    "warning": "⚠️ [WARNING]",
+    "error": "🚨 [ERROR]",
+    "critical": "🔥 [CRITICAL]",
+}
+
+
+def format_notice(text: str, level: NotificationLevel | str) -> str:
+    prefix = LEVEL_PREFIXES.get(str(level).lower())
+    return f"{prefix} {text}" if prefix else text
+
+
 class Notifier:
     """Sends one notice to the operator's channels and records how each delivery went.
 
@@ -26,20 +41,33 @@ class Notifier:
     def __init__(self, channels: Annotated[NotificationChannelService, Depends()]) -> None:
         self.channels = channels
 
-    async def send(self, text: str, *, channel_id: UUID | None = None) -> list[Delivery]:
-        """Deliver to every enabled channel, or to the one named channel even when it is disabled (a test)."""
+    async def send(
+        self,
+        text: str,
+        *,
+        level: NotificationLevel | str = "info",
+        channel_id: UUID | None = None,
+    ) -> list[Delivery]:
+        """Deliver to every enabled channel that accepts this level, or to the one named channel even when it is disabled (a test)."""
         try:
-            return await self._send(text, channel_id)
+            return await self._send(text, level, channel_id)
         except Exception:
             logger.exception("Sending a notification failed")
             return []
 
-    async def _send(self, text: str, channel_id: UUID | None) -> list[Delivery]:
+    async def _send(
+        self,
+        text: str,
+        level: NotificationLevel | str,
+        channel_id: UUID | None,
+    ) -> list[Delivery]:
         async with AsyncTransaction() as session:
             rows = await self.channels.repo.list(session, enabled_only=channel_id is None)
             targets: list[tuple[UUID, str, str, str | None]] = []
             for row in rows:
                 if channel_id is not None and row.id != channel_id:
+                    continue
+                if channel_id is None and not is_level_enabled(row.min_level, str(level)):
                     continue
                 chat_id = (row.config or {}).get("chat_id")
                 try:
@@ -50,6 +78,7 @@ class Notifier:
 
         deliveries: list[Delivery] = []
         if targets:
+            formatted_text = format_notice(text, level)
             async with create_telegram_client() as client:
                 for target_id, name, token, chat_id in targets:
                     error: str | None = None
@@ -57,7 +86,7 @@ class Notifier:
                         error = "The channel's bot token or chat id is missing or cannot be decrypted"
                     else:
                         try:
-                            await send_telegram_message(client, token, chat_id, text)
+                            await send_telegram_message(client, token, chat_id, formatted_text)
                         except TelegramError as exc:
                             error = str(exc)
                     if error is not None:

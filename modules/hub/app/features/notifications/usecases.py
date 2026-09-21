@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 from uuid import UUID
 
 from app.features.notifications.models import NotificationChannel
@@ -8,6 +8,7 @@ from app.features.notifications.schemas import (
     NotificationChannelList,
     NotificationChannelPatch,
     NotificationChannelRead,
+    NotificationLevel,
     NotificationTestResult,
 )
 from app.features.notifications.services import NotificationChannelService
@@ -25,6 +26,7 @@ def _read(channel: NotificationChannel) -> NotificationChannelRead:
         name=channel.name,
         kind=channel.kind,
         enabled=channel.enabled,
+        min_level=cast(NotificationLevel, channel.min_level),
         chat_id=str(chat_id) if chat_id else None,
         last_sent_at=channel.last_sent_at,
         last_error=channel.last_error,

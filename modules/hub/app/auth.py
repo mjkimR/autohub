@@ -83,7 +83,8 @@ def login_lockout_listener(notifier: Annotated[Notifier, Depends()]) -> LoginLoc
     async def tell_operator(caller: str) -> None:
         logger.warning("A caller was locked out after repeated failed logins.")
         await notifier.send(
-            f"Auto Hub: repeated failed logins from {masked_address(caller)}. That address is locked out for a while."
+            f"Auto Hub: repeated failed logins from {masked_address(caller)}. That address is locked out for a while.",
+            level="warning",
         )
 
     return tell_operator

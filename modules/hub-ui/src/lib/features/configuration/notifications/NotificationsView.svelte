@@ -23,17 +23,22 @@
 	const channels = new NotificationChannelsState();
 	let dialogOpen = $state(false);
 	let editing = $state<NotificationChannel | null>(null);
-	let form = $state<ChannelForm>({ name: '', chatId: '', botToken: '' });
+	let form = $state<ChannelForm>({ name: '', chatId: '', botToken: '', minLevel: 'info' });
 
 	function openCreate() {
 		editing = null;
-		form = { name: '', chatId: '', botToken: '' };
+		form = { name: '', chatId: '', botToken: '', minLevel: 'info' };
 		dialogOpen = true;
 	}
 
 	function openEdit(channel: NotificationChannel) {
 		editing = channel;
-		form = { name: channel.name, chatId: channel.chat_id ?? '', botToken: '' };
+		form = {
+			name: channel.name,
+			chatId: channel.chat_id ?? '',
+			botToken: '',
+			minLevel: channel.min_level
+		};
 		dialogOpen = true;
 	}
 
@@ -116,9 +121,14 @@
 									</p>
 								</div>
 							</div>
-							<Badge variant={channel.enabled ? 'default' : 'secondary'}
-								>{channel.enabled ? 'enabled' : 'disabled'}</Badge
-							>
+							<div class="flex items-center gap-1.5">
+								<Badge variant="outline" class="font-mono text-[10px] uppercase">
+									{channel.min_level}
+								</Badge>
+								<Badge variant={channel.enabled ? 'default' : 'secondary'}
+									>{channel.enabled ? 'enabled' : 'disabled'}</Badge
+								>
+							</div>
 						</div>
 					</CardHeader>
 					<CardContent class="space-y-3 text-sm">
@@ -172,6 +182,29 @@
 			<label class="grid gap-1 text-sm font-medium">
 				Chat ID
 				<Input bind:value={form.chatId} required placeholder="123456789" />
+			</label>
+			<label class="grid gap-1 text-sm font-medium">
+				Minimum notification level
+				<select
+					bind:value={form.minLevel}
+					class="h-9 rounded-md border border-input bg-transparent px-3 text-sm text-foreground"
+				>
+					<option value="debug" class="bg-background text-foreground"
+						>DEBUG — all trace and raw events</option
+					>
+					<option value="info" class="bg-background text-foreground"
+						>INFO — routine progress and normal triggers</option
+					>
+					<option value="warning" class="bg-background text-foreground"
+						>WARNING — delays, waiting runs, lockouts</option
+					>
+					<option value="error" class="bg-background text-foreground"
+						>ERROR — paused/blocked runs, failed replay</option
+					>
+					<option value="critical" class="bg-background text-foreground"
+						>CRITICAL — service stoppage, fatal errors</option
+					>
+				</select>
 			</label>
 			<label class="grid gap-1 text-sm font-medium">
 				Bot token
