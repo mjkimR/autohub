@@ -165,27 +165,55 @@ recovery, lease takeover, catalog admission and ledger counting, Jules session
 creation, rate limiting, and reconciliation, and UI enrollment, pause, and
 catalog policy editing.
 
+Live deployment verification on 2026-09-21 (Cloud Run `us-west1` and Cloud Scheduler):
+
+- Deployment & Scheduler: Cloud Run service `autohub` deployed. Cloud Scheduler
+  job `autohub-dispatcher-tick` ticks `/api/v1/dispatchers/trigger` every minute
+  with the managed machine key (`X-API-Key` with `autohub:dispatch` scope),
+  returning HTTP 200. Calling non-dispatcher endpoints (e.g. `/api/v1/projects`)
+  with the machine key is rejected with HTTP 401. Deep health check
+  (`/api/health/deep`) confirms database and scheduler status ("ok").
+- Authentication & Token Renewal: Frontend session persistence and silent
+  token refresh via `/api/v1/users/login/refresh` upon 10-minute access token
+  expiry was verified in active browser sessions.
+- Live PR Pipeline Canary (`mjkimR/test-sandbox` PR #3, #4, #5, #6):
+  GitHub webhook endpoint updated to the live service URL (`202 Accepted`).
+  Opening PR #3 with `@auto-run` in the body triggered automated webhook
+  enrollment (`queued` -> `dispatching` -> `implementing`), posted the `@codex`
+  attempt comment, and recorded the attempt. The head change was observed
+  (`implementing` -> `awaiting_ci`), GitHub Actions CI (`jobs.test`) passed, and
+  the scheduler tick observed passing CI and automatically executed the merge
+  (`awaiting_ci` -> `completed`, PR state `MERGED` by `mjkimR`).
+  Concurrent enrollment was verified on PR #4 and PR #5: PR #4 was dispatched
+  immediately while PR #5 was held in queue by the `personal-codex` concurrency
+  cap (1 run). PR #4 was automatically merged upon CI pass.
+  On PR #6, after setting an updated `GH_TOKEN` in the Codex environment, Codex
+  unattendedly implemented the task, passed tests, and pushed commit `8aee6d9`
+  directly to the branch. GitHub Actions CI passed, and Auto Hub detected the
+  push and merged PR #6 automatically (`awaiting_ci` -> `completed`, state `MERGED`).
+
 ## Follow-up canaries
 
-- After the first deploy with accounts: sign in from a browser, leave the tab
-  past the 10-minute access token and confirm it renews by itself, confirm
-  Cloud Scheduler still ticks with `X-Scheduler-Key` (the job's old `X-API-Key`
-  header is removed by the deploy script), and that the same key is refused on
-  any other route.
-
+- [Completed 2026-09-21] First deploy with accounts & scheduler: browser sign-in
+  silent token renewal after access token expiry, Cloud Scheduler 1-minute tick
+  with managed machine key (`X-API-Key`), and route scope isolation (401 on
+  other routes).
+- [Completed 2026-09-21] Codex PR canary on `mjkimR/test-sandbox#6`:
+  unattended webhook enrollment, `@codex` dispatch comment, direct Codex `git push`
+  with configured `GH_TOKEN`, head change detection, CI observation, and
+  automatic merge verified end-to-end.
+- [Completed 2026-09-21] In a sandbox, enroll two PRs at once to validate production
+  scheduler concurrency and catalog admission control (`mjkimR/test-sandbox#4` and `#5`).
 - Add a Telegram channel in production, send a test, and confirm a paused run
   is announced.
 - On a sandbox repository that requires one approving review, confirm a
   passing run waits with a notice and merges by itself after the approval, and
   check which `mergeable_state` GitHub reports for a required check Hub does
   not observe.
-- Re-run the Codex PR canary after deploying the refactored gateway.
 - Run one live Jules session of each work type: confirm the v1alpha field
   names (`outputs[].pullRequest.url`, `agentMessaged.message`), that a task
   session's pull request is adopted and merged, the error returned at the
   daily and concurrent caps, and whether a limit is reported as HTTP 429.
-- In a sandbox, enroll two PRs at once to validate production scheduler
-  concurrency and duplicate enrollment handling.
 - If webhook delivery reliability becomes a concern, validate a deliberately
   missed delivery recovering on the next scheduler poll.
 - When onboarding a second repository, decide whether repository-specific
