@@ -5,8 +5,8 @@ from uuid import UUID
 from app.features.project_management.pipelines import services as pipeline_services
 from app.features.project_management.pipelines.github import GitHubActionsReader, GitHubObservationError
 from app.features.project_management.pipelines.services import PipelineConfigurationError, PipelineObservationService
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.schemas import ConnectionCheck, ConnectionCheckItem
-from app.features.project_management.projects.services import ProjectError
 from app.features.project_management.projects.usecases.crud import ProjectUseCase
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time

@@ -11,7 +11,7 @@ from app.features.notifications.schemas import (
     NotificationTestResult,
 )
 from app.features.notifications.services import NotificationChannelService
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 from app_layer_base.core.database.transaction import AsyncTransaction
 from fastapi import Depends
 

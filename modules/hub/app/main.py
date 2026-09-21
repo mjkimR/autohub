@@ -9,7 +9,7 @@ from pathlib import Path
 
 from app.auth import login_caller, login_lockout_listener
 from app.features import tasks
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 from app.router import router
 from app_layer_base.base.exceptions.handler import set_exception_handler
 from app_layer_base.core import middlewares

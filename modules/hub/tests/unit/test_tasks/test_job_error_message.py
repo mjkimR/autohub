@@ -1,7 +1,7 @@
 import pytest
 from app.features.execution.dispatchers.services import _operator_message
 from app.features.project_management.pipelines.github import GitHubObservationError
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 
 pytestmark = pytest.mark.unit
 

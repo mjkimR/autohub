@@ -1,7 +1,14 @@
 <script lang="ts">
+	import { PaginatedState } from '$lib/state/paginated.svelte';
+	import { allPages, responseData } from '$lib/api/pagination';
+	import ListPagination from '$lib/components/shared/ListPagination.svelte';
+	import LoadError from '$lib/components/shared/LoadError.svelte';
+
 	import { onMount } from 'svelte';
 	import AttemptTimeline from './AttemptTimeline.svelte';
 	import { api, type components } from '$lib/api';
+	import { getStateBadgeClass } from '$lib/features/project-management/pipeline-runs/presentation';
+	import { apiErrorMessage } from '$lib/api/errors';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -48,16 +55,16 @@
 	type ExecutionAttempt = components['schemas']['ExecutionAttemptRead'];
 	type RunSummary = components['schemas']['PipelineRunSummary'];
 	type Project = components['schemas']['ProjectRead'];
-	type RunState = components['schemas']['PipelineRunState'];
 
-	let runs = $state<PipelineRun[]>([]);
+	const list = new PaginatedState<PipelineRun>();
+	let runs = $derived(list.items);
 	let projects = $state<Project[]>([]);
 	// Catalogs that can deliver pull request work, offered when enrolling by hand.
 	let pipelineCatalogs = $state<components['schemas']['AICatalogRead'][]>([]);
-	let loading = $state(true);
+	let loading = $derived(list.loading);
 	let searchQuery = $state('');
 	let selectedProjectId = $state<string>('');
-	let selectedState = $state<string>('');
+	let selectedState = $state<components['schemas']['PipelineRunState'] | ''>('');
 
 	// Attempt detail dialog
 	let isAttemptsOpen = $state(false);
@@ -86,20 +93,6 @@
 	// Action loading state
 	let operatingRunId = $state<string | null>(null);
 
-	let filteredRuns = $derived(
-		runs.filter((r) => {
-			const matchesProject = !selectedProjectId || r.project_id === selectedProjectId;
-			const matchesState = !selectedState || r.state === selectedState;
-			const matchesSearch =
-				!searchQuery ||
-				`pr #${r.pull_number}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				(r.pull_snapshot?.title &&
-					r.pull_snapshot.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
-				r.branch.toLowerCase().includes(searchQuery.toLowerCase());
-			return matchesProject && matchesState && matchesSearch;
-		})
-	);
-
 	function getProjectName(projectId: string): string {
 		const found = projects.find((p) => p.id === projectId);
 		return found ? found.name : projectId.slice(0, 8);
@@ -107,44 +100,44 @@
 
 	async function loadProjects() {
 		try {
-			const res = await api.GET('/api/v1/projects', {});
-			if (res.data?.items) {
-				projects = res.data.items;
-			}
+			projects = await allPages(async (offset, limit) =>
+				responseData(
+					await api.GET('/api/v1/projects', { params: { query: { offset, limit } } }),
+					'Failed to load projects'
+				)
+			);
 		} catch {
-			// ignore
+			toast.error('Failed to load project options; refresh to retry');
 		}
 	}
 
 	async function loadCatalogs() {
 		try {
 			const res = await api.GET('/api/v1/ai-catalogs');
-			pipelineCatalogs = (res.data?.items ?? []).filter(
+			pipelineCatalogs = responseData(res, 'Failed to load AI catalogs').items.filter(
 				(item) => item.pipeline_delivery && item.enabled
 			);
 		} catch {
-			// The select then only offers the project default.
+			toast.error('Failed to load AI catalog options; refresh to retry');
 		}
 	}
 
-	async function loadRuns() {
-		loading = true;
-		try {
-			const params: { query?: { project_id?: string; limit: number } } = {
-				query: { limit: 50 }
-			};
-			if (selectedProjectId) {
-				params.query!.project_id = selectedProjectId;
-			}
-			const res = await api.GET('/api/v1/pipeline-runs', params);
-			if (res.data?.items) {
-				runs = res.data.items;
-			}
-		} catch {
-			toast.error('Failed to load pipeline runs');
-		} finally {
-			loading = false;
-		}
+	async function loadRuns(offset = list.offset) {
+		const filters = {
+			search: searchQuery.trim(),
+			state: selectedState || undefined,
+			project_id: selectedProjectId || undefined
+		};
+		await list.load(
+			async (offset, limit) =>
+				responseData(
+					await api.GET('/api/v1/pipeline-runs', {
+						params: { query: { ...filters, offset, limit } }
+					}),
+					'Failed to load runs'
+				),
+			offset
+		);
 	}
 
 	function summarizeKinds(kinds: Record<string, number>) {
@@ -183,30 +176,6 @@
 		}
 	}
 
-	function getStateBadgeClass(state: RunState): string {
-		switch (state) {
-			case 'queued':
-				return 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30';
-			case 'dispatching':
-				return 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30';
-			case 'implementing':
-				return 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30';
-			case 'awaiting_ci':
-				return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
-			case 'completed':
-				return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
-			case 'failed':
-				return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30';
-			case 'paused':
-				return 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30';
-			case 'blocked':
-				return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30';
-			case 'canceled':
-			default:
-				return 'bg-muted text-muted-foreground border-border';
-		}
-	}
-
 	async function handleAdvance(runId: string) {
 		operatingRunId = runId;
 		try {
@@ -214,7 +183,7 @@
 				params: { path: { run_id: runId } }
 			});
 			if (res.error) {
-				const detail = (res.error as { detail?: string }).detail || 'Failed to advance run';
+				const detail = apiErrorMessage(res.error, 'Failed to advance run');
 				toast.error(detail);
 			} else {
 				toast.success(`Run advanced to ${res.data?.state ?? 'next state'}`);
@@ -235,7 +204,7 @@
 				body: { reason: 'Paused via UI' }
 			});
 			if (res.error) {
-				const detail = (res.error as { detail?: string }).detail || 'Failed to pause run';
+				const detail = apiErrorMessage(res.error, 'Failed to pause run');
 				toast.error(detail);
 			} else {
 				toast.success('Run paused');
@@ -263,7 +232,7 @@
 				params: { path: { run_id: runId } }
 			});
 			if (res.error) {
-				const detail = (res.error as { detail?: string }).detail || 'Failed to resume run';
+				const detail = apiErrorMessage(res.error, 'Failed to resume run');
 				toast.error(detail);
 			} else {
 				toast.success(`Run resumed (${res.data?.state})`);
@@ -284,7 +253,7 @@
 				params: { path: { run_id: runId } }
 			});
 			if (res.error) {
-				const detail = (res.error as { detail?: string }).detail || 'Failed to cancel run';
+				const detail = apiErrorMessage(res.error, 'Failed to cancel run');
 				toast.error(detail);
 			} else {
 				toast.success('Run canceled');
@@ -317,7 +286,7 @@
 				}
 			});
 			if (res.error) {
-				const detail = (res.error as { detail?: string }).detail || 'Failed to attach PR';
+				const detail = apiErrorMessage(res.error, 'Failed to attach PR');
 				toast.error(detail);
 			} else {
 				toast.success(`PR #${attachPullNumber} attached!`);
@@ -348,7 +317,7 @@
 				}
 			});
 			if (res.error) {
-				const detail = (res.error as { detail?: string }).detail || 'Failed to enroll pull request';
+				const detail = apiErrorMessage(res.error, 'Failed to enroll pull request');
 				toast.error(detail);
 			} else if (res.data) {
 				toast.success(`Enrolled PR #${res.data.pull_number} into pipeline run!`);
@@ -371,16 +340,20 @@
 			return;
 		}
 		if (!runId) return;
-		const res = await api.GET('/api/v1/pipeline-runs/{run_id}', {
-			params: { path: { run_id: runId } }
-		});
-		if (!res.data) {
-			toast.error('The linked pipeline run was not found');
-			return;
+		try {
+			const res = await api.GET('/api/v1/pipeline-runs/{run_id}', {
+				params: { path: { run_id: runId } }
+			});
+			if (!res.data) {
+				toast.error('The linked pipeline run was not found');
+				return;
+			}
+			selectedProjectId = res.data.project_id;
+			await loadRuns(0);
+			openAttempts(res.data);
+		} catch {
+			toast.error('Failed to load the linked pipeline run. Please refresh to retry.');
 		}
-		selectedProjectId = res.data.project_id;
-		await loadRuns();
-		openAttempts(res.data);
 	}
 
 	onMount(() => {
@@ -415,7 +388,17 @@
 				<Plus class="size-4" />
 				Enroll PR
 			</Button>
-			<Button variant="outline" size="sm" onclick={loadRuns} disabled={loading} class="gap-2">
+			<Button
+				variant="outline"
+				size="sm"
+				onclick={() => {
+					loadRuns();
+					loadProjects();
+					loadCatalogs();
+				}}
+				disabled={loading}
+				class="gap-2"
+			>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
 			</Button>
@@ -427,16 +410,18 @@
 		<div class="relative min-w-[200px] flex-1">
 			<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
 			<Input
-				placeholder="Search issue ID, title, branch..."
+				placeholder="Search PR number, title, branch..."
 				bind:value={searchQuery}
+				oninput={() => loadRuns(0)}
 				class="h-10 pl-9"
 			/>
 		</div>
 
 		<!-- Project selector -->
 		<select
+			aria-label="Project filter"
 			bind:value={selectedProjectId}
-			onchange={loadRuns}
+			onchange={() => loadRuns(0)}
 			class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
 		>
 			<option value="">All Projects</option>
@@ -447,7 +432,9 @@
 
 		<!-- State selector -->
 		<select
+			aria-label="Run state"
 			bind:value={selectedState}
+			onchange={() => loadRuns(0)}
 			class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
 		>
 			<option value="">All States</option>
@@ -463,7 +450,10 @@
 		</select>
 	</div>
 
-	<!-- Runs Table -->
+	{#if list.error}
+		<LoadError message={list.error} retry={() => loadRuns()} />
+	{/if}
+
 	<div
 		class="overflow-hidden rounded-xl border border-border/80 bg-card/60 shadow-xs backdrop-blur-xs"
 	>
@@ -486,7 +476,9 @@
 							Loading pipeline runs...
 						</TableCell>
 					</TableRow>
-				{:else if filteredRuns.length === 0}
+				{:else if list.error}
+					<TableRow><TableCell colspan={7}>List unavailable</TableCell></TableRow>
+				{:else if runs.length === 0}
 					<TableRow>
 						<TableCell colspan={7} class="h-32 text-center text-muted-foreground">
 							<div class="flex flex-col items-center justify-center gap-2">
@@ -496,7 +488,7 @@
 						</TableCell>
 					</TableRow>
 				{:else}
-					{#each filteredRuns as run (run.id)}
+					{#each runs as run (run.id)}
 						<TableRow class="transition-colors hover:bg-muted/40">
 							<TableCell>
 								<div class="space-y-1">
@@ -690,6 +682,15 @@
 			</TableBody>
 		</Table>
 	</div>
+	{#if !list.error}
+		<ListPagination
+			offset={list.offset}
+			limit={list.limit}
+			total={list.total}
+			{loading}
+			onpage={loadRuns}
+		/>
+	{/if}
 
 	<!-- Attempts History Dialog -->
 	<Dialog bind:open={isAttemptsOpen}>

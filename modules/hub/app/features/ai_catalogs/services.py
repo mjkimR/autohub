@@ -17,7 +17,7 @@ from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.ai_catalogs.schemas import SetAvailabilityRequest, UpdatePolicyConfigRequest
 from app.features.configuration.connectors.models import Connector
 from app.features.project_management.agent_schedules.repos import AgentScheduleRepository
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession

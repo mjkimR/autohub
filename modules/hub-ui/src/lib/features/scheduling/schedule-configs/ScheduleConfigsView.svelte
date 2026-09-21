@@ -1,6 +1,9 @@
 <script lang="ts">
+	import LoadError from '$lib/components/shared/LoadError.svelte';
+	import { responseData } from '$lib/api/pagination';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
+	import { apiErrorMessage } from '$lib/api/errors';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -41,6 +44,7 @@
 	let configs = $state<ScheduleConfig[]>([]);
 	let taskSpecs = $state<TaskSpec[]>([]);
 	let loading = $state(true);
+	let loadError = $state('');
 	let isTriggering = $state(false);
 	let searchQuery = $state('');
 
@@ -93,22 +97,20 @@
 		'jules.sync_sessions'
 	]);
 
-	// The backend says why it refused (a schedule owned by a project agent schedule answers 409 with the reason).
-	function refusal(error: unknown, fallback: string): string {
-		return (error as { detail?: string } | undefined)?.detail ?? fallback;
-	}
-
 	function isProjectManaged(config: ScheduleConfig): boolean {
 		return PROJECT_MANAGED_TASKS.has(config.task_func);
 	}
 
 	async function loadConfigs() {
 		loading = true;
+		loadError = '';
 		try {
 			const [cfgRes, specRes] = await Promise.all([
 				api.GET('/api/v1/schedule_configs', {}),
 				api.GET('/api/v1/tasks/specs')
 			]);
+			responseData(cfgRes, 'Failed to load schedule configs');
+			responseData(specRes, 'Failed to load task specs');
 			if (cfgRes.data?.items) {
 				configs = cfgRes.data.items;
 			}
@@ -116,6 +118,7 @@
 				taskSpecs = specRes.data;
 			}
 		} catch {
+			loadError = 'Failed to load schedule configs';
 			toast.error('Failed to load schedule configs');
 		} finally {
 			loading = false;
@@ -129,7 +132,7 @@
 				body: { enabled: !config.enabled }
 			});
 			if (res.error) {
-				toast.error(refusal(res.error, 'Failed to update schedule status'));
+				toast.error(apiErrorMessage(res.error, 'Failed to update schedule status'));
 			} else {
 				toast.success(`Schedule ${!config.enabled ? 'enabled' : 'disabled'}`);
 				loadConfigs();
@@ -231,7 +234,7 @@
 			});
 
 			if (res.error) {
-				toast.error(refusal(res.error, 'Failed to update schedule'));
+				toast.error(apiErrorMessage(res.error, 'Failed to update schedule'));
 			} else {
 				toast.success(`Schedule ${editName} updated!`);
 				isEditDialogOpen = false;
@@ -259,7 +262,7 @@
 			});
 
 			if (res.error) {
-				toast.error(refusal(res.error, 'Failed to delete schedule'));
+				toast.error(apiErrorMessage(res.error, 'Failed to delete schedule'));
 			} else {
 				toast.success(`Schedule ${deletingConfig.name} deleted`);
 				isDeleteDialogOpen = false;
@@ -279,6 +282,7 @@
 </script>
 
 <div class="space-y-6">
+	{#if loadError}<LoadError message={loadError} retry={loadConfigs} />{/if}
 	<!-- Page Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
@@ -344,6 +348,8 @@
 							</div>
 						</TableCell>
 					</TableRow>
+				{:else if loadError}
+					<TableRow><TableCell colspan={8}>List unavailable</TableCell></TableRow>
 				{:else if filteredConfigs.length === 0}
 					<TableRow>
 						<TableCell colspan={6} class="h-32 text-center text-muted-foreground">

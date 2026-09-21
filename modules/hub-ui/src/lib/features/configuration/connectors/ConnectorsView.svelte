@@ -1,6 +1,9 @@
 <script lang="ts">
+	import LoadError from '$lib/components/shared/LoadError.svelte';
+	import { responseData } from '$lib/api/pagination';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
+	import { apiErrorMessage } from '$lib/api/errors';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -41,6 +44,7 @@
 
 	let connectors = $state<Connector[]>([]);
 	let loading = $state(true);
+	let loadError = $state('');
 	let searchQuery = $state('');
 
 	// Create dialog state
@@ -70,14 +74,17 @@
 
 	async function loadConnectors() {
 		loading = true;
+		loadError = '';
 		try {
 			const res = await api.GET('/api/v1/connectors', {
 				params: { query: { limit: 100 } }
 			});
+			responseData(res, 'Failed to load connectors');
 			if (res.data?.items) {
 				connectors = res.data.items;
 			}
 		} catch {
+			loadError = 'Failed to load connectors';
 			toast.error('Failed to load connectors');
 		} finally {
 			loading = false;
@@ -108,7 +115,7 @@
 			});
 
 			if (res.error) {
-				const detail = (res.error as { detail?: string }).detail || 'Failed to create connector';
+				const detail = apiErrorMessage(res.error, 'Failed to create connector');
 				toast.error(detail);
 			} else {
 				toast.success(`Connector ${newName} registered`);
@@ -152,7 +159,7 @@
 					}
 				});
 				if (res.error) {
-					const detail = (res.error as { detail?: string }).detail || 'Failed to update connector';
+					const detail = apiErrorMessage(res.error, 'Failed to update connector');
 					toast.error(detail);
 				} else {
 					toast.success('Connector updated with new credentials');
@@ -169,7 +176,7 @@
 					}
 				});
 				if (res.error) {
-					const detail = (res.error as { detail?: string }).detail || 'Failed to update connector';
+					const detail = apiErrorMessage(res.error, 'Failed to update connector');
 					toast.error(detail);
 				} else {
 					toast.success('Connector settings saved');
@@ -192,7 +199,7 @@
 				params: { path: { connector_id: connectorId } }
 			});
 			if (res.error) {
-				const detail = (res.error as { detail?: string }).detail || 'Failed to delete connector';
+				const detail = apiErrorMessage(res.error, 'Failed to delete connector');
 				toast.error(detail);
 			} else {
 				toast.success('Connector deleted');
@@ -209,6 +216,7 @@
 </script>
 
 <div class="space-y-6">
+	{#if loadError}<LoadError message={loadError} retry={loadConnectors} />{/if}
 	<!-- Page Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
@@ -259,6 +267,8 @@
 							Loading connectors...
 						</TableCell>
 					</TableRow>
+				{:else if loadError}
+					<TableRow><TableCell colspan={8}>List unavailable</TableCell></TableRow>
 				{:else if filteredConnectors.length === 0}
 					<TableRow>
 						<TableCell colspan={6} class="h-32 text-center text-muted-foreground">

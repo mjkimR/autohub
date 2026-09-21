@@ -5,7 +5,7 @@ from app.features.project_management.pipeline_runs.models import PipelineRun
 from app.features.project_management.projects.models import Project
 from app.features.scheduling.schedule_configs.models import ScheduleConfig
 from app_layer_base.utils.time_util import get_current_utc_time
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 PROJECT_OBSERVATION_TASK = "pipeline.observe_project"
@@ -20,9 +20,22 @@ class ProjectRepository:
             stmt = stmt.with_for_update()
         return (await session.execute(stmt)).scalar_one_or_none()
 
-    async def get_multi(self, session: AsyncSession, offset: int, limit: int) -> tuple[list[Project], int]:
-        total = await session.scalar(select(func.count()).select_from(Project))
-        rows = await session.scalars(select(Project).order_by(Project.name, Project.id).offset(offset).limit(limit))
+    async def get_multi(
+        self, session: AsyncSession, offset: int, limit: int, search: str = ""
+    ) -> tuple[list[Project], int]:
+        filters = []
+        if search.strip():
+            term = search.strip().lower()
+            filters.append(
+                or_(
+                    func.lower(Project.name).contains(term, autoescape=True),
+                    func.lower(Project.github_repository).contains(term, autoescape=True),
+                )
+            )
+        total = await session.scalar(select(func.count()).select_from(Project).where(*filters))
+        rows = await session.scalars(
+            select(Project).where(*filters).order_by(Project.name, Project.id).offset(offset).limit(limit)
+        )
         return list(rows), total or 0
 
     async def conflicts(self, session: AsyncSession, repository: str | None) -> list[Project]:

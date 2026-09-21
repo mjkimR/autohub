@@ -1,4 +1,6 @@
 <script lang="ts">
+	import LoadError from '$lib/components/shared/LoadError.svelte';
+	import { responseData } from '$lib/api/pagination';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { toast } from 'svelte-sonner';
@@ -26,6 +28,7 @@
 
 	let jobs = $state<ScheduleJob[]>([]);
 	let loading = $state(true);
+	let loadError = $state('');
 	let searchQuery = $state('');
 
 	let filteredJobs = $derived(
@@ -38,12 +41,15 @@
 
 	async function loadJobs() {
 		loading = true;
+		loadError = '';
 		try {
 			const res = await api.GET('/api/v1/schedule_jobs', {});
+			responseData(res, 'Failed to load schedule jobs');
 			if (res.data?.items) {
 				jobs = res.data.items;
 			}
 		} catch {
+			loadError = 'Failed to load schedule jobs';
 			toast.error('Failed to load schedule jobs');
 		} finally {
 			loading = false;
@@ -72,6 +78,7 @@
 </script>
 
 <div class="space-y-6">
+	{#if loadError}<LoadError message={loadError} retry={loadJobs} />{/if}
 	<!-- Page Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
@@ -119,6 +126,8 @@
 							Loading job runs...
 						</TableCell>
 					</TableRow>
+				{:else if loadError}
+					<TableRow><TableCell colspan={8}>List unavailable</TableCell></TableRow>
 				{:else if filteredJobs.length === 0}
 					<TableRow>
 						<TableCell colspan={5} class="h-32 text-center text-muted-foreground">

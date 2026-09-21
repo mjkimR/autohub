@@ -1,8 +1,9 @@
 from typing import Annotated
 from uuid import UUID
 
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.schemas import ProjectList, ProjectRead, ProjectUpdate, ProjectWrite
-from app.features.project_management.projects.services import ProjectError, ProjectService
+from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 from fastapi import Depends
 from sqlalchemy.exc import IntegrityError
@@ -12,9 +13,9 @@ class ProjectUseCase:
     def __init__(self, service: Annotated[ProjectService, Depends()]):
         self.service = service
 
-    async def list(self, offset: int, limit: int) -> ProjectList:
+    async def list(self, offset: int, limit: int, search: str = "") -> ProjectList:
         async with AsyncTransaction() as session:
-            rows, total = await self.service.repo.get_multi(session, offset, limit)
+            rows, total = await self.service.repo.get_multi(session, offset, limit, search)
             return ProjectList(items=[ProjectRead.model_validate(row) for row in rows], total_count=total)
 
     async def get(self, project_id: UUID) -> ProjectRead:

@@ -3,7 +3,9 @@ from uuid import UUID
 
 from app.features.ai_catalogs.models import AICatalog
 from app.features.project_management.agent_schedules.repos import AgentScheduleRepository
+from app.features.project_management.pipeline_runs.adapters.capabilities import supports_pipeline_delivery
 from app.features.project_management.pipelines.schemas import PipelineObservationConfig
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.models import Project
 from app.features.project_management.projects.repos import PROJECT_OBSERVATION_TASK, ProjectRepository
 from app.features.project_management.projects.schemas import (
@@ -13,34 +15,9 @@ from app.features.project_management.projects.schemas import (
     ProjectWrite,
 )
 from app.features.project_management.projects.templates import TEMPLATE_VERSION
-from app_layer_base.base.exceptions.base import Actor, CustomException, Retry
 from fastapi import Depends
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
-
-
-class ProjectError(CustomException):
-    def __init__(
-        self,
-        status: int,
-        detail: str,
-        *,
-        actor: Actor | None = None,
-        retry: Retry | None = None,
-        code: str = "PROJECT_ERROR",
-        fix: str | None = None,
-    ):
-        self.status = status
-        self.detail = detail
-        super().__init__(
-            message=detail,
-            status_code=status,
-            title="Project Error",
-            code=code,
-            actor=actor or (Actor.USER if status < 500 else Actor.DEVELOPER),
-            retry=retry or (Retry.UNSAFE if status in (404, 422) else Retry.SAFE),
-            fix=fix,
-        )
 
 
 class ProjectService:
@@ -62,11 +39,6 @@ class ProjectService:
             if any(row.id != project_id for row in await self.repo.conflicts(session, repository)):
                 raise ProjectError(409, "Repository is already connected")
             if data.github.ai_catalog_id is not None:
-                # Imported here: the adapter registry itself depends on this module's ProjectError.
-                from app.features.project_management.pipeline_runs.adapters.registry import (
-                    supports_pipeline_delivery,
-                )
-
                 catalog = await session.get(AICatalog, data.github.ai_catalog_id)
                 if catalog is None or not supports_pipeline_delivery(catalog.adapter):
                     raise ProjectError(422, "Select an AI catalog that can deliver pull request work")

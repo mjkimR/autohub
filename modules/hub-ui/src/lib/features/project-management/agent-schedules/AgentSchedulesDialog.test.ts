@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
+import { toast } from 'svelte-sonner';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import AgentSchedulesDialog from './AgentSchedulesDialog.svelte';
 
@@ -157,4 +158,31 @@ test('shows the field message when the hub rejects the schedule as invalid', asy
 	await waitFor(() =>
 		expect(toast.error).toHaveBeenCalledWith('Value error, Invalid cron expression')
 	);
+});
+
+test('a failed list can be retried without showing a successful empty state', async () => {
+	api.GET.mockResolvedValue({ error: { detail: 'Unavailable' } });
+	const user = userEvent.setup();
+	render(AgentSchedulesDialog, {
+		props: { project, catalogs: [jules], onclose: vi.fn() } as never
+	});
+	expect(await screen.findByRole('alert')).toBeTruthy();
+	expect(screen.queryByText('No agent schedules yet.')).toBeNull();
+	api.GET.mockResolvedValue({ data: { items: [schedule] } });
+	await user.click(screen.getByRole('button', { name: 'Retry' }));
+	expect(await screen.findByText('Weekly hygiene')).toBeTruthy();
+});
+
+test('a disconnected run-now request explains the failure and keeps the schedule', async () => {
+	api.POST.mockRejectedValue(new TypeError('offline'));
+	const user = userEvent.setup();
+	render(AgentSchedulesDialog, {
+		props: { project, catalogs: [jules], onclose: vi.fn() } as never
+	});
+	await screen.findByText('Weekly hygiene');
+	await user.click(screen.getByRole('button', { name: 'Run now' }));
+	await waitFor(() =>
+		expect(toast.error).toHaveBeenCalledWith('Request failed. Check your connection and retry.')
+	);
+	expect(screen.getByText('Weekly hygiene')).toBeTruthy();
 });

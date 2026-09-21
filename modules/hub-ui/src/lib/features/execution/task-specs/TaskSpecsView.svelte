@@ -1,4 +1,6 @@
 <script lang="ts">
+	import LoadError from '$lib/components/shared/LoadError.svelte';
+	import { responseData } from '$lib/api/pagination';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { toast } from 'svelte-sonner';
@@ -12,6 +14,7 @@
 
 	let specs = $state<TaskSpec[]>([]);
 	let loading = $state(true);
+	let loadError = $state('');
 	let searchQuery = $state('');
 
 	let filteredSpecs = $derived(
@@ -24,12 +27,15 @@
 
 	async function loadSpecs() {
 		loading = true;
+		loadError = '';
 		try {
 			const res = await api.GET('/api/v1/tasks/specs');
+			responseData(res, 'Failed to load task specs');
 			if (res.data && Array.isArray(res.data)) {
 				specs = res.data;
 			}
 		} catch {
+			loadError = 'Failed to load task specs';
 			toast.error('Failed to load task specs');
 		} finally {
 			loading = false;
@@ -42,6 +48,7 @@
 </script>
 
 <div class="space-y-6">
+	{#if loadError}<LoadError message={loadError} retry={loadSpecs} />{/if}
 	<!-- Page Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
@@ -75,6 +82,8 @@
 		<div class="flex h-40 items-center justify-center text-sm text-muted-foreground">
 			Loading task specifications...
 		</div>
+	{:else if loadError}
+		<p class="text-sm text-muted-foreground">List unavailable.</p>
 	{:else if filteredSpecs.length === 0}
 		<div
 			class="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-card/40 p-6 text-center text-muted-foreground"

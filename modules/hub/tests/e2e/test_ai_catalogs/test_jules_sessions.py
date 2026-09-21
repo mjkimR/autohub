@@ -24,8 +24,9 @@ from app.features.project_management.pipeline_runs.usecases.lifecycle import Pip
 from app.features.project_management.pipelines import services as pipeline_services
 from app.features.project_management.pipelines.repos import PipelineObservationRepository
 from app.features.project_management.pipelines.services import PipelineObservationService
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.repos import ProjectRepository
-from app.features.project_management.projects.services import ProjectError, ProjectService
+from app.features.project_management.projects.services import ProjectService
 from app_testing_base import hours_ago
 from sqlalchemy import select
 

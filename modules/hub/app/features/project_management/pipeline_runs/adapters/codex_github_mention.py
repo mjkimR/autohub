@@ -2,6 +2,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 
 from app.features.project_management.pipeline_runs.adapters.base import AgentReply, DeliveryReceipt, DeliveryTarget
+from app.features.project_management.pipeline_runs.adapters.capabilities import CODEX_GITHUB_MENTION
 from app.features.project_management.pipeline_runs.dispatch import (
     CODEX_CONNECTOR_LOGIN,
     build_codex_mention_comment,
@@ -11,7 +12,7 @@ from app.features.project_management.pipeline_runs.schemas import Implementation
 from app.features.project_management.pipelines import services as pipeline_services
 from app.features.project_management.pipelines.github import GitHubActionsReader
 from app.features.project_management.pipelines.services import PipelineObservationService
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 
 
 def _utc(value: datetime) -> datetime:
@@ -21,7 +22,7 @@ def _utc(value: datetime) -> datetime:
 class CodexGithubMentionAdapter:
     """One PR mention comment per delivery, reconciled by its hidden marker; Codex replies on the PR."""
 
-    key = "codex-github-mention"
+    key = CODEX_GITHUB_MENTION
     silent_timeout = timedelta(hours=2, minutes=5)
     silent_block_reason = "Codex did not push after a silent retry; resume manually"
 

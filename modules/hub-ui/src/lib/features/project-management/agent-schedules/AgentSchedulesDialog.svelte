@@ -1,6 +1,9 @@
 <script lang="ts">
+	import LoadError from '$lib/components/shared/LoadError.svelte';
+	import { responseData } from '$lib/api/pagination';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
+	import { apiErrorMessage } from '$lib/api/errors';
 	import { toast } from 'svelte-sonner';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -28,6 +31,7 @@
 
 	let open = $state(true);
 	let loading = $state(true);
+	let loadError = $state('');
 	let saving = $state(false);
 	let schedules = $state<AgentSchedule[]>([]);
 	let editing = $state<AgentSchedule | null>(null);
@@ -58,29 +62,17 @@
 		if (workTypes.length > 0 && !workTypes.includes(workType)) workType = workTypes[0];
 	});
 
-	/** The hub's error detail: a message, or a list of field errors for a request that failed validation. */
-	function detail(error: unknown, fallback: string): string {
-		const value = (error as { detail?: unknown } | undefined)?.detail;
-		if (typeof value === 'string') return value;
-		if (Array.isArray(value)) {
-			const messages = value
-				.map((item) => (item as { msg?: string })?.msg)
-				.filter((msg): msg is string => typeof msg === 'string');
-			if (messages.length > 0) return messages.join('; ');
-		}
-		return fallback;
-	}
-
 	async function load() {
 		loading = true;
+		loadError = '';
 		try {
 			const res = await api.GET('/api/v1/projects/{project_id}/agent-schedules', {
 				params: { path: { project_id: project.id } }
 			});
-			if (res.error) toast.error(detail(res.error, 'Failed to load agent schedules'));
-			schedules = res.data?.items ?? [];
+			schedules = responseData(res, 'Failed to load agent schedules').items;
 		} catch {
-			toast.error('Failed to load agent schedules');
+			loadError = 'Failed to load agent schedules';
+			toast.error(loadError);
 		} finally {
 			loading = false;
 		}
@@ -138,43 +130,53 @@
 						body
 					});
 			if (res.error) {
-				toast.error(detail(res.error, 'Failed to save agent schedule'));
+				toast.error(apiErrorMessage(res.error, 'Failed to save agent schedule'));
 				return;
 			}
 			toast.success(editing ? 'Agent schedule updated' : 'Agent schedule created');
 			formOpen = false;
 			await load();
+		} catch {
+			toast.error('Failed to save agent schedule. Please retry.');
 		} finally {
 			saving = false;
 		}
 	}
 
 	async function remove(schedule: AgentSchedule) {
-		if (!confirm(`Delete "${schedule.title}"? Its scheduler entry is removed with it.`)) return;
-		const res = await api.DELETE('/api/v1/projects/{project_id}/agent-schedules/{schedule_id}', {
-			params: { path: { project_id: project.id, schedule_id: schedule.id } }
-		});
-		if (res.error) {
-			toast.error(detail(res.error, 'Failed to delete agent schedule'));
-			return;
+		try {
+			if (!confirm(`Delete "${schedule.title}"? Its scheduler entry is removed with it.`)) return;
+			const res = await api.DELETE('/api/v1/projects/{project_id}/agent-schedules/{schedule_id}', {
+				params: { path: { project_id: project.id, schedule_id: schedule.id } }
+			});
+			if (res.error) {
+				toast.error(apiErrorMessage(res.error, 'Failed to delete agent schedule'));
+				return;
+			}
+			toast.success('Agent schedule deleted');
+			await load();
+		} catch {
+			toast.error('Request failed. Check your connection and retry.');
 		}
-		toast.success('Agent schedule deleted');
-		await load();
 	}
 
 	async function runNow(schedule: AgentSchedule) {
-		const res = await api.POST(
-			'/api/v1/projects/{project_id}/agent-schedules/{schedule_id}/run-now',
-			{
-				params: { path: { project_id: project.id, schedule_id: schedule.id } }
+		try {
+			const res = await api.POST(
+				'/api/v1/projects/{project_id}/agent-schedules/{schedule_id}/run-now',
+				{
+					params: { path: { project_id: project.id, schedule_id: schedule.id } }
+				}
+			);
+			if (res.error) {
+				toast.error(apiErrorMessage(res.error, 'Failed to queue the agent schedule'));
+				return;
 			}
-		);
-		if (res.error) {
-			toast.error(detail(res.error, 'Failed to queue the agent schedule'));
-			return;
+			toast.success('Queued for the next dispatcher tick');
+			await load();
+		} catch {
+			toast.error('Request failed. Check your connection and retry.');
 		}
-		toast.success('Queued for the next dispatcher tick');
-		await load();
 	}
 
 	function trigger(schedule: AgentSchedule): string {
@@ -324,6 +326,8 @@
 					>
 				</div>
 			</form>
+		{:else if loadError}
+			<LoadError message={loadError} retry={load} />
 		{:else if loading}
 			<p class="text-sm text-muted-foreground">Loading agent schedules…</p>
 		{:else if schedules.length === 0}

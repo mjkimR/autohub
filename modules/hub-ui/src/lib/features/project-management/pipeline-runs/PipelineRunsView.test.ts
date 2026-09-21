@@ -44,8 +44,10 @@ beforeEach(() => {
 	api.GET.mockReset();
 	api.POST.mockReset();
 	api.GET.mockImplementation((path: string) => {
-		if (path === '/api/v1/projects') return Promise.resolve({ data: { items: [project] } });
-		if (path === '/api/v1/pipeline-runs') return Promise.resolve({ data: { items: [run] } });
+		if (path === '/api/v1/projects')
+			return Promise.resolve({ data: { items: [project], total_count: 1 } });
+		if (path === '/api/v1/pipeline-runs')
+			return Promise.resolve({ data: { items: [run], total_count: 1 } });
 		if (path === '/api/v1/ai-catalogs') return Promise.resolve({ data: { items: catalogs } });
 		if (path === '/api/v1/pipeline-runs/{run_id}') return Promise.resolve({ data: run });
 		return Promise.resolve({ data: { items: [] } });
@@ -113,4 +115,39 @@ test('opens the run named in the page URL', async () => {
 		})
 	);
 	window.history.replaceState({}, '', '/projects/runs');
+});
+
+test('pages through history and resets the offset when changing state', async () => {
+	const previous = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation(
+		async (path: string, options?: { params: { query: { offset?: number } } }) => {
+			if (path !== '/api/v1/pipeline-runs') return previous(path, options);
+			return {
+				data: {
+					items: [
+						{
+							...run,
+							pull_snapshot: {
+								title: options?.params.query.offset ? 'Old run' : 'Ship the feature'
+							}
+						}
+					],
+					total_count: 51
+				}
+			};
+		}
+	);
+	const user = userEvent.setup();
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+	await user.click(screen.getByRole('button', { name: 'Next page' }));
+	expect(await screen.findByText('Old run')).toBeTruthy();
+	await user.selectOptions(screen.getByRole('combobox', { name: 'Run state' }), 'blocked');
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs', {
+			params: {
+				query: { search: '', state: 'blocked', project_id: undefined, offset: 0, limit: 50 }
+			}
+		})
+	);
 });

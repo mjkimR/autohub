@@ -3,7 +3,7 @@ from app.features.ai_catalogs.policies.base import QuotaPolicy
 from app.features.ai_catalogs.policies.codex_window import CodexWindowPolicy
 from app.features.ai_catalogs.policies.daily_quota import DailyQuotaPolicy
 from app.features.ai_catalogs.repos import AICatalogRepository
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 
 _POLICIES: dict[str, QuotaPolicy] = {
     AICatalogKind.CODEX: CodexWindowPolicy(),

@@ -1,4 +1,6 @@
 import { api, type components } from '$lib/api';
+import { apiErrorMessage } from '$lib/api/errors';
+import { allPages, responseData } from '$lib/api/pagination';
 import { SvelteDate } from 'svelte/reactivity';
 import { toast } from 'svelte-sonner';
 
@@ -67,32 +69,36 @@ export function isKnownTimezone(timezone: string): boolean {
 	}
 }
 
-function detail(error: unknown, fallback: string): string {
-	return (error as { detail?: string } | undefined)?.detail ?? fallback;
-}
-
 export class AICatalogsState {
 	items = $state<AICatalog[]>([]);
 	connectors = $state<CatalogConnector[]>([]);
 	loading = $state(false);
+	error = $state('');
 	saving = $state(false);
 
 	async load() {
 		this.loading = true;
+		this.error = '';
 		try {
 			const [catalogs, connectors] = await Promise.all([
 				api.GET('/api/v1/ai-catalogs'),
-				api.GET('/api/v1/connectors', { params: { query: { limit: 100 } } })
+				allPages(async (offset, limit) =>
+					responseData(
+						await api.GET('/api/v1/connectors', { params: { query: { offset, limit } } }),
+						'Failed to load connectors'
+					)
+				)
 			]);
-			this.items = catalogs.data?.items ?? [];
-			this.connectors = (connectors.data?.items ?? []).map(({ id, name, provider, enabled }) => ({
+			this.items = responseData(catalogs, 'Failed to load AI catalogs').items;
+			this.connectors = connectors.map(({ id, name, provider, enabled }) => ({
 				id,
 				name,
 				provider,
 				enabled
 			}));
 		} catch {
-			toast.error('Failed to load AI catalogs');
+			this.error = 'Failed to load AI catalogs';
+			toast.error(this.error);
 		} finally {
 			this.loading = false;
 		}
@@ -112,7 +118,7 @@ export class AICatalogsState {
 				}
 			});
 			if (res.error) {
-				toast.error(detail(res.error, 'Failed to load catalog sessions'));
+				toast.error(apiErrorMessage(res.error, 'Failed to load catalog sessions'));
 				return { items: [], total: 0 };
 			}
 			return { items: res.data?.items ?? [], total: res.data?.total_count ?? 0 };
@@ -135,12 +141,15 @@ export class AICatalogsState {
 				body: { available_at: instant.toISOString(), note: note.trim() || null, source: 'manual' }
 			});
 			if (res.error) {
-				toast.error(detail(res.error, 'Failed to set AI catalog availability'));
+				toast.error(apiErrorMessage(res.error, 'Failed to set AI catalog availability'));
 				return false;
 			}
 			toast.success('AI catalog availability updated for all of its work');
 			await this.load();
 			return true;
+		} catch {
+			toast.error('Request failed. Check your connection and retry.');
+			return false;
 		} finally {
 			this.saving = false;
 		}
@@ -153,11 +162,14 @@ export class AICatalogsState {
 				params: { path: { catalog_key: key } }
 			});
 			if (res.error) {
-				toast.error(detail(res.error, 'Failed to clear AI catalog availability'));
+				toast.error(apiErrorMessage(res.error, 'Failed to clear AI catalog availability'));
 				return;
 			}
 			toast.success('AI catalog is available for dispatch');
 			await this.load();
+		} catch {
+			toast.error('Request failed. Check your connection and retry.');
+			return false;
 		} finally {
 			this.saving = false;
 		}
@@ -171,11 +183,14 @@ export class AICatalogsState {
 				body: { enabled }
 			});
 			if (res.error) {
-				toast.error(detail(res.error, 'Failed to update AI catalog'));
+				toast.error(apiErrorMessage(res.error, 'Failed to update AI catalog'));
 				return;
 			}
 			toast.success(enabled ? 'AI catalog enabled' : 'AI catalog disabled');
 			await this.load();
+		} catch {
+			toast.error('Request failed. Check your connection and retry.');
+			return false;
 		} finally {
 			this.saving = false;
 		}
@@ -189,12 +204,15 @@ export class AICatalogsState {
 				body: { policy_config: policyConfig }
 			});
 			if (res.error) {
-				toast.error(detail(res.error, 'Failed to update quota policy'));
+				toast.error(apiErrorMessage(res.error, 'Failed to update quota policy'));
 				return false;
 			}
 			toast.success('AI catalog quota policy updated');
 			await this.load();
 			return true;
+		} catch {
+			toast.error('Request failed. Check your connection and retry.');
+			return false;
 		} finally {
 			this.saving = false;
 		}
@@ -208,12 +226,15 @@ export class AICatalogsState {
 				body: { connector_id: connectorId }
 			});
 			if (res.error) {
-				toast.error(detail(res.error, 'Failed to update catalog connector'));
+				toast.error(apiErrorMessage(res.error, 'Failed to update catalog connector'));
 				return false;
 			}
 			toast.success(connectorId ? 'AI catalog connector assigned' : 'AI catalog connector removed');
 			await this.load();
 			return true;
+		} catch {
+			toast.error('Request failed. Check your connection and retry.');
+			return false;
 		} finally {
 			this.saving = false;
 		}

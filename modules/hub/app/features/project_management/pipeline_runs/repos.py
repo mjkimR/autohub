@@ -17,7 +17,7 @@ from app.features.project_management.pipeline_runs.models import (
     PipelineRun,
     PipelineRunState,
 )
-from sqlalchemy import and_, case, func, or_, select, update
+from sqlalchemy import String, and_, case, cast, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -121,9 +121,29 @@ class PipelineRunRepository:
         return list(rows)
 
     async def list(
-        self, session: AsyncSession, *, project_id: UUID | None, offset: int, limit: int
+        self,
+        session: AsyncSession,
+        *,
+        project_id: UUID | None,
+        offset: int,
+        limit: int,
+        state: PipelineRunState | None = None,
+        search: str = "",
     ) -> tuple[list[PipelineRun], int]:
-        filters = (PipelineRun.project_id == project_id,) if project_id else ()
+        filters = []
+        if project_id is not None:
+            filters.append(PipelineRun.project_id == project_id)
+        if state is not None:
+            filters.append(PipelineRun.state == state)
+        if search.strip():
+            term = search.strip().lower()
+            filters.append(
+                or_(
+                    func.lower(PipelineRun.branch).contains(term, autoescape=True),
+                    func.lower(PipelineRun.pull_snapshot["title"].as_string()).contains(term, autoescape=True),
+                    ("pr #" + cast(PipelineRun.pull_number, String)).contains(term, autoescape=True),
+                )
+            )
         total = await session.scalar(select(func.count()).select_from(PipelineRun).where(*filters))
         rows = await session.scalars(
             select(PipelineRun)

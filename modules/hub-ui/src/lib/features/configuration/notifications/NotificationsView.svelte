@@ -1,4 +1,5 @@
 <script lang="ts">
+	import LoadError from '$lib/components/shared/LoadError.svelte';
 	import { onMount } from 'svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -76,7 +77,9 @@
 		</div>
 	</div>
 
-	{#if channels.loading && channels.items.length === 0}
+	{#if channels.error}
+		<LoadError message={channels.error} retry={() => channels.load()} />
+	{:else if channels.loading && channels.items.length === 0}
 		<div class="flex h-40 items-center justify-center text-sm text-muted-foreground">
 			Loading notification channels…
 		</div>

@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { api, type components } from '$lib/api';
+	import { DashboardState } from './dashboard.svelte';
+	import LoadError from '$lib/components/shared/LoadError.svelte';
+	import { getStateBadgeClass } from '$lib/features/project-management/pipeline-runs/presentation';
 	import { Card, CardHeader, CardTitle, CardContent } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -20,136 +22,10 @@
 		Radio
 	} from '@lucide/svelte';
 
-	type PipelineRun = components['schemas']['PipelineRunRead'];
-	type ScheduleJob = components['schemas']['ScheduleJobRead'];
-	type Connector = components['schemas']['ConnectorRead'];
-	type Project = components['schemas']['ProjectRead'];
-	type RunState = components['schemas']['PipelineRunState'];
-
-	let loading = $state(true);
-	let healthStatus = $state<'online' | 'offline' | 'checking'>('checking');
-	let dbStatus = $state<'connected' | 'error' | 'unknown'>('unknown');
-	// "stale" means the external scheduler trigger stopped: the hub answers but advances nothing on a timer.
-	type TriggerStatus = 'ok' | 'stale' | 'never' | 'unknown';
-	let triggerStatus = $state<TriggerStatus>('unknown');
-	let lastTickAt = $state<string | null>(null);
-
-	// Metrics
-	let projectCount = $state(0);
-	let scheduleCount = $state(0);
-
-	// Pipeline runs metrics
-	let totalRuns = $state(0);
-	let activeRuns = $state(0);
-	let awaitingCiRuns = $state(0);
-	let completedRuns = $state(0);
-	let failedRuns = $state(0);
-
-	// Connectors metrics
-	let connectorCount = $state(0);
-	let activeConnectors = $state(0);
-
-	// Activity feeds
-	let recentRuns = $state<PipelineRun[]>([]);
-	let recentJobs = $state<ScheduleJob[]>([]);
-	let projectsMap = $state<Record<string, string>>({});
-
-	// Auto-refresh state
-	let refreshIntervalSec = $state<number>(15); // Default 15s
+	const dashboard = new DashboardState();
+	let refreshIntervalSec = $state(15);
 	let refreshTimer: ReturnType<typeof setInterval> | null = null;
-	let lastRefreshedAt = $state<Date>(new Date());
-
-	async function loadDashboardData(silent = false) {
-		if (!silent) loading = true;
-		try {
-			// Health checks
-			const [healthRes, deepRes] = await Promise.allSettled([
-				api.GET('/api/health'),
-				api.GET('/api/health/deep')
-			]);
-
-			if (healthRes.status === 'fulfilled' && healthRes.value.data) {
-				const data = healthRes.value.data as { status?: string };
-				healthStatus = data.status === 'ok' ? 'online' : 'offline';
-			} else {
-				healthStatus = 'offline';
-			}
-
-			if (deepRes.status === 'fulfilled' && deepRes.value.data) {
-				const data = deepRes.value.data as {
-					status?: string;
-					scheduler?: TriggerStatus;
-					last_tick_at?: string | null;
-				};
-				dbStatus = data.status === 'ok' ? 'connected' : 'error';
-				triggerStatus = data.scheduler ?? 'unknown';
-				lastTickAt = data.last_tick_at ?? null;
-			} else {
-				dbStatus = 'error';
-				triggerStatus = 'unknown';
-			}
-
-			// Core Entities & Metrics
-			const [projectsRes, schedulesRes, jobsRes, runsRes, connectorsRes] = await Promise.allSettled(
-				[
-					api.GET('/api/v1/projects', { params: { query: { limit: 100 } } }),
-					api.GET('/api/v1/schedule_configs', { params: { query: { limit: 100 } } }),
-					api.GET('/api/v1/schedule_jobs', { params: { query: { limit: 6 } } }),
-					api.GET('/api/v1/pipeline-runs', { params: { query: { limit: 50 } } }),
-					api.GET('/api/v1/connectors', { params: { query: { limit: 100 } } })
-				]
-			);
-
-			if (projectsRes.status === 'fulfilled' && projectsRes.value.data) {
-				const data = projectsRes.value.data;
-				projectCount = data.total_count ?? data.items.length;
-				const map: Record<string, string> = {};
-				data.items.forEach((p: Project) => {
-					map[p.id] = p.name;
-				});
-				projectsMap = map;
-			}
-
-			if (schedulesRes.status === 'fulfilled' && schedulesRes.value.data) {
-				const data = schedulesRes.value.data;
-				scheduleCount = data.total_count ?? data.items.length;
-			}
-
-			if (jobsRes.status === 'fulfilled' && jobsRes.value.data) {
-				const data = jobsRes.value.data;
-				recentJobs = data.items.slice(0, 5);
-			}
-
-			if (runsRes.status === 'fulfilled' && runsRes.value.data) {
-				const data = runsRes.value.data;
-				totalRuns = data.total_count ?? data.items.length;
-				recentRuns = data.items.slice(0, 5);
-
-				// Breakdown counts
-				activeRuns = data.items.filter((r: PipelineRun) =>
-					['queued', 'dispatching', 'implementing'].includes(r.state)
-				).length;
-				awaitingCiRuns = data.items.filter((r: PipelineRun) => r.state === 'awaiting_ci').length;
-				completedRuns = data.items.filter((r: PipelineRun) => r.state === 'completed').length;
-				failedRuns = data.items.filter((r: PipelineRun) =>
-					// Every state that waits for the operator; a blocked run was counted nowhere before.
-					['failed', 'paused', 'blocked'].includes(r.state)
-				).length;
-			}
-
-			if (connectorsRes.status === 'fulfilled' && connectorsRes.value.data) {
-				const data = connectorsRes.value.data;
-				connectorCount = data.total_count ?? data.items.length;
-				activeConnectors = data.items.filter((c: Connector) => c.enabled).length;
-			}
-
-			lastRefreshedAt = new Date();
-		} catch {
-			healthStatus = 'offline';
-		} finally {
-			if (!silent) loading = false;
-		}
-	}
+	const loadDashboardData = (silent = false) => dashboard.load(silent);
 
 	function setupAutoRefresh(seconds: number) {
 		if (refreshTimer) {
@@ -161,28 +37,6 @@
 			refreshTimer = setInterval(() => {
 				loadDashboardData(true);
 			}, seconds * 1000);
-		}
-	}
-
-	function getStateBadgeClass(state: RunState): string {
-		switch (state) {
-			case 'queued':
-				return 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30';
-			case 'dispatching':
-				return 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30';
-			case 'implementing':
-				return 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30';
-			case 'awaiting_ci':
-				return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
-			case 'completed':
-				return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
-			case 'failed':
-				return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30';
-			case 'paused':
-				return 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30';
-			case 'canceled':
-			default:
-				return 'bg-muted text-muted-foreground border-border';
 		}
 	}
 
@@ -199,6 +53,9 @@
 </script>
 
 <div class="space-y-6">
+	{#if dashboard.error}
+		<LoadError message={dashboard.error} retry={() => dashboard.load()} />
+	{/if}
 	<!-- Header with Live Refresh Indicator -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
@@ -257,7 +114,7 @@
 					30s
 				</button>
 				<span class="pl-1 font-mono text-[10px] text-muted-foreground/70">
-					{lastRefreshedAt.toLocaleTimeString([], {
+					{dashboard.lastRefreshedAt?.toLocaleTimeString([], {
 						hour: '2-digit',
 						minute: '2-digit',
 						second: '2-digit'
@@ -269,10 +126,10 @@
 				variant="outline"
 				size="sm"
 				onclick={() => loadDashboardData(false)}
-				disabled={loading}
+				disabled={dashboard.loading}
 				class="gap-2"
 			>
-				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
+				<RefreshCw class="size-4 {dashboard.loading ? 'animate-spin' : ''}" />
 				Refresh
 			</Button>
 		</div>
@@ -294,7 +151,7 @@
 					<p class="text-sm font-medium">FastAPI Dispatcher Core</p>
 				</div>
 			</div>
-			{#if healthStatus === 'online'}
+			{#if dashboard.healthStatus === 'online'}
 				<Badge
 					variant="default"
 					class="gap-1.5 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
@@ -324,7 +181,7 @@
 					<p class="text-sm font-medium">PostgreSQL / SQLite Engine</p>
 				</div>
 			</div>
-			{#if dbStatus === 'connected'}
+			{#if dashboard.dbStatus === 'connected'}
 				<Badge
 					variant="default"
 					class="gap-1.5 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
@@ -352,13 +209,13 @@
 						Scheduler Trigger
 					</p>
 					<p class="text-sm font-medium">
-						{lastTickAt
-							? `Last tick ${new Date(lastTickAt).toLocaleTimeString()}`
+						{dashboard.lastTickAt
+							? `Last tick ${new Date(dashboard.lastTickAt).toLocaleTimeString()}`
 							: 'No tick recorded'}
 					</p>
 				</div>
 			</div>
-			{#if triggerStatus === 'ok'}
+			{#if dashboard.triggerStatus === 'ok'}
 				<Badge
 					variant="default"
 					class="gap-1.5 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
@@ -366,14 +223,14 @@
 					<CheckCircle2 class="size-3.5" />
 					Firing
 				</Badge>
-			{:else if triggerStatus === 'stale'}
+			{:else if dashboard.triggerStatus === 'stale'}
 				<Badge variant="destructive" class="gap-1.5">
 					<AlertCircle class="size-3.5" />
 					Stopped
 				</Badge>
 			{:else}
 				<Badge variant="secondary" class="gap-1.5">
-					{triggerStatus === 'never' ? 'Never fired' : 'Unknown'}
+					{dashboard.triggerStatus === 'never' ? 'Never fired' : 'Unknown'}
 				</Badge>
 			{/if}
 		</div>
@@ -404,7 +261,7 @@
 			<div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
 				<div class="rounded-lg border border-border/70 bg-background/50 p-3">
 					<div class="text-xs font-semibold text-muted-foreground uppercase">Total Runs</div>
-					<div class="mt-1 text-2xl font-bold">{totalRuns}</div>
+					<div class="mt-1 text-2xl font-bold">{dashboard.totalRuns}</div>
 					<p class="mt-0.5 text-[11px] text-muted-foreground">All time lifecycle</p>
 				</div>
 				<div class="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3">
@@ -412,7 +269,7 @@
 						Active Work
 					</div>
 					<div class="mt-1 text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-						{activeRuns}
+						{dashboard.activeRuns}
 					</div>
 					<p class="mt-0.5 text-[11px] text-muted-foreground">Dispatch / Implementing</p>
 				</div>
@@ -421,7 +278,7 @@
 						Awaiting CI
 					</div>
 					<div class="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
-						{awaitingCiRuns}
+						{dashboard.awaitingCiRuns}
 					</div>
 					<p class="mt-0.5 text-[11px] text-muted-foreground">PR verification check</p>
 				</div>
@@ -430,7 +287,7 @@
 						Completed
 					</div>
 					<div class="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-						{completedRuns}
+						{dashboard.completedRuns}
 					</div>
 					<p class="mt-0.5 text-[11px] text-muted-foreground">Passed CI verification</p>
 				</div>
@@ -438,7 +295,9 @@
 					<div class="text-xs font-semibold text-rose-600 uppercase dark:text-rose-400">
 						Needs you
 					</div>
-					<div class="mt-1 text-2xl font-bold text-rose-600 dark:text-rose-400">{failedRuns}</div>
+					<div class="mt-1 text-2xl font-bold text-rose-600 dark:text-rose-400">
+						{dashboard.failedRuns}
+					</div>
 					<p class="mt-0.5 text-[11px] text-muted-foreground">Failed, paused, or blocked</p>
 				</div>
 			</div>
@@ -457,7 +316,7 @@
 				<FolderKanban class="size-4 text-muted-foreground" />
 			</CardHeader>
 			<CardContent>
-				<div class="text-3xl font-bold">{projectCount}</div>
+				<div class="text-3xl font-bold">{dashboard.projectCount}</div>
 				<p class="mt-1 text-xs text-muted-foreground">Connected repositories & workspaces</p>
 			</CardContent>
 		</Card>
@@ -472,9 +331,9 @@
 				<KeyRound class="size-4 text-muted-foreground" />
 			</CardHeader>
 			<CardContent>
-				<div class="text-3xl font-bold">{connectorCount}</div>
+				<div class="text-3xl font-bold">{dashboard.connectorCount}</div>
 				<p class="mt-1 text-xs text-muted-foreground">
-					{activeConnectors} active credentials (GitHub)
+					{dashboard.activeConnectors} active connectors
 				</p>
 			</CardContent>
 		</Card>
@@ -489,7 +348,7 @@
 				<CalendarClock class="size-4 text-muted-foreground" />
 			</CardHeader>
 			<CardContent>
-				<div class="text-3xl font-bold">{scheduleCount}</div>
+				<div class="text-3xl font-bold">{dashboard.scheduleCount}</div>
 				<p class="mt-1 text-xs text-muted-foreground">Automated cron & interval triggers</p>
 			</CardContent>
 		</Card>
@@ -504,7 +363,7 @@
 				<Activity class="size-4 text-primary" />
 			</CardHeader>
 			<CardContent>
-				<div class="text-3xl font-bold">{activeRuns}</div>
+				<div class="text-3xl font-bold">{dashboard.activeRuns}</div>
 				<p class="mt-1 text-xs text-muted-foreground">In-flight pipeline orchestrations</p>
 			</CardContent>
 		</Card>
@@ -529,19 +388,21 @@
 				</Button>
 			</div>
 
-			{#if recentRuns.length === 0}
+			{#if dashboard.error && dashboard.recentRuns.length === 0}
+				<p class="text-sm text-muted-foreground">Recent runs unavailable.</p>
+			{:else if dashboard.recentRuns.length === 0}
 				<div class="py-8 text-center text-xs text-muted-foreground">
 					No pipeline runs dispatched yet.
 				</div>
 			{:else}
 				<div class="divide-y divide-border/60">
-					{#each recentRuns as run (run.id)}
+					{#each dashboard.recentRuns as run (run.id)}
 						<div class="flex items-center justify-between py-2.5 text-xs">
 							<div class="min-w-0 flex-1 pr-3">
 								<div class="flex items-center gap-2">
 									<span class="font-bold text-foreground">PR #{run.pull_number}</span>
 									<span class="truncate text-muted-foreground">
-										{run.pull_snapshot?.title || projectsMap[run.project_id] || ''}
+										{run.pull_snapshot?.title || `PR #${run.pull_number}`}
 									</span>
 								</div>
 								<div
@@ -594,13 +455,15 @@
 				</Button>
 			</div>
 
-			{#if recentJobs.length === 0}
+			{#if dashboard.error && dashboard.recentJobs.length === 0}
+				<p class="text-sm text-muted-foreground">Recent jobs unavailable.</p>
+			{:else if dashboard.recentJobs.length === 0}
 				<div class="py-8 text-center text-xs text-muted-foreground">
 					No schedule jobs executed yet.
 				</div>
 			{:else}
 				<div class="divide-y divide-border/60">
-					{#each recentJobs as job (job.id)}
+					{#each dashboard.recentJobs as job (job.id)}
 						<div class="flex items-center justify-between py-2.5 text-xs">
 							<div class="min-w-0 flex-1 pr-3">
 								<div class="font-medium text-foreground">

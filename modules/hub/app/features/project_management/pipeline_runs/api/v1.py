@@ -1,6 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
+from app.features.project_management.pipeline_runs.models import PipelineRunState
 from app.features.project_management.pipeline_runs.schemas import (
     AttachPRRequest,
     CompleteAttemptRequest,
@@ -18,6 +19,7 @@ from app.features.project_management.pipeline_runs.schemas import (
     PrepareImplementationAttempt,
 )
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
+from app.features.project_management.pipeline_runs.usecases.queries import PipelineRunQueries
 from app.features.project_management.pipelines.services import PipelineObservationService
 from fastapi import APIRouter, Depends, Query, Response, status
 
@@ -26,31 +28,33 @@ router = APIRouter(prefix="/pipeline-runs", tags=["Pipeline Run"])
 
 @router.get("", response_model=PipelineRunList)
 async def list_pipeline_runs(
-    use_case: Annotated[PipelineRunUseCase, Depends()],
+    use_case: Annotated[PipelineRunQueries, Depends()],
     project_id: UUID | None = None,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    state: PipelineRunState | None = None,
+    search: str = Query("", max_length=255),
 ):
-    return await use_case.list(project_id, offset, limit)
+    return await use_case.list_runs(project_id, offset, limit, state, search)
 
 
 @router.get("/{run_id}", response_model=PipelineRunRead)
-async def get_pipeline_run(run_id: UUID, use_case: Annotated[PipelineRunUseCase, Depends()]):
+async def get_pipeline_run(run_id: UUID, use_case: Annotated[PipelineRunQueries, Depends()]):
     return await use_case.get(run_id)
 
 
 @router.get("/{run_id}/attempts", response_model=ExecutionAttemptList)
-async def list_execution_attempts(run_id: UUID, use_case: Annotated[PipelineRunUseCase, Depends()]):
+async def list_execution_attempts(run_id: UUID, use_case: Annotated[PipelineRunQueries, Depends()]):
     return await use_case.list_attempts(run_id)
 
 
 @router.get("/{run_id}/attempts/{attempt_id}/deliveries", response_model=list[ExecutionDeliveryRead])
-async def list_execution_deliveries(run_id: UUID, attempt_id: UUID, use_case: Annotated[PipelineRunUseCase, Depends()]):
+async def list_execution_deliveries(run_id: UUID, attempt_id: UUID, use_case: Annotated[PipelineRunQueries, Depends()]):
     return await use_case.list_deliveries(run_id, attempt_id)
 
 
 @router.get("/{run_id}/attempts/{attempt_id}/replies", response_model=list[ExecutionReplyRead])
-async def list_execution_replies(run_id: UUID, attempt_id: UUID, use_case: Annotated[PipelineRunUseCase, Depends()]):
+async def list_execution_replies(run_id: UUID, attempt_id: UUID, use_case: Annotated[PipelineRunQueries, Depends()]):
     return await use_case.list_replies(run_id, attempt_id)
 
 

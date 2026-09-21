@@ -6,7 +6,7 @@ from typing import Any
 from app.features.project_management.pipeline_runs.dispatch import CODEX_MENTION
 from app.features.project_management.pipeline_runs.schemas import MAX_LINKED_ISSUES, LinkedIssue, PullRequestSnapshot
 from app.features.project_management.pipelines.github import GitHubActionsReader, GitHubObservationError
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 
 
 def github_project_error(exc: GitHubObservationError) -> ProjectError:

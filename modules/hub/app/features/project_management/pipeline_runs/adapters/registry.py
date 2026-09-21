@@ -3,7 +3,7 @@ from uuid import UUID
 from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.project_management.pipeline_runs.adapters.base import ExecutionAdapter
 from app.features.project_management.pipeline_runs.adapters.codex_github_mention import CodexGithubMentionAdapter
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _ADAPTERS: dict[str, ExecutionAdapter] = {
@@ -16,10 +16,6 @@ _NOT_IMPLEMENTED: dict[str, str] = {
     # hygiene sessions rather than the pull request pipeline.
     "jules-api": "Jules pull request delivery is not implemented",
 }
-
-
-def supports_pipeline_delivery(adapter: str) -> bool:
-    return adapter in _ADAPTERS
 
 
 async def resolve_execution_adapter(session: AsyncSession, catalog_id: UUID) -> ExecutionAdapter:

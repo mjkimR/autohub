@@ -8,7 +8,7 @@ from app.features.ai_catalogs.models import AICatalog, AICatalogKind, AICatalogS
 from app.features.ai_catalogs.policies.codex_window import CodexWindowPolicy, CodexWindowState
 from app.features.ai_catalogs.schemas import SetAvailabilityRequest
 from app.features.ai_catalogs.services import AICatalogService
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 from app_testing_base import days_later, utc_now
 
 pytestmark = pytest.mark.unit

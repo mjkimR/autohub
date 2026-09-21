@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from app.features.ai_catalogs.models import AICatalog, AICatalogState
 from app.features.ai_catalogs.policies.base import hold_state, utc
 from app.features.ai_catalogs.repos import AICatalogRepository
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 

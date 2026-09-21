@@ -1,7 +1,8 @@
 from app.features.project_management.pipelines.schemas import PipelineObservationConfig
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.repos import ProjectRepository
 from app.features.project_management.projects.schemas import ProjectObservationPayload, ProjectRead
-from app.features.project_management.projects.services import ProjectError, ProjectService
+from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 
 

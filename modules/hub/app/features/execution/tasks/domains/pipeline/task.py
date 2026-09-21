@@ -26,6 +26,7 @@ from app.features.project_management.pipelines.github import (
 from app.features.project_management.pipelines.repos import PipelineObservationRepository
 from app.features.project_management.pipelines.schemas import PipelineObservationConfig
 from app.features.project_management.pipelines.services import OBSERVATION_TASK, PipelineObservationService
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.repos import (
     PROJECT_DISPATCH_TASK,
     PROJECT_OBSERVATION_TASK,
@@ -36,7 +37,7 @@ from app.features.project_management.projects.schemas import (
     ProjectObservationPayload,
     ProjectRead,
 )
-from app.features.project_management.projects.services import ProjectError, ProjectService
+from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 

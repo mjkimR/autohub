@@ -13,8 +13,9 @@ from app.features.project_management.agent_schedules.repos import (
     session_payload,
 )
 from app.features.project_management.agent_schedules.schemas import AgentScheduleWrite
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.models import Project
-from app.features.project_management.projects.services import ProjectError, ProjectService
+from app.features.project_management.projects.services import ProjectService
 from app.features.scheduling.schedule_configs.models import ScheduleConfig
 from fastapi import Depends
 from pydantic import ValidationError

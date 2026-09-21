@@ -6,7 +6,7 @@ Frontend management console for **Autohub Scheduler Manager**, built with:
 - **Bundler**: Vite 8
 - **Styling**: Tailwind CSS v4, shadcn-svelte (bits-ui)
 - **API Client**: openapi-typescript + openapi-fetch
-- **Validation**: Zod + sveltekit-superforms
+- **Validation**: Native form constraints and backend validation errors
 
 ---
 

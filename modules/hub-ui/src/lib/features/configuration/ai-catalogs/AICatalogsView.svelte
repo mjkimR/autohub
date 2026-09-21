@@ -1,4 +1,5 @@
 <script lang="ts">
+	import LoadError from '$lib/components/shared/LoadError.svelte';
 	import { onMount } from 'svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -92,7 +93,9 @@
 		</Button>
 	</div>
 
-	{#if catalogs.loading && catalogs.items.length === 0}
+	{#if catalogs.error}
+		<LoadError message={catalogs.error} retry={() => catalogs.load()} />
+	{:else if catalogs.loading && catalogs.items.length === 0}
 		<div class="flex h-40 items-center justify-center text-sm text-muted-foreground">
 			Loading AI catalogs…
 		</div>

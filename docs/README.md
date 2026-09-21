@@ -11,6 +11,7 @@ These documents explicitly distinguish between design goals and current function
 6. [AI Catalog Implementation Notes](ai-catalog-implementation-notes.md): Module map, admission and session flows, design decisions, extension points, tests, and known limitations.
 7. [Operator Notices](operator-notices.md): Notification channels (Telegram), what the hub announces, the scheduler trigger heartbeat, and webhook delivery replay.
 8. [Development & Operations](development.md): Commands, testing, and constraints of the existing scheduler foundation.
+9. [Code Hygiene Review](code-hygiene-review.md): 2026-09-21 review, applied fixes, structural findings, and test follow-ups.
 
 [CI Template Usage](../templates/github-actions/README.md) covers CI setup in target repositories.
 The root `justfile` is the single source of truth for commands, and connector credential encryption details are documented in the [Hub module documentation](../modules/hub/README.md#connector-credential-encryption).

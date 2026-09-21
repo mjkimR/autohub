@@ -179,7 +179,7 @@ async def test_webhook_trigger_passes_the_named_catalog_to_enrollment():
 
 
 async def test_webhook_records_why_a_trigger_did_not_enroll():
-    from app.features.project_management.projects.services import ProjectError
+    from app.features.project_management.projects.errors import ProjectError
 
     webhook, lifecycle, finish = make_webhook(
         enroll=AsyncMock(side_effect=ProjectError(422, "AI catalog 'personal-jules' cannot deliver pull request work"))
@@ -199,7 +199,7 @@ async def test_webhook_records_why_a_trigger_did_not_enroll():
 
 
 async def test_webhook_notes_a_deferred_first_dispatch_after_enrolling():
-    from app.features.project_management.projects.services import ProjectError
+    from app.features.project_management.projects.errors import ProjectError
 
     webhook, lifecycle, finish = make_webhook(enroll=AsyncMock(return_value=MagicMock(id=uuid4())))
     lifecycle.manual_advance = AsyncMock(side_effect=ProjectError(409, "AI catalog is quota-blocked"))

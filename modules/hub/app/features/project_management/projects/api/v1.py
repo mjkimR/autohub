@@ -23,9 +23,12 @@ router = APIRouter(prefix="/projects", tags=["Project"])
 
 @router.get("", response_model=ProjectList)
 async def list_projects(
-    use_case: Annotated[ProjectUseCase, Depends()], offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)
+    use_case: Annotated[ProjectUseCase, Depends()],
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    search: str = Query("", max_length=255),
 ):
-    return await use_case.list(offset, limit)
+    return await use_case.list(offset, limit, search)
 
 
 @router.post("", response_model=ProjectRead, status_code=201)

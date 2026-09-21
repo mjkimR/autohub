@@ -38,6 +38,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/dashboard/stats': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Dashboard Stats */
+		get: operations['dashboard_stats_api_v1_dashboard_stats_get'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/connectors': {
 		parameters: {
 			query?: never;
@@ -1482,6 +1499,23 @@ export interface components {
 			id: string;
 			/** Has Credentials */
 			has_credentials: boolean;
+		};
+		/** DashboardStats */
+		DashboardStats: {
+			/** Project Count */
+			project_count: number;
+			/** Schedule Count */
+			schedule_count: number;
+			/** Connector Count */
+			connector_count: number;
+			/** Active Connector Count */
+			active_connector_count: number;
+			/** Total Runs */
+			total_runs: number;
+			/** Runs By State */
+			runs_by_state: {
+				[key: string]: number;
+			};
 		};
 		/** DeleteResponse */
 		DeleteResponse: {
@@ -3220,6 +3254,26 @@ export interface operations {
 			};
 		};
 	};
+	dashboard_stats_api_v1_dashboard_stats_get: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardStats'];
+				};
+			};
+		};
+	};
 	get_connectors_api_v1_connectors_get: {
 		parameters: {
 			query?: {
@@ -3509,6 +3563,8 @@ export interface operations {
 				project_id?: string | null;
 				offset?: number;
 				limit?: number;
+				state?: components['schemas']['PipelineRunState'] | null;
+				search?: string;
 			};
 			header?: never;
 			path?: never;
@@ -4004,6 +4060,7 @@ export interface operations {
 			query?: {
 				offset?: number;
 				limit?: number;
+				search?: string;
 			};
 			header?: never;
 			path?: never;

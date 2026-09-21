@@ -124,7 +124,7 @@ class ManagedScheduleHook(
     @staticmethod
     async def _refuse_if_managed(session, pk: PrimaryKeyType) -> None:
         from app.features.project_management.agent_schedules.repos import AgentScheduleRepository
-        from app.features.project_management.projects.services import ProjectError
+        from app.features.project_management.projects.errors import ProjectError
 
         config_id = pk if isinstance(pk, UUID) else UUID(str(pk))
         owner = await AgentScheduleRepository().owner_of_config(session, config_id)

@@ -30,8 +30,8 @@ from app.features.execution.tasks.domains.jules.client import (
 )
 from app.features.project_management.pipeline_runs.schemas import EnrollPullRequest
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.models import Project
-from app.features.project_management.projects.services import ProjectError
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.core.log import logger
 from app_layer_base.utils.time_util import get_current_utc_time

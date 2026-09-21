@@ -118,6 +118,25 @@ test('a connection check reports what the backend found', async () => {
 	expect(api.POST.mock.calls[0][0]).toBe('/api/v1/projects/{project_id}/check');
 });
 
+test('an invalid edit shows validation messages and keeps the dialog open', async () => {
+	api.PUT.mockResolvedValue({ error: { detail: [{ msg: 'Dispatch interval must be positive' }] } });
+	const user = userEvent.setup();
+	render(ProjectsView);
+	await screen.findByText('Application');
+	await user.click(screen.getByRole('button', { name: 'Configure Project' }));
+	await user.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+	await waitFor(() =>
+		expect(toast.error).toHaveBeenCalledWith('Dispatch interval must be positive')
+	);
+	expect(screen.getByRole('button', { name: 'Save Changes' })).toBeTruthy();
+	await waitFor(() =>
+		expect(
+			(screen.getByRole('button', { name: 'Save Changes' }) as HTMLButtonElement).disabled
+		).toBe(false)
+	);
+});
+
 test('a delete asks first and explains a refusal', async () => {
 	vi.stubGlobal('confirm', vi.fn().mockReturnValueOnce(false).mockReturnValue(true));
 	api.DELETE.mockResolvedValue({ error: { detail: 'Project still has pipeline runs' } });
@@ -130,4 +149,51 @@ test('a delete asks first and explains a refusal', async () => {
 
 	await user.click(screen.getByRole('button', { name: 'Delete Project' }));
 	await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Project still has pipeline runs'));
+});
+
+test('pages past 50 projects and sends search to the server from the first page', async () => {
+	const previous = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation(
+		async (path: string, options?: { params: { query: { offset: number; search?: string } } }) => {
+			if (path !== '/api/v1/projects') return previous(path, options);
+			const query = options!.params.query;
+			return {
+				data: {
+					items: [
+						{
+							...project,
+							id: query.offset ? 'p51' : 'p1',
+							name: query.offset ? 'Last project' : 'Application'
+						}
+					],
+					total_count: query.search ? 1 : 51
+				}
+			};
+		}
+	);
+	const user = userEvent.setup();
+	render(ProjectsView);
+	await screen.findByText('Application');
+	await user.click(screen.getByRole('button', { name: 'Next page' }));
+	expect(await screen.findByText('Last project')).toBeTruthy();
+	await fireEvent.input(screen.getByPlaceholderText('Search projects or repositories...'), {
+		target: { value: 'older' }
+	});
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenCalledWith('/api/v1/projects', {
+			params: { query: { search: 'older', offset: 0, limit: 50 } }
+		})
+	);
+});
+
+test('an HTTP list failure is distinct from no projects and can be retried', async () => {
+	api.GET.mockResolvedValue({ error: { detail: 'Unavailable' } });
+	const user = userEvent.setup();
+	render(ProjectsView);
+	await screen.findByRole('alert');
+	expect(screen.queryByText('No projects found')).toBeNull();
+	api.GET.mockResolvedValue({ data: { items: [project], total_count: 1 } });
+	await user.click(screen.getByRole('button', { name: 'Retry' }));
+	expect(await screen.findByText('Application')).toBeTruthy();
+	expect(screen.queryByRole('alert')).toBeNull();
 });

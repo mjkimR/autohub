@@ -30,6 +30,7 @@ function write(storage: 'sessionStorage' | 'localStorage', key: string, value: s
  * password it was issued under.
  */
 class Session {
+	generation = 0;
 	accessToken = $state(read('sessionStorage', ACCESS_TOKEN_STORAGE));
 	refreshToken = $state(read('sessionStorage', REFRESH_TOKEN_STORAGE));
 	email = $state(read('localStorage', EMAIL_STORAGE));
@@ -41,6 +42,18 @@ class Session {
 	}
 
 	setTokens(tokens: TokenPair) {
+		this.generation += 1;
+		this.refreshToken = '';
+		this.storeTokens(tokens);
+	}
+
+	refreshTokens(tokens: TokenPair, generation: number): boolean {
+		if (generation !== this.generation) return false;
+		this.storeTokens(tokens);
+		return true;
+	}
+
+	private storeTokens(tokens: TokenPair) {
 		this.accessToken = tokens.access_token;
 		// A refresh answers with a new refresh token; keep the old one only if it did not.
 		this.refreshToken = tokens.refresh_token || this.refreshToken;
@@ -54,6 +67,7 @@ class Session {
 	}
 
 	logout() {
+		this.generation += 1;
 		this.accessToken = '';
 		this.refreshToken = '';
 		write('sessionStorage', ACCESS_TOKEN_STORAGE, '');

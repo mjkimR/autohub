@@ -5,6 +5,7 @@ from app.features.ai_catalogs.api.v1 import router as v1_ai_catalogs_router
 from app.features.configuration.connectors.api.v1 import router as v1_connectors_router
 from app.features.configuration.system_configs.api.v1 import router as v1_system_configs_router
 from app.features.configuration.system_configs.models import SystemConfig
+from app.features.dashboard.api import router as v1_dashboard_router
 from app.features.execution.dispatchers.api.v1 import router as v1_dispatchers_router
 from app.features.execution.dispatchers.usecases.housekeeping import HEARTBEAT_CONFIG, parse_instant, tick_status
 from app.features.execution.tasks.api.v1 import router as v1_tasks_router
@@ -58,6 +59,7 @@ async def deep_health_check(session: Annotated[AsyncSession, Depends(get_session
 
 
 # Feature routers
+v1_router.include_router(v1_dashboard_router)
 v1_router.include_router(v1_connectors_router)
 v1_router.include_router(v1_pipelines_router)
 v1_router.include_router(v1_pipeline_runs_router)

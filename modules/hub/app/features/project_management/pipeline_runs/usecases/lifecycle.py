@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from datetime import UTC, datetime, timedelta
-from hashlib import sha256
 from typing import Annotated, Never
 from uuid import UUID, uuid4
 
@@ -15,10 +13,10 @@ from app.features.ai_catalogs.models import (
 from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.ai_catalogs.services import AICatalogService
 from app.features.project_management.pipeline_runs.adapters.base import DeliveryTarget
+from app.features.project_management.pipeline_runs.adapters.capabilities import supports_pipeline_delivery
 from app.features.project_management.pipeline_runs.adapters.codex_github_mention import CodexGithubMentionAdapter
 from app.features.project_management.pipeline_runs.adapters.registry import (
     resolve_execution_adapter,
-    supports_pipeline_delivery,
 )
 from app.features.project_management.pipeline_runs.github import github_project_error, read_pull_request
 from app.features.project_management.pipeline_runs.models import (
@@ -33,26 +31,23 @@ from app.features.project_management.pipeline_runs.models import (
     PipelineRunState,
 )
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
+from app.features.project_management.pipeline_runs.requests import build_implementation_request, request_digest
 from app.features.project_management.pipeline_runs.schemas import (
     AttachPRRequest,
     CompleteAttemptRequest,
     EnrollPullRequest,
-    ExecutionAttemptList,
     ExecutionAttemptRead,
-    ExecutionDeliveryRead,
-    ExecutionReplyRead,
     ImplementationRequest,
     LeaseGrant,
     LeaseMutation,
     LeaseRequest,
     PauseRunRequest,
-    PipelineRunList,
     PipelineRunRead,
-    PipelineRunSummary,
     PreparedImplementationAttempt,
     PrepareImplementationAttempt,
     PullRequestSnapshot,
 )
+from app.features.project_management.pipeline_runs.usecases.queries import PipelineRunQueries
 from app.features.project_management.pipelines import services as pipeline_services
 from app.features.project_management.pipelines.github import (
     DEFAULT_RATE_LIMIT_DELAY_SECONDS,
@@ -62,9 +57,10 @@ from app.features.project_management.pipelines.github import (
 )
 from app.features.project_management.pipelines.schemas import VerificationStatus
 from app.features.project_management.pipelines.services import PipelineConfigurationError, PipelineObservationService
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.models import Project
 from app.features.project_management.projects.schemas import ProjectRead
-from app.features.project_management.projects.services import ProjectError, ProjectService
+from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
@@ -135,59 +131,8 @@ class PipelineRunUseCase:
         self.observer = observer
         self.ai_catalogs = ai_catalogs
 
-    async def list(self, project_id: UUID | None, offset: int, limit: int) -> PipelineRunList:
-        async with AsyncTransaction() as session:
-            rows, total = await self.repo.list(session, project_id=project_id, offset=offset, limit=limit)
-            return PipelineRunList(items=[PipelineRunRead.model_validate(row) for row in rows], total_count=total)
-
     async def get(self, run_id: UUID) -> PipelineRunRead:
-        async with AsyncTransaction() as session:
-            run = await self.repo.get(session, run_id)
-            if run is None:
-                raise ProjectError(404, "Pipeline run not found")
-            return PipelineRunRead.model_validate(run)
-
-    async def list_attempts(self, run_id: UUID) -> ExecutionAttemptList:
-        async with AsyncTransaction() as session:
-            run = await self.repo.get(session, run_id)
-            if run is None:
-                raise ProjectError(404, "Pipeline run not found")
-            rows = await self.repo.list_attempts(session, run_id)
-            started_at = _utc(run.created_at)
-            # A final state is the last thing written to a run, so its last update is when it ended.
-            finished_at = _utc(run.updated_at) if run.state in FINAL_RUN_STATES else None
-            kinds: dict[str, int] = {}
-            for row in rows:
-                kinds[row.kind] = kinds.get(row.kind, 0) + 1
-            return ExecutionAttemptList(
-                items=[ExecutionAttemptRead.model_validate(row) for row in rows],
-                total_count=len(rows),
-                summary=PipelineRunSummary(
-                    attempts_by_kind=kinds,
-                    requests_sent=await self.repo.count_requests_sent(session, run_id),
-                    quota_limit_replies=await self.repo.count_quota_limit_replies(session, run_id),
-                    started_at=started_at,
-                    finished_at=finished_at,
-                    elapsed_seconds=int(((finished_at or get_current_utc_time()) - started_at).total_seconds()),
-                ),
-            )
-
-    async def list_deliveries(self, run_id: UUID, attempt_id: UUID) -> list[ExecutionDeliveryRead]:
-        async with AsyncTransaction() as session:
-            attempt = await self.repo.get_attempt(session, attempt_id)
-            if attempt is None or attempt.pipeline_run_id != run_id:
-                raise ProjectError(404, "Execution attempt not found for this pipeline run")
-            return [
-                ExecutionDeliveryRead.model_validate(row)
-                for row in await self.repo.list_deliveries(session, attempt_id)
-            ]
-
-    async def list_replies(self, run_id: UUID, attempt_id: UUID) -> list[ExecutionReplyRead]:
-        async with AsyncTransaction() as session:
-            attempt = await self.repo.get_attempt(session, attempt_id)
-            if attempt is None or attempt.pipeline_run_id != run_id:
-                raise ProjectError(404, "Execution attempt not found for this pipeline run")
-            return [ExecutionReplyRead.model_validate(row) for row in await self.repo.list_replies(session, attempt_id)]
+        return await PipelineRunQueries(self.repo).get(run_id)
 
     async def enroll(self, project_id: UUID, request: EnrollPullRequest) -> PipelineRunRead:
         async with AsyncTransaction() as session:
@@ -255,7 +200,7 @@ class PipelineRunUseCase:
         The attempt carries the standard implementation request so a CI failure can derive a fix request from it,
         which the project's catalog then delivers as usual.
         """
-        implementation_request, request_digest, idempotency_key = self._build_implementation_request(run, repository)
+        implementation_request, digest, idempotency_key = build_implementation_request(run, repository)
         await self.repo.create_attempt(
             session,
             ExecutionAttempt(
@@ -265,7 +210,7 @@ class PipelineRunUseCase:
                 kind=ExecutionAttemptKind.IMPLEMENTATION,
                 state=ExecutionAttemptState.RUNNING,
                 request_snapshot=implementation_request.model_dump(mode="json"),
-                request_digest=request_digest,
+                request_digest=digest,
                 idempotency_key=idempotency_key,
                 external_status=EXTERNAL_IMPLEMENTATION_STATUS,
                 started_at=get_current_utc_time(),
@@ -353,10 +298,10 @@ class PipelineRunUseCase:
                 raise ProjectError(409, "Project changed after this pipeline run was enrolled")
             existing = await self.repo.active_attempt(session, run_id)
             if existing is not None:
-                _, request_digest, _ = self._build_implementation_request(
+                _, digest, _ = build_implementation_request(
                     run, self._github_repository(project), idempotency_key=existing.idempotency_key
                 )
-                if existing.request_digest != request_digest:
+                if existing.request_digest != digest:
                     raise ProjectError(409, "The active attempt was prepared with a different request")
                 return PreparedImplementationAttempt(
                     attempt=ExecutionAttemptRead.model_validate(existing),
@@ -368,7 +313,7 @@ class PipelineRunUseCase:
                 raise ProjectError(409, "Pipeline run changed; reload before preparing an attempt")
             if run.state != PipelineRunState.QUEUED:
                 raise ProjectError(409, "Pipeline run is not ready for an implementation attempt")
-            implementation_request, request_digest, idempotency_key = self._build_implementation_request(
+            implementation_request, digest, idempotency_key = build_implementation_request(
                 run, self._github_repository(project)
             )
             attempt = await self.repo.create_attempt(
@@ -380,7 +325,7 @@ class PipelineRunUseCase:
                     kind=ExecutionAttemptKind.IMPLEMENTATION,
                     state=ExecutionAttemptState.PLANNED,
                     request_snapshot=implementation_request.model_dump(mode="json"),
-                    request_digest=request_digest,
+                    request_digest=digest,
                     idempotency_key=idempotency_key,
                 ),
             )
@@ -574,7 +519,6 @@ class PipelineRunUseCase:
                                 + (f"\n\n## Bounded failing-job log excerpt\n\n{log_excerpt}" if log_excerpt else ""),
                             }
                         )
-                        canonical = json.dumps(request.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
                         await self.repo.create_attempt(
                             session,
                             ExecutionAttempt(
@@ -584,7 +528,7 @@ class PipelineRunUseCase:
                                 kind=ExecutionAttemptKind.CI_FIX,
                                 state=ExecutionAttemptState.PLANNED,
                                 request_snapshot=request.model_dump(mode="json"),
-                                request_digest=sha256(canonical.encode()).hexdigest(),
+                                request_digest=request_digest(request.model_dump(mode="json")),
                                 idempotency_key=UUID(request.correlation_marker.removeprefix("hub-attempt:")),
                             ),
                         )
@@ -700,9 +644,7 @@ class PipelineRunUseCase:
                                     + "\n\nThe pull request cannot be merged cleanly. Merge the current base branch into this branch, resolve conflicts, run checks, and push the result.",
                                 }
                             )
-                            canonical = json.dumps(
-                                request.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
-                            )
+
                             await self.repo.create_attempt(
                                 session,
                                 ExecutionAttempt(
@@ -712,7 +654,7 @@ class PipelineRunUseCase:
                                     kind=ExecutionAttemptKind.CONFLICT_FIX,
                                     state=ExecutionAttemptState.PLANNED,
                                     request_snapshot=request.model_dump(mode="json"),
-                                    request_digest=sha256(canonical.encode()).hexdigest(),
+                                    request_digest=request_digest(request.model_dump(mode="json")),
                                     idempotency_key=UUID(request.correlation_marker.removeprefix("hub-attempt:")),
                                 ),
                             )
@@ -1052,7 +994,7 @@ class PipelineRunUseCase:
                 prior = ImplementationRequest.model_validate(previous.request_snapshot)
                 kind = previous.kind
             else:
-                prior, _, _ = self._build_implementation_request(run, repository)
+                prior, _, _ = build_implementation_request(run, repository)
                 kind = ExecutionAttemptKind.IMPLEMENTATION
 
         try:
@@ -1104,7 +1046,6 @@ class PipelineRunUseCase:
             key = uuid4()
             implementation = prior.model_copy(update={"correlation_marker": f"hub-attempt:{key}", "pull_request": pull})
             snapshot = implementation.model_dump(mode="json")
-            canonical = json.dumps(snapshot, sort_keys=True, separators=(",", ":"))
             attempt = await self.repo.create_attempt(
                 session,
                 ExecutionAttempt(
@@ -1114,7 +1055,7 @@ class PipelineRunUseCase:
                     kind=kind,
                     state=ExecutionAttemptState.PLANNED,
                     request_snapshot=snapshot,
-                    request_digest=sha256(canonical.encode()).hexdigest(),
+                    request_digest=request_digest(snapshot),
                     idempotency_key=key,
                 ),
             )
@@ -1237,25 +1178,3 @@ class PipelineRunUseCase:
         if project.github_repository is None:
             raise ProjectError(422, "Add a GitHub connection before preparing an implementation")
         return project.github_repository
-
-    @staticmethod
-    def _build_implementation_request(
-        run: PipelineRun,
-        repository: str,
-        *,
-        idempotency_key: UUID | None = None,
-    ) -> tuple[ImplementationRequest, str, UUID]:
-        idempotency_key = idempotency_key or uuid4()
-        pull = PullRequestSnapshot.model_validate(run.pull_snapshot)
-        instructions = (
-            f"Implement pull request #{pull.number} in {repository} on its branch {pull.head_ref}. "
-            "Follow the repository instructions, run the required checks, and push the result to that branch."
-        )
-        snapshot = ImplementationRequest(
-            correlation_marker=f"hub-attempt:{idempotency_key}",
-            repository=repository,
-            pull_request=pull,
-            instructions=instructions,
-        )
-        canonical = json.dumps(snapshot.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
-        return snapshot, sha256(canonical.encode()).hexdigest(), idempotency_key

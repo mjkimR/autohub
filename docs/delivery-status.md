@@ -6,6 +6,14 @@ delivery state; the durable `@codex` request contract lives in
 
 ## Delivered
 
+- Code hygiene and list correctness (2026-09-21): authenticated dashboard
+  counters aggregate all history; projects and pipeline runs support server
+  search, state filtering for runs, and UI pagination. Failed reads have retry
+  states, and stale token renewals cannot overwrite a newer session. Read-only
+  run queries, request identity, project settings, and dashboard state now have
+  separate modules. Unused frontend form dependencies were removed. See
+  [Code Hygiene Review](code-hygiene-review.md). Not yet deployed.
+
 - GitHub CI observation, saved project connections, and project onboarding.
 - PR enrollment, durable run/attempt/delivery history, leases, idempotency,
   mention reconciliation, watchdog retries, CI fixes, merge, and cancellation.

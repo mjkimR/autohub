@@ -7,7 +7,7 @@ from app.features.configuration.connectors.crypto import ConnectorCredentialCiph
 from app.features.notifications.models import NotificationChannel
 from app.features.notifications.repos import NotificationChannelRepository
 from app.features.notifications.schemas import NotificationChannelCreate, NotificationChannelPatch
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 

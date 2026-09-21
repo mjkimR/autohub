@@ -21,7 +21,7 @@ from app.features.project_management.pipeline_runs.schemas import (
     PauseRunRequest,
 )
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 from app_testing_base import hours_ago, hours_later, utc_now
 
 pytestmark = pytest.mark.unit

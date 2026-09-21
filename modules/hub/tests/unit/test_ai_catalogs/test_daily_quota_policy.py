@@ -6,7 +6,7 @@ from uuid import uuid4
 import pytest
 from app.features.ai_catalogs.models import AICatalog, AICatalogKind, AICatalogState
 from app.features.ai_catalogs.policies.daily_quota import DAILY_LIMIT_REJECTION, DailyQuotaPolicy
-from app.features.project_management.projects.services import ProjectError
+from app.features.project_management.projects.errors import ProjectError
 
 pytestmark = pytest.mark.unit
 

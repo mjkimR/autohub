@@ -132,7 +132,7 @@ class PipelineObservationQueryService:
         try:
             report = PipelineObservation.model_validate(raw)
             if task_func == PROJECT_OBSERVATION_TASK:
-                from app.features.project_management.projects.services import ProjectError
+                from app.features.project_management.projects.errors import ProjectError
 
                 try:
                     config, _ = await resolve_project_observation(ProjectObservationPayload.model_validate(payload))

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import LoadError from '$lib/components/shared/LoadError.svelte';
+	import { responseData } from '$lib/api/pagination';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { toast } from 'svelte-sonner';
@@ -10,15 +12,19 @@
 
 	let configs = $state<SystemConfig[]>([]);
 	let loading = $state(true);
+	let loadError = $state('');
 
 	async function loadConfigs() {
 		loading = true;
+		loadError = '';
 		try {
 			const res = await api.GET('/api/v1/system_configs', {});
+			responseData(res, 'Failed to load system configs');
 			if (res.data?.items) {
 				configs = res.data.items;
 			}
 		} catch {
+			loadError = 'Failed to load system configs';
 			toast.error('Failed to load system configs');
 		} finally {
 			loading = false;
@@ -31,6 +37,7 @@
 </script>
 
 <div class="space-y-6">
+	{#if loadError}<LoadError message={loadError} retry={loadConfigs} />{/if}
 	<!-- Page Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
@@ -52,6 +59,8 @@
 		<div class="flex h-40 items-center justify-center text-sm text-muted-foreground">
 			Loading system configs...
 		</div>
+	{:else if loadError}
+		<p class="text-sm text-muted-foreground">List unavailable.</p>
 	{:else if configs.length === 0}
 		<div
 			class="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-card/40 p-6 text-center text-muted-foreground"

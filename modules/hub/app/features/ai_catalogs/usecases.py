@@ -17,7 +17,7 @@ from app.features.ai_catalogs.services import (
     CATALOG_SESSION_WORK_TYPES,
     AICatalogService,
 )
-from app.features.project_management.pipeline_runs.adapters.registry import supports_pipeline_delivery
+from app.features.project_management.pipeline_runs.adapters.capabilities import supports_pipeline_delivery
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends

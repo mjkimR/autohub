@@ -30,6 +30,24 @@ beforeEach(() => {
 		last_tick_at: '2026-09-21T00:00:00Z'
 	};
 	api.GET.mockImplementation(async (path: string) => {
+		if (path === '/api/v1/dashboard/stats')
+			return {
+				data: {
+					project_count: 1,
+					schedule_count: 0,
+					connector_count: 2,
+					active_connector_count: 1,
+					total_runs: 6,
+					runs_by_state: {
+						implementing: 1,
+						awaiting_ci: 1,
+						completed: 1,
+						failed: 1,
+						paused: 1,
+						blocked: 1
+					}
+				}
+			};
 		if (path === '/api/health') return { data: { status: 'ok' } };
 		if (path === '/api/health/deep') return { data: deepHealth };
 		if (path === '/api/v1/projects')
@@ -97,4 +115,34 @@ test('an unreachable backend is reported as unavailable', async () => {
 
 	expect(await screen.findByText('Unavailable')).toBeTruthy();
 	expect(screen.getByText('Disconnected')).toBeTruthy();
+});
+
+test('statistics come from the full history even when only five recent runs are shown', async () => {
+	const previous = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation(async (path: string, ...args: unknown[]) => {
+		if (path === '/api/v1/dashboard/stats')
+			return {
+				data: {
+					project_count: 51,
+					schedule_count: 101,
+					connector_count: 102,
+					active_connector_count: 101,
+					total_runs: 151,
+					runs_by_state: { completed: 150, blocked: 1 }
+				}
+			};
+		return previous(path, ...args);
+	});
+	render(DashboardView);
+	await waitFor(() => expect(tile('Total Runs').textContent).toContain('151'));
+	expect(tile('Completed').textContent).toContain('150');
+	expect(tile('Needs you').textContent).toContain('1');
+	expect(screen.getByText(/101 active connectors/)).toBeTruthy();
+});
+
+test('HTTP failure shows unavailable statistics instead of a zero total', async () => {
+	api.GET.mockResolvedValue({ error: { detail: 'Unavailable' } });
+	render(DashboardView);
+	expect(await screen.findByRole('alert')).toBeTruthy();
+	expect(tile('Total Runs').textContent).toContain('—');
 });

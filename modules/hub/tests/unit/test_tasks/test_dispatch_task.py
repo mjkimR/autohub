@@ -8,8 +8,8 @@ from app.features.project_management.pipeline_runs.models import PipelineRun, Pi
 from app.features.project_management.pipeline_runs.schemas import LeaseGrant
 from app.features.project_management.pipeline_runs.usecases.lifecycle import CATALOG_HOLD_CODE
 from app.features.project_management.pipelines.github import GitHubObservationError
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.schemas import ProjectDispatchPayload
-from app.features.project_management.projects.services import ProjectError
 
 pytestmark = pytest.mark.unit
 
