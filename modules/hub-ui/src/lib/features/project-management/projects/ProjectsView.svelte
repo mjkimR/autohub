@@ -76,6 +76,8 @@
 	let autoEnrollOnTrigger = $state(true);
 	let autoEnrollSessions = $state(true);
 	let dispatchIntervalSeconds = $state('60');
+	// Empty leaves only the AI catalog's limits.
+	let maxInFlightRuns = $state('');
 	let aiCatalogId = $state('');
 
 	// Connection Check dialog
@@ -188,6 +190,7 @@
 			autoEnrollOnTrigger = project.github.automation?.auto_enroll_on_trigger ?? true;
 			autoEnrollSessions = project.github.automation?.auto_enroll_sessions ?? true;
 			dispatchIntervalSeconds = String(project.github.automation?.dispatch_interval_seconds ?? 60);
+			maxInFlightRuns = String(project.github.automation?.max_in_flight_runs ?? '');
 			aiCatalogId = project.github.ai_catalog_id ?? '';
 		} else {
 			hasGithub = false;
@@ -202,6 +205,7 @@
 			autoEnrollOnTrigger = true;
 			autoEnrollSessions = true;
 			dispatchIntervalSeconds = '60';
+			maxInFlightRuns = '';
 			aiCatalogId = '';
 		}
 
@@ -240,7 +244,8 @@
 								auto_fix_conflicts: autoFixConflicts,
 								auto_enroll_on_trigger: autoEnrollOnTrigger,
 								auto_enroll_sessions: autoEnrollSessions,
-								dispatch_interval_seconds: Number(dispatchIntervalSeconds)
+								dispatch_interval_seconds: Number(dispatchIntervalSeconds),
+								max_in_flight_runs: String(maxInFlightRuns).trim() ? Number(maxInFlightRuns) : null
 							}
 						}
 					: null
@@ -809,6 +814,21 @@
 												min="30"
 												max="3600"
 												bind:value={dispatchIntervalSeconds}
+											/>
+										</div>
+										<div class="space-y-1">
+											<label
+												for="maxInFlightRuns"
+												class="text-[11px] font-semibold text-muted-foreground uppercase"
+												>Max runs in flight</label
+											>
+											<Input
+												id="maxInFlightRuns"
+												type="number"
+												min="1"
+												max="50"
+												placeholder="No project limit"
+												bind:value={maxInFlightRuns}
 											/>
 										</div>
 									</div>

@@ -69,6 +69,7 @@ class TestProjectWrite:
             "auto_enroll_on_trigger": True,
             "auto_enroll_sessions": True,
             "dispatch_interval_seconds": 60,
+            "max_in_flight_runs": None,
         }
 
     @pytest.mark.parametrize("interval", [29, 3601])

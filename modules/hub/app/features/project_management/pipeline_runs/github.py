@@ -8,6 +8,12 @@ from app.features.project_management.pipeline_runs.schemas import MAX_LINKED_ISS
 from app.features.project_management.pipelines.github import GitHubActionsReader, GitHubObservationError
 from app.features.project_management.projects.services import ProjectError
 
+
+def github_project_error(exc: GitHubObservationError) -> ProjectError:
+    """Keep what kind of GitHub failure it was, so a scheduled tick can wait instead of failing."""
+    return ProjectError(502, str(exc), code=f"GITHUB_{exc.kind.upper()}")
+
+
 # GitHub closing keywords that link an issue in the same repository.
 CLOSING_REFERENCE = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)\b", re.IGNORECASE)
 MENTION_REJECTED = "Hub posts Codex requests itself"
@@ -28,7 +34,7 @@ async def read_pull_request(reader: GitHubActionsReader, repository: str, number
     except GitHubObservationError as exc:
         if exc.status_code == 404:
             raise ProjectError(404, "Pull request not found in this repository") from None
-        raise ProjectError(502, str(exc)) from None
+        raise github_project_error(exc) from None
     except (AttributeError, KeyError, TypeError, ValueError):
         raise ProjectError(502, "GitHub returned incomplete pull request data") from None
 

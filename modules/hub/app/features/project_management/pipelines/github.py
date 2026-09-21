@@ -1,6 +1,7 @@
 """GitHub Actions adapter. It never checks out or executes repository code."""
 
 import re
+import time
 from typing import Any
 from urllib.parse import quote
 
@@ -15,13 +16,55 @@ from app.features.project_management.pipelines.schemas import (
     VerificationStatus,
 )
 
+GITHUB_FAILURE_AUTH = "auth"
+GITHUB_FAILURE_RATE_LIMITED = "rate_limited"
+GITHUB_FAILURE_UPSTREAM = "upstream"
+# GitHub asks for at least a minute after a secondary rate limit that names no delay.
+DEFAULT_RATE_LIMIT_DELAY_SECONDS = 60
+MAX_RATE_LIMIT_DELAY_SECONDS = 3600
+
 
 class GitHubObservationError(RuntimeError):
-    """Sanitized upstream failure: no response body, credentials, or request headers."""
+    """Sanitized upstream failure: no response body, credentials, or request headers.
 
-    def __init__(self, message: str, status_code: int | None = None):
+    ``kind`` tells a caller what would help: new credentials ("auth"), waiting ``retry_after`` seconds
+    ("rate_limited"), or nothing it can know ("upstream").
+    """
+
+    def __init__(
+        self,
+        message: str,
+        status_code: int | None = None,
+        *,
+        kind: str = GITHUB_FAILURE_UPSTREAM,
+        retry_after: int | None = None,
+    ):
         super().__init__(message)
         self.status_code = status_code
+        self.kind = kind
+        self.retry_after = retry_after
+
+
+def github_http_error(context: str, response: httpx.Response, now: float | None = None) -> GitHubObservationError:
+    """Classify a failed response from its status and rate-limit headers, never from its body."""
+    status = response.status_code
+    headers = response.headers
+    message = f"GitHub {context} returned HTTP {status}"
+    if status == 401:
+        return GitHubObservationError(message, status, kind=GITHUB_FAILURE_AUTH)
+    exhausted = headers.get("x-ratelimit-remaining") == "0"
+    if status == 429 or (status == 403 and (exhausted or "retry-after" in headers)):
+        delay = DEFAULT_RATE_LIMIT_DELAY_SECONDS
+        try:
+            if "retry-after" in headers:
+                delay = int(headers["retry-after"])
+            elif exhausted and "x-ratelimit-reset" in headers:
+                delay = int(headers["x-ratelimit-reset"]) - int(time.time() if now is None else now)
+        except ValueError:
+            pass
+        delay = max(DEFAULT_RATE_LIMIT_DELAY_SECONDS, min(delay, MAX_RATE_LIMIT_DELAY_SECONDS))
+        return GitHubObservationError(message, status, kind=GITHUB_FAILURE_RATE_LIMITED, retry_after=delay)
+    return GitHubObservationError(message, status)
 
 
 def create_github_client(token: str) -> httpx.AsyncClient:
@@ -46,8 +89,7 @@ class GitHubActionsReader:
             response = await self.client.get(path, params=params)
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            status = exc.response.status_code
-            raise GitHubObservationError(f"GitHub observation returned HTTP {status}", status) from None
+            raise github_http_error("observation", exc.response) from None
         except httpx.RequestError:
             raise GitHubObservationError("GitHub observation request failed") from None
         try:
@@ -63,7 +105,7 @@ class GitHubActionsReader:
             response = await self.client.get(path, params=params)
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            raise GitHubObservationError(f"GitHub observation returned HTTP {exc.response.status_code}") from None
+            raise github_http_error("observation", exc.response) from None
         except httpx.RequestError:
             raise GitHubObservationError("GitHub observation request failed") from None
         try:
@@ -100,7 +142,7 @@ class GitHubActionsReader:
                 content.extend(chunk)
             return _redact_log(content.decode("utf-8", errors="replace"))[-max_chars:] or None
         except httpx.HTTPStatusError as exc:
-            raise GitHubObservationError(f"GitHub job log returned HTTP {exc.response.status_code}") from None
+            raise github_http_error("job log", exc.response) from None
         except httpx.RequestError:
             raise GitHubObservationError("GitHub job log request failed") from None
         except httpx.InvalidURL:
@@ -147,8 +189,7 @@ class GitHubActionsReader:
             response = await self.client.post(f"/repos/{repository}/issues/{pull_number}/comments", json={"body": body})
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            status = exc.response.status_code
-            raise GitHubObservationError(f"GitHub mention delivery returned HTTP {status}", status) from None
+            raise github_http_error("mention delivery", exc.response) from None
         except httpx.RequestError:
             raise GitHubObservationError("GitHub mention delivery request failed") from None
         try:
@@ -173,8 +214,7 @@ class GitHubActionsReader:
             )
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            status = exc.response.status_code
-            raise GitHubObservationError(f"GitHub merge returned HTTP {status}", status) from None
+            raise github_http_error("merge", exc.response) from None
         except httpx.RequestError:
             raise GitHubObservationError("GitHub merge request failed") from None
         try:
@@ -299,6 +339,8 @@ class GitHubActionsReader:
                 status=VerificationStatus.WAITING, reason="PR changed during observation; inspect again"
             )
             return observation
+        mergeable_state = current_pr.get("mergeable_state")
+        observation.mergeable_state = mergeable_state if isinstance(mergeable_state, str) else None
         observation.result = evaluate_verification(config.verification, head_sha, observation.run)
         return observation
 

@@ -7,7 +7,7 @@ from app.features.configuration.system_configs.repos import SystemConfigReposito
 from app.features.notifications.notifier import Notifier
 from app.features.project_management.github_webhooks.repos import GitHubWebhookRepository
 from app.features.project_management.github_webhooks.usecases import GitHubWebhookUseCase
-from app.features.project_management.pipeline_runs.models import PipelineRun
+from app.features.project_management.pipeline_runs.models import IN_FLIGHT_RUN_STATES, PipelineRun
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.projects.models import Project
@@ -143,8 +143,9 @@ class TickHousekeepingUseCase:
 
 def _stop_notice(run: PipelineRun, project: Project | None) -> str:
     where = (project.github_repository or project.name) if project is not None else "unknown project"
+    status = "waiting" if run.state in IN_FLIGHT_RUN_STATES else run.state
     lines = [
-        f"Auto Hub: run {run.state} - {where}#{run.pull_number}",
+        f"Auto Hub: run {status} - {where}#{run.pull_number}",
         run.pull_url,
     ]
     if run.pause_reason:

@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -7,6 +8,11 @@ from app.features.configuration.system_configs.models import SystemConfig
 from app.features.execution.dispatchers.usecases.housekeeping import HEARTBEAT_CONFIG
 from app.features.project_management.github_webhooks.models import GitHubWebhookDelivery
 from app.features.project_management.pipeline_runs.models import PipelineRun, PipelineRunState
+from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
+from app.features.project_management.pipeline_runs.usecases.lifecycle import (
+    GITHUB_AUTH_WAIT_REASON,
+    PipelineRunUseCase,
+)
 from app.features.project_management.projects.models import Project
 from app.features.scheduling.schedule_configs.models import ScheduleConfig  # noqa: F401
 from app.features.scheduling.schedule_jobs.models import ScheduleJob  # noqa: F401
@@ -147,4 +153,40 @@ async def test_a_lost_auto_run_delivery_is_replayed_by_the_next_tick(client, ses
     # No project owns the repository, so the replay completes without enrolling anything.
     assert (rows["lost-trigger"].status, rows["lost-trigger"].attempts) == ("processed", 1)
     assert (rows["still-in-flight"].status, rows["still-in-flight"].attempts) == ("received", 0)
+    assert telegram.texts == []
+
+
+async def test_a_run_waiting_on_rejected_credentials_is_announced_once_and_recovers(client, session, channel, telegram):
+    run = await make_run(session, state=PipelineRunState.AWAITING_CI)
+    lifecycle = PipelineRunUseCase(PipelineRunRepository(), MagicMock(), MagicMock())
+
+    await lifecycle.wait_for_github(run.id, kind="auth", retry_after=None)
+    await lifecycle.wait_for_github(run.id, kind="auth", retry_after=None)
+    assert_status_code(await client.post(TRIGGER), 200)
+    assert_status_code(await client.post(TRIGGER), 200)
+
+    [text] = telegram.texts
+    assert text.startswith(f"Auto Hub: run waiting - {run.github_repository}#42")
+    assert "connector token was rejected" in text
+    await session.refresh(run)
+    assert (run.state, run.pause_reason) == (PipelineRunState.AWAITING_CI, GITHUB_AUTH_WAIT_REASON)
+    assert run.next_action_at is not None
+
+    await lifecycle.clear_github_auth_wait(run.id)
+    await session.refresh(run)
+    assert run.pause_reason is None
+
+
+async def test_a_rate_limit_only_delays_the_run(client, session, channel, telegram):
+    run = await make_run(session, state=PipelineRunState.IMPLEMENTING)
+    lifecycle = PipelineRunUseCase(PipelineRunRepository(), MagicMock(), MagicMock())
+
+    await lifecycle.wait_for_github(run.id, kind="rate_limited", retry_after=600)
+    assert_status_code(await client.post(TRIGGER), 200)
+
+    await session.refresh(run)
+    assert run.pause_reason is None and run.revision == 3
+    assert run.next_action_at is not None and run.next_action_at.replace(tzinfo=None) > utc_now().replace(
+        tzinfo=None
+    ) + timedelta(minutes=9)
     assert telegram.texts == []

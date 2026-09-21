@@ -43,6 +43,14 @@ delivery state; the durable `@codex` request contract lives in
   deliveries whose processing was lost are replayed by the next tick. See
   [Operator Notices](operator-notices.md). Verified against a mocked Telegram
   transport only. Not yet deployed.
+- Merge and GitHub robustness (2026-09-21): the merge stage follows GitHub's
+  `mergeable_state`, so a merge blocked by a review, branch rule, or draft
+  waits and is announced instead of being sent to the agent as a conflict; a
+  GitHub rate limit delays a run and a rejected token makes it wait, neither
+  failing the tick; a catalog hold no longer fails the dispatch job; projects
+  can cap their runs in flight (`max_in_flight_runs`). See
+  [Architecture](architecture.md#github-failures). Verified against mocked
+  GitHub responses only. Not yet deployed.
 - `just setup-secrets` keeps existing bundle values on a re-run (2026-09-21)
   instead of regenerating the connector credential key and webhook secret.
 - No Linear integration: Hub is the single source of truth for run state. A
@@ -77,7 +85,9 @@ lint passing. After the operator notices work the same day: 489 backend tests
 on SQLite and on PostgreSQL (testcontainers), 16 frontend tests, pyright, `svelte-check`, and lint passing; the
 Alembic chain upgrades, downgrades one step, and re-upgrades on PostgreSQL 16
 and `alembic check` reports no differences (the two column-comment differences
-noted above are set by migration `061a3a930c1e`).
+noted above are set by migration `061a3a930c1e`). After the merge and GitHub
+robustness work: 510 backend tests on SQLite and on PostgreSQL, 16 frontend
+tests, pyright, `svelte-check`, and lint passing; no schema change.
 
 The automated suite covers crash recovery around delivery and head changes,
 marker reconciliation, watchdog tolerance edges, webhook routing and polling
@@ -89,6 +99,10 @@ catalog policy editing.
 
 - Add a Telegram channel in production, send a test, and confirm a paused run
   is announced.
+- On a sandbox repository that requires one approving review, confirm a
+  passing run waits with a notice and merges by itself after the approval, and
+  check which `mergeable_state` GitHub reports for a required check Hub does
+  not observe.
 - Re-run the Codex PR canary after deploying the refactored gateway.
 - Run one live Jules session of each work type: confirm the v1alpha field
   names (`outputs[].pullRequest.url`, `agentMessaged.message`), that a task

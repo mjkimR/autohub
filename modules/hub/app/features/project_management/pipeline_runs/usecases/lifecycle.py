@@ -20,8 +20,9 @@ from app.features.project_management.pipeline_runs.adapters.registry import (
     resolve_execution_adapter,
     supports_pipeline_delivery,
 )
-from app.features.project_management.pipeline_runs.github import read_pull_request
+from app.features.project_management.pipeline_runs.github import github_project_error, read_pull_request
 from app.features.project_management.pipeline_runs.models import (
+    IN_FLIGHT_RUN_STATES,
     ExecutionAttempt,
     ExecutionAttemptKind,
     ExecutionAttemptState,
@@ -51,7 +52,12 @@ from app.features.project_management.pipeline_runs.schemas import (
     PullRequestSnapshot,
 )
 from app.features.project_management.pipelines import services as pipeline_services
-from app.features.project_management.pipelines.github import GitHubActionsReader, GitHubObservationError
+from app.features.project_management.pipelines.github import (
+    DEFAULT_RATE_LIMIT_DELAY_SECONDS,
+    GITHUB_FAILURE_AUTH,
+    GitHubActionsReader,
+    GitHubObservationError,
+)
 from app.features.project_management.pipelines.schemas import VerificationStatus
 from app.features.project_management.pipelines.services import PipelineConfigurationError, PipelineObservationService
 from app.features.project_management.projects.models import Project
@@ -84,6 +90,34 @@ GITHUB_BINDING_CHANGED_CONFLICT = (
 def _utc(value: datetime) -> datetime:
     # SQLite returns naive values for DateTime(timezone=True); persisted times are UTC.
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+# GitHub `mergeable_state` values. A branch that conflicts with or trails its base is the agent's to update;
+# the others wait for a person (an approval, a branch rule, leaving draft) and are rechecked on a timer.
+# A catalog that cannot take more work yet is backpressure, not a failure.
+CATALOG_HOLD_CODE = "CATALOG_HOLD"
+MERGE_NEEDS_UPDATE = ("dirty", "behind")
+MERGE_WAITS_FOR_OPERATOR = ("blocked", "draft")
+MERGE_RECHECK_DELAY = timedelta(minutes=5)
+GITHUB_AUTH_RECHECK_DELAY = timedelta(minutes=15)
+GITHUB_AUTH_WAIT_REASON = (
+    "Waiting on GitHub: the project's connector token was rejected (HTTP 401). Replace the token in the connector; "
+    "the run continues by itself."
+)
+
+
+def _merge_wait_reason(mergeable_state: str | None) -> str:
+    if mergeable_state == "draft":
+        return "Waiting on GitHub: CI passed but the pull request is a draft. Mark it ready; the run merges by itself."
+    if mergeable_state == "blocked":
+        return (
+            "Waiting on GitHub: CI passed but branch protection blocks the merge (a required review or a check "
+            "Hub does not observe). Satisfy it; the run merges by itself."
+        )
+    return (
+        "Waiting on GitHub: CI passed but GitHub refused the merge without reporting a conflict. Check the "
+        "repository's allowed merge methods and branch rules; the run retries by itself."
+    )
 
 
 class PipelineRunUseCase:
@@ -456,6 +490,9 @@ class PipelineRunUseCase:
                     raise ProjectError(422, "Project missing GitHub connection for pipeline run")
                 observation = await observer.observe(project_read.observation_config([run.pull_number]))
                 pull_result = observation.pulls[0].result
+                if pull_result.status != VerificationStatus.PASSED and run.pause_reason is not None:
+                    # An earlier wait (a blocked merge, say) no longer describes this head.
+                    run.pause_reason = None
                 if pull_result.status == VerificationStatus.FAILED:
                     active_attempt = await self.repo.active_attempt(session, run.id)
                     # The observer exposes no failed job for a workflow-level
@@ -565,19 +602,38 @@ class PipelineRunUseCase:
                             )
                             if current.result.status != VerificationStatus.PASSED:
                                 return PipelineRunRead.model_validate(run)
-                            merge = await reader.merge_pull_request(
-                                project.github_repository,
-                                run.pull_number,
-                                current.head_sha,
-                                project_read.github.automation.merge_method,
-                            )
+                            # GitHub's own verdict decides what a refusal means: only a branch that conflicts with
+                            # or trails its base is the agent's to fix. Reviews, branch rules, and drafts wait for
+                            # a person, and asking the agent to "resolve conflicts" there only burns a task.
+                            mergeable_state = current.mergeable_state
+                            merge: dict = {"merged": False}
+                            if mergeable_state not in (*MERGE_NEEDS_UPDATE, *MERGE_WAITS_FOR_OPERATOR):
+                                try:
+                                    merge = await reader.merge_pull_request(
+                                        project.github_repository,
+                                        run.pull_number,
+                                        current.head_sha,
+                                        project_read.github.automation.merge_method,
+                                    )
+                                except GitHubObservationError as exc:
+                                    if exc.status_code not in (405, 409):
+                                        raise
+                                    refused = await reader._get(
+                                        f"/repos/{project.github_repository}/pulls/{run.pull_number}"
+                                    )
+                                    state = refused.get("mergeable_state")
+                                    mergeable_state = state if isinstance(state, str) else None
+                                    if mergeable_state not in MERGE_NEEDS_UPDATE:
+                                        mergeable_state = mergeable_state or "refused"
                     except PipelineConfigurationError as exc:
                         raise ProjectError(422, str(exc)) from None
                     except GitHubObservationError as exc:
-                        if exc.status_code not in (405, 409):
-                            raise ProjectError(502, str(exc)) from None
-                        merge = {"merged": False, "message": str(exc)}
+                        raise github_project_error(exc) from None
 
+                    if merge.get("merged") is not True and mergeable_state not in MERGE_NEEDS_UPDATE:
+                        self._wait_on_github(run, _merge_wait_reason(mergeable_state), now, MERGE_RECHECK_DELAY)
+                        await session.flush()
+                        return PipelineRunRead.model_validate(run)
                     if merge.get("merged") is True:
                         run.state = PipelineRunState.COMPLETED
                         run.pause_reason = None
@@ -643,11 +699,24 @@ class PipelineRunUseCase:
                                 ),
                             )
                             run.state = PipelineRunState.DISPATCHING
+                            run.pause_reason = None
                         run.next_action_at = None
                         run.revision += 1
                         await session.flush()
 
             return PipelineRunRead.model_validate(run)
+
+    @staticmethod
+    def _wait_on_github(run: PipelineRun, reason: str, now: datetime, delay: timedelta) -> None:
+        """Keep an in-flight run where it is and look again after ``delay``.
+
+        The run is not paused: a resume replays the agent's request, and nothing here is the agent's to redo. The
+        reason is announced once, because only a changed reason moves the revision.
+        """
+        run.next_action_at = now + delay
+        if run.pause_reason != reason:
+            run.pause_reason = reason
+            run.revision += 1
 
     async def _finish_closed_pull(self, session: AsyncSession, run: PipelineRun, pr: dict, now: datetime) -> None:
         merged = pr.get("merged") is True
@@ -794,7 +863,7 @@ class PipelineRunUseCase:
                 if admission.rejection is not None:
                     # Keep what the policy recorded while rejecting, such as a hold it has just reached.
                     await session.commit()
-                    raise ProjectError(409, admission.rejection)
+                    raise ProjectError(409, admission.rejection, code=CATALOG_HOLD_CODE)
             attempt.state = ExecutionAttemptState.DISPATCHING
             request = ImplementationRequest.model_validate(attempt.request_snapshot)
             target = DeliveryTarget(project.github_connector_id, project.github_repository, run.pull_number)
@@ -868,6 +937,28 @@ class PipelineRunUseCase:
             )
             if renewed is None:
                 await self._raise_lease_conflict(session, run_id, "reserve delivery time")
+
+    async def wait_for_github(self, run_id: UUID, *, kind: str, retry_after: int | None) -> None:
+        """Hold an in-flight run that GitHub would not serve, instead of failing the tick that tried.
+
+        A rate limit only delays the run. Rejected credentials also tell the operator, once.
+        """
+        now = get_current_utc_time()
+        async with AsyncTransaction() as session:
+            run = await self.repo.get(session, run_id, lock=True)
+            if run is None or run.state not in IN_FLIGHT_RUN_STATES:
+                return
+            if kind == GITHUB_FAILURE_AUTH:
+                self._wait_on_github(run, GITHUB_AUTH_WAIT_REASON, now, GITHUB_AUTH_RECHECK_DELAY)
+            else:
+                run.next_action_at = now + timedelta(seconds=retry_after or DEFAULT_RATE_LIMIT_DELAY_SECONDS)
+
+    async def clear_github_auth_wait(self, run_id: UUID) -> None:
+        async with AsyncTransaction() as session:
+            run = await self.repo.get(session, run_id, lock=True)
+            if run is not None and run.pause_reason == GITHUB_AUTH_WAIT_REASON:
+                run.pause_reason = None
+                run.revision += 1
 
     async def manual_advance(self, run_id: UUID, observer: PipelineObservationService) -> PipelineRunRead:
         owner = f"manual:{uuid4().hex[:8]}"

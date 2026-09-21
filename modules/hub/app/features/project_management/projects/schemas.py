@@ -27,6 +27,9 @@ class GitHubAutomationConfig(BaseModel):
     # Adopt pull requests opened by the hub's own agent sessions (for example Jules task sessions) into the pipeline.
     auto_enroll_sessions: bool = True
     dispatch_interval_seconds: int = Field(default=60, ge=30, le=3600)
+    # How many of the project's runs may be with an agent or in CI at once; further enrolled runs stay queued.
+    # Paused and blocked runs wait for a person and hold no slot. Empty leaves only the AI catalog's limits.
+    max_in_flight_runs: int | None = Field(default=None, ge=1, le=50)
 
 
 class GitHubProjectConnection(BaseModel):

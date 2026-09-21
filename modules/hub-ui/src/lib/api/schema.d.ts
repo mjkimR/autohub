@@ -1532,6 +1532,8 @@ export interface components {
 			 * @default 60
 			 */
 			dispatch_interval_seconds: number;
+			/** Max In Flight Runs */
+			max_in_flight_runs?: number | null;
 		};
 		/** GitHubProjectConnection */
 		GitHubProjectConnection: {
@@ -2044,6 +2046,8 @@ export interface components {
 			url: string;
 			result: components['schemas']['VerificationResult'];
 			run?: components['schemas']['RunSnapshot'] | null;
+			/** Mergeable State */
+			mergeable_state?: string | null;
 		};
 		/**
 		 * PullRequestSnapshot

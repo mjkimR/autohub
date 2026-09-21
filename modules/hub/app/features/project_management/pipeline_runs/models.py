@@ -45,6 +45,13 @@ ACTIVE_RUN_STATES = (
     PipelineRunState.PAUSED,
     PipelineRunState.BLOCKED,
 )
+# States the scheduler advances by itself.
+IN_FLIGHT_RUN_STATES = (
+    PipelineRunState.QUEUED,
+    PipelineRunState.DISPATCHING,
+    PipelineRunState.IMPLEMENTING,
+    PipelineRunState.AWAITING_CI,
+)
 # States a run leaves only when its operator acts.
 ATTENTION_RUN_STATES = (PipelineRunState.PAUSED, PipelineRunState.BLOCKED, PipelineRunState.FAILED)
 ACTIVE_RUN_PREDICATE = text("state IN ('queued', 'dispatching', 'implementing', 'awaiting_ci', 'paused', 'blocked')")

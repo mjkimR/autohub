@@ -82,6 +82,9 @@ class PullObservation(BaseModel):
     url: str
     result: VerificationResult
     run: RunSnapshot | None = None
+    # GitHub's own view of whether the pull request can merge ("clean", "blocked", "dirty", "behind", "draft",
+    # "unstable", "has_hooks", "unknown"); empty while GitHub is still computing it or the PR was not read to the end.
+    mergeable_state: str | None = None
 
 
 class PipelineObservation(BaseModel):

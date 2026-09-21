@@ -530,6 +530,11 @@
 									{/if}
 									<span class="capitalize">{run.state.replace('_', ' ')}</span>
 								</Badge>
+								{#if run.pause_reason}
+									<p class="mt-1 max-w-xs text-xs whitespace-normal text-muted-foreground">
+										{run.pause_reason}
+									</p>
+								{/if}
 							</TableCell>
 
 							<TableCell>

@@ -59,7 +59,7 @@ A repository maps to exactly one project connection, enforced by a unique constr
 `pipeline.observe_project` schedules reference only `project_id` and PR numbers, so the connection is resolved at run time and an edit can never leave a schedule holding a stale contract.
 Every edit bumps `revision`; observations and connection checks that started against an older revision are discarded rather than saved.
 
-A partial unique index permits only one active or paused run per project. Workers use short database leases; acquire, renew, release, and expiry reclamation are conditional writes, and lease tokens are exposed only by lease operations.
+A partial unique index permits only one active (in-flight, paused, or blocked) run per pull request; different pull requests of a project run in parallel. A project may cap how many of its runs are with an agent or in CI at once (`automation.max_in_flight_runs`): further runs stay queued, and paused or blocked runs hold no slot. Workers use short database leases; acquire, renew, release, and expiry reclamation are conditional writes, and lease tokens are exposed only by lease operations.
 Before delegation, Hub commits an immutable request, canonical SHA-256 digest, idempotency key, and correlation marker under the run lease. A retry with the same request reuses that active attempt; a changed request is rejected. The provider port separates this transaction from reconciliation and the later external mutation.
 
 Legacy `pipeline.observe` schedules that still carry their connection inline are migrated explicitly and transactionally through `POST /api/v1/projects/import_schedule`, which keeps the schedule's trigger, PR numbers, enabled state, and history.
@@ -86,6 +86,28 @@ Workspace Agents API triggers published ChatGPT workspace agents and is not a Co
 
 Immediately prior to merging, the latest PR head and base, required checks, reviews, and branch protection rules must be re-verified.
 Automatic merges must not rely solely on CI passing at the time of an earlier observation.
+
+Hub re-observes the pull request and its required jobs itself, and takes reviews and branch rules from GitHub's own verdict (`mergeable_state`) rather than re-implementing them:
+
+| `mergeable_state` | Hub's action |
+| --- | --- |
+| `dirty`, `behind` | The branch conflicts with or trails its base: one `conflict-fix` request asks the agent to merge the base in (unless `auto_fix_conflicts` is off). No merge is attempted. |
+| `blocked`, `draft` | A person has to act (an approval, a branch rule, leaving draft). The run stays in `awaiting_ci` with the reason, is rechecked every 5 minutes, and merges by itself afterwards. Nothing is sent to the agent. |
+| anything else, or not computed yet | Hub asks GitHub to merge the verified head. A refusal (HTTP 405/409) is classified by re-reading the state: only `dirty`/`behind` goes to the agent, everything else waits as above. |
+
+A waiting run is deliberately not paused: resuming a paused run replays its last request to the agent, and nothing here is the agent's to redo.
+
+## GitHub Failures
+
+The GitHub client classifies a failed response from its status and rate-limit headers, never from its body.
+
+| Kind | Signal | Scheduled tick |
+| --- | --- | --- |
+| `rate_limited` | 429, or 403 with `Retry-After` or `X-RateLimit-Remaining: 0` | The run's `next_action_at` moves out by the delay GitHub names (60 seconds to 1 hour). Not a failure. |
+| `auth` | 401 | The run keeps its state, records that the connector's token was rejected, and is rechecked every 15 minutes; it continues by itself once the token is replaced. Not a failure. |
+| `upstream` | anything else | The tick's job fails, as before. |
+
+A run holding a reason while in flight is announced once through [Operator Notices](operator-notices.md), like a stopped run. An AI catalog that cannot take more work yet (a quota hold, its concurrency limit) is backpressure, not a failed job. API calls made by a person still return these errors directly.
 
 ## Elements Adopted from g-sandbox
 

@@ -32,6 +32,7 @@ executes. Each step logs its own failure and never fails the tick.
 | Notice | When |
 | --- | --- |
 | Run stopped | A pipeline run is `paused`, `blocked`, or `failed` at a revision nobody was told about. The notice names the repository, pull request, and pause reason. |
+| Run waiting | An in-flight run holds a reason it waits on GitHub for: a merge blocked by a review, branch rule, or draft, or a rejected connector token. See [Architecture](architecture.md#github-failures). |
 | Trigger resumed | A tick arrives more than 10 minutes after the previous one. |
 | Trigger stopped | A GitHub webhook arrives while the last tick is more than 10 minutes old; at most once per hour. |
 | `@auto-run` lost | A replayed `@auto-run` delivery failed again (see below). |

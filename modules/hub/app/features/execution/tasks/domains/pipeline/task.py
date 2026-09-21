@@ -13,7 +13,16 @@ from app.features.project_management.pipeline_runs.schemas import (
     LeaseRequest,
     PrepareImplementationAttempt,
 )
-from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
+from app.features.project_management.pipeline_runs.usecases.lifecycle import (
+    CATALOG_HOLD_CODE,
+    GITHUB_AUTH_WAIT_REASON,
+    PipelineRunUseCase,
+)
+from app.features.project_management.pipelines.github import (
+    GITHUB_FAILURE_AUTH,
+    GITHUB_FAILURE_RATE_LIMITED,
+    GitHubObservationError,
+)
 from app.features.project_management.pipelines.repos import PipelineObservationRepository
 from app.features.project_management.pipelines.schemas import PipelineObservationConfig
 from app.features.project_management.pipelines.services import OBSERVATION_TASK, PipelineObservationService
@@ -22,10 +31,16 @@ from app.features.project_management.projects.repos import (
     PROJECT_OBSERVATION_TASK,
     ProjectRepository,
 )
-from app.features.project_management.projects.schemas import ProjectDispatchPayload, ProjectObservationPayload
-from app.features.project_management.projects.services import ProjectService
+from app.features.project_management.projects.schemas import (
+    ProjectDispatchPayload,
+    ProjectObservationPayload,
+    ProjectRead,
+)
+from app.features.project_management.projects.services import ProjectError, ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
+
+WAITABLE_GITHUB_FAILURES = (GITHUB_FAILURE_AUTH, GITHUB_FAILURE_RATE_LIMITED)
 
 
 @task(name=OBSERVATION_TASK)
@@ -69,6 +84,25 @@ async def dispatch_project_task(payload: ProjectDispatchPayload) -> None:
     semaphore = asyncio.Semaphore(batch_limit)
 
     async def advance_one(run) -> None:
+        """Advance one run; what GitHub or the catalog asks the run to wait for is not a failure of the tick."""
+        try:
+            await advance_leased(run)
+        except GitHubObservationError as exc:
+            if exc.kind not in WAITABLE_GITHUB_FAILURES:
+                raise
+            await run_use_case.wait_for_github(run.id, kind=exc.kind, retry_after=exc.retry_after)
+        except ProjectError as exc:
+            if exc.code == CATALOG_HOLD_CODE:
+                return
+            kind = exc.code.removeprefix("GITHUB_").lower()
+            if kind not in WAITABLE_GITHUB_FAILURES:
+                raise
+            await run_use_case.wait_for_github(run.id, kind=kind, retry_after=None)
+        else:
+            if run.pause_reason == GITHUB_AUTH_WAIT_REASON:
+                await run_use_case.clear_github_auth_wait(run.id)
+
+    async def advance_leased(run) -> None:
         async with semaphore:
             owner = f"job:{meta.run_id}:{run.id.hex[:8]}"
             if run.state == PipelineRunState.QUEUED:
@@ -113,8 +147,31 @@ async def dispatch_project_task(payload: ProjectDispatchPayload) -> None:
                 ready_at=get_current_utc_time(),
                 states=states,
             )
+            if any(run.state == PipelineRunState.QUEUED for run in runs):
+                limit = await _project_run_limit(session, project_service, payload.project_id)
+                if limit is not None:
+                    started = await run_repo.count_started(session, payload.project_id)
+                    runs = _within_limit(runs, limit - started)
         # Finish every worker and its lease cleanup even when another worker fails.
         results.extend(await asyncio.gather(*(advance_one(run) for run in runs), return_exceptions=True))
     for result in results:
         if isinstance(result, BaseException):
             raise result
+
+
+async def _project_run_limit(session, project_service: ProjectService, project_id) -> int | None:
+    project = ProjectRead.model_validate(await project_service.get(session, project_id))
+    return project.github.automation.max_in_flight_runs if project.github is not None else None
+
+
+def _within_limit(runs, free: int):
+    """Hold queued runs back once the project has its limit of runs with an agent or in CI."""
+    free = max(0, free)
+    admitted = []
+    for run in runs:
+        if run.state == PipelineRunState.QUEUED:
+            if free == 0:
+                continue
+            free -= 1
+        admitted.append(run)
+    return admitted

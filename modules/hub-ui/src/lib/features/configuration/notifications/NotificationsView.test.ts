@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'svelte-sonner';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -39,9 +39,10 @@ test('explains the setup when no channel exists and adds a Telegram channel', as
 	expect(await screen.findByText(/the hub stops silently/)).toBeTruthy();
 
 	await user.click(screen.getByRole('button', { name: 'Add Telegram channel' }));
-	await user.type(screen.getByLabelText('Name'), 'My phone');
-	await user.type(screen.getByLabelText('Chat ID'), ' 424242 ');
-	await user.type(screen.getByLabelText('Bot token'), '123:secret');
+	// Set in one step: the dialog moves focus while it opens, which drops keystrokes typed one by one.
+	await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'My phone' } });
+	await fireEvent.input(screen.getByLabelText('Chat ID'), { target: { value: ' 424242 ' } });
+	await fireEvent.input(screen.getByLabelText('Bot token'), { target: { value: '123:secret' } });
 	await user.click(screen.getByRole('button', { name: 'Save' }));
 
 	await waitFor(() =>
@@ -71,13 +72,13 @@ test('shows the last failure, reports an undelivered test, and keeps the token o
 	});
 
 	await user.click(screen.getByRole('button', { name: 'Edit' }));
-	await user.type(screen.getByLabelText('Chat ID'), '99');
+	await fireEvent.input(screen.getByLabelText('Chat ID'), { target: { value: '-100777' } });
 	await user.click(screen.getByRole('button', { name: 'Save' }));
 
 	await waitFor(() =>
 		expect(api.PATCH).toHaveBeenCalledWith('/api/v1/notification-channels/{channel_id}', {
 			params: { path: { channel_id: 'n1' } },
-			body: { name: 'My phone', chat_id: '42424299' }
+			body: { name: 'My phone', chat_id: '-100777' }
 		})
 	);
 });

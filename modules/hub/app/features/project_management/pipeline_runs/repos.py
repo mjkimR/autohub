@@ -8,6 +8,7 @@ from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.project_management.pipeline_runs.models import (
     ACTIVE_RUN_STATES,
     ATTENTION_RUN_STATES,
+    IN_FLIGHT_RUN_STATES,
     ExecutionAttempt,
     ExecutionAttemptState,
     ExecutionDelivery,
@@ -15,7 +16,7 @@ from app.features.project_management.pipeline_runs.models import (
     PipelineRun,
     PipelineRunState,
 )
-from sqlalchemy import case, func, or_, select, update
+from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -296,11 +297,17 @@ class PipelineRunRepository:
         return result.scalar_one_or_none()
 
     async def list_unannounced_stops(self, session: AsyncSession, *, since: datetime) -> list[PipelineRun]:
-        """Runs that stopped for their operator at a revision nobody was told about, oldest first."""
+        """Runs that need their operator at a revision nobody was told about, oldest first.
+
+        That is a run stopped for a person, and an in-flight run holding a reason it waits on GitHub for.
+        """
         rows = await session.scalars(
             select(PipelineRun)
             .where(
-                PipelineRun.state.in_(ATTENTION_RUN_STATES),
+                or_(
+                    PipelineRun.state.in_(ATTENTION_RUN_STATES),
+                    and_(PipelineRun.state.in_(IN_FLIGHT_RUN_STATES), PipelineRun.pause_reason.is_not(None)),
+                ),
                 PipelineRun.updated_at > since,
                 or_(PipelineRun.notified_revision.is_(None), PipelineRun.notified_revision != PipelineRun.revision),
             )
@@ -311,3 +318,19 @@ class PipelineRunRepository:
 
     async def mark_stop_announced(self, session: AsyncSession, run_id: UUID, revision: int) -> None:
         await session.execute(update(PipelineRun).where(PipelineRun.id == run_id).values(notified_revision=revision))
+
+    async def count_started(self, session: AsyncSession, project_id: UUID) -> int:
+        """The project's runs that are with an agent or in CI: everything in flight except the queue."""
+        return int(
+            await session.scalar(
+                select(func.count())
+                .select_from(PipelineRun)
+                .where(
+                    PipelineRun.project_id == project_id,
+                    PipelineRun.state.in_(
+                        (PipelineRunState.DISPATCHING, PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI)
+                    ),
+                )
+            )
+            or 0
+        )
