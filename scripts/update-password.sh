@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # The hub keeps the account's password equal to FIRST_USER_PASSWORD on every start, so the bundle is the one
 # place it is changed. The old password and the sessions issued under it stop working once the new revision
-# serves. Cloud Scheduler is not involved: it holds a key of its own (SCHEDULER_KEY).
+# serves. Cloud Scheduler is not involved: it holds a key of its own (a managed machine API key).
 # ─────────────────────────────────────────────────────────────────────────────
 
 PASSWORD="${1:-}"

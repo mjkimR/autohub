@@ -155,40 +155,8 @@ echo "    URL: $SERVICE_URL"
 
 # 4. Configure Cloud Scheduler (1-minute tick trigger)
 if [[ "$SETUP_SCHEDULER" == "true" ]]; then
-  JOB_NAME="${SERVICE_NAME}-dispatcher-tick"
-  echo "==> Configuring Cloud Scheduler job: $JOB_NAME..."
-
-  APP_SECRETS_JSON=$(gcloud secrets versions access latest --secret=autohub-secrets --project="$PROJECT_ID" 2>/dev/null || true)
-  # The scheduler's own key: it opens the dispatcher trigger and nothing else.
-  SCHEDULER_KEY=$(APP_SECRETS_JSON="$APP_SECRETS_JSON" python3 -c 'import json, os; print(json.loads(os.environ["APP_SECRETS_JSON"])["SCHEDULER_KEY"])' 2>/dev/null || true)
-  if [[ -n "$SCHEDULER_KEY" ]]; then
-    if gcloud scheduler jobs describe "$JOB_NAME" --location="$REGION" --project="$PROJECT_ID" >/dev/null 2>&1; then
-      gcloud scheduler jobs update http "$JOB_NAME" \
-        --location="$REGION" \
-        --project="$PROJECT_ID" \
-        --schedule="* * * * *" \
-        --uri="${SERVICE_URL}/api/v1/dispatchers/trigger" \
-        --http-method=POST \
-        --update-headers="X-Scheduler-Key=${SCHEDULER_KEY}" \
-        --remove-headers="X-API-Key" \
-        --time-zone="UTC" \
-        --attempt-deadline=300s >/dev/null
-      echo "  - Updated existing Cloud Scheduler job."
-    else
-      gcloud scheduler jobs create http "$JOB_NAME" \
-        --location="$REGION" \
-        --project="$PROJECT_ID" \
-        --schedule="* * * * *" \
-        --uri="${SERVICE_URL}/api/v1/dispatchers/trigger" \
-        --http-method=POST \
-        --headers="X-Scheduler-Key=${SCHEDULER_KEY}" \
-        --time-zone="UTC" \
-        --attempt-deadline=300s >/dev/null
-      echo "  - Created new Cloud Scheduler job."
-    fi
-  else
-    echo "  - Warning: autohub-secrets has no SCHEDULER_KEY (re-run 'just setup-secrets'). Cloud Scheduler job skipped."
-  fi
+  python3 "$ROOT_DIR/scripts/provision-scheduler.py" \
+    --project "$PROJECT_ID" --region "$REGION" --service "$SERVICE_NAME" --url "$SERVICE_URL"
 fi
 
 # 5. Clean up old images in Artifact Registry (keep only latest N versions)

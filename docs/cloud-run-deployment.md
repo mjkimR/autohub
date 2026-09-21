@@ -28,7 +28,7 @@ just setup-secrets -e "you@example.com" -c "PROJECT:REGION:INSTANCE"
 just deploy-cloud-run -c "PROJECT:REGION:INSTANCE"
 ```
 
-`just setup-secrets` is safe to re-run, for example to change the database URL: it keeps every value the `autohub-secrets` bundle already holds unless an option replaces it, and never regenerates the connector credential key (which would make stored connector credentials undecryptable) or the webhook secret. It refuses to run when the bundle exists but cannot be read. Change the operator's password with `just update-password`, which updates the bundle and restarts Cloud Run; the hub applies the bundle's password to the account at startup. Cloud Scheduler is not involved: it uses its own `SCHEDULER_KEY`.
+`just setup-secrets` is safe to re-run, for example to change the database URL: it keeps every value the `autohub-secrets` bundle already holds unless an option replaces it, and never regenerates the connector credential key (which would make stored connector credentials undecryptable) or the webhook secret. It refuses to run when the bundle exists but cannot be read. Change the operator's password with `just update-password`, which updates the bundle and restarts Cloud Run; the hub applies the bundle's password to the account at startup. Cloud Scheduler is not involved: it uses a database-managed machine API key.
 
 _(To run each step manually, see steps 1 through 6 below.)_
 
@@ -101,8 +101,8 @@ just setup-secrets -- --project "$PROJECT_ID" --connection-name "$DB_CONNECTION_
 ```
 
 The bundle contains the operator's account (`FIRST_USER_EMAIL`, `FIRST_USER_PASSWORD`,
-`FIRST_USER_SYNC_PASSWORD`), the token signing key (`SECRET_KEY`), the scheduler's key
-(`SCHEDULER_KEY`), how long an unused session lasts (`REFRESH_TOKEN_EXPIRE_DAYS`, 7), `DATABASE_URL`, `GITHUB_WEBHOOK_SECRET`, `CONNECTOR_CREDENTIAL_KEY`, and
+`FIRST_USER_SYNC_PASSWORD`), the token signing key (`SECRET_KEY`), the M2M
+management root credential (`APP_API_KEY_ROOT_KEY`), how long an unused session lasts (`REFRESH_TOKEN_EXPIRE_DAYS`, 7), `DATABASE_URL`, `GITHUB_WEBHOOK_SECRET`, `CONNECTOR_CREDENTIAL_KEY`, and
 `CONNECTOR_CREDENTIAL_KEY_VERSION`. A bundle written before accounts existed is upgraded in place by
 re-running the helper: `APP_SECRET_KEY` is removed and the new values are added. The app-common
 environment loader expands these into normal environment variables at startup.
@@ -203,18 +203,38 @@ echo "Auto Hub Service URL: $SERVICE_URL"
 
 ## 6. Register Cloud Scheduler (Periodic Trigger)
 
-Set up Cloud Scheduler to invoke Auto Hub's observation and retry dispatcher ticks every minute.
+Cloud Scheduler sends a managed `X-API-Key` with the `autohub:dispatch` scope.
+The root key is only used by provisioning; it never goes into the Scheduler job.
+Run migrations and deploy first, then provision against the running server:
 
 ```bash
-gcloud scheduler jobs create http autohub-dispatcher-tick \
-  --location="$REGION" \
-  --schedule="* * * * *" \
-  --uri="${SERVICE_URL}/api/v1/dispatchers/trigger" \
-  --http-method=POST \
-  --headers="X-Scheduler-Key=$(gcloud secrets versions access latest --secret=autohub-secrets | python3 -c 'import json,sys; print(json.load(sys.stdin)["SCHEDULER_KEY"])')" \
-  --time-zone="UTC" \
-  --attempt-deadline=300s
+just provision-scheduler --project "$PROJECT_ID" --region "$REGION" \
+  --service "$SERVICE_NAME" --url "$SERVICE_URL"
 ```
+
+`just setup-secrets` now creates/preserves `APP_API_KEY_ROOT_KEY` in `autohub-secrets`.
+The deployment helper invokes the command above when scheduler setup is enabled.
+It registers `<service>-scheduler`, issues a key once, saves `{machine_id,key_id,key}`
+in the separate `<service>-scheduler-credential` Secret Manager secret, and configures
+Scheduler with that key. Subsequent deploys reuse the credential. An unreadable secret,
+inactive machine, revoked/expired key, or unexpected scope stops provisioning; none
+is silently replaced. If saving a newly issued secret fails, the helper revokes it.
+No root or workload credential is printed.
+
+Before upgrading an existing deployment, pause the Scheduler job, run
+`just setup-secrets` to add the root setting, then deploy/provision and resume it.
+The former `SCHEDULER_KEY` bundle entry and `X-Scheduler-Key` header are retired.
+The provisioning helper replaces the job header after the new server is ready.
+Never pass the root key as `X-API-Key` to the dispatcher.
+
+For explicit rotation, issue a replacement through
+`POST /api/v1/machines/{id}/keys`, save its one-time response in the credential
+secret using the same `{machine_id,key_id,key}` shape, rerun provisioning to switch
+the job, and then revoke the old key through
+`DELETE /api/v1/machines/{id}/keys/{key_id}`. Root removal/rotation happens in the
+server's secret bundle followed by restarting every instance. Management also accepts
+a human administrator's bearer token. Concurrent provisioning jobs should be serialized;
+a lost issuance response requires reconciling key history and explicitly issuing/storing a replacement. The helper never treats missing Secret Manager data as permission to replace prior keys.
 
 ---
 

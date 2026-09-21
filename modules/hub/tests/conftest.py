@@ -23,7 +23,7 @@ os.environ["FIRST_USER_EMAIL"] = "operator@example.com"
 os.environ["FIRST_USER_PASSWORD"] = "operator-password"
 os.environ["FIRST_USER_SYNC_PASSWORD"] = "true"
 os.environ["SECRET_KEY"] = "test-signing-key-not-for-production"
-os.environ["SCHEDULER_KEY"] = "test-scheduler-key"
+os.environ["APP_API_KEY_ROOT_KEY"] = "root-test-credential-at-least-32-characters"
 
 # Pin the in-memory calendar backend. Overridden, not defaulted: a developer's .env may set
 # CALENDAR_BACKEND=google, and the suite must never reach a live calendar.

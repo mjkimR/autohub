@@ -94,7 +94,7 @@ async def test_bootstrap_operator_profile_and_list_are_readable(client, session)
     assert_status_code(await client.get("/api/v1/users/admin/", headers=bearer(tokens["access_token"])), 200)
 
 
-async def test_inactive_operator_cannot_reuse_a_session(client, session):
+async def test_inactive_operator_cannot_reuse_a_session(client, session, scheduler_key):
     tokens = (await client.post(LOGIN, data=OPERATOR)).json()
     operator = await session.scalar(select(User).where(User.email == OPERATOR["username"]))
     operator.is_active = False
@@ -104,7 +104,7 @@ async def test_inactive_operator_cannot_reuse_a_session(client, session):
     assert_status_code(await client.post(TRIGGER, headers=bearer(tokens["access_token"])), 401)
     assert_status_code(await client.post(REFRESH, json={"refresh_token": tokens["refresh_token"]}), 401)
     # Disabling the person does not stop the independent scheduler.
-    assert_status_code(await client.post(TRIGGER, headers={"X-Scheduler-Key": "test-scheduler-key"}), 200)
+    assert_status_code(await client.post(TRIGGER, headers=scheduler_key), 200)
 
 
 async def test_swagger_authorize_uses_the_real_login_endpoint(client):
@@ -138,12 +138,12 @@ async def test_repeated_failed_logins_lock_the_caller_out_and_tell_the_operator(
     assert_status_code(await client.post(LOGIN, data=OPERATOR, headers={"X-Forwarded-For": "198.51.100.9"}), 200)
 
 
-async def test_the_scheduler_key_opens_the_trigger_and_nothing_else(client):
-    scheduler = {"X-Scheduler-Key": "test-scheduler-key"}
+async def test_the_scheduler_key_opens_the_trigger_and_nothing_else(client, scheduler_key):
+    scheduler = scheduler_key
 
     assert_status_code(await client.post(TRIGGER, headers=scheduler), 200)
     assert_status_code(await client.get(PROTECTED, headers=scheduler), 401)
-    assert_status_code(await client.post(TRIGGER, headers={"X-Scheduler-Key": "wrong"}), 401)
+    assert_status_code(await client.post(TRIGGER, headers={"X-API-Key": "wrong"}), 401)
     assert_status_code(await client.post(TRIGGER), 401)
 
     tokens = (await client.post(LOGIN, data=OPERATOR)).json()
@@ -167,3 +167,44 @@ async def test_a_password_changed_in_the_secrets_replaces_the_old_one_at_startup
     finally:
         monkeypatch.undo()
         get_auth_settings.cache_clear()
+
+
+ROOT = {"X-Root-API-Key": "root-test-credential-at-least-32-characters"}
+
+
+@pytest.fixture
+async def scheduler_key(client):
+    machine = await client.post(
+        "/api/v1/machines", headers=ROOT, json={"name": "cloud-scheduler", "scopes": ["autohub:dispatch"]}
+    )
+    assert machine.status_code == 201, machine.text
+    key = await client.post(f"/api/v1/machines/{machine.json()['id']}/keys", headers=ROOT, json={"label": "deployment"})
+    assert key.status_code == 201, key.text
+    return {"X-API-Key": key.json()["key"]}
+
+
+async def test_root_only_manages_keys_and_revocation_stops_scheduler(client, scheduler_key):
+    assert_status_code(await client.post(TRIGGER, headers=ROOT), 401)
+    assert_status_code(await client.get(PROTECTED, headers=ROOT), 401)
+    assert_status_code(await client.get("/api/v1/users/admin/", headers=ROOT), 401)
+    assert_status_code(await client.get("/api/v1/machines", headers=scheduler_key), 401)
+    assert_status_code(await client.post(TRIGGER, headers=scheduler_key), 200)
+    machine = (await client.get("/api/v1/machines", headers=ROOT)).json()[0]
+    path = f"/api/v1/machines/{machine['id']}/keys"
+    key = (await client.get(path, headers=ROOT)).json()[0]
+    assert_status_code(await client.delete(f"{path}/{key['id']}", headers=ROOT), 200)
+    assert_status_code(await client.post(TRIGGER, headers=scheduler_key), 401)
+
+
+async def test_machine_needs_dispatch_scope_and_human_admin_can_manage_keys(client):
+    tokens = (await client.post(LOGIN, data=OPERATOR)).json()
+    human = bearer(tokens["access_token"])
+    machine = await client.post("/api/v1/machines", headers=human, json={"name": "no-permission"})
+    assert_status_code(machine, 201)
+    key = (
+        await client.post(f"/api/v1/machines/{machine.json()['id']}/keys", headers=ROOT, json={"label": "empty"})
+    ).json()
+    assert_status_code(await client.post(TRIGGER, headers={"X-API-Key": key["key"]}), 403)
+    assert_status_code(
+        await client.post("/api/v1/machines", headers=ROOT, json={"name": "bad", "scopes": ["planroot:agent"]}), 400
+    )

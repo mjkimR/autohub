@@ -3,8 +3,8 @@ version: 0.1.0
 targets: [claude, codex]
 dependencies:
   apm:
-    # Match the shared frontend lint policy; Python runtime packages keep their own pin.
+    # Match the shared Python and frontend dependency commit.
     - git: mjkimR/app-common
       path: agents
-      ref: 915f8f512b7d590a999291cbe465fa16f2ba6f1c
+      ref: 98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f
       skills: [app-common]

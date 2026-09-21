@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.18.3",
     "app-layer-base",
+    "app-prebuilt-api-key",
     "psycopg[binary]>=3.1",
     "cachetools>=7.0.0",
     "croniter>=6.0.0",
@@ -26,11 +27,12 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "4130dd654a1c2a6a21082b4f1cedba2d129b6fcc" }
-app-error = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-error", rev = "4130dd654a1c2a6a21082b4f1cedba2d129b6fcc" }
-app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "4130dd654a1c2a6a21082b4f1cedba2d129b6fcc" }
-app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "4130dd654a1c2a6a21082b4f1cedba2d129b6fcc" }
-app-prebuilt-user = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-user", rev = "4130dd654a1c2a6a21082b4f1cedba2d129b6fcc" }
+app-prebuilt-api-key = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-api-key", rev = "98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f" }
+app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f" }
+app-error = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-error", rev = "98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f" }
+app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f" }
+app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f" }
+app-prebuilt-user = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-user", rev = "98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f" }
 
 [dependency-groups]
 dev = [

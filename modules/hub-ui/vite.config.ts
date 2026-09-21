@@ -10,7 +10,8 @@ export default defineConfig({
 		conditions: ['browser']
 	},
 	test: {
-		environment: 'jsdom'
+		environment: 'jsdom',
+		fsModuleCache: true
 	},
 	server: {
 		proxy: {

@@ -19,7 +19,7 @@
 		"gen:api": "sh scripts/gen-api.sh"
 	},
 	"devDependencies": {
-		"@app-common/eslint-config": "git+https://github.com/mjkimR/app-common.git#915f8f512b7d590a999291cbe465fa16f2ba6f1c",
+		"@app-common/eslint-config": "git+https://github.com/mjkimR/app-common.git#98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f",
 		"@eslint/js": "^10.0.1",
 		"@fontsource-variable/inter": "^5.3.0",
 		"@lucide/svelte": "^1.43.0",

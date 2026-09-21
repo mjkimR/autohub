@@ -26,16 +26,6 @@ class SchedulerDefaults(BaseSettings):
         return self.GLOBAL_TIMEOUT_SECONDS - self.GLOBAL_TIMEOUT_BUFFER
 
 
-class SchedulerAuthConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
-
-    SCHEDULER_KEY: SecretStr | None = Field(
-        default=None,
-        description="Random key the external scheduler sends as X-Scheduler-Key. It opens the dispatcher trigger "
-        "only. Unset: only a signed-in user can trigger a tick",
-    )
-
-
 class GitHubWebhookConfig(BaseSettings):
     """Deployment-owned secret shared with GitHub's webhook configuration."""
 
@@ -50,11 +40,6 @@ class GitHubWebhookConfig(BaseSettings):
 def get_scheduler_defaults() -> SchedulerDefaults:
     """Get an instance of SchedulerDefaults with values loaded from environment variables or defaults."""
     return SchedulerDefaults(**{})
-
-
-@lru_cache
-def get_scheduler_auth_config() -> SchedulerAuthConfig:
-    return SchedulerAuthConfig(**{})
 
 
 @lru_cache

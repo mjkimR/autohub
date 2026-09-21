@@ -139,11 +139,10 @@ if [[ -z "$TOKEN_SIGNING_KEY_VAL" ]]; then
   TOKEN_SIGNING_KEY_VAL=$(openssl rand -hex 64)
 fi
 
-# The scheduler cannot sign in. Its own random key opens the dispatcher trigger and nothing else, so the
-# scheduler's configuration never carries anything derived from the operator's password.
-SCHEDULER_KEY_VAL=$(existing_value SCHEDULER_KEY)
-if [[ -z "$SCHEDULER_KEY_VAL" ]]; then
-  SCHEDULER_KEY_VAL=$(openssl rand -hex 32)
+# Deployment-owned root key only manages M2M credentials; it never triggers work.
+ROOT_KEY_VAL=$(existing_value APP_API_KEY_ROOT_KEY)
+if [[ -z "$ROOT_KEY_VAL" ]]; then
+  ROOT_KEY_VAL=$(openssl rand -hex 32)
 fi
 
 # 2. GitHub webhook secret (20 bytes hex)
@@ -190,13 +189,13 @@ SECRETS_JSON=$( \
   OPERATOR_EMAIL_VAL="$OPERATOR_EMAIL_VAL" \
   OPERATOR_PASSWORD_VAL="$OPERATOR_PASSWORD_VAL" \
   TOKEN_SIGNING_KEY_VAL="$TOKEN_SIGNING_KEY_VAL" \
-  SCHEDULER_KEY_VAL="$SCHEDULER_KEY_VAL" \
+  ROOT_KEY_VAL="$ROOT_KEY_VAL" \
   DATABASE_URL="$DATABASE_URL" \
   WEBHOOK_SECRET_VAL="$WEBHOOK_SECRET_VAL" \
   CONNECTOR_KEY_VAL="$CONNECTOR_KEY_VAL" \
   CONNECTOR_KEY_VERSION="${CONNECTOR_KEY_VERSION:-1}" \
   EXISTING_JSON="$EXISTING_JSON" \
-  python3 -c 'import json, os; raw = os.environ["EXISTING_JSON"]; bundle = json.loads(raw) if raw else {}; bundle.pop("APP_SECRET_KEY", None); bundle.setdefault("REFRESH_TOKEN_EXPIRE_DAYS", "7"); bundle.update({"FIRST_USER_EMAIL": os.environ["OPERATOR_EMAIL_VAL"], "FIRST_USER_PASSWORD": os.environ["OPERATOR_PASSWORD_VAL"], "FIRST_USER_SYNC_PASSWORD": "true", "SECRET_KEY": os.environ["TOKEN_SIGNING_KEY_VAL"], "SCHEDULER_KEY": os.environ["SCHEDULER_KEY_VAL"], "DATABASE_URL": os.environ["DATABASE_URL"], "GITHUB_WEBHOOK_SECRET": os.environ["WEBHOOK_SECRET_VAL"], "CONNECTOR_CREDENTIAL_KEY": os.environ["CONNECTOR_KEY_VAL"], "CONNECTOR_CREDENTIAL_KEY_VERSION": os.environ["CONNECTOR_KEY_VERSION"]}); print(json.dumps(bundle, separators=(",", ":")))' \
+  python3 -c 'import json, os; raw = os.environ["EXISTING_JSON"]; bundle = json.loads(raw) if raw else {}; bundle.pop("APP_SECRET_KEY", None); bundle.pop("SCHEDULER_KEY", None); bundle.setdefault("REFRESH_TOKEN_EXPIRE_DAYS", "7"); bundle.update({"FIRST_USER_EMAIL": os.environ["OPERATOR_EMAIL_VAL"], "FIRST_USER_PASSWORD": os.environ["OPERATOR_PASSWORD_VAL"], "FIRST_USER_SYNC_PASSWORD": "true", "SECRET_KEY": os.environ["TOKEN_SIGNING_KEY_VAL"], "APP_API_KEY_ROOT_KEY": os.environ["ROOT_KEY_VAL"], "DATABASE_URL": os.environ["DATABASE_URL"], "GITHUB_WEBHOOK_SECRET": os.environ["WEBHOOK_SECRET_VAL"], "CONNECTOR_CREDENTIAL_KEY": os.environ["CONNECTOR_KEY_VAL"], "CONNECTOR_CREDENTIAL_KEY_VERSION": os.environ["CONNECTOR_KEY_VERSION"]}); print(json.dumps(bundle, separators=(",", ":")))' \
 )
 
 if [[ -n "$EXISTING_JSON" && "$SECRETS_JSON" == "$EXISTING_JSON" ]]; then

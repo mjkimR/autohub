@@ -1,3 +1,7 @@
+> Authentication update: current deployments use app-common `80372f4`, managed
+> machine keys (`X-API-Key`), and a management-only `APP_API_KEY_ROOT_KEY`. Earlier
+> `SCHEDULER_KEY` / `X-Scheduler-Key` entries below describe the prior rollout.
+
 # Delivery Status
 
 Auto Hub is implemented and deployed. This document records the current

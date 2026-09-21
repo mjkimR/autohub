@@ -7,7 +7,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from app.auth import login_caller, login_lockout_listener
+from app.auth import MACHINE_SCOPES, login_caller, login_lockout_listener, require_machine_admin
 from app.features import tasks
 from app.features.project_management.projects.errors import ProjectError
 from app.router import router
@@ -15,6 +15,9 @@ from app_layer_base.base.exceptions.handler import set_exception_handler
 from app_layer_base.core import middlewares
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.core.log import logger
+from app_prebuilt_api_key.config import get_api_key_settings
+from app_prebuilt_api_key.deps import require_key_admin
+from app_prebuilt_api_key.usecases import get_machine_scopes
 from app_prebuilt_user.config import get_auth_settings
 from app_prebuilt_user.deps import get_login_caller, get_login_lockout_listener
 from app_prebuilt_user.repos import UserRepository
@@ -58,6 +61,7 @@ def get_lifespan():
     async def lifespan(app: FastAPI):
         logger.info("Starting app lifespan")
         tasks.autodiscover()
+        get_api_key_settings()
         await ensure_first_user()
         yield
         logger.info("End of app lifespan")
@@ -92,6 +96,8 @@ def create_app():
     middlewares.request_id_middleware.add_middleware(app)
 
     app.include_router(router)
+    app.dependency_overrides[require_key_admin] = require_machine_admin
+    app.dependency_overrides[get_machine_scopes] = lambda: MACHINE_SCOPES
     app.dependency_overrides[get_login_caller] = login_caller
     app.dependency_overrides[get_login_lockout_listener] = login_lockout_listener
 

@@ -5,52 +5,73 @@ People sign in with the account of `app-prebuilt-user` (`POST /api/v1/users/logi
 deployment's secrets and follows them on every start (`FIRST_USER_SYNC_PASSWORD`), so the secret store stays the
 one place a password is changed. The database only ever holds an Argon2id hash of it.
 
-The external scheduler cannot sign in. It holds its own random key, which opens the dispatcher trigger and nothing
-else, so the scheduler's configuration never carries anything derived from a person's password.
+The external scheduler cannot sign in. It holds a database-managed machine key with the autohub:dispatch scope, which opens the dispatcher trigger, so the scheduler's configuration never carries anything derived from a person's password.
 """
 
-import secrets
 from typing import Annotated
 
 from app.common.auth_throttle import caller_address, masked_address
-from app.common.config import get_scheduler_auth_config
 from app.features.notifications.notifier import Notifier
 from app_layer_base.core.database.deps import get_session
 from app_layer_base.core.log import logger
+from app_prebuilt_api_key.config import get_api_key_settings
+from app_prebuilt_api_key.deps import machine_key_header, require_key_admin
+from app_prebuilt_api_key.usecases import ApiKeyUseCase
+from app_prebuilt_user.config import get_auth_settings
 from app_prebuilt_user.deps import LoginLockoutListener, get_current_user, get_token_data, oauth2
 from app_prebuilt_user.exceptions import InvalidCredentialsException
 from app_prebuilt_user.models import User
+from app_prebuilt_user.repos import UserRepository
 from app_prebuilt_user.services import UserService
 from app_prebuilt_user.token_schemas import TokenPayload
-from fastapi import Depends, Request, Security
-from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, Request
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-SCHEDULER_KEY_HEADER = "X-Scheduler-Key"
+MACHINE_SCOPES = frozenset({"autohub:dispatch"})
 
 # Every API route except signing in itself and the dispatcher trigger.
 require_user = get_current_user
 
-scheduler_key_header = APIKeyHeader(name=SCHEDULER_KEY_HEADER, auto_error=False)
 _optional_bearer = OAuth2PasswordBearer(tokenUrl=oauth2.model.flows.password.tokenUrl, auto_error=False)  # type: ignore[union-attr]
 
 
 async def require_scheduler_or_user(
     session: Annotated[AsyncSession, Depends(get_session)],
-    users: Annotated[UserService, Depends()],
-    scheduler_key: Annotated[str | None, Security(scheduler_key_header)] = None,
+    keys: Annotated[ApiKeyUseCase, Depends()],
+    key: Annotated[str | None, Depends(machine_key_header)] = None,
     token: Annotated[str | None, Depends(_optional_bearer)] = None,
 ) -> None:
-    """The dispatcher trigger: the scheduler's own key, or a signed-in person pressing the button in the UI."""
-    expected = get_scheduler_auth_config().SCHEDULER_KEY
-    if scheduler_key:
-        if expected is None or not secrets.compare_digest(scheduler_key, expected.get_secret_value()):
-            raise InvalidCredentialsException()
+    """Only a machine with the dispatch scope or an active signed-in person can trigger a tick."""
+    if key and token:
+        raise InvalidCredentialsException()
+    if key:
+        principal = await keys.authenticate(key)
+        if "autohub:dispatch" not in principal.scopes:
+            raise HTTPException(403, "The machine lacks autohub:dispatch")
         return
     if not token:
         raise InvalidCredentialsException()
+    users = UserService(get_auth_settings(), UserRepository())
     payload: TokenPayload = get_token_data(token, users)
     await get_current_user(payload, session, users)
+
+
+async def require_machine_admin(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> None:
+    root = request.headers.get("X-Root-API-Key")
+    if root is not None:
+        require_key_admin(get_api_key_settings(), root)
+        return
+    scheme, _, token = request.headers.get("authorization", "").partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise InvalidCredentialsException()
+    users = UserService(get_auth_settings(), UserRepository())
+    user = await get_current_user(get_token_data(token, users), session, users)
+    if not user.is_superadmin:
+        raise HTTPException(403, "A human administrator is required")
 
 
 def login_caller(request: Request) -> str:

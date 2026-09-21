@@ -190,3 +190,7 @@ register-webhook repo:
 # Change the operator's password in Secret Manager and restart Cloud Run so it takes effect
 update-password password="":
     @bash ./scripts/update-password.sh {{ password }}
+
+# Provision/reuse the deployment's scheduler credential through the M2M API
+provision-scheduler +args:
+    python3 scripts/provision-scheduler.py {{ args }}

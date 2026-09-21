@@ -19,6 +19,9 @@ just gen-ui-api
 `just check` runs Python type checking and the Frontend production build.
 Default tests use SQLite; `just test-pg` uses PostgreSQL testcontainers and needs a running Docker daemon.
 `just test-ui` runs the frontend component test suite.
+Vitest keeps transformed modules on disk between runs; every test still executes.
+To compare without the transform cache, run
+`npm --prefix modules/hub-ui test -- --fsModuleCache=false` with the repository's Node version.
 When API definitions change, run `just gen-ui-api` to regenerate the client SDK.
 Frontend commands activate the Node version in `.nvmrc` through nvm; if that version is not installed, `nvm use` fails and `just gen-ui-api` exits with status 3 without further output.
 The Frontend strictly consumes the generated SDK.
@@ -90,7 +93,8 @@ People sign in; the scheduler holds a key of its own.
 
 - **Accounts** come from [`app-prebuilt-user`](https://github.com/mjkimR/app-common/tree/main/packages/prebuilt/app-prebuilt-user). `POST /api/v1/users/login/` (an OAuth2 password form) answers with a 10-minute access token, sent as `Authorization: Bearer ...`, and a refresh token. `POST /api/v1/users/login/refresh` exchanges the refresh token for a new pair, so a session ends after `REFRESH_TOKEN_EXPIRE_DAYS` without use (7 in the deployment bundle), and at once when the password changes. The UI keeps only the two tokens, in `sessionStorage`, renews an expired access token once and repeats the request, and remembers the email between visits. The password exists in the sign-in form and nowhere else in the browser.
 - **The operator's account** is created at startup from `FIRST_USER_EMAIL` / `FIRST_USER_PASSWORD`, and with `FIRST_USER_SYNC_PASSWORD=true` its password follows that setting on every start. The secret bundle therefore stays the one place a password is changed (`just update-password`). The database holds only an Argon2id hash: reading it does not let anyone sign in.
-- **The scheduler cannot sign in.** It sends `X-Scheduler-Key`, a random key (`SCHEDULER_KEY`) that opens `POST /api/v1/dispatchers/trigger` and nothing else, so the scheduler's configuration carries nothing derived from a person's password. A signed-in user can trigger a tick too (the button in the UI).
+- **The scheduler uses a managed machine key.** Register a machine with the `autohub:dispatch` scope through `/api/v1/machines`, issue its key, and send it as `X-API-Key` to `POST /api/v1/dispatchers/trigger`. Revoked/expired keys and inactive machines are rejected. The key opens no other workload route; a signed-in user can still trigger a tick from the UI. Legacy `SCHEDULER_KEY` / `X-Scheduler-Key` is no longer accepted.
+- **Machine management** accepts a signed-in human administrator or `X-Root-API-Key` matching the optional `APP_API_KEY_ROOT_KEY` deployment setting. Root manages machines/keys only, cannot sign in, and cannot trigger work or manage users. Root is not stored in the DB; rotate/remove it in deployment settings and restart every instance. See [deployment](cloud-run-deployment.md) for initial provisioning and key rotation.
 - **Guessing is held off by a lockout**: five failed logins within a minute lock the caller out for five minutes (HTTP 429 with `Retry-After`), even with the right password, and the operator is told through [Operator Notices](operator-notices.md) with a partly masked address. The caller is the address Cloud Run appends to `X-Forwarded-For`, so invented forwarded addresses do not dodge it. Counters are per process, so several workers multiply the attempts a caller gets; that is still a handful per minute.
 - The GitHub webhook endpoint is outside all of this: GitHub signs it with the webhook secret.
 

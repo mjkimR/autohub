@@ -20,6 +20,7 @@ from app.features.scheduling.schedule_configs.api.v1 import router as v1_schedul
 from app.features.scheduling.schedule_jobs.api.v1 import router as v1_schedule_jobs_router
 from app_layer_base.core.database.deps import get_session
 from app_layer_base.utils.time_util import get_current_utc_time
+from app_prebuilt_api_key.api import api_keys_router
 from app_prebuilt_user.api import v1_users_router
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import select, text
@@ -73,6 +74,7 @@ v1_router.include_router(v1_ai_catalogs_router)
 v1_router.include_router(v1_schedule_jobs_router)
 v1_trigger_router.include_router(v1_dispatchers_router)
 v1_open_router.include_router(v1_users_router)
+v1_open_router.include_router(api_keys_router)
 v1_router.include_router(v1_tasks_router)
 router.include_router(v1_router)
 router.include_router(v1_trigger_router)
