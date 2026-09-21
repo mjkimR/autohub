@@ -1,56 +1,47 @@
-# AGENTS.md - Guide for AI Assistants
+# Auto Hub: agent guide
 
-This repository is a full-stack **Scheduler Manager** (cron/interval orchestrator) for Google Cloud Platform.
-- **Backend**: `modules/hub` (Python, FastAPI, Clean Architecture)
-- **Frontend**: `modules/hub-ui` (Svelte 5 Runes, SvelteKit 2 SPA, Vite 8, Tailwind CSS v4, shadcn-svelte, openapi-fetch)
+Auto Hub automates GitHub PR work and CI observation on a scheduler foundation.
+Backend: `modules/hub` (FastAPI). Frontend: `modules/hub-ui` (SvelteKit SPA).
+See [README](README.md) and [documentation guide](docs/README.md) for scope.
 
----
+## Commands and verification
 
-## Tooling & Commands
+- Read [justfile](justfile) for targets, aliases, defaults, and scripts.
+  Keep recipes thin; complex execution logic belongs in `scripts/`.
+- Initialize the backend environment before using checks, even for frontend work.
+- Run lint and verification builds before finishing: `just lint` and `just check`.
+  `just lint-check` provides the read-only lint equivalent. Follow
+  [development guidance](docs/development.md) for tests and PostgreSQL coverage.
+- When API definitions change, regenerate the typed client with `just gen-ui-api`.
 
-We use **just** as the primary command runner and task orchestrator.
+## Backend
 
-> [!IMPORTANT]
-> **The `justfile` is the Single Source of Truth (SSOT).**
-> Do NOT rely on hardcoded arguments in documentation. Always read the `justfile` directly to inspect available targets, aliases (e.g., `back`/`front`), parameter defaults, and task implementation scripts.
+- Follow `Router → UseCase → Service → Repository`.
+- Use FastAPI dependencies with `Annotated[T, Depends(...)]`.
+- Register tasks with `@task(name="namespace.name")` in
+  `app/features/execution/tasks`, using Pydantic payloads. Import domain packages
+  in its `domains/__init__.py` for discovery.
 
-### Scripts & Shared Infrastructure
-- **Separation of Concerns**: Avoid writing complex bash commands inline in `justfile` recipes. Delegate execution logic to dedicated shell scripts inside the `scripts/` directory to keep the `justfile` as a thin orchestration layer.
+## Frontend
 
-### Quick Command Reference Examples
-- **Initialize Modules**: `just init` (Initializes all) | `just init hub` (Backend only) | `just init hub-ui` (Frontend only)
-- **Launch Development Servers**: `just dev-run` (Launches backend & frontend) | `just dev-run hub-ui` (Frontend only)
-- **Linting & Code Formatting**: `just lint` (Lints all) | `just lint hub-ui` (Frontend only)
-- **Type Checking & Compilation**: `just check` (Checks all) | `just check hub-ui` (Frontend only)
-- **Generate API Client**: `just gen-ui-api` (Syncs backend OpenAPI schema with frontend openapi-typescript SDK)
-- **Database Migrations**: `just db-upgrade` | `just db-revision "<message>"`
+- Use Svelte 5 runes, SvelteKit 2 SPA, TypeScript, Tailwind v4, and shadcn-svelte.
+  Style through `src/routes/layout.css` and its OKLCH tokens; themes use mode-watcher.
+- Consume typed API resources through `$lib/api`; see the [UI README](modules/hub-ui/README.md).
+- The shared size preset fails above 500 counted Svelte lines, 400 TypeScript lines,
+  and 200 route lines. Split by responsibility first. Exceptions require an exact
+  path, reason, and finite ceiling in `modules/hub-ui/eslint.config.js`.
+  Never disable the rule or raise ceilings automatically. Read the installed
+  app-common `ui/structure` guide; generated primitives are excluded, authored UI is not.
 
----
+## Repository hygiene
 
-## Architecture & Code Style
+- Never commit `.env` files or log credentials/PII.
+- Do not commit automatically; wait for explicit user instruction or approval.
+- Commit messages are concise, imperative, and emoji-free.
 
-### Backend (`modules/hub`)
-- **Flow**: `API (Router) -> UseCase -> Service -> Repository` (Clean Architecture).
-- **DI**: Use FastAPI's `Depends` and `Annotated`.
-- **Tasks**: Decorate with `@task(name="namespace.name")` in `app/features/execution/tasks`. Always use Pydantic models for payloads.
+## Documentation language
 
-### Frontend (`modules/hub-ui`)
-- **Tech Stack**: Svelte 5 (Runes forced mode), SvelteKit 2 (SPA), TypeScript, Tailwind CSS v4, shadcn-svelte (bits-ui), openapi-fetch, zod.
-- **Styling**: Tailwind CSS v4 CSS-first design system in `src/routes/layout.css`, OKLCH tokens, dark/light theme with `mode-watcher`.
-- **Client Integration**: Import typed client resources from `$lib/api` (`api` client generated via `just gen-ui-api`).
-- **File Size**: The shared `@app-common/eslint-config/structure` preset fails lint
-  above 500 counted lines for Svelte, 400 for TypeScript, and 200 for routes.
-  Split by responsibility first; any exception needs an exact file path, reason,
-  and finite ceiling in `modules/hub-ui/eslint.config.js`. Do not disable the rule
-  or automatically increase ceilings to pass. Read the installed app-common
-  `ui/structure` guide; generated shadcn primitives are excluded, authored UI is not.
-
----
-
-## Critical Constraints
-
-1. **Security**: NEVER commit `.env` files. NEVER log PII.
-2. **Commits**: Concise, imperative, and **no emojis** (e.g., "Add user-defined timeout").
-3. **Pre-flight Checks**: Always run `just lint` and verification builds before proposing a final solution.
-4. **Git Commit**: Do not execute `git commit` commands or perform commits automatically unless explicitly requested or approved by the user.
-
+Use English for README/AGENTS files and technical, operational, or agent instructions.
+Korean is for documents under `docs/` intended for the user's review, including
+analysis, research, and their review indexes. Preserve localized examples, literal
+UI labels, and the configured language of planning artifacts.

@@ -1,47 +1,26 @@
 # Auto Hub
 
-Auto Hub is a personal development automation hub connecting GitHub and Codex cloud.
-Building on top of the existing Scheduler Manager foundation (schedules, execution history, and connector management),
-it incrementally constructs capabilities to manage work progress across multiple repositories.
+Personal development automation connecting GitHub repositories and Codex cloud.
+Auto Hub enrolls pull requests, dispatches implementation/fix requests, observes CI,
+and manages retries, pause/resume, cancellation, and policy-controlled merges.
+The scheduler, execution history, and connector management support these workflows.
 
-## Direction
+Each connection represents one GitHub repository. Work is specified in PRs;
+Codex cloud implements requests posted as `@codex` comments, and repository-owned
+GitHub Actions perform verification. The workflow is:
 
-- A single connection maps to **1 GitHub repository**. There is no external issue tracker; work is specified in pull requests.
-- **Hub** handles PR enrollment, Codex mention dispatch, progress tracking, fix requests, retries, pause/resume, and merge policies.
-- **Codex cloud** implements requests posted as `@codex` PR comments and pushes to the PR branch.
-- **GitHub Actions in the target repository** handles environment setup, testing, linting, and building.
-- Existing CIs can be connected as-is, while repositories without CI are provided with [templates](templates/github-actions/README.md).
-- Differences between repositories are expressed through required verification, review/merge policies, and the repository's own tests.
+`Open PR → Enroll and dispatch → Verify → Fix or merge`
 
-The target workflow is: `User opens PR → Codex mention implementation → PR verification → Fix or merge`.
-Drawing on operational experience from `g-sandbox`, Godot-specific logic, planning notes, and multi-prototype rules are kept out of the core engine.
-
-## Implementation Status
-
-The existing scheduler and management UI are preserved. Hub supports saved project connections, CI observation, explicit PR enrollment, durable run and delivery history, retries, CI-fix requests, cancellation, and policy-controlled merge automation.
-
-A repository is registered as a connection, and its connection check confirms that CI is readable and verifies a current PR. Enrolling an open same-repository PR records an immutable task snapshot, creates a durable delivery, reconciles its marker against GitHub comments, and posts the `@codex` request only when no matching comment exists. A new PR head moves the run through CI observation; failed CI can trigger a bounded fix request, while a passing result proceeds through the configured merge checks.
-
-The CI templates remain starter files for manual installation in target repositories. Centralized reusable-workflow distribution is deferred. The detailed delivery state, verification record, optional canaries, and other deferred work are maintained in [Delivery Status](docs/delivery-status.md).
-
-## Documentation
-
-| Document | Content |
-| --- | --- |
-| [Documentation Guide](docs/README.md) | Reading order and document roles |
-| [Architecture](docs/architecture.md) | Responsibilities and state ownership across Hub, repositories, and external services |
-| [CI Connection Contract](docs/ci-contract.md) | Required verification, result evaluation, connection and execution examples |
-| [Codex PR Mention Protocol](docs/codex-pr-mention.md) | Prerequisites, comment format, reconciliation, and watchdog for Codex dispatch (design) |
-| [Delivery Status](docs/delivery-status.md) | Delivered capabilities, verification record, and optional follow-ups |
-| [Development & Operations](docs/development.md) | Existing scheduler foundation and local verification |
-| [CI Templates](templates/github-actions/README.md) | Initial setup for Python+uv and Node+npm |
+Saved runs retain task snapshots and delivery history; dispatch reconciles comment
+markers to avoid duplicate requests. See [delivery status](docs/delivery-status.md)
+for implemented behavior and deferred work. [CI templates](templates/github-actions/README.md)
+are manually installed starter files.
 
 ## Development
 
-The backend is built with Python/FastAPI in `modules/hub`, and the frontend is built with Svelte/TypeScript in `modules/hub-ui`.
+Python/FastAPI lives in `modules/hub`; Svelte/TypeScript in `modules/hub-ui`.
 PostgreSQL is the standard database, with SQLite used for default testing.
-
-The single source of truth for execution commands and default arguments is [justfile](justfile). Check available commands with `just --list`.
+[justfile](justfile) defines commands, aliases, and defaults; run `just --list`.
 
 ```sh
 just init
@@ -52,34 +31,14 @@ just check
 just test
 ```
 
-Lint, checks, builds, and tests use `app-tools run` to print compact results and
-save complete output at the printed `log:` path. Backend lint includes app-common
-architecture checks; `just lint-check` checks both modules without changing files.
-Initialize the Python development environment with `just init hub` before using
-these commands, including frontend-only checks.
+Initialize the Python environment even for frontend-only checks. Commands print
+compact results and a `log:` path for full output. Backend initialization also
+installs locked app-common skills through APM.
 
-For connector credential encryption setup, refer to the [Hub module documentation](modules/hub/README.md#connector-credential-encryption).
+## Documentation
 
-## Agent skills
-
-Microsoft APM 0.30.0 installs the `app-common` skill with `just skills` (also run
-by backend initialization). `just link-skills` remains a compatibility entry point.
-`apm.yml` pins the Git dependency to the same pushed commit as the shared frontend
-ESLint policy. Python runtime packages retain their independently pinned commit;
-no sibling app-common checkout is required. Install APM with
-`uv tool install apm-cli==0.30.0`. Private repositories require Git credentials in
-local and cloud agent environments.
-
-Normal setup runs `apm install --frozen`. To adopt a newer skill version, change
-`ref` in `apm.yml` to the intended pushed commit, then run:
-
-```sh
-apm install --refresh
-apm audit --ci
-```
-
-From workbench, `just skills-refresh autohub` performs both steps. Refresh honors
-the declared ref; it does not advance a pinned commit to main automatically.
-Track `apm.yml`, `apm.lock.yaml`, and the deployed skill files together. Ignore
-`apm_modules/`; never edit installed copies. This setup does not use a project
-`.apm/` directory. Keep the skill ref aligned when updating app-common packages.
+- [Documentation guide](docs/README.md): architecture, protocols, AI catalogs, and operator notices.
+- [Development and operations](docs/development.md): checks, migrations, authentication, CI, and APM updates.
+- [Connector encryption](modules/hub/README.md#connector-credential-encryption): key configuration and rotation constraints.
+- [Frontend](modules/hub-ui/README.md): UI tooling and API generation.
+- [Agent guide](AGENTS.md): code boundaries and required checks.

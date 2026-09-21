@@ -33,6 +33,36 @@ off the rule or automatically raise ceilings. See the installed app-common
 `ui/structure` guide after `just skills`. CI enforces the same policy through
 `just lint-check hub-ui`.
 
+Checks use `app-tools run` for compact output; complete diagnostics are saved at
+its printed `log:` path. Initialize the backend with `just init hub` before running
+these commands, including frontend-only checks. Use `just lint-check` for read-only
+format/lint verification.
+
+## Agent skills
+
+
+Microsoft APM 0.30.0 installs the `app-common` skill with `just skills` (also run
+by backend initialization). `just link-skills` remains a compatibility entry point.
+`apm.yml` pins the Git dependency to the same pushed commit as the shared frontend
+ESLint policy. Python runtime packages retain their independently pinned commit;
+no sibling app-common checkout is required. Install APM with
+`uv tool install apm-cli==0.30.0`. Private repositories require Git credentials in
+local and cloud agent environments.
+
+Normal setup runs `apm install --frozen`. To adopt a newer skill version, change
+`ref` in `apm.yml` to the intended pushed commit, then run:
+
+```sh
+apm install --refresh
+apm audit --ci
+```
+
+From workbench, `just skills-refresh autohub` performs both steps. Refresh honors
+the declared ref; it does not advance a pinned commit to main automatically.
+Track `apm.yml`, `apm.lock.yaml`, and the deployed skill files together. Ignore
+`apm_modules/`; never edit installed copies. This setup does not use a project
+`.apm/` directory. Keep the skill ref aligned when updating app-common packages.
+
 ## Existing Scheduler Foundation
 
 The backend follows the `API → UseCase → Service → Repository` clean architecture flow.
