@@ -556,3 +556,40 @@ class TestProjectDispatchScheduleLifecycle:
             None,
         )
         assert dispatch_sched is None
+
+
+async def test_project_changed_during_observation_does_not_save_report(
+    client, project, project_payload, github_scenario, session, monkeypatch
+):
+    from app.features.project_management.pipelines.repos import PipelineObservationRepository
+    from app.features.project_management.pipelines.services import PipelineObservationService
+
+    response = await client.post(
+        "/api/v1/schedule_configs",
+        json={
+            "name": "observe-changing-project",
+            "task_func": "pipeline.observe_project",
+            "interval_seconds": 300,
+            "payload": {"project_id": project["id"], "pull_numbers": [42]},
+        },
+    )
+    assert_status_code(response, 201)
+    schedule_id = response.json()["id"]
+    await make_due(session, schedule_id)
+    original = PipelineObservationService.observe
+
+    async def observe_then_edit(self, config):
+        report = await original(self, config)
+        changed = await client.put(
+            f"/api/v1/projects/{project['id']}",
+            json={**project_payload, "name": "Changed during observation", "expected_revision": project["revision"]},
+        )
+        assert_status_code(changed, 200)
+        return report
+
+    monkeypatch.setattr(PipelineObservationService, "observe", observe_then_edit)
+    assert_status_code(await client.post("/api/v1/dispatchers/trigger"), 200)
+    session.expire_all()
+    job = (await session.execute(select(ScheduleJob))).scalar_one()
+    assert job.status == "failure"
+    assert await PipelineObservationRepository().load(session, UUID(schedule_id)) is None

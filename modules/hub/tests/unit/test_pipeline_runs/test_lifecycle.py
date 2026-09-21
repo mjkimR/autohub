@@ -26,6 +26,8 @@ from app_testing_base import hours_ago, hours_later, utc_now
 
 pytestmark = pytest.mark.unit
 LIFECYCLE = "app.features.project_management.pipeline_runs.usecases.lifecycle"
+DELIVERY = "app.features.project_management.pipeline_runs.usecases.delivery"
+IMPLEMENTATION = "app.features.project_management.pipeline_runs.usecases.implementation"
 
 
 @pytest.mark.parametrize(("adapter", "status_code"), [("jules-api", 501), ("unknown-adapter", 409)])
@@ -60,8 +62,8 @@ async def test_rejected_admission_commits_catalog_transitions_before_raising(mon
     tx = MagicMock()
     tx.__aenter__ = AsyncMock(return_value=session)
     tx.__aexit__ = AsyncMock(return_value=None)
-    monkeypatch.setattr(f"{LIFECYCLE}.AsyncTransaction", lambda: tx)
-    monkeypatch.setattr(f"{LIFECYCLE}.resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter()))
+    monkeypatch.setattr(f"{DELIVERY}.AsyncTransaction", lambda: tx)
+    monkeypatch.setattr(f"{DELIVERY}.resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter()))
 
     with pytest.raises(ProjectError):
         await PipelineRunUseCase(repo, projects, observer, catalogs).dispatch_implementation(
@@ -153,7 +155,7 @@ async def test_quota_reply_sets_a_global_catalog_hold_without_a_run_retry_cap(de
     mock_tx.__aexit__ = AsyncMock(return_value=None)
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(f"{LIFECYCLE}.AsyncTransaction", lambda: mock_tx)
-        mp.setattr(f"{LIFECYCLE}.resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter()))
+        mp.setattr(f"{IMPLEMENTATION}.resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter()))
         result = await use_case.advance_run(run.id, owner="worker-1", token=run.lease_token, observer=observer)
 
     assert result.state == PipelineRunState.DISPATCHING
@@ -245,7 +247,7 @@ async def test_pause_run_transitions_state_and_clears_lease():
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(
-                "app.features.project_management.pipeline_runs.usecases.lifecycle.AsyncTransaction", lambda: mock_tx
+                "app.features.project_management.pipeline_runs.usecases.control.AsyncTransaction", lambda: mock_tx
             )
             res = await use_case.pause_run(mock_run.id, PauseRunRequest(reason="Maintenance"))
 
@@ -256,7 +258,7 @@ async def test_pause_run_transitions_state_and_clears_lease():
             assert res.state == PipelineRunState.PAUSED
 
 
-async def test_resume_run_transitions_paused_run_back_to_active():
+async def test_resume_run_transitions_paused_run_back_to_active(monkeypatch):
     repo = MagicMock()
     projects = MagicMock()
     selector = MagicMock()
@@ -273,7 +275,10 @@ async def test_resume_run_transitions_paused_run_back_to_active():
     projects.get = AsyncMock(
         return_value=MagicMock(enabled=True, revision=1, github_repository="owner/repo", github_connector_id=uuid4())
     )
-    use_case._project_catalog = AsyncMock(return_value=MagicMock(id=uuid4()))
+    monkeypatch.setattr(
+        "app.features.project_management.pipeline_runs.usecases.control.run_catalog",
+        AsyncMock(return_value=MagicMock(id=uuid4())),
+    )
     selector.get_pull_request = AsyncMock(
         return_value={"state": "open", "head": {"sha": "b" * 40, "ref": "feature"}, "base": {"ref": "main"}}
     )
@@ -285,7 +290,7 @@ async def test_resume_run_transitions_paused_run_back_to_active():
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(
-                "app.features.project_management.pipeline_runs.usecases.lifecycle.AsyncTransaction", lambda: mock_tx
+                "app.features.project_management.pipeline_runs.usecases.control.AsyncTransaction", lambda: mock_tx
             )
             res = await use_case.resume_run(mock_run.id)
 
@@ -315,7 +320,7 @@ async def test_cancel_run_marks_run_and_active_attempt_canceled():
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(
-                "app.features.project_management.pipeline_runs.usecases.lifecycle.AsyncTransaction", lambda: mock_tx
+                "app.features.project_management.pipeline_runs.usecases.control.AsyncTransaction", lambda: mock_tx
             )
             res = await use_case.cancel_run(mock_run.id)
 
@@ -350,7 +355,7 @@ async def test_attach_pr_transitions_to_awaiting_ci():
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(
-                "app.features.project_management.pipeline_runs.usecases.lifecycle.AsyncTransaction", lambda: mock_tx
+                "app.features.project_management.pipeline_runs.usecases.control.AsyncTransaction", lambda: mock_tx
             )
             req = AttachPRRequest(pull_number=99)
             res = await use_case.attach_pr(mock_run.id, req)
@@ -401,7 +406,7 @@ async def test_complete_attempt_records_result():
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(
-                "app.features.project_management.pipeline_runs.usecases.lifecycle.AsyncTransaction", lambda: mock_tx
+                "app.features.project_management.pipeline_runs.usecases.control.AsyncTransaction", lambda: mock_tx
             )
             req = CompleteAttemptRequest(
                 status="failed",
@@ -460,7 +465,7 @@ async def test_dispatch_waits_until_next_action_without_reading_github(monkeypat
     tx = MagicMock()
     tx.__aenter__ = AsyncMock(return_value=AsyncMock())
     tx.__aexit__ = AsyncMock(return_value=None)
-    monkeypatch.setattr("app.features.project_management.pipeline_runs.usecases.lifecycle.AsyncTransaction", lambda: tx)
+    monkeypatch.setattr("app.features.project_management.pipeline_runs.usecases.delivery.AsyncTransaction", lambda: tx)
 
     result = await PipelineRunUseCase(repo, projects, observer).dispatch_implementation(
         run.id, owner="worker-1", token=run.lease_token
@@ -547,7 +552,9 @@ async def test_silent_watchdog_uses_an_exact_fixed_clock(monkeypatch, elapsed, e
     tx.__aexit__ = AsyncMock(return_value=None)
     monkeypatch.setattr(lifecycle, "get_current_utc_time", lambda: frozen_now)
     monkeypatch.setattr(lifecycle, "AsyncTransaction", lambda: tx)
-    monkeypatch.setattr(lifecycle, "resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter()))
+    monkeypatch.setattr(
+        f"{IMPLEMENTATION}.resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter())
+    )
 
     result = await PipelineRunUseCase(repo, projects, observer).advance_run(
         run.id, owner="worker-1", token=run.lease_token, observer=observer

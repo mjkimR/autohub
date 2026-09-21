@@ -6,7 +6,9 @@ from uuid import UUID, uuid4
 import httpx
 import pytest
 from app.features.project_management.pipeline_runs.models import PipelineRun, PipelineRunState
+from app.features.project_management.pipeline_runs.usecases import delivery as run_delivery
 from app.features.project_management.pipeline_runs.usecases import lifecycle as run_usecases
+from app.features.project_management.pipeline_runs.usecases import transitions as run_transitions
 from app.features.project_management.pipelines import services
 from app.features.project_management.projects.models import ProjectConnection
 from app_testing_base import hours_ago, hours_later, utc_now
@@ -803,8 +805,8 @@ async def test_project_change_blocks_a_stuck_run_and_a_settings_only_resume_cont
 
     assert_status_code(response, 200)
     assert response.json()["state"] == "blocked"
-    assert response.json()["pause_reason"] == run_usecases.PROJECT_CHANGED_BLOCK_REASON + (
-        run_usecases.IN_FLIGHT_RESUME_WARNING if in_flight else ""
+    assert response.json()["pause_reason"] == run_transitions.PROJECT_CHANGED_BLOCK_REASON + (
+        run_transitions.IN_FLIGHT_RESUME_WARNING if in_flight else ""
     )
     assert len(github.paths) == reads
     attempts = (await client.get(f"/api/v1/pipeline-runs/{run['id']}/attempts")).json()["items"]
@@ -843,7 +845,7 @@ async def test_resume_requires_enrolling_again_when_the_github_binding_changed(
     response = await client.post(f"/api/v1/pipeline-runs/{run['id']}/resume")
 
     assert_status_code(response, 409)
-    assert response.json()["detail"] == run_usecases.GITHUB_BINDING_CHANGED_CONFLICT
+    assert response.json()["detail"] == run_transitions.GITHUB_BINDING_CHANGED_CONFLICT
     assert len(github.paths) == reads
 
 
@@ -984,7 +986,7 @@ async def test_a_retried_delivery_is_counted_once_in_the_catalog_ledger(
         await asyncio.Event().wait()
 
     with monkeypatch.context() as patched:
-        patched.setattr(run_usecases, "DISPATCH_IO_SECONDS", 0.05)
+        patched.setattr(run_delivery, "DISPATCH_IO_SECONDS", 0.05)
         patched.setattr(GitHubActionsReader, "reconcile_issue_comment", stall)
         assert_status_code(await client.post(f"{root}/advance"), 504)
     assert (await client.post(f"{root}/advance")).json()["state"] == "implementing"
@@ -1051,7 +1053,7 @@ async def test_delivery_timeout_leaves_one_reconcilable_delivery(client, project
         await asyncio.Event().wait()
 
     with monkeypatch.context() as patched:
-        patched.setattr(run_usecases, "DISPATCH_IO_SECONDS", 0.05)
+        patched.setattr(run_delivery, "DISPATCH_IO_SECONDS", 0.05)
         patched.setattr(GitHubActionsReader, "reconcile_issue_comment", stall)
         response = await client.post(f"{root}/advance")
     assert_status_code(response, 504)
@@ -1106,11 +1108,11 @@ async def test_post_response_crash_is_reconciled_without_a_duplicate_mention(
 
 async def test_pre_post_crash_reuses_the_planned_delivery_on_restart(client, project, mention_github, monkeypatch):
     """A crash before GitHub I/O leaves one durable delivery to retry."""
-    from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
+    from app.features.project_management.pipeline_runs.usecases.delivery import PipelineRunDelivery
 
     run, attempt = await prepare_run(client, project)
     root = f"/api/v1/pipeline-runs/{run['id']}"
-    original_guard = PipelineRunUseCase._guard_dispatch
+    original_guard = PipelineRunDelivery._guard_dispatch
     guards = 0
 
     async def crash_before_post(self, *args, **kwargs):
@@ -1121,7 +1123,7 @@ async def test_pre_post_crash_reuses_the_planned_delivery_on_restart(client, pro
         return await original_guard(self, *args, **kwargs)
 
     with monkeypatch.context() as patched:
-        patched.setattr(PipelineRunUseCase, "_guard_dispatch", crash_before_post)
+        patched.setattr(PipelineRunDelivery, "_guard_dispatch", crash_before_post)
         with pytest.raises(RuntimeError, match="simulated process crash"):
             await client.post(f"{root}/advance")
 

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ScheduleEditorDialog from './ScheduleEditorDialog.svelte';
+	import type { ScheduleEditor } from './schedule-form';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
 	import { responseData } from '$lib/api/pagination';
 	import { onMount } from 'svelte';
@@ -23,7 +25,6 @@
 		DialogTitle,
 		DialogFooter
 	} from '$lib/components/ui/dialog';
-	import JsonSchemaForm from '$lib/components/shared/JsonSchemaForm.svelte';
 	import {
 		CalendarClock,
 		RefreshCw,
@@ -32,7 +33,6 @@
 		PauseCircle,
 		Play,
 		Plus,
-		Clock,
 		Pencil,
 		Trash2,
 		AlertTriangle
@@ -48,37 +48,12 @@
 	let isTriggering = $state(false);
 	let searchQuery = $state('');
 
-	// Create dialog state
-	let isDialogOpen = $state(false);
-	let isSubmitting = $state(false);
-	let formName = $state('');
-	let formDesc = $state('');
-	let formTaskFunc = $state('');
-	let scheduleType = $state<'cron' | 'interval'>('cron');
-	let cronExpr = $state('0 9 * * 1-5');
-	let intervalSeconds = $state(300);
-	let payloadObject = $state<Record<string, unknown>>({});
-
-	// Edit dialog state
-	let isEditDialogOpen = $state(false);
-	let isEditSubmitting = $state(false);
-	let editingConfigId = $state<string | null>(null);
-	let editName = $state('');
-	let editDesc = $state('');
-	let editTaskFunc = $state('');
-	let editScheduleType = $state<'cron' | 'interval'>('interval');
-	let editCronExpr = $state('0 9 * * 1-5');
-	let editIntervalSeconds = $state(60);
-	let editPayloadObject = $state<Record<string, unknown>>({});
-	let editEnabled = $state(true);
+	let editor = $state<ScheduleEditor | null>(null);
 
 	// Delete dialog state
 	let isDeleteDialogOpen = $state(false);
 	let isDeleting = $state(false);
 	let deletingConfig = $state<ScheduleConfig | null>(null);
-
-	let selectedTaskSpec = $derived(taskSpecs.find((s) => s.name === formTaskFunc));
-	let editSelectedTaskSpec = $derived(taskSpecs.find((s) => s.name === editTaskFunc));
 
 	let filteredConfigs = $derived(
 		configs.filter(
@@ -159,92 +134,8 @@
 		}
 	}
 
-	async function handleCreateSchedule(e: SubmitEvent) {
-		e.preventDefault();
-		if (!formName.trim() || !formTaskFunc) {
-			toast.error('Name and Task Function are required');
-			return;
-		}
-
-		isSubmitting = true;
-		try {
-			const res = await api.POST('/api/v1/schedule_configs', {
-				body: {
-					name: formName.trim(),
-					description: formDesc.trim() || null,
-					task_func: formTaskFunc,
-					cron_expression: scheduleType === 'cron' ? cronExpr : null,
-					interval_seconds: scheduleType === 'interval' ? Number(intervalSeconds) : null,
-					payload: payloadObject,
-					enabled: true
-				}
-			});
-
-			if (res.error) {
-				toast.error('Failed to create schedule');
-			} else {
-				toast.success(`Schedule ${formName} created!`);
-				isDialogOpen = false;
-				formName = '';
-				formDesc = '';
-				formTaskFunc = '';
-				payloadObject = {};
-				loadConfigs();
-			}
-		} catch {
-			toast.error('Error creating schedule config');
-		} finally {
-			isSubmitting = false;
-		}
-	}
-
 	function openEdit(config: ScheduleConfig) {
-		editingConfigId = config.id;
-		editName = config.name;
-		editDesc = config.description ?? '';
-		editTaskFunc = config.task_func;
-		editScheduleType = config.cron_expression ? 'cron' : 'interval';
-		editCronExpr = config.cron_expression ?? '0 9 * * 1-5';
-		editIntervalSeconds = config.interval_seconds ?? 60;
-		editPayloadObject = config.payload ? JSON.parse(JSON.stringify(config.payload)) : {};
-		editEnabled = config.enabled;
-		isEditDialogOpen = true;
-	}
-
-	async function handleUpdateSchedule(e: SubmitEvent) {
-		e.preventDefault();
-		if (!editingConfigId || !editName.trim()) {
-			toast.error('Schedule name is required');
-			return;
-		}
-
-		isEditSubmitting = true;
-		try {
-			const res = await api.PUT('/api/v1/schedule_configs/{schedule_config_id}', {
-				params: { path: { schedule_config_id: editingConfigId } },
-				body: {
-					name: editName.trim(),
-					description: editDesc.trim() || null,
-					task_func: editTaskFunc,
-					cron_expression: editScheduleType === 'cron' ? editCronExpr : null,
-					interval_seconds: editScheduleType === 'interval' ? Number(editIntervalSeconds) : null,
-					payload: editPayloadObject,
-					enabled: editEnabled
-				}
-			});
-
-			if (res.error) {
-				toast.error(apiErrorMessage(res.error, 'Failed to update schedule'));
-			} else {
-				toast.success(`Schedule ${editName} updated!`);
-				isEditDialogOpen = false;
-				loadConfigs();
-			}
-		} catch {
-			toast.error('Error updating schedule configuration');
-		} finally {
-			isEditSubmitting = false;
-		}
+		editor = { mode: 'edit', config };
 	}
 
 	function openDelete(config: ScheduleConfig) {
@@ -306,7 +197,7 @@
 				<Play class="size-3.5" />
 				Trigger Dispatcher
 			</Button>
-			<Button size="sm" onclick={() => (isDialogOpen = true)} class="gap-2">
+			<Button size="sm" onclick={() => (editor = { mode: 'create' })} class="gap-2">
 				<Plus class="size-4" />
 				New Schedule
 			</Button>
@@ -450,271 +341,14 @@
 		</Table>
 	</div>
 
-	<!-- Create Schedule Dialog -->
-	<Dialog bind:open={isDialogOpen}>
-		<DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
-			<DialogHeader>
-				<DialogTitle>Configure New Schedule</DialogTitle>
-			</DialogHeader>
-
-			<form onsubmit={handleCreateSchedule} class="space-y-4 py-2">
-				<!-- Name & Description -->
-				<div class="space-y-2">
-					<label for="scName" class="text-xs font-semibold text-muted-foreground uppercase"
-						>Schedule Name</label
-					>
-					<Input id="scName" placeholder="e.g. Daily Data Sync" bind:value={formName} required />
-				</div>
-
-				<div class="space-y-2">
-					<label for="scDesc" class="text-xs font-semibold text-muted-foreground uppercase"
-						>Description (optional)</label
-					>
-					<Input
-						id="scDesc"
-						placeholder="Brief summary of what this schedule runs"
-						bind:value={formDesc}
-					/>
-				</div>
-
-				<!-- Task Target Selection -->
-				<div class="space-y-2">
-					<label for="scTask" class="text-xs font-semibold text-muted-foreground uppercase"
-						>Target Task</label
-					>
-					<select
-						id="scTask"
-						class="w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-xs focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-						bind:value={formTaskFunc}
-						required
-					>
-						<option value="" disabled selected>Select a task function to execute...</option>
-						{#each taskSpecs as spec (spec.name)}
-							<option value={spec.name}>{spec.name}</option>
-						{/each}
-					</select>
-					{#if selectedTaskSpec?.description}
-						<p class="text-[11px] text-muted-foreground italic">{selectedTaskSpec.description}</p>
-					{/if}
-				</div>
-
-				<!-- Schedule Cadence Type Selection -->
-				<div class="space-y-2">
-					<span class="text-xs font-semibold text-muted-foreground uppercase"
-						>Execution Cadence</span
-					>
-					<div class="flex gap-2">
-						<Button
-							type="button"
-							size="sm"
-							variant={scheduleType === 'cron' ? 'default' : 'outline'}
-							onclick={() => (scheduleType = 'cron')}
-							class="flex-1 gap-1.5"
-						>
-							<CalendarClock class="size-3.5" />
-							Cron Expression
-						</Button>
-						<Button
-							type="button"
-							size="sm"
-							variant={scheduleType === 'interval' ? 'default' : 'outline'}
-							onclick={() => (scheduleType = 'interval')}
-							class="flex-1 gap-1.5"
-						>
-							<Clock class="size-3.5" />
-							Interval Seconds
-						</Button>
-					</div>
-				</div>
-
-				{#if scheduleType === 'cron'}
-					<div class="space-y-1.5">
-						<label for="scCron" class="text-xs font-semibold text-muted-foreground uppercase"
-							>Cron Expression</label
-						>
-						<Input
-							id="scCron"
-							placeholder="* * * * * (e.g. 0 9 * * 1-5)"
-							bind:value={cronExpr}
-							class="font-mono text-xs"
-							required
-						/>
-						<p class="text-[11px] text-muted-foreground">Standard 5-field cron syntax</p>
-					</div>
-				{:else}
-					<div class="space-y-1.5">
-						<label for="scInterval" class="text-xs font-semibold text-muted-foreground uppercase"
-							>Interval (Seconds)</label
-						>
-						<Input
-							id="scInterval"
-							type="number"
-							min="1"
-							bind:value={intervalSeconds}
-							class="font-mono text-xs"
-							required
-						/>
-						<p class="text-[11px] text-muted-foreground">Repeats every N seconds</p>
-					</div>
-				{/if}
-
-				<!-- Dynamic JSON Schema Form for Payload -->
-				{#if formTaskFunc}
-					<div class="pt-2">
-						<JsonSchemaForm schema={selectedTaskSpec?.payload_schema} bind:value={payloadObject} />
-					</div>
-				{/if}
-
-				<DialogFooter class="pt-4">
-					<Button type="button" variant="outline" onclick={() => (isDialogOpen = false)}>
-						Cancel
-					</Button>
-					<Button type="submit" disabled={isSubmitting}>
-						{isSubmitting ? 'Saving...' : 'Create Schedule'}
-					</Button>
-				</DialogFooter>
-			</form>
-		</DialogContent>
-	</Dialog>
-
-	<!-- Edit Schedule Dialog -->
-	<Dialog bind:open={isEditDialogOpen}>
-		<DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
-			<DialogHeader>
-				<DialogTitle>Edit Schedule Configuration</DialogTitle>
-			</DialogHeader>
-
-			<form onsubmit={handleUpdateSchedule} class="space-y-4 py-2">
-				<!-- Name & Description -->
-				<div class="space-y-2">
-					<label for="editScName" class="text-xs font-semibold text-muted-foreground uppercase"
-						>Schedule Name</label
-					>
-					<Input id="editScName" placeholder="Schedule name" bind:value={editName} required />
-				</div>
-
-				<div class="space-y-2">
-					<label for="editScDesc" class="text-xs font-semibold text-muted-foreground uppercase"
-						>Description</label
-					>
-					<Input
-						id="editScDesc"
-						placeholder="Brief summary of what this schedule runs"
-						bind:value={editDesc}
-					/>
-				</div>
-
-				<!-- Target Task (Read-only) -->
-				<div class="space-y-2">
-					<label for="editScTask" class="text-xs font-semibold text-muted-foreground uppercase"
-						>Target Task</label
-					>
-					<Input id="editScTask" value={editTaskFunc} disabled class="bg-muted font-mono text-xs" />
-				</div>
-
-				<!-- Schedule Cadence Type Selection -->
-				<div class="space-y-2">
-					<span class="text-xs font-semibold text-muted-foreground uppercase"
-						>Execution Cadence</span
-					>
-					<div class="flex gap-2">
-						<Button
-							type="button"
-							size="sm"
-							variant={editScheduleType === 'cron' ? 'default' : 'outline'}
-							onclick={() => (editScheduleType = 'cron')}
-							class="flex-1 gap-1.5"
-						>
-							<CalendarClock class="size-3.5" />
-							Cron Expression
-						</Button>
-						<Button
-							type="button"
-							size="sm"
-							variant={editScheduleType === 'interval' ? 'default' : 'outline'}
-							onclick={() => (editScheduleType = 'interval')}
-							class="flex-1 gap-1.5"
-						>
-							<Clock class="size-3.5" />
-							Interval Seconds
-						</Button>
-					</div>
-				</div>
-
-				{#if editScheduleType === 'cron'}
-					<div class="space-y-1.5">
-						<label for="editScCron" class="text-xs font-semibold text-muted-foreground uppercase"
-							>Cron Expression</label
-						>
-						<Input
-							id="editScCron"
-							placeholder="* * * * * (e.g. 0 9 * * 1-5)"
-							bind:value={editCronExpr}
-							class="font-mono text-xs"
-							required
-						/>
-						<p class="text-[11px] text-muted-foreground">Standard 5-field cron syntax</p>
-					</div>
-				{:else}
-					<div class="space-y-1.5">
-						<label
-							for="editScInterval"
-							class="text-xs font-semibold text-muted-foreground uppercase"
-							>Interval (Seconds)</label
-						>
-						<Input
-							id="editScInterval"
-							type="number"
-							min="1"
-							bind:value={editIntervalSeconds}
-							class="font-mono text-xs"
-							required
-						/>
-						<p class="text-[11px] text-muted-foreground">Repeats every N seconds (e.g. 60, 300)</p>
-					</div>
-				{/if}
-
-				<!-- Dynamic JSON Schema Form or Payload editor -->
-				{#if editSelectedTaskSpec?.payload_schema}
-					<div class="pt-2">
-						<JsonSchemaForm
-							schema={editSelectedTaskSpec.payload_schema}
-							bind:value={editPayloadObject}
-						/>
-					</div>
-				{/if}
-
-				<!-- Enabled Toggle -->
-				<div class="flex items-center justify-between rounded-lg border p-3">
-					<div class="space-y-0.5">
-						<div class="text-sm font-medium">Active Schedule</div>
-						<div class="text-xs text-muted-foreground">
-							Whether the dispatcher should execute this schedule
-						</div>
-					</div>
-					<input
-						type="checkbox"
-						bind:checked={editEnabled}
-						class="size-4 rounded border-gray-300 text-primary focus:ring-primary"
-					/>
-				</div>
-
-				<DialogFooter class="pt-4">
-					<Button
-						type="button"
-						variant="outline"
-						onclick={() => (isEditDialogOpen = false)}
-						disabled={isEditSubmitting}
-					>
-						Cancel
-					</Button>
-					<Button type="submit" disabled={isEditSubmitting}>
-						{isEditSubmitting ? 'Saving...' : 'Save Changes'}
-					</Button>
-				</DialogFooter>
-			</form>
-		</DialogContent>
-	</Dialog>
+	{#if editor}
+		<ScheduleEditorDialog
+			{editor}
+			{taskSpecs}
+			onclose={() => (editor = null)}
+			onsaved={() => loadConfigs()}
+		/>
+	{/if}
 
 	<!-- Delete Schedule Confirmation Dialog -->
 	<Dialog bind:open={isDeleteDialogOpen}>

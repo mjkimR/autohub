@@ -292,3 +292,44 @@ async def test_base_change_before_observation_invalidates_old_success(client, ob
     response = await client.post("/api/v1/pipelines/inspect", json=observation_payload)
 
     assert response.json()["pulls"][0]["result"]["status"] == "waiting"
+
+
+async def test_schedule_changed_during_observation_does_not_save_report(
+    client, observation_payload, github_scenario, session, monkeypatch
+):
+    from app.features.project_management.pipelines.repos import PipelineObservationRepository
+    from app.features.project_management.pipelines.services import PipelineObservationService
+
+    response = await client.post(
+        "/api/v1/schedule_configs",
+        json={
+            "name": "observe-changing-config",
+            "task_func": "pipeline.observe",
+            "interval_seconds": 300,
+            "payload": observation_payload,
+        },
+    )
+    assert_status_code(response, 201)
+    schedule_id = UUID(response.json()["id"])
+    await session.execute(
+        update(ScheduleConfig)
+        .where(ScheduleConfig.id == schedule_id)
+        .values(next_run_at=utc_now() - timedelta(seconds=1))
+    )
+    await session.commit()
+    original = PipelineObservationService.observe
+
+    async def observe_then_edit(self, config):
+        report = await original(self, config)
+        changed = await client.patch(
+            f"/api/v1/schedule_configs/{schedule_id}", json={"payload": {**observation_payload, "pull_numbers": [43]}}
+        )
+        assert_status_code(changed, 200)
+        return report
+
+    monkeypatch.setattr(PipelineObservationService, "observe", observe_then_edit)
+    assert_status_code(await client.post("/api/v1/dispatchers/trigger"), 200)
+    session.expire_all()
+    job = (await session.execute(select(ScheduleJob))).scalar_one()
+    assert job.status == "failure"
+    assert await PipelineObservationRepository().load(session, schedule_id) is None

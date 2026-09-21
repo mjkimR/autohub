@@ -13,8 +13,8 @@ from app.features.project_management.pipeline_runs.schemas import (
     LeaseRequest,
     PrepareImplementationAttempt,
 )
+from app.features.project_management.pipeline_runs.usecases.delivery import CATALOG_HOLD_CODE
 from app.features.project_management.pipeline_runs.usecases.lifecycle import (
-    CATALOG_HOLD_CODE,
     GITHUB_AUTH_WAIT_REASON,
     PipelineRunUseCase,
 )
@@ -26,6 +26,7 @@ from app.features.project_management.pipelines.github import (
 from app.features.project_management.pipelines.repos import PipelineObservationRepository
 from app.features.project_management.pipelines.schemas import PipelineObservationConfig
 from app.features.project_management.pipelines.services import OBSERVATION_TASK, PipelineObservationService
+from app.features.project_management.pipelines.usecases.observation import ObservePipelineUseCase
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.repos import (
     PROJECT_DISPATCH_TASK,
@@ -53,7 +54,7 @@ async def observe_pipeline_task(payload: PipelineObservationConfig) -> None:
     service = PipelineObservationService(
         PipelineObservationRepository(), ConnectorCredentialCipher(get_credential_key_provider())
     )
-    await service.observe_and_save(payload, meta.config_id)
+    await ObservePipelineUseCase(service, service.repo).observe_and_save(payload, meta.config_id)
 
 
 @task(name=PROJECT_OBSERVATION_TASK)
@@ -65,7 +66,7 @@ async def observe_project_task(payload: ProjectObservationPayload) -> None:
     service = PipelineObservationService(
         PipelineObservationRepository(), ConnectorCredentialCipher(get_credential_key_provider())
     )
-    await service.observe_project_and_save(payload, meta.config_id)
+    await ObservePipelineUseCase(service, service.repo).observe_project_and_save(payload, meta.config_id)
 
 
 @task(name=PROJECT_DISPATCH_TASK)

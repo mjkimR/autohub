@@ -38,14 +38,33 @@
 - 백엔드 `cachetools`, `dotenv`는 직접 사용이 없더라도 공용 라이브러리의 설치 계약을 추가 확인해야 해서 유지했다. `python-multipart`는 로그인 form 처리에 필요하다.
 - `[tool.rye.workspace]`와 테스트의 평면 디렉터리 이름은 기능상 결함이 아니므로 변경하지 않았다.
 
+## 후속 모듈 분리
+
+- **프로젝트 화면**: 연결 점검과 빠른 스케줄 생성의 상태·API 호출·마크업을 `ProjectConnectionCheckDialog.svelte`, `ProjectScheduleDialog.svelte`로 분리했다. `ProjectsView.svelte`는 903행에서 449행이 됐다.
+- **실행 화면**: 시도 이력, PR 등록, PR 연결을 `AttemptHistoryDialog.svelte`, `EnrollPullRequestDialog.svelte`, `AttachPullRequestDialog.svelte`로 분리했다. `PipelineRunsView.svelte`는 1,018행에서 583행이 됐다. 목록의 필터·페이지·선택과 `?run=` 링크 해석은 부모 화면에 남겼다. 다이얼로그를 닫으면 해당 입력·이력 확장 상태를 폐기한다.
+- **스케줄 편집**: 생성·수정은 명시적인 `create`/`edit` 모드의 `ScheduleEditorDialog.svelte`를 공유한다. 입력 초깃값과 요청 변환은 같은 기능 폴더의 `schedule-form.ts`에 모았다. `ScheduleConfigsView.svelte`는 764행에서 398행이 됐다. 수정 시 task 읽기 전용, payload 복사·보존, 이전 trigger를 지우는 명시적 null, 서버의 관리 스케줄 수정 거부를 유지한다.
+- **관찰 결과 저장**: `observe_and_save`와 `observe_project_and_save`는 `ObservePipelineUseCase`로 이동했다. 외부 관찰 이후 설정·revision을 재검증하고 저장하는 트랜잭션을 유스케이스가 소유한다. 스케줄 task도 새 진입점을 호출한다.
+- **실행 수명주기**: `lifecycle.py`는 1,180행에서 352행이 됐다. 기존 공개 메서드와 DI 생성자는 유지하며, 구체적인 책임을 아래 모듈에 위임한다. 부모 객체나 mixin에 의존하지 않고 필요한 repository/service를 명시적으로 전달한다.
+
+| 모듈 | 책임과 트랜잭션 소유권 |
+| --- | --- |
+| `leases.py` | lease 획득·갱신·해제의 짧은 트랜잭션과 충돌 판정 |
+| `catalogs.py` | 명시적 지정·프로젝트 기본값·재개 시 카탈로그 선택. 호출자의 session 사용 |
+| `delivery.py` | 전달 준비·admission → 트랜잭션 밖 외부 호출 → lease/attempt/delivery 재검증·저장. 전달 직전 추가 검증과 타임아웃 후 reconciliation 유지 |
+| `control.py` | 일시정지·재개·취소·PR 연결·외부 시도 결과 기록. 재개의 외부 조회 전후 트랜잭션과 revision 검증 유지 |
+| `implementation.py` | 구현 결과·head 변경·쿼터 응답·무응답 재시도. `advance_run`의 session과 기준 시각 사용 |
+| `ci.py` | CI 실패·수정 요청·병합 전 재관찰·병합 및 충돌 처리. `advance_run`의 session과 기준 시각 사용 |
+| `transitions.py` | PR 종료·프로젝트 변경 차단·GitHub 대기 등 공유 상태 변경. 별도 트랜잭션을 열지 않음 |
+
+후속 회귀 테스트는 스케줄 방식 양방향 전환·payload 보존·수정 거부 후 입력 유지, 빠른 스케줄 요청과 재열기 초기화, PR 연결 후 새로고침, 실행 이력 재조회·확장 상태 초기화, 관찰 도중 설정 변경 시 저장 거부를 검증한다. 기존 전달 중단·타임아웃·lease·revision 경합 테스트의 검증 내용은 유지하고 내부 patch 경로만 새 소유 모듈로 옮겼다. 분리 후 앱의 181개 Python 모듈을 정적으로 분석했으며 지연 import를 포함해 순환 의존성은 발견하지 못했다.
+
 ## 남은 구조 개선 후보
 
-1. `lifecycle.py`는 조회·요청 생성을 분리했어도 1,180행이다. CI/merge 전이와 delivery orchestration의 추가 분리는 transaction·lease·revision 재검증을 함께 다루는 별도 변경이 적합하다. 이번 변경은 해당 소유권을 유지한다.
-2. 프로젝트 연결 검사·빠른 스케줄, 실행 등록·PR 연결·시도 상세, 스케줄 편집 폼은 추가 컴포넌트 분리 대상이다. 프로젝트 설정과 대시보드 분리 패턴을 이어 적용할 수 있다.
-3. `PipelineObservationService`의 조회·저장 transaction과 usecase 경계를 추가 정리할 수 있다. lint 통과가 transaction 설계 전체의 적절성을 증명하지는 않는다.
-4. 스케줄 작업·설정 등 기존 다른 목록의 페이지 처리도 프로젝트·실행 화면 패턴으로 확장할 수 있다. 이번 서버 검색·페이지 UI의 범위는 프로젝트와 실행 목록이다.
+1. `advance_run`의 구현·CI 진행은 기존 트랜잭션 안에서 외부 조회를 수행한다. 이번 분리는 동시성 동작을 유지하며, 외부 조회를 트랜잭션 밖으로 이동하려면 조회 후 lease/revision 재검증을 별도로 설계해야 한다.
+2. 관찰 서비스의 커넥터 자격 증명 조회와 `PipelineObservationQueryService`의 읽기 트랜잭션은 유지했다. 저장 유스케이스 분리와 별개로 검토할 수 있다.
+3. 스케줄 작업·설정 등 기존 다른 목록의 페이지 처리는 프로젝트·실행 화면 패턴으로 확장할 수 있다.
 
-## 검증
+## 이전 점검 검증
 
 - SQLite 전체 테스트: **530개 통과**.
 - PostgreSQL 전체 테스트: **530개 통과**. 로컬 Docker의 임시 테스트 DB를 사용했다.
@@ -54,3 +73,13 @@
 - `just check` 통과: Python 타입 검사, Svelte 검사, 프로덕션 빌드.
 - `just gen-ui-api` 통과: 집계 응답과 필터를 포함한 typed client 갱신. `git diff --check`도 통과.
 - 실제 GitHub/Jules/Telegram API 호출과 배포, migration 왕복 검증은 수행하지 않았다. 이번 변경에는 DB schema migration이 없다.
+
+## 후속 분리 검증
+
+- `just test`: SQLite 전체 **532개 통과**.
+- `just test-pg`: PostgreSQL 전체 **532개 통과**. Docker 소켓의 샌드박스 접근 제한을 확인한 뒤 승인된 실행으로 로컬 임시 테스트 DB에서 검증했다.
+- `just test-ui`: **19개 파일, 96개 통과**.
+- `just lint`: Python format/lint/architecture와 frontend format/ESLint 통과.
+- `just check`: Python·Svelte 타입 검사와 프로덕션 빌드 통과.
+- `git diff --check` 통과. API 계약과 DB 스키마를 변경하지 않았으며 migration은 없다.
+- 실제 GitHub/Jules/Telegram 호출과 배포는 수행하지 않았다.

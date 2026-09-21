@@ -81,6 +81,9 @@ test('enrolls the selected project and refreshes the run list', async () => {
 	render(PipelineRunsView);
 	await screen.findByText('Ship the feature');
 	await user.click(screen.getAllByRole('button', { name: 'Enroll PR' })[0]);
+	await waitFor(() =>
+		expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
+	);
 	await user.clear(screen.getByLabelText('Pull Request Number'));
 	await user.type(screen.getByLabelText('Pull Request Number'), '42');
 	await user.click(screen.getAllByRole('button', { name: 'Enroll PR' })[1]);
@@ -150,4 +153,71 @@ test('pages through history and resets the offset when changing state', async ()
 			}
 		})
 	);
+});
+
+test('attaches a PR to the selected run and refreshes the list', async () => {
+	const previous = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation((path: string) =>
+		path === '/api/v1/pipeline-runs'
+			? Promise.resolve({
+					data: { items: [{ ...run, pull_number: 0, pull_url: null }], total_count: 1 }
+				})
+			: previous(path)
+	);
+	const user = userEvent.setup();
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+	await user.click(screen.getByRole('button', { name: 'Attach Pull Request' }));
+	await waitFor(() =>
+		expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
+	);
+	await user.clear(screen.getByLabelText('Pull Request Number'));
+	await user.type(screen.getByLabelText('Pull Request Number'), '12');
+	await user.clear(screen.getByLabelText('Pull Request URL (optional)'));
+	await user.click(screen.getByRole('button', { name: 'Attach PR' }));
+	await waitFor(() =>
+		expect(api.POST).toHaveBeenCalledWith('/api/v1/pipeline-runs/{run_id}/attach-pr', {
+			params: { path: { run_id: 'run-1' } },
+			body: { pull_number: 12, pull_url: null }
+		})
+	);
+	await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+	expect(api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs')).toHaveLength(2);
+});
+
+test('reopening history fetches fresh attempts and resets expanded timelines', async () => {
+	const previous = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation((path: string) =>
+		path === '/api/v1/pipeline-runs/{run_id}/attempts'
+			? Promise.resolve({
+					data: {
+						items: [
+							{
+								id: 'attempt-1',
+								attempt_number: 1,
+								kind: 'implementation',
+								state: 'running',
+								idempotency_key: 'key-1',
+								request_digest: 'digest-1',
+								created_at: '2026-09-14T00:00:00Z'
+							}
+						]
+					}
+				})
+			: previous(path)
+	);
+	const user = userEvent.setup();
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+	await user.click(screen.getByRole('button', { name: 'View Attempt History' }));
+	await user.click(await screen.findByRole('button', { name: 'Show requests and replies' }));
+	expect(screen.getByRole('button', { name: 'Hide requests and replies' })).toBeTruthy();
+	await user.keyboard('{Escape}');
+	await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+	await waitFor(() => expect(getComputedStyle(document.body).pointerEvents).not.toBe('none'));
+	await user.click(screen.getByRole('button', { name: 'View Attempt History' }));
+	expect(await screen.findByRole('button', { name: 'Show requests and replies' })).toBeTruthy();
+	expect(
+		api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs/{run_id}/attempts')
+	).toHaveLength(2);
 });

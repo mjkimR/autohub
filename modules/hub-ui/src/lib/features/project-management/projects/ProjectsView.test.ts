@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'svelte-sonner';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -196,4 +196,36 @@ test('an HTTP list failure is distinct from no projects and can be retried', asy
 	await user.click(screen.getByRole('button', { name: 'Retry' }));
 	expect(await screen.findByText('Application')).toBeTruthy();
 	expect(screen.queryByRole('alert')).toBeNull();
+});
+
+test('quick schedules keep the selected project and reset the form after closing', async () => {
+	const user = userEvent.setup();
+	render(ProjectsView);
+	await screen.findByText('Application');
+	await user.click(screen.getByRole('button', { name: 'Create Schedule' }));
+	await user.click(screen.getByRole('button', { name: /Observe CI/ }));
+	await fireEvent.input(screen.getByLabelText('Pull Request Numbers (comma-separated)'), {
+		target: { value: '42, 105' }
+	});
+	await user.click(
+		within(screen.getByRole('dialog')).getByRole('button', { name: 'Create Schedule' })
+	);
+	await waitFor(() =>
+		expect(api.POST).toHaveBeenCalledWith('/api/v1/schedule_configs', {
+			body: {
+				name: 'Observe Application',
+				description: 'CI observation for Application',
+				task_func: 'pipeline.observe_project',
+				cron_expression: null,
+				interval_seconds: 300,
+				payload: { project_id: 'p1', pull_numbers: [42, 105] },
+				enabled: true
+			}
+		})
+	);
+	await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+	await waitFor(() => expect(getComputedStyle(document.body).pointerEvents).not.toBe('none'));
+	await user.click(screen.getByRole('button', { name: 'Create Schedule' }));
+	expect(screen.queryByLabelText('Pull Request Numbers (comma-separated)')).toBeNull();
+	expect(screen.getByDisplayValue('Dispatch Application')).toBeTruthy();
 });

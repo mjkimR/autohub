@@ -6,7 +6,7 @@ from app.features.execution.tasks.core.context import task_context
 from app.features.execution.tasks.domains.pipeline.task import dispatch_project_task
 from app.features.project_management.pipeline_runs.models import PipelineRun, PipelineRunState
 from app.features.project_management.pipeline_runs.schemas import LeaseGrant
-from app.features.project_management.pipeline_runs.usecases.lifecycle import CATALOG_HOLD_CODE
+from app.features.project_management.pipeline_runs.usecases.delivery import CATALOG_HOLD_CODE
 from app.features.project_management.pipelines.github import GitHubObservationError
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.schemas import ProjectDispatchPayload
