@@ -35,6 +35,7 @@ executes. Each step logs its own failure and never fails the tick.
 | Run waiting | An in-flight run holds a reason it waits on GitHub for: a merge blocked by a review, branch rule, or draft, or a rejected connector token. See [Architecture](architecture.md#github-failures). |
 | Trigger resumed | A tick arrives more than 10 minutes after the previous one. |
 | Trigger stopped | A GitHub webhook arrives while the last tick is more than 10 minutes old; at most once per hour. |
+| API key lockout | A caller sent five wrong API keys within a minute and is locked out for five minutes. See [Development & Operations](development.md). |
 | `@auto-run` lost | A replayed `@auto-run` delivery failed again (see below). |
 
 A stopped run is marked announced (`pipeline_runs.notified_revision`) only when at least one channel accepted the
@@ -64,3 +65,33 @@ instead of the payload, and the tick replays:
 once each (`attempts` is capped at two) and only within 24 hours. A replay claims the delivery first (`retrying`),
 so two ticks never replay the same one. Enrollment and advance are already safe to repeat: enrollment is unique per
 active pull request and advance runs under the run lease.
+
+## History retention
+
+The same tick housekeeping deletes history that only grows, at most once an hour:
+
+| Table | Kept |
+| --- | --- |
+| `schedule_jobs`, succeeded | 7 days. A per-minute dispatch schedule writes about 1,400 rows a day per project, nearly all alike. |
+| `schedule_jobs`, anything else | 30 days, for debugging. Retries happen within minutes, long before this. |
+| `github_webhook_deliveries` | 90 days. The rows are also the deduplication keys; GitHub redelivers within days. |
+
+Pipeline runs, their attempts, and AI catalog sessions are kept: they are the product's record and grow with real
+work, not with the clock. The dispatch ledger has its own 30-day rule (see [AI Catalog Gateway](ai-catalogs.md)).
+
+## Looking into what happened
+
+- **Webhook deliveries** (Operations → Webhook deliveries, `GET /api/v1/github-webhook-deliveries`): what GitHub
+  sent and what came of it, including why an `@auto-run` did not enroll or dispatch and whether a delivery was
+  replayed. `noteworthy=true` (the UI default) keeps triggers and anything that failed or left a note; `status` and
+  `repository` narrow further. Payloads are never kept.
+- **Run detail** (Pipeline runs → attempt history): a summary of what the run has cost (requests posted to an
+  agent, attempts by kind, usage-limit replies, elapsed time; `summary` on
+  `GET /api/v1/pipeline-runs/{id}/attempts`) and, per attempt, its requests and the agent's replies in order.
+- **Failed jobs**: a schedule job keeps the failure message when the error was written for an operator
+  (application errors and sanitized GitHub errors), beside the request id. Anything else still only names the
+  request id, and the stack trace stays in the logs.
+- **Logs**: every pipeline run state change is logged from one place (`pipeline_runs/transition_log.py`) as
+  `run <id> <repo>#<n>: <from> -> <to> (revision N) reason: …`. Use the application logger
+  (`app_layer_base.core.log`): records sent to the standard `logging` module are not routed to the log sink, and
+  anything below WARNING is dropped.

@@ -5,6 +5,7 @@ from uuid import UUID
 
 from app.features.ai_catalogs.models import AICatalog
 from app.features.ai_catalogs.repos import AICatalogRepository
+from app.features.project_management.pipeline_runs import transition_log  # noqa: F401  (registers the listeners)
 from app.features.project_management.pipeline_runs.models import (
     ACTIVE_RUN_STATES,
     ATTENTION_RUN_STATES,
@@ -317,7 +318,12 @@ class PipelineRunRepository:
         return list(rows.all())
 
     async def mark_stop_announced(self, session: AsyncSession, run_id: UUID, revision: int) -> None:
-        await session.execute(update(PipelineRun).where(PipelineRun.id == run_id).values(notified_revision=revision))
+        # Bookkeeping, not a change to the run: its last update stays the moment its state last changed.
+        await session.execute(
+            update(PipelineRun)
+            .where(PipelineRun.id == run_id)
+            .values(notified_revision=revision, updated_at=PipelineRun.updated_at)
+        )
 
     async def count_started(self, session: AsyncSession, project_id: UUID) -> int:
         """The project's runs that are with an agent or in CI: everything in flight except the queue."""
@@ -331,6 +337,28 @@ class PipelineRunRepository:
                         (PipelineRunState.DISPATCHING, PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI)
                     ),
                 )
+            )
+            or 0
+        )
+
+    async def count_requests_sent(self, session: AsyncSession, run_id: UUID) -> int:
+        return int(
+            await session.scalar(
+                select(func.count())
+                .select_from(ExecutionDelivery)
+                .join(ExecutionAttempt, ExecutionDelivery.execution_attempt_id == ExecutionAttempt.id)
+                .where(ExecutionAttempt.pipeline_run_id == run_id, ExecutionDelivery.posted_at.is_not(None))
+            )
+            or 0
+        )
+
+    async def count_quota_limit_replies(self, session: AsyncSession, run_id: UUID) -> int:
+        return int(
+            await session.scalar(
+                select(func.count())
+                .select_from(ExecutionReply)
+                .join(ExecutionAttempt, ExecutionReply.execution_attempt_id == ExecutionAttempt.id)
+                .where(ExecutionAttempt.pipeline_run_id == run_id, ExecutionReply.is_quota_limit.is_(True))
             )
             or 0
         )

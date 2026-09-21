@@ -15,7 +15,7 @@ from app.features.project_management.pipeline_runs.usecases.lifecycle import (
 )
 from app.features.project_management.projects.models import Project
 from app.features.scheduling.schedule_configs.models import ScheduleConfig  # noqa: F401
-from app.features.scheduling.schedule_jobs.models import ScheduleJob  # noqa: F401
+from app.features.scheduling.schedule_jobs.models import ScheduleJob, ScheduleJobStatus
 from app_testing_base import utc_now
 from sqlalchemy import select
 
@@ -190,3 +190,53 @@ async def test_a_rate_limit_only_delays_the_run(client, session, channel, telegr
         tzinfo=None
     ) + timedelta(minutes=9)
     assert telegram.texts == []
+
+
+async def test_expired_history_is_pruned_at_most_hourly(client, session):
+    def job(name: str, status: str, days_old: int) -> ScheduleJob:
+        return ScheduleJob(name=name, status=status, started_at=utc_now() - timedelta(days=days_old), payload={})
+
+    def delivery(delivery_id: str, days_old: int) -> GitHubWebhookDelivery:
+        return GitHubWebhookDelivery(
+            delivery_id=delivery_id,
+            event="push",
+            payload_digest="0" * 64,
+            status="processed",
+            attempts=1,
+            created_at=utc_now() - timedelta(days=days_old),
+        )
+
+    session.add_all(
+        [
+            job("old success", ScheduleJobStatus.SUCCESS, 8),
+            job("recent success", ScheduleJobStatus.SUCCESS, 6),
+            job("old failure", ScheduleJobStatus.FAILURE, 31),
+            job("recent failure", ScheduleJobStatus.FAILURE, 8),
+            delivery("ancient", 91),
+            delivery("kept", 89),
+        ]
+    )
+    await session.commit()
+
+    assert_status_code(await client.post(TRIGGER), 200)
+
+    async def remaining() -> tuple[list[str], list[str]]:
+        jobs = await session.scalars(select(ScheduleJob.name).order_by(ScheduleJob.name))
+        deliveries = await session.scalars(select(GitHubWebhookDelivery.delivery_id))
+        return list(jobs), list(deliveries)
+
+    assert await remaining() == (["recent failure", "recent success"], ["kept"])
+
+    # Within the hour nothing is pruned again, and the tick keeps the time of the last pruning.
+    session.add(job("old success again", ScheduleJobStatus.SUCCESS, 8))
+    await session.commit()
+    assert_status_code(await client.post(TRIGGER), 200)
+    assert "old success again" in (await remaining())[0]
+
+    heartbeat = await session.scalar(
+        select(SystemConfig).where(SystemConfig.name == HEARTBEAT_CONFIG).execution_options(populate_existing=True)
+    )
+    heartbeat.data = {**heartbeat.data, "pruned_at": (utc_now() - timedelta(hours=2)).isoformat()}
+    await session.commit()
+    assert_status_code(await client.post(TRIGGER), 200)
+    assert "old success again" not in (await remaining())[0]

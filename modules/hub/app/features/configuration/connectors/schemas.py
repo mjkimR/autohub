@@ -8,8 +8,6 @@ class ConnectorProvider(StrEnum):
     GITHUB = "github"
     # Credentials hold the Jules API key as ``token``.
     JULES = "jules"
-    # Offered by the connectors UI; no backend feature reads Linear credentials yet.
-    LINEAR = "linear"
 
 
 class ConnectorBase(BaseModel):

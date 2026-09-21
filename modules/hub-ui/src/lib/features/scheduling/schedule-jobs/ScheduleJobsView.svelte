@@ -106,10 +106,10 @@
 			<TableHeader>
 				<TableRow>
 					<TableHead class="w-[200px]">Job Name</TableHead>
-					<TableHead class="w-[140px]">Status</TableHead>
+					<TableHead>Status</TableHead>
 					<TableHead class="w-[180px]">Started At</TableHead>
 					<TableHead class="w-[180px]">Finished At</TableHead>
-					<TableHead>Dispatcher Run ID</TableHead>
+					<TableHead class="w-[300px]">Dispatcher Run ID</TableHead>
 				</TableRow>
 			</TableHeader>
 			<TableBody>
@@ -142,6 +142,11 @@
 									<st.icon class="size-3.5" />
 									<span class="capitalize">{job.status}</span>
 								</span>
+								{#if job.error_message}
+									<p class="mt-1 max-w-md text-xs whitespace-normal text-destructive">
+										{job.error_message}
+									</p>
+								{/if}
 							</TableCell>
 							<TableCell class="font-mono text-xs text-muted-foreground">
 								{new Date(job.started_at).toLocaleString()}

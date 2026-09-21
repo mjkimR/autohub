@@ -267,7 +267,7 @@ Scheduled Tasks (written by agent schedules; hand-written entries still work):
   - payload: `catalog_key`
   - Keep interval short: releasing concurrency slots, storing reports, and adopting pull requests all depend on this task's frequency.
 
-Connector providers are `github`, `jules`, `linear`. For `jules`, the API key is stored in `token`.
+Connector providers are `github` and `jules`. For `jules`, the API key is stored in `token`.
 
 ## Design Decisions
 

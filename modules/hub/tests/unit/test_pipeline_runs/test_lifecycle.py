@@ -415,6 +415,15 @@ async def test_complete_attempt_records_result():
             assert mock_run.state == PipelineRunState.FAILED
             assert res.state == ExecutionAttemptState.FAILED
 
+            # The report settled the attempt and the run; a late or repeated report must not rewrite either.
+            with pytest.raises(ProjectError) as repeated:
+                await use_case.complete_attempt(mock_run.id, attempt_id, req)
+            assert repeated.value.status == 409
+            mock_run.state = PipelineRunState.AWAITING_CI
+            with pytest.raises(ProjectError) as settled:
+                await use_case.complete_attempt(mock_run.id, attempt_id, req)
+            assert settled.value.status == 409 and "already failed" in settled.value.detail
+
 
 async def test_manual_advance_leases_and_advances():
     repo = MagicMock()

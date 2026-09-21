@@ -38,6 +38,7 @@ hash_sha256() {
   fi
 }
 
+# Deliberate: the digest of the operator's password is the API key itself; see modules/hub/app/auth.py.
 HASHED_KEY=$(hash_sha256 "$KEY")
 echo "==> Updating API key for project: $PROJECT_ID (Region: $REGION)"
 

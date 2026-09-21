@@ -82,9 +82,6 @@ class ProjectWrite(BaseModel):
                 if automation is not None:
                     github["automation"] = automation
                 result["github"] = github
-        result.pop("linear_project_id", None)
-        result.pop("linear_connector_id", None)
-        result.pop("linear", None)
         return result
 
     @field_validator("name")

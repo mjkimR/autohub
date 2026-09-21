@@ -553,6 +553,26 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/github-webhook-deliveries': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/**
+		 * List Github Webhook Deliveries
+		 * @description The delivery log: what GitHub sent, what it triggered, and why a trigger did not enroll or dispatch.
+		 */
+		get: operations['list_github_webhook_deliveries_api_v1_github_webhook_deliveries_get'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/schedule_configs': {
 		parameters: {
 			query?: never;
@@ -1249,7 +1269,7 @@ export interface components {
 		 * ConnectorProvider
 		 * @enum {string}
 		 */
-		ConnectorProvider: 'github' | 'jules' | 'linear';
+		ConnectorProvider: 'github' | 'jules';
 		/** ConnectorPut */
 		ConnectorPut: {
 			/** Name */
@@ -1353,13 +1373,14 @@ export interface components {
 		 * ExecutionAttemptKind
 		 * @enum {string}
 		 */
-		ExecutionAttemptKind: 'implementation' | 'ci-fix' | 'conflict-fix' | 'revision';
+		ExecutionAttemptKind: 'implementation' | 'ci-fix' | 'conflict-fix';
 		/** ExecutionAttemptList */
 		ExecutionAttemptList: {
 			/** Items */
 			items: components['schemas']['ExecutionAttemptRead'][];
 			/** Total Count */
 			total_count: number;
+			summary: components['schemas']['PipelineRunSummary'];
 		};
 		/** ExecutionAttemptRead */
 		ExecutionAttemptRead: {
@@ -1553,6 +1574,51 @@ export interface components {
 			 * @description AI catalog that receives pull request work; empty uses the default Codex catalog
 			 */
 			ai_catalog_id?: string | null;
+		};
+		/** GitHubWebhookDeliveryList */
+		GitHubWebhookDeliveryList: {
+			/** Items */
+			items: components['schemas']['GitHubWebhookDeliveryRead'][];
+			/** Total Count */
+			total_count: number;
+		};
+		/** GitHubWebhookDeliveryRead */
+		GitHubWebhookDeliveryRead: {
+			/**
+			 * Created At
+			 * Format: date-time
+			 */
+			created_at: string;
+			/**
+			 * Updated At
+			 * Format: date-time
+			 */
+			updated_at: string;
+			/**
+			 * Id
+			 * Format: uuid
+			 */
+			id: string;
+			/** Delivery Id */
+			delivery_id: string;
+			/** Event */
+			event: string;
+			/** Repository */
+			repository: string | null;
+			/** Pull Number */
+			pull_number: number | null;
+			/** Auto Run */
+			auto_run: boolean;
+			/** Requested Catalog */
+			requested_catalog: string | null;
+			/** Status */
+			status: string;
+			/** Attempts */
+			attempts: number;
+			/** Processed At */
+			processed_at: string | null;
+			/** Failure Detail */
+			failure_detail: string | null;
 		};
 		/** HTTPValidationError */
 		HTTPValidationError: {
@@ -1940,6 +2006,29 @@ export interface components {
 			| 'completed'
 			| 'failed'
 			| 'canceled';
+		/**
+		 * PipelineRunSummary
+		 * @description What a run has cost so far: how often an agent was asked, and how long the run has taken.
+		 */
+		PipelineRunSummary: {
+			/** Attempts By Kind */
+			attempts_by_kind: {
+				[key: string]: number;
+			};
+			/** Requests Sent */
+			requests_sent: number;
+			/** Quota Limit Replies */
+			quota_limit_replies: number;
+			/**
+			 * Started At
+			 * Format: date-time
+			 */
+			started_at: string;
+			/** Finished At */
+			finished_at: string | null;
+			/** Elapsed Seconds */
+			elapsed_seconds: number;
+		};
 		/** PrepareImplementationAttempt */
 		PrepareImplementationAttempt: {
 			/** Owner */
@@ -4025,6 +4114,41 @@ export interface operations {
 				};
 				content: {
 					'application/json': components['schemas']['AgentScheduleRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	list_github_webhook_deliveries_api_v1_github_webhook_deliveries_get: {
+		parameters: {
+			query?: {
+				offset?: number;
+				limit?: number;
+				status?: ('received' | 'retrying' | 'processed' | 'failed') | null;
+				repository?: string | null;
+				noteworthy?: boolean;
+			};
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['GitHubWebhookDeliveryList'];
 				};
 			};
 			/** @description Validation Error */

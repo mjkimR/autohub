@@ -124,6 +124,10 @@ existing_value() {
 }
 
 # 1. App secret (SHA-256 hashed secret for UI/API authentication)
+# Deliberate: the operator's memorable password is hashed once and that digest is the API key itself (the UI
+# hashes the same way and the backend compares the digest verbatim). The hash only keeps the password out of
+# Secret Manager, Cloud Scheduler, and the browser; it is not hashing-at-rest and the stored value is a bearer
+# credential. See modules/hub/app/auth.py.
 LOGIN_KEY=""
 if [[ -n "$RAW_APP_SECRET" ]]; then
   LOGIN_KEY="$RAW_APP_SECRET"

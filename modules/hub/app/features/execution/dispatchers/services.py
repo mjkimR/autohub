@@ -14,6 +14,7 @@ from app.features.scheduling.schedule_configs.schemas import ScheduleConfigRead
 from app.features.scheduling.schedule_jobs.models import ScheduleJob, ScheduleJobStatus
 from app.features.scheduling.schedule_jobs.repos import ScheduleJobRepository
 from app.features.scheduling.schedule_jobs.schemas import ScheduleJobRead
+from app_layer_base.base.exceptions.base import CustomException
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.core.log import logger
 from app_layer_base.core.traceback import get_exception_traceback_str
@@ -23,6 +24,17 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import func as sql_func
+
+
+def _operator_message(error: Exception) -> str | None:
+    """The part of a failure that is safe to keep on the job row, for errors written to be read by an operator.
+
+    Application errors (the ones the API returns to its callers) and errors that declare themselves sanitized say
+    what went wrong without a stack trace, a response body, or a credential. Anything else stays in the logs.
+    """
+    if isinstance(error, CustomException) or getattr(error, "operator_safe", False):
+        return f"{type(error).__name__}: {error}"[:1000]
+    return None
 
 
 class DispatcherService:
@@ -237,6 +249,9 @@ class DispatcherService:
                 # This protects system integrity by hiding specific Python stack traces from the client-facing DB,
                 # while allowing support and operators to easily trace the full error details in the backend logs using the request ID.
                 error_message = f"An unexpected error occurred during task execution. Please refer to Request ID: {run_id} for details."
+                operator_message = _operator_message(e)
+                if operator_message is not None:
+                    error_message = f"{operator_message} (Request ID: {run_id})"
                 error_trace = get_exception_traceback_str(e)
                 logger.error(f"{prefix} failed (Request ID: {run_id}): {e}\n{error_trace}")
 

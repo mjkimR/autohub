@@ -615,7 +615,7 @@
 			<DialogHeader>
 				<DialogTitle>Register New Project</DialogTitle>
 				<DialogDescription>
-					Create a project workspace. You can configure GitHub and Linear connections right after.
+					Create a project workspace. You can configure its GitHub connection right after.
 				</DialogDescription>
 			</DialogHeader>
 			<form onsubmit={handleCreateProject} class="space-y-4 py-2">

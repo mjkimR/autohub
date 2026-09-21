@@ -25,7 +25,6 @@ class ExecutionAttemptKind(StrEnum):
     IMPLEMENTATION = "implementation"
     CI_FIX = "ci-fix"
     CONFLICT_FIX = "conflict-fix"
-    REVISION = "revision"
 
 
 class ExecutionAttemptState(StrEnum):
@@ -52,6 +51,7 @@ IN_FLIGHT_RUN_STATES = (
     PipelineRunState.IMPLEMENTING,
     PipelineRunState.AWAITING_CI,
 )
+FINAL_RUN_STATES = (PipelineRunState.COMPLETED, PipelineRunState.FAILED, PipelineRunState.CANCELED)
 # States a run leaves only when its operator acts.
 ATTENTION_RUN_STATES = (PipelineRunState.PAUSED, PipelineRunState.BLOCKED, PipelineRunState.FAILED)
 ACTIVE_RUN_PREDICATE = text("state IN ('queued', 'dispatching', 'implementing', 'awaiting_ci', 'paused', 'blocked')")

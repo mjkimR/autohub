@@ -5,7 +5,6 @@ adopts into the matching project's pipeline (CI, fixes through the project's cat
 session's final message, which the hub stores. Nothing else of a session's output is kept.
 """
 
-import logging
 import re
 from datetime import datetime, timedelta
 from typing import Any, Literal
@@ -34,11 +33,10 @@ from app.features.project_management.pipeline_runs.usecases.lifecycle import Pip
 from app.features.project_management.projects.models import Project
 from app.features.project_management.projects.services import ProjectError
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.core.log import logger
 from app_layer_base.utils.time_util import get_current_utc_time
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
-
-logger = logging.getLogger(__name__)
 
 SESSION_MARKER = "hub-session"
 # Past this age an unconfirmed create that reconciliation cannot find is presumed lost.
@@ -251,7 +249,7 @@ class JulesSessionService:
         try:
             run_id, detail = await self._enroll_pull_request(repository, pull_request_url)
         except Exception as exc:  # The verdict must reach the row whatever failed.
-            logger.exception("Adopting the pull request of Jules session %s failed", session_id)
+            logger.exception(f"Adopting the pull request of Jules session {session_id} failed")
             detail = f"Pull request adoption failed: {exc}"
         async with AsyncTransaction() as session:
             row = await session.get(AICatalogSession, session_id, with_for_update=True)

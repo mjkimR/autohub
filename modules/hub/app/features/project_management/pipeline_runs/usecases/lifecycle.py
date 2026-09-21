@@ -22,6 +22,7 @@ from app.features.project_management.pipeline_runs.adapters.registry import (
 )
 from app.features.project_management.pipeline_runs.github import github_project_error, read_pull_request
 from app.features.project_management.pipeline_runs.models import (
+    FINAL_RUN_STATES,
     IN_FLIGHT_RUN_STATES,
     ExecutionAttempt,
     ExecutionAttemptKind,
@@ -47,6 +48,7 @@ from app.features.project_management.pipeline_runs.schemas import (
     PauseRunRequest,
     PipelineRunList,
     PipelineRunRead,
+    PipelineRunSummary,
     PreparedImplementationAttempt,
     PrepareImplementationAttempt,
     PullRequestSnapshot,
@@ -147,11 +149,27 @@ class PipelineRunUseCase:
 
     async def list_attempts(self, run_id: UUID) -> ExecutionAttemptList:
         async with AsyncTransaction() as session:
-            if await self.repo.get(session, run_id) is None:
+            run = await self.repo.get(session, run_id)
+            if run is None:
                 raise ProjectError(404, "Pipeline run not found")
             rows = await self.repo.list_attempts(session, run_id)
+            started_at = _utc(run.created_at)
+            # A final state is the last thing written to a run, so its last update is when it ended.
+            finished_at = _utc(run.updated_at) if run.state in FINAL_RUN_STATES else None
+            kinds: dict[str, int] = {}
+            for row in rows:
+                kinds[row.kind] = kinds.get(row.kind, 0) + 1
             return ExecutionAttemptList(
-                items=[ExecutionAttemptRead.model_validate(row) for row in rows], total_count=len(rows)
+                items=[ExecutionAttemptRead.model_validate(row) for row in rows],
+                total_count=len(rows),
+                summary=PipelineRunSummary(
+                    attempts_by_kind=kinds,
+                    requests_sent=await self.repo.count_requests_sent(session, run_id),
+                    quota_limit_replies=await self.repo.count_quota_limit_replies(session, run_id),
+                    started_at=started_at,
+                    finished_at=finished_at,
+                    elapsed_seconds=int(((finished_at or get_current_utc_time()) - started_at).total_seconds()),
+                ),
             )
 
     async def list_deliveries(self, run_id: UUID, attempt_id: UUID) -> list[ExecutionDeliveryRead]:
@@ -1162,14 +1180,23 @@ class PipelineRunUseCase:
     async def complete_attempt(
         self, run_id: UUID, attempt_id: UUID, request: CompleteAttemptRequest
     ) -> ExecutionAttemptRead:
+        """Record what an external worker reports for its attempt.
+
+        Only an attempt that is still open on a run that is still active can be reported on: a settled attempt or
+        a finished run is history, and a late or repeated report must not rewrite it or fail the run again.
+        """
         now = get_current_utc_time()
         async with AsyncTransaction() as session:
-            run = await self.repo.get(session, run_id)
+            run = await self.repo.get(session, run_id, lock=True)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
             attempt = await self.repo.get_attempt(session, attempt_id)
             if attempt is None or attempt.pipeline_run_id != run_id:
                 raise ProjectError(404, "Execution attempt not found for this pipeline run")
+            if run.state in FINAL_RUN_STATES:
+                raise ProjectError(409, f"Pipeline run is already {run.state}")
+            if attempt.state in (ExecutionAttemptState.COMPLETED, ExecutionAttemptState.FAILED):
+                raise ProjectError(409, f"Execution attempt is already {attempt.state}")
             if request.status == "completed":
                 attempt.state = ExecutionAttemptState.COMPLETED
                 attempt.finished_at = now

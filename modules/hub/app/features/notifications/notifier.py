@@ -1,4 +1,3 @@
-import logging
 from dataclasses import dataclass
 from typing import Annotated
 from uuid import UUID
@@ -6,10 +5,9 @@ from uuid import UUID
 from app.features.notifications.services import NotificationChannelService
 from app.features.notifications.telegram import TelegramError, create_telegram_client, send_telegram_message
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.core.log import logger
 from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -63,7 +61,7 @@ class Notifier:
                         except TelegramError as exc:
                             error = str(exc)
                     if error is not None:
-                        logger.warning("Notification through channel %s failed: %s", name, error)
+                        logger.warning(f"Notification through channel {name} failed: {error}")
                     deliveries.append(Delivery(target_id, name, error))
 
         now = get_current_utc_time()

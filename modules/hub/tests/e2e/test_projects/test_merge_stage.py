@@ -197,3 +197,16 @@ async def test_a_rate_limited_read_carries_its_delay():
         with pytest.raises(GitHubObservationError) as raised:
             await GitHubActionsReader(client).list_issue_comments("owner/app", 7)
     assert (raised.value.kind, raised.value.retry_after) == ("rate_limited", 90)
+
+
+async def test_the_attempt_list_sums_up_what_the_run_has_cost(client, run, github):
+    github.mergeable_state = "dirty"
+    await advance(client, run)
+
+    attempts = (await client.get(f"/api/v1/pipeline-runs/{run['id']}/attempts")).json()
+
+    summary = attempts["summary"]
+    assert summary["attempts_by_kind"] == {"implementation": 1, "conflict-fix": 1}
+    # The pull request was implemented outside the pipeline and the fix is only planned: nothing was posted yet.
+    assert (summary["requests_sent"], summary["quota_limit_replies"]) == (0, 0)
+    assert summary["finished_at"] is None and summary["elapsed_seconds"] >= 0

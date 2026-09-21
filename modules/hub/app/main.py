@@ -46,8 +46,8 @@ def create_app():
     load_env()
     lifespan = get_lifespan()
     app = FastAPI(
-        title="ExampleApp",
-        version="0.0.1",
+        title="Auto Hub",
+        version="0.1.0",
         lifespan=lifespan,
         swagger_ui_parameters={
             "persistAuthorization": True,

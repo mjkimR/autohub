@@ -36,7 +36,12 @@
 				headers: { 'X-API-Key': hashedKey }
 			});
 
-			if (res.error) {
+			if (res.response?.status === 429) {
+				// The backend locks a caller out after repeated wrong keys; the right key is refused too until then.
+				const seconds = Number(res.response.headers.get('Retry-After')) || 300;
+				errorMsg = `Too many failed attempts. Try again in ${Math.ceil(seconds / 60)} minute(s).`;
+				toast.error('Temporarily locked out');
+			} else if (res.error) {
 				errorMsg = 'Authentication failed. Please check your API key.';
 				toast.error('Authentication failed');
 			} else {

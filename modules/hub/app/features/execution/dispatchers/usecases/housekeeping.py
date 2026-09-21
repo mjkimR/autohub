@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime, timedelta
 from typing import Annotated
 
@@ -11,11 +10,11 @@ from app.features.project_management.pipeline_runs.models import IN_FLIGHT_RUN_S
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.projects.models import Project
+from app.features.scheduling.schedule_jobs.repos import ScheduleJobRepository
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.core.log import logger
 from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
-
-logger = logging.getLogger(__name__)
 
 HEARTBEAT_CONFIG = "dispatcher.heartbeat"
 # The external trigger fires every minute; this long without a tick means it stopped, not that it is late.
@@ -24,6 +23,12 @@ TICK_STALE_AFTER = timedelta(minutes=10)
 STALE_NOTICE_INTERVAL = timedelta(hours=1)
 # A stop older than this is history by the time a channel could be told about it.
 STOP_NOTICE_HORIZON = timedelta(hours=24)
+# History that only grows. A per-minute dispatch schedule writes about 1,400 job rows a day per project, nearly all
+# of them successes that say nothing new; failures are rare and worth a longer look back.
+SUCCEEDED_JOB_RETENTION = timedelta(days=7)
+OTHER_JOB_RETENTION = timedelta(days=30)
+WEBHOOK_DELIVERY_RETENTION = timedelta(days=90)
+PRUNE_INTERVAL = timedelta(hours=1)
 
 
 def tick_status(last_tick_at: datetime | None, now: datetime) -> str:
@@ -56,7 +61,9 @@ class TickHousekeepingUseCase:
         configs: Annotated[SystemConfigRepository, Depends()],
         runs: Annotated[PipelineRunRepository, Depends()],
         deliveries: Annotated[GitHubWebhookRepository, Depends()],
+        jobs: Annotated[ScheduleJobRepository, Depends()],
     ) -> None:
+        self.jobs = jobs
         self.notifier = notifier
         self.lifecycle = lifecycle
         self.configs = configs
@@ -75,7 +82,10 @@ class TickHousekeepingUseCase:
             async with AsyncTransaction() as session:
                 heartbeat = await self.configs.get_by_name(session, HEARTBEAT_CONFIG)
                 previous = parse_instant((heartbeat.data or {}).get("last_tick_at")) if heartbeat is not None else None
+                # A tick clears the stopped-trigger notice; when history was last pruned carries over.
                 data = {"last_tick_at": now.isoformat()}
+                if heartbeat is not None and "pruned_at" in (heartbeat.data or {}):
+                    data["pruned_at"] = heartbeat.data["pruned_at"]
                 if heartbeat is None:
                     session.add(SystemConfig(name=HEARTBEAT_CONFIG, data=data))
                 else:
@@ -114,6 +124,28 @@ class TickHousekeepingUseCase:
     async def after_dispatch(self) -> None:
         await self._sweep_webhooks()
         await self._announce_stops()
+        await self._prune_history()
+
+    async def _prune_history(self) -> None:
+        """Delete expired history, at most once per ``PRUNE_INTERVAL`` so a per-minute tick does not pay for it."""
+        try:
+            now = get_current_utc_time()
+            async with AsyncTransaction() as session:
+                heartbeat = await self.configs.get_by_name(session, HEARTBEAT_CONFIG)
+                if heartbeat is None:
+                    return
+                pruned_at = parse_instant((heartbeat.data or {}).get("pruned_at"))
+                if pruned_at is not None and now - pruned_at < PRUNE_INTERVAL:
+                    return
+                heartbeat.data = {**(heartbeat.data or {}), "pruned_at": now.isoformat()}
+                await self.jobs.delete_history(
+                    session,
+                    succeeded_before=now - SUCCEEDED_JOB_RETENTION,
+                    others_before=now - OTHER_JOB_RETENTION,
+                )
+                await self.deliveries.delete_received_before(session, now - WEBHOOK_DELIVERY_RETENTION)
+        except Exception:
+            logger.exception("Pruning expired history failed")
 
     async def _sweep_webhooks(self) -> None:
         try:

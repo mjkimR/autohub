@@ -31,6 +31,9 @@ class GitHubObservationError(RuntimeError):
     ("rate_limited"), or nothing it can know ("upstream").
     """
 
+    # The message names only the operation and the HTTP status, so a failed job may show it to its operator.
+    operator_safe = True
+
     def __init__(
         self,
         message: str,

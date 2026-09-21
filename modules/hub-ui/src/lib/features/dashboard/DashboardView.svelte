@@ -132,7 +132,8 @@
 				awaitingCiRuns = data.items.filter((r: PipelineRun) => r.state === 'awaiting_ci').length;
 				completedRuns = data.items.filter((r: PipelineRun) => r.state === 'completed').length;
 				failedRuns = data.items.filter((r: PipelineRun) =>
-					['failed', 'paused'].includes(r.state)
+					// Every state that waits for the operator; a blocked run was counted nowhere before.
+					['failed', 'paused', 'blocked'].includes(r.state)
 				).length;
 			}
 
@@ -435,10 +436,10 @@
 				</div>
 				<div class="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
 					<div class="text-xs font-semibold text-rose-600 uppercase dark:text-rose-400">
-						Failed / Paused
+						Needs you
 					</div>
 					<div class="mt-1 text-2xl font-bold text-rose-600 dark:text-rose-400">{failedRuns}</div>
-					<p class="mt-0.5 text-[11px] text-muted-foreground">Needs investigation</p>
+					<p class="mt-0.5 text-[11px] text-muted-foreground">Failed, paused, or blocked</p>
 				</div>
 			</div>
 		</CardContent>

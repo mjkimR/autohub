@@ -51,10 +51,31 @@ delivery state; the durable `@codex` request contract lives in
   can cap their runs in flight (`max_in_flight_runs`). See
   [Architecture](architecture.md#github-failures). Verified against mocked
   GitHub responses only. Not yet deployed.
+- API key lockout and history retention (2026-09-21): five wrong API keys in a
+  minute lock the caller out for five minutes and notify the operator; tick
+  housekeeping prunes succeeded schedule jobs after 7 days, other jobs after
+  30, and webhook deliveries after 90. The deliberate SHA-256 API key scheme
+  is documented in [Development & Operations](development.md). Not yet
+  deployed.
+- Visibility (2026-09-21): a webhook delivery log (API and UI); the run detail
+  shows a cost summary and each attempt's requests and replies; failed jobs
+  keep operator-readable error messages; every run state change is logged;
+  the login screen tells a lockout from a wrong key. See
+  [Operator Notices](operator-notices.md#looking-into-what-happened).
+  Not yet deployed.
+- Cleanup and UI tests (2026-09-21): the API is titled Auto Hub, the never
+  produced `revision` attempt kind is gone, and a worker's attempt report can
+  no longer rewrite a settled attempt or a finished run. Every view has tests
+  (13 files); writing them surfaced and fixed three gaps: the dashboard never
+  counted `blocked` runs, the job history hid failure messages, and the
+  schedule list hid why the backend refused a change. The example tasks and
+  the appointment chain domain stay as demos by decision.
 - `just setup-secrets` keeps existing bundle values on a re-run (2026-09-21)
   instead of regenerating the connector credential key and webhook secret.
-- No Linear integration: Hub is the single source of truth for run state. A
-  `linear` connector provider exists only so the connectors UI can store one.
+- No issue tracker integration: Hub is the single source of truth for run
+  state. The unused `linear` connector provider was removed on 2026-09-21;
+  migration `b2c3d4e5f6a7` deletes any leftover `linear` connector row, which
+  would otherwise fail validation and break the connector list.
 
 ## Verification
 
@@ -87,7 +108,13 @@ Alembic chain upgrades, downgrades one step, and re-upgrades on PostgreSQL 16
 and `alembic check` reports no differences (the two column-comment differences
 noted above are set by migration `061a3a930c1e`). After the merge and GitHub
 robustness work: 510 backend tests on SQLite and on PostgreSQL, 16 frontend
-tests, pyright, `svelte-check`, and lint passing; no schema change.
+tests, pyright, `svelte-check`, and lint passing; no schema change. After the
+lockout and retention work: 515 backend tests on SQLite and on PostgreSQL with
+the same checks passing; no schema change. After the visibility work: 519
+backend tests on SQLite and on PostgreSQL and 19 frontend tests with the same
+checks passing; no schema change. After the cleanup: 519 backend tests on SQLite
+and on PostgreSQL, 38 frontend tests, and the same checks passing; migration
+`b2c3d4e5f6a7` verified on PostgreSQL 16 with `alembic check` clean.
 
 The automated suite covers crash recovery around delivery and head changes,
 marker reconciliation, watchdog tolerance edges, webhook routing and polling

@@ -31,7 +31,6 @@
 		XCircle,
 		Settings2,
 		GitBranch,
-		Layers,
 		Lock,
 		Eye,
 		EyeOff
@@ -215,7 +214,7 @@
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Connectors</h1>
 			<p class="text-sm text-muted-foreground">
-				Secure encrypted credentials for external GitHub and Linear integrations
+				Secure encrypted credentials for the providers the hub works with (GitHub, Jules)
 			</p>
 		</div>
 		<div class="flex items-center gap-3">
@@ -286,14 +285,6 @@
 									>
 										<GitBranch class="size-3" />
 										GitHub
-									</Badge>
-								{:else if connector.provider === 'linear'}
-									<Badge
-										variant="outline"
-										class="gap-1.5 border-indigo-500/30 bg-indigo-500/10 text-indigo-500"
-									>
-										<Layers class="size-3" />
-										Linear
 									</Badge>
 								{:else if connector.provider === 'jules'}
 									<Badge variant="outline" class="gap-1.5">Jules</Badge>
@@ -388,7 +379,6 @@
 						class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
 					>
 						<option value="github">GitHub (Personal Access Token / App Token)</option>
-						<option value="linear">Linear (API Key)</option>
 						<option value="jules">Jules (API Key)</option>
 					</select>
 				</div>
@@ -401,11 +391,7 @@
 						<Input
 							id="cToken"
 							type={showNewToken ? 'text' : 'password'}
-							placeholder={newProvider === 'github'
-								? 'ghp_...'
-								: newProvider === 'jules'
-									? 'Jules API key'
-									: 'lin_api_...'}
+							placeholder={newProvider === 'github' ? 'ghp_...' : 'Jules API key'}
 							bind:value={newToken}
 							required
 							class="pr-10"

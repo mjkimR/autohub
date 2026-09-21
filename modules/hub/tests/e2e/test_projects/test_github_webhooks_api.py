@@ -1,11 +1,12 @@
 import hashlib
 import hmac
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
 from app.common.config import get_github_webhook_config
-from app.features.project_management.github_webhooks.models import GitHubWebhookDelivery  # noqa: F401
+from app.features.project_management.github_webhooks.models import GitHubWebhookDelivery
 from app.features.project_management.github_webhooks.usecases import (
     AUTO_RUN_TRIGGER,
     GitHubWebhookUseCase,
@@ -356,3 +357,53 @@ async def test_failed_webhook_processing_is_acknowledged_for_polling_recovery():
     )
 
     webhook._finish.assert_awaited_once_with("failed-advance", "failed", "Webhook processing failed")
+
+
+async def test_the_delivery_log_lists_deliveries_and_finds_the_noteworthy_ones(client, session):
+    from app_testing_base import utc_now
+
+    def delivery(delivery_id: str, minutes_ago: int, **fields) -> GitHubWebhookDelivery:
+        return GitHubWebhookDelivery(
+            delivery_id=delivery_id,
+            event="issue_comment",
+            repository="owner/app",
+            payload_digest="0" * 64,
+            created_at=utc_now() - timedelta(minutes=minutes_ago),
+            **fields,
+        )
+
+    session.add_all(
+        [
+            delivery("ordinary", 3, status="processed", attempts=1),
+            delivery(
+                "skipped-trigger",
+                2,
+                status="processed",
+                attempts=1,
+                pull_number=7,
+                auto_run=True,
+                requested_catalog="jules",
+                failure_detail="Enrollment skipped: AI catalog 'jules' cannot deliver pull request work",
+            ),
+            delivery("broken", 1, status="failed", attempts=2),
+        ]
+    )
+    await session.commit()
+    url = "/api/v1/github-webhook-deliveries"
+
+    everything = await client.get(url)
+    assert everything.status_code == 200
+    assert [item["delivery_id"] for item in everything.json()["items"]] == ["broken", "skipped-trigger", "ordinary"]
+    assert everything.json()["total_count"] == 3
+    assert "payload_digest" not in everything.json()["items"][0]
+
+    noteworthy = (await client.get(url, params={"noteworthy": True})).json()
+    assert [item["delivery_id"] for item in noteworthy["items"]] == ["broken", "skipped-trigger"]
+    trigger = noteworthy["items"][1]
+    assert (trigger["pull_number"], trigger["auto_run"], trigger["requested_catalog"]) == (7, True, "jules")
+    assert trigger["failure_detail"].startswith("Enrollment skipped")
+
+    failed = (await client.get(url, params={"status": "failed", "repository": "Owner/App"})).json()
+    assert ([item["delivery_id"] for item in failed["items"]], failed["total_count"]) == (["broken"], 1)
+    assert (await client.get(url, params={"status": "lost"})).status_code == 422
+    assert (await client.get(url, headers={"X-API-Key": ""})).status_code == 401

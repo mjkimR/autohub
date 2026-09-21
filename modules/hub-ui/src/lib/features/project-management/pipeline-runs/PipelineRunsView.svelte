@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import AttemptTimeline from './AttemptTimeline.svelte';
 	import { api, type components } from '$lib/api';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
@@ -45,6 +46,7 @@
 
 	type PipelineRun = components['schemas']['PipelineRunRead'];
 	type ExecutionAttempt = components['schemas']['ExecutionAttemptRead'];
+	type RunSummary = components['schemas']['PipelineRunSummary'];
 	type Project = components['schemas']['ProjectRead'];
 	type RunState = components['schemas']['PipelineRunState'];
 
@@ -62,6 +64,9 @@
 	let loadingAttempts = $state(false);
 	let selectedRun = $state<PipelineRun | null>(null);
 	let attempts = $state<ExecutionAttempt[]>([]);
+	let runSummary = $state<RunSummary | null>(null);
+	// Attempts whose requests and replies are shown; loaded when first opened.
+	let openTimelines = $state<Record<string, boolean>>({});
 
 	// Enroll PR Dialog
 	let isAcquireOpen = $state(false);
@@ -142,9 +147,25 @@
 		}
 	}
 
+	function summarizeKinds(kinds: Record<string, number>) {
+		return Object.entries(kinds)
+			.map(([kind, count]) => `${count} ${kind}`)
+			.join(', ');
+	}
+
+	function formatElapsed(seconds: number) {
+		if (seconds < 3600) return `${Math.max(1, Math.round(seconds / 60))} min`;
+		const hours = Math.floor(seconds / 3600);
+		return hours < 48
+			? `${hours} h ${Math.round((seconds % 3600) / 60)} min`
+			: `${Math.round(hours / 24)} days`;
+	}
+
 	async function openAttempts(run: PipelineRun) {
 		selectedRun = run;
 		attempts = [];
+		runSummary = null;
+		openTimelines = {};
 		isAttemptsOpen = true;
 		loadingAttempts = true;
 		try {
@@ -153,6 +174,7 @@
 			});
 			if (res.data?.items) {
 				attempts = res.data.items;
+				runSummary = res.data.summary;
 			}
 		} catch {
 			toast.error('Failed to load execution attempts');
@@ -448,7 +470,7 @@
 		<Table>
 			<TableHeader>
 				<TableRow>
-					<TableHead class="w-[180px]">Linear Issue</TableHead>
+					<TableHead class="w-[180px]">Pull Request</TableHead>
 					<TableHead class="w-[160px]">Project</TableHead>
 					<TableHead class="w-[130px]">State</TableHead>
 					<TableHead>Branch & Pull Request</TableHead>
@@ -721,6 +743,31 @@
 						</p>
 					</div>
 				{:else}
+					{#if runSummary}
+						<div
+							class="grid grid-cols-3 gap-2 rounded-lg border border-border/70 bg-muted/40 p-3 text-xs"
+						>
+							<div>
+								<p class="font-semibold text-muted-foreground uppercase">Agent requests</p>
+								<p class="text-sm font-medium">{runSummary.requests_sent} sent</p>
+							</div>
+							<div>
+								<p class="font-semibold text-muted-foreground uppercase">Attempts</p>
+								<p class="text-sm font-medium">{summarizeKinds(runSummary.attempts_by_kind)}</p>
+							</div>
+							<div>
+								<p class="font-semibold text-muted-foreground uppercase">
+									{runSummary.finished_at ? 'Took' : 'Running for'}
+								</p>
+								<p class="text-sm font-medium">{formatElapsed(runSummary.elapsed_seconds)}</p>
+							</div>
+							{#if runSummary.quota_limit_replies > 0}
+								<p class="col-span-3 text-amber-600 dark:text-amber-400">
+									The agent reported its usage limit {runSummary.quota_limit_replies} time(s).
+								</p>
+							{/if}
+						</div>
+					{/if}
 					<div class="space-y-3">
 						{#each attempts as attempt (attempt.id)}
 							<div class="space-y-2.5 rounded-lg border border-border/80 bg-card p-3.5 shadow-xs">
@@ -769,6 +816,21 @@
 										>
 											<div class="font-semibold">{attempt.failure_code || 'Execution Error'}</div>
 											<div class="text-[11px]">{attempt.failure_detail}</div>
+										</div>
+									{/if}
+								</div>
+
+								<div>
+									<button
+										type="button"
+										class="text-[11px] text-primary hover:underline"
+										onclick={() => (openTimelines[attempt.id] = !openTimelines[attempt.id])}
+									>
+										{openTimelines[attempt.id] ? 'Hide' : 'Show'} requests and replies
+									</button>
+									{#if openTimelines[attempt.id] && selectedRun}
+										<div class="mt-2">
+											<AttemptTimeline runId={selectedRun.id} attemptId={attempt.id} />
 										</div>
 									{/if}
 								</div>

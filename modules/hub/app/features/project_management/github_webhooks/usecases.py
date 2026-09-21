@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -13,10 +12,9 @@ from app.features.project_management.pipeline_runs.schemas import EnrollPullRequ
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.projects.services import ProjectError
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.core.log import logger
 from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy.exc import IntegrityError
-
-logger = logging.getLogger(__name__)
 
 # A delivery still unhandled after this long lost its background processing (the instance was stopped or throttled).
 STALLED_DELIVERY_AGE = timedelta(minutes=2)
@@ -164,7 +162,7 @@ class GitHubWebhookUseCase:
         except Exception:
             # Delivery endpoints must acknowledge authenticated GitHub events; polling recovers a failed advance
             # and the sweep retries a failed @auto-run.
-            logger.exception("Processing GitHub webhook delivery %s failed", delivery_id)
+            logger.exception(f"Processing GitHub webhook delivery {delivery_id} failed")
             await self._finish(delivery_id, "failed", "Webhook processing failed")
             return False
 

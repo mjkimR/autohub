@@ -16,7 +16,8 @@
 		Workflow,
 		KeyRound,
 		Bot,
-		BellRing
+		BellRing,
+		Webhook
 	} from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
@@ -70,7 +71,10 @@
 		},
 		{
 			label: 'Operations',
-			items: [{ href: '/operations/tasks', label: 'Task specs', icon: FileCode }]
+			items: [
+				{ href: '/operations/tasks', label: 'Task specs', icon: FileCode },
+				{ href: '/operations/webhooks', label: 'Webhook deliveries', icon: Webhook }
+			]
 		}
 	] as const;
 

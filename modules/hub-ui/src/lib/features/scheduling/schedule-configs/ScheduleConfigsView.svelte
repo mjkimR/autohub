@@ -93,6 +93,11 @@
 		'jules.sync_sessions'
 	]);
 
+	// The backend says why it refused (a schedule owned by a project agent schedule answers 409 with the reason).
+	function refusal(error: unknown, fallback: string): string {
+		return (error as { detail?: string } | undefined)?.detail ?? fallback;
+	}
+
 	function isProjectManaged(config: ScheduleConfig): boolean {
 		return PROJECT_MANAGED_TASKS.has(config.task_func);
 	}
@@ -124,7 +129,7 @@
 				body: { enabled: !config.enabled }
 			});
 			if (res.error) {
-				toast.error('Failed to update schedule status');
+				toast.error(refusal(res.error, 'Failed to update schedule status'));
 			} else {
 				toast.success(`Schedule ${!config.enabled ? 'enabled' : 'disabled'}`);
 				loadConfigs();
@@ -226,7 +231,7 @@
 			});
 
 			if (res.error) {
-				toast.error('Failed to update schedule');
+				toast.error(refusal(res.error, 'Failed to update schedule'));
 			} else {
 				toast.success(`Schedule ${editName} updated!`);
 				isEditDialogOpen = false;
@@ -254,7 +259,7 @@
 			});
 
 			if (res.error) {
-				toast.error('Failed to delete schedule');
+				toast.error(refusal(res.error, 'Failed to delete schedule'));
 			} else {
 				toast.success(`Schedule ${deletingConfig.name} deleted`);
 				isDeleteDialogOpen = false;

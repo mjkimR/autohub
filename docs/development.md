@@ -46,7 +46,10 @@ The production database is PostgreSQL, and migrations are managed with Alembic.
 Refer to the `justfile` for `just db-upgrade` and `just db-revision` arguments.
 GitHub credentials are stored encrypted in Connectors.
 For encryption key configuration, follow the [Hub module documentation](../modules/hub/README.md#connector-credential-encryption).
-API authentication relies on the existing API key mechanism.
+API authentication is one shared API key in the `X-API-Key` header, sized for a single operator.
+
+- **The SHA-256 is deliberate.** The operator signs in with a password they can remember. The UI and the setup scripts hash it once, and that digest is the API key itself: it is what the browser stores, what Cloud Scheduler sends, and what `APP_SECRET_KEY` holds, and the backend compares it verbatim. The hash only keeps the password out of browser storage, scheduler configuration, and Secret Manager. It is not a hashing-at-rest scheme and adds no strength: whoever reads the stored digest can authenticate, and the key is as guessable as the password. Hashing again on the server or storing a salted hash would only break the clients, which all send the digest.
+- **Guessing is held off by a lockout**, not by the hash: five wrong keys within a minute lock the caller out for five minutes (HTTP 429 with `Retry-After`), even with the right key, and the operator is told through [Operator Notices](operator-notices.md) with a partly masked address. A request without a key is refused but not counted. The caller is the address Cloud Run appends to `X-Forwarded-For`, so invented forwarded addresses do not dodge it. Counters are per process, so several workers multiply the attempts a caller gets; that is still a handful per minute.
 
 ## Runtime Environment
 

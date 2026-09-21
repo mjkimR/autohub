@@ -116,9 +116,23 @@ class PipelineRunList(BaseModel):
     total_count: int
 
 
+class PipelineRunSummary(BaseModel):
+    """What a run has cost so far: how often an agent was asked, and how long the run has taken."""
+
+    attempts_by_kind: dict[str, int]
+    # Requests actually posted to an agent, across every attempt; a retried or resumed attempt posts more than one.
+    requests_sent: int
+    quota_limit_replies: int
+    started_at: datetime
+    # When the run reached a final state; empty while it is active.
+    finished_at: datetime | None
+    elapsed_seconds: int
+
+
 class ExecutionAttemptList(BaseModel):
     items: list[ExecutionAttemptRead]
     total_count: int
+    summary: PipelineRunSummary
 
 
 class LeaseRequest(BaseModel):
