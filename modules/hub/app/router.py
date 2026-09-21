@@ -4,8 +4,11 @@ from app.auth import verify_api_key
 from app.features.ai_catalogs.api.v1 import router as v1_ai_catalogs_router
 from app.features.configuration.connectors.api.v1 import router as v1_connectors_router
 from app.features.configuration.system_configs.api.v1 import router as v1_system_configs_router
+from app.features.configuration.system_configs.models import SystemConfig
 from app.features.execution.dispatchers.api.v1 import router as v1_dispatchers_router
+from app.features.execution.dispatchers.usecases.housekeeping import HEARTBEAT_CONFIG, parse_instant, tick_status
 from app.features.execution.tasks.api.v1 import router as v1_tasks_router
+from app.features.notifications.api.v1 import router as v1_notification_channels_router
 from app.features.project_management.agent_schedules.api.v1 import router as v1_agent_schedules_router
 from app.features.project_management.github_webhooks.api import router as github_webhooks_router
 from app.features.project_management.pipeline_runs.api.v1 import router as v1_pipeline_runs_router
@@ -14,8 +17,9 @@ from app.features.project_management.projects.api.v1 import router as v1_project
 from app.features.scheduling.schedule_configs.api.v1 import router as v1_schedule_configs_router
 from app.features.scheduling.schedule_jobs.api.v1 import router as v1_schedule_jobs_router
 from app_layer_base.core.database.deps import get_session
+from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import APIRouter, Depends, Response, status
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api")
@@ -31,7 +35,15 @@ async def health():
 async def deep_health_check(session: Annotated[AsyncSession, Depends(get_session)]):
     try:
         await session.execute(text("SELECT 1"))
-        return {"status": "ok", "database": "connected"}
+        heartbeat = await session.scalar(select(SystemConfig.data).where(SystemConfig.name == HEARTBEAT_CONFIG))
+        last_tick_at = parse_instant((heartbeat or {}).get("last_tick_at"))
+        return {
+            "status": "ok",
+            "database": "connected",
+            # "stale" means the external trigger stopped firing: the hub answers but advances nothing on a timer.
+            "scheduler": tick_status(last_tick_at, get_current_utc_time()),
+            "last_tick_at": last_tick_at.isoformat() if last_tick_at is not None else None,
+        }
     except Exception:
         return Response(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -47,6 +59,7 @@ v1_router.include_router(v1_projects_router)
 v1_router.include_router(v1_agent_schedules_router)
 v1_router.include_router(v1_schedule_configs_router)
 v1_router.include_router(v1_system_configs_router)
+v1_router.include_router(v1_notification_channels_router)
 v1_router.include_router(v1_ai_catalogs_router)
 v1_router.include_router(v1_schedule_jobs_router)
 v1_router.include_router(v1_dispatchers_router)

@@ -15,7 +15,8 @@
 		LogOut,
 		Workflow,
 		KeyRound,
-		Bot
+		Bot,
+		BellRing
 	} from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
@@ -63,6 +64,7 @@
 			items: [
 				{ href: '/settings/connectors', label: 'Connectors', icon: KeyRound },
 				{ href: '/settings/ai-catalogs', label: 'AI Catalogs', icon: Bot },
+				{ href: '/settings/notifications', label: 'Notifications', icon: BellRing },
 				{ href: '/settings/system', label: 'System configs', icon: Settings }
 			]
 		},

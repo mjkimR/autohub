@@ -28,6 +28,8 @@ just setup-secrets -c "PROJECT:REGION:INSTANCE"
 just deploy-cloud-run -c "PROJECT:REGION:INSTANCE"
 ```
 
+`just setup-secrets` is safe to re-run, for example to change the database URL: it keeps every value the `autohub-secrets` bundle already holds unless an option replaces it, and never regenerates the connector credential key (which would make stored connector credentials undecryptable) or the webhook secret. It refuses to run when the bundle exists but cannot be read. Rotate the API key with `just update-api-key`, which also updates Cloud Scheduler and Cloud Run.
+
 _(To run each step manually, see steps 1 through 6 below.)_
 
 ---

@@ -9,7 +9,8 @@ These documents explicitly distinguish between design goals and current function
 4. [Delivery Status](delivery-status.md): Delivered capabilities, verification record, and optional follow-ups.
 5. [AI Catalog Gateway](ai-catalogs.md): Per-kind quota policies (Codex, Jules), dispatch ledger, execution adapters, Jules session work types, catalog designation, and project agent schedules.
 6. [AI Catalog Implementation Notes](ai-catalog-implementation-notes.md): Module map, admission and session flows, design decisions, extension points, tests, and known limitations.
-7. [Development & Operations](development.md): Commands, testing, and constraints of the existing scheduler foundation.
+7. [Operator Notices](operator-notices.md): Notification channels (Telegram), what the hub announces, the scheduler trigger heartbeat, and webhook delivery replay.
+8. [Development & Operations](development.md): Commands, testing, and constraints of the existing scheduler foundation.
 
 [CI Template Usage](../templates/github-actions/README.md) covers CI setup in target repositories.
 The root `justfile` is the single source of truth for commands, and connector credential encryption details are documented in the [Hub module documentation](../modules/hub/README.md#connector-credential-encryption).

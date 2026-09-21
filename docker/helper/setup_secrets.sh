@@ -105,21 +105,47 @@ create_or_update_secret() {
 
 # Build one per-repository JSON bundle. Individual values never need their own
 # Secret Manager resources; app-common expands this bundle at process startup.
+#
+# A re-run keeps every value the bundle already holds unless an option replaces it. Generated values are
+# never regenerated: a new connector credential key makes every stored connector credential undecryptable,
+# and a new webhook secret invalidates the webhooks already registered on GitHub.
+EXISTING_JSON=""
+if gcloud secrets describe "autohub-secrets" --project="$PROJECT_ID" >/dev/null 2>&1; then
+  if ! EXISTING_JSON=$(gcloud secrets versions access latest --secret="autohub-secrets" --project="$PROJECT_ID" 2>/dev/null); then
+    echo "Error: 'autohub-secrets' exists but its latest version cannot be read." >&2
+    echo "       Refusing to regenerate its keys. Fix access, or delete the secret if it holds nothing worth keeping." >&2
+    exit 1
+  fi
+  echo "  - Existing secret bundle found. Keeping its values unless an option replaces them."
+fi
+
+existing_value() {
+  EXISTING_JSON="$EXISTING_JSON" python3 -c 'import json, os, sys; raw = os.environ["EXISTING_JSON"]; print((json.loads(raw) if raw else {}).get(sys.argv[1]) or "", end="")' "$1"
+}
+
 # 1. App secret (SHA-256 hashed secret for UI/API authentication)
+LOGIN_KEY=""
 if [[ -n "$RAW_APP_SECRET" ]]; then
   LOGIN_KEY="$RAW_APP_SECRET"
   echo "  - Plaintext App Secret provided. Computing SHA-256 hash..."
   APP_SECRET_VAL=$(hash_sha256 "$RAW_APP_SECRET")
-  :
+  if [[ -n "$EXISTING_JSON" && "$APP_SECRET_VAL" != "$(existing_value APP_SECRET_KEY)" ]]; then
+    echo "  - Notice: this replaces the API key in the bundle only. Cloud Scheduler and Cloud Run keep the old key;" >&2
+    echo "            use 'just update-api-key' to rotate it everywhere at once." >&2
+  fi
 else
-  RANDOM_KEY=$(openssl rand -hex 32)
-  LOGIN_KEY="$RANDOM_KEY"
-  APP_SECRET_VAL=$(hash_sha256 "$RANDOM_KEY")
-  :
+  APP_SECRET_VAL=$(existing_value APP_SECRET_KEY)
+  if [[ -z "$APP_SECRET_VAL" ]]; then
+    LOGIN_KEY=$(openssl rand -hex 32)
+    APP_SECRET_VAL=$(hash_sha256 "$LOGIN_KEY")
+  fi
 fi
 
 # 2. GitHub webhook secret (20 bytes hex)
-WEBHOOK_SECRET_VAL=$(openssl rand -hex 20)
+WEBHOOK_SECRET_VAL=$(existing_value GITHUB_WEBHOOK_SECRET)
+if [[ -z "$WEBHOOK_SECRET_VAL" ]]; then
+  WEBHOOK_SECRET_VAL=$(openssl rand -hex 20)
+fi
 
 # 3. Database URL
 if [[ -n "$DATABASE_URL" ]]; then
@@ -139,22 +165,37 @@ elif [[ -n "$DB_CONNECTION_NAME" ]]; then
   fi
   DATABASE_URL="postgresql+psycopg://${DB_USER}:${DB_PASSWORD}@/${DB_NAME}?host=/cloudsql/${DB_CONNECTION_NAME}"
 else
-  echo "Error: --database-url or --connection-name is required for the Auto Hub secret bundle." >&2
-  exit 1
+  DATABASE_URL=$(existing_value DATABASE_URL)
+  if [[ -z "$DATABASE_URL" ]]; then
+    echo "Error: --database-url or --connection-name is required for the Auto Hub secret bundle." >&2
+    exit 1
+  fi
+  echo "  - Keeping existing DATABASE_URL."
 fi
 
 # 4. Connector credential encryption key (base64-encoded 32-byte AES key)
-CONNECTOR_KEY_VAL=$(openssl rand -base64 32)
+CONNECTOR_KEY_VAL=$(existing_value CONNECTOR_CREDENTIAL_KEY)
+CONNECTOR_KEY_VERSION=$(existing_value CONNECTOR_CREDENTIAL_KEY_VERSION)
+if [[ -z "$CONNECTOR_KEY_VAL" ]]; then
+  CONNECTOR_KEY_VAL=$(openssl rand -base64 32)
+  CONNECTOR_KEY_VERSION="1"
+fi
 
 SECRETS_JSON=$( \
   APP_SECRET_VAL="$APP_SECRET_VAL" \
   DATABASE_URL="$DATABASE_URL" \
   WEBHOOK_SECRET_VAL="$WEBHOOK_SECRET_VAL" \
   CONNECTOR_KEY_VAL="$CONNECTOR_KEY_VAL" \
-  python3 -c 'import json, os; print(json.dumps({"APP_SECRET_KEY": os.environ["APP_SECRET_VAL"], "DATABASE_URL": os.environ["DATABASE_URL"], "GITHUB_WEBHOOK_SECRET": os.environ["WEBHOOK_SECRET_VAL"], "CONNECTOR_CREDENTIAL_KEY": os.environ["CONNECTOR_KEY_VAL"], "CONNECTOR_CREDENTIAL_KEY_VERSION": "1"}, separators=(",", ":")))' \
+  CONNECTOR_KEY_VERSION="${CONNECTOR_KEY_VERSION:-1}" \
+  EXISTING_JSON="$EXISTING_JSON" \
+  python3 -c 'import json, os; raw = os.environ["EXISTING_JSON"]; bundle = json.loads(raw) if raw else {}; bundle.update({"APP_SECRET_KEY": os.environ["APP_SECRET_VAL"], "DATABASE_URL": os.environ["DATABASE_URL"], "GITHUB_WEBHOOK_SECRET": os.environ["WEBHOOK_SECRET_VAL"], "CONNECTOR_CREDENTIAL_KEY": os.environ["CONNECTOR_KEY_VAL"], "CONNECTOR_CREDENTIAL_KEY_VERSION": os.environ["CONNECTOR_KEY_VERSION"]}); print(json.dumps(bundle, separators=(",", ":")))' \
 )
 
-create_or_update_secret "autohub-secrets" "$SECRETS_JSON" "true"
+if [[ -n "$EXISTING_JSON" && "$SECRETS_JSON" == "$EXISTING_JSON" ]]; then
+  echo "  - Secret bundle is unchanged. No new version added."
+else
+  create_or_update_secret "autohub-secrets" "$SECRETS_JSON" "true"
+fi
 
 
 # 5. Create dedicated Service Account & grant secretAccessor role
@@ -176,5 +217,9 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
 echo "==> Secret Manager setup completed successfully!"
 echo "    Dedicated Service Account: $SA_EMAIL"
 echo "    Secret bundle: autohub-secrets"
-echo "    Save this plaintext API key securely for UI/Scheduler authentication:"
-echo "    $LOGIN_KEY"
+if [[ -n "$LOGIN_KEY" ]]; then
+  echo "    Save this plaintext API key securely for UI/Scheduler authentication:"
+  echo "    $LOGIN_KEY"
+else
+  echo "    API key unchanged. Use 'just update-api-key' to rotate it everywhere it is used."
+fi

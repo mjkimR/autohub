@@ -221,7 +221,10 @@ or the pull request already has an active run.
 - `GET /api/v1/ai-catalogs/{key}/sessions?offset=&limit=` pages through the
   catalog's sessions, most recent first (default limit 50, at most 100), with
   their work type, repository, state, links, adopted pipeline run, result
-  summary, failure detail, and a `total_count`.
+  summary, failure detail, and a `total_count`. `status=open|completed|failed`
+  (`open` is every session that has not ended) and `schedule_config_id=` narrow
+  the page and its `total_count`; the session list in the UI offers the status
+  filter.
 
 ## Project agent schedules
 

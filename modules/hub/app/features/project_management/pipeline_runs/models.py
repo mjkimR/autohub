@@ -45,6 +45,8 @@ ACTIVE_RUN_STATES = (
     PipelineRunState.PAUSED,
     PipelineRunState.BLOCKED,
 )
+# States a run leaves only when its operator acts.
+ATTENTION_RUN_STATES = (PipelineRunState.PAUSED, PipelineRunState.BLOCKED, PipelineRunState.FAILED)
 ACTIVE_RUN_PREDICATE = text("state IN ('queued', 'dispatching', 'implementing', 'awaiting_ci', 'paused', 'blocked')")
 
 
@@ -92,6 +94,8 @@ class PipelineRun(Base, UUIDMixin, TimestampMixin):
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     next_action_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     quota_block_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # The revision whose stop the operator was last told about; a later stop has a later revision.
+    notified_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class ExecutionAttempt(Base, UUIDMixin, TimestampMixin):

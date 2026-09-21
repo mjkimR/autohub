@@ -7,6 +7,7 @@ from app.features.ai_catalogs.models import AICatalog
 from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.project_management.pipeline_runs.models import (
     ACTIVE_RUN_STATES,
+    ATTENTION_RUN_STATES,
     ExecutionAttempt,
     ExecutionAttemptState,
     ExecutionDelivery,
@@ -293,3 +294,20 @@ class PipelineRunRepository:
             .returning(PipelineRun)
         )
         return result.scalar_one_or_none()
+
+    async def list_unannounced_stops(self, session: AsyncSession, *, since: datetime) -> list[PipelineRun]:
+        """Runs that stopped for their operator at a revision nobody was told about, oldest first."""
+        rows = await session.scalars(
+            select(PipelineRun)
+            .where(
+                PipelineRun.state.in_(ATTENTION_RUN_STATES),
+                PipelineRun.updated_at > since,
+                or_(PipelineRun.notified_revision.is_(None), PipelineRun.notified_revision != PipelineRun.revision),
+            )
+            .order_by(PipelineRun.updated_at)
+            .limit(20)
+        )
+        return list(rows.all())
+
+    async def mark_stop_announced(self, session: AsyncSession, run_id: UUID, revision: int) -> None:
+        await session.execute(update(PipelineRun).where(PipelineRun.id == run_id).values(notified_revision=revision))

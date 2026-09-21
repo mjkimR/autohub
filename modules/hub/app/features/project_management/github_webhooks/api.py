@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from app.common.config import get_github_webhook_config
+from app.features.execution.dispatchers.usecases.housekeeping import TickHousekeepingUseCase
 from app.features.project_management.github_webhooks.repos import GitHubWebhookRepository
 from app.features.project_management.github_webhooks.usecases import GitHubWebhookUseCase
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
@@ -15,6 +16,7 @@ async def receive_github_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     lifecycle: Annotated[PipelineRunUseCase, Depends()],
+    housekeeping: Annotated[TickHousekeepingUseCase, Depends()],
     x_github_delivery: Annotated[str | None, Header()] = None,
     x_github_event: Annotated[str | None, Header()] = None,
     x_hub_signature_256: Annotated[str | None, Header()] = None,
@@ -38,4 +40,6 @@ async def receive_github_webhook(
     if not await use_case.receive(x_github_delivery, x_github_event, raw_body, payload):
         return {"status": "duplicate"}
     background_tasks.add_task(use_case.process, x_github_delivery, payload, x_github_event)
+    # Webhooks keep arriving when the scheduler trigger has stopped, which nothing else would notice.
+    background_tasks.add_task(housekeeping.report_stopped_trigger)
     return {"status": "accepted"}

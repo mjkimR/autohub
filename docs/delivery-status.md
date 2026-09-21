@@ -32,6 +32,19 @@ delivery state; the durable `@codex` request contract lives in
   sessions; each row derives and owns one scheduler entry, the per-catalog
   session sync entry is kept automatically, and the generic schedule API
   refuses to edit owned entries. UI under Projects → Agent Schedules.
+- Session list filters and ledger pruning (2026-09-21): the catalog session list
+  filters by `status` (`open`, `completed`, `failed`) and `schedule_config_id`,
+  with the status filter in the UI; admitting work prunes expired dispatch
+  ledger rows of every catalog, not only the admitting one. Not yet deployed.
+- Operator notices (2026-09-21): notification channels (Telegram) as their own
+  settings object with a test send; stopped runs, a silent or resumed scheduler
+  trigger, and unhandled `@auto-run` triggers are announced; the trigger
+  heartbeat is reported by `/api/health/deep` and the dashboard; webhook
+  deliveries whose processing was lost are replayed by the next tick. See
+  [Operator Notices](operator-notices.md). Verified against a mocked Telegram
+  transport only. Not yet deployed.
+- `just setup-secrets` keeps existing bundle values on a re-run (2026-09-21)
+  instead of regenerating the connector credential key and webhook secret.
 - No Linear integration: Hub is the single source of truth for run state. A
   `linear` connector provider exists only so the connectors UI can store one.
 
@@ -58,6 +71,14 @@ PostgreSQL 16 with `alembic check` reporting only the two pre-existing
 column-comment differences, and 8 frontend tests, `svelte-check`, and lint
 passing.
 
+Local verification on 2026-09-21 (session filters, ledger pruning, type fixes):
+479 backend tests on SQLite, 14 frontend tests, pyright, `svelte-check`, and
+lint passing. After the operator notices work the same day: 489 backend tests
+on SQLite and on PostgreSQL (testcontainers), 16 frontend tests, pyright, `svelte-check`, and lint passing; the
+Alembic chain upgrades, downgrades one step, and re-upgrades on PostgreSQL 16
+and `alembic check` reports no differences (the two column-comment differences
+noted above are set by migration `061a3a930c1e`).
+
 The automated suite covers crash recovery around delivery and head changes,
 marker reconciliation, watchdog tolerance edges, webhook routing and polling
 recovery, lease takeover, catalog admission and ledger counting, Jules session
@@ -66,6 +87,8 @@ catalog policy editing.
 
 ## Follow-up canaries
 
+- Add a Telegram channel in production, send a test, and confirm a paused run
+  is announced.
 - Re-run the Codex PR canary after deploying the refactored gateway.
 - Run one live Jules session of each work type: confirm the v1alpha field
   names (`outputs[].pullRequest.url`, `agentMessaged.message`), that a task

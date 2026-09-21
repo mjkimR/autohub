@@ -1,6 +1,9 @@
 import hashlib
 import hmac
+import logging
 import re
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Any
 
 from app.features.project_management.github_webhooks.models import GitHubWebhookDelivery
@@ -12,6 +15,37 @@ from app.features.project_management.projects.services import ProjectError
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy.exc import IntegrityError
+
+logger = logging.getLogger(__name__)
+
+# A delivery still unhandled after this long lost its background processing (the instance was stopped or throttled).
+STALLED_DELIVERY_AGE = timedelta(minutes=2)
+# Older deliveries are history, not work: replaying a day-old trigger would surprise more than help.
+STALLED_DELIVERY_HORIZON = timedelta(hours=24)
+# The first pass and one replay.
+MAX_DELIVERY_ATTEMPTS = 2
+
+
+@dataclass(frozen=True)
+class DeliveryFacts:
+    """Everything processing reads from a payload."""
+
+    repository: str | None
+    pull_number: int | None
+    auto_run: bool
+    catalog: str | None
+
+    @classmethod
+    def of(cls, event: str | None, payload: dict[str, Any]) -> "DeliveryFacts":
+        trigger_text = _extract_trigger_text(event, payload)
+        trigger = AUTO_RUN_TRIGGER.search(trigger_text) if trigger_text else None
+        return cls(
+            repository=_repository(payload),
+            pull_number=_pull_number(payload),
+            auto_run=trigger is not None,
+            catalog=trigger.group("catalog") if trigger is not None else None,
+        )
+
 
 # `@auto-run` enrolls the pull request; `@auto-run:<catalog key or kind>` also names the catalog that delivers it.
 AUTO_RUN_TRIGGER = re.compile(r"@auto-run(?::(?P<catalog>[A-Za-z0-9_.-]+))?\b", re.IGNORECASE)
@@ -29,7 +63,7 @@ class GitHubWebhookUseCase:
         return signature is not None and hmac.compare_digest(signature, expected)
 
     async def receive(self, delivery_id: str, event: str, raw_body: bytes, payload: dict[str, Any]) -> bool:
-        repository = _repository(payload)
+        facts = DeliveryFacts.of(event, payload)
         try:
             async with AsyncTransaction() as session:
                 await self.repo.create(
@@ -37,8 +71,11 @@ class GitHubWebhookUseCase:
                     GitHubWebhookDelivery(
                         delivery_id=delivery_id,
                         event=event,
-                        repository=repository,
+                        repository=facts.repository,
                         payload_digest=hashlib.sha256(raw_body).hexdigest(),
+                        pull_number=facts.pull_number,
+                        auto_run=facts.auto_run,
+                        requested_catalog=facts.catalog[:255] if facts.catalog else None,
                     ),
                 )
         except IntegrityError:
@@ -48,20 +85,49 @@ class GitHubWebhookUseCase:
 
     async def process(self, delivery_id: str, payload: dict[str, Any], event: str | None = None) -> None:
         """Advance the matching active run, or enroll a new run if @auto-run is mentioned."""
+        await self._handle(delivery_id, DeliveryFacts.of(event, payload))
+
+    async def sweep_stalled(self, now: datetime) -> list[str]:
+        """Replay deliveries whose processing was lost, and failed `@auto-run` triggers, once each.
+
+        Polling already recovers a missed advance, but nothing else would ever enroll a missed `@auto-run`.
+        Returns a notice for each trigger that still could not be handled.
+        """
+        async with AsyncTransaction() as session:
+            stalled = [
+                (row, DeliveryFacts(row.repository, row.pull_number, row.auto_run, row.requested_catalog))
+                for row in await self.repo.list_stalled(
+                    session,
+                    received_before=now - STALLED_DELIVERY_AGE,
+                    received_after=now - STALLED_DELIVERY_HORIZON,
+                    max_attempts=MAX_DELIVERY_ATTEMPTS,
+                )
+            ]
+            claimed = [(row.delivery_id, facts) for row, facts in stalled if await self.repo.claim(session, row)]
+        notices = []
+        for delivery_id, facts in claimed:
+            if not await self._handle(delivery_id, facts) and facts.auto_run:
+                notices.append(
+                    f"An @auto-run on {facts.repository}#{facts.pull_number} could not be handled after a retry. "
+                    "Enroll the pull request from the hub."
+                )
+        return notices
+
+    async def _handle(self, delivery_id: str, facts: DeliveryFacts) -> bool:
+        """Process one delivery from its facts; False when processing failed."""
         try:
-            repository = _repository(payload)
+            repository, pull_number, has_trigger, catalog = (
+                facts.repository,
+                facts.pull_number,
+                facts.auto_run,
+                facts.catalog,
+            )
             if repository is None:
                 await self._finish(delivery_id, "processed")
-                return
-
-            trigger_text = _extract_trigger_text(event, payload)
-            trigger = AUTO_RUN_TRIGGER.search(trigger_text) if trigger_text else None
-            has_trigger = trigger is not None
-            catalog = trigger.group("catalog") if trigger is not None else None
+                return True
 
             async with AsyncTransaction() as session:
                 project = await self.repo.project_for_repository(session, repository)
-                pull_number = _pull_number(payload)
                 run = (
                     await self.runs.get_active_for_pull(session, project.id, pull_number)
                     if project is not None and pull_number is not None
@@ -85,25 +151,29 @@ class GitHubWebhookUseCase:
                     # e.g. concurrent enrollment, already enrolled, or a catalog that cannot take the work.
                     # The delivery is still processed; the reason is kept where operators can find it.
                     await self._finish(delivery_id, "processed", f"Enrollment skipped: {exc.detail}")
-                    return
+                    return True
                 try:
                     await self.lifecycle.manual_advance(new_run.id, self.lifecycle.observer)
                 except ProjectError as exc:
                     # The run exists; the scheduler dispatches it once the reason (a quota hold, say) clears.
                     await self._finish(delivery_id, "processed", f"Enrolled; first dispatch deferred: {exc.detail}")
-                    return
+                    return True
 
             await self._finish(delivery_id, "processed")
+            return True
         except Exception:
-            # Delivery endpoints must acknowledge authenticated GitHub events;
-            # polling will recover transient processing failures.
+            # Delivery endpoints must acknowledge authenticated GitHub events; polling recovers a failed advance
+            # and the sweep retries a failed @auto-run.
+            logger.exception("Processing GitHub webhook delivery %s failed", delivery_id)
             await self._finish(delivery_id, "failed", "Webhook processing failed")
+            return False
 
     async def _finish(self, delivery_id: str, status: str, failure_detail: str | None = None) -> None:
         async with AsyncTransaction() as session:
             delivery = await self.repo.get(session, delivery_id)
             if delivery is not None:
                 delivery.status = status
+                delivery.attempts += 1
                 delivery.processed_at = get_current_utc_time()
                 delivery.failure_detail = failure_detail
                 await session.flush()

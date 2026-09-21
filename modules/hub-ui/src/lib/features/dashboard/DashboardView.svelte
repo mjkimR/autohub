@@ -29,6 +29,10 @@
 	let loading = $state(true);
 	let healthStatus = $state<'online' | 'offline' | 'checking'>('checking');
 	let dbStatus = $state<'connected' | 'error' | 'unknown'>('unknown');
+	// "stale" means the external scheduler trigger stopped: the hub answers but advances nothing on a timer.
+	type TriggerStatus = 'ok' | 'stale' | 'never' | 'unknown';
+	let triggerStatus = $state<TriggerStatus>('unknown');
+	let lastTickAt = $state<string | null>(null);
 
 	// Metrics
 	let projectCount = $state(0);
@@ -72,10 +76,17 @@
 			}
 
 			if (deepRes.status === 'fulfilled' && deepRes.value.data) {
-				const data = deepRes.value.data as { status?: string };
+				const data = deepRes.value.data as {
+					status?: string;
+					scheduler?: TriggerStatus;
+					last_tick_at?: string | null;
+				};
 				dbStatus = data.status === 'ok' ? 'connected' : 'error';
+				triggerStatus = data.scheduler ?? 'unknown';
+				lastTickAt = data.last_tick_at ?? null;
 			} else {
 				dbStatus = 'error';
+				triggerStatus = 'unknown';
 			}
 
 			// Core Entities & Metrics
@@ -267,7 +278,7 @@
 	</div>
 
 	<!-- Status & Health Banner -->
-	<div class="grid gap-4 sm:grid-cols-2">
+	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 		<div
 			class="flex items-center justify-between rounded-xl border border-border/80 bg-card/60 p-4 backdrop-blur-xs"
 		>
@@ -324,6 +335,44 @@
 				<Badge variant="destructive" class="gap-1.5">
 					<AlertCircle class="size-3.5" />
 					Disconnected
+				</Badge>
+			{/if}
+		</div>
+
+		<div
+			class="flex items-center justify-between rounded-xl border border-border/80 bg-card/60 p-4 backdrop-blur-xs"
+		>
+			<div class="flex items-center gap-3">
+				<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+					<CalendarClock class="size-5" />
+				</div>
+				<div>
+					<p class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+						Scheduler Trigger
+					</p>
+					<p class="text-sm font-medium">
+						{lastTickAt
+							? `Last tick ${new Date(lastTickAt).toLocaleTimeString()}`
+							: 'No tick recorded'}
+					</p>
+				</div>
+			</div>
+			{#if triggerStatus === 'ok'}
+				<Badge
+					variant="default"
+					class="gap-1.5 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+				>
+					<CheckCircle2 class="size-3.5" />
+					Firing
+				</Badge>
+			{:else if triggerStatus === 'stale'}
+				<Badge variant="destructive" class="gap-1.5">
+					<AlertCircle class="size-3.5" />
+					Stopped
+				</Badge>
+			{:else}
+				<Badge variant="secondary" class="gap-1.5">
+					{triggerStatus === 'never' ? 'Never fired' : 'Unknown'}
 				</Badge>
 			{/if}
 		</div>

@@ -334,7 +334,7 @@ Connector providers are `github`, `jules`, `linear`. For `jules`, the API key is
 
 ### Code
 
-- [ ] Sessions in `AWAITING_PLAN_APPROVAL` or `AWAITING_USER_FEEDBACK` states continue to hold concurrency slots; approval or feedback is not automated.
+- [x] A session Jules parks waiting for a person (`awaiting_plan_approval`, `awaiting_user_feedback`, `paused`; `STALLED_STATES`) is failed at once and releases its concurrency slot. Answering the approval or feedback is deliberately not automated.
 - [ ] Title-based reconciliation only checks the latest 300 sessions. Unconfirmed sessions older than that fail after 1 hour.
 - [x] The session list pages by offset and filters by `status` (`open`, `completed`, `failed`) and `schedule_config_id`. The UI offers the status filter only.
 - [x] 30-day ledger cleanup runs when inserting a record and prunes every catalog, so an idle catalog keeps no expired rows. The table only grows through that insert, so no separate schedule is needed.
@@ -342,4 +342,4 @@ Connector providers are `github`, `jules`, `linear`. For `jules`, the API key is
 - [x] Jules task sessions' pull requests are adopted into the pipeline (`implemented=True` enrollment). Applying `changeSet.gitPatch` to an existing PR branch remains unimplemented.
 - [ ] A report is only kept as the session's final message. If a report should live in git history, add a delivery mode where Jules writes `reports/<date>.md` and the hub reads the file from the pull request head before closing it.
 - [ ] Jules cannot post to the hub itself. A hub ingest endpoint with a per-session token is possible (Jules calls GitHub with an environment token today) but was deferred: prompt-dependent delivery still needs the polling reconciliation that exists now.
-- [ ] `alembic check` reports 2 comment discrepancies with models: `pipeline_runs.pull_snapshot`, `schedule_configs.next_run_at`. Unrelated to AI Catalog.
+- [x] The 2 column-comment discrepancies `alembic check` reported (`pipeline_runs.pull_snapshot`, `schedule_configs.next_run_at`) are set by migration `061a3a930c1e`, added with the 2026-09-16 migration squash. `alembic check` reported no differences on PostgreSQL 16 on 2026-09-21. Unrelated to AI Catalog.
