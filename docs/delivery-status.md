@@ -74,8 +74,10 @@ delivery state; the durable `@codex` request contract lives in
   account of `app-prebuilt-user` (JWT access and refresh tokens, Argon2id,
   failed-login lockout with a notice), created and kept in step with the
   secret bundle at startup; the scheduler uses its own `SCHEDULER_KEY` that
-  opens the dispatcher trigger only. app-common is pinned at `7ba8c03`, which
-  carries the package side of this. See
+  opens the dispatcher trigger only. app-common is pinned at `4130dd6`, which
+  also commits password rehashes before issuing tokens, accepts the bootstrap
+  account's missing surname, rejects inactive users' access tokens, and fixes
+  the Swagger login URL. See
   [Development & Operations](development.md#database--credentials). Not yet
   deployed.
 - Continuous integration (2026-09-21): `.github/workflows/ci.yml` runs the
@@ -136,6 +138,14 @@ frontend tests, pyright, `svelte-check`, and lint passing; migration
 `c3d4e5f6a7b8` (users) verified on PostgreSQL 16 with `alembic check` clean.
 Signing in, refreshing, and the scheduler header change were exercised against
 test clients and a fake `gcloud` only.
+
+Dependency follow-up on 2026-09-21: Python dependencies, the lock, and APM guides
+now use published app-common `4130dd6`. Against installed packages without local
+links, 523 SQLite backend tests and 9 PostgreSQL auth tests pass, along with lint,
+pyright, `svelte-check`, and the production UI build. Regenerating the API client
+produces no changes. This verifies the password rehash transaction, nullable
+bootstrap surname, inactive-user rejection, and Swagger login URL fixes; no live
+deployment was performed.
 
 The automated suite covers crash recovery around delivery and head changes,
 marker reconciliation, watchdog tolerance edges, webhook routing and polling

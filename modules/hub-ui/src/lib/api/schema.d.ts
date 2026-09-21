@@ -3053,7 +3053,7 @@ export interface components {
 			 * Lastname
 			 * @description The user's last name.
 			 */
-			lastname: string;
+			lastname: string | null;
 			/**
 			 * Email
 			 * Format: email

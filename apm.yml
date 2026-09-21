@@ -6,5 +6,5 @@ dependencies:
     # Match the pushed app-common commit pinned in the Python dependencies.
     - git: mjkimR/app-common
       path: agents
-      ref: 7084f74720c9d3f13dce16d3d3321897f0496e34
+      ref: 4130dd654a1c2a6a21082b4f1cedba2d129b6fcc
       skills: [app-common]

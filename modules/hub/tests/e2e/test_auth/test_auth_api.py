@@ -1,8 +1,10 @@
 """Signing in for real: these tests remove the stand-in user the other suites run as."""
 
+import bcrypt
 import pytest
 from app.auth import require_scheduler_or_user
 from app.main import ensure_first_user
+from app_layer_base.core.database.deps import get_session
 from app_prebuilt_user.deps import get_current_user, get_login_throttle
 from app_prebuilt_user.models import User
 from sqlalchemy import select
@@ -26,6 +28,17 @@ async def real_auth(app, session):
     await ensure_first_user()
     yield
     get_login_throttle().reset()
+
+
+@pytest.fixture(autouse=True)
+async def request_sessions(client, app, session_maker):
+    # The shared client fixture reuses one session. Authentication must observe
+    # commits from login/startup through a fresh identity map on every request.
+    async def fresh_session():
+        async with session_maker() as session:
+            yield session
+
+    app.dependency_overrides[get_session] = fresh_session
 
 
 def bearer(token: str) -> dict[str, str]:
@@ -58,6 +71,46 @@ async def test_a_session_is_extended_by_its_refresh_token(client):
     assert_status_code(renewed, 200)
     assert_status_code(await client.get(PROTECTED, headers=bearer(renewed.json()["access_token"])), 200)
     assert_status_code(await client.post(REFRESH, json={"refresh_token": tokens["access_token"]}), 401)
+
+
+async def test_bcrypt_login_persists_the_hash_before_refresh(client, session, session_maker):
+    operator = await session.scalar(select(User).where(User.email == OPERATOR["username"]))
+    operator.hashed_password = bcrypt.hashpw(OPERATOR["password"].encode(), bcrypt.gensalt(rounds=4)).decode()
+    await session.commit()
+    tokens = (await client.post(LOGIN, data=OPERATOR)).json()
+
+    async with session_maker() as verification:
+        persisted = await verification.get(User, operator.id)
+        assert persisted.hashed_password.startswith("$argon2id$")
+    assert_status_code(await client.post(REFRESH, json={"refresh_token": tokens["refresh_token"]}), 200)
+
+
+async def test_bootstrap_operator_profile_and_list_are_readable(client, session):
+    tokens = (await client.post(LOGIN, data=OPERATOR)).json()
+    operator = await session.scalar(select(User).where(User.email == OPERATOR["username"]))
+    profile = await client.get(f"/api/v1/users/{operator.id}", headers=bearer(tokens["access_token"]))
+    assert_status_code(profile, 200)
+    assert profile.json()["lastname"] is None
+    assert_status_code(await client.get("/api/v1/users/admin/", headers=bearer(tokens["access_token"])), 200)
+
+
+async def test_inactive_operator_cannot_reuse_a_session(client, session):
+    tokens = (await client.post(LOGIN, data=OPERATOR)).json()
+    operator = await session.scalar(select(User).where(User.email == OPERATOR["username"]))
+    operator.is_active = False
+    await session.commit()
+
+    assert_status_code(await client.get(PROTECTED, headers=bearer(tokens["access_token"])), 401)
+    assert_status_code(await client.post(TRIGGER, headers=bearer(tokens["access_token"])), 401)
+    assert_status_code(await client.post(REFRESH, json={"refresh_token": tokens["refresh_token"]}), 401)
+    # Disabling the person does not stop the independent scheduler.
+    assert_status_code(await client.post(TRIGGER, headers={"X-Scheduler-Key": "test-scheduler-key"}), 200)
+
+
+async def test_swagger_authorize_uses_the_real_login_endpoint(client):
+    schema = (await client.get("/openapi.json")).json()
+    token_url = schema["components"]["securitySchemes"]["OAuth2PasswordBearer"]["flows"]["password"]["tokenUrl"]
+    assert_status_code(await client.post(token_url, data=OPERATOR), 200)
 
 
 async def test_repeated_failed_logins_lock_the_caller_out_and_tell_the_operator(client, monkeypatch):
