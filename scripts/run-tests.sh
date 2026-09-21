@@ -23,4 +23,4 @@ done
 DEFAULT_PYTEST_OPTIONS="-q --tb=short --disable-warnings --no-header"
 PYTEST_OPTIONS="${PYTEST_OPTIONS:-$DEFAULT_PYTEST_OPTIONS}"
 
-uv run --no-sync app-tools run pytest --path "$hub_path" -- $PYTEST_OPTIONS --db-type "$DB_TYPE" "${UPDATED_PATHS[@]}"
+uv run --no-active --no-sync app-tools run pytest --path "$hub_path" -- $PYTEST_OPTIONS --db-type "$DB_TYPE" "${UPDATED_PATHS[@]}"

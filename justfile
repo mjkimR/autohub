@@ -13,7 +13,7 @@ init module="all":
     if should_run "$target" "hub"; then
         path=$(resolve_module_path "hub")
         echo "Initializing Python backend ($path)..."
-        uv sync
+        uv sync --no-active
         just hooks-install
         just skills
     fi
@@ -35,14 +35,14 @@ lint module="all":
     if should_run "$target" "hub"; then
         path=$(resolve_module_path "hub")
         echo "Linting Python backend ($path)..."
-        uv run --no-sync app-tools run lint --fix --path "$path"
+        uv run --no-active --no-sync app-tools run lint --fix --path "$path"
     fi
 
     if should_run "$target" "hub-ui"; then
         path=$(resolve_module_path "hub-ui")
         echo "Linting Svelte frontend ($path)..."
         activate_frontend_node
-        uv run --no-sync app-tools run npm --path "$path" -- run lint
+        uv run --no-active --no-sync app-tools run npm --path "$path" -- run lint
     fi
 
 # Check formatting, lint, and architecture without modifying files
@@ -52,11 +52,11 @@ lint-check module="all":
     source ./scripts/_lib.sh
     target=$(resolve_module "{{ module }}")
     if should_run "$target" "hub"; then
-        uv run --no-sync app-tools run lint --path "$(resolve_module_path hub)"
+        uv run --no-active --no-sync app-tools run lint --path "$(resolve_module_path hub)"
     fi
     if should_run "$target" "hub-ui"; then
         activate_frontend_node
-        uv run --no-sync app-tools run npm --path "$(resolve_module_path hub-ui)" -- run lint
+        uv run --no-active --no-sync app-tools run npm --path "$(resolve_module_path hub-ui)" -- run lint
     fi
 
 # Run static type checks for a specific module (all, hub, or hub-ui)
@@ -69,24 +69,24 @@ check module="all":
     if should_run "$target" "hub"; then
         path=$(resolve_module_path "hub")
         echo "Type checking Python backend ($path)..."
-        uv run --no-sync app-tools run pyright -- --project "$path"
+        uv run --no-active --no-sync app-tools run pyright -- --project "$path"
     fi
 
     if should_run "$target" "hub-ui"; then
         path=$(resolve_module_path "hub-ui")
         echo "Checking and compiling Svelte frontend ($path)..."
         activate_frontend_node
-        uv run --no-sync app-tools run npm --path "$path" -- run check
-        uv run --no-sync app-tools run npm --path "$path" -- run build
+        uv run --no-active --no-sync app-tools run npm --path "$path" -- run check
+        uv run --no-active --no-sync app-tools run npm --path "$path" -- run build
     fi
 
 # Install pre-commit hooks
 hooks-install:
-    uv run pre-commit install
+    uv run --no-active pre-commit install
 
 # Run pre-commit hooks against all files
 hooks-run:
-    uv run pre-commit run --all-files
+    uv run --no-active pre-commit run --all-files
 
 # Run server for a specific module in development mode (hub or hub-ui)
 dev-run module="all":
@@ -113,7 +113,7 @@ build-ui:
     source ./scripts/_lib.sh
     path=$(resolve_module_path "hub-ui")
     activate_frontend_node
-    uv run --no-sync app-tools run npm --path "$path" -- run build
+    uv run --no-active --no-sync app-tools run npm --path "$path" -- run build
 
 # Build docker image for a specific module or all modules
 docker-build module="all" tag="latest":
@@ -128,7 +128,7 @@ db-revision message module="hub":
     source ./scripts/_lib.sh
     target=$(resolve_module "{{ module }}")
     path=$(resolve_module_path "$target")
-    uv run --directory "$path" alembic revision --autogenerate -m "{{ message }}"
+    uv run --no-active --directory "$path" alembic revision --autogenerate -m "{{ message }}"
 
 # Apply database migrations to head for hub
 db-upgrade module="hub":
@@ -141,7 +141,7 @@ db-upgrade module="hub":
         source "$path/.env"
         set +a
     fi
-    uv run --directory "$path" alembic upgrade head
+    uv run --no-active --directory "$path" alembic upgrade head
 
 # Run tests with SQLite (default)
 test +paths=default_test_path:
@@ -157,7 +157,7 @@ test-ui:
     source ./scripts/_lib.sh
     path=$(resolve_module_path "hub-ui")
     activate_frontend_node
-    uv run --no-sync app-tools run npm --path "$path" -- test
+    uv run --no-active --no-sync app-tools run npm --path "$path" -- test
 
 # Generate OpenAPI client for the frontend UI module from Python backend schema
 gen-ui-api:
@@ -165,7 +165,7 @@ gen-ui-api:
 
 # Sync the local signed-in Codex quota reset time to the global personal-codex AI catalog.
 sync-codex-quota:
-    @uv run python ./scripts/sync-codex-quota.py
+    @uv run --no-active python ./scripts/sync-codex-quota.py
 
 # Install locked agent skills through Microsoft APM
 skills:

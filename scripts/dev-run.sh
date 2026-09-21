@@ -24,7 +24,7 @@ if should_run "$target" "hub"; then
         set +a
     fi
     just db-upgrade
-    uv run --directory "$path" uvicorn app.main:create_app --port 8389 --reload &
+    uv run --no-active --directory "$path" uvicorn app.main:create_app --port 8389 --reload &
     PID_HUB=$!
 fi
 

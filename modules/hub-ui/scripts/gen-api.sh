@@ -12,7 +12,7 @@ schema_json="$api_dir/openapi.json"
 schema_ts="$api_dir/schema.d.ts"
 
 echo "Exporting OpenAPI JSON from Autohub FastAPI backend..."
-PYTHONPATH="$hub_dir" uv run --directory "$hub_dir" python -c \
+PYTHONPATH="$hub_dir" uv run --no-active --directory "$hub_dir" python -c \
   "import json; from app.main import create_app; print(json.dumps(create_app().openapi(), indent=2))" \
   > "$schema_json"
 
