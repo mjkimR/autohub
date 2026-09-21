@@ -35,7 +35,7 @@ executes. Each step logs its own failure and never fails the tick.
 | Run waiting | An in-flight run holds a reason it waits on GitHub for: a merge blocked by a review, branch rule, or draft, or a rejected connector token. See [Architecture](architecture.md#github-failures). |
 | Trigger resumed | A tick arrives more than 10 minutes after the previous one. |
 | Trigger stopped | A GitHub webhook arrives while the last tick is more than 10 minutes old; at most once per hour. |
-| API key lockout | A caller sent five wrong API keys within a minute and is locked out for five minutes. See [Development & Operations](development.md). |
+| Login lockout | A caller failed to sign in five times within a minute and is locked out for five minutes. See [Development & Operations](development.md). |
 | `@auto-run` lost | A replayed `@auto-run` delivery failed again (see below). |
 
 A stopped run is marked announced (`pipeline_runs.notified_revision`) only when at least one channel accepted the

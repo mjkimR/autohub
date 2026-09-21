@@ -187,6 +187,6 @@ deploy-cloud-run +args="":
 register-webhook repo:
     @bash ./scripts/register-webhook.sh {{ repo }}
 
-# Update API key across Secret Manager, Cloud Scheduler, Cloud Run, and local .env
-update-api-key key="":
-    @bash ./scripts/update-api-key.sh {{ key }}
+# Change the operator's password in Secret Manager and restart Cloud Run so it takes effect
+update-password password="":
+    @bash ./scripts/update-password.sh {{ password }}

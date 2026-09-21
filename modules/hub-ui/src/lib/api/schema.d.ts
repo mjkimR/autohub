@@ -846,6 +846,26 @@ export interface paths {
 		patch: operations['patch_schedule_job_api_v1_schedule_jobs__schedule_job_id__patch'];
 		trace?: never;
 	};
+	'/api/v1/tasks/specs': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/**
+		 * Get Task Specs
+		 * @description Retrieve all registered task specifications, optionally filtered by name.
+		 */
+		get: operations['get_task_specs_api_v1_tasks_specs_get'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/dispatchers/trigger': {
 		parameters: {
 			query?: never;
@@ -867,7 +887,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/tasks/specs': {
+	'/api/v1/users/{user_id}': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -875,12 +895,130 @@ export interface paths {
 			cookie?: never;
 		};
 		/**
-		 * Get Task Specs
-		 * @description Retrieve all registered task specifications, optionally filtered by name.
+		 * Read User
+		 * @description Get a specific user by id.
 		 */
-		get: operations['get_task_specs_api_v1_tasks_specs_get'];
+		get: operations['read_user_api_v1_users__user_id__get'];
+		/** Update User */
+		put: operations['update_user_api_v1_users__user_id__put'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/users/admin/user': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/**
+		 * Create User
+		 * @description Create new user.
+		 */
+		post: operations['create_user_api_v1_users_admin_user_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/users/admin/admin': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/**
+		 * Create Admin
+		 * @description Create new admin user.
+		 */
+		post: operations['create_admin_api_v1_users_admin_admin_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/users/admin/': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/**
+		 * Read Users
+		 * @description Get user list.
+		 */
+		get: operations['read_users_api_v1_users_admin__get'];
 		put?: never;
 		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/users/admin/{user_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		post?: never;
+		/** Delete User */
+		delete: operations['delete_user_api_v1_users_admin__user_id__delete'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/users/login/': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Login */
+		post: operations['login_api_v1_users_login__post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/users/login/refresh': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/**
+		 * Refresh
+		 * @description Exchange a refresh token for a new pair, extending the session by another refresh lifetime.
+		 *
+		 *     The token stops working when its user is deactivated or its password changes. A refresh token is long and
+		 *     random-signed, so guessing it is not what the login lockout is for.
+		 */
+		post: operations['refresh_api_v1_users_login_refresh_post'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -1181,6 +1319,30 @@ export interface components {
 			pull_number: number;
 			/** Pull Url */
 			pull_url?: string | null;
+		};
+		/** Body_login_api_v1_users_login__post */
+		Body_login_api_v1_users_login__post: {
+			/** Grant Type */
+			grant_type?: string | null;
+			/** Username */
+			username: string;
+			/**
+			 * Password
+			 * Format: password
+			 */
+			password: string;
+			/**
+			 * Scope
+			 * @default
+			 */
+			scope: string;
+			/** Client Id */
+			client_id?: string | null;
+			/**
+			 * Client Secret
+			 * Format: password
+			 */
+			client_secret?: string | null;
 		};
 		/** CheckRequest */
 		CheckRequest: {
@@ -1893,6 +2055,27 @@ export interface components {
 			/** First */
 			readonly first: boolean;
 		};
+		/** PaginatedList[UserRead] */
+		PaginatedList_UserRead_: {
+			/** Items */
+			items: components['schemas']['UserRead'][];
+			/** Total Count */
+			total_count?: number | null;
+			/**
+			 * Offset
+			 * @default 0
+			 */
+			offset: number;
+			/** Limit */
+			limit?: number | null;
+			/**
+			 * Last
+			 * @description Check if the current page is the last page
+			 */
+			readonly last: boolean | null;
+			/** First */
+			readonly first: boolean;
+		};
 		/** PauseRunRequest */
 		PauseRunRequest: {
 			/** Reason */
@@ -2159,6 +2342,11 @@ export interface components {
 			head_sha: string;
 			/** Linked Issues */
 			linked_issues?: components['schemas']['LinkedIssue'][];
+		};
+		/** RefreshRequest */
+		RefreshRequest: {
+			/** Refresh Token */
+			refresh_token: string;
 		};
 		/** RunSnapshot */
 		RunSnapshot: {
@@ -2763,6 +2951,20 @@ export interface components {
 			/** Content */
 			content: string;
 		};
+		/** Token */
+		Token: {
+			/** Access Token */
+			access_token: string;
+			/**
+			 * Token Type
+			 * @constant
+			 */
+			token_type: 'bearer';
+			/** Refresh Token */
+			refresh_token?: string | null;
+			/** Expires In */
+			expires_in?: number | null;
+		};
 		/**
 		 * UpdatePolicyConfigRequest
 		 * @description Kind-specific quota settings; the catalog's quota policy validates and normalizes them.
@@ -2772,6 +2974,155 @@ export interface components {
 			policy_config: {
 				[key: string]: unknown;
 			};
+		};
+		/** UserCreate */
+		UserCreate: {
+			/**
+			 * Firstname
+			 * @description The user's first name.
+			 */
+			firstname: string;
+			/**
+			 * Lastname
+			 * @description The user's last name.
+			 */
+			lastname: string;
+			/**
+			 * Email
+			 * Format: email
+			 * @description The user's email address.
+			 */
+			email: string;
+			/**
+			 * Password
+			 * Format: password
+			 * @description The user's password.
+			 */
+			password: string;
+			/**
+			 * Profile Image Url
+			 * @description URL of the user's profile image.
+			 */
+			profile_image_url?: string | null;
+			/**
+			 * Phone Number
+			 * @description The user's phone number.
+			 */
+			phone_number?: string | null;
+			/**
+			 * Locale
+			 * @description The user's preferred locale.
+			 */
+			locale?: string | null;
+			/**
+			 * Timezone
+			 * @description The user's preferred timezone.
+			 */
+			timezone?: string | null;
+			/**
+			 * Extra
+			 * @description Additional user metadata.
+			 */
+			extra?: {
+				[key: string]: unknown;
+			} | null;
+		};
+		/** UserRead */
+		UserRead: {
+			/**
+			 * Created At
+			 * Format: date-time
+			 */
+			created_at: string;
+			/**
+			 * Updated At
+			 * Format: date-time
+			 */
+			updated_at: string;
+			/**
+			 * Id
+			 * Format: uuid
+			 */
+			id: string;
+			/**
+			 * Firstname
+			 * @description The user's first name.
+			 */
+			firstname: string;
+			/**
+			 * Lastname
+			 * @description The user's last name.
+			 */
+			lastname: string;
+			/**
+			 * Email
+			 * Format: email
+			 * @description The user's email address.
+			 */
+			email: string;
+			/**
+			 * Profile Image Url
+			 * @description URL of the user's profile image.
+			 */
+			profile_image_url?: string | null;
+			/**
+			 * Phone Number
+			 * @description The user's phone number.
+			 */
+			phone_number?: string | null;
+			/**
+			 * Locale
+			 * @description The user's preferred locale.
+			 */
+			locale?: string | null;
+			/**
+			 * Timezone
+			 * @description The user's preferred timezone.
+			 */
+			timezone?: string | null;
+		};
+		/** UserUpdate */
+		UserUpdate: {
+			/**
+			 * Firstname
+			 * @description The user's first name.
+			 */
+			firstname?: string | null;
+			/**
+			 * Lastname
+			 * @description The user's last name.
+			 */
+			lastname?: string | null;
+			/**
+			 * Email
+			 * @description The user's email address.
+			 */
+			email?: string | null;
+			/**
+			 * Password
+			 * @description The user's password.
+			 */
+			password?: string | null;
+			/**
+			 * Profile Image Url
+			 * @description URL of the user's profile image.
+			 */
+			profile_image_url?: string | null;
+			/**
+			 * Phone Number
+			 * @description The user's phone number.
+			 */
+			phone_number?: string | null;
+			/**
+			 * Locale
+			 * @description The user's preferred locale.
+			 */
+			locale?: string | null;
+			/**
+			 * Timezone
+			 * @description The user's preferred timezone.
+			 */
+			timezone?: string | null;
 		};
 		/** ValidationError */
 		ValidationError: {
@@ -5199,6 +5550,38 @@ export interface operations {
 			};
 		};
 	};
+	get_task_specs_api_v1_tasks_specs_get: {
+		parameters: {
+			query?: {
+				/** @description Filter task specs by name (case-insensitive substring) */
+				name?: string | null;
+			};
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['TaskSpecResponse'][];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
 	trigger_dispatch_api_v1_dispatchers_trigger_post: {
 		parameters: {
 			query?: never;
@@ -5232,11 +5615,145 @@ export interface operations {
 			};
 		};
 	};
-	get_task_specs_api_v1_tasks_specs_get: {
+	read_user_api_v1_users__user_id__get: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				user_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['UserRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	update_user_api_v1_users__user_id__put: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				user_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['UserUpdate'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['UserRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	create_user_api_v1_users_admin_user_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['UserCreate'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['UserRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	create_admin_api_v1_users_admin_admin_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['UserCreate'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['UserRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	read_users_api_v1_users_admin__get: {
 		parameters: {
 			query?: {
-				/** @description Filter task specs by name (case-insensitive substring) */
-				name?: string | null;
+				/** @description offset for pagination */
+				offset?: number;
+				/** @description limit for pagination */
+				limit?: number;
 			};
 			header?: never;
 			path?: never;
@@ -5250,7 +5767,104 @@ export interface operations {
 					[name: string]: unknown;
 				};
 				content: {
-					'application/json': components['schemas']['TaskSpecResponse'][];
+					'application/json': components['schemas']['PaginatedList_UserRead_'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	delete_user_api_v1_users_admin__user_id__delete: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				user_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DeleteResponse'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	login_api_v1_users_login__post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/x-www-form-urlencoded': components['schemas']['Body_login_api_v1_users_login__post'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Token'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	refresh_api_v1_users_login_refresh_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['RefreshRequest'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Token'];
 				};
 			};
 			/** @description Validation Error */

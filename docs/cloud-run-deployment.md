@@ -15,20 +15,20 @@ Automated scripts are available under `docker/helper/`, allowing you to configur
 ```bash
 # [Case A: Using Aiven or External PostgreSQL (Recommended - 100% Free)]
 # 1) Set up secrets
-just setup-secrets -b "postgresql+psycopg://avnadmin:<PASSWORD>@<HOST>:<PORT>/defaultdb?sslmode=require"
+just setup-secrets -e "you@example.com" -b "postgresql+psycopg://avnadmin:<PASSWORD>@<HOST>:<PORT>/defaultdb?sslmode=require"
 
 # 2) Deploy to Cloud Run (runs directly without Cloud SQL flag)
 just deploy-cloud-run
 
 # [Case B: Using Google Cloud SQL]
 # 1) Set up secrets
-just setup-secrets -c "PROJECT:REGION:INSTANCE"
+just setup-secrets -e "you@example.com" -c "PROJECT:REGION:INSTANCE"
 
 # 2) Deploy to Cloud Run
 just deploy-cloud-run -c "PROJECT:REGION:INSTANCE"
 ```
 
-`just setup-secrets` is safe to re-run, for example to change the database URL: it keeps every value the `autohub-secrets` bundle already holds unless an option replaces it, and never regenerates the connector credential key (which would make stored connector credentials undecryptable) or the webhook secret. It refuses to run when the bundle exists but cannot be read. Rotate the API key with `just update-api-key`, which also updates Cloud Scheduler and Cloud Run.
+`just setup-secrets` is safe to re-run, for example to change the database URL: it keeps every value the `autohub-secrets` bundle already holds unless an option replaces it, and never regenerates the connector credential key (which would make stored connector credentials undecryptable) or the webhook secret. It refuses to run when the bundle exists but cannot be read. Change the operator's password with `just update-password`, which updates the bundle and restarts Cloud Run; the hub applies the bundle's password to the account at startup. Cloud Scheduler is not involved: it uses its own `SCHEDULER_KEY`.
 
 _(To run each step manually, see steps 1 through 6 below.)_
 
@@ -94,14 +94,17 @@ gcloud sql users create hub_user \
 ## 3. Secret Manager Configuration
 
 All Auto Hub secrets are stored as one JSON payload and injected through `APP_SECRETS_JSON`.
-The setup helper generates the bundle and prints only the one-time plaintext API key needed for UI access:
+The setup helper generates the bundle. Pass `--email` the first time (the address you sign in with) and optionally `--app-secret` (your password); a password is generated and printed once when you omit it:
 
 ```bash
-just setup-secrets -- --project "$PROJECT_ID" --connection-name "$DB_CONNECTION_NAME"
+just setup-secrets -- --project "$PROJECT_ID" --connection-name "$DB_CONNECTION_NAME" --email "you@example.com"
 ```
 
-The bundle contains `APP_SECRET_KEY`, `DATABASE_URL`, `GITHUB_WEBHOOK_SECRET`,
-`CONNECTOR_CREDENTIAL_KEY`, and `CONNECTOR_CREDENTIAL_KEY_VERSION`. The app-common
+The bundle contains the operator's account (`FIRST_USER_EMAIL`, `FIRST_USER_PASSWORD`,
+`FIRST_USER_SYNC_PASSWORD`), the token signing key (`SECRET_KEY`), the scheduler's key
+(`SCHEDULER_KEY`), how long an unused session lasts (`REFRESH_TOKEN_EXPIRE_DAYS`, 7), `DATABASE_URL`, `GITHUB_WEBHOOK_SECRET`, `CONNECTOR_CREDENTIAL_KEY`, and
+`CONNECTOR_CREDENTIAL_KEY_VERSION`. A bundle written before accounts existed is upgraded in place by
+re-running the helper: `APP_SECRET_KEY` is removed and the new values are added. The app-common
 environment loader expands these into normal environment variables at startup.
 
 ### 3.1 Database Connection URL (`DATABASE_URL`)
@@ -208,7 +211,7 @@ gcloud scheduler jobs create http autohub-dispatcher-tick \
   --schedule="* * * * *" \
   --uri="${SERVICE_URL}/api/v1/dispatchers/trigger" \
   --http-method=POST \
-  --headers="X-API-Key=$(gcloud secrets versions access latest --secret=autohub-secrets | python3 -c 'import json,sys; print(json.load(sys.stdin)["APP_SECRET_KEY"])')" \
+  --headers="X-Scheduler-Key=$(gcloud secrets versions access latest --secret=autohub-secrets | python3 -c 'import json,sys; print(json.load(sys.stdin)["SCHEDULER_KEY"])')" \
   --time-zone="UTC" \
   --attempt-deadline=300s
 ```
@@ -219,7 +222,7 @@ gcloud scheduler jobs create http autohub-dispatcher-tick \
 
 1. **Verify Web Browser Access**
    - Navigate to `${SERVICE_URL}/` and verify that the Hub UI dashboard loads properly.
-   - Enter the original plaintext API key supplied to `just setup-secrets` in the top-right corner or login modal to authenticate.
+   - Sign in with the email and password given to `just setup-secrets`.
 2. **Verify Swagger Docs**
    - Access `${SERVICE_URL}/docs` and verify the OpenAPI interactive documentation responds.
 3. **Register GitHub Repository Webhook**

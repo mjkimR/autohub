@@ -406,4 +406,3 @@ async def test_the_delivery_log_lists_deliveries_and_finds_the_noteworthy_ones(c
     failed = (await client.get(url, params={"status": "failed", "repository": "Owner/App"})).json()
     assert ([item["delivery_id"] for item in failed["items"]], failed["total_count"]) == (["broken"], 1)
     assert (await client.get(url, params={"status": "lost"})).status_code == 422
-    assert (await client.get(url, headers={"X-API-Key": ""})).status_code == 401

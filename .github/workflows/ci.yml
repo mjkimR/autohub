@@ -1,0 +1,110 @@
+# The justfile is the single source of truth for commands; CI only prepares the runtimes and calls its recipes.
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The recipes activate Node through nvm when it is installed and otherwise use the node on PATH. The runner's
+  # nvm does not have the pinned version, so point it nowhere and let setup-node provide the version from .nvmrc.
+  NVM_DIR: /nonexistent
+
+jobs:
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: extractions/setup-just@v3
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      - name: Format, lint, and architecture checks
+        run: just lint-check hub
+      - name: Type check
+        run: just check hub
+      - name: Tests (SQLite)
+        run: just test
+
+  backend-postgres:
+    name: backend-postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: hub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: extractions/setup-just@v3
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      - name: Tests (PostgreSQL, testcontainers)
+        run: just test-pg
+      - name: Migrations apply, reverse one step, and match the models
+        working-directory: modules/hub
+        env:
+          DATABASE_URL: postgresql+psycopg://postgres:ci@localhost:5432/hub
+        run: |
+          uv run --no-sync alembic upgrade head
+          uv run --no-sync alembic check
+          uv run --no-sync alembic downgrade -1
+          uv run --no-sync alembic upgrade head
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: extractions/setup-just@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: modules/hub-ui/package-lock.json
+      # The frontend recipes run npm through app-tools, and the API client is generated from the backend.
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      - run: npm --prefix modules/hub-ui ci
+      - name: Format and lint
+        run: just lint-check hub-ui
+      - name: svelte-check and production build
+        run: just check hub-ui
+      - name: Tests
+        run: just test-ui
+      - name: The generated API client matches the backend
+        run: |
+          just gen-ui-api
+          git diff --exit-code -- modules/hub-ui/src/lib/api/schema.d.ts || {
+            echo "::error::modules/hub-ui/src/lib/api/schema.d.ts is stale. Run 'just gen-ui-api' and commit the result."
+            exit 1
+          }

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from app.auth import verify_api_key
+from app.auth import require_scheduler_or_user, require_user
 from app.features.ai_catalogs.api.v1 import router as v1_ai_catalogs_router
 from app.features.configuration.connectors.api.v1 import router as v1_connectors_router
 from app.features.configuration.system_configs.api.v1 import router as v1_system_configs_router
@@ -19,12 +19,17 @@ from app.features.scheduling.schedule_configs.api.v1 import router as v1_schedul
 from app.features.scheduling.schedule_jobs.api.v1 import router as v1_schedule_jobs_router
 from app_layer_base.core.database.deps import get_session
 from app_layer_base.utils.time_util import get_current_utc_time
+from app_prebuilt_user.api import v1_users_router
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api")
-v1_router = APIRouter(prefix="/v1", dependencies=[Depends(verify_api_key)])
+v1_router = APIRouter(prefix="/v1", dependencies=[Depends(require_user)])
+# Signing in cannot require being signed in; the user routes guard themselves (a user, or a superuser).
+v1_open_router = APIRouter(prefix="/v1")
+# The scheduler holds a key of its own that opens this route and nothing else.
+v1_trigger_router = APIRouter(prefix="/v1", dependencies=[Depends(require_scheduler_or_user)])
 
 
 @router.get("/health", status_code=status.HTTP_200_OK)
@@ -64,8 +69,11 @@ v1_router.include_router(v1_system_configs_router)
 v1_router.include_router(v1_notification_channels_router)
 v1_router.include_router(v1_ai_catalogs_router)
 v1_router.include_router(v1_schedule_jobs_router)
-v1_router.include_router(v1_dispatchers_router)
+v1_trigger_router.include_router(v1_dispatchers_router)
+v1_open_router.include_router(v1_users_router)
 v1_router.include_router(v1_tasks_router)
 router.include_router(v1_router)
-# GitHub authenticates this endpoint with its HMAC signature, not Hub's API key.
+router.include_router(v1_trigger_router)
+router.include_router(v1_open_router)
+# GitHub authenticates this endpoint with its HMAC signature, not a signed-in user.
 router.include_router(github_webhooks_router)

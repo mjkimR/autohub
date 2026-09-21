@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { session } from '$lib/stores/session.svelte';
 	import { api } from '$lib/api';
-	import { hashApiKey } from '$lib/config';
 	import { toast } from 'svelte-sonner';
-	import { Server, KeyRound, Lock, AlertCircle, Loader2 } from '@lucide/svelte';
+	import { Server, KeyRound, Lock, AlertCircle, Loader2, Mail } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import {
@@ -15,15 +14,16 @@
 	} from '$lib/components/ui/card';
 	import ThemeToggle from '$lib/components/shared/ThemeToggle.svelte';
 
-	let apiKey = $state('');
+	// The email is remembered between visits; the password is only ever held by this form.
+	let email = $state(session.email);
+	let password = $state('');
 	let isValidating = $state(false);
 	let errorMsg = $state<string | null>(null);
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
-		const key = apiKey.trim();
-		if (!key) {
-			errorMsg = 'API Key is required';
+		if (!email.trim() || !password) {
+			errorMsg = 'Email and password are required';
 			return;
 		}
 
@@ -31,23 +31,27 @@
 		errorMsg = null;
 
 		try {
-			const hashedKey = await hashApiKey(key);
-			const res = await api.GET('/api/v1/tasks/specs', {
-				headers: { 'X-API-Key': hashedKey }
+			const res = await api.POST('/api/v1/users/login/', {
+				body: { username: email.trim(), password, scope: '' },
+				// The login endpoint is an OAuth2 password form, not JSON.
+				bodySerializer: (body) => new URLSearchParams(body as Record<string, string>),
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
 			});
 
 			if (res.response?.status === 429) {
-				// The backend locks a caller out after repeated wrong keys; the right key is refused too until then.
-				const seconds = Number(res.response.headers.get('Retry-After')) || 300;
-				errorMsg = `Too many failed attempts. Try again in ${Math.ceil(seconds / 60)} minute(s).`;
+				// The backend locks a caller out after repeated failures; the right password is refused too until then.
+				const retryAfter = Number(res.response.headers.get('Retry-After'));
+				const minutes = Math.ceil((retryAfter || 300) / 60);
+				errorMsg = `Too many failed attempts. Try again in ${minutes} minute(s).`;
 				toast.error('Temporarily locked out');
-			} else if (res.error) {
-				errorMsg = 'Authentication failed. Please check your API key.';
-				toast.error('Authentication failed');
+			} else if (res.error || !res.data) {
+				errorMsg = 'Sign-in failed. Check your email and password.';
+				toast.error('Sign-in failed');
 			} else {
-				session.setApiKey(hashedKey);
-				apiKey = '';
-				toast.success('Authenticated successfully');
+				session.rememberEmail(email.trim());
+				session.setTokens(res.data);
+				password = '';
+				toast.success('Signed in');
 			}
 		} catch {
 			errorMsg = 'Could not reach server. Verify server is running on port 8389.';
@@ -86,7 +90,7 @@
 			</div>
 			<CardTitle class="text-2xl font-bold tracking-tight">Autohub Manager</CardTitle>
 			<CardDescription class="text-sm text-muted-foreground">
-				Enter your Scheduler API Key to access the orchestrator
+				Sign in to access the orchestrator
 			</CardDescription>
 		</CardHeader>
 
@@ -103,20 +107,42 @@
 			<form onsubmit={handleSubmit} class="space-y-4">
 				<div class="space-y-2">
 					<label
-						for="apiKey"
+						for="email"
 						class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
 					>
-						API Key
+						Email
+					</label>
+					<div class="relative">
+						<Mail class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+						<Input
+							id="email"
+							type="email"
+							autocomplete="username"
+							placeholder="you@example.com"
+							bind:value={email}
+							class="h-11 pl-10"
+							disabled={isValidating}
+							required
+						/>
+					</div>
+				</div>
+				<div class="space-y-2">
+					<label
+						for="password"
+						class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+					>
+						Password
 					</label>
 					<div class="relative">
 						<KeyRound
 							class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
 						/>
 						<Input
-							id="apiKey"
+							id="password"
 							type="password"
-							placeholder="Enter secret API key"
-							bind:value={apiKey}
+							autocomplete="current-password"
+							placeholder="Enter password"
+							bind:value={password}
 							class="h-11 pl-10"
 							disabled={isValidating}
 							required
@@ -131,10 +157,10 @@
 				>
 					{#if isValidating}
 						<Loader2 class="size-4 animate-spin" />
-						Validating...
+						Signing in...
 					{:else}
 						<Lock class="size-4" />
-						Authenticate
+						Sign in
 					{/if}
 				</Button>
 			</form>

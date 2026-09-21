@@ -9,6 +9,7 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from urllib.error import HTTPError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 
@@ -71,10 +72,25 @@ def blocking_reset(rate_limits: dict) -> int:
     return int(blocking[0]["resetsAt"])
 
 
+def sign_in(email: str, password: str) -> str:
+    """Exchange the operator's credentials for a short-lived access token."""
+    request = Request(
+        f"{hub_url()}/api/v1/users/login/",
+        data=urlencode({"username": email, "password": password}).encode(),
+        method="POST",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    try:
+        with urlopen(request, timeout=20) as response:
+            return json.loads(response.read())["access_token"]
+    except HTTPError as exc:
+        raise RuntimeError(f"Hub refused the sign-in ({exc.code})") from None
+
+
 def main() -> int:
-    api_key = os.getenv("HUB_API_KEY")
-    if not api_key:
-        raise RuntimeError("Set HUB_API_KEY; this helper never reads or prints deployment secrets")
+    email, password = os.getenv("HUB_EMAIL"), os.getenv("HUB_PASSWORD")
+    if not email or not password:
+        raise RuntimeError("Set HUB_EMAIL and HUB_PASSWORD; this helper never reads or prints deployment secrets")
     process = subprocess.Popen(["codex", "app-server"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
     try:
         rpc(process, 1, "initialize", {"clientInfo": {"name": "autohub", "version": "1"}})
@@ -88,7 +104,7 @@ def main() -> int:
         f"{hub_url()}/api/v1/ai-catalogs/personal-codex/availability",
         data=payload,
         method="PUT",
-        headers={"Content-Type": "application/json", "X-API-Key": api_key},
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {sign_in(email, password)}"},
     )
     try:
         with urlopen(request, timeout=20) as response:

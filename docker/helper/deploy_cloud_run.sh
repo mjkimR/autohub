@@ -159,8 +159,9 @@ if [[ "$SETUP_SCHEDULER" == "true" ]]; then
   echo "==> Configuring Cloud Scheduler job: $JOB_NAME..."
 
   APP_SECRETS_JSON=$(gcloud secrets versions access latest --secret=autohub-secrets --project="$PROJECT_ID" 2>/dev/null || true)
-  APP_SECRET=$(APP_SECRETS_JSON="$APP_SECRETS_JSON" python3 -c 'import json, os; print(json.loads(os.environ["APP_SECRETS_JSON"])["APP_SECRET_KEY"])' 2>/dev/null || true)
-  if [[ -n "$APP_SECRET" ]]; then
+  # The scheduler's own key: it opens the dispatcher trigger and nothing else.
+  SCHEDULER_KEY=$(APP_SECRETS_JSON="$APP_SECRETS_JSON" python3 -c 'import json, os; print(json.loads(os.environ["APP_SECRETS_JSON"])["SCHEDULER_KEY"])' 2>/dev/null || true)
+  if [[ -n "$SCHEDULER_KEY" ]]; then
     if gcloud scheduler jobs describe "$JOB_NAME" --location="$REGION" --project="$PROJECT_ID" >/dev/null 2>&1; then
       gcloud scheduler jobs update http "$JOB_NAME" \
         --location="$REGION" \
@@ -168,7 +169,8 @@ if [[ "$SETUP_SCHEDULER" == "true" ]]; then
         --schedule="* * * * *" \
         --uri="${SERVICE_URL}/api/v1/dispatchers/trigger" \
         --http-method=POST \
-        --update-headers="X-API-Key=${APP_SECRET}" \
+        --update-headers="X-Scheduler-Key=${SCHEDULER_KEY}" \
+        --remove-headers="X-API-Key" \
         --time-zone="UTC" \
         --attempt-deadline=300s >/dev/null
       echo "  - Updated existing Cloud Scheduler job."
@@ -179,13 +181,13 @@ if [[ "$SETUP_SCHEDULER" == "true" ]]; then
         --schedule="* * * * *" \
         --uri="${SERVICE_URL}/api/v1/dispatchers/trigger" \
         --http-method=POST \
-        --headers="X-API-Key=${APP_SECRET}" \
+        --headers="X-Scheduler-Key=${SCHEDULER_KEY}" \
         --time-zone="UTC" \
         --attempt-deadline=300s >/dev/null
       echo "  - Created new Cloud Scheduler job."
     fi
   else
-    echo "  - Warning: autohub-secrets not found. Cloud Scheduler job skipped."
+    echo "  - Warning: autohub-secrets has no SCHEDULER_KEY (re-run 'just setup-secrets'). Cloud Scheduler job skipped."
   fi
 fi
 

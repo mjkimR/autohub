@@ -54,9 +54,9 @@ delivery state; the durable `@codex` request contract lives in
 - API key lockout and history retention (2026-09-21): five wrong API keys in a
   minute lock the caller out for five minutes and notify the operator; tick
   housekeeping prunes succeeded schedule jobs after 7 days, other jobs after
-  30, and webhook deliveries after 90. The deliberate SHA-256 API key scheme
-  is documented in [Development & Operations](development.md). Not yet
-  deployed.
+  30, and webhook deliveries after 90. The API key and its lockout were
+  replaced the same day by accounts and sessions (below); the retention
+  stands. Not yet deployed.
 - Visibility (2026-09-21): a webhook delivery log (API and UI); the run detail
   shows a cost summary and each attempt's requests and replies; failed jobs
   keep operator-readable error messages; every run state change is logged;
@@ -70,6 +70,20 @@ delivery state; the durable `@codex` request contract lives in
   counted `blocked` runs, the job history hid failure messages, and the
   schedule list hid why the backend refused a change. The example tasks and
   the appointment chain domain stay as demos by decision.
+- Accounts and sessions (2026-09-21): the shared API key is replaced by the
+  account of `app-prebuilt-user` (JWT access and refresh tokens, Argon2id,
+  failed-login lockout with a notice), created and kept in step with the
+  secret bundle at startup; the scheduler uses its own `SCHEDULER_KEY` that
+  opens the dispatcher trigger only. app-common is pinned at `7ba8c03`, which
+  carries the package side of this. See
+  [Development & Operations](development.md#database--credentials). Not yet
+  deployed.
+- Continuous integration (2026-09-21): `.github/workflows/ci.yml` runs the
+  `justfile` checks on pull requests and `main`: backend lint, types, and
+  tests, the PostgreSQL suite with a migration and `alembic check` pass, and
+  the frontend checks with a stale API client detector. See
+  [Development & Operations](development.md#continuous-integration). Not yet
+  run on GitHub.
 - `just setup-secrets` keeps existing bundle values on a re-run (2026-09-21)
   instead of regenerating the connector credential key and webhook secret.
 - No issue tracker integration: Hub is the single source of truth for run
@@ -116,6 +130,13 @@ checks passing; no schema change. After the cleanup: 519 backend tests on SQLite
 and on PostgreSQL, 38 frontend tests, and the same checks passing; migration
 `b2c3d4e5f6a7` verified on PostgreSQL 16 with `alembic check` clean.
 
+Local verification on 2026-09-21 (accounts and sessions, against the pinned
+app-common `7ba8c03`): 519 backend tests on SQLite and on PostgreSQL, 42
+frontend tests, pyright, `svelte-check`, and lint passing; migration
+`c3d4e5f6a7b8` (users) verified on PostgreSQL 16 with `alembic check` clean.
+Signing in, refreshing, and the scheduler header change were exercised against
+test clients and a fake `gcloud` only.
+
 The automated suite covers crash recovery around delivery and head changes,
 marker reconciliation, watchdog tolerance edges, webhook routing and polling
 recovery, lease takeover, catalog admission and ledger counting, Jules session
@@ -123,6 +144,12 @@ creation, rate limiting, and reconciliation, and UI enrollment, pause, and
 catalog policy editing.
 
 ## Follow-up canaries
+
+- After the first deploy with accounts: sign in from a browser, leave the tab
+  past the 10-minute access token and confirm it renews by itself, confirm
+  Cloud Scheduler still ticks with `X-Scheduler-Key` (the job's old `X-API-Key`
+  header is removed by the deploy script), and that the same key is refused on
+  any other route.
 
 - Add a Telegram channel in production, send a test, and confirm a paused run
   is announced.

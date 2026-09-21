@@ -4,7 +4,7 @@ from app.features.project_management.github_webhooks.queries import GitHubWebhoo
 from app.features.project_management.github_webhooks.schemas import GitHubWebhookDeliveryList, WebhookDeliveryStatus
 from fastapi import APIRouter, Depends, Query
 
-# Read-only and behind the API key, unlike the receiving endpoint that GitHub signs.
+# Read-only and for signed-in users, unlike the receiving endpoint that GitHub signs.
 router = APIRouter(prefix="/github-webhook-deliveries", tags=["GitHub Webhook"])
 
 

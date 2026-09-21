@@ -46,10 +46,13 @@ The production database is PostgreSQL, and migrations are managed with Alembic.
 Refer to the `justfile` for `just db-upgrade` and `just db-revision` arguments.
 GitHub credentials are stored encrypted in Connectors.
 For encryption key configuration, follow the [Hub module documentation](../modules/hub/README.md#connector-credential-encryption).
-API authentication is one shared API key in the `X-API-Key` header, sized for a single operator.
+People sign in; the scheduler holds a key of its own.
 
-- **The SHA-256 is deliberate.** The operator signs in with a password they can remember. The UI and the setup scripts hash it once, and that digest is the API key itself: it is what the browser stores, what Cloud Scheduler sends, and what `APP_SECRET_KEY` holds, and the backend compares it verbatim. The hash only keeps the password out of browser storage, scheduler configuration, and Secret Manager. It is not a hashing-at-rest scheme and adds no strength: whoever reads the stored digest can authenticate, and the key is as guessable as the password. Hashing again on the server or storing a salted hash would only break the clients, which all send the digest.
-- **Guessing is held off by a lockout**, not by the hash: five wrong keys within a minute lock the caller out for five minutes (HTTP 429 with `Retry-After`), even with the right key, and the operator is told through [Operator Notices](operator-notices.md) with a partly masked address. A request without a key is refused but not counted. The caller is the address Cloud Run appends to `X-Forwarded-For`, so invented forwarded addresses do not dodge it. Counters are per process, so several workers multiply the attempts a caller gets; that is still a handful per minute.
+- **Accounts** come from [`app-prebuilt-user`](https://github.com/mjkimR/app-common/tree/main/packages/prebuilt/app-prebuilt-user). `POST /api/v1/users/login/` (an OAuth2 password form) answers with a 10-minute access token, sent as `Authorization: Bearer ...`, and a refresh token. `POST /api/v1/users/login/refresh` exchanges the refresh token for a new pair, so a session ends after `REFRESH_TOKEN_EXPIRE_DAYS` without use (7 in the deployment bundle), and at once when the password changes. The UI keeps only the two tokens, in `sessionStorage`, renews an expired access token once and repeats the request, and remembers the email between visits. The password exists in the sign-in form and nowhere else in the browser.
+- **The operator's account** is created at startup from `FIRST_USER_EMAIL` / `FIRST_USER_PASSWORD`, and with `FIRST_USER_SYNC_PASSWORD=true` its password follows that setting on every start. The secret bundle therefore stays the one place a password is changed (`just update-password`). The database holds only an Argon2id hash: reading it does not let anyone sign in.
+- **The scheduler cannot sign in.** It sends `X-Scheduler-Key`, a random key (`SCHEDULER_KEY`) that opens `POST /api/v1/dispatchers/trigger` and nothing else, so the scheduler's configuration carries nothing derived from a person's password. A signed-in user can trigger a tick too (the button in the UI).
+- **Guessing is held off by a lockout**: five failed logins within a minute lock the caller out for five minutes (HTTP 429 with `Retry-After`), even with the right password, and the operator is told through [Operator Notices](operator-notices.md) with a partly masked address. The caller is the address Cloud Run appends to `X-Forwarded-For`, so invented forwarded addresses do not dodge it. Counters are per process, so several workers multiply the attempts a caller gets; that is still a handful per minute.
+- The GitHub webhook endpoint is outside all of this: GitHub signs it with the webhook secret.
 
 ## Runtime Environment
 
@@ -61,4 +64,19 @@ Align timeouts across the application, Cloud Run, and Cloud Scheduler; pipeline 
 
 External GitHub calls are isolated by swapping the HTTP transport, while DB persistence is verified against real test databases.
 Complex pure CI evaluation logic is verified through unit tests, while API/schedule/report integration is verified through integration and E2E tests.
-For fixtures and conventions, consult the [Testing Guide](../.agents/skills/hub-testing-expert/references/TESTING_GUIDE.md).
+For fixtures and conventions, consult the app-common testing guide: `.agents/skills/app-common/references/testing/index.md` after `just skills`, or `uv run app-tools guide show testing`.
+
+## Continuous Integration
+
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`. It only prepares the runtimes (uv,
+Node from `.nvmrc`, `just`) and calls the `justfile` recipes, so a check that passes locally passes there.
+
+| Job | What it runs |
+| --- | --- |
+| `backend` | `just lint-check hub` (ruff format and lint, architecture checks), `just check hub` (pyright), `just test` (SQLite) |
+| `backend-postgres` | `just test-pg` (testcontainers), then against a PostgreSQL 16 service: `alembic upgrade head`, `alembic check` (the migrations match the models), one step down and up again |
+| `frontend` | `just lint-check hub-ui`, `just check hub-ui` (`svelte-check` and the production build), `just test-ui`, and `just gen-ui-api` followed by a diff: a stale `schema.d.ts` fails the build |
+
+The job names are stable, so this repository can itself be enrolled in a hub project with `ci.yml` as the workflow
+and these three jobs as the required jobs. Nothing needs a secret: the app imports and exports its OpenAPI schema
+without any environment, the tests set their own, and `app-common` is a public repository pinned by commit.

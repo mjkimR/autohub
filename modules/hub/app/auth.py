@@ -1,65 +1,71 @@
+"""Who may call the hub.
+
+People sign in with the account of `app-prebuilt-user` (`POST /api/v1/users/login/`) and send the access token as
+`Authorization: Bearer ...`. The first superuser comes from `FIRST_USER_EMAIL` / `FIRST_USER_PASSWORD` in the
+deployment's secrets and follows them on every start (`FIRST_USER_SYNC_PASSWORD`), so the secret store stays the
+one place a password is changed. The database only ever holds an Argon2id hash of it.
+
+The external scheduler cannot sign in. It holds its own random key, which opens the dispatcher trigger and nothing
+else, so the scheduler's configuration never carries anything derived from a person's password.
+"""
+
 import secrets
-import time
 from typing import Annotated
 
-from app.common.auth_throttle import LOCKOUT_SECONDS, MAX_FAILURES, FailedAuthThrottle, caller_address, masked_address
-from app.common.config import get_auth_config
+from app.common.auth_throttle import caller_address, masked_address
+from app.common.config import get_scheduler_auth_config
 from app.features.notifications.notifier import Notifier
+from app_layer_base.core.database.deps import get_session
 from app_layer_base.core.log import logger
-from fastapi import Depends, HTTPException, Request, Security, status
-from fastapi.security import APIKeyHeader
+from app_prebuilt_user.deps import LoginLockoutListener, get_current_user, get_token_data, oauth2
+from app_prebuilt_user.exceptions import InvalidCredentialsException
+from app_prebuilt_user.models import User
+from app_prebuilt_user.services import UserService
+from app_prebuilt_user.token_schemas import TokenPayload
+from fastapi import Depends, Request, Security
+from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
-failed_auth_throttle = FailedAuthThrottle()
+SCHEDULER_KEY_HEADER = "X-Scheduler-Key"
+
+# Every API route except signing in itself and the dispatcher trigger.
+require_user = get_current_user
+
+scheduler_key_header = APIKeyHeader(name=SCHEDULER_KEY_HEADER, auto_error=False)
+_optional_bearer = OAuth2PasswordBearer(tokenUrl=oauth2.model.flows.password.tokenUrl, auto_error=False)  # type: ignore[union-attr]
 
 
-async def verify_api_key(
-    request: Request,
-    notifier: Annotated[Notifier, Depends()],
-    x_api_key: str | None = Security(api_key_header),
+async def require_scheduler_or_user(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    users: Annotated[UserService, Depends()],
+    scheduler_key: Annotated[str | None, Security(scheduler_key_header)] = None,
+    token: Annotated[str | None, Depends(_optional_bearer)] = None,
 ) -> None:
-    """Verify the API key provided in the request header.
+    """The dispatcher trigger: the scheduler's own key, or a signed-in person pressing the button in the UI."""
+    expected = get_scheduler_auth_config().SCHEDULER_KEY
+    if scheduler_key:
+        if expected is None or not secrets.compare_digest(scheduler_key, expected.get_secret_value()):
+            raise InvalidCredentialsException()
+        return
+    if not token:
+        raise InvalidCredentialsException()
+    payload: TokenPayload = get_token_data(token, users)
+    await get_current_user(payload, session, users)
 
-    About the SHA-256 (a deliberate choice, not a hashing-at-rest scheme): the operator signs in with a password
-    they can remember. The UI and the setup scripts hash it once, and that digest *is* the API key: it is what the
-    browser stores, what Cloud Scheduler sends, and what ``APP_SECRET_KEY`` holds, so the comparison below is a
-    plain constant-time equality. The hash only keeps the password itself out of browser storage, scheduler
-    configuration, and Secret Manager. It adds no strength: whoever reads the stored digest can authenticate, and
-    the key is as guessable as the password. Guessing is held off by the lockout in ``auth_throttle``, not by the
-    hash. Do not "fix" this by hashing again on the server or by storing a salted hash: every client sends the
-    digest, so that would only break them.
 
-    Usage:
-        APIRouter(..., dependencies=[Depends(verify_api_key)])
-    """
-    secret_key = get_auth_config().APP_SECRET_KEY
-    if not secret_key:
-        logger.error("Authentication misconfigured: APP_SECRET_KEY is not set.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Invalid or missing API key",
+def login_caller(request: Request) -> str:
+    """The address Cloud Run appended to `X-Forwarded-For`, never one the client chose."""
+    return caller_address(request.headers.get("x-forwarded-for"), request.client.host if request.client else None)
+
+
+def login_lockout_listener(notifier: Annotated[Notifier, Depends()]) -> LoginLockoutListener:
+    async def tell_operator(caller: str) -> None:
+        logger.warning("A caller was locked out after repeated failed logins.")
+        await notifier.send(
+            f"Auto Hub: repeated failed logins from {masked_address(caller)}. That address is locked out for a while."
         )
-    caller = caller_address(request.headers.get("x-forwarded-for"), request.client.host if request.client else None)
-    now = time.monotonic()
-    retry_after = failed_auth_throttle.retry_after(caller, now)
-    if retry_after is not None:
-        # Rejected before the key is looked at: a locked-out caller learns nothing, right key or not.
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many failed authentication attempts; try again later",
-            headers={"Retry-After": str(retry_after)},
-        )
-    if not x_api_key:
-        # No guess was made (a signed-out tab, a probe): refuse it without counting toward a lockout.
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing API key")
-    if not secrets.compare_digest(x_api_key, secret_key.get_secret_value()):
-        if failed_auth_throttle.record_failure(caller, now):
-            logger.warning("A caller was locked out after repeated wrong API keys.")
-            await notifier.send(
-                f"Auto Hub: {MAX_FAILURES} wrong API keys in a row from {masked_address(caller)}. "
-                f"That address is locked out for {LOCKOUT_SECONDS // 60} minutes."
-            )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing API key",
-        )
+
+    return tell_operator
+
+
+CurrentUser = Annotated[User, Depends(get_current_user)]

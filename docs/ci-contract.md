@@ -35,7 +35,7 @@ Use the following JSON structure as the request body. Replace UUIDs, repo, and P
 - The Connector's `credentials` stores `{"token": "<GitHub token>"}`. Never place the token directly into the payload.
 - GitHub fine-grained permissions must cover the enabled Hub workflow. CI observation requires Actions (read) and Pull requests (read); Codex dispatch, fix requests, and merge automation require the user PAT permissions listed in the [Codex PR Mention Protocol](codex-pr-mention.md#1-prerequisites).
 
-The API uses existing Hub API key authentication. Authorize via `/docs` to issue requests.
+The API needs a signed-in user. Authorize via `/docs` (the OAuth2 password form) to issue requests.
 Immediate observation only sends read requests to GitHub and does not persist reports in the database.
 
 ## Evaluation

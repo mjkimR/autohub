@@ -21,13 +21,16 @@ dependencies = [
     "pydantic-settings>=2.12.0",
     "sqlalchemy>=2.0.46",
     "uvicorn",
+    "app-prebuilt-user",
+    "python-multipart>=0.0.9",
 ]
 
 [tool.uv.sources]
-app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "7084f74720c9d3f13dce16d3d3321897f0496e34" }
-app-error = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-error", rev = "7084f74720c9d3f13dce16d3d3321897f0496e34" }
-app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "7084f74720c9d3f13dce16d3d3321897f0496e34" }
-app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "7084f74720c9d3f13dce16d3d3321897f0496e34" }
+app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "7ba8c03eda1ecbe5f4bed210bef97d58f57739fd" }
+app-error = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-error", rev = "7ba8c03eda1ecbe5f4bed210bef97d58f57739fd" }
+app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "7ba8c03eda1ecbe5f4bed210bef97d58f57739fd" }
+app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "7ba8c03eda1ecbe5f4bed210bef97d58f57739fd" }
+app-prebuilt-user = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-user", rev = "7ba8c03eda1ecbe5f4bed210bef97d58f57739fd" }
 
 [dependency-groups]
 dev = [
