@@ -8,6 +8,7 @@ from app.features.ai_catalogs.schemas import (
     AICatalogRead,
     AICatalogSessionList,
     AICatalogSessionRead,
+    SessionStatusFilter,
     SetAvailabilityRequest,
     UpdatePolicyConfigRequest,
 )
@@ -51,9 +52,19 @@ class AICatalogUseCase:
             catalogs = await self.repo.list(session)
             return AICatalogList(items=[await self._read(catalog, session) for catalog in catalogs])
 
-    async def list_sessions(self, key: str, *, offset: int, limit: int) -> AICatalogSessionList:
+    async def list_sessions(
+        self,
+        key: str,
+        *,
+        offset: int,
+        limit: int,
+        status: SessionStatusFilter | None = None,
+        schedule_config_id: UUID | None = None,
+    ) -> AICatalogSessionList:
         async with AsyncTransaction() as session:
-            rows, total = await self.service.list_sessions(session, key, offset=offset, limit=limit)
+            rows, total = await self.service.list_sessions(
+                session, key, offset=offset, limit=limit, status=status, schedule_config_id=schedule_config_id
+            )
             return AICatalogSessionList(
                 items=[AICatalogSessionRead.model_validate(row) for row in rows], total_count=total
             )

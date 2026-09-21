@@ -96,8 +96,8 @@ set_availability / clear_availability / set_enabled / update_policy_config / set
    `completed` or `failed`.
 4. **Ledger.** Admitted work is recorded once in `ai_catalog_dispatches` under
    its `dispatch_key`; a retry keeps the first entry and a policy never counts a
-   key against itself. Entries older than 30 days are pruned when the catalog
-   records new work.
+   key against itself. Entries older than 30 days are pruned, for every
+   catalog, whenever any catalog records new work.
 5. **Rejections are returned, not raised.** The caller commits what the policy
    recorded while rejecting (a new hold, a probe transition) and then answers
    409. Pipeline deliveries are settled before admission so the ledger key is

@@ -224,4 +224,16 @@ test('pages through sessions and hides their reconciliation marker', async () =>
 			params: { path: { catalog_key: 'personal-jules' }, query: { offset: 20, limit: 20 } }
 		})
 	);
+
+	// Changing the filter starts again from the first page.
+	await user.selectOptions(screen.getByRole('combobox', { name: 'Show' }), 'failed');
+
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenCalledWith('/api/v1/ai-catalogs/{catalog_key}/sessions', {
+			params: {
+				path: { catalog_key: 'personal-jules' },
+				query: { offset: 0, limit: 20, status: 'failed' }
+			}
+		})
+	);
 });

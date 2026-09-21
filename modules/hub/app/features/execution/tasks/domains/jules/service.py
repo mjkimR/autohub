@@ -215,6 +215,7 @@ class JulesSessionService:
             pending = [
                 (row.id, row.repository, row.pull_request_url)
                 for row in await self.catalogs.repo.list_sessions_awaiting_adoption(session, catalog_id)
+                if row.pull_request_url is not None
             ]
         for session_id, repository, pull_request_url in pending:
             await self._adopt_pull_request(session_id, repository, pull_request_url)

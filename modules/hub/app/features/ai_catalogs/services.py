@@ -169,12 +169,21 @@ class AICatalogService:
         return catalog
 
     async def list_sessions(
-        self, session: AsyncSession, key: str, *, offset: int, limit: int
+        self,
+        session: AsyncSession,
+        key: str,
+        *,
+        offset: int,
+        limit: int,
+        status: str | None = None,
+        schedule_config_id: UUID | None = None,
     ) -> tuple[Sequence[AICatalogSession], int]:
         catalog = await self.repo.get_by_key(session, key)
         if catalog is None:
             raise ProjectError(404, "AI catalog not found")
-        return await self.repo.list_sessions(session, catalog.id, offset=offset, limit=limit)
+        return await self.repo.list_sessions(
+            session, catalog.id, offset=offset, limit=limit, status=status, schedule_config_id=schedule_config_id
+        )
 
     async def record_quota_event(self, session: AsyncSession, catalog_id: UUID, observed_at: datetime) -> AICatalog:
         catalog = await self.repo.get(session, catalog_id, lock=True)

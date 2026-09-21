@@ -1,6 +1,9 @@
+from uuid import uuid4
+
 import pytest
 from app.features.ai_catalogs.models import AICatalog, AICatalogKind, AICatalogSession, AICatalogState
 from app.features.configuration.connectors.models import Connector
+from app.features.scheduling.schedule_configs.models import ScheduleConfig
 from app_testing_base import hours_ago, hours_later
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -195,7 +198,8 @@ class TestAICatalogsAPI:
 
     async def test_lists_sessions_and_counts_open_ones(self, client: AsyncClient, session: AsyncSession):
         jules = catalog("test-catalog-sessions", AICatalogKind.JULES)
-        session.add(jules)
+        schedule = ScheduleConfig(name="Weekly audit", task_func="jules.session", interval_seconds=600, enabled=False)
+        session.add_all([jules, schedule])
         await session.flush()
         session.add_all(
             [
@@ -211,7 +215,12 @@ class TestAICatalogsAPI:
                     state="in_progress",
                     url="https://jules.google/session/2",
                 ),
-                AICatalogSession(ai_catalog_id=jules.id, title="Audit [hub-session:c]", state="failed"),
+                AICatalogSession(
+                    ai_catalog_id=jules.id,
+                    title="Audit [hub-session:c]",
+                    state="failed",
+                    schedule_config_id=schedule.id,
+                ),
             ]
         )
         await session.commit()
@@ -227,6 +236,20 @@ class TestAICatalogsAPI:
         titles = [item["title"] for item in first.json()["items"] + second.json()["items"]]
         assert sorted(titles) == ["Audit [hub-session:c]", "Hygiene [hub-session:a]", "Report [hub-session:b]"]
         assert_status_code(await client.get(url, params={"limit": 101}), 422)
+
+        async def matching(**params) -> tuple[list[str], int]:
+            page = await client.get(url, params=params)
+            assert_status_code(page, 200)
+            return [item["title"] for item in page.json()["items"]], page.json()["total_count"]
+
+        # A filter narrows the page and its count alike; "open" is every session that has not ended.
+        assert await matching(status="open") == (["Report [hub-session:b]"], 1)
+        assert await matching(status="failed") == (["Audit [hub-session:c]"], 1)
+        assert await matching(status="completed", limit=1) == (["Hygiene [hub-session:a]"], 1)
+        assert await matching(schedule_config_id=str(schedule.id)) == (["Audit [hub-session:c]"], 1)
+        assert await matching(schedule_config_id=str(schedule.id), status="open") == ([], 0)
+        assert await matching(schedule_config_id=str(uuid4())) == ([], 0)
+        assert_status_code(await client.get(url, params={"status": "in_progress"}), 422)
 
         listing = next(
             item

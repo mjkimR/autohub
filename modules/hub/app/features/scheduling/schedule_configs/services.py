@@ -2,6 +2,7 @@ from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated, Any
+from uuid import UUID
 
 from app.common.utils.calc_schedule import calc_next_run as _calc_next_run_util
 from app.features.scheduling.schedule_configs.models import ScheduleConfig
@@ -125,7 +126,8 @@ class ManagedScheduleHook(
         from app.features.project_management.agent_schedules.repos import AgentScheduleRepository
         from app.features.project_management.projects.services import ProjectError
 
-        owner = await AgentScheduleRepository().owner_of_config(session, pk)
+        config_id = pk if isinstance(pk, UUID) else UUID(str(pk))
+        owner = await AgentScheduleRepository().owner_of_config(session, config_id)
         if owner is not None:
             raise ProjectError(409, "This schedule is managed by a project agent schedule; edit or delete it there")
 

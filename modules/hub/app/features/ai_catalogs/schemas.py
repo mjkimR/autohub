@@ -1,9 +1,13 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from app.features.ai_catalogs.models import AICatalogKind, AICatalogState
 from app_layer_base.base.schemas.mixin import TimestampSchemaMixin, UUIDSchemaMixin
 from pydantic import BaseModel, ConfigDict, Field
+
+# A session's provider state is open-ended, so the list filters by where a session stands, not by exact state.
+SessionStatusFilter = Literal["open", "completed", "failed"]
 
 
 class AICatalogRead(UUIDSchemaMixin, TimestampSchemaMixin):

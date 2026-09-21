@@ -82,7 +82,7 @@ When rejected, the caller commits the transaction (`session.commit()`) before ra
   - Pipeline: `delivery:<ExecutionDelivery.id>`
   - Jules: `session:<AICatalogSession.id>`
 - Retrying with the same key does not insert a new row and preserves the original record. Policies exclude their own key from quota calculation (`exclude_dispatch_key`).
-- Entries older than 30 days are pruned when writing a new record for the same catalog.
+- Entries older than 30 days are pruned, for every catalog, when writing a new record.
 - Currently, only `DailyQuotaPolicy` reads the ledger.
 
 ### Session Tracking (`ai_catalog_sessions`)
@@ -251,7 +251,7 @@ Detailed rules are documented in [AI Catalog Gateway](ai-catalogs.md). Here, onl
 | Method | Path (`/api/v1/ai-catalogs`) | Description |
 | --- | --- | --- |
 | GET | `` | List catalogs. Includes `effective_concurrency`, `held_run_count`, `active_dispatch_count`, `open_session_count`, and the capability flags `connector_provider`, `pipeline_delivery`, and `session_work_types` |
-| GET | `/{key}/sessions?offset=&limit=` | A page of tracked sessions, most recent first, with `total_count` (default limit 50, max 100). Ties on `created_at` are broken by `id`, so pages never overlap. Each item carries `work_type`, `repository`, `pipeline_run_id`, and `result_summary` |
+| GET | `/{key}/sessions?offset=&limit=&status=&schedule_config_id=` | A page of tracked sessions, most recent first, with `total_count` (default limit 50, max 100). `status` is `open` (not ended), `completed`, or `failed`; both filters narrow `total_count` too. Ties on `created_at` are broken by `id`, so pages never overlap. Each item carries `work_type`, `repository`, `pipeline_run_id`, and `result_summary` |
 | PUT / DELETE | `/{key}/availability` | Manually set / clear hold |
 | PUT | `/{key}/enabled` | Enable or disable catalog |
 | PUT | `/{key}/policy-config` | Validate and normalize via kind policy's `validate_config()` before saving |
@@ -336,8 +336,8 @@ Connector providers are `github`, `jules`, `linear`. For `jules`, the API key is
 
 - [ ] Sessions in `AWAITING_PLAN_APPROVAL` or `AWAITING_USER_FEEDBACK` states continue to hold concurrency slots; approval or feedback is not automated.
 - [ ] Title-based reconciliation only checks the latest 300 sessions. Unconfirmed sessions older than that fail after 1 hour.
-- [ ] The session list pages by offset but has no filtering (for example by state or schedule).
-- [ ] 30-day ledger cleanup only runs when inserting new records.
+- [x] The session list pages by offset and filters by `status` (`open`, `completed`, `failed`) and `schedule_config_id`. The UI offers the status filter only.
+- [x] 30-day ledger cleanup runs when inserting a record and prunes every catalog, so an idle catalog keeps no expired rows. The table only grows through that insert, so no separate schedule is needed.
 - [x] Catalogs are selected per project, and a pull request can designate one (`@auto-run:<key or kind>`, `catalog` on enrollment). Automatic routing is deferred; `resolve_catalog` is where it would go.
 - [x] Jules task sessions' pull requests are adopted into the pipeline (`implemented=True` enrollment). Applying `changeSet.gitPatch` to an existing PR branch remains unimplemented.
 - [ ] A report is only kept as the session's final message. If a report should live in git history, add a delivery mode where Jules writes `reports/<date>.md` and the hub reads the file from the pull request head before closing it.

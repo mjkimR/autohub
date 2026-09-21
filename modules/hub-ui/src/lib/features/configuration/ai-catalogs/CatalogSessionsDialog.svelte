@@ -10,7 +10,11 @@
 		DialogHeader,
 		DialogTitle
 	} from '$lib/components/ui/dialog';
-	import { sessionTitle, type AICatalogSession } from './ai-catalogs.svelte';
+	import {
+		sessionTitle,
+		type AICatalogSession,
+		type SessionStatusFilter
+	} from './ai-catalogs.svelte';
 	import type { CatalogDialogProps } from './catalog-kinds';
 
 	const PAGE_SIZE = 20;
@@ -22,6 +26,7 @@
 	let sessions = $state<AICatalogSession[]>([]);
 	let offset = $state(0);
 	let total = $state(0);
+	let status = $state<SessionStatusFilter | ''>('');
 
 	const firstShown = $derived(sessions.length === 0 ? 0 : offset + 1);
 	const lastShown = $derived(offset + sessions.length);
@@ -32,7 +37,7 @@
 
 	async function loadPage(pageOffset: number) {
 		loading = true;
-		const page = await catalogs.loadSessions(catalog.key, pageOffset, PAGE_SIZE);
+		const page = await catalogs.loadSessions(catalog.key, pageOffset, PAGE_SIZE, status || null);
 		sessions = page.items;
 		total = page.total;
 		offset = pageOffset;
@@ -53,10 +58,25 @@
 				into its project's pipeline; a report session's final message is kept here.
 			</DialogDescription>
 		</DialogHeader>
+		<label class="flex items-center gap-2 text-sm font-medium">
+			Show
+			<select
+				bind:value={status}
+				onchange={() => loadPage(0)}
+				class="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+			>
+				<option value="">All sessions</option>
+				<option value="open">Open</option>
+				<option value="completed">Completed</option>
+				<option value="failed">Failed</option>
+			</select>
+		</label>
 		{#if loading}
 			<p class="text-sm text-muted-foreground">Loading sessions…</p>
 		{:else if sessions.length === 0}
-			<p class="text-sm text-muted-foreground">No sessions yet.</p>
+			<p class="text-sm text-muted-foreground">
+				{status ? 'No sessions match this filter.' : 'No sessions yet.'}
+			</p>
 		{:else}
 			<ul class="max-h-96 space-y-2 overflow-y-auto">
 				{#each sessions as item (item.id)}

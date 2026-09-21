@@ -80,12 +80,13 @@ class AICatalogRepository:
     async def reserve_dispatch(
         self, session: AsyncSession, catalog_id: UUID, dispatch_key: str, admitted_at: datetime
     ) -> None:
-        """Count a unit of work once: a retry keeps its first admission. Expired history is pruned here."""
+        """Count a unit of work once: a retry keeps its first admission.
+
+        Expired history is pruned here for every catalog, so a catalog that stops dispatching does not keep its
+        old rows: the ledger only grows through this method, which bounds the whole table.
+        """
         await session.execute(
-            delete(AICatalogDispatch).where(
-                AICatalogDispatch.ai_catalog_id == catalog_id,
-                AICatalogDispatch.admitted_at < admitted_at - DISPATCH_LEDGER_RETENTION,
-            )
+            delete(AICatalogDispatch).where(AICatalogDispatch.admitted_at < admitted_at - DISPATCH_LEDGER_RETENTION)
         )
         existing = await session.scalar(
             select(AICatalogDispatch.id).where(AICatalogDispatch.dispatch_key == dispatch_key)
@@ -207,21 +208,37 @@ class AICatalogRepository:
         )
         recent: dict[UUID, builtins.list[AICatalogSession]] = {config_id: [] for config_id in schedule_config_ids}
         for row in rows.all():
-            recent[row.schedule_config_id].append(row)
+            if row.schedule_config_id is not None:
+                recent[row.schedule_config_id].append(row)
         return recent
 
     async def list_sessions(
-        self, session: AsyncSession, catalog_id: UUID, *, offset: int, limit: int
+        self,
+        session: AsyncSession,
+        catalog_id: UUID,
+        *,
+        offset: int,
+        limit: int,
+        status: str | None = None,
+        schedule_config_id: UUID | None = None,
     ) -> tuple[Sequence[AICatalogSession], int]:
-        """One page of sessions, most recent first, with the catalog's total session count."""
+        """One page of matching sessions, most recent first, with the count of every match.
+
+        ``status`` is "open" for a session that has not ended, or a terminal state.
+        """
+        matching = [AICatalogSession.ai_catalog_id == catalog_id]
+        if status == "open":
+            matching.append(AICatalogSession.state.not_in(SESSION_TERMINAL_STATES))
+        elif status is not None:
+            matching.append(AICatalogSession.state == status)
+        if schedule_config_id is not None:
+            matching.append(AICatalogSession.schedule_config_id == schedule_config_id)
         rows = await session.scalars(
             select(AICatalogSession)
-            .where(AICatalogSession.ai_catalog_id == catalog_id)
+            .where(*matching)
             .order_by(AICatalogSession.created_at.desc(), AICatalogSession.id)
             .offset(offset)
             .limit(limit)
         )
-        total = await session.scalar(
-            select(func.count()).select_from(AICatalogSession).where(AICatalogSession.ai_catalog_id == catalog_id)
-        )
+        total = await session.scalar(select(func.count()).select_from(AICatalogSession).where(*matching))
         return rows.all(), int(total or 0)

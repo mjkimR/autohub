@@ -4,6 +4,7 @@ import { toast } from 'svelte-sonner';
 
 export type AICatalog = components['schemas']['AICatalogRead'];
 export type AICatalogSession = components['schemas']['AICatalogSessionRead'];
+export type SessionStatusFilter = 'open' | 'completed' | 'failed';
 
 export type CatalogConnector = { id: string; name: string; provider: string; enabled: boolean };
 
@@ -100,11 +101,15 @@ export class AICatalogsState {
 	async loadSessions(
 		key: string,
 		offset: number,
-		limit: number
+		limit: number,
+		status: SessionStatusFilter | null = null
 	): Promise<{ items: AICatalogSession[]; total: number }> {
 		try {
 			const res = await api.GET('/api/v1/ai-catalogs/{catalog_key}/sessions', {
-				params: { path: { catalog_key: key }, query: { offset, limit } }
+				params: {
+					path: { catalog_key: key },
+					query: status ? { offset, limit, status } : { offset, limit }
+				}
 			});
 			if (res.error) {
 				toast.error(detail(res.error, 'Failed to load catalog sessions'));

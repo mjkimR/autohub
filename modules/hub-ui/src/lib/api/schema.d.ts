@@ -4360,6 +4360,8 @@ export interface operations {
 			query?: {
 				offset?: number;
 				limit?: number;
+				status?: ('open' | 'completed' | 'failed') | null;
+				schedule_config_id?: string | null;
 			};
 			header?: never;
 			path: {

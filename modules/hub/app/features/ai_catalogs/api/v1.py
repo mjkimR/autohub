@@ -1,9 +1,11 @@
 from typing import Annotated
+from uuid import UUID
 
 from app.features.ai_catalogs.schemas import (
     AICatalogList,
     AICatalogRead,
     AICatalogSessionList,
+    SessionStatusFilter,
     SetAvailabilityRequest,
     SetConnectorRequest,
     SetEnabledRequest,
@@ -26,8 +28,12 @@ async def list_ai_catalog_sessions(
     usecase: Annotated[AICatalogUseCase, Depends()],
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    status: SessionStatusFilter | None = None,
+    schedule_config_id: UUID | None = None,
 ):
-    return await usecase.list_sessions(catalog_key, offset=offset, limit=limit)
+    return await usecase.list_sessions(
+        catalog_key, offset=offset, limit=limit, status=status, schedule_config_id=schedule_config_id
+    )
 
 
 @router.put("/{catalog_key}/availability", response_model=AICatalogRead)

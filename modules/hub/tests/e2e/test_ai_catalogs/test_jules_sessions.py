@@ -231,6 +231,28 @@ async def test_an_admitted_session_is_created_counted_and_tracked(client, sessio
     assert ledger.all() == [f"session:{session_id}"]
 
 
+async def test_admitting_work_prunes_expired_ledger_rows_of_every_catalog(client, session, jules):
+    catalog = await make_catalog(session)
+    idle_catalog = await make_catalog(session)
+    session.add_all(
+        [
+            AICatalogDispatch(
+                ai_catalog_id=idle_catalog.id, dispatch_key="session:expired", admitted_at=hours_ago(31 * 24)
+            ),
+            AICatalogDispatch(ai_catalog_id=idle_catalog.id, dispatch_key="session:kept", admitted_at=hours_ago(24)),
+        ]
+    )
+    await session.commit()
+    jules.responses[("POST", "/v1alpha/sessions")] = (200, {"name": "sessions/42", "state": "QUEUED"})
+
+    await make_service().start(payload(catalog.key), None)
+
+    ledger = await session.scalars(
+        select(AICatalogDispatch.dispatch_key).where(AICatalogDispatch.ai_catalog_id == idle_catalog.id)
+    )
+    assert ledger.all() == ["session:kept"]
+
+
 async def test_reaching_the_daily_limit_holds_the_catalog_without_calling_jules(client, session, jules):
     catalog = await make_catalog(session, limit=1)
     session.add(
