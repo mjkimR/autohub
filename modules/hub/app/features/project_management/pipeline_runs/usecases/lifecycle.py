@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 from datetime import timedelta
 from typing import Annotated
@@ -35,19 +33,18 @@ from app.features.project_management.pipeline_runs.schemas import (
     PrepareImplementationAttempt,
 )
 from app.features.project_management.pipeline_runs.usecases.catalogs import resolve_catalog
-from app.features.project_management.pipeline_runs.usecases.ci import CIProgress
 from app.features.project_management.pipeline_runs.usecases.control import PipelineRunControl
 from app.features.project_management.pipeline_runs.usecases.delivery import PipelineRunDelivery
-from app.features.project_management.pipeline_runs.usecases.implementation import ImplementationProgress
 from app.features.project_management.pipeline_runs.usecases.leases import PipelineRunLeases, raise_lease_conflict
+from app.features.project_management.pipeline_runs.usecases.progress import PipelineRunProgress
 from app.features.project_management.pipeline_runs.usecases.queries import PipelineRunQueries
 from app.features.project_management.pipeline_runs.usecases.transitions import (
     ACTIVE_RUN_CONFLICT,
     EXTERNAL_IMPLEMENTATION_STATUS,
-    block_for_project_change,
     wait_on_github,
 )
 from app.features.project_management.pipelines import services as pipeline_services
+from app.features.project_management.pipelines.deps import get_pipeline_observer
 from app.features.project_management.pipelines.github import (
     DEFAULT_RATE_LIMIT_DELAY_SECONDS,
     GITHUB_FAILURE_AUTH,
@@ -75,7 +72,7 @@ class PipelineRunUseCase:
         self,
         repo: Annotated[PipelineRunRepository, Depends()],
         projects: Annotated[ProjectService, Depends()],
-        observer: Annotated[PipelineObservationService, Depends()],
+        observer: Annotated[PipelineObservationService, Depends(get_pipeline_observer)],
         ai_catalogs: Annotated[AICatalogService | None, Depends(AICatalogService)] = None,
     ):
         self.repo = repo
@@ -237,34 +234,9 @@ class PipelineRunUseCase:
         token: UUID,
         observer: PipelineObservationService,
     ) -> PipelineRunRead:
-        now = get_current_utc_time()
-        async with AsyncTransaction() as session:
-            run = await self.repo.get_leased(
-                session,
-                run_id,
-                owner=owner,
-                token=token,
-                now=now,
-            )
-            if run is None:
-                await raise_lease_conflict(self.repo, session, run_id, "advance run")
-            project = await self.projects.get(session, run.project_id)
-            if (
-                not project.enabled
-                or project.revision != run.project_revision
-                or project.github_repository is None
-                or project.github_connector_id is None
-            ):
-                return await block_for_project_change(self.repo, session, run, now)
-
-            # A planned delivery must be reconciled or posted before a run can advance.
-            if run.state == PipelineRunState.IMPLEMENTING:
-                return await ImplementationProgress(self.repo, self.ai_catalogs).advance(
-                    session, run, project, now, observer
-                )
-            if run.state == PipelineRunState.AWAITING_CI and run.pull_number is not None:
-                return await CIProgress(self.repo, self.observer).advance(session, run, project, now, observer)
-            return PipelineRunRead.model_validate(run)
+        return await PipelineRunProgress(self.repo, self.projects, self.observer, self.ai_catalogs).advance(
+            run_id, owner=owner, token=token, observer=observer
+        )
 
     async def wait_for_github(self, run_id: UUID, *, kind: str, retry_after: int | None) -> None:
         """Hold an in-flight run that GitHub would not serve, instead of failing the tick that tried.

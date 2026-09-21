@@ -202,7 +202,7 @@ class TestPipelineObservationAPI:
         assert not github_scenario.requests
 
     async def test_schedule_dispatch_persists_report_and_distinguishes_ci_failure(
-        self, client, observation_payload, github_scenario, session
+        self, client, observation_payload, github_scenario, session, monkeypatch
     ):
         response = await client.post(
             "/api/v1/schedule_configs",
@@ -238,6 +238,17 @@ class TestPipelineObservationAPI:
 
         # A failed observation leaves the last report intact and fails the scheduler job.
         previous_report = response.json()
+        # Reading a persisted report must work without constructing credential/decryption dependencies.
+        from app.features.configuration.connectors.crypto import ConnectorCredentialCipher
+
+        def reject_credentials(*args, **kwargs):
+            raise AssertionError("Saved observation reads must not construct a credential cipher")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(ConnectorCredentialCipher, "__init__", reject_credentials)
+            saved = await client.get(f"/api/v1/pipelines/observations/{schedule_id}")
+            assert_status_code(saved, 200)
+            assert saved.json() == previous_report
         github_scenario.error_status = 503
         await session.execute(
             update(ScheduleConfig)

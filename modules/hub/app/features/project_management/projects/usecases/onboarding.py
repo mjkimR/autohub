@@ -3,6 +3,7 @@ from typing import Annotated
 from uuid import UUID
 
 from app.features.project_management.pipelines import services as pipeline_services
+from app.features.project_management.pipelines.deps import get_pipeline_observer
 from app.features.project_management.pipelines.github import GitHubActionsReader, GitHubObservationError
 from app.features.project_management.pipelines.services import PipelineConfigurationError, PipelineObservationService
 from app.features.project_management.projects.errors import ProjectError
@@ -15,7 +16,9 @@ from fastapi import Depends
 
 class CheckProjectUseCase:
     def __init__(
-        self, projects: Annotated[ProjectUseCase, Depends()], observer: Annotated[PipelineObservationService, Depends()]
+        self,
+        projects: Annotated[ProjectUseCase, Depends()],
+        observer: Annotated[PipelineObservationService, Depends(get_pipeline_observer)],
     ):
         self.projects = projects
         self.observer = observer

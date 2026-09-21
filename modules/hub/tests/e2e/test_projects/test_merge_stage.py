@@ -210,3 +210,105 @@ async def test_the_attempt_list_sums_up_what_the_run_has_cost(client, run, githu
     # The pull request was implemented outside the pipeline and the fix is only planned: nothing was posted yet.
     assert (summary["requests_sent"], summary["quota_limit_replies"]) == (0, 0)
     assert summary["finished_at"] is None and summary["elapsed_seconds"] >= 0
+
+
+async def test_observation_and_merge_release_transactions_before_io(client, run, github, verify_observation_io_scope):
+    verify_observation_io_scope()
+    advanced = await advance(client, run)
+    assert advanced["state"] == "completed"
+    assert github.merge_requests == 1
+
+
+@pytest.mark.parametrize("mutation", ["pause", "cancel", "project", "lease", "attempt"])
+async def test_ci_observation_rejects_changes_before_merge(client, run, github, session, monkeypatch, mutation):
+    import asyncio
+    from datetime import timedelta
+    from uuid import UUID
+
+    from app.features.project_management.pipeline_runs.models import PipelineRun
+    from app_testing_base import utc_now
+    from sqlalchemy import update
+
+    original = services.PipelineObservationService.observe
+    root = f"/api/v1/pipeline-runs/{run['id']}"
+
+    async def observe_then_change(self, config):
+        report = await original(self, config)
+        # These calls must finish while the observer is still waiting. A retained row lock deadlocks on PostgreSQL.
+        if mutation in ("pause", "cancel"):
+            response = await asyncio.wait_for(client.post(f"{root}/{mutation}"), 3)
+            assert_status_code(response, 200)
+        elif mutation == "project":
+            project = (await client.get(f"/api/v1/projects/{run['project_id']}")).json()
+            response = await asyncio.wait_for(
+                client.put(
+                    f"/api/v1/projects/{run['project_id']}",
+                    json={
+                        "name": "Changed while observing",
+                        "enabled": True,
+                        "github": project["github"],
+                        "expected_revision": project["revision"],
+                    },
+                ),
+                3,
+            )
+            assert_status_code(response, 200)
+        elif mutation == "lease":
+            await session.execute(
+                update(PipelineRun)
+                .where(PipelineRun.id == UUID(run["id"]))
+                .values(lease_expires_at=utc_now() - timedelta(seconds=1))
+            )
+            await session.commit()
+            response = await client.post(f"{root}/lease", json={"owner": "other-worker", "ttl_seconds": 60})
+            assert_status_code(response, 200)
+        else:
+            attempts = (await client.get(f"{root}/attempts")).json()["items"]
+            response = await asyncio.wait_for(
+                client.post(f"{root}/attempts/{attempts[0]['id']}/complete", json={"status": "completed"}), 3
+            )
+            assert_status_code(response, 200)
+        return report
+
+    monkeypatch.setattr(services.PipelineObservationService, "observe", observe_then_change)
+    response = await client.post(f"{root}/advance")
+    assert_status_code(response, 409)
+    assert github.merge_requests == 0
+    current = (await client.get(root)).json()
+    assert current["state"] == {"pause": "paused", "cancel": "canceled"}.get(mutation, "awaiting_ci")
+    if mutation == "lease":
+        assert current["lease_owner"] == "other-worker"
+
+
+async def test_cancel_after_final_ci_read_prevents_merge(client, run, github, monkeypatch):
+    original = GitHubActionsReader.observe_pull
+    reads = 0
+    root = f"/api/v1/pipeline-runs/{run['id']}"
+
+    async def observe_then_cancel(self, *args, **kwargs):
+        nonlocal reads
+        result = await original(self, *args, **kwargs)
+        reads += 1
+        if reads == 2:
+            assert_status_code(await client.post(f"{root}/cancel"), 200)
+        return result
+
+    monkeypatch.setattr(GitHubActionsReader, "observe_pull", observe_then_cancel)
+    assert_status_code(await client.post(f"{root}/advance"), 409)
+    assert reads == 2
+    assert github.merge_requests == 0
+
+
+async def test_merge_result_cannot_overwrite_a_concurrent_cancel(client, run, github, monkeypatch):
+    original = GitHubActionsReader.merge_pull_request
+    root = f"/api/v1/pipeline-runs/{run['id']}"
+
+    async def merge_then_cancel(self, *args, **kwargs):
+        result = await original(self, *args, **kwargs)
+        assert_status_code(await client.post(f"{root}/cancel"), 200)
+        return result
+
+    monkeypatch.setattr(GitHubActionsReader, "merge_pull_request", merge_then_cancel)
+    assert_status_code(await client.post(f"{root}/advance"), 409)
+    assert github.merge_requests == 1
+    assert (await client.get(root)).json()["state"] == "canceled"

@@ -4,6 +4,8 @@ from app.common.config import get_scheduler_defaults
 from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.ai_catalogs.services import AICatalogService
 from app.features.configuration.connectors.crypto import ConnectorCredentialCipher, get_credential_key_provider
+from app.features.configuration.connectors.repos import ConnectorRepository
+from app.features.configuration.connectors.usecases.token import ReadConnectorTokenUseCase
 from app.features.execution.tasks import task
 from app.features.execution.tasks.core.context import get_task_meta
 from app.features.project_management.pipeline_runs.models import PipelineRunState
@@ -52,9 +54,11 @@ async def observe_pipeline_task(payload: PipelineObservationConfig) -> None:
     if meta is None:
         raise RuntimeError("pipeline.observe requires a schedule task context")
     service = PipelineObservationService(
-        PipelineObservationRepository(), ConnectorCredentialCipher(get_credential_key_provider())
+        ReadConnectorTokenUseCase(
+            ConnectorRepository(), ConnectorCredentialCipher(get_credential_key_provider())
+        ).execute
     )
-    await ObservePipelineUseCase(service, service.repo).observe_and_save(payload, meta.config_id)
+    await ObservePipelineUseCase(service, PipelineObservationRepository()).observe_and_save(payload, meta.config_id)
 
 
 @task(name=PROJECT_OBSERVATION_TASK)
@@ -64,9 +68,13 @@ async def observe_project_task(payload: ProjectObservationPayload) -> None:
     if meta is None:
         raise RuntimeError("pipeline.observe_project requires a schedule task context")
     service = PipelineObservationService(
-        PipelineObservationRepository(), ConnectorCredentialCipher(get_credential_key_provider())
+        ReadConnectorTokenUseCase(
+            ConnectorRepository(), ConnectorCredentialCipher(get_credential_key_provider())
+        ).execute
     )
-    await ObservePipelineUseCase(service, service.repo).observe_project_and_save(payload, meta.config_id)
+    await ObservePipelineUseCase(service, PipelineObservationRepository()).observe_project_and_save(
+        payload, meta.config_id
+    )
 
 
 @task(name=PROJECT_DISPATCH_TASK)
@@ -76,8 +84,7 @@ async def dispatch_project_task(payload: ProjectDispatchPayload) -> None:
     if meta is None:
         raise RuntimeError(f"{PROJECT_DISPATCH_TASK} requires a schedule task context")
     cipher = ConnectorCredentialCipher(get_credential_key_provider())
-    pipeline_repo = PipelineObservationRepository()
-    observer = PipelineObservationService(pipeline_repo, cipher)
+    observer = PipelineObservationService(ReadConnectorTokenUseCase(ConnectorRepository(), cipher).execute)
     project_service = ProjectService(ProjectRepository())
     run_repo = PipelineRunRepository()
     run_use_case = PipelineRunUseCase(run_repo, project_service, observer, AICatalogService(AICatalogRepository()))

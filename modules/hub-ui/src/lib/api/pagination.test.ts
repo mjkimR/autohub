@@ -40,3 +40,13 @@ test('an HTTP failure is distinct from a successful empty list', () => {
 	expect(responseData({ data: { items: [] } }, 'Failed')).toEqual({ items: [] });
 	expect(() => responseData({ error: { detail: 'Unavailable' } }, 'Failed')).toThrow('Unavailable');
 });
+
+test('a counted page rejects a missing count instead of presenting an incomplete total', async () => {
+	const { countedPage } = await import('./pagination');
+	expect(countedPage({ items: ['one'], total_count: 51 })).toEqual({
+		items: ['one'],
+		total_count: 51
+	});
+	expect(() => countedPage({ items: ['one'], total_count: null })).toThrow('no total count');
+	expect(() => countedPage({ items: [] })).toThrow('no total count');
+});

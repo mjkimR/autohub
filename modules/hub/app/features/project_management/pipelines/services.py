@@ -1,22 +1,16 @@
 import asyncio
-from typing import Annotated, Any
+from collections.abc import Awaitable, Callable
+from typing import Any
 from uuid import UUID
 
-from app.features.configuration.connectors.crypto import ConnectorCredentialCipher, EncryptedCredentials
+from app.features.configuration.connectors.errors import ConnectorTokenError
 from app.features.project_management.pipelines.github import (
     GitHubActionsReader,
     GitHubObservationError,
     create_github_client,
 )
-from app.features.project_management.pipelines.repos import PipelineObservationRepository
 from app.features.project_management.pipelines.schemas import PipelineObservation, PipelineObservationConfig
-from app.features.project_management.projects.observation import resolve_project_observation
-from app.features.project_management.projects.repos import PROJECT_OBSERVATION_TASK
-from app.features.project_management.projects.schemas import ProjectObservationPayload
-from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
-from fastapi import Depends
-from pydantic import ValidationError
 
 OBSERVATION_TASK = "pipeline.observe"
 
@@ -26,13 +20,8 @@ class PipelineConfigurationError(ValueError):
 
 
 class PipelineObservationService:
-    def __init__(
-        self,
-        repo: Annotated[PipelineObservationRepository, Depends()],
-        cipher: Annotated[ConnectorCredentialCipher, Depends()],
-    ):
-        self.repo = repo
-        self.cipher = cipher
+    def __init__(self, read_token: Callable[[UUID, str], Awaitable[str]]):
+        self.read_token = read_token
 
     async def observe(self, config: PipelineObservationConfig) -> PipelineObservation:
         try:
@@ -65,52 +54,7 @@ class PipelineObservationService:
             return await GitHubActionsReader(client).list_issue_comments(repository, pull_number)
 
     async def get_token(self, connector_id: UUID, expected_provider: str) -> str:
-        # Keep network I/O outside the database transaction.
-        async with AsyncTransaction() as session:
-            connector = await self.repo.get_connector(session, connector_id)
-            if connector is None or not connector.enabled or connector.provider != expected_provider:
-                raise PipelineConfigurationError(f"An enabled {expected_provider} connector is required")
-            connector_id, provider = connector.id, connector.provider
-            encrypted = EncryptedCredentials(
-                connector.credentials_ciphertext, connector.credentials_nonce, connector.credential_key_version
-            )
-        credentials = await self.cipher.decrypt(connector_id, provider, encrypted)
-        token = credentials.get("token")
-        if not isinstance(token, str) or not token.strip():
-            raise PipelineConfigurationError(
-                f"{expected_provider} connector credentials must contain a non-empty token"
-            )
-        return token
-
-
-class PipelineObservationQueryService:
-    """Reading a stored report does not require decrypting connector credentials."""
-
-    def __init__(self, repo: Annotated[PipelineObservationRepository, Depends()]):
-        self.repo = repo
-
-    async def get(self, schedule_id: UUID) -> PipelineObservation | None:
-        async with AsyncTransaction() as session:
-            schedule = await self.repo.get_schedule(session, schedule_id)
-            if schedule is None or schedule.task_func not in (OBSERVATION_TASK, PROJECT_OBSERVATION_TASK):
-                return None
-            raw = await self.repo.load(session, schedule_id)
-            task_func, payload = schedule.task_func, schedule.payload
-        if raw is None or raw.get("kind") != "pipeline_observation":
-            return None
         try:
-            report = PipelineObservation.model_validate(raw)
-            if task_func == PROJECT_OBSERVATION_TASK:
-                from app.features.project_management.projects.errors import ProjectError
-
-                try:
-                    config, _ = await resolve_project_observation(ProjectObservationPayload.model_validate(payload))
-                except ProjectError:
-                    return None
-            else:
-                config = PipelineObservationConfig.model_validate(payload)
-        except ValidationError:
-            return None
-        if config != report.config:
-            return None
-        return report
+            return await self.read_token(connector_id, expected_provider)
+        except ConnectorTokenError as exc:
+            raise PipelineConfigurationError(str(exc)) from None

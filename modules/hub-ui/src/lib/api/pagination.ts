@@ -24,3 +24,9 @@ export async function allPages<T>(
 	} while (items.length < total);
 	return items;
 }
+
+/** History pagination requires the server's filtered count, never a guess from the current page. */
+export function countedPage<T>(page: { items: T[]; total_count?: number | null }): Page<T> {
+	if (typeof page.total_count !== 'number') throw new Error('The list response has no total count');
+	return { items: page.items, total_count: page.total_count };
+}

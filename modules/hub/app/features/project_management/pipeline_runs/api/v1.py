@@ -20,6 +20,7 @@ from app.features.project_management.pipeline_runs.schemas import (
 )
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.pipeline_runs.usecases.queries import PipelineRunQueries
+from app.features.project_management.pipelines.deps import get_pipeline_observer
 from app.features.project_management.pipelines.services import PipelineObservationService
 from fastapi import APIRouter, Depends, Query, Response, status
 
@@ -94,7 +95,7 @@ async def prepare_implementation_attempt(
 async def advance_pipeline_run(
     run_id: UUID,
     use_case: Annotated[PipelineRunUseCase, Depends()],
-    observer: Annotated[PipelineObservationService, Depends()],
+    observer: Annotated[PipelineObservationService, Depends(get_pipeline_observer)],
 ):
     """Trigger manual run progression check (PR detection or CI verification)."""
     return await use_case.manual_advance(run_id, observer)

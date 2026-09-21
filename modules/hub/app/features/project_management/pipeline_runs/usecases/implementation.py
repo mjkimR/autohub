@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from app.features.ai_catalogs.services import AICatalogService
-from app.features.project_management.pipeline_runs.adapters.base import DeliveryTarget
+from app.features.project_management.pipeline_runs.adapters.base import AgentReply, DeliveryTarget, ExecutionAdapter
 from app.features.project_management.pipeline_runs.adapters.registry import (
     resolve_execution_adapter,
 )
@@ -25,8 +27,21 @@ from app.features.project_management.pipeline_runs.usecases.transitions import (
 )
 from app.features.project_management.pipelines.services import PipelineObservationService
 from app.features.project_management.projects.errors import ProjectError
-from app.features.project_management.projects.models import Project
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+@dataclass(frozen=True)
+class ImplementationInput:
+    target: DeliveryTarget
+    posted_at: datetime | None
+    delivered_head: str
+    adapter: ExecutionAdapter
+
+
+@dataclass(frozen=True)
+class ImplementationObservation:
+    pull: dict[str, Any]
+    replies: list[AgentReply]
 
 
 class ImplementationProgress:
@@ -34,36 +49,53 @@ class ImplementationProgress:
         self.repo = repo
         self.ai_catalogs = ai_catalogs
 
-    async def advance(
-        self,
-        session: AsyncSession,
-        run: PipelineRun,
-        project: Project,
-        now: datetime,
-        observer: PipelineObservationService,
-    ) -> PipelineRunRead:
-        if project.github_connector_id is None or project.github_repository is None:
-            raise ProjectError(422, "Project missing GitHub connection for pipeline run")
+    async def prepare(self, session: AsyncSession, run: PipelineRun, target: DeliveryTarget) -> ImplementationInput:
         attempt = await self.repo.active_attempt(session, run.id)
         if attempt is None:
             raise ProjectError(409, "Pipeline run has no active implementation attempt")
         delivery = await self.repo.latest_delivery(session, attempt.id)
-        posted_at = as_utc(delivery.posted_at) if delivery is not None and delivery.posted_at is not None else None
-        pr = await observer.get_pull_request(project.github_connector_id, project.github_repository, run.pull_number)
+        return ImplementationInput(
+            target=target,
+            posted_at=as_utc(delivery.posted_at) if delivery is not None and delivery.posted_at is not None else None,
+            delivered_head=PullRequestSnapshot.model_validate(attempt.request_snapshot["pull_request"]).head_sha,
+            adapter=await resolve_execution_adapter(session, run.ai_catalog_id),
+        )
+
+    async def observe(
+        self, prepared: ImplementationInput, observer: PipelineObservationService
+    ) -> ImplementationObservation:
+        target = prepared.target
+        pr = await observer.get_pull_request(target.connector_id, target.repository, target.pull_number)
+        if pr.get("state") == "closed" or (
+            prepared.posted_at is not None and pr["head"]["sha"] != prepared.delivered_head
+        ):
+            return ImplementationObservation(pr, [])
+        replies = await prepared.adapter.collect_replies(observer, target, prepared.posted_at)
+        return ImplementationObservation(pr, replies)
+
+    async def apply(
+        self,
+        session: AsyncSession,
+        run: PipelineRun,
+        now: datetime,
+        observed: ImplementationInput,
+        result: ImplementationObservation,
+    ) -> PipelineRunRead:
+        attempt = await self.repo.active_attempt(session, run.id)
+        if attempt is None:
+            raise ProjectError(409, "Pipeline run has no active implementation attempt")
+        delivery = await self.repo.latest_delivery(session, attempt.id)
+        pr, replies = result.pull, result.replies
         if pr.get("state") == "closed":
             await finish_closed_pull(self.repo, session, run, pr, now)
             return PipelineRunRead.model_validate(run)
-        delivery_head = PullRequestSnapshot.model_validate(attempt.request_snapshot["pull_request"]).head_sha
-        if delivery is not None and delivery.posted_at is not None and pr["head"]["sha"] != delivery_head:
+        if observed.posted_at is not None and pr["head"]["sha"] != observed.delivered_head:
             run.state = PipelineRunState.AWAITING_CI
             run.next_action_at = None
             run.revision += 1
             attempt.state = ExecutionAttemptState.RUNNING
             await session.flush()
             return PipelineRunRead.model_validate(run)
-        target = DeliveryTarget(project.github_connector_id, project.github_repository, run.pull_number)
-        adapter = await resolve_execution_adapter(session, run.ai_catalog_id)
-        replies = await adapter.collect_replies(observer, target, posted_at)
         for reply in replies:
             if reply.external_id is not None and not await self.repo.has_reply(session, reply.external_id):
                 await self.repo.create_reply(
@@ -96,13 +128,17 @@ class ImplementationProgress:
             run.revision += 1
             await session.flush()
             return PipelineRunRead.model_validate(run)
-        if delivery is not None and posted_at is not None and now - posted_at >= adapter.silent_timeout:
+        if (
+            delivery is not None
+            and observed.posted_at is not None
+            and now - observed.posted_at >= observed.adapter.silent_timeout
+        ):
             silent_retries = sum(
                 item.cause == "silent" for item in await self.repo.list_deliveries(session, attempt.id)
             )
             if silent_retries >= 1:
                 run.state = PipelineRunState.BLOCKED
-                run.pause_reason = adapter.silent_block_reason
+                run.pause_reason = observed.adapter.silent_block_reason
             else:
                 await self.repo.create_delivery(
                     session,

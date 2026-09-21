@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any
 from uuid import UUID, uuid4
 
 from app.features.project_management.pipeline_runs.github import github_project_error
@@ -26,10 +29,9 @@ from app.features.project_management.pipelines.github import (
     GitHubActionsReader,
     GitHubObservationError,
 )
-from app.features.project_management.pipelines.schemas import VerificationStatus
+from app.features.project_management.pipelines.schemas import PipelineObservation, VerificationStatus
 from app.features.project_management.pipelines.services import PipelineConfigurationError, PipelineObservationService
 from app.features.project_management.projects.errors import ProjectError
-from app.features.project_management.projects.models import Project
 from app.features.project_management.projects.schemas import ProjectRead
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,25 +56,91 @@ def _merge_wait_reason(mergeable_state: str | None) -> str:
     )
 
 
+@dataclass(frozen=True)
+class CIObservation:
+    report: PipelineObservation
+    closed_pull: dict[str, Any] | None = None
+    log_excerpt: str = ""
+    merge: dict[str, Any] | None = None
+    mergeable_state: str | None = None
+    head_changed: bool = False
+
+
 class CIProgress:
     def __init__(self, repo: PipelineRunRepository, observer: PipelineObservationService):
         self.repo = repo
         self.observer = observer
 
-    async def advance(
+    async def observe(
         self,
-        session: AsyncSession,
-        run: PipelineRun,
-        project: Project,
-        now: datetime,
+        project_read: ProjectRead,
+        pull_number: int,
         observer: PipelineObservationService,
-    ) -> PipelineRunRead:
-        if project.github_connector_id is None or project.github_repository is None:
-            raise ProjectError(422, "Project missing GitHub connection for pipeline run")
-        project_read = ProjectRead.model_validate(project)
+        authorize_merge: Callable[[], Awaitable[None]],
+    ) -> CIObservation:
         if project_read.github is None:
             raise ProjectError(422, "Project missing GitHub connection for pipeline run")
-        observation = await observer.observe(project_read.observation_config([run.pull_number]))
+        observation = await observer.observe(project_read.observation_config([pull_number]))
+        result = observation.pulls[0].result
+        if result.status == VerificationStatus.CLOSED:
+            pr = await observer.get_pull_request(
+                project_read.github.github_connector_id, project_read.github.repository, pull_number
+            )
+            return CIObservation(observation, closed_pull=pr)
+        if result.status == VerificationStatus.FAILED and project_read.github.automation.auto_fix_ci:
+            excerpt = await self._failed_job_log_excerpt(
+                project_read.github.github_connector_id,
+                project_read.github.repository,
+                observation.pulls[0].run,
+                result.unsuccessful_jobs,
+            )
+            return CIObservation(observation, log_excerpt=excerpt)
+        if result.status != VerificationStatus.PASSED or not project_read.github.automation.auto_merge:
+            return CIObservation(observation)
+        await authorize_merge()
+        # Re-observe immediately before the write; the merge API is
+        # still the final authority for branch rules and head SHA.
+        try:
+            token_value = await self.observer.get_token(project_read.github.github_connector_id, "github")
+            async with pipeline_services.create_github_client(token_value) as client:
+                reader = GitHubActionsReader(client)
+                current = await reader.observe_pull(project_read.observation_config([pull_number]), pull_number)
+                if current.result.status != VerificationStatus.PASSED:
+                    return CIObservation(observation, head_changed=True)
+                # GitHub's own verdict decides what a refusal means: only a branch that conflicts with
+                # or trails its base is the agent's to fix. Reviews, branch rules, and drafts wait for
+                # a person, and asking the agent to "resolve conflicts" there only burns a task.
+                mergeable_state = current.mergeable_state
+                merge: dict = {"merged": False}
+                if mergeable_state not in (*MERGE_NEEDS_UPDATE, *MERGE_WAITS_FOR_OPERATOR):
+                    try:
+                        await authorize_merge()
+                        merge = await reader.merge_pull_request(
+                            project_read.github.repository,
+                            pull_number,
+                            current.head_sha,
+                            project_read.github.automation.merge_method,
+                        )
+                    except GitHubObservationError as exc:
+                        if exc.status_code not in (405, 409):
+                            raise
+                        refused = await reader._get(f"/repos/{project_read.github.repository}/pulls/{pull_number}")
+                        state = refused.get("mergeable_state")
+                        mergeable_state = state if isinstance(state, str) else None
+                        if mergeable_state not in MERGE_NEEDS_UPDATE:
+                            mergeable_state = mergeable_state or "refused"
+        except PipelineConfigurationError as exc:
+            raise ProjectError(422, str(exc)) from None
+        except GitHubObservationError as exc:
+            raise github_project_error(exc) from None
+        return CIObservation(observation, merge=merge, mergeable_state=mergeable_state)
+
+    async def apply(
+        self, session: AsyncSession, run: PipelineRun, project_read: ProjectRead, now: datetime, observed: CIObservation
+    ) -> PipelineRunRead:
+        if project_read.github is None:
+            raise ProjectError(422, "Project missing GitHub connection for pipeline run")
+        observation = observed.report
         pull_result = observation.pulls[0].result
         if pull_result.status != VerificationStatus.PASSED and run.pause_reason is not None:
             # An earlier wait (a blocked merge, say) no longer describes this head.
@@ -121,12 +189,7 @@ class CIProgress:
                 active_attempt.failure_code = "CI_FAILED"
                 active_attempt.failure_detail = pull_result.reason
                 prior = ImplementationRequest.model_validate(active_attempt.request_snapshot)
-                log_excerpt = await self._failed_job_log_excerpt(
-                    project.github_connector_id,
-                    project.github_repository,
-                    observation.pulls[0].run,
-                    pull_result.unsuccessful_jobs,
-                )
+                log_excerpt = observed.log_excerpt
                 request = prior.model_copy(
                     update={
                         "kind": "ci-fix",
@@ -157,10 +220,8 @@ class CIProgress:
             run.revision += 1
             await session.flush()
         elif pull_result.status == VerificationStatus.CLOSED:
-            pr = await observer.get_pull_request(
-                project.github_connector_id, project.github_repository, run.pull_number
-            )
-            if pr.get("state") == "closed":
+            pr = observed.closed_pull
+            if pr is not None and pr.get("state") == "closed":
                 await finish_closed_pull(self.repo, session, run, pr, now)
         elif pull_result.status == VerificationStatus.PASSED:
             if not project_read.github.automation.auto_merge:
@@ -174,43 +235,11 @@ class CIProgress:
                     active_attempt.finished_at = now
                 await session.flush()
                 return PipelineRunRead.model_validate(run)
-            # Re-observe immediately before the write; the merge API is
-            # still the final authority for branch rules and head SHA.
-            try:
-                token_value = await self.observer.get_token(project.github_connector_id, "github")
-                async with pipeline_services.create_github_client(token_value) as client:
-                    reader = GitHubActionsReader(client)
-                    current = await reader.observe_pull(
-                        project_read.observation_config([run.pull_number]), run.pull_number
-                    )
-                    if current.result.status != VerificationStatus.PASSED:
-                        return PipelineRunRead.model_validate(run)
-                    # GitHub's own verdict decides what a refusal means: only a branch that conflicts with
-                    # or trails its base is the agent's to fix. Reviews, branch rules, and drafts wait for
-                    # a person, and asking the agent to "resolve conflicts" there only burns a task.
-                    mergeable_state = current.mergeable_state
-                    merge: dict = {"merged": False}
-                    if mergeable_state not in (*MERGE_NEEDS_UPDATE, *MERGE_WAITS_FOR_OPERATOR):
-                        try:
-                            merge = await reader.merge_pull_request(
-                                project.github_repository,
-                                run.pull_number,
-                                current.head_sha,
-                                project_read.github.automation.merge_method,
-                            )
-                        except GitHubObservationError as exc:
-                            if exc.status_code not in (405, 409):
-                                raise
-                            refused = await reader._get(f"/repos/{project.github_repository}/pulls/{run.pull_number}")
-                            state = refused.get("mergeable_state")
-                            mergeable_state = state if isinstance(state, str) else None
-                            if mergeable_state not in MERGE_NEEDS_UPDATE:
-                                mergeable_state = mergeable_state or "refused"
-            except PipelineConfigurationError as exc:
-                raise ProjectError(422, str(exc)) from None
-            except GitHubObservationError as exc:
-                raise github_project_error(exc) from None
 
+            if observed.head_changed:
+                return PipelineRunRead.model_validate(run)
+            merge = observed.merge or {"merged": False}
+            mergeable_state = observed.mergeable_state
             if merge.get("merged") is not True and mergeable_state not in MERGE_NEEDS_UPDATE:
                 wait_on_github(run, _merge_wait_reason(mergeable_state), now, MERGE_RECHECK_DELAY)
                 await session.flush()

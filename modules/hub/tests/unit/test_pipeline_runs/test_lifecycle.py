@@ -25,7 +25,7 @@ from app.features.project_management.projects.errors import ProjectError
 from app_testing_base import hours_ago, hours_later, utc_now
 
 pytestmark = pytest.mark.unit
-LIFECYCLE = "app.features.project_management.pipeline_runs.usecases.lifecycle"
+PROGRESS = "app.features.project_management.pipeline_runs.usecases.progress"
 DELIVERY = "app.features.project_management.pipeline_runs.usecases.delivery"
 IMPLEMENTATION = "app.features.project_management.pipeline_runs.usecases.implementation"
 
@@ -154,7 +154,7 @@ async def test_quota_reply_sets_a_global_catalog_hold_without_a_run_retry_cap(de
     mock_tx.__aenter__ = AsyncMock(return_value=mock_session)
     mock_tx.__aexit__ = AsyncMock(return_value=None)
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(f"{LIFECYCLE}.AsyncTransaction", lambda: mock_tx)
+        mp.setattr(f"{PROGRESS}.AsyncTransaction", lambda: mock_tx)
         mp.setattr(f"{IMPLEMENTATION}.resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter()))
         result = await use_case.advance_run(run.id, owner="worker-1", token=run.lease_token, observer=observer)
 
@@ -479,6 +479,9 @@ async def test_dispatch_waits_until_next_action_without_reading_github(monkeypat
 
 @pytest.mark.parametrize("elapsed_hours", [1, 3, 12])
 async def test_pushed_head_wins_over_watchdog_and_quota_replies(monkeypatch, elapsed_hours):
+    monkeypatch.setattr(
+        f"{IMPLEMENTATION}.resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter())
+    )
     run = create_mock_run()
     repo = MagicMock()
     repo.get_leased = AsyncMock(return_value=run)
@@ -502,7 +505,7 @@ async def test_pushed_head_wins_over_watchdog_and_quota_replies(monkeypatch, ela
     tx = MagicMock()
     tx.__aenter__ = AsyncMock(return_value=AsyncMock())
     tx.__aexit__ = AsyncMock(return_value=None)
-    monkeypatch.setattr("app.features.project_management.pipeline_runs.usecases.lifecycle.AsyncTransaction", lambda: tx)
+    monkeypatch.setattr("app.features.project_management.pipeline_runs.usecases.progress.AsyncTransaction", lambda: tx)
 
     result = await PipelineRunUseCase(repo, projects, observer).advance_run(
         run.id, owner="worker-1", token=run.lease_token, observer=observer
@@ -526,7 +529,7 @@ async def test_pushed_head_wins_over_watchdog_and_quota_replies(monkeypatch, ela
 )
 async def test_silent_watchdog_uses_an_exact_fixed_clock(monkeypatch, elapsed, expected_state):
     """The silent-retry boundary must not depend on wall-clock test timing."""
-    from app.features.project_management.pipeline_runs.usecases import lifecycle
+    from app.features.project_management.pipeline_runs.usecases import progress
 
     frozen_now = datetime(2026, 9, 14, 12, tzinfo=UTC)
 
@@ -550,8 +553,8 @@ async def test_silent_watchdog_uses_an_exact_fixed_clock(monkeypatch, elapsed, e
     tx = MagicMock()
     tx.__aenter__ = AsyncMock(return_value=AsyncMock())
     tx.__aexit__ = AsyncMock(return_value=None)
-    monkeypatch.setattr(lifecycle, "get_current_utc_time", lambda: frozen_now)
-    monkeypatch.setattr(lifecycle, "AsyncTransaction", lambda: tx)
+    monkeypatch.setattr(progress, "get_current_utc_time", lambda: frozen_now)
+    monkeypatch.setattr(progress, "AsyncTransaction", lambda: tx)
     monkeypatch.setattr(
         f"{IMPLEMENTATION}.resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter())
     )

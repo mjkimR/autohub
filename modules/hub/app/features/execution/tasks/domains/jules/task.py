@@ -1,6 +1,8 @@
 from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.ai_catalogs.services import AICatalogService
 from app.features.configuration.connectors.crypto import ConnectorCredentialCipher, get_credential_key_provider
+from app.features.configuration.connectors.repos import ConnectorRepository
+from app.features.configuration.connectors.usecases.token import ReadConnectorTokenUseCase
 from app.features.execution.tasks import task
 from app.features.execution.tasks.core.context import get_task_meta
 from app.features.execution.tasks.domains.jules.service import (
@@ -10,7 +12,6 @@ from app.features.execution.tasks.domains.jules.service import (
 )
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
-from app.features.project_management.pipelines.repos import PipelineObservationRepository
 from app.features.project_management.pipelines.services import PipelineObservationService
 from app.features.project_management.projects.repos import ProjectRepository
 from app.features.project_management.projects.services import ProjectService
@@ -22,7 +23,7 @@ JULES_SYNC_TASK = "jules.sync_sessions"
 def _service() -> JulesSessionService:
     cipher = ConnectorCredentialCipher(get_credential_key_provider())
     catalogs = AICatalogService(AICatalogRepository())
-    observer = PipelineObservationService(PipelineObservationRepository(), cipher)
+    observer = PipelineObservationService(ReadConnectorTokenUseCase(ConnectorRepository(), cipher).execute)
     runs = PipelineRunUseCase(PipelineRunRepository(), ProjectService(ProjectRepository()), observer, catalogs)
     return JulesSessionService(catalogs, cipher, runs)
 

@@ -4577,6 +4577,8 @@ export interface operations {
 				offset?: number;
 				/** @description limit for pagination */
 				limit?: number;
+				/** @description Case-insensitive literal substring search; percent and underscore are ordinary characters. */
+				search?: string | null;
 				/** @description Filter by name (case-insensitive substring) */
 				name?: string | null;
 				/** @description Filter by task function path (case-insensitive substring) */
@@ -5388,6 +5390,8 @@ export interface operations {
 				offset?: number;
 				/** @description limit for pagination */
 				limit?: number;
+				/** @description Case-insensitive literal substring search; percent and underscore are ordinary characters. */
+				search?: string | null;
 				/** @description Filter by name (case-insensitive substring) */
 				name?: string | null;
 				/** @description Filter by execution status */

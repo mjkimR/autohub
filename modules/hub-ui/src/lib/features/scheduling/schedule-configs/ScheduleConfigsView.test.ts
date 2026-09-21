@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'svelte-sonner';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -32,6 +32,7 @@ beforeEach(() => {
 			? { data: [{ name: 'hello_world', description: 'Demo', payload_schema: null }] }
 			: {
 					data: {
+						total_count: 2,
 						items: [
 							config('s1', 'Nightly demo', 'hello_world'),
 							config('s2', 'Weekly audit', 'jules.session', false)
@@ -129,7 +130,7 @@ test.each(['cron', 'interval'] as const)(
 		api.GET.mockImplementation(async (path: string) =>
 			path === '/api/v1/tasks/specs'
 				? { data: [{ name: 'hello_world', payload_schema: null }] }
-				: { data: { items: [saved] } }
+				: { data: { items: [saved], total_count: 1 } }
 		);
 		api.PUT.mockResolvedValue({ data: saved });
 		const user = userEvent.setup();
@@ -186,5 +187,54 @@ test('a managed schedule edit refusal keeps the editor and its input available',
 	expect((screen.getByLabelText('Schedule Name') as HTMLInputElement).value).toBe('Changed audit');
 	expect((screen.getByRole('button', { name: 'Save Changes' }) as HTMLButtonElement).disabled).toBe(
 		false
+	);
+});
+
+test('pages and searches schedules on the server, then recovers the last page after deleting its last row', async () => {
+	let deleted = false;
+	api.GET.mockImplementation(async (path, options) => {
+		if (path === '/api/v1/tasks/specs') return { data: [] };
+		const query = options.params.query;
+		if (query.search)
+			return { data: { items: [config('match', 'Search match', 'hello_world')], total_count: 1 } };
+		return {
+			data: {
+				items: query.offset
+					? deleted
+						? []
+						: [config('last', 'Old schedule', 'hello_world')]
+					: [config('first', 'Recent schedule', 'hello_world')],
+				total_count: deleted ? 50 : 51
+			}
+		};
+	});
+	api.DELETE.mockImplementation(async () => {
+		deleted = true;
+		return { data: {} };
+	});
+	const user = userEvent.setup();
+	render(ScheduleConfigsView);
+	await screen.findByText('Recent schedule');
+	await user.click(screen.getByRole('button', { name: 'Next page' }));
+	await screen.findByText('Old schedule');
+	await user.click(screen.getByTitle('Delete Schedule'));
+	await user.click(
+		within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete Schedule' })
+	);
+	expect(await screen.findByText('Recent schedule')).toBeTruthy();
+	await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+	await fireEvent.input(screen.getByPlaceholderText('Search by schedule or task func...'), {
+		target: { value: 'target' }
+	});
+	expect(await screen.findByText('Search match')).toBeTruthy();
+	await fireEvent.change(screen.getByRole('combobox', { name: 'Schedule status' }), {
+		target: { value: 'false' }
+	});
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenLastCalledWith('/api/v1/schedule_configs', {
+			params: {
+				query: { search: 'target', enabled: false, offset: 0, limit: 50, skip_count: false }
+			}
+		})
 	);
 });

@@ -46,7 +46,7 @@ class PipelineRunControl:
 
     async def pause_run(self, run_id: UUID, request: PauseRunRequest | None = None) -> PipelineRunRead:
         async with AsyncTransaction() as session:
-            run = await self.repo.get(session, run_id)
+            run = await self.repo.get(session, run_id, lock=True)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
             if run.state in (PipelineRunState.COMPLETED, PipelineRunState.FAILED, PipelineRunState.CANCELED):
@@ -179,7 +179,7 @@ class PipelineRunControl:
     async def cancel_run(self, run_id: UUID) -> PipelineRunRead:
         now = get_current_utc_time()
         async with AsyncTransaction() as session:
-            run = await self.repo.get(session, run_id)
+            run = await self.repo.get(session, run_id, lock=True)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
             if run.state in (PipelineRunState.COMPLETED, PipelineRunState.FAILED, PipelineRunState.CANCELED):
@@ -201,7 +201,7 @@ class PipelineRunControl:
 
     async def attach_pr(self, run_id: UUID, request: AttachPRRequest) -> PipelineRunRead:
         async with AsyncTransaction() as session:
-            run = await self.repo.get(session, run_id)
+            run = await self.repo.get(session, run_id, lock=True)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
             if run.state not in (PipelineRunState.QUEUED, PipelineRunState.DISPATCHING, PipelineRunState.IMPLEMENTING):

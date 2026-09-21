@@ -1227,3 +1227,50 @@ class TestImplementedRunRecovery:
         assert_status_code(resumed, 200)
         assert resumed.json()["ai_catalog_id"] == personal_codex
         assert resumed.json()["requested_catalog_id"] == team_codex
+
+
+async def test_implementation_reads_and_replies_do_not_hold_transactions(
+    client, project, github, mention_github, verify_observation_io_scope
+):
+    run, _ = await prepare_run(client, project)
+    root = f"/api/v1/pipeline-runs/{run['id']}"
+    assert_status_code(await client.post(f"{root}/advance"), 200)
+    verify_observation_io_scope()
+    response = await client.post(f"{root}/advance")
+    assert_status_code(response, 200)
+    assert response.json()["state"] == "implementing"
+    assert len(mention_github) == 1
+
+
+@pytest.mark.parametrize("mutation", ["pause", "delivery", "timeout"])
+async def test_implementation_observation_cannot_apply_stale_or_incomplete_results(
+    client, project, github, mention_github, session, monkeypatch, mutation
+):
+    import asyncio
+
+    from app.features.project_management.pipeline_runs.models import ExecutionDelivery
+    from app.features.project_management.pipeline_runs.usecases import progress
+
+    run, attempt = await prepare_run(client, project)
+    root = f"/api/v1/pipeline-runs/{run['id']}"
+    assert_status_code(await client.post(f"{root}/advance"), 200)
+    original = services.PipelineObservationService.get_pull_request
+
+    async def observe_then_change(self, *args, **kwargs):
+        pr = await original(self, *args, **kwargs)
+        if mutation == "timeout":
+            await asyncio.Event().wait()
+        elif mutation == "pause":
+            assert_status_code(await asyncio.wait_for(client.post(f"{root}/pause"), 3), 200)
+        else:
+            session.add(ExecutionDelivery(execution_attempt_id=UUID(attempt["id"]), delivery_number=2, cause="silent"))
+            await session.commit()
+        return {**pr, "head": {**pr["head"], "sha": "f" * 40}}
+
+    if mutation == "timeout":
+        monkeypatch.setattr(progress, "PROGRESS_IO_SECONDS", 0.05)
+    monkeypatch.setattr(services.PipelineObservationService, "get_pull_request", observe_then_change)
+    response = await client.post(f"{root}/advance")
+    assert_status_code(response, 504 if mutation == "timeout" else 409)
+    assert (await client.get(root)).json()["state"] == ("paused" if mutation == "pause" else "implementing")
+    assert len(mention_github) == 1

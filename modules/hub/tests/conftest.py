@@ -29,6 +29,9 @@ os.environ["SCHEDULER_KEY"] = "test-scheduler-key"
 # CALENDAR_BACKEND=google, and the suite must never reach a live calendar.
 os.environ["CALENDAR_BACKEND"] = "fake"
 
+# Register every routed model before the test database is created, including in focused test runs.
+from app.router import router as _router  # noqa: F401
+
 # Configure logging - reduce noise from SQLAlchemy and httpx
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)

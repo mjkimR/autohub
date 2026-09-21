@@ -15,6 +15,8 @@ from app.features.ai_catalogs.models import (
 from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.ai_catalogs.services import AICatalogService
 from app.features.configuration.connectors.models import Connector
+from app.features.configuration.connectors.repos import ConnectorRepository
+from app.features.configuration.connectors.usecases.token import ReadConnectorTokenUseCase
 from app.features.execution.tasks.domains.jules import service as jules_service
 from app.features.execution.tasks.domains.jules.client import JULES_API_BASE_URL
 from app.features.execution.tasks.domains.jules.service import JulesSessionPayload, JulesSessionService
@@ -22,7 +24,6 @@ from app.features.project_management.pipeline_runs.models import ExecutionAttemp
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.pipelines import services as pipeline_services
-from app.features.project_management.pipelines.repos import PipelineObservationRepository
 from app.features.project_management.pipelines.services import PipelineObservationService
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.repos import ProjectRepository
@@ -99,7 +100,7 @@ def make_service() -> JulesSessionService:
     cipher = MagicMock()
     cipher.decrypt = AsyncMock(return_value={"token": "jules-key"})
     catalogs = AICatalogService(AICatalogRepository())
-    observer = PipelineObservationService(PipelineObservationRepository(), cipher)
+    observer = PipelineObservationService(ReadConnectorTokenUseCase(ConnectorRepository(), cipher).execute)
     runs = PipelineRunUseCase(PipelineRunRepository(), ProjectService(ProjectRepository()), observer, catalogs)
     return JulesSessionService(catalogs, cipher, runs)
 

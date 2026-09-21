@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { PaginatedState } from '$lib/state/paginated.svelte';
+	import ListPagination from '$lib/components/shared/ListPagination.svelte';
 	import ScheduleEditorDialog from './ScheduleEditorDialog.svelte';
 	import type { ScheduleEditor } from './schedule-form';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
-	import { responseData } from '$lib/api/pagination';
+	import { countedPage, responseData } from '$lib/api/pagination';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -41,12 +43,14 @@
 	type ScheduleConfig = components['schemas']['ScheduleConfigRead'];
 	type TaskSpec = components['schemas']['TaskSpecResponse'];
 
-	let configs = $state<ScheduleConfig[]>([]);
+	const list = new PaginatedState<ScheduleConfig>();
+	let configs = $derived(list.items);
 	let taskSpecs = $state<TaskSpec[]>([]);
-	let loading = $state(true);
-	let loadError = $state('');
+	let loading = $derived(list.loading);
+	let loadError = $derived(list.error);
 	let isTriggering = $state(false);
 	let searchQuery = $state('');
+	let enabledFilter = $state<'' | 'true' | 'false'>('');
 
 	let editor = $state<ScheduleEditor | null>(null);
 
@@ -54,14 +58,6 @@
 	let isDeleteDialogOpen = $state(false);
 	let isDeleting = $state(false);
 	let deletingConfig = $state<ScheduleConfig | null>(null);
-
-	let filteredConfigs = $derived(
-		configs.filter(
-			(c) =>
-				c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				c.task_func.toLowerCase().includes(searchQuery.toLowerCase())
-		)
-	);
 
 	// Schedules the hub derives from a project: its dispatcher, its agent schedules, and the session sync they
 	// need. The backend refuses edits to agent-schedule entries; they are changed from the project instead.
@@ -76,28 +72,37 @@
 		return PROJECT_MANAGED_TASKS.has(config.task_func);
 	}
 
-	async function loadConfigs() {
-		loading = true;
-		loadError = '';
+	async function loadConfigs(offset = list.offset) {
+		const filters = {
+			search: searchQuery.trim(),
+			enabled: enabledFilter === '' ? undefined : enabledFilter === 'true'
+		};
+		await list.load(
+			async (offset, limit) =>
+				countedPage(
+					responseData(
+						await api.GET('/api/v1/schedule_configs', {
+							params: { query: { ...filters, offset, limit, skip_count: false } }
+						}),
+						'Failed to load schedule configs'
+					)
+				),
+			offset
+		);
+	}
+
+	let taskSpecsError = $state('');
+	async function loadTaskSpecs() {
+		taskSpecsError = '';
 		try {
-			const [cfgRes, specRes] = await Promise.all([
-				api.GET('/api/v1/schedule_configs', {}),
-				api.GET('/api/v1/tasks/specs')
-			]);
-			responseData(cfgRes, 'Failed to load schedule configs');
-			responseData(specRes, 'Failed to load task specs');
-			if (cfgRes.data?.items) {
-				configs = cfgRes.data.items;
-			}
-			if (specRes.data && Array.isArray(specRes.data)) {
-				taskSpecs = specRes.data;
-			}
+			taskSpecs = responseData(await api.GET('/api/v1/tasks/specs'), 'Failed to load task specs');
 		} catch {
-			loadError = 'Failed to load schedule configs';
-			toast.error('Failed to load schedule configs');
-		} finally {
-			loading = false;
+			taskSpecsError = 'Failed to load task specs. Retry to configure schedule payloads.';
 		}
+	}
+	function refresh() {
+		void loadConfigs();
+		void loadTaskSpecs();
 	}
 
 	async function toggleEnable(config: ScheduleConfig) {
@@ -168,12 +173,13 @@
 	}
 
 	onMount(() => {
-		loadConfigs();
+		refresh();
 	});
 </script>
 
 <div class="space-y-6">
-	{#if loadError}<LoadError message={loadError} retry={loadConfigs} />{/if}
+	{#if taskSpecsError}<LoadError message={taskSpecsError} retry={loadTaskSpecs} />{/if}
+	{#if loadError}<LoadError message={loadError} retry={() => loadConfigs()} />{/if}
 	<!-- Page Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
@@ -183,7 +189,7 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-2">
-			<Button variant="outline" size="sm" onclick={loadConfigs} disabled={loading} class="gap-2">
+			<Button variant="outline" size="sm" onclick={refresh} disabled={loading} class="gap-2">
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
 			</Button>
@@ -211,9 +217,20 @@
 			<Input
 				placeholder="Search by schedule or task func..."
 				bind:value={searchQuery}
+				oninput={() => loadConfigs(0)}
 				class="h-9 pl-9 text-xs"
 			/>
 		</div>
+		<select
+			aria-label="Schedule status"
+			bind:value={enabledFilter}
+			onchange={() => loadConfigs(0)}
+			class="h-9 rounded-md border border-input bg-background px-3 text-xs"
+		>
+			<option value="">All statuses</option><option value="true">Active</option><option
+				value="false">Paused</option
+			>
+		</select>
 	</div>
 
 	<!-- Configurations Table -->
@@ -240,8 +257,8 @@
 						</TableCell>
 					</TableRow>
 				{:else if loadError}
-					<TableRow><TableCell colspan={8}>List unavailable</TableCell></TableRow>
-				{:else if filteredConfigs.length === 0}
+					<TableRow><TableCell colspan={6}>List unavailable</TableCell></TableRow>
+				{:else if configs.length === 0}
 					<TableRow>
 						<TableCell colspan={6} class="h-32 text-center text-muted-foreground">
 							<div class="flex flex-col items-center justify-center gap-2">
@@ -251,7 +268,7 @@
 						</TableCell>
 					</TableRow>
 				{:else}
-					{#each filteredConfigs as config (config.id)}
+					{#each configs as config (config.id)}
 						<TableRow class="transition-colors hover:bg-muted/40">
 							<TableCell>
 								<div class="flex items-center gap-2">
@@ -340,6 +357,15 @@
 			</TableBody>
 		</Table>
 	</div>
+	{#if !list.error}
+		<ListPagination
+			offset={list.offset}
+			limit={list.limit}
+			total={list.total}
+			{loading}
+			onpage={loadConfigs}
+		/>
+	{/if}
 
 	{#if editor}
 		<ScheduleEditorDialog

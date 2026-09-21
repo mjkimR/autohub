@@ -4,6 +4,19 @@ from app_layer_base.base.deps.filters.decorators import filter_for
 from app_layer_base.base.deps.ordering.base import order_by_for
 from app_layer_base.base.deps.ordering.combine import create_order_by_dependency
 from app_layer_base.base.deps.query_options import create_list_query_options_dependency
+from sqlalchemy import func, or_
+
+
+@filter_for(bound_type=str, alias="search", max_length=200)
+def filter_search(value: str | None):
+    """Case-insensitive literal substring search; percent and underscore are ordinary characters."""
+    if value and value.strip():
+        term = value.strip().lower()
+        return or_(
+            func.lower(ScheduleConfig.name).contains(term, autoescape=True),
+            func.lower(ScheduleConfig.task_func).contains(term, autoescape=True),
+        )
+    return None
 
 
 @filter_for(bound_type=str, alias="name")
@@ -68,6 +81,7 @@ def order_id(desc: bool):
 
 # Combine filters and ordering criteria into their respective dependencies
 schedule_config_filters = create_combined_filter_dependency(
+    filter_search,
     filter_name,
     filter_task_func,
     filter_enabled,

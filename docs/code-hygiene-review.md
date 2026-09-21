@@ -52,17 +52,22 @@
 | `catalogs.py` | 명시적 지정·프로젝트 기본값·재개 시 카탈로그 선택. 호출자의 session 사용 |
 | `delivery.py` | 전달 준비·admission → 트랜잭션 밖 외부 호출 → lease/attempt/delivery 재검증·저장. 전달 직전 추가 검증과 타임아웃 후 reconciliation 유지 |
 | `control.py` | 일시정지·재개·취소·PR 연결·외부 시도 결과 기록. 재개의 외부 조회 전후 트랜잭션과 revision 검증 유지 |
-| `implementation.py` | 구현 결과·head 변경·쿼터 응답·무응답 재시도. `advance_run`의 session과 기준 시각 사용 |
-| `ci.py` | CI 실패·수정 요청·병합 전 재관찰·병합 및 충돌 처리. `advance_run`의 session과 기준 시각 사용 |
+| `progress.py` | 실행 진행의 준비 → 외부 관찰 → 재검증·반영. 짧은 트랜잭션과 lease·revision·attempt 검증 소유 |
+| `implementation.py` | 구현 결과·head 변경·쿼터 응답·무응답 재시도. DB 준비·반영과 외부 조회를 분리 |
+| `ci.py` | CI 조회·로그·병합은 트랜잭션 밖에서 수행하고, 결과 반영은 `progress.py`가 제공하는 session 사용 |
 | `transitions.py` | PR 종료·프로젝트 변경 차단·GitHub 대기 등 공유 상태 변경. 별도 트랜잭션을 열지 않음 |
 
 후속 회귀 테스트는 스케줄 방식 양방향 전환·payload 보존·수정 거부 후 입력 유지, 빠른 스케줄 요청과 재열기 초기화, PR 연결 후 새로고침, 실행 이력 재조회·확장 상태 초기화, 관찰 도중 설정 변경 시 저장 거부를 검증한다. 기존 전달 중단·타임아웃·lease·revision 경합 테스트의 검증 내용은 유지하고 내부 patch 경로만 새 소유 모듈로 옮겼다. 분리 후 앱의 181개 Python 모듈을 정적으로 분석했으며 지연 import를 포함해 순환 의존성은 발견하지 못했다.
 
-## 남은 구조 개선 후보
+## 후속 개선 1·2·3 반영
 
-1. `advance_run`의 구현·CI 진행은 기존 트랜잭션 안에서 외부 조회를 수행한다. 이번 분리는 동시성 동작을 유지하며, 외부 조회를 트랜잭션 밖으로 이동하려면 조회 후 lease/revision 재검증을 별도로 설계해야 한다.
-2. 관찰 서비스의 커넥터 자격 증명 조회와 `PipelineObservationQueryService`의 읽기 트랜잭션은 유지했다. 저장 유스케이스 분리와 별개로 검토할 수 있다.
-3. 스케줄 작업·설정 등 기존 다른 목록의 페이지 처리는 프로젝트·실행 화면 패턴으로 확장할 수 있다.
+1. **실행 관찰의 트랜잭션 분리**: `progress.py`가 짧은 트랜잭션에서 입력과 실행 버전을 확보하고, GitHub PR·응답·CI·실패 로그 조회와 병합을 트랜잭션 밖에서 수행한다. 병합 직전과 최종 반영 직전에 lease 소유자·토큰·유효기간, 실행 revision·상태, 프로젝트 revision·활성 여부, 활성 attempt·delivery 정보를 재검증한다. 관찰 I/O는 90초로 제한하고 lease는 최소 120초로 연장한다. 일시정지·취소·PR 연결도 실행 행 잠금을 사용한다.
+2. **읽기 트랜잭션 소유권 정리**: `ReadConnectorTokenUseCase`가 커넥터 자격 증명 조회를 소유하며 복호화는 트랜잭션 밖에서 수행한다. 관찰 서비스에는 토큰 조회 함수를 주입한다. 저장된 보고서 조회는 `GetPipelineObservationUseCase`가 하나의 읽기 트랜잭션에서 설정과 결과를 확인하며, 자격 증명 의존성을 구성하지 않는다. 기존 `PipelineObservationQueryService`와 중복 커넥터 조회 메서드는 제거했다.
+3. **스케줄 목록 확장**: 설정·작업 화면에 공통 페이지 상태·페이지 이동·오류 재시도를 적용했다. 기존 offset/limit·총 개수·상태 필터 API에 대소문자 구분 없는 `search`를 추가했다. 설정은 이름·task 함수, 작업은 이름·상태를 검색하며 `%`·`_`는 문자 그대로 처리한다. 검색·필터 변경 시 첫 페이지로 이동하고 마지막 행 삭제 시 유효한 페이지로 복귀한다. OpenAPI 클라이언트도 갱신했다.
+
+관찰 중 일시정지·취소·프로젝트 수정·lease 재획득·attempt 완료·delivery 변경·타임아웃을 회귀 테스트로 검증한다. 병합 전 재관찰 도중 취소되면 병합 요청을 보내지 않는다. 이미 GitHub로 전송된 병합은 취소로 되돌릴 수 없으며, 그 사이 로컬 상태가 변경되면 병합 결과가 해당 최신 상태를 덮어쓰지 않도록 거부한다. 이 외부 시스템 간 원자성 한계도 테스트로 명시했다.
+
+테스트 DB 생성 전에 라우터의 모델을 등록하도록 테스트 초기화를 보완했다. 일부 스케줄 테스트만 독립 실행해도 프로젝트 관리 스케줄 테이블이 누락되지 않는다.
 
 ## 이전 점검 검증
 
@@ -83,3 +88,14 @@
 - `just check`: Python·Svelte 타입 검사와 프로덕션 빌드 통과.
 - `git diff --check` 통과. API 계약과 DB 스키마를 변경하지 않았으며 migration은 없다.
 - 실제 GitHub/Jules/Telegram 호출과 배포는 수행하지 않았다.
+
+## 후속 개선 1·2·3 검증
+
+- `just test`: SQLite 전체 **546개 통과**.
+- `just test-pg`: PostgreSQL 전체 **546개 통과**. 로컬 Docker의 임시 테스트 DB에서 실제 행 잠금과 경합을 검증했다.
+- `just test-ui`: **19개 파일, 99개 통과**.
+- 스케줄 설정·작업 API와 dispatcher·webhook 테스트를 별도 선택해서 실행해도 통과한다.
+- `just lint`: Python format/lint/architecture 및 frontend format/ESLint 통과.
+- `just check`: Python·Svelte 타입 검사와 프로덕션 빌드 통과.
+- `just gen-ui-api`, `git diff --check` 통과. 목록 검색 query를 추가했으며 DB 스키마 변경이나 migration은 없다.
+- GitHub HTTP는 mock으로 검증했으며 실제 외부 API 호출과 배포는 수행하지 않았다.
