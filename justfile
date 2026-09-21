@@ -192,5 +192,5 @@ update-password password="":
     @bash ./scripts/update-password.sh {{ password }}
 
 # Provision/reuse the deployment's scheduler credential through the M2M API
-provision-scheduler +args:
+provision-scheduler +args="":
     python3 scripts/provision-scheduler.py {{ args }}

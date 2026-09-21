@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 from datetime import UTC, datetime
 from urllib.error import HTTPError
@@ -86,13 +87,22 @@ def provision(api, load, save, name: str) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", required=True)
-    parser.add_argument("--region", required=True)
-    parser.add_argument("--service", default="autohub")
-    parser.add_argument("--url", required=True)
+    parser.add_argument("--project", default=None, help="GCP project ID (default: gcloud config or GCP_PROJECT_ID)")
+    parser.add_argument("--region", default=None, help="GCP region (default: us-west1 or GCP_REGION)")
+    parser.add_argument("--service", default="autohub", help="Cloud Run service name (default: autohub)")
+    parser.add_argument("--url", default=None, help="Cloud Run service URL (default: auto-detected from Cloud Run)")
     args = parser.parse_args()
-    if not args.url.startswith("https://"):
-        raise RuntimeError("A deployed HTTPS service URL is required")
+
+    project = args.project or os.environ.get("PROJECT_ID") or os.environ.get("GCP_PROJECT_ID")
+    if not project:
+        proc = subprocess.run(["gcloud", "config", "get-value", "project"], capture_output=True, text=True)
+        project = proc.stdout.strip() if proc.returncode == 0 else ""
+    if not project:
+        raise RuntimeError("--project is required or must be configured in gcloud/environment")
+    args.project = project
+
+    region = args.region or os.environ.get("REGION") or os.environ.get("GCP_REGION") or "us-west1"
+    args.region = region
 
     def gcloud(*command: str, data: str | None = None) -> str:
         result = subprocess.run(
@@ -102,6 +112,18 @@ def main() -> None:
             # gcloud errors may echo argv, which includes a scheduler header. Never forward them.
             raise RuntimeError(f"gcloud {command[0]} {command[1]} failed; inspect permissions and resource state")
         return result.stdout
+
+    url = args.url
+    if not url:
+        url = gcloud(
+            "run", "services", "describe", args.service, f"--region={args.region}", "--format=value(status.url)"
+        ).strip()
+        if not url:
+            project_number = gcloud("projects", "describe", args.project, "--format=value(projectNumber)").strip()
+            url = f"https://{args.service}-{project_number}.{args.region}.run.app"
+    if not url.startswith("https://"):
+        raise RuntimeError("A deployed HTTPS service URL is required")
+    args.url = url
 
     bundle = json.loads(gcloud("secrets", "versions", "access", "latest", "--secret=autohub-secrets"))
     root = bundle.get("APP_API_KEY_ROOT_KEY")
