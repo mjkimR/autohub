@@ -47,7 +47,7 @@ AutoHub forces external registration approval independently of the shared packag
 
 For local development, use the Vite `/api` proxy: both URLs use `http://localhost:5173`, the callback keeps `/api/v1/auth/google/callback`, and `GOOGLE_AUTH_COOKIE_SECURE=false`. The client requests only `openid email profile`; no Drive/Gmail permissions are needed.
 
-Configure application and proxy access logs to omit/redact callback query strings before enabling login. Authorization codes must not be retained in logs. Application tokens are never placed in URLs.
+AutoHub removes the Google callback query string from its Uvicorn access log while retaining the callback path and status. Production deployment must also exclude the matching Cloud Run request log because the platform-generated `httpRequest.requestUrl` contains the query independently of Uvicorn. Workbench provisions that narrow exclusion for its managed deployment. Authorization codes must not be retained in logs. Application tokens are never placed in URLs.
 
 ## Local verification (2026-09-22)
 

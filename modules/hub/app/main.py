@@ -7,6 +7,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from app.access_logging import configure_access_logging
 from app.auth import MACHINE_SCOPES, login_caller, login_lockout_listener, require_machine_admin
 from app.auth_settings import get_hub_auth_settings
 from app.features import tasks
@@ -82,6 +83,7 @@ def get_lifespan():
 def create_app():
     """Create the FastAPI app and include the router."""
     load_env()
+    configure_access_logging()
     lifespan = get_lifespan()
     app = FastAPI(
         title="Auto Hub",
