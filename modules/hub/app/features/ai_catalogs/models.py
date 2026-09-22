@@ -91,6 +91,8 @@ class AICatalogSession(Base, UUIDMixin, TimestampMixin):
     external_name: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
     url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     pull_request_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    # Set when retention removes the run, preventing its PR from being adopted again.
+    pipeline_run_retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # The pipeline run that adopted a task session's pull request.
     pipeline_run_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("pipeline_runs.id", ondelete="SET NULL"), nullable=True, index=True

@@ -310,10 +310,14 @@ project on every save:
   back on, so a due time left over from before a pause never fires on its own;
   other edits leave it alone.
 
-While any agent schedule uses a catalog, the hub keeps one
-`jules.sync_sessions` entry named `Agent sync: <catalog key>` for that catalog
-(every 5 minutes) and removes it with the last schedule; a sync entry an
-operator created for the same catalog is left alone. Project edits (name,
+The installation-owned `system.maintain` schedule collects unfinished Jules
+sessions and retries completed task PR adoption. It does not depend on an agent
+schedule remaining enabled or present, and never creates new sessions. The hub
+no longer creates per-catalog `Agent sync: <key>` entries; manually configured
+`jules.sync_sessions` schedules remain supported for compatibility. See
+[system maintenance](development.md#system-maintenance).
+
+Project edits (name,
 repository, enabled) and catalog enable/disable flow into the owned entries,
 and deleting a project removes them. A schedule whose catalog was disabled
 stays editable (its entry simply stays paused); only moving it to another

@@ -87,6 +87,47 @@ Never log credentials or personally identifiable information (PII).
 Even if the pipeline CI fails, if the observation query itself succeeds, the `ScheduleJob` is marked as success.
 CI status and failure rationales are inspected via the observation report.
 
+## System maintenance
+
+The installation owns exactly one **System maintenance** schedule (`system.maintain`).
+Migration `f4d5e6f7a8b9` seeds it; application startup and each dispatcher trigger
+repair a missing or disabled entry without resetting a healthy schedule's due time.
+A fixed ID and a partial unique task index prevent duplicate system schedules.
+The generic schedule API rejects creating, editing, pausing, repurposing, or deleting
+this task (409); the UI labels it **System Managed** and offers no mutation controls.
+
+It advances active connection tests, retries unfinished cleanup, and collects Jules
+catalogs with unfinished sessions or completed task PRs awaiting adoption. It does
+not create Jules sessions. Pending work remains eligible after a project or Agent
+Schedule is disabled/deleted. Connector access is still required; individual
+failures do not stop the other items and unresolved work is retried later.
+Existing per-test leases arbitrate manual and scheduled test advances.
+
+The worker also prunes history hourly: successful jobs after 3 days, failed jobs
+after 7 days, and terminal pipeline runs after 30 days. Pending/retryable jobs and
+active/paused/blocked runs survive. The `maintenance.history` checkpoint is locked
+and committed with deletion; a failed pass retries on the next tick. Batches are
+bounded to 1,000 jobs and 200 runs. See [retention details](operator-notices.md#history-retention).
+Migration `a5e6f7a8b9c0` adds a session marker so removing old runs cannot cause Jules
+PR re-adoption; session reports and PR links remain available.
+
+The internal interval is 60 seconds, subject to the external dispatcher tick (five
+minutes in production). Work uses bounded concurrency of four and the dispatcher's
+overall execution timeout. When both connection tests and Jules catalogs have pending
+work, each gets two workers; a single kind can use all four. The `maintenance.queue`
+checkpoint records the last attempted item of each kind before external work starts.
+Subsequent ticks resume after those cursors, including after cancellation or a restart,
+so slow or failing items cannot keep the same items at the front of the queue.
+Stop individual work through Connections or Agent Schedules; do not disable the
+shared maintenance worker.
+
+Upgrade removes hub-owned `pipeline.connection_test` schedules and catalog entries
+named `Agent sync: <key>`, retaining domain records and job/session history. Historical
+job links to removed configs become null. Operator-created sync entries and recurring
+Agent Schedules remain unchanged. Rollback recreates workers for unfinished probes
+and Jules catalogs with schedules/sessions. Deploy migrations with the matching app
+version; old workers must not continue creating per-test schedules after upgrade.
+
 ## Database & Credentials
 
 The production database is PostgreSQL, and migrations are managed with Alembic.

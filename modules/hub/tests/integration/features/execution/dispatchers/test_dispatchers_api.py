@@ -13,6 +13,7 @@ from unittest.mock import patch
 import pytest
 from app.features.scheduling.schedule_configs.models import ScheduleConfig
 from app.features.scheduling.schedule_configs.repos import ScheduleConfigRepository
+from app.features.scheduling.schedule_configs.system import MAINTENANCE_ID, ensure_maintenance_schedule
 from app.features.scheduling.schedule_jobs.models import ScheduleJob, ScheduleJobStatus
 from app.features.scheduling.schedule_jobs.repos import ScheduleJobRepository
 from app_testing_base import hours_later, utc_now
@@ -22,6 +23,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tests.utils.assertions import assert_json_contains, assert_status_code
 
 BASE_URL = "/api/v1/dispatchers/trigger"
+
+
+@pytest.fixture(autouse=True)
+async def maintenance_not_due(client, session):
+    # These cases count operator schedules. System repair/execution has its own integration suite.
+    await ensure_maintenance_schedule(session)
+    config = await session.get(ScheduleConfig, MAINTENANCE_ID)
+    config.next_run_at = utc_now() + timedelta(hours=1)
+    await session.commit()
 
 
 async def _noop(**kwargs):

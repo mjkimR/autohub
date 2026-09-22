@@ -152,17 +152,9 @@ async def test_confirmed_terminal_session_without_pr_can_finish_cleanup(
     assert not await ConnectionTestRepository().protected_heads(session, "owner/app")
 
 
-async def test_test_schedule_is_owned_and_cannot_be_repurposed_or_deleted(client, project, github):
+async def test_new_probe_needs_no_dedicated_schedule(client, project, github):
     test = await step(client, await start(client, project))
-    path = f"/api/v1/schedule_configs/{test['id']}"
-    for patch in ({"enabled": False}, {"task_func": "hello_world"}, {"payload": {}}):
-        response = await client.patch(path, json=patch)
-        assert response.status_code == 409, response.text
-        assert "connection test" in response.text
-    response = await client.put(path, json={"name": "Replaced", "task_func": "hello_world", "interval_seconds": 60})
-    assert response.status_code == 409, response.text
-    assert (await client.delete(path)).status_code == 409
-    assert (await client.get(path)).json()["enabled"]
+    assert (await client.get(f"/api/v1/schedule_configs/{test['id']}")).status_code == 404
     test = await step(client, test, "cancel")
     assert test["status"] == "canceled" and github.pr["state"] == "closed"
 

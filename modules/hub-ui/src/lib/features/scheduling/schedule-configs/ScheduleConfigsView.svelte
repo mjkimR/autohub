@@ -59,8 +59,7 @@
 	let isDeleting = $state(false);
 	let deletingConfig = $state<ScheduleConfig | null>(null);
 
-	// Schedules the hub derives from a project: its dispatcher, its agent schedules, and the session sync they
-	// need. Dispatchers and owned agent-schedule entries are changed from the project instead.
+	// Project schedules and legacy tasks retained for compatibility.
 	const PROJECT_MANAGED_TASKS = new Set([
 		'pipeline.dispatch_project',
 		'pipeline.connection_test',
@@ -274,12 +273,14 @@
 							<TableCell>
 								<div class="flex items-center gap-2">
 									<span class="font-semibold text-foreground">{config.name}</span>
-									{#if isProjectManaged(config)}
+									{#if config.task_func === 'system.maintain' || isProjectManaged(config)}
 										<Badge
 											variant="outline"
 											class="border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-600 dark:text-blue-400"
 										>
-											Project Managed
+											{config.task_func === 'system.maintain'
+												? 'System Managed'
+												: 'Project Managed'}
 										</Badge>
 									{/if}
 								</div>
@@ -323,7 +324,9 @@
 								{config.next_run_at ? new Date(config.next_run_at).toLocaleString() : '—'}
 							</TableCell>
 							<TableCell class="text-right">
-								{#if config.task_func === 'pipeline.dispatch_project'}
+								{#if config.task_func === 'system.maintain'}
+									<span class="text-xs text-muted-foreground">Managed by Auto Hub</span>
+								{:else if config.task_func === 'pipeline.dispatch_project'}
 									<Button
 										variant="outline"
 										size="sm"

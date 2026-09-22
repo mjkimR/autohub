@@ -48,3 +48,17 @@ def verify_observation_io_scope(monkeypatch):
         monkeypatch.setattr(services, "create_github_client", checked_client)
 
     return install
+
+
+@pytest.fixture
+def isolated_sqlite_dispatch(session, monkeypatch):
+    """SQLite's in-memory StaticPool shares one connection across concurrent transactions.
+
+    Serialize this observation test's jobs; PostgreSQL retains real concurrent dispatch.
+    Maintenance and retention have their own integration coverage.
+    """
+    if session.get_bind().dialect.name == "sqlite":
+        from app.features.execution.dispatchers import services as dispatchers
+
+        settings = dispatchers.get_scheduler_defaults().model_copy(update={"MAX_CONCURRENT_TASKS": 1})
+        monkeypatch.setattr(dispatchers, "get_scheduler_defaults", lambda: settings)

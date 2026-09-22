@@ -283,3 +283,24 @@ test('pages and searches schedules on the server, then recovers the last page af
 		})
 	);
 });
+
+test('system maintenance is labeled separately and has no mutation controls', async () => {
+	api.GET.mockImplementation(async (path: string) =>
+		path === '/api/v1/tasks/specs'
+			? { data: [] }
+			: {
+					data: {
+						total_count: 1,
+						items: [config('system', 'System maintenance', 'system.maintain')]
+					}
+				}
+	);
+	render(ScheduleConfigsView);
+	await screen.findByText('System maintenance');
+	expect(screen.getByText('System Managed')).toBeTruthy();
+	expect(screen.queryByText('Project Managed')).toBeNull();
+	expect(screen.getByText('Managed by Auto Hub')).toBeTruthy();
+	expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
+	expect(screen.queryByTitle('Edit Schedule')).toBeNull();
+	expect(screen.queryByTitle('Delete Schedule')).toBeNull();
+});

@@ -104,6 +104,9 @@
 									class="mt-1 max-h-60 overflow-auto rounded bg-muted p-2 font-sans whitespace-pre-wrap">{item.result_summary}</pre>
 							</details>
 						{/if}
+						{#if item.pipeline_run_retired_at}
+							<p class="text-xs text-muted-foreground">Pipeline run history expired</p>
+						{/if}
 						{#if item.url || item.pull_request_url || item.pipeline_run_id}
 							<div class="mt-2 flex flex-wrap gap-3 text-xs">
 								{#if item.url}

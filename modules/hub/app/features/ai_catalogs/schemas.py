@@ -74,6 +74,7 @@ class AICatalogSessionRead(UUIDSchemaMixin, TimestampSchemaMixin):
     url: str | None
     pull_request_url: str | None
     pipeline_run_id: UUID | None
+    pipeline_run_retired_at: datetime | None = None
     result_summary: str | None
     failure_detail: str | None
     observed_at: datetime | None

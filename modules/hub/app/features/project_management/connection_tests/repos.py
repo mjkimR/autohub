@@ -4,9 +4,8 @@ import builtins
 from datetime import timedelta
 from uuid import UUID, uuid4
 
-from app.features.project_management.connection_tests.models import ACTIVE, TEST_TASK, ConnectionTest
+from app.features.project_management.connection_tests.models import ACTIVE, ConnectionTest
 from app.features.project_management.projects.errors import ProjectError
-from app.features.scheduling.schedule_configs.models import ScheduleConfig
 from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,17 +26,6 @@ class ConnectionTestRepository:
 
     async def create(self, session: AsyncSession, row: ConnectionTest) -> ConnectionTest:
         session.add(row)
-        session.add(
-            ScheduleConfig(
-                id=row.id,
-                name=f"Connection test {row.id}",
-                task_func=TEST_TASK,
-                interval_seconds=60,
-                payload={"test_id": str(row.id)},
-                enabled=True,
-                next_run_at=get_current_utc_time(),
-            )
-        )
         await session.flush()
         await session.refresh(row)
         return row
@@ -69,6 +57,7 @@ class ConnectionTestRepository:
                 ConnectionTest.lease_token == token,
             )
             .values(
+                updated_at=get_current_utc_time(),
                 status=row.status,
                 phase=row.phase,
                 cleanup_status=row.cleanup_status,
@@ -79,8 +68,6 @@ class ConnectionTestRepository:
                 lease_until=None,
             )
         )
-        if result.rowcount == 1 and row.status != ACTIVE and row.cleanup_status == "completed":  # type: ignore[attr-defined]
-            await session.execute(update(ScheduleConfig).where(ScheduleConfig.id == row.id).values(enabled=False))
         return result.rowcount == 1  # type: ignore[attr-defined]
 
     async def cancel(self, session: AsyncSession, test_id: UUID) -> None:

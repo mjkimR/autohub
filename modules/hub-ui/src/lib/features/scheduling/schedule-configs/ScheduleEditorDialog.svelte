@@ -141,7 +141,7 @@
 						required
 					>
 						<option value="" disabled selected>Select a task function to execute...</option>
-						{#each taskSpecs as spec (spec.name)}
+						{#each taskSpecs.filter((spec) => !['system.maintain', 'pipeline.connection_test', 'pipeline.dispatch_project'].includes(spec.name)) as spec (spec.name)}
 							<option value={spec.name}>{spec.name}</option>
 						{/each}
 					</select>

@@ -5,7 +5,6 @@ can keep owned schedules in step without importing the agent-schedule service (w
 """
 
 from collections.abc import Iterable, Sequence
-from datetime import timedelta
 from uuid import UUID
 
 from app.common.utils.calc_schedule import calc_next_run
@@ -13,15 +12,11 @@ from app.features.ai_catalogs.models import AICatalog, AICatalogKind
 from app.features.project_management.agent_schedules.models import ProjectAgentSchedule
 from app.features.project_management.projects.models import Project
 from app.features.scheduling.schedule_configs.models import ScheduleConfig
-from app_layer_base.utils.time_util import get_current_utc_time
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # The scheduler task that starts one session, by catalog kind. Kinds without one cannot have agent schedules.
 SESSION_TASKS: dict[str, str] = {AICatalogKind.JULES: "jules.session"}
-# The task that follows a kind's sessions to the end, kept once per catalog while any agent schedule uses it.
-SYNC_TASKS: dict[str, str] = {AICatalogKind.JULES: "jules.sync_sessions"}
-SYNC_INTERVAL_SECONDS = 300
 
 
 def session_payload(project: Project, schedule: ProjectAgentSchedule, catalog: AICatalog) -> dict:
@@ -40,10 +35,6 @@ def _config_name(project: Project, schedule: ProjectAgentSchedule) -> str:
     return f"Agent {schedule.id.hex[:8]}: {schedule.title} ({project.name})"
 
 
-def _sync_config_name(catalog: AICatalog) -> str:
-    return f"Agent sync: {catalog.key}"
-
-
 class AgentScheduleRepository:
     async def get(self, session: AsyncSession, schedule_id: UUID, *, lock: bool = False) -> ProjectAgentSchedule | None:
         return await session.get(ProjectAgentSchedule, schedule_id, with_for_update=lock)
@@ -59,16 +50,6 @@ class AgentScheduleRepository:
     async def owner_of_config(self, session: AsyncSession, schedule_config_id: UUID) -> ProjectAgentSchedule | None:
         return await session.scalar(
             select(ProjectAgentSchedule).where(ProjectAgentSchedule.schedule_config_id == schedule_config_id)
-        )
-
-    async def count_for_catalog(self, session: AsyncSession, catalog_id: UUID) -> int:
-        return int(
-            await session.scalar(
-                select(func.count())
-                .select_from(ProjectAgentSchedule)
-                .where(ProjectAgentSchedule.ai_catalog_id == catalog_id)
-            )
-            or 0
         )
 
     async def write_config(
@@ -135,49 +116,11 @@ class AgentScheduleRepository:
     async def delete(self, session: AsyncSession, schedule: ProjectAgentSchedule) -> None:
         await self.lock_catalogs(session, [schedule.ai_catalog_id])
         config = await session.get(ScheduleConfig, schedule.schedule_config_id)
-        catalog_id = schedule.ai_catalog_id
         await session.delete(schedule)
         if config is not None:
             await session.delete(config)
         await session.flush()
-        await self.ensure_sync_schedule(session, catalog_id)
 
     async def delete_for_project(self, session: AsyncSession, project_id: UUID) -> None:
         for schedule in await self.list_for_project(session, project_id):
             await self.delete(session, schedule)
-
-    async def ensure_sync_schedule(self, session: AsyncSession, catalog_id: UUID) -> None:
-        """Keep exactly one hub-owned sync schedule per catalog while any agent schedule uses it, none otherwise.
-
-        Only the entry the hub named is managed; an operator's own sync entry for the catalog is left alone.
-        The caller holds the catalog lock (``lock_catalogs``), which serializes writers for one catalog.
-        """
-        catalog = await session.get(AICatalog, catalog_id, with_for_update=True)
-        if catalog is None or (task := SYNC_TASKS.get(catalog.kind)) is None:
-            return
-        existing = (
-            await session.scalars(
-                select(ScheduleConfig).where(
-                    ScheduleConfig.task_func == task,
-                    ScheduleConfig.name == _sync_config_name(catalog),
-                    ScheduleConfig.payload["catalog_key"].as_string() == catalog.key,
-                )
-            )
-        ).all()
-        wanted = await self.count_for_catalog(session, catalog_id) > 0
-        if wanted and not existing:
-            session.add(
-                ScheduleConfig(
-                    name=_sync_config_name(catalog),
-                    description=f"Follows {catalog.name} sessions started by agent schedules to the end",
-                    task_func=task,
-                    interval_seconds=SYNC_INTERVAL_SECONDS,
-                    payload={"catalog_key": catalog.key},
-                    enabled=True,
-                    next_run_at=get_current_utc_time() + timedelta(seconds=SYNC_INTERVAL_SECONDS),
-                )
-            )
-        elif not wanted:
-            for config in existing:
-                await session.delete(config)
-        await session.flush()

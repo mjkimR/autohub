@@ -72,16 +72,26 @@ active pull request and advance runs under the run lease.
 
 ## History retention
 
-The same tick housekeeping deletes history that only grows, at most once an hour:
+The shared **System maintenance** worker deletes expired history at most once an hour.
+A database checkpoint serializes concurrent invocations; failed pruning rolls back both the
+changes and the checkpoint so the next tick can retry.
 
-| Table | Kept |
+| Records | Retention |
 | --- | --- |
-| `schedule_jobs`, succeeded | 7 days. A per-minute dispatch schedule writes about 1,400 rows a day per project, nearly all alike. |
-| `schedule_jobs`, anything else | 30 days, for debugging. Retries happen within minutes, long before this. |
-| `github_webhook_deliveries` | 90 days. The rows are also the deduplication keys; GitHub redelivers within days. |
+| Successful `schedule_jobs` | 3 days after finishing. |
+| Failed `schedule_jobs` | 7 days after finishing, allowing investigation after a weekend. |
+| Terminal `pipeline_runs` (`completed`, `failed`, `canceled`) | 30 days after the last update, including their attempts, deliveries, and replies. |
+| `github_webhook_deliveries` | 90 days; these rows also serve as webhook deduplication keys. |
 
-Pipeline runs, their attempts, and AI catalog sessions are kept: they are the product's record and grow with real
-work, not with the clock. The dispatch ledger has its own 30-day rule (see [AI Catalog Gateway](ai-catalogs.md)).
+Pending jobs and failures with eligible retries are never pruned. Legacy terminal jobs
+without a finish time use their last start time. Active, paused, blocked, or currently
+leased runs are preserved. Each pass removes at most 1,000 jobs and 200 runs; an existing
+backlog therefore drains over successive hours. Expired run detail and resume are no longer available.
+
+AI catalog sessions and their report text and PR URLs are kept. When a linked run expires,
+its session records the expiry and cannot adopt the same PR again. This only removes local
+history; GitHub PRs/branches and remote Jules sessions are not deleted. The dispatch ledger
+retains its independent 30-day rule (see [AI Catalog Gateway](ai-catalogs.md)).
 
 ## Looking into what happened
 

@@ -54,7 +54,6 @@ class AgentScheduleService:
         schedule = ProjectAgentSchedule(id=uuid4(), project_id=project_id, **data.model_dump())
         session.add(schedule)
         await self.repo.write_config(session, project, schedule, catalog)
-        await self.repo.ensure_sync_schedule(session, catalog.id)
         return schedule
 
     async def update(
@@ -69,9 +68,6 @@ class AgentScheduleService:
         for field, value in data.model_dump().items():
             setattr(schedule, field, value)
         await self.repo.write_config(session, project, schedule, catalog)
-        await self.repo.ensure_sync_schedule(session, catalog.id)
-        if previous_catalog_id != catalog.id:
-            await self.repo.ensure_sync_schedule(session, previous_catalog_id)
         return schedule
 
     async def delete(self, session: AsyncSession, project_id: UUID, schedule_id: UUID) -> None:

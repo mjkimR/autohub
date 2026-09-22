@@ -3,6 +3,7 @@ from typing import Annotated
 
 from app.features.execution.dispatchers.services import DispatcherService
 from app.features.scheduling.schedule_configs.schemas import ScheduleConfigRead
+from app.features.scheduling.schedule_configs.system import ensure_maintenance_schedule
 from app.features.scheduling.schedule_jobs.models import ScheduleJobStatus
 from app.features.scheduling.schedule_jobs.schemas import ScheduleJobCreate, ScheduleJobRead
 from app.features.scheduling.schedule_jobs.services import ScheduleJobService
@@ -29,6 +30,7 @@ class DispatchUseCase(BaseUseCase):
 
         # Use a transaction to fetch due schedules with FOR UPDATE SKIP LOCKED, create corresponding ScheduleJobs, and update ScheduleConfigs atomically.
         async with AsyncTransaction() as session:
+            await ensure_maintenance_schedule(session)
             # Process due schedule configs
             due_configs = await self.service.get_schedule_configs(session, now=now)
             jobs_creates = [

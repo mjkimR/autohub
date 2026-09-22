@@ -1383,6 +1383,8 @@ export interface components {
 			pull_request_url: string | null;
 			/** Pipeline Run Id */
 			pipeline_run_id: string | null;
+			/** Pipeline Run Retired At */
+			pipeline_run_retired_at?: string | null;
 			/** Result Summary */
 			result_summary: string | null;
 			/** Failure Detail */

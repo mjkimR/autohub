@@ -206,6 +206,7 @@ class AICatalogRepository:
                 AICatalogSession.work_type == SESSION_WORK_TYPE_TASK,
                 AICatalogSession.pull_request_url.is_not(None),
                 AICatalogSession.pipeline_run_id.is_(None),
+                AICatalogSession.pipeline_run_retired_at.is_(None),
                 AICatalogSession.failure_detail.is_(None),
             )
             .order_by(AICatalogSession.created_at)

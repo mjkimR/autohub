@@ -1,302 +1,74 @@
-> Authentication update: current deployments use app-common `80372f4`, managed
-> machine keys (`X-API-Key`), and a management-only `APP_API_KEY_ROOT_KEY`. Earlier
-> `SCHEDULER_KEY` / `X-Scheduler-Key` entries below describe the prior rollout.
+# 구현·검증 현황
 
-# Delivery Status
+2026-09-22 기준. 주요 기능의 실서비스 카나리는 완료했다. 마지막 확인 배포는
+`autohub-00010-x9c`이며, 이후 추가한 **공용 유지보수·이력 보관 정책은 구현과
+로컬 검증을 마쳤지만 아직 배포하지 않았다.**
 
-Auto Hub is implemented and deployed. This document records the current
-delivery state; the durable `@codex` request contract lives in
-[Codex PR Mention Protocol](codex-pr-mention.md).
+## 완료한 범위
 
-## Delivered
+| 영역 | 구현·검증 결과 | 상세 |
+| --- | --- | --- |
+| PR 자동화 | 등록, Codex 구현, CI 실패 수정, 충돌 해결, 현재 head CI 확인, 자동 머지 및 동시 실행 제한 | [카나리 결과](canary-results-2026-09-22.md) |
+| 승인·복구 | Draft 승인/철회, 이미 등록된 실행의 웹훅 누락 시 polling 복구 | [실행 구조](architecture.md) |
+| AI Catalog·Jules | 기본 catalog 설치, 추가 생성 API, 명시적 catalog 선택, quota/동시 실행 제한, task PR 자동 등록·머지와 report 저장 | [Catalog 가이드](ai-catalogs.md) |
+| 프로젝트 연결 | GitHub 연결 후 dispatcher 자동 생성·복구, 소유 스케줄 직접 수정 차단, Codex/Jules 연결 테스트와 자동 정리 | [연결 테스트](project-detail-and-connection-tests.md) |
+| 인증·배포 | 계정 로그인·토큰 갱신, dispatcher 전용 managed machine key와 scope 격리, 상위 workbench 배포 경로 보정 | [배포 가이드](cloud-run-deployment.md) |
 
-- Workbench scheduler deployment correction (2026-09-22): the parent deploy
-  path still configured retired static-key authentication. It now delegates to
-  Auto Hub's machine-key provisioner, reusing the stored credential and passing
-  the intentional five-minute tick through the new `--schedule` option. The
-  scheduler stage was applied and its credential/cadence verified live without
-  redeploying the image. Both repository changes are needed for future deploys.
+목록 검색·페이지 이동·통계·오류 처리와 UI 구조 정리는
+[기존 코드 정리 기록](code-hygiene-review.md)에 있다. 이 문서는 전체 기능별 변경 이력을
+반복하지 않으며, 실제 외부 연동의 검증 범위는 카나리 결과를 기준으로 한다.
 
-- CI-fix log evidence (2026-09-22): excerpts prioritize errors and surrounding
-  context instead of the job-log tail, retaining assertions/tracebacks even when
-  GitHub cleanup follows. Secret masking, bounded reads, and best-effort log access
-  remain in place. Replaying the failed PR #7 job log preserved its actual error
-  in a 950-character excerpt. Deployed in `autohub-00009-mqv`; live PR #8 preserved the error
-  in its 981-character request excerpt and completed automatic CI repair and merge.
+운영 tick은 의도한 **5분**(`*/5 * * * *`)이다. 프로젝트/유지보수의 60초는 내부
+최소 간격이다. 인증은 `X-API-Key`를 사용하며 `APP_API_KEY_ROOT_KEY`는 machine 관리용이다.
+이전 static scheduler key 방식은 사용하지 않는다. 다음 workbench 배포에도 상위 저장소와
+Auto Hub provisioner의 수정이 모두 필요하다.
 
-- Project dispatch schedule recovery (2026-09-22): adding GitHub after creating
-  a project now creates its dispatcher; saving a connected project also repairs
-  a missing dispatcher. Disconnecting pauses it, reconnecting preserves its
-  history, and cadence changes reschedule the next tick. Generic schedule APIs
-  reject direct dispatcher creation, modification, and deletion; the schedule
-  UI links to project settings. Existing missing entries are repaired on project
-  save, not automatically at deployment. Deployed in `autohub-00009-mqv`;
-  disabled-project API lifecycle and managed-schedule protection passed live. See
-  [CI recovery canary and follow-up](canary-ci-recovery-2026-09-22.md).
+## 배포 대기: 공용 유지보수·이력 정리
 
-- Code hygiene and list correctness (2026-09-21): authenticated dashboard
-  counters aggregate all history; projects and pipeline runs support server
-  search, state filtering for runs, and UI pagination. Failed reads have retry
-  states, and stale token renewals cannot overwrite a newer session. Read-only
-  run queries, request identity, project settings, and dashboard state now have
-  separate modules. Unused frontend form dependencies were removed. See
-  [Code Hygiene Review](code-hygiene-review.md). Not yet deployed.
+설치당 하나의 `System maintenance`가 연결 테스트 진행·정리와 Jules 결과 수집을 맡는다.
+기존 자동 생성 테스트별 스케줄과 catalog별 sync는 제거하며, 프로젝트 dispatcher와
+반복 Agent Schedule은 유지한다. 공용 항목은 일반 API/UI에서 수정·중지·삭제할 수 없고,
+시작 시점과 tick에서 누락/비활성 상태를 복구한다.
 
-- GitHub CI observation, saved project connections, and project onboarding.
-- PR enrollment, durable run/attempt/delivery history, leases, idempotency,
-  mention reconciliation, watchdog retries, CI fixes, merge, and cancellation.
-- HMAC-verified GitHub webhooks with delivery deduplication and polling
-  recovery, plus parallel runs for different PRs in the same project.
-- AI catalog gateway with per-kind quota policies (Codex usage windows, daily
-  task caps), a dispatch ledger, pluggable pipeline execution adapters,
-  project-level catalog selection, and scheduled Jules sessions
-  (`jules.session`, `jules.sync_sessions`) with a session list. See
-  [AI Catalog Gateway](ai-catalogs.md). Committed on 2026-09-15; not yet
-  deployed.
-- Jules session work types (2026-09-16): a `task` session's pull request is
-  adopted into the project's pipeline as an already implemented run
-  (`awaiting_ci` onward, CI fixes through the project's catalog); a `report`
-  session's final message is stored on the session. Pull requests can also be
-  enrolled as already implemented by hand. Verified against a mocked Jules
-  transport only.
-- Catalog designation (2026-09-16): `@auto-run:<catalog key or kind>` and the
-  `catalog` field of manual enrollment pick the catalog for a run; the project
-  selection stays the default and the seeded Codex catalog the fallback. A
-  designated catalog is remembered on the run across resumes. Refused webhook
-  triggers record their reason on the webhook delivery.
-- Project agent schedules (2026-09-16): a project owns its recurring agent
-  sessions; each row derives and owns one scheduler entry, the per-catalog
-  session sync entry is kept automatically, and the generic schedule API
-  refuses to edit owned entries. UI under Projects → Agent Schedules.
-- Session list filters and ledger pruning (2026-09-21): the catalog session list
-  filters by `status` (`open`, `completed`, `failed`) and `schedule_config_id`,
-  with the status filter in the UI; admitting work prunes expired dispatch
-  ledger rows of every catalog, not only the admitting one. Not yet deployed.
-- Operator notices (2026-09-21): notification channels (Telegram) as their own
-  settings object with a test send; stopped runs, a silent or resumed scheduler
-  trigger, and unhandled `@auto-run` triggers are announced; the trigger
-  heartbeat is reported by `/api/health/deep` and the dashboard; webhook
-  deliveries whose processing was lost are replayed by the next tick. See
-  [Operator Notices](operator-notices.md). Verified against a mocked Telegram
-  transport only. Not yet deployed.
-- Draft approval (2026-09-22): work stays in draft; marking the PR ready for review
-  approves merging after required CI passes. The explicit `draft` flag holds merging
-  even when GitHub reports a different `mergeable_state`; missing/skipped draft CI
-  shows an approval wait. Returning to draft revokes approval. Branch Protection
-  Rules are unused in the personal workflow; defensive block handling remains for
-  compatibility, with deletion/deprecation undecided. Verified with mocked GitHub
-  responses; not yet deployed.
-- Merge and GitHub robustness (2026-09-21): the merge stage follows GitHub's
-  `mergeable_state`, so a merge blocked by a review, branch rule, or draft
-  waits and is announced instead of being sent to the agent as a conflict; a
-  GitHub rate limit delays a run and a rejected token makes it wait, neither
-  failing the tick; a catalog hold no longer fails the dispatch job; projects
-  can cap their runs in flight (`max_in_flight_runs`). See
-  [Architecture](architecture.md#github-failures). Verified against mocked
-  GitHub responses only. Not yet deployed.
-- API key lockout and history retention (2026-09-21): five wrong API keys in a
-  minute lock the caller out for five minutes and notify the operator; tick
-  housekeeping prunes succeeded schedule jobs after 7 days, other jobs after
-  30, and webhook deliveries after 90. The API key and its lockout were
-  replaced the same day by accounts and sessions (below); the retention
-  stands. Not yet deployed.
-- Visibility (2026-09-21): a webhook delivery log (API and UI); the run detail
-  shows a cost summary and each attempt's requests and replies; failed jobs
-  keep operator-readable error messages; every run state change is logged;
-  the login screen tells a lockout from a wrong key. See
-  [Operator Notices](operator-notices.md#looking-into-what-happened).
-  Not yet deployed.
-- Cleanup and UI tests (2026-09-21): the API is titled Auto Hub, the never
-  produced `revision` attempt kind is gone, and a worker's attempt report can
-  no longer rewrite a settled attempt or a finished run. Every view has tests
-  (13 files); writing them surfaced and fixed three gaps: the dashboard never
-  counted `blocked` runs, the job history hid failure messages, and the
-  schedule list hid why the backend refused a change. The example tasks and
-  the appointment chain domain stay as demos by decision.
-- Accounts and sessions (2026-09-21): the shared API key is replaced by the
-  account of `app-prebuilt-user` (JWT access and refresh tokens, Argon2id,
-  failed-login lockout with a notice), created and kept in step with the
-  secret bundle at startup; the scheduler uses its own `SCHEDULER_KEY` that
-  opens the dispatcher trigger only. app-common is pinned at `4130dd6`, which
-  also commits password rehashes before issuing tokens, accepts the bootstrap
-  account's missing surname, rejects inactive users' access tokens, and fixes
-  the Swagger login URL. See
-  [Development & Operations](development.md#database--credentials). Not yet
-  deployed.
-- Continuous integration (2026-09-21): `.github/workflows/ci.yml` runs the
-  `justfile` checks on pull requests and `main`: backend lint, types, and
-  tests, the PostgreSQL suite with a migration and `alembic check` pass, and
-  the frontend checks with a stale API client detector. See
-  [Development & Operations](development.md#continuous-integration). Not yet
-  run on GitHub.
-- `just setup-secrets` keeps existing bundle values on a re-run (2026-09-21)
-  instead of regenerating the connector credential key and webhook secret.
-- No issue tracker integration: Hub is the single source of truth for run
-  state. The unused `linear` connector provider was removed on 2026-09-21;
-  migration `b2c3d4e5f6a7` deletes any leftover `linear` connector row, which
-  would otherwise fail validation and break the connector list.
+| 이력 | 보관 기준 |
+| --- | --- |
+| 성공 schedule job | 종료 후 3일 |
+| 실패 schedule job | 종료 후 7일 |
+| 종료된 pipeline run | 마지막 변경 후 30일, 하위 attempt/delivery/reply 포함 |
+| Webhook delivery | 기존 90일 유지 |
 
-## Verification
+시간당 한 번 최대 job 1,000개·run 200개를 정리한다. 대기·재시도 가능한 job,
+활성/일시 중지/차단된 run과 유효한 lease는 보존한다. Jules 보고서·PR 링크는 남기고,
+run 만료가 PR 재등록으로 이어지지 않도록 기록한다. 운영 이력 삭제는 아직 실행하지 않았다.
 
-On 2026-09-14, a live canary on `mjkimR/test-sandbox` against Cloud Run and
-Aiven PostgreSQL enrolled PRs, posted one `@codex` request, received a Codex
-push, observed passing Actions CI, and completed the merge.
+마이그레이션은 `f4d5e6f7a8b9`(공용 스케줄), `a5e6f7a8b9c0`(run 만료 표시)다.
+[운영 절차](development.md#system-maintenance)와
+[보관 정책](operator-notices.md#history-retention)을 참고한다.
 
-Local verification on 2026-09-15 (AI catalog generalization):
+## 최신 자동화 검증
 
-- Backend: 431 tests passing on SQLite and on PostgreSQL (testcontainers).
-- Migrations: the full Alembic chain upgrades, downgrades, and re-upgrades on
-  PostgreSQL 16. `alembic check` reports only two pre-existing column-comment
-  differences (`pipeline_runs.pull_snapshot`, `schedule_configs.next_run_at`).
-- Frontend: 8 component tests, `svelte-check`, production build, and lint
-  passing.
-- Jules was exercised only against a mocked HTTP transport; no live Jules or
-  post-refactor Codex canary has run.
+| 검증 | 결과 |
+| --- | --- |
+| SQLite 백엔드 전체 | 708개 통과, PostgreSQL 전용 3개 제외 |
+| PostgreSQL 관련 범위 | 93개 통과: 유지보수·보관 정책·동시 실행·마이그레이션·관찰/프로젝트 API |
+| AI Catalog·스케줄 UI 자동 테스트 | 24개 통과 |
+| `just lint`, `just check` | 포맷·린트·구조·타입 검사·UI 빌드 통과 |
+| API 클라이언트 | 재생성 완료 |
 
-Local verification on 2026-09-16 (Jules work types): 442 backend tests on
-SQLite, the Alembic chain upgrades, downgrades one step, and re-upgrades on
-PostgreSQL 16 with `alembic check` reporting only the two pre-existing
-column-comment differences, and 8 frontend tests, `svelte-check`, and lint
-passing.
+이 수치는 공용 유지보수와 보관 정책을 추가한 최종 검증이다. PostgreSQL과 UI의 수치는
+선택한 관련 범위이며 전체 테스트 수가 아니다. SQLite 단일 연결의 트랜잭션 간섭을 피하도록
+해당 관찰 테스트만 직렬화했고, PostgreSQL에서는 동시 실행을 검증했다.
 
-Local verification on 2026-09-21 (session filters, ledger pruning, type fixes):
-479 backend tests on SQLite, 14 frontend tests, pyright, `svelte-check`, and
-lint passing. After the operator notices work the same day: 489 backend tests
-on SQLite and on PostgreSQL (testcontainers), 16 frontend tests, pyright, `svelte-check`, and lint passing; the
-Alembic chain upgrades, downgrades one step, and re-upgrades on PostgreSQL 16
-and `alembic check` reports no differences (the two column-comment differences
-noted above are set by migration `061a3a930c1e`). After the merge and GitHub
-robustness work: 510 backend tests on SQLite and on PostgreSQL, 16 frontend
-tests, pyright, `svelte-check`, and lint passing; no schema change. After the
-lockout and retention work: 515 backend tests on SQLite and on PostgreSQL with
-the same checks passing; no schema change. After the visibility work: 519
-backend tests on SQLite and on PostgreSQL and 19 frontend tests with the same
-checks passing; no schema change. After the cleanup: 519 backend tests on SQLite
-and on PostgreSQL, 38 frontend tests, and the same checks passing; migration
-`b2c3d4e5f6a7` verified on PostgreSQL 16 with `alembic check` clean.
+## 남은 확인
 
-Local verification on 2026-09-21 (accounts and sessions, against the pinned
-app-common `7ba8c03`): 519 backend tests on SQLite and on PostgreSQL, 42
-frontend tests, pyright, `svelte-check`, and lint passing; migration
-`c3d4e5f6a7b8` (users) verified on PostgreSQL 16 with `alembic check` clean.
-Signing in, refreshing, and the scheduler header change were exercised against
-test clients and a fake `gcloud` only.
+- **재배포 후:** 기존 자동 생성 스케줄 제거, 공용 유지보수 1개 생성·보호·실행,
+  시간당 이력 정리와 Jules 재등록 방지를 확인한다. 마지막 운영 조회에서는 프로젝트
+  dispatcher 1개와 중지된 연결 테스트 스케줄 2개였으며, 사용자 스케줄이 추가되지 않았다면
+  배포 후 dispatcher와 공용 유지보수 2개가 남아야 한다.
+- **화면:** 최근 연결 테스트·catalog·공용 스케줄의 브라우저 확인은 사용자가 진행한다.
+- **이번 범위 제외:** Telegram, 실제 Jules quota 소진/429, required review/branch protection.
+  연결 테스트의 취소·timeout·응답 유실·인증 장애·수동 정리 복구는 live로 유발하지 않았다.
 
-Dependency follow-up on 2026-09-21: Python dependencies, the lock, and APM guides
-now use published app-common `4130dd6`. Against installed packages without local
-links, 523 SQLite backend tests and 9 PostgreSQL auth tests pass, along with lint,
-pyright, `svelte-check`, and the production UI build. Regenerating the API client
-produces no changes. This verifies the password rehash transaction, nullable
-bootstrap surname, inactive-user rejection, and Swagger login URL fixes; no live
-deployment was performed.
-
-The automated suite covers crash recovery around delivery and head changes,
-marker reconciliation, watchdog tolerance edges, webhook routing and polling
-recovery, lease takeover, catalog admission and ledger counting, Jules session
-creation, rate limiting, and reconciliation, and UI enrollment, pause, and
-catalog policy editing.
-
-Live deployment verification on 2026-09-21 (Cloud Run `us-west1` and Cloud Scheduler):
-
-- Deployment & Scheduler: Cloud Run service `autohub` deployed. Cloud Scheduler
-  job `autohub-dispatcher-tick` ticks `/api/v1/dispatchers/trigger` every minute
-  with the managed machine key (`X-API-Key` with `autohub:dispatch` scope),
-  returning HTTP 200. Calling non-dispatcher endpoints (e.g. `/api/v1/projects`)
-  with the machine key is rejected with HTTP 401. Deep health check
-  (`/api/health/deep`) confirms database and scheduler status ("ok").
-- Authentication & Token Renewal: Frontend session persistence and silent
-  token refresh via `/api/v1/users/login/refresh` upon 10-minute access token
-  expiry was verified in active browser sessions.
-- Live PR Pipeline Canary (`mjkimR/test-sandbox` PR #3, #4, #5, #6):
-  GitHub webhook endpoint updated to the live service URL (`202 Accepted`).
-  Opening PR #3 with `@auto-run` in the body triggered automated webhook
-  enrollment (`queued` -> `dispatching` -> `implementing`), posted the `@codex`
-  attempt comment, and recorded the attempt. The head change was observed
-  (`implementing` -> `awaiting_ci`), GitHub Actions CI (`jobs.test`) passed, and
-  the scheduler tick observed passing CI and automatically executed the merge
-  (`awaiting_ci` -> `completed`, PR state `MERGED` by `mjkimR`).
-  Concurrent enrollment was verified on PR #4 and PR #5: PR #4 was dispatched
-  immediately while PR #5 was held in queue by the `personal-codex` concurrency
-  cap (1 run). PR #4 was automatically merged upon CI pass.
-  On PR #6, after setting an updated `GH_TOKEN` in the Codex environment, Codex
-  unattendedly implemented the task, passed tests, and pushed commit `8aee6d9`
-  directly to the branch. GitHub Actions CI passed, and Auto Hub detected the
-  push and merged PR #6 automatically (`awaiting_ci` -> `completed`, state `MERGED`).
-
-## Follow-up canaries
-
-- [Completed 2026-09-22] CI recovery on `mjkimR/test-sandbox#7` and post-deploy
-  regression on `#8`: failure detection, one Codex repair request, preserved
-  assertions, successful new-head CI, and automatic merge. Revision
-  `autohub-00009-mqv` also passed disabled-project dispatcher lifecycle checks.
-  A mismatched Cloud Scheduler API key caused a 401 after redeployment; the
-  stored valid credential was restored and the next regular tick returned 200.
-  The external tick intentionally remains five minutes; the project's 60-second
-  interval is an internal minimum. See [evidence](canary-ci-recovery-2026-09-22.md).
-- [Completed 2026-09-22] Conflict recovery on `mjkimR/test-sandbox#10`:
-  merge setup PR #9 only after both initial CIs pass, confirm GitHub reports a
-  real conflict, then enroll. One `conflict-fix` request incorporated current main,
-  preserved both changes and assertions, passed new-head CI, and automatically
-  merged on the five-minute tick. Run completed at 10:25:11 KST. See
-  [conflict canary evidence](canary-conflict-recovery-2026-09-22.md).
-
-- [Completed 2026-09-21] First deploy with accounts & scheduler: browser sign-in
-  silent token renewal after access token expiry, Cloud Scheduler 1-minute tick
-  with managed machine key (`X-API-Key`), and route scope isolation (401 on
-  other routes).
-- [Completed 2026-09-21] Codex PR canary on `mjkimR/test-sandbox#6`:
-  unattended webhook enrollment, `@codex` dispatch comment, direct Codex `git push`
-  with configured `GH_TOKEN`, head change detection, CI observation, and
-  automatic merge verified end-to-end.
-- [Completed 2026-09-21] In a sandbox, enroll two PRs at once to validate production
-  scheduler concurrency and catalog admission control (`mjkimR/test-sandbox#4` and `#5`).
-- Add a Telegram channel in production, send a test, and confirm a paused run
-  is announced.
-- [Completed 2026-09-22] Draft approval on `mjkimR/test-sandbox#11`: passing CI
-  while Draft waits for approval; Ready with no current-head CI remains unmerged;
-  returning to Draft holds merging again despite new passing CI. Final Ready and
-  current-head CI success completed automatic merge at 10:40:11 KST, with zero
-  agent requests. State gates used manual observation; final merge needed none.
-  See [Draft canary evidence](canary-draft-approval-2026-09-22.md).
-  Required-review/branch-protection validation remains outside the personal workflow.
-- Run one live Jules session of each work type: confirm the v1alpha field
-  names (`outputs[].pullRequest.url`, `agentMessaged.message`), that a task
-  session's pull request is adopted and merged, the error returned at the
-  daily and concurrent caps, and whether a limit is reported as HTTP 429.
-- [Completed 2026-09-22] Missed-webhook recovery on `mjkimR/test-sandbox#12`:
-  the sandbox Auto Hub webhook was disabled before Ready approval and remained
-  disabled through automatic merge at 10:55:11 KST. The regular five-minute tick
-  completed the enrolled run with no new deliveries, manual advances, or agent
-  requests after Ready. The webhook was restored and verified. This covers
-  progress of an enrolled run, not discovery of an undelivered initial trigger.
-  See [webhook recovery evidence](canary-webhook-recovery-2026-09-22.md).
-- When onboarding a second repository, decide whether repository-specific
-  branching policy is necessary.
-
-## Explicitly deferred
-
-- Automatic planning/WBS generation and dynamic agent selection.
-- Automatic catalog routing (designation is explicit for now), Jules pushes
-  to existing pull request branches, reports kept in git history, a hub ingest
-  endpoint for agents, and richer quota history. Open items are tracked in the
-  [AI Catalog Implementation Notes](ai-catalog-implementation-notes.md#known-limitations-and-remaining-work).
-- A bounded LLM review lane before merge.
-
-## Project detail and repository connection tests (2026-09-22, not yet deployed)
-
-- Default catalog provisioning fix (not yet deployed): migration `e3c4d5e6f7a8`
-  inserts missing `personal-codex` and `personal-jules` accounts on fresh and
-  existing databases, preserving all existing account settings. After deployment, use
-  **Personal Jules → Connector** to assign the registered Jules credentials. See the
-  [catalog setup path](ai-catalogs.md#initial-setup-and-jules-connection).
-- Additional catalogs (not yet deployed): **AI Catalogs → Add catalog** and
-  authenticated `POST /api/v1/ai-catalogs` accept a permanent key, display name,
-  provider, optional Jules connector, and usage limits. Provider-derived adapters,
-  quota validation, and duplicate-key protection prevent invalid creation.
-  Selection remains explicit in projects/schedules; retirement uses Disable.
-- Project detail uses bookmarkable Overview, Runs, Connections, Automation, and Settings tabs. Runs remain available across projects in the existing global view.
-- Connections provides GitHub access checking, Codex/Jules setup guidance, catalog selection, and durable PR tests. Codex tests use a mention on a Draft PR; Jules tests use the catalog API connector, source discovery, and a dedicated session whose generated PR is verified and closed. Both check the unique test change and current-head CI.
-- Test history is separate from development runs. Enrollment and final merge authorization reject test PRs regardless of project auto-merge policy. Cleanup retries preserve the verification outcome; cancellation and timeout delay branch deletion for 24 hours.
-- The dispatcher continues tests without an open page. See [behavior and limitations](project-detail-and-connection-tests.md), including required migrations `c1a2b3d4e5f6` and `d2b3c4d5e6f7`. Catalog quota/concurrency applies to tests; ambiguous Jules creation is reconciled without another create call. Jules PR ancestry is checked before enrollment and merge, including before scheduler output discovery.
-
-- Review follow-up: test requirements and evidence now come from a registered provider recipe; configuration fingerprints detect credential/connector changes without invalidation on quota updates. Shared Jules Source resolution is used by production and probes. GitHub cleanup survives loss of Jules access, capacity is released independently of cleanup, Codex quota replies update catalog state, and completed history no longer adds ancestry requests to ordinary PRs.
+자동 계획/WBS, 동적 catalog 선택, 병합 전 LLM 리뷰는 보류한다. 추가 저장소의 branching
+정책은 온보딩 때 결정한다. 나머지 확장·provider 불확실성은
+[Catalog 미해결 항목](ai-catalog-implementation-notes.md#known-limitations-and-remaining-work)에 모은다.

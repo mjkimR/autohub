@@ -202,6 +202,7 @@ class TestPipelineObservationAPI:
         assert_status_code(response, 422)
         assert not github_scenario.requests
 
+    @pytest.mark.usefixtures("isolated_sqlite_dispatch")
     async def test_schedule_dispatch_persists_report_and_distinguishes_ci_failure(
         self, client, observation_payload, github_scenario, session, monkeypatch
     ):
@@ -229,12 +230,14 @@ class TestPipelineObservationAPI:
         github_scenario.runs[0]["conclusion"] = "failure"
         response = await client.post("/api/v1/dispatchers/trigger")
         assert_status_code(response, 200)
-        assert response.json()["dispatched"] == 1
+        assert response.json()["dispatched"] == 2  # Observation plus installation maintenance.
         response = await client.get(f"/api/v1/pipelines/observations/{schedule_id}")
         assert_status_code(response, 200)
         assert response.json()["pulls"][0]["result"]["status"] == "failed"
         assert response.json()["config"]["repository"] == "owner/app"
-        job = (await session.execute(select(ScheduleJob))).scalar_one()
+        job = (
+            await session.execute(select(ScheduleJob).where(ScheduleJob.schedule_config_id == UUID(str(schedule_id))))
+        ).scalar_one()
         assert job.status == "success"
 
         # A failed observation leaves the last report intact and fails the scheduler job.
@@ -263,7 +266,11 @@ class TestPipelineObservationAPI:
         assert_status_code(response, 200)
         assert response.json() == previous_report
         session.expire_all()
-        jobs = (await session.execute(select(ScheduleJob))).scalars().all()
+        jobs = (
+            (await session.execute(select(ScheduleJob).where(ScheduleJob.schedule_config_id == UUID(str(schedule_id)))))
+            .scalars()
+            .all()
+        )
         assert sorted(job.status for job in jobs) == ["failure", "success"]
 
         # A changed configuration must not show the old configuration's report.
@@ -342,6 +349,8 @@ async def test_schedule_changed_during_observation_does_not_save_report(
     monkeypatch.setattr(PipelineObservationService, "observe", observe_then_edit)
     assert_status_code(await client.post("/api/v1/dispatchers/trigger"), 200)
     session.expire_all()
-    job = (await session.execute(select(ScheduleJob))).scalar_one()
+    job = (
+        await session.execute(select(ScheduleJob).where(ScheduleJob.schedule_config_id == UUID(str(schedule_id))))
+    ).scalar_one()
     assert job.status == "failure"
     assert await PipelineObservationRepository().load(session, schedule_id) is None

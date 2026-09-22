@@ -84,9 +84,9 @@ Jules 인증이 끊겨도 이미 확인한 PR은 GitHub에서 닫고, 대상 브
 세션 생성은 재시도하지 않고 원래 테스트 결과도 바꾸지 않는다. 확인된 테스트 PR은
 검토로 보호를 해제할 수 없으며, 새로운 미확인 PR이나 변경된 head는 다시 검토해야 한다.
 
-별도 60초 간격 스케줄이 화면을 닫아도 작업과 정리를 이어간다. 배포 환경의
+설치당 하나인 `System maintenance` 스케줄이 화면을 닫아도 미완료 테스트와 정리를 이어간다. 테스트별 스케줄은 생성하지 않는다. 내부 최소 간격은 60초이며 배포 환경의 외부 5분 tick은 유지한다. 배포 환경의
 dispatcher trigger가 실행되어야 하며 **Check / continue now**로 수동 진행도 가능하다.
-이 스케줄은 일반 스케줄 관리 화면/API에서 생성·변경·삭제할 수 없으며, 중단은
+이 공용 스케줄은 `System Managed`로 표시하고 일반 화면/API에서 생성·변경·삭제·일시정지할 수 없으며, 개별 테스트 중단은
 Connections의 **Cancel test**를 사용한다. 프로젝트나 catalog에서 커넥터를 교체해도
 진행 중 테스트나 미완료 정리가 참조하는 이전 커넥터는 삭제할 수 없다. 정리가 완료되면
 다른 참조가 없는 커넥터를 삭제할 수 있다.
@@ -109,8 +109,8 @@ Cloud 설정 자체의 변경은 Hub가 감지할 수 없다. 테스트 이력�
 
 ## 적용
 
-DB migration `c1a2b3d4e5f6`과 `d2b3c4d5e6f7`을 적용해야 한다 (`just db-upgrade`). 기존 데이터나 프로젝트의 기본 자동
-머지 설정은 바꾸지 않는다. 테스트용 GitHub 커넥터에는 PR 작성·닫기와 전용 브랜치
+DB migration `c1a2b3d4e5f6`, `d2b3c4d5e6f7`, `f4d5e6f7a8b9`를 적용해야 한다 (`just db-upgrade`). 기존 데이터나 프로젝트의 기본 자동
+머지 설정은 바꾸지 않는다. 마지막 마이그레이션은 기존 테스트별 스케줄과 자동 생성한 Jules sync를 공용 스케줄로 전환하며 테스트·세션·작업 이력은 보존한다. 테스트용 GitHub 커넥터에는 PR 작성·닫기와 전용 브랜치
 생성·삭제를 위한 Contents 및 Pull requests 읽기/쓰기 권한이 필요하다.
 
 Jules API 계약은 공식 [Sessions](https://jules.google/docs/api/reference/sessions)와

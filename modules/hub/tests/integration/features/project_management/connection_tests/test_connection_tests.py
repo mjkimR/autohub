@@ -278,7 +278,7 @@ async def test_cancel_or_deadline_closes_pr_and_delays_branch_cleanup(client, pr
     await session.commit()
     test = await step(client, test)
     assert test["cleanup_status"] == "completed" and github.branch is None
-    assert await session.scalar(select(ScheduleConfig.enabled).where(ScheduleConfig.id == UUID(test["id"]))) is False
+    assert await session.get(ScheduleConfig, UUID(test["id"])) is None
 
 
 async def test_worker_lease_prevents_duplicate_steps_and_preserves_concurrent_cancel(client, project, github, session):

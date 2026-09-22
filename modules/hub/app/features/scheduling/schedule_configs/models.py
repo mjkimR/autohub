@@ -2,13 +2,22 @@ from datetime import datetime
 
 from app.common.database import JSON_VARIANT
 from app_layer_base.base.models.mixin import Base, TimestampMixin, UUIDMixin
-from sqlalchemy import DateTime, Index
+from sqlalchemy import DateTime, Index, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
 class ScheduleConfig(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "schedule_configs"
-    __table_args__ = (Index("ix_schedule_configs_enabled_next_run_at", "enabled", "next_run_at"),)
+    __table_args__ = (
+        Index("ix_schedule_configs_enabled_next_run_at", "enabled", "next_run_at"),
+        Index(
+            "uq_schedule_configs_system_maintenance",
+            "task_func",
+            unique=True,
+            postgresql_where=text("task_func = 'system.maintain'"),
+            sqlite_where=text("task_func = 'system.maintain'"),
+        ),
+    )
     name: Mapped[str] = mapped_column(index=True, comment="Human-readable name of the schedule")
     description: Mapped[str | None] = mapped_column(
         nullable=True, comment="Optional description of what this schedule does"

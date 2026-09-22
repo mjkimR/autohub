@@ -10,6 +10,7 @@ from pathlib import Path
 from app.auth import MACHINE_SCOPES, login_caller, login_lockout_listener, require_machine_admin
 from app.features import tasks
 from app.features.project_management.projects.errors import ProjectError
+from app.features.scheduling.schedule_configs.system import ensure_maintenance_schedule
 from app.router import router
 from app_layer_base.base.exceptions.handler import set_exception_handler
 from app_layer_base.core import middlewares
@@ -63,6 +64,8 @@ def get_lifespan():
         tasks.autodiscover()
         get_api_key_settings()
         await ensure_first_user()
+        async with AsyncTransaction() as session:
+            await ensure_maintenance_schedule(session)
         yield
         logger.info("End of app lifespan")
 

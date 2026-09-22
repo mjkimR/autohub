@@ -301,6 +301,7 @@ class TestConnectionCheck:
 
 
 class TestScheduledProjectObservation:
+    @pytest.mark.usefixtures("isolated_sqlite_dispatch")
     async def test_schedule_resolves_the_saved_connection_at_run_time(self, client, project, github_scenario, session):
         response = await client.post(
             "/api/v1/schedule_configs",
@@ -320,7 +321,9 @@ class TestScheduledProjectObservation:
         assert_status_code(response, 200)
         assert response.json()["config"]["repository"] == "owner/app"
         assert response.json()["pulls"][0]["result"]["status"] == "passed"
-        assert (await session.execute(select(ScheduleJob))).scalar_one().status == "success"
+        assert (
+            await session.execute(select(ScheduleJob).where(ScheduleJob.schedule_config_id == UUID(str(schedule_id))))
+        ).scalar_one().status == "success"
 
         # Editing the connection invalidates the stored report instead of serving a stale contract.
         response = await client.put(
@@ -361,7 +364,9 @@ class TestScheduledProjectObservation:
 
         assert_status_code(await client.post("/api/v1/dispatchers/trigger"), 200)
         assert_status_code(await client.get(f"/api/v1/pipelines/observations/{schedule_id}"), 404)
-        assert (await session.execute(select(ScheduleJob))).scalar_one().status == "failure"
+        assert (
+            await session.execute(select(ScheduleJob).where(ScheduleJob.schedule_config_id == UUID(str(schedule_id))))
+        ).scalar_one().status == "failure"
         assert not github_scenario.requests
 
     async def test_project_observation_is_published_in_task_specs(self, client, github_scenario):
@@ -591,6 +596,8 @@ async def test_project_changed_during_observation_does_not_save_report(
     monkeypatch.setattr(PipelineObservationService, "observe", observe_then_edit)
     assert_status_code(await client.post("/api/v1/dispatchers/trigger"), 200)
     session.expire_all()
-    job = (await session.execute(select(ScheduleJob))).scalar_one()
+    job = (
+        await session.execute(select(ScheduleJob).where(ScheduleJob.schedule_config_id == UUID(str(schedule_id))))
+    ).scalar_one()
     assert job.status == "failure"
     assert await PipelineObservationRepository().load(session, UUID(schedule_id)) is None

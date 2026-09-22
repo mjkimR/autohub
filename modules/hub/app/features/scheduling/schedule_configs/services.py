@@ -128,7 +128,10 @@ class ManagedScheduleHook(
         from app.features.project_management.connection_tests.models import TEST_TASK
         from app.features.project_management.projects.errors import ProjectError
         from app.features.project_management.projects.repos import PROJECT_DISPATCH_TASK
+        from app.features.scheduling.schedule_configs.system import MAINTENANCE_TASK
 
+        if task_func == MAINTENANCE_TASK:
+            raise ProjectError(409, "System maintenance is managed by Auto Hub and cannot be changed")
         if task_func == PROJECT_DISPATCH_TASK:
             raise ProjectError(409, "This dispatch schedule is managed by a project; edit the project settings instead")
         if task_func == TEST_TASK:

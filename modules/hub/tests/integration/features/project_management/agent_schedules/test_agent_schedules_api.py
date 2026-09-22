@@ -82,7 +82,7 @@ async def configs_by_task(session, task_func: str) -> list[ScheduleConfig]:
     return list((await session.scalars(select(ScheduleConfig).where(ScheduleConfig.task_func == task_func))).all())
 
 
-async def test_creating_a_schedule_derives_its_scheduler_entry_and_the_catalog_sync(client, session, project, jules):
+async def test_creating_a_schedule_derives_only_its_session_entry(client, session, project, jules):
     response = await client.post(f"/api/v1/projects/{project['id']}/agent-schedules", json=payload(jules))
 
     assert_status_code(response, 201)
@@ -102,12 +102,7 @@ async def test_creating_a_schedule_derives_its_scheduler_entry_and_the_catalog_s
     }
     assert (config.cron_expression, config.enabled) == ("0 9 * * 1", True)
     assert "Application" in config.name
-    [sync] = await configs_by_task(session, "jules.sync_sessions")
-    assert (sync.name, sync.payload, sync.interval_seconds) == (
-        "Agent sync: personal-jules",
-        {"catalog_key": "personal-jules"},
-        300,
-    )
+    assert await configs_by_task(session, "jules.sync_sessions") == []
 
     listing = await client.get(f"/api/v1/projects/{project['id']}/agent-schedules")
     assert_status_code(listing, 200)
@@ -145,7 +140,7 @@ async def test_deleting_the_last_schedule_removes_its_entry_and_the_catalog_sync
 
     assert_status_code(await client.delete(f"{root}/{first['id']}"), 204)
     assert len(await configs_by_task(session, "jules.session")) == 1
-    assert len(await configs_by_task(session, "jules.sync_sessions")) == 1
+    assert await configs_by_task(session, "jules.sync_sessions") == []
 
     assert_status_code(await client.delete(f"{root}/{second['id']}"), 204)
     assert await configs_by_task(session, "jules.session") == []
@@ -281,7 +276,7 @@ async def test_an_operator_sync_entry_for_the_catalog_is_left_alone(client, sess
 
     created = (await client.post(root, json=payload(jules))).json()
     names = sorted(config.name for config in await configs_by_task(session, "jules.sync_sessions"))
-    assert names == ["Agent sync: personal-jules", "My own jules sync"]
+    assert names == ["My own jules sync"]
 
     assert_status_code(await client.delete(f"{root}/{created['id']}"), 204)
     names = [config.name for config in await configs_by_task(session, "jules.sync_sessions")]
@@ -372,6 +367,5 @@ async def test_api_created_jules_catalog_can_own_an_agent_schedule(client, sessi
     assert_status_code(schedule, 201)
     [config] = await configs_by_task(session, "jules.session")
     assert config.payload["catalog_key"] == "extra-jules"
-    [sync] = await configs_by_task(session, "jules.sync_sessions")
-    assert sync.payload == {"catalog_key": "extra-jules"}
+    assert await configs_by_task(session, "jules.sync_sessions") == []
     assert (await client.get("/api/v1/ai-catalogs/extra-jules/sessions")).json()["items"] == []

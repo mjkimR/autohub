@@ -58,8 +58,9 @@ Jules session ──────────► │ 4. Record ledger on pass (ai
 | `hub-ui/…/ai-catalogs/catalog-kinds.ts` | Per-kind UI registry: policy dialog component, button label, card summary |
 | `execution/tasks/domains/jules/client.py` | Jules REST v1alpha client |
 | `execution/tasks/domains/jules/service.py` | Jules session initiation and synchronization |
+| `execution/tasks/domains/maintenance/` | Installation-wide pending connection-test progression/cleanup and Jules session collection |
 | `execution/tasks/domains/jules/task.py` | Scheduled tasks `jules.session`, `jules.sync_sessions` |
-| `project_management/agent_schedules/` | Project-owned agent schedules: `ProjectAgentSchedule` rows that derive and own one `ScheduleConfig` each, the per-catalog sync entry, and their API |
+| `project_management/agent_schedules/` | Project-owned agent schedules: `ProjectAgentSchedule` rows that derive and own one `ScheduleConfig` each and their API |
 
 ## Core Concepts
 
@@ -166,11 +167,10 @@ create/update → project must have github_repository
                payload = session_payload(project, row, catalog),
                enabled = row.enabled and project.enabled and catalog.enabled and project has a repository,
                next_run_at recomputed when the trigger changed or the entry turned on)
-             → ensure_sync_schedule(catalog): one hub-named "<kind>.sync_sessions" entry ("Agent sync: <key>")
-               per catalog while any row uses it; operator entries for the catalog are not touched
+             → no per-catalog polling schedule; system.maintain discovers pending sessions
 lock order   → project FOR UPDATE, then catalogs FOR UPDATE in id order (lock_catalogs), then config rows;
                AICatalogService.set_enabled locks its catalog first too, so the two writers never deadlock
-delete       → row and owned config removed, sync entry removed with the last row
+delete       → row and owned config removed; sessions remain discoverable by system.maintain
 run_now      → owned config.next_run_at = NULL (the dispatcher's "run immediately" sentinel)
 ```
 
@@ -337,8 +337,8 @@ Connector providers are `github` and `jules`. For `jules`, the API key is stored
 - [ ] **Definition of one Jules "task".** Unclear whether `sendMessage` or repeated PR comments count toward the daily limit.
 - [ ] **Jules behavior at concurrency limit.** Unclear whether requests queue (`QUEUED`) or reject immediately.
 - [ ] **Completion without output.** Cases of `COMPLETED` status without `outputs` have been observed; currently treated as normal completion (a task session then records "completed without opening a pull request").
-- [ ] **`outputs[].pullRequest.url` and `agentMessaged.message` shapes.** Adoption and report storage read these v1alpha fields; neither has been confirmed against a live `AUTO_CREATE_PR` session. Run one before relying on adoption.
-- [ ] **Live invocation verification.** Execute live runs of the real Jules API and post-refactor Codex pipeline end-to-end.
+- [x] **Live PR output and report collection.** The 2026-09-22 canary verified `outputs[].pullRequest.url` adoption and report storage. The exact raw agent-message key was not recorded; the task session had no optional summary. See [canary scope](canary-results-2026-09-22.md#재현-요점과-판정-범위).
+- [x] **Live invocation verification.** Jules task/report and the post-refactor Codex pipeline completed end-to-end; see [canary results](canary-results-2026-09-22.md).
 
 ### Code
 
