@@ -6,6 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import {
 		Server,
+		Menu,
 		LayoutDashboard,
 		FolderKanban,
 		CalendarClock,
@@ -22,6 +23,9 @@
 	import { onMount } from 'svelte';
 
 	let { children } = $props();
+
+	let menuChoice = $state({ url: '', open: false });
+	const menuOpen = $derived(menuChoice.url === page.url.href && menuChoice.open);
 
 	let isOnline = $state(false);
 	let isAdmin = $state(false);
@@ -111,10 +115,26 @@
 	}
 </script>
 
-<div class="flex min-h-screen bg-background text-foreground">
+<div class="flex min-h-screen min-w-0 flex-col bg-background text-foreground lg:flex-row">
+	<header class="flex items-center gap-3 border-b border-border p-3 lg:hidden">
+		<Button
+			variant="outline"
+			class="min-h-11"
+			aria-controls="primary-navigation"
+			aria-expanded={menuOpen}
+			onclick={() => (menuChoice = { url: page.url.href, open: !menuOpen })}
+			><Menu class="size-4" /> Menu</Button
+		>
+		<span class="min-w-0 flex-1 truncate text-sm font-semibold">{currentPageLabel()}</span>
+		<ThemeToggle />
+	</header>
 	<!-- Left Sidebar -->
 	<aside
-		class="sticky top-0 flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar px-4 py-6 text-sidebar-foreground"
+		id="primary-navigation"
+		class={[
+			'w-full shrink-0 flex-col border-b border-sidebar-border bg-sidebar px-4 py-6 text-sidebar-foreground lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:border-r lg:border-b-0',
+			menuOpen ? 'flex' : 'hidden'
+		]}
 	>
 		<!-- Brand / Logo -->
 		<div class="flex items-center gap-3 px-2 pb-6">
@@ -217,10 +237,10 @@
 	</aside>
 
 	<!-- Main Content Area -->
-	<main class="flex-1 overflow-y-auto">
+	<main class="min-w-0 flex-1">
 		<!-- Top Bar -->
 		<header
-			class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border/80 bg-background/80 px-8 backdrop-blur-md"
+			class="sticky top-0 z-20 hidden h-16 items-center justify-between border-b border-border/80 bg-background/80 px-8 backdrop-blur-md lg:flex"
 		>
 			<div class="flex items-center gap-2">
 				<span class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
@@ -243,7 +263,7 @@
 		</header>
 
 		<!-- Page Content Container -->
-		<div class="mx-auto max-w-7xl p-8">
+		<div class="mx-auto max-w-7xl min-w-0 p-3 [overflow-wrap:anywhere] sm:p-6 lg:p-8">
 			{@render children()}
 		</div>
 	</main>

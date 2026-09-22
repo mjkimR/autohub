@@ -331,3 +331,60 @@ test('duplicate key refusal keeps the creation form editable for correction', as
 		(screen.getByRole('button', { name: 'Create catalog' }) as HTMLButtonElement).disabled
 	).toBe(false);
 });
+
+test('names the refresh target and saves the local time as an instant', async () => {
+	const user = userEvent.setup();
+	render(AICatalogsView);
+	await screen.findByText('Personal Codex');
+	await user.click(screen.getAllByRole('button', { name: 'Set refresh time' })[0]);
+	const dialog = screen.getByRole('dialog');
+	expect(dialog.textContent).toContain('Personal Codex');
+	expect(dialog.textContent).toContain('personal-codex');
+	expect(dialog.textContent).toContain(Intl.DateTimeFormat().resolvedOptions().timeZone);
+	await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+	const { fireEvent } = await import('@testing-library/svelte');
+	await fireEvent.input(screen.getByLabelText('Refresh time'), {
+		target: { value: '2099-10-22T09:30' }
+	});
+	await user.type(
+		screen.getByLabelText('Operator note (optional)'),
+		'Quota resets after breakfast'
+	);
+	expect(dialog.textContent).toContain('Will resume:');
+	await user.click(screen.getByRole('button', { name: 'Save global hold' }));
+	await waitFor(() =>
+		expect(api.PUT).toHaveBeenCalledWith('/api/v1/ai-catalogs/{catalog_key}/availability', {
+			params: { path: { catalog_key: 'personal-codex' } },
+			body: {
+				available_at: new Date('2099-10-22T09:30').toISOString(),
+				note: 'Quota resets after breakfast',
+				source: 'manual'
+			}
+		})
+	);
+	await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+});
+
+test('a refused refresh update keeps the entered time and note for retry', async () => {
+	const user = userEvent.setup();
+	api.PUT.mockResolvedValue({ error: { detail: 'Catalog is unavailable' } });
+	render(AICatalogsView);
+	await screen.findByText('Personal Codex');
+	await user.click(screen.getAllByRole('button', { name: 'Set refresh time' })[0]);
+	await waitFor(() =>
+		expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
+	);
+	const { fireEvent } = await import('@testing-library/svelte');
+	await fireEvent.input(screen.getByLabelText('Refresh time'), {
+		target: { value: '2099-10-22T09:30' }
+	});
+	await user.type(screen.getByLabelText('Operator note (optional)'), 'Keep this note');
+	await user.click(screen.getByRole('button', { name: 'Save global hold' }));
+	await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Catalog is unavailable'));
+	expect((screen.getByLabelText('Refresh time') as HTMLInputElement).value).toBe(
+		'2099-10-22T09:30'
+	);
+	expect((screen.getByLabelText('Operator note (optional)') as HTMLInputElement).value).toBe(
+		'Keep this note'
+	);
+});

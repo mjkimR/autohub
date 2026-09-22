@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import AttemptTimeline from './AttemptTimeline.svelte';
 	import { api, type components } from '$lib/api';
-	import { toast } from 'svelte-sonner';
+	import LoadError from '$lib/components/shared/LoadError.svelte';
+	import { responseData } from '$lib/api/pagination';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import {
@@ -20,6 +21,7 @@
 	type RunSummary = components['schemas']['PipelineRunSummary'];
 	let { run: selectedRun, onclose }: { run: PipelineRun; onclose: () => void } = $props();
 	let loadingAttempts = $state(false);
+	let loadError = $state('');
 	let attempts = $state<ExecutionAttempt[]>([]);
 	let runSummary = $state<RunSummary | null>(null);
 	// Attempts whose requests and replies are shown; loaded when first opened.
@@ -44,16 +46,16 @@
 		runSummary = null;
 		openTimelines = {};
 		loadingAttempts = true;
+		loadError = '';
 		try {
 			const res = await api.GET('/api/v1/pipeline-runs/{run_id}/attempts', {
 				params: { path: { run_id: selectedRun.id } }
 			});
-			if (res.data?.items) {
-				attempts = res.data.items;
-				runSummary = res.data.summary;
-			}
-		} catch {
-			toast.error('Failed to load execution attempts');
+			const data = responseData(res, 'Failed to load execution attempts');
+			attempts = data.items;
+			runSummary = data.summary;
+		} catch (error) {
+			loadError = error instanceof Error ? error.message : 'Failed to load execution attempts';
 		} finally {
 			loadingAttempts = false;
 		}
@@ -71,9 +73,11 @@
 		if (!open) onclose();
 	}}
 >
-	<DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-[650px]">
+	<DialogContent
+		class="max-h-[calc(100dvh-2rem)] overflow-y-auto [overflow-wrap:anywhere] sm:max-w-[650px]"
+	>
 		<DialogHeader>
-			<DialogTitle class="flex items-center gap-2">
+			<DialogTitle class="flex flex-wrap items-center gap-2">
 				<History class="size-5 text-primary" />
 				Execution Attempts
 			</DialogTitle>
@@ -85,14 +89,16 @@
 		<div class="space-y-4 py-2">
 			{#if selectedRun}
 				<div class="rounded-lg border border-border/80 bg-muted/20 p-3 text-xs">
-					<div class="flex items-center justify-between font-semibold text-foreground">
-						<span class="flex items-center gap-1.5 font-mono text-primary">
+					<div
+						class="flex flex-wrap items-center justify-between gap-2 font-semibold text-foreground"
+					>
+						<span class="flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-primary">
 							<GitBranch class="size-3.5" />
 							PR #{selectedRun.pull_number}: {selectedRun.pull_snapshot?.title || 'No title'}
 						</span>
 						<Badge variant="outline" class="font-mono">{selectedRun.state}</Badge>
 					</div>
-					<div class="mt-2 grid grid-cols-2 gap-2 text-muted-foreground">
+					<div class="mt-2 grid grid-cols-1 gap-2 text-muted-foreground sm:grid-cols-2">
 						<div>
 							Run ID: <span class="font-mono text-foreground">{selectedRun.id.slice(0, 8)}...</span>
 						</div>
@@ -103,11 +109,20 @@
 				</div>
 			{/if}
 
+			{#if selectedRun.pause_reason}
+				<p
+					class="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+				>
+					{selectedRun.pause_reason}
+				</p>
+			{/if}
 			{#if loadingAttempts}
 				<div class="flex h-32 items-center justify-center text-muted-foreground">
 					<RefreshCw class="size-5 animate-spin" />
 					<span class="ml-2 text-sm">Loading attempts...</span>
 				</div>
+			{:else if loadError}
+				<LoadError message={loadError} retry={loadAttempts} />
 			{:else if attempts.length === 0}
 				<div
 					class="flex flex-col items-center justify-center gap-2 rounded-lg border border-border/70 p-6 text-center text-muted-foreground"
@@ -121,7 +136,7 @@
 			{:else}
 				{#if runSummary}
 					<div
-						class="grid grid-cols-3 gap-2 rounded-lg border border-border/70 bg-muted/40 p-3 text-xs"
+						class="grid grid-cols-1 gap-2 rounded-lg border border-border/70 bg-muted/40 p-3 text-xs sm:grid-cols-3"
 					>
 						<div>
 							<p class="font-semibold text-muted-foreground uppercase">Agent requests</p>
@@ -138,7 +153,7 @@
 							<p class="text-sm font-medium">{formatElapsed(runSummary.elapsed_seconds)}</p>
 						</div>
 						{#if runSummary.quota_limit_replies > 0}
-							<p class="col-span-3 text-amber-600 dark:text-amber-400">
+							<p class="text-amber-600 sm:col-span-3 dark:text-amber-400">
 								The agent reported its usage limit {runSummary.quota_limit_replies} time(s).
 							</p>
 						{/if}
@@ -147,8 +162,8 @@
 				<div class="space-y-3">
 					{#each attempts as attempt (attempt.id)}
 						<div class="space-y-2.5 rounded-lg border border-border/80 bg-card p-3.5 shadow-xs">
-							<div class="flex items-center justify-between">
-								<div class="flex items-center gap-2">
+							<div class="flex flex-wrap items-center justify-between gap-2">
+								<div class="flex flex-wrap items-center gap-2">
 									<Badge variant="secondary" class="font-mono text-xs">
 										Attempt #{attempt.attempt_number}
 									</Badge>
@@ -162,19 +177,19 @@
 							</div>
 
 							<div class="space-y-1 text-xs">
-								<div class="flex items-center gap-1.5 text-muted-foreground">
+								<div class="flex min-w-0 flex-wrap items-center gap-1.5 text-muted-foreground">
 									<Key class="size-3 shrink-0" />
 									<span>Idempotency Key:</span>
 									<span class="font-mono text-foreground">{attempt.idempotency_key}</span>
 								</div>
-								<div class="flex items-center gap-1.5 text-muted-foreground">
+								<div class="flex min-w-0 flex-wrap items-center gap-1.5 text-muted-foreground">
 									<span>Digest:</span>
 									<span class="font-mono text-[11px] text-foreground"
 										>{attempt.request_digest.slice(0, 16)}...</span
 									>
 								</div>
 								{#if attempt.conversation_url}
-									<div class="flex items-center gap-1.5 pt-1 text-primary">
+									<div class="flex min-w-0 flex-wrap items-center gap-1.5 pt-1 text-primary">
 										<ExternalLink class="size-3 shrink-0" />
 										<a
 											href={attempt.conversation_url}
@@ -191,7 +206,7 @@
 										class="mt-2 rounded-md border border-rose-500/30 bg-rose-500/10 p-2 text-rose-600 dark:text-rose-400"
 									>
 										<div class="font-semibold">{attempt.failure_code || 'Execution Error'}</div>
-										<div class="text-[11px]">{attempt.failure_detail}</div>
+										<div class="text-sm whitespace-pre-wrap">{attempt.failure_detail}</div>
 									</div>
 								{/if}
 							</div>
@@ -199,7 +214,8 @@
 							<div>
 								<button
 									type="button"
-									class="text-[11px] text-primary hover:underline"
+									aria-expanded={!!openTimelines[attempt.id]}
+									class="min-h-11 text-sm text-primary hover:underline"
 									onclick={() => (openTimelines[attempt.id] = !openTimelines[attempt.id])}
 								>
 									{openTimelines[attempt.id] ? 'Hide' : 'Show'} requests and replies
@@ -212,7 +228,7 @@
 							</div>
 
 							<div
-								class="flex items-center justify-between border-t border-border/50 pt-2 text-[10px] text-muted-foreground"
+								class="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-2 text-[10px] text-muted-foreground"
 							>
 								<span>Created: {new Date(attempt.created_at).toLocaleString()}</span>
 								{#if attempt.finished_at}
@@ -225,7 +241,7 @@
 			{/if}
 		</div>
 
-		<DialogFooter>
+		<DialogFooter class="[&_button]:min-h-11">
 			<Button type="button" variant="outline" onclick={onclose}>Close</Button>
 		</DialogFooter>
 	</DialogContent>

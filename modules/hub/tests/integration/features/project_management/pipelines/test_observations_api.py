@@ -313,6 +313,7 @@ async def test_base_change_before_observation_invalidates_old_success(client, ob
     assert response.json()["pulls"][0]["result"]["status"] == "waiting"
 
 
+@pytest.mark.usefixtures("isolated_sqlite_dispatch")
 async def test_schedule_changed_during_observation_does_not_save_report(
     client, observation_payload, github_scenario, session, monkeypatch
 ):

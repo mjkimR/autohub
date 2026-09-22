@@ -16,6 +16,7 @@ class GitHubWorkScenario:
         self.parents = {}
         self.requests = []
         self.fail_issues = False
+        self.issue_failure_status = 429
         self.lose_issue_response = False
         self.lose_pull_response = False
 
@@ -27,7 +28,7 @@ class GitHubWorkScenario:
             return httpx.Response(200, json={"login": "operator", "type": "User"})
         if path.startswith("/issues"):
             if self.fail_issues:
-                return httpx.Response(429, headers={"retry-after": "60"})
+                return httpx.Response(self.issue_failure_status, headers={"retry-after": "60"})
             if path == "/issues":
                 if method == "POST":
                     n = len(self.issues) + 1
@@ -53,6 +54,16 @@ class GitHubWorkScenario:
                 return httpx.Response(201, json={})
             self.issues[n].update(body)
             return httpx.Response(200, json=self.issues[n])
+        if path.startswith("/git/matching-refs/heads/"):
+            prefix = path.removeprefix("/git/matching-refs/heads/")
+            return httpx.Response(
+                200,
+                json=[
+                    {"ref": f"refs/heads/{name}", "object": {"sha": sha}}
+                    for name, sha in self.refs.items()
+                    if name.startswith(prefix)
+                ],
+            )
         if path.startswith("/git/ref/heads/"):
             ref = path.removeprefix("/git/ref/heads/")
             return (

@@ -13,7 +13,7 @@ from app.features.project_management.pipelines.github import GitHubObservationEr
 from app.features.project_management.pipelines.services import PipelineObservationService
 from app.features.project_management.projects.models import Project
 from app.features.project_management.work_plans.execution_repo import WorkExecutionRepository
-from app.features.project_management.work_plans.github import WorkGitHub
+from app.features.project_management.work_plans.github import MissingWorkBaseBranch, WorkGitHub
 from app.features.project_management.work_plans.mirror_records import refresh_mirrors
 from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 from app.features.project_management.work_plans.repos import WorkPlanRepository
@@ -56,6 +56,11 @@ class WorkPlanExecution:
                 if current:
                     current.detail = detail
                     current.next_action_at = get_current_utc_time() + timedelta(seconds=delay or 300)
+                    if current.state == "preparing" and isinstance(exc, MissingWorkBaseBranch):
+                        # Only a confirmed missing base before writes is terminal.
+                        # Raw HTTP errors, including reconciliation reads, remain retryable.
+                        current.state = "preparation_failed"
+                        current.next_action_at = None
             logger.warning(f"Work item {item.id}: {detail}")
         finally:
             async with AsyncTransaction() as session:

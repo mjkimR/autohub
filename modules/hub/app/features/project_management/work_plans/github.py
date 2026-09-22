@@ -12,6 +12,10 @@ from app.features.project_management.pipelines.github import (
 from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 
 
+class MissingWorkBaseBranch(GitHubObservationError):
+    """The readable repository has no exact target ref; no preparation writes have begun."""
+
+
 class WorkGitHub:
     def __init__(self, client: httpx.AsyncClient):
         self.client, self.reader = client, GitHubActionsReader(client)
@@ -35,7 +39,20 @@ class WorkGitHub:
             raise
 
     async def base_sha(self, plan: WorkPlan) -> str:
-        ref = await self.reader._get(f"/repos/{plan.repository}/git/ref/heads/{quote(plan.base_branch, safe='')}")
+        root = f"/repos/{plan.repository}/git"
+        branch = quote(plan.base_branch, safe="")
+        try:
+            ref = await self.reader._get(f"{root}/ref/heads/{branch}")
+        except GitHubObservationError as exc:
+            if exc.status_code != 404 or exc.retry_after:
+                raise
+            # A private resource can return 404 for missing permissions. Require a
+            # successful listing with the same Contents permission before declaring
+            # the base absent. Prefix matches are not the requested branch.
+            matches = await self.reader._get_list(f"{root}/matching-refs/heads/{branch}")
+            ref = next((row for row in matches if row.get("ref") == f"refs/heads/{plan.base_branch}"), None)
+            if ref is None:
+                raise MissingWorkBaseBranch("Target branch is absent from the repository's readable Git refs") from None
         return ref["object"]["sha"]
 
     async def prepare(self, plan: WorkPlan, item: WorkItem) -> dict:

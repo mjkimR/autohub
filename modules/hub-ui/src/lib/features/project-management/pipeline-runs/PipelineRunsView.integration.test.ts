@@ -249,3 +249,26 @@ test('reopening history fetches fresh attempts and resets expanded timelines', a
 		api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs/{run_id}/attempts')
 	).toHaveLength(2);
 });
+
+test('attempt loading failures show a retry instead of an empty history', async () => {
+	const previous = api.GET.getMockImplementation()!;
+	let failed = true;
+	api.GET.mockImplementation((path: string) =>
+		path === '/api/v1/pipeline-runs/{run_id}/attempts'
+			? Promise.resolve(
+					failed
+						? { error: { detail: 'History temporarily unavailable' } }
+						: { data: { items: [], summary: null } }
+				)
+			: previous(path)
+	);
+	const user = userEvent.setup();
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+	await user.click(screen.getByRole('button', { name: 'View Attempt History' }));
+	await screen.findByText('History temporarily unavailable');
+	expect(screen.queryByText('No execution attempts recorded yet')).toBeNull();
+	failed = false;
+	await user.click(screen.getByRole('button', { name: /Retry/ }));
+	await screen.findByText('No execution attempts recorded yet');
+});

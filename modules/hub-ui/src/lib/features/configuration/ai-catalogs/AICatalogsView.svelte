@@ -4,18 +4,10 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import {
-		Dialog,
-		DialogContent,
-		DialogDescription,
-		DialogFooter,
-		DialogHeader,
-		DialogTitle
-	} from '$lib/components/ui/dialog';
-	import { Input } from '$lib/components/ui/input';
 	import { Bot, Clock3, Plus, RefreshCw, ShieldAlert } from '@lucide/svelte';
 	import { AICatalogsState, type AICatalog } from './ai-catalogs.svelte';
 	import { catalogKinds } from './catalog-kinds';
+	import CatalogAvailabilityDialog from './CatalogAvailabilityDialog.svelte';
 	import CreateCatalogDialog from './CreateCatalogDialog.svelte';
 	import CatalogConnectorDialog from './CatalogConnectorDialog.svelte';
 	import CatalogSessionsDialog from './CatalogSessionsDialog.svelte';
@@ -24,22 +16,12 @@
 
 	const catalogs = new AICatalogsState();
 	let creating = $state(false);
-	let selectedKey = $state<string | null>(null);
-	let availableAt = $state('');
-	let note = $state('');
-	let dialogOpen = $state(false);
+	let availabilityCatalog = $state<AICatalog | null>(null);
 	let active = $state<{ dialog: CatalogDialog; catalog: AICatalog } | null>(null);
 
 	const PolicyDialog = $derived(
 		active?.dialog === 'policy' ? catalogKinds[active.catalog.kind]?.policyDialog : undefined
 	);
-
-	function openAvailability(key: string) {
-		selectedKey = key;
-		availableAt = '';
-		note = '';
-		dialogOpen = true;
-	}
 
 	function openDialog(dialog: CatalogDialog, catalog: AICatalog) {
 		active = { dialog, catalog };
@@ -47,12 +29,6 @@
 
 	function closeDialog() {
 		active = null;
-	}
-
-	async function saveAvailability(event: SubmitEvent) {
-		event.preventDefault();
-		if (selectedKey && (await catalogs.setAvailability(selectedKey, availableAt, note)))
-			dialogOpen = false;
 	}
 
 	function workSummary(catalog: AICatalog) {
@@ -84,7 +60,7 @@
 				work.
 			</p>
 		</div>
-		<div class="flex gap-2">
+		<div class="flex flex-wrap gap-2 [&_button]:min-h-11 sm:[&_button]:min-h-0">
 			<Button onclick={() => (creating = true)} disabled={catalogs.loading || catalogs.saving}>
 				<Plus class="size-4" /> Add catalog
 			</Button>
@@ -110,12 +86,12 @@
 		<div class="grid gap-5 lg:grid-cols-2">
 			{#each catalogs.items as catalog (catalog.id)}
 				{@const kindUi = catalogKinds[catalog.kind]}
-				<Card class="border-border/80 bg-card/60">
-					<CardHeader class="pb-3">
-						<div class="flex items-start justify-between gap-4">
-							<div class="flex gap-3">
+				<Card class="min-w-0 border-border/80 bg-card/60">
+					<CardHeader class="px-4 pb-3 sm:px-6">
+						<div class="flex flex-wrap items-start justify-between gap-3">
+							<div class="flex min-w-0 gap-3">
 								<div
-									class="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"
+									class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
 								>
 									<Bot class="size-5" />
 								</div>
@@ -131,7 +107,7 @@
 							>
 						</div>
 					</CardHeader>
-					<CardContent class="space-y-4 text-sm">
+					<CardContent class="space-y-4 px-4 text-sm sm:px-6">
 						<div class="rounded-lg bg-muted/50 p-3">
 							<div class="flex items-center gap-2 font-medium">
 								<Clock3 class="size-4" />
@@ -157,10 +133,10 @@
 									{catalog.availability_note}
 								</p>{/if}
 						</div>
-						<div class="flex flex-wrap gap-2">
+						<div class="flex flex-wrap gap-2 [&_button]:min-h-11 sm:[&_button]:min-h-0">
 							<Button
 								size="sm"
-								onclick={() => openAvailability(catalog.key)}
+								onclick={() => (availabilityCatalog = catalog)}
 								disabled={catalogs.saving}>Set refresh time</Button
 							>
 							{#if kindUi}
@@ -205,24 +181,13 @@
 	{/if}
 </div>
 
-<Dialog bind:open={dialogOpen}>
-	<DialogContent>
-		<DialogHeader
-			><DialogTitle>Set catalog refresh time</DialogTitle><DialogDescription
-				>This global hold affects all work assigned to this catalog. Enter the reset time in your
-				local timezone.</DialogDescription
-			></DialogHeader
-		>
-		<form onsubmit={saveAvailability} class="space-y-4">
-			<Input type="datetime-local" bind:value={availableAt} required />
-			<Input bind:value={note} maxlength={500} placeholder="Optional operator note" />
-			<DialogFooter
-				><Button type="button" variant="outline" onclick={() => (dialogOpen = false)}>Cancel</Button
-				><Button type="submit" disabled={catalogs.saving}>Save global hold</Button></DialogFooter
-			>
-		</form>
-	</DialogContent>
-</Dialog>
+{#if availabilityCatalog}
+	<CatalogAvailabilityDialog
+		catalog={availabilityCatalog}
+		{catalogs}
+		onclose={() => (availabilityCatalog = null)}
+	/>
+{/if}
 
 {#if active && PolicyDialog}
 	<PolicyDialog catalog={active.catalog} {catalogs} onclose={closeDialog} />

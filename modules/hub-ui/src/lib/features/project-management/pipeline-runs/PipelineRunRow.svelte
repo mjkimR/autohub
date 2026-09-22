@@ -45,7 +45,9 @@
 	} = $props();
 </script>
 
-<TableRow class="transition-colors hover:bg-muted/40">
+<TableRow
+	class="grid min-w-0 gap-1 p-3 transition-colors hover:bg-muted/40 md:table-row md:p-0 [&>td]:min-w-0 [&>td]:whitespace-normal"
+>
 	<TableCell>
 		<div class="space-y-1">
 			<div class="flex items-center gap-1.5">
@@ -67,7 +69,7 @@
 					</a>
 				{/if}
 			</div>
-			<div class="line-clamp-1 text-xs font-medium text-foreground">
+			<div class="text-sm font-medium text-foreground md:line-clamp-1 md:text-xs">
 				{run.pull_snapshot?.title || 'No title'}
 			</div>
 		</div>
@@ -137,12 +139,13 @@
 		{/if}
 	</TableCell>
 
-	<TableCell class="text-xs text-muted-foreground">
+	<TableCell class="text-xs text-muted-foreground"
+		><span class="mr-1 md:hidden">Created:</span>
 		{new Date(run.created_at).toLocaleString()}
 	</TableCell>
 
 	<TableCell class="text-right">
-		<div class="flex items-center justify-end gap-1">
+		<div class="flex flex-wrap items-center gap-2 md:justify-end md:gap-1">
 			{#if run.state !== 'completed' && run.state !== 'failed' && run.state !== 'canceled'}
 				{#if run.state === 'paused' || run.state === 'blocked'}
 					<Button
@@ -150,7 +153,7 @@
 						size="icon"
 						onclick={() => onresume(run)}
 						disabled={operating}
-						class="size-8 text-amber-500 hover:text-amber-600"
+						class="size-11 text-amber-500 hover:text-amber-600 md:size-8"
 						title="Resume Run"
 						aria-label="Resume Run"
 					>
@@ -162,7 +165,7 @@
 						size="icon"
 						onclick={() => onpause(run.id)}
 						disabled={operating}
-						class="size-8 text-muted-foreground hover:text-amber-500"
+						class="size-11 text-muted-foreground hover:text-amber-500 md:size-8"
 						title="Pause Run"
 						aria-label="Pause Run"
 					>
@@ -175,7 +178,7 @@
 						variant="ghost"
 						size="icon"
 						onclick={() => onattach(run)}
-						class="size-8 text-muted-foreground hover:text-primary"
+						class="size-11 text-muted-foreground hover:text-primary md:size-8"
 						title="Attach Pull Request"
 						aria-label="Attach Pull Request"
 					>
@@ -188,7 +191,7 @@
 					size="icon"
 					onclick={() => onadvance(run.id)}
 					disabled={operating}
-					class="size-8 text-muted-foreground hover:text-emerald-500"
+					class="size-11 text-muted-foreground hover:text-emerald-500 md:size-8"
 					title="Advance / Sync Run Status"
 					aria-label="Advance Run"
 				>
@@ -200,7 +203,7 @@
 					size="icon"
 					onclick={() => oncancel(run.id)}
 					disabled={operating}
-					class="size-8 text-muted-foreground hover:text-rose-500"
+					class="size-11 text-muted-foreground hover:text-rose-500 md:size-8"
 					title="Cancel Run"
 					aria-label="Cancel Run"
 				>
@@ -212,11 +215,11 @@
 				variant="ghost"
 				size="icon"
 				onclick={() => onhistory(run)}
-				class="size-8 text-muted-foreground hover:text-foreground"
+				class="min-h-11 w-auto gap-2 px-3 text-muted-foreground hover:text-foreground md:size-8 md:min-h-0 md:p-0"
 				title="View Attempt History"
 				aria-label="View Attempt History"
 			>
-				<History class="size-4" />
+				<History class="size-4" /><span class="md:hidden">Attempts &amp; errors</span>
 			</Button>
 		</div>
 	</TableCell>

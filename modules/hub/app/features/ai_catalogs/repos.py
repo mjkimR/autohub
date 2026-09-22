@@ -125,6 +125,22 @@ class AICatalogRepository:
             or 0
         )
 
+    @staticmethod
+    def run_holds_capacity() -> ColumnElement[bool]:
+        """Shared predicate for delivered/admitted runs, excluding waiting dispatches."""
+        admitted = (
+            select(ExecutionAttempt.id)
+            .where(
+                ExecutionAttempt.pipeline_run_id == PipelineRun.id,
+                ExecutionAttempt.state == ExecutionAttemptState.DISPATCHING,
+            )
+            .exists()
+        )
+        return or_(
+            PipelineRun.state == PipelineRunState.IMPLEMENTING,
+            (PipelineRun.state == PipelineRunState.DISPATCHING) & admitted,
+        )
+
     async def active_dispatch_count(
         self,
         session: AsyncSession,
@@ -137,20 +153,9 @@ class AICatalogRepository:
 
         A DISPATCHING run still waiting for admission holds nothing, so waiting runs cannot block each other.
         """
-        admitted = (
-            select(ExecutionAttempt.id)
-            .where(
-                ExecutionAttempt.pipeline_run_id == PipelineRun.id,
-                ExecutionAttempt.state == ExecutionAttemptState.DISPATCHING,
-            )
-            .exists()
-        )
         filters = [
             PipelineRun.ai_catalog_id == catalog_id,
-            or_(
-                PipelineRun.state == PipelineRunState.IMPLEMENTING,
-                (PipelineRun.state == PipelineRunState.DISPATCHING) & admitted,
-            ),
+            self.run_holds_capacity(),
         ]
         if exclude_run_id is not None:
             filters.append(PipelineRun.id != exclude_run_id)

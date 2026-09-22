@@ -74,11 +74,8 @@ class WorkIssueSync:
                     current = await self.leased(session, row.id, lease)
                     if current:
                         current.error = detail
-                        if isinstance(exc, GitHubObservationError):
-                            if exc.retry_after:
-                                current.next_action_at = get_current_utc_time() + timedelta(seconds=exc.retry_after)
-                            if exc.status_code in (401, 403, 422, 429) and current.issue_number is None:
-                                current.create_attempted = False
+                        if isinstance(exc, GitHubObservationError) and exc.retry_after:
+                            current.next_action_at = get_current_utc_time() + timedelta(seconds=exc.retry_after)
             finally:
                 async with AsyncTransaction() as session:
                     current = await self.leased(session, row.id, lease)
@@ -133,14 +130,24 @@ class WorkIssueSync:
                     if current is None:
                         return
                     current.create_attempted = True
-                issue = await github.write(
-                    "POST",
-                    f"{root}/issues",
-                    {
-                        "title": desired["title"],
-                        "body": desired["body"],
-                    },
-                )
+                try:
+                    issue = await github.write(
+                        "POST",
+                        f"{root}/issues",
+                        {
+                            "title": desired["title"],
+                            "body": desired["body"],
+                        },
+                    )
+                except GitHubObservationError as exc:
+                    # Only a definitive rejection of this POST permits another POST.
+                    # An error while reconciling a prior uncertain write proves nothing.
+                    if exc.status_code in (401, 403, 422, 429):
+                        async with AsyncTransaction() as session:
+                            current = await self.leased(session, row.id, row.lease_token)
+                            if current and current.issue_number is None:
+                                current.create_attempted = False
+                    raise
             async with AsyncTransaction() as session:
                 current = await self.leased(session, row.id, row.lease_token)
                 if current is None:

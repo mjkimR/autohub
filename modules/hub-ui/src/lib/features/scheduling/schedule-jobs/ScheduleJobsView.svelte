@@ -79,13 +79,13 @@
 			<h1 class="text-3xl font-bold tracking-tight">Execution History</h1>
 			<p class="text-sm text-muted-foreground">Execution audit logs and real-time job run states</p>
 		</div>
-		<div class="flex items-center gap-3">
+		<div class="flex flex-wrap items-center gap-3">
 			<Button
 				variant="outline"
 				size="sm"
 				onclick={() => loadJobs()}
 				disabled={loading}
-				class="gap-2"
+				class="min-h-11 gap-2 sm:min-h-0"
 			>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
@@ -94,21 +94,21 @@
 	</div>
 
 	<!-- Controls & Search -->
-	<div class="flex items-center gap-3">
-		<div class="relative max-w-sm flex-1">
+	<div class="flex flex-wrap items-center gap-3">
+		<div class="relative min-w-0 basis-full sm:max-w-sm sm:flex-1 sm:basis-auto">
 			<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
 			<Input
 				placeholder="Filter jobs by name or status..."
 				bind:value={searchQuery}
 				oninput={() => loadJobs(0)}
-				class="h-10 pl-9"
+				class="h-11 pl-9 text-base sm:h-10 sm:text-sm"
 			/>
 		</div>
 		<select
 			aria-label="Job status"
 			bind:value={statusFilter}
 			onchange={() => loadJobs(0)}
-			class="h-10 rounded-md border border-input bg-background px-3 text-sm"
+			class="h-11 max-w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm"
 		>
 			<option value="">All statuses</option><option value="pending">Pending</option>
 			<option value="success">Success</option><option value="failure">Failure</option>
@@ -119,8 +119,8 @@
 	<div
 		class="overflow-hidden rounded-xl border border-border/80 bg-card/60 shadow-sm backdrop-blur-sm"
 	>
-		<Table>
-			<TableHeader>
+		<Table class="block md:table">
+			<TableHeader class="hidden md:table-header-group">
 				<TableRow>
 					<TableHead class="w-[200px]">Job Name</TableHead>
 					<TableHead>Status</TableHead>
@@ -129,7 +129,7 @@
 					<TableHead class="w-[300px]">Dispatcher Run ID</TableHead>
 				</TableRow>
 			</TableHeader>
-			<TableBody>
+			<TableBody class="block md:table-row-group">
 				{#if loading}
 					<TableRow>
 						<TableCell colspan={5} class="h-32 text-center text-muted-foreground">
@@ -150,7 +150,9 @@
 				{:else}
 					{#each jobs as job (job.id)}
 						{@const st = getStatusVariant(job.status)}
-						<TableRow class="transition-colors hover:bg-muted/40">
+						<TableRow
+							class="grid min-w-0 gap-1 p-3 transition-colors hover:bg-muted/40 md:table-row md:p-0 [&>td]:min-w-0 [&>td]:whitespace-normal"
+						>
 							<TableCell class="font-semibold text-foreground">
 								{job.name}
 							</TableCell>
@@ -168,13 +170,17 @@
 								{/if}
 							</TableCell>
 							<TableCell class="font-mono text-xs text-muted-foreground">
-								{new Date(job.started_at).toLocaleString()}
+								<span class="mr-1 md:hidden">Started:</span>{new Date(
+									job.started_at
+								).toLocaleString()}
 							</TableCell>
 							<TableCell class="font-mono text-xs text-muted-foreground">
-								{job.finished_at ? new Date(job.finished_at).toLocaleString() : '—'}
+								<span class="mr-1 md:hidden">Finished:</span>{job.finished_at
+									? new Date(job.finished_at).toLocaleString()
+									: '—'}
 							</TableCell>
 							<TableCell class="font-mono text-xs text-muted-foreground">
-								{job.dispatcher_run_id || 'manual'}
+								<span class="mr-1 md:hidden">Dispatcher:</span>{job.dispatcher_run_id || 'manual'}
 							</TableCell>
 						</TableRow>
 					{/each}

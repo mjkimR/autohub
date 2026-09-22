@@ -56,7 +56,7 @@ def github_http_error(context: str, response: httpx.Response, now: float | None 
     if status == 401:
         return GitHubObservationError(message, status, kind=GITHUB_FAILURE_AUTH)
     exhausted = headers.get("x-ratelimit-remaining") == "0"
-    if status == 429 or (status == 403 and (exhausted or "retry-after" in headers)):
+    if status == 429 or (status in (403, 422) and (exhausted or "retry-after" in headers)):
         delay = DEFAULT_RATE_LIMIT_DELAY_SECONDS
         try:
             if "retry-after" in headers:

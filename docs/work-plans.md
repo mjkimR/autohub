@@ -66,6 +66,16 @@ The Plans view distinguishes dependency waits, capacity waits, pauses, run
 failures, and Issue synchronization delays. Use the linked Runs view for existing
 pipeline pause/resume controls; Plan resume never replays an agent request.
 Failed/canceled Run retry and PR replacement do not yet have an Item-level API.
+A target branch confirmed absent before preparation writes stops in
+`preparation_failed` and releases its reserved execution capacity. A ref lookup's
+404 alone is insufficient: a successful matching-ref listing must also lack the
+exact branch. An unavailable listing remains retryable, as do raw HTTP errors
+during later preparation or reconciliation. The failure is retained and dependents
+stay waiting. Plan resume does not retry a confirmed missing base; register replacement
+work with corrected settings. Authentication failures, temporary creation restrictions
+(including 422), server errors, and uncertain responses continue reconciliation with
+the reservation held. A 422 carrying a rate-limit header preserves its retry delay.
+Retries retain their branch/PR identity and cannot blindly recreate a PR.
 Changing a project's repository/connector does not retarget existing plans;
 restore the original binding or register new work in the intended project.
 
@@ -92,6 +102,8 @@ Issues permissions do not prevent PR execution.
 
 Creation intent is persisted before posting. A lost response is reconciled using
 the exact entity marker and authenticated author, scanning at most 1,000 issues.
+Failures during this lookup preserve the uncertain creation intent; only a definitive
+rejection of the creation request permits a fresh POST.
 If creation remains uncertain and no matching Issue is found, Hub reports that
 condition and continues reconciliation without posting another Issue. This also
 covers a crash between committing intent and sending the request. There is not

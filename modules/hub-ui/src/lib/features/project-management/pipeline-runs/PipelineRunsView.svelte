@@ -251,7 +251,7 @@
 					loadCatalogs();
 				}}
 				disabled={loading}
-				class="gap-2"
+				class="min-h-11 gap-2 sm:min-h-0"
 			>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
@@ -261,13 +261,13 @@
 
 	<!-- Controls & Filters -->
 	<div class="flex flex-wrap items-center gap-3">
-		<div class="relative min-w-[200px] flex-1">
+		<div class="relative min-w-0 basis-full sm:flex-1 sm:basis-auto">
 			<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
 			<Input
 				placeholder="Search PR number, title, branch..."
 				bind:value={searchQuery}
 				oninput={() => loadRuns(0)}
-				class="h-10 pl-9"
+				class="h-11 pl-9 text-base sm:h-10 sm:text-sm"
 			/>
 		</div>
 
@@ -277,7 +277,7 @@
 			disabled={!!scopedProject}
 			bind:value={selectedProjectId}
 			onchange={() => loadRuns(0)}
-			class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
+			class="h-11 max-w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
 		>
 			{#if !scopedProject}<option value="">All Projects</option>{/if}
 			{#each projects as project (project.id)}
@@ -290,7 +290,7 @@
 			aria-label="Run state"
 			bind:value={selectedState}
 			onchange={() => loadRuns(0)}
-			class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
+			class="h-11 max-w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
 		>
 			<option value="">All States</option>
 			<option value="queued">Queued</option>
@@ -312,8 +312,8 @@
 	<div
 		class="overflow-hidden rounded-xl border border-border/80 bg-card/60 shadow-xs backdrop-blur-xs"
 	>
-		<Table>
-			<TableHeader>
+		<Table class="block md:table">
+			<TableHeader class="hidden md:table-header-group">
 				<TableRow>
 					<TableHead class="w-[180px]">Pull Request</TableHead>
 					<TableHead class="w-[160px]">Project</TableHead>
@@ -324,7 +324,7 @@
 					<TableHead class="w-[90px] text-right">Attempts</TableHead>
 				</TableRow>
 			</TableHeader>
-			<TableBody>
+			<TableBody class="block md:table-row-group">
 				{#if loading}
 					<TableRow>
 						<TableCell colspan={7} class="h-32 text-center text-muted-foreground">

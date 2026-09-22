@@ -15,11 +15,11 @@
 	} = $props();
 </script>
 
-<nav aria-label="List pagination" class="flex items-center justify-between gap-3 text-sm">
+<nav aria-label="List pagination" class="flex flex-wrap items-center justify-between gap-3 text-sm">
 	<span aria-live="polite"
 		>{total === 0 ? 0 : offset + 1}–{Math.min(offset + limit, total)} of {total}</span
 	>
-	<div class="flex gap-2">
+	<div class="flex flex-wrap gap-2 [&_button]:min-h-11 sm:[&_button]:min-h-0">
 		<Button
 			variant="outline"
 			disabled={loading || offset === 0}

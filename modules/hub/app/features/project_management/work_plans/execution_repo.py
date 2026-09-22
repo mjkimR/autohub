@@ -58,7 +58,10 @@ class WorkExecutionRepository:
                 else true(),
                 or_(
                     waiting_ready,
-                    and_(WorkItem.started_at.is_not(None), WorkItem.state.not_in(("succeeded", "revoked"))),
+                    and_(
+                        WorkItem.started_at.is_not(None),
+                        WorkItem.state.not_in(("succeeded", "revoked", "preparation_failed")),
+                    ),
                 ),
                 or_(WorkItem.next_action_at.is_(None), WorkItem.next_action_at <= now),
                 or_(WorkItem.lease_expires_at.is_(None), WorkItem.lease_expires_at <= now),
@@ -86,7 +89,7 @@ class WorkExecutionRepository:
                 )
             )
             active = await AICatalogRepository().active_dispatch_count(session, catalog.id)
-            # Queued work and branch preparation reserve local admission space too.
+            # Reserve waiting dispatches too, without recounting admitted ones in active.
             queued = (
                 await session.scalar(
                     select(func.count())
@@ -94,6 +97,7 @@ class WorkExecutionRepository:
                     .where(
                         PipelineRun.ai_catalog_id == catalog.id,
                         PipelineRun.state.in_(("queued", "dispatching")),
+                        ~AICatalogRepository.run_holds_capacity(),
                     )
                 )
                 or 0

@@ -64,7 +64,9 @@
 		request is still planned).
 	</p>
 {:else}
-	<ol class="space-y-1.5 border-l border-border/70 pl-3 text-[11px]">
+	<ol
+		class="space-y-1.5 border-l border-border/70 pl-3 text-sm [overflow-wrap:anywhere] sm:text-xs"
+	>
 		{#each entries as entry (entry.kind === 'request' ? entry.delivery.id : entry.reply.id)}
 			<li>
 				{#if entry.kind === 'request'}
