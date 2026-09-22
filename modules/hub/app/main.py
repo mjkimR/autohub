@@ -8,21 +8,24 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from app.auth import MACHINE_SCOPES, login_caller, login_lockout_listener, require_machine_admin
+from app.auth_settings import get_hub_auth_settings
 from app.features import tasks
 from app.features.project_management.projects.errors import ProjectError
 from app.features.scheduling.schedule_configs.system import ensure_maintenance_schedule
 from app.router import router
+from app_http_client.instance import close_http_client
 from app_layer_base.base.exceptions.handler import set_exception_handler
 from app_layer_base.core import middlewares
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.core.log import logger
-from app_prebuilt_api_key.config import get_api_key_settings
-from app_prebuilt_api_key.deps import require_key_admin
-from app_prebuilt_api_key.usecases import get_machine_scopes
-from app_prebuilt_user.config import get_auth_settings
-from app_prebuilt_user.deps import get_login_caller, get_login_lockout_listener
-from app_prebuilt_user.repos import UserRepository
-from app_prebuilt_user.services import UserService
+from app_prebuilt_auth.api_key.config import get_api_key_settings
+from app_prebuilt_auth.api_key.deps import require_key_admin
+from app_prebuilt_auth.api_key.usecases import get_machine_scopes
+from app_prebuilt_auth.google.config import get_google_auth_settings
+from app_prebuilt_auth.user.config import get_auth_settings
+from app_prebuilt_auth.user.deps import get_login_caller, get_login_lockout_listener
+from app_prebuilt_auth.user.repos import UserRepository
+from app_prebuilt_auth.user.services import UserService
 from fastapi import FastAPI
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse, JSONResponse, RedirectResponse
@@ -47,7 +50,7 @@ async def ensure_first_user() -> None:
     A failure is logged, not raised: webhooks and the scheduler must keep working even when nobody can sign in.
     """
     try:
-        service = UserService(settings=get_auth_settings(), repo=UserRepository())
+        service = UserService(settings=get_hub_auth_settings(), repo=UserRepository())
         async with AsyncTransaction() as session:
             await service.ensure_first_user(session)
     except IntegrityError:
@@ -63,10 +66,14 @@ def get_lifespan():
         logger.info("Starting app lifespan")
         tasks.autodiscover()
         get_api_key_settings()
+        get_google_auth_settings()
         await ensure_first_user()
         async with AsyncTransaction() as session:
             await ensure_maintenance_schedule(session)
-        yield
+        try:
+            yield
+        finally:
+            await close_http_client()
         logger.info("End of app lifespan")
 
     return lifespan
@@ -99,6 +106,7 @@ def create_app():
     middlewares.request_id_middleware.add_middleware(app)
 
     app.include_router(router)
+    app.dependency_overrides[get_auth_settings] = get_hub_auth_settings
     app.dependency_overrides[require_key_admin] = require_machine_admin
     app.dependency_overrides[get_machine_scopes] = lambda: MACHINE_SCOPES
     app.dependency_overrides[get_login_caller] = login_caller

@@ -1,6 +1,6 @@
 """Who may call the hub.
 
-People sign in with the account of `app-prebuilt-user` (`POST /api/v1/users/login/`) and send the access token as
+People sign in with the account of `app-prebuilt-auth` (`POST /api/v1/users/login/`) and send the access token as
 `Authorization: Bearer ...`. The first superuser comes from `FIRST_USER_EMAIL` / `FIRST_USER_PASSWORD` in the
 deployment's secrets and follows them on every start (`FIRST_USER_SYNC_PASSWORD`), so the secret store stays the
 one place a password is changed. The database only ever holds an Argon2id hash of it.
@@ -14,16 +14,16 @@ from app.common.auth_throttle import caller_address, masked_address
 from app.features.notifications.notifier import Notifier
 from app_layer_base.core.database.deps import get_session
 from app_layer_base.core.log import logger
-from app_prebuilt_api_key.config import get_api_key_settings
-from app_prebuilt_api_key.deps import machine_key_header, require_key_admin
-from app_prebuilt_api_key.usecases import ApiKeyUseCase
-from app_prebuilt_user.config import get_auth_settings
-from app_prebuilt_user.deps import LoginLockoutListener, get_current_user, get_token_data, oauth2
-from app_prebuilt_user.exceptions import InvalidCredentialsException
-from app_prebuilt_user.models import User
-from app_prebuilt_user.repos import UserRepository
-from app_prebuilt_user.services import UserService
-from app_prebuilt_user.token_schemas import TokenPayload
+from app_prebuilt_auth.api_key.config import get_api_key_settings
+from app_prebuilt_auth.api_key.deps import machine_key_header, require_key_admin
+from app_prebuilt_auth.api_key.usecases import ApiKeyUseCase
+from app_prebuilt_auth.user.config import get_auth_settings
+from app_prebuilt_auth.user.deps import LoginLockoutListener, get_current_user, get_token_data, oauth2
+from app_prebuilt_auth.user.exceptions import InvalidCredentialsException
+from app_prebuilt_auth.user.models import User
+from app_prebuilt_auth.user.repos import UserRepository
+from app_prebuilt_auth.user.services import UserService
+from app_prebuilt_auth.user.token_schemas import TokenPayload
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession

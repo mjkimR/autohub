@@ -28,6 +28,7 @@ os.environ["APP_API_KEY_ROOT_KEY"] = "root-test-credential-at-least-32-character
 # Pin the in-memory calendar backend. Overridden, not defaulted: a developer's .env may set
 # CALENDAR_BACKEND=google, and the suite must never reach a live calendar.
 os.environ["CALENDAR_BACKEND"] = "fake"
+os.environ["GOOGLE_AUTH_ENABLED"] = "false"
 
 # Configure logging - reduce noise from SQLAlchemy and httpx
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)

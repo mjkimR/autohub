@@ -4,7 +4,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import LoginView from './LoginView.svelte';
 
 const { api, session } = vi.hoisted(() => ({
-	api: { POST: vi.fn() },
+	api: { POST: vi.fn(), GET: vi.fn().mockResolvedValue({ data: { enabled: false } }) },
 	session: { email: 'operator@example.com', setTokens: vi.fn(), rememberEmail: vi.fn() }
 }));
 

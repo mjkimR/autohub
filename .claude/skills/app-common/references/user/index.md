@@ -1,6 +1,6 @@
-# app-prebuilt-user
+# app-prebuilt-auth
 
-Drop-in user authentication and management module built on `app-layer-base`. Provides the `User` model, layered service/usecase stack, auth dependencies, and FastAPI routers.
+The user module of the unified authentication prebuilt, built on `app-layer-base`. All capabilities and tables are included by default. Provides the `User` model, layered service/usecase stack, auth dependencies, and FastAPI routers.
 
 > For package installation and `AuthSettings` environment variables, see [setup.md](./setup.md).
 
@@ -8,11 +8,11 @@ Drop-in user authentication and management module built on `app-layer-base`. Pro
 
 ```python
 from fastapi import FastAPI
-from app_prebuilt_user.api import v1_users_router
+from app_prebuilt_auth import install_auth
 
 app = FastAPI()
-# Mounts /users/login, /users/register, /users/me, and admin management CRUD
-app.include_router(v1_users_router, prefix="/api/v1")
+# Mounts password login, current-user/profile reads, and administrator management
+install_auth(app)
 ```
 
 ## Protecting Endpoints
@@ -22,8 +22,8 @@ Inject auth dependencies into your application routers:
 ```python
 from typing import Annotated
 from fastapi import APIRouter, Depends
-from app_prebuilt_user.deps import get_current_user, on_superuser
-from app_prebuilt_user.models import User
+from app_prebuilt_auth.user.deps import get_current_user, on_superuser
+from app_prebuilt_auth.user.models import User
 
 router = APIRouter()
 
@@ -54,7 +54,7 @@ async def delete_user(user_id: str, admin: SuperUser):
   platform wrote, not one the client chose, and `get_login_lockout_listener` to tell an operator.
 
 ```python
-from app_prebuilt_user.deps import get_login_caller
+from app_prebuilt_auth.user.deps import get_login_caller
 
 
 def cloud_run_caller(request: Request) -> str:
@@ -64,3 +64,16 @@ def cloud_run_caller(request: Request) -> str:
 
 app.dependency_overrides[get_login_caller] = cloud_run_caller
 ```
+
+
+## External login and approval
+
+Use [Google login](google-auth.md) to add optional Google OIDC beside local login.
+Set `REGISTRATION_REQUIRE_APPROVAL=true` for manual approval. Existing/local administrator-created
+users remain approved; there is no public password signup route or built-in whitelist.
+
+The host owns migrations and its admin UI. Add `approval_status` and `auth_version` to users, plus
+`UserAccessEvent` metadata, before adopting this package revision. Protect business endpoints with
+`get_current_user`; it rejects pending, rejected, suspended and version-revoked sessions.
+Superadmins manage access through `POST /users/admin/{user_id}/access` with
+`{action, expected_version, reason?}` and inspect `/access-events`. Avoid direct DB flag updates for revocation.

@@ -24,6 +24,17 @@
 	let { children } = $props();
 
 	let isOnline = $state(false);
+	let isAdmin = $state(false);
+
+	async function loadProfile() {
+		const generation = session.generation;
+		try {
+			const { data } = await api.GET('/api/v1/users/me');
+			if (generation === session.generation) isAdmin = data?.is_superadmin ?? false;
+		} catch {
+			isAdmin = false;
+		}
+	}
 
 	async function checkHealth() {
 		try {
@@ -37,6 +48,7 @@
 
 	onMount(() => {
 		checkHealth();
+		void loadProfile();
 		const interval = setInterval(checkHealth, 10000);
 		return () => clearInterval(interval);
 	});
@@ -89,6 +101,7 @@
 	}
 
 	function currentPageLabel() {
+		if (page.url.pathname === '/admin/users') return 'Account approval';
 		for (const section of navSections) {
 			for (const item of section.items) {
 				if (isActive(item.href)) return item.label;
@@ -143,6 +156,14 @@
 					</div>
 				</div>
 			{/each}
+			{#if isAdmin}
+				<a
+					href="/admin/users"
+					aria-current={isActive('/admin/users') ? 'page' : undefined}
+					class="block rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-sidebar-accent"
+					>Account approval</a
+				>
+			{/if}
 		</nav>
 
 		<!-- Bottom User & Status Area -->

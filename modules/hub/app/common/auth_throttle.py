@@ -1,4 +1,4 @@
-"""Addresses for the failed-login lockout (the lockout itself is `app_prebuilt_user.throttle`)."""
+"""Addresses for the failed-login lockout (the lockout itself is `app_prebuilt_auth.user.throttle`)."""
 
 
 def caller_address(forwarded_for: str | None, peer: str | None) -> str:

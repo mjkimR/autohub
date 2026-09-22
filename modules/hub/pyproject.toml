@@ -7,7 +7,8 @@ requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.18.3",
     "app-layer-base",
-    "app-prebuilt-api-key",
+    "app-http-client",
+    "app-prebuilt-auth",
     "psycopg[binary]>=3.1",
     "cachetools>=7.0.0",
     "croniter>=6.0.0",
@@ -22,17 +23,16 @@ dependencies = [
     "pydantic-settings>=2.12.0",
     "sqlalchemy>=2.0.46",
     "uvicorn",
-    "app-prebuilt-user",
     "python-multipart>=0.0.9",
 ]
 
 [tool.uv.sources]
-app-prebuilt-api-key = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-api-key", rev = "98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f" }
-app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f" }
-app-error = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-error", rev = "98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f" }
-app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f" }
-app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f" }
-app-prebuilt-user = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-user", rev = "98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f" }
+app-prebuilt-auth = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-auth", rev = "ca4e6a4fdca035314c4e032ca9397e633830ecf5" }
+app-http-client = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/adapters/app-http-client", rev = "ca4e6a4fdca035314c4e032ca9397e633830ecf5" }
+app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "ca4e6a4fdca035314c4e032ca9397e633830ecf5" }
+app-error = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-error", rev = "ca4e6a4fdca035314c4e032ca9397e633830ecf5" }
+app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "ca4e6a4fdca035314c4e032ca9397e633830ecf5" }
+app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "ca4e6a4fdca035314c4e032ca9397e633830ecf5" }
 
 [dependency-groups]
 dev = [

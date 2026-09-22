@@ -1,8 +1,8 @@
 # 구현·검증 현황
 
-2026-09-22 기준. 주요 기능의 실서비스 카나리는 완료했다. 마지막 확인 배포는
-`autohub-00010-x9c`이며, 이후 추가한 **공용 유지보수·이력 보관 정책은 구현과
-로컬 검증을 마쳤지만 아직 배포하지 않았다.**
+2026-09-22 기준. 주요 기능의 실서비스 카나리와 **공용 유지보수·이력 보관 정책의
+배포 후 확인을 완료했다.** `autohub-00011-xpl`이 트래픽 100%를 처리하며,
+13:55 KST 정기 tick에서 프로젝트 dispatcher와 공용 유지보수가 모두 성공했다.
 
 ## 완료한 범위
 
@@ -23,7 +23,7 @@
 이전 static scheduler key 방식은 사용하지 않는다. 다음 workbench 배포에도 상위 저장소와
 Auto Hub provisioner의 수정이 모두 필요하다.
 
-## 배포 대기: 공용 유지보수·이력 정리
+## 배포 완료: 공용 유지보수·이력 정리
 
 설치당 하나의 `System maintenance`가 연결 테스트 진행·정리와 Jules 결과 수집을 맡는다.
 기존 자동 생성 테스트별 스케줄과 catalog별 sync는 제거하며, 프로젝트 dispatcher와
@@ -39,7 +39,8 @@ Auto Hub provisioner의 수정이 모두 필요하다.
 
 시간당 한 번 최대 job 1,000개·run 200개를 정리한다. 대기·재시도 가능한 job,
 활성/일시 중지/차단된 run과 유효한 lease는 보존한다. Jules 보고서·PR 링크는 남기고,
-run 만료가 PR 재등록으로 이어지지 않도록 기록한다. 운영 이력 삭제는 아직 실행하지 않았다.
+run 만료가 PR 재등록으로 이어지지 않도록 기록한다. 첫 운영 정리 실행은 성공했고,
+보관 기간을 넘긴 대상이 없어 job/run 삭제는 모두 0건이었다.
 
 마이그레이션은 `f4d5e6f7a8b9`(공용 스케줄), `a5e6f7a8b9c0`(run 만료 표시)다.
 [운영 절차](development.md#system-maintenance)와
@@ -59,12 +60,16 @@ run 만료가 PR 재등록으로 이어지지 않도록 기록한다. 운영 이
 선택한 관련 범위이며 전체 테스트 수가 아니다. SQLite 단일 연결의 트랜잭션 간섭을 피하도록
 해당 관찰 테스트만 직렬화했고, PostgreSQL에서는 동시 실행을 검증했다.
 
-## 남은 확인
+## 운영 확인과 제외 범위
 
-- **재배포 후:** 기존 자동 생성 스케줄 제거, 공용 유지보수 1개 생성·보호·실행,
-  시간당 이력 정리와 Jules 재등록 방지를 확인한다. 마지막 운영 조회에서는 프로젝트
-  dispatcher 1개와 중지된 연결 테스트 스케줄 2개였으며, 사용자 스케줄이 추가되지 않았다면
-  배포 후 dispatcher와 공용 유지보수 2개가 남아야 한다.
+- **운영 확인 완료:** 마이그레이션 두 개 적용, 기존 테스트별 스케줄 제거, 활성 스케줄
+  2개(dispatcher·공용 유지보수), 공용 항목의 동일 값 PATCH도 409, 새 revision의 정기
+  dispatcher HTTP 200을 확인했다. `maintenance.history.pruned_at`은
+  `2026-09-22T04:55:01.398956+00:00`으로 기록됐다. 기존 Jules session 2개와
+  report/PR/run 연결, 연결 테스트 2개의 성공·정리 완료 상태 및 과거 job 이력도 보존됐다.
+- **검증 경계:** 운영 job 83개와 run 10개는 모두 보관 기간 이내였다. 실제 만료 행 삭제와
+  만료 후 Jules 재등록 방지는 PostgreSQL 자동화 검증 범위이며, 운영 데이터를
+  인위적으로 노후화하거나 삭제해 재현하지 않았다.
 - **화면:** 최근 연결 테스트·catalog·공용 스케줄의 브라우저 확인은 사용자가 진행한다.
 - **이번 범위 제외:** Telegram, 실제 Jules quota 소진/429, required review/branch protection.
   연결 테스트의 취소·timeout·응답 유실·인증 장애·수동 정리 복구는 live로 유발하지 않았다.
@@ -72,3 +77,8 @@ run 만료가 PR 재등록으로 이어지지 않도록 기록한다. 운영 이
 자동 계획/WBS, 동적 catalog 선택, 병합 전 LLM 리뷰는 보류한다. 추가 저장소의 branching
 정책은 온보딩 때 결정한다. 나머지 확장·provider 불확실성은
 [Catalog 미해결 항목](ai-catalog-implementation-notes.md#known-limitations-and-remaining-work)에 모은다.
+
+
+## Google 인증·가입 승인: 로컬 구현, 배포 대기
+
+app-common Google OIDC prebuilt와 승인/정지/관리자 권한 API, AutoHub 로그인 및 `/admin/users` 화면을 추가했다. 화이트리스트는 사용하지 않는다. 게시된 app-common `ca4e6a4`의 `app-prebuilt-auth` 단일 패키지로 전환하고 Python/APM SHA와 lock을 갱신했다. 현재 운영 카나리 검증 결과와는 별개이며, [도입 절차와 제한](google-auth.md)을 따라 운영 설정·마이그레이션 후 실계정 검증이 필요하다.

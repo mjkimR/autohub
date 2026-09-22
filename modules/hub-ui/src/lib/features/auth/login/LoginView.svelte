@@ -1,4 +1,5 @@
 <script lang="ts">
+	import GoogleLogin from './GoogleLogin.svelte';
 	import { session } from '$lib/stores/session.svelte';
 	import { api } from '$lib/api';
 	import { toast } from 'svelte-sonner';
@@ -95,6 +96,7 @@
 		</CardHeader>
 
 		<CardContent>
+			<GoogleLogin />
 			{#if errorMsg}
 				<div
 					class="mb-5 flex items-center gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-medium text-destructive"

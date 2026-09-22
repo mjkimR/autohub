@@ -991,6 +991,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/users/me': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Read Me */
+		get: operations['read_me_api_v1_users_me_get'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/users/{user_id}': {
 		parameters: {
 			query?: never;
@@ -1089,6 +1106,40 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/users/admin/{user_id}/access': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Change Access */
+		post: operations['change_access_api_v1_users_admin__user_id__access_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/users/admin/{user_id}/access-events': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Access Events */
+		get: operations['access_events_api_v1_users_admin__user_id__access_events_get'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/users/login/': {
 		parameters: {
 			query?: never;
@@ -1123,6 +1174,74 @@ export interface paths {
 		 *     random-signed, so guessing it is not what the login lockout is for.
 		 */
 		post: operations['refresh_api_v1_users_login_refresh_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/auth/google/options': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Options */
+		get: operations['options_api_v1_auth_google_options_get'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/auth/google/start': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Start */
+		get: operations['start_api_v1_auth_google_start_get'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/auth/google/callback': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Callback */
+		get: operations['callback_api_v1_auth_google_callback_get'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/auth/google/exchange': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Exchange */
+		post: operations['exchange_api_v1_auth_google_exchange_post'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -2151,6 +2270,22 @@ export interface components {
 			/** Failure Detail */
 			failure_detail: string | null;
 		};
+		/** GoogleLoginOptions */
+		GoogleLoginOptions: {
+			/** Enabled */
+			enabled: boolean;
+		};
+		/** GoogleLoginResult */
+		GoogleLoginResult: {
+			/**
+			 * Status
+			 * @enum {string}
+			 */
+			status: 'approved' | 'pending' | 'rejected' | 'suspended';
+			/** Email */
+			email: string;
+			tokens?: components['schemas']['Token'] | null;
+		};
 		/** HTTPValidationError */
 		HTTPValidationError: {
 			/** Detail */
@@ -2525,10 +2660,10 @@ export interface components {
 			/** First */
 			readonly first: boolean;
 		};
-		/** PaginatedList[UserRead] */
-		PaginatedList_UserRead_: {
+		/** PaginatedList[UserReadAdmin] */
+		PaginatedList_UserReadAdmin_: {
 			/** Items */
-			items: components['schemas']['UserRead'][];
+			items: components['schemas']['UserReadAdmin'][];
 			/** Total Count */
 			total_count?: number | null;
 			/**
@@ -3516,6 +3651,44 @@ export interface components {
 				[key: string]: unknown;
 			};
 		};
+		/** UserAccessChange */
+		UserAccessChange: {
+			/**
+			 * Action
+			 * @enum {string}
+			 */
+			action: 'approve' | 'reject' | 'suspend' | 'activate' | 'promote' | 'demote';
+			/** Expected Version */
+			expected_version: number;
+			/** Reason */
+			reason?: string | null;
+		};
+		/** UserAccessEventRead */
+		UserAccessEventRead: {
+			/**
+			 * Created At
+			 * Format: date-time
+			 */
+			created_at: string;
+			/**
+			 * Updated At
+			 * Format: date-time
+			 */
+			updated_at: string;
+			/**
+			 * Id
+			 * Format: uuid
+			 */
+			id: string;
+			/** User Id */
+			user_id: string | null;
+			/** Actor Id */
+			actor_id: string | null;
+			/** Action */
+			action: string;
+			/** Reason */
+			reason: string | null;
+		};
 		/** UserCreate */
 		UserCreate: {
 			/**
@@ -3621,6 +3794,98 @@ export interface components {
 			 * @description The user's preferred timezone.
 			 */
 			timezone?: string | null;
+		};
+		/** UserReadAdmin */
+		UserReadAdmin: {
+			/**
+			 * Created At
+			 * Format: date-time
+			 */
+			created_at: string;
+			/**
+			 * Updated At
+			 * Format: date-time
+			 */
+			updated_at: string;
+			/**
+			 * Id
+			 * Format: uuid
+			 */
+			id: string;
+			/**
+			 * Firstname
+			 * @description The user's first name.
+			 */
+			firstname: string;
+			/**
+			 * Lastname
+			 * @description The user's last name.
+			 */
+			lastname: string | null;
+			/**
+			 * Email
+			 * Format: email
+			 * @description The user's email address.
+			 */
+			email: string;
+			/**
+			 * Profile Image Url
+			 * @description URL of the user's profile image.
+			 */
+			profile_image_url?: string | null;
+			/**
+			 * Phone Number
+			 * @description The user's phone number.
+			 */
+			phone_number?: string | null;
+			/**
+			 * Locale
+			 * @description The user's preferred locale.
+			 */
+			locale?: string | null;
+			/**
+			 * Timezone
+			 * @description The user's preferred timezone.
+			 */
+			timezone?: string | null;
+			/**
+			 * Approval Status
+			 * @default approved
+			 * @enum {string}
+			 */
+			approval_status: 'pending' | 'approved' | 'rejected';
+			/**
+			 * Auth Version
+			 * @default 0
+			 */
+			auth_version: number;
+			/**
+			 * Is Active
+			 * @description Whether the user account is active.
+			 */
+			is_active: boolean;
+			/**
+			 * Is Verified
+			 * @description Whether the user's email has been verified.
+			 */
+			is_verified: boolean;
+			/**
+			 * Is Superadmin
+			 * @description Whether the user has superadmin privileges.
+			 */
+			is_superadmin: boolean;
+			/**
+			 * Last Login At
+			 * @description The timestamp of the user's last login.
+			 */
+			last_login_at?: string | null;
+			/**
+			 * Extra
+			 * @description Additional user metadata.
+			 */
+			extra?: {
+				[key: string]: unknown;
+			} | null;
 		};
 		/** UserUpdate */
 		UserUpdate: {
@@ -6413,6 +6678,26 @@ export interface operations {
 			};
 		};
 	};
+	read_me_api_v1_users_me_get: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['UserReadAdmin'];
+				};
+			};
+		};
+	};
 	read_user_api_v1_users__user_id__get: {
 		parameters: {
 			query?: never;
@@ -6565,7 +6850,7 @@ export interface operations {
 					[name: string]: unknown;
 				};
 				content: {
-					'application/json': components['schemas']['PaginatedList_UserRead_'];
+					'application/json': components['schemas']['PaginatedList_UserReadAdmin_'];
 				};
 			};
 			/** @description Validation Error */
@@ -6597,6 +6882,72 @@ export interface operations {
 				};
 				content: {
 					'application/json': components['schemas']['DeleteResponse'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	change_access_api_v1_users_admin__user_id__access_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				user_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['UserAccessChange'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['UserReadAdmin'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	access_events_api_v1_users_admin__user_id__access_events_get: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				user_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['UserAccessEventRead'][];
 				};
 			};
 			/** @description Validation Error */
@@ -6672,6 +7023,99 @@ export interface operations {
 				};
 				content: {
 					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	options_api_v1_auth_google_options_get: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['GoogleLoginOptions'];
+				};
+			};
+		};
+	};
+	start_api_v1_auth_google_start_get: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': unknown;
+				};
+			};
+		};
+	};
+	callback_api_v1_auth_google_callback_get: {
+		parameters: {
+			query?: {
+				state?: string;
+				code?: string;
+				error?: string;
+			};
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': unknown;
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	exchange_api_v1_auth_google_exchange_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['GoogleLoginResult'];
 				};
 			};
 		};

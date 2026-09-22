@@ -5,8 +5,8 @@ import pytest
 from app.auth import require_scheduler_or_user
 from app.main import ensure_first_user
 from app_layer_base.core.database.deps import get_session
-from app_prebuilt_user.deps import get_current_user, get_login_throttle
-from app_prebuilt_user.models import User
+from app_prebuilt_auth.user.deps import get_current_user, get_login_throttle
+from app_prebuilt_auth.user.models import User
 from sqlalchemy import select
 
 from tests.utils.assertions import assert_status_code
@@ -152,7 +152,7 @@ async def test_the_scheduler_key_opens_the_trigger_and_nothing_else(client, sche
 
 
 async def test_a_password_changed_in_the_secrets_replaces_the_old_one_at_startup(client, monkeypatch):
-    from app_prebuilt_user.config import get_auth_settings
+    from app_prebuilt_auth.user.config import get_auth_settings
 
     tokens = (await client.post(LOGIN, data=OPERATOR)).json()
     monkeypatch.setenv("FIRST_USER_PASSWORD", "rotated-password")
@@ -208,3 +208,33 @@ async def test_machine_needs_dispatch_scope_and_human_admin_can_manage_keys(clie
     assert_status_code(
         await client.post("/api/v1/machines", headers=ROOT, json={"name": "bad", "scopes": ["planroot:agent"]}), 400
     )
+
+
+async def test_google_login_is_optional_and_approval_is_required(client):
+    from app.auth_settings import get_hub_auth_settings
+
+    assert get_hub_auth_settings().REGISTRATION_REQUIRE_APPROVAL is True
+    response = await client.get("/api/v1/auth/google/options")
+    assert response.status_code == 200
+    assert response.json() == {"enabled": False}
+    assert (await client.get("/api/v1/auth/google/start")).status_code == 404
+
+
+async def test_pending_and_suspended_accounts_cannot_use_hub_apis(client, session):
+    from app_prebuilt_auth.user.config import get_auth_settings
+    from app_prebuilt_auth.user.repos import UserRepository
+    from app_prebuilt_auth.user.services import UserService
+
+    user = User(firstname="Google", email="google@example.com", approval_status="approved")
+    session.add(user)
+    await session.commit()
+    service = UserService(get_auth_settings(), UserRepository())
+    token = service.create_access_token(user)
+    user.approval_status = "pending"
+    await session.commit()
+    assert (await client.get(PROTECTED, headers=bearer(token))).status_code == 401
+    assert (await client.get("/api/v1/users/admin/", headers=bearer(token))).status_code == 401
+    user.approval_status = "approved"
+    await session.commit()
+    assert (await client.get(PROTECTED, headers=bearer(token))).status_code == 200
+    assert (await client.get("/api/v1/users/admin/", headers=bearer(token))).status_code == 403
