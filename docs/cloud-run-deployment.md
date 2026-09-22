@@ -212,6 +212,12 @@ just provision-scheduler --project "$PROJECT_ID" --region "$REGION" \
   --service "$SERVICE_NAME" --url "$SERVICE_URL"
 ```
 
+The standalone helper defaults to a one-minute tick. Pass `--schedule "*/5 * * * *"`
+for a five-minute tick. Workbench's `just deploy autohub` delegates to this helper
+using workbench's Python interpreter and the cron schedule in its deployment inventory.
+Project dispatch intervals are evaluated when this external tick arrives; a
+60-second project interval does not make a five-minute external tick run more often.
+
 `just setup-secrets` now creates/preserves `APP_API_KEY_ROOT_KEY` in `autohub-secrets`.
 The deployment helper invokes the command above when scheduler setup is enabled.
 It registers `<service>-scheduler`, issues a key once, saves `{machine_id,key_id,key}`

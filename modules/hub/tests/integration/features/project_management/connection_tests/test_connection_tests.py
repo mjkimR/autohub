@@ -52,6 +52,10 @@ class ProbeGitHub:
             return httpx.Response(200, json={"login": "owner", "type": "User"})
         if path == "/repos/owner/app":
             return httpx.Response(200, json={"default_branch": "main", "full_name": "owner/app"})
+        if "/labels" in path:
+            if "/issues/" in path and self.pr:
+                self.pr["labels"] = [{"name": label} for label in body["labels"]]
+            return httpx.Response(200, json={"name": "autohub-connection-test"})
         if "/git/ref/heads/" in path:
             if path.endswith("/main") or self.branch:
                 return httpx.Response(200, json={"object": {"sha": self.head}})
@@ -88,7 +92,7 @@ class ProbeGitHub:
             if method == "PATCH":
                 if self.fail_cleanup:
                     return httpx.Response(503)
-                self.pr["state"] = body["state"]
+                self.pr.update(body)
             return httpx.Response(200, json=deepcopy(self.pr))
         if path.endswith("/comments"):
             if method == "POST":
@@ -349,7 +353,7 @@ class ProbeJules:
         self.github.pr = {
             "number": 42,
             "title": "Jules test",
-            "body": "",
+            "body": f"<!-- autohub-connection-test:{test_id} -->",
             "draft": False,
             "state": "open",
             "head": {"ref": "jules/generated-branch", "sha": "c" * 40, "repo": {"full_name": "owner/app"}},
@@ -477,6 +481,7 @@ async def test_jules_output_is_blocked_before_scheduler_discovers_it(client, pro
     if hidden_refs:
         # The ancestor guard still blocks an output with a renamed head and retargeted base, before its ID is known.
         github.pr["base"]["ref"] = "main"
+        github.pr["body"] = ""
     response = await client.post(
         f"/api/v1/projects/{project['id']}/runs", json={"pull_number": 42, "implemented": True}
     )
@@ -661,7 +666,14 @@ async def test_cleanup_closes_unknown_jules_output_without_provider_credentials(
     )
     await session.commit()
     test = await step(client, test)
+    assert test["cleanup_status"] == "waiting"
+    assert test["evidence"]["output_discovery_pending"]
+    # Recovering provider access establishes that there can be no more output.
+    await session.execute(update(Connector).where(Connector.id == catalog.connector_id).values(enabled=True))
+    await session.commit()
+    test = await step(client, test)
     assert test["cleanup_status"] == "completed"
+    assert "cleanup_warning" not in test["evidence"]
     assert len(jules.creates) == 1
 
 
@@ -703,7 +715,7 @@ async def test_unknown_execution_capacity_expires_even_when_cleanup_keeps_failin
     )
     await session.commit()
     assert await repo.active_dispatch_count(session, UUID(jules.catalog_id)) == 0
-    assert await ConnectionTestRepository().protected_heads(session, "owner/app") == []
+    assert await ConnectionTestRepository().protected_heads(session, "owner/app") == [test["evidence"]["initial_sha"]]
 
 
 async def test_completed_history_skips_ancestry_checks_but_keeps_all_owned_pr_ids(
@@ -809,7 +821,7 @@ async def test_all_jules_outputs_are_recorded_and_closed_when_provider_returns_e
     def respond(request):
         if request.url.path.endswith("/pulls/43"):
             if request.method == "PATCH":
-                extra["state"] = json.loads(request.content)["state"]
+                extra.update(json.loads(request.content))
             return httpx.Response(200, json=deepcopy(extra))
         return original(request)
 

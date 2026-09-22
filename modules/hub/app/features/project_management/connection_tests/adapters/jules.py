@@ -11,6 +11,7 @@ from app.features.project_management.connection_tests.adapters.jules_cleanup imp
 from app.features.project_management.connection_tests.adapters.specs import JULES_SPEC
 from app.features.project_management.connection_tests.github import ConnectionTestGitHub
 from app.features.project_management.connection_tests.models import ConnectionTest
+from app.features.project_management.connection_tests.ownership import marker
 from app.features.project_management.pipelines.github import GitHubObservationError
 from app_layer_base.utils.time_util import get_current_utc_time
 
@@ -41,7 +42,7 @@ class JulesSessionProbe:
                     f"This is an isolated AutoHub connection test. Start from `{branch}`. "
                     f"Replace only `{self.github.fixture(row)}` with `verified:{row.id}` and a newline. "
                     "Follow AGENTS.md, run repository checks, commit the change and open one Draft PR "
-                    f"targeting `{branch}`. Include `hub-connection-test:{row.id}` in the PR title/body. "
+                    f"targeting `{branch}`. Include `{marker(row)}` in the PR body. "
                     "Never merge, enable auto-merge, target the default branch, or change other files."
                 ),
             )
@@ -73,10 +74,12 @@ class JulesSessionProbe:
 
     async def find_pull(self, row: ConnectionTest, remote: dict) -> bool:
         found = 0
+        unresolved = False
         for output in remote.get("outputs") or []:
             url = (output.get("pullRequest") or {}).get("url", "")
             match = re.fullmatch(r"https://github\.com/([^/]+/[^/]+)/pull/([0-9]+)/?", url)
             if not match or match[1].lower() != row.repository.lower():
+                unresolved = unresolved or bool(url)
                 continue
             number = int(match[2])
             pr = await self.github.reader._get(f"/repos/{row.repository}/pulls/{number}")
@@ -89,12 +92,15 @@ class JulesSessionProbe:
             )
             if comparison.get("status") not in ("ahead", "identical"):
                 raise GitHubObservationError("Jules PR is not descended from the isolated test branch", 422)
-            self.github.record_owned_pull(row, pr)
+            self.github.record_owned_pull(row, pr, proof="provider_output")
+            await self.github.mark_pull(row, pr)
             found += 1
             if pr["base"]["ref"] != self.github.branch(row):
                 row.status, row.detail = "failed", "Jules PR targeted a different base; closing the test PR"
-        if found and row.evidence.get("execution_finished"):
-            row.evidence["output_discovery_pending"] = False
+        if str(remote.get("state", "")).lower() in ("completed", "failed") and not unresolved:
+            row.evidence["provider_output_confirmed"] = True
+            if found:
+                row.evidence["output_discovery_pending"] = False
         if found > 1:
             row.status, row.detail = "failed", "Jules returned multiple test PRs; closing all owned output"
         return found > 0

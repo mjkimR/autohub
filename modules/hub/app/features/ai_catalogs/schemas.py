@@ -10,6 +10,18 @@ from pydantic import BaseModel, ConfigDict, Field
 SessionStatusFilter = Literal["open", "completed", "failed"]
 
 
+class CreateAICatalogRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    key: str = Field(min_length=1, max_length=100, pattern=r"^[a-z][a-z0-9_-]*$")
+    name: str = Field(min_length=1, max_length=255)
+    kind: AICatalogKind
+    connector_id: UUID | None = None
+    configured_concurrency: int = Field(default=1, ge=1, le=1000)
+    policy_config: dict = Field(default_factory=dict)
+    enabled: bool = True
+
+
 class AICatalogRead(UUIDSchemaMixin, TimestampSchemaMixin):
     model_config = ConfigDict(from_attributes=True)
 

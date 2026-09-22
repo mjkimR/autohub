@@ -579,6 +579,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/projects/{project_id}/connection-tests/{test_id}/resolve-cleanup': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Resolve Cleanup */
+		post: operations['resolve_cleanup_api_v1_projects__project_id__connection_tests__test_id__resolve_cleanup_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/projects/{project_id}/agent-schedules': {
 		parameters: {
 			query?: never;
@@ -801,7 +818,8 @@ export interface paths {
 		/** List Ai Catalogs */
 		get: operations['list_ai_catalogs_api_v1_ai_catalogs_get'];
 		put?: never;
-		post?: never;
+		/** Create Ai Catalog */
+		post: operations['create_ai_catalog_api_v1_ai_catalogs_post'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -1621,6 +1639,11 @@ export interface components {
 			 * @default false
 			 */
 			configuration_current: boolean;
+			/**
+			 * Cleanup Resolution Available
+			 * @default false
+			 */
+			cleanup_resolution_available: boolean;
 			test_spec?: components['schemas']['ConnectionTestSpec'] | null;
 			/**
 			 * Status
@@ -1680,6 +1703,11 @@ export interface components {
 			 * @default false
 			 */
 			discovers_output_pr: boolean;
+			/**
+			 * Manual Cleanup Resolution
+			 * @default false
+			 */
+			manual_cleanup_resolution: boolean;
 			/** Delivery Key */
 			delivery_key: string;
 			/** Requirements */
@@ -1780,6 +1808,30 @@ export interface components {
 			id: string;
 			/** Has Credentials */
 			has_credentials: boolean;
+		};
+		/** CreateAICatalogRequest */
+		CreateAICatalogRequest: {
+			/** Key */
+			key: string;
+			/** Name */
+			name: string;
+			kind: components['schemas']['AICatalogKind'];
+			/** Connector Id */
+			connector_id?: string | null;
+			/**
+			 * Configured Concurrency
+			 * @default 1
+			 */
+			configured_concurrency: number;
+			/** Policy Config */
+			policy_config?: {
+				[key: string]: unknown;
+			};
+			/**
+			 * Enabled
+			 * @default true
+			 */
+			enabled: boolean;
 		};
 		/** DashboardStats */
 		DashboardStats: {
@@ -2778,6 +2830,25 @@ export interface components {
 			 * @enum {string}
 			 */
 			status: 'configured' | 'missing' | 'manual';
+		};
+		/** ResolveCleanup */
+		ResolveCleanup: {
+			/**
+			 * Request Id
+			 * Format: uuid
+			 */
+			request_id: string;
+			/**
+			 * Confirmed Remote Stopped
+			 * @constant
+			 */
+			confirmed_remote_stopped: true;
+			/** Note */
+			note: string;
+			/** Unrelated Pulls */
+			unrelated_pulls?: {
+				[key: string]: string;
+			};
 		};
 		/** RunSnapshot */
 		RunSnapshot: {
@@ -4934,6 +5005,42 @@ export interface operations {
 			};
 		};
 	};
+	resolve_cleanup_api_v1_projects__project_id__connection_tests__test_id__resolve_cleanup_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				project_id: string;
+				test_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['ResolveCleanup'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['ConnectionTestRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
 	list_agent_schedules_api_v1_projects__project_id__agent_schedules_get: {
 		parameters: {
 			query?: never;
@@ -5767,6 +5874,39 @@ export interface operations {
 				};
 				content: {
 					'application/json': components['schemas']['AICatalogList'];
+				};
+			};
+		};
+	};
+	create_ai_catalog_api_v1_ai_catalogs_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['CreateAICatalogRequest'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['AICatalogRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
 				};
 			};
 		};

@@ -111,6 +111,25 @@ test('routes project dispatch management to project settings', async () => {
 	expect(screen.queryByTitle('Delete Schedule')).toBeNull();
 });
 
+test('connection test workers expose no generic mutation controls', async () => {
+	api.GET.mockImplementation(async (path: string) =>
+		path === '/api/v1/tasks/specs'
+			? { data: [] }
+			: {
+					data: {
+						total_count: 1,
+						items: [config('probe', 'Connection test', 'pipeline.connection_test')]
+					}
+				}
+	);
+	render(ScheduleConfigsView);
+	await screen.findByText('Connection test');
+	expect(screen.getByText('Manage in project Connections')).toBeTruthy();
+	expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
+	expect(screen.queryByTitle('Edit Schedule')).toBeNull();
+	expect(screen.queryByTitle('Delete Schedule')).toBeNull();
+});
+
 test('runs a dispatcher tick by hand and creates an interval schedule', async () => {
 	const user = userEvent.setup();
 	render(ScheduleConfigsView);

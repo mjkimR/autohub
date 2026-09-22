@@ -121,26 +121,29 @@ class ManagedScheduleHook(
     UpdateHook[ScheduleConfig, ScheduleConfigContextKwargs],
     DeleteHook[ScheduleConfigContextKwargs],
 ):
-    """Project dispatchers and agent schedules are changed through their owners."""
+    """Project dispatchers, connection tests and agent schedules are changed through their owners."""
 
     @staticmethod
-    def _refuse_dispatch(task_func: str | None) -> None:
+    def _refuse_owned_task(task_func: str | None) -> None:
+        from app.features.project_management.connection_tests.models import TEST_TASK
         from app.features.project_management.projects.errors import ProjectError
         from app.features.project_management.projects.repos import PROJECT_DISPATCH_TASK
 
         if task_func == PROJECT_DISPATCH_TASK:
             raise ProjectError(409, "This dispatch schedule is managed by a project; edit the project settings instead")
+        if task_func == TEST_TASK:
+            raise ProjectError(409, "This schedule is managed by a connection test; use the project's Connections tab")
 
     def create_prepare_fields(
         self, op: Operation[ScheduleConfigContextKwargs], data: BaseModel, fields: dict[str, Any]
     ) -> dict[str, Any]:
-        self._refuse_dispatch(getattr(data, "task_func", None))
+        self._refuse_owned_task(getattr(data, "task_func", None))
         return fields
 
     def update_prepare_fields(
         self, op: Operation[ScheduleConfigContextKwargs], data: BaseModel, fields: dict[str, Any], partial: bool = True
     ) -> dict[str, Any]:
-        self._refuse_dispatch(getattr(data, "task_func", None))
+        self._refuse_owned_task(getattr(data, "task_func", None))
         return fields
 
     @staticmethod
@@ -151,7 +154,7 @@ class ManagedScheduleHook(
         config_id = pk if isinstance(pk, UUID) else UUID(str(pk))
         config = await ScheduleConfigRepository().get_by_pk(session, config_id)
         if config is not None:
-            ManagedScheduleHook._refuse_dispatch(config.task_func)
+            ManagedScheduleHook._refuse_owned_task(config.task_func)
         owner = await AgentScheduleRepository().owner_of_config(session, config_id)
         if owner is not None:
             raise ProjectError(409, "This schedule is managed by a project agent schedule; edit or delete it there")

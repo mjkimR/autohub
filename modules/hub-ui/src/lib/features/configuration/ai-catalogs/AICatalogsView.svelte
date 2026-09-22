@@ -13,15 +13,17 @@
 		DialogTitle
 	} from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
-	import { Bot, Clock3, RefreshCw, ShieldAlert } from '@lucide/svelte';
+	import { Bot, Clock3, Plus, RefreshCw, ShieldAlert } from '@lucide/svelte';
 	import { AICatalogsState, type AICatalog } from './ai-catalogs.svelte';
 	import { catalogKinds } from './catalog-kinds';
+	import CreateCatalogDialog from './CreateCatalogDialog.svelte';
 	import CatalogConnectorDialog from './CatalogConnectorDialog.svelte';
 	import CatalogSessionsDialog from './CatalogSessionsDialog.svelte';
 
 	type CatalogDialog = 'policy' | 'connector' | 'sessions';
 
 	const catalogs = new AICatalogsState();
+	let creating = $state(false);
 	let selectedKey = $state<string | null>(null);
 	let availableAt = $state('');
 	let note = $state('');
@@ -82,15 +84,20 @@
 				work.
 			</p>
 		</div>
-		<Button
-			variant="outline"
-			size="sm"
-			onclick={() => catalogs.load()}
-			disabled={catalogs.loading}
-			class="gap-2"
-		>
-			<RefreshCw class="size-4 {catalogs.loading ? 'animate-spin' : ''}" /> Refresh
-		</Button>
+		<div class="flex gap-2">
+			<Button onclick={() => (creating = true)} disabled={catalogs.loading || catalogs.saving}>
+				<Plus class="size-4" /> Add catalog
+			</Button>
+			<Button
+				variant="outline"
+				size="sm"
+				onclick={() => catalogs.load()}
+				disabled={catalogs.loading}
+				class="gap-2"
+			>
+				<RefreshCw class="size-4 {catalogs.loading ? 'animate-spin' : ''}" /> Refresh
+			</Button>
+		</div>
 	</div>
 
 	{#if catalogs.error}
@@ -115,7 +122,7 @@
 								<div>
 									<CardTitle class="text-base">{catalog.name}</CardTitle>
 									<p class="mt-1 text-xs text-muted-foreground">
-										{catalog.kind} · {catalog.adapter}
+										{catalog.key} · {catalog.kind}
 									</p>
 								</div>
 							</div>
@@ -223,4 +230,8 @@
 	<CatalogConnectorDialog catalog={active.catalog} {catalogs} onclose={closeDialog} />
 {:else if active?.dialog === 'sessions'}
 	<CatalogSessionsDialog catalog={active.catalog} {catalogs} onclose={closeDialog} />
+{/if}
+
+{#if creating}
+	<CreateCatalogDialog {catalogs} onclose={() => (creating = false)} />
 {/if}

@@ -14,7 +14,7 @@ from app.features.ai_catalogs.models import (
 from app.features.ai_catalogs.policies.base import hold_state, utc
 from app.features.ai_catalogs.policies.registry import find_quota_policy, quota_policy_for
 from app.features.ai_catalogs.repos import AICatalogRepository
-from app.features.ai_catalogs.schemas import SetAvailabilityRequest, UpdatePolicyConfigRequest
+from app.features.ai_catalogs.schemas import CreateAICatalogRequest, SetAvailabilityRequest, UpdatePolicyConfigRequest
 from app.features.configuration.connectors.models import Connector
 from app.features.project_management.agent_schedules.repos import AgentScheduleRepository
 from app.features.project_management.projects.errors import ProjectError
@@ -50,6 +50,30 @@ class AICatalogService:
         self.repo = repo
         # Owned agent schedules follow the catalog's enabled switch; see set_enabled.
         self.agent_schedules = AgentScheduleRepository()
+
+    async def create(self, session: AsyncSession, request: CreateAICatalogRequest) -> AICatalog:
+        adapters = {AICatalogKind.CODEX: "codex-github-mention", AICatalogKind.JULES: "jules-api"}
+        if request.connector_id is not None:
+            provider = CATALOG_CONNECTOR_PROVIDERS.get(request.kind)
+            if provider is None:
+                raise ProjectError(422, "Codex uses each project's GitHub connection; omit connector_id")
+            connector = await session.get(Connector, request.connector_id)
+            if connector is None or connector.provider != provider or not connector.enabled:
+                raise ProjectError(422, f"Select an enabled {provider} connector for this catalog")
+        catalog = AICatalog(
+            key=request.key,
+            name=request.name,
+            kind=request.kind,
+            adapter=adapters[request.kind],
+            connector_id=request.connector_id,
+            configured_concurrency=request.configured_concurrency,
+            enabled=request.enabled,
+            availability_state=AICatalogState.NORMAL if request.enabled else AICatalogState.DISABLED,
+        )
+        catalog.policy_config = quota_policy_for(catalog).validate_config(request.policy_config)
+        if not await self.repo.create(session, catalog):
+            raise ProjectError(409, "An AI catalog with this key already exists; choose another key")
+        return catalog
 
     @staticmethod
     def effective_concurrency(catalog: AICatalog) -> int:

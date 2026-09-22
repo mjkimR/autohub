@@ -4,6 +4,7 @@ from uuid import UUID
 from app.features.project_management.connection_tests.schemas import (
     ConnectionTestOption,
     ConnectionTestRead,
+    ResolveCleanup,
     StartConnectionTest,
 )
 from app.features.project_management.connection_tests.usecases import ConnectionTestUseCase
@@ -39,3 +40,10 @@ async def advance_test(project_id: UUID, test_id: UUID, use_case: Annotated[Conn
 @router.post("/{test_id}/cancel", response_model=ConnectionTestRead)
 async def cancel_test(project_id: UUID, test_id: UUID, use_case: Annotated[ConnectionTestUseCase, Depends()]):
     return await use_case.cancel(project_id, test_id)
+
+
+@router.post("/{test_id}/resolve-cleanup", response_model=ConnectionTestRead)
+async def resolve_cleanup(
+    project_id: UUID, test_id: UUID, data: ResolveCleanup, use_case: Annotated[ConnectionTestUseCase, Depends()]
+):
+    return await use_case.resolve_cleanup(project_id, test_id, data)

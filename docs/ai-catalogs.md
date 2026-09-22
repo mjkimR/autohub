@@ -16,6 +16,73 @@ Two catalogs are seeded:
 Code structure, flows, design decisions, and open work are described in
 [AI Catalog Implementation Notes](ai-catalog-implementation-notes.md).
 
+## Initial setup and Jules connection
+
+Default catalogs are provisioned by database migrations. Additional catalogs are
+created through **Settings → AI Catalogs → Add catalog** or authenticated
+`POST /api/v1/ai-catalogs`. Connector registration stores credentials but does
+not create a catalog.
+
+Migration `e3c4d5e6f7a8` repairs the missing defaults in databases created from
+the consolidated initial schema and provisions them on fresh installations.
+It inserts only missing keys. Existing catalog IDs, connector assignments,
+enabled states, policies, and quota history remain unchanged. Downgrade retains
+these account records because they can own live sessions and project references.
+
+The supported setup path is:
+
+1. Deploy an image containing the migration. The container entrypoint runs
+   `alembic upgrade head` before starting the API. For a locally configured
+   database, run `just db-upgrade`.
+2. Connect the target GitHub repository in Jules and generate a Jules API key.
+3. In **Connectors**, register **Jules (API Key)** with the key in **Secret Token**.
+4. Open **Settings → AI Catalogs**, refresh, and locate **Personal Jules**
+   (`personal-jules`). Select **Connector**, choose the registered connector,
+   and click **Save connector**. Keep both the connector and catalog enabled.
+5. Use **Quota policy** to match the account's limits. The seeded values are
+   15 concurrent sessions and 100 tasks per rolling 24 hours; these are initial
+   local policy values, not automatically discovered provider entitlements.
+6. Create task or report work in the project's **Agent Schedules** using
+   **Personal Jules**. Keep **Personal Codex** as the project's PR-work catalog
+   when Codex should handle CI and conflict repairs after Jules opens a PR.
+
+If **Personal Jules** is absent after refresh, confirm the target deployment's
+database has applied `e3c4d5e6f7a8`; registering another connector will not repair
+a missing catalog. See the [Jules API setup](https://jules.google/docs/api/reference/)
+for repository authorization and API-key creation.
+
+## Add another catalog
+
+Open **Settings → AI Catalogs → Add catalog** and enter a display name, a unique
+permanent key (for example `team-jules`), and a provider. Keys start with a
+lowercase letter and contain only lowercase letters, digits, hyphens, and
+underscores. The provider determines the execution adapter; it is not an
+operator-editable field.
+
+- **Jules:** select an enabled Jules connector, or choose **Connect later** and
+  assign one before starting sessions. Set the daily task allowance (rolling
+  24 hours) and concurrent work limit to match the account. **Quota policy** can
+  subsequently configure the daily window and allowance.
+- **Codex:** set the concurrent work limit. The catalog uses the existing Codex
+  refresh-policy defaults, editable through **Refresh policy**. Authentication
+  still comes from the project's GitHub connection and Codex repository setup;
+  creating a catalog does not authenticate or switch the remote Codex account.
+
+New catalogs are enabled but are not automatically selected for any project or
+schedule. Select a Codex catalog for project PR work, or a Jules catalog for an
+agent schedule. Each catalog tracks usage independently: use one catalog per
+provider account so multiple records do not double-count available capacity.
+There is no automatic failover or account routing. Retire a catalog with
+**Disable**; deletion and changes to its key/provider are not exposed.
+
+The create endpoint accepts `key`, `name`, `kind`, optional `connector_id`,
+`configured_concurrency` (1–1000, default 1), `policy_config`, and optional
+`enabled` (default true). Codex accepts an omitted policy configuration and
+cannot take a catalog connector. Jules requires a valid `daily_task_limit` in
+its policy configuration. A duplicate key returns 409; invalid policies,
+provider/connector combinations, and caller-supplied adapters return 422.
+Neither refusal changes existing catalogs. Creation does not dispatch work.
+
 ## Why a catalog is the gateway
 
 A quota is attached to an AI account and its capacity, not to a pipeline run.

@@ -1,5 +1,6 @@
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Annotated
 from uuid import UUID
 
@@ -7,6 +8,8 @@ from app.features.configuration.connectors.crypto import ConnectorCredentialCiph
 from app.features.configuration.connectors.models import Connector
 from app.features.configuration.connectors.repos import ConnectorRepository
 from app.features.configuration.connectors.schemas import ConnectorCreate, ConnectorPatch, ConnectorPut
+from app.features.project_management.projects.errors import ProjectError
+from app_layer_base.base.repos.base import PrimaryKeyType
 from app_layer_base.base.services.base import (
     BaseContextKwargs,
     BaseCreateServiceMixin,
@@ -16,7 +19,7 @@ from app_layer_base.base.services.base import (
     BaseUpdateServiceMixin,
 )
 from app_layer_base.base.services.exists_check_hook import ExistsCheckHook
-from app_layer_base.base.services.hooks import Operation
+from app_layer_base.base.services.hooks import DeleteHook, Operation
 from app_layer_base.base.services.unique_constraints_hook import UniqueConstraintHook
 from fastapi import Depends
 from pydantic import BaseModel
@@ -39,6 +42,20 @@ class ConnectorUniqueHook(UniqueConstraintHook[Connector, ConnectorContextKwargs
             yield Connector.name == name, "Connector name must be unique."
 
 
+class ConnectionTestCleanupHook(DeleteHook[ConnectorContextKwargs]):
+    @asynccontextmanager
+    async def delete_context(self, op: Operation[ConnectorContextKwargs], pk: PrimaryKeyType) -> AsyncGenerator[None]:
+        repo = ConnectorRepository()
+        connector_id = pk if isinstance(pk, UUID) else UUID(str(pk))
+        # Test creation takes the same lock, so deletion cannot miss an in-flight new reference.
+        await repo.lock(op.session, connector_id)
+        if await repo.has_unfinished_connection_tests(op.session, connector_id):
+            raise ProjectError(
+                409, "This connector is required by a connection test; finish its cleanup before deleting it"
+            )
+        yield
+
+
 class ConnectorService(
     BaseCreateServiceMixin[ConnectorRepository, Connector, ConnectorCreate, ConnectorContextKwargs],
     BaseGetMultiServiceMixin[ConnectorRepository, Connector, ConnectorContextKwargs],
@@ -59,7 +76,7 @@ class ConnectorService(
     ):
         self._repo = repo
         self._cipher = cipher
-        self.hooks = (ConnectorUniqueHook(), ExistsCheckHook())
+        self.hooks = (ConnectorUniqueHook(), ExistsCheckHook(), ConnectionTestCleanupHook())
 
     @property
     def repo(self) -> ConnectorRepository:

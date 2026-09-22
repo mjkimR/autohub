@@ -14,7 +14,6 @@ init module="all":
         path=$(resolve_module_path "hub")
         echo "Initializing Python backend ($path)..."
         uv sync --no-active
-        just hooks-install
         just skills
     fi
 
@@ -79,14 +78,6 @@ check module="all":
         uv run --no-active --no-sync app-tools run npm --path "$path" -- run check
         uv run --no-active --no-sync app-tools run npm --path "$path" -- run build
     fi
-
-# Install pre-commit hooks
-hooks-install:
-    uv run --no-active pre-commit install
-
-# Run pre-commit hooks against all files
-hooks-run:
-    uv run --no-active pre-commit run --all-files
 
 # Run server for a specific module in development mode (hub or hub-ui)
 dev-run module="all":

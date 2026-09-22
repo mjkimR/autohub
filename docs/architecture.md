@@ -150,11 +150,33 @@ the current lease. Create-once recipes persist intent before a request and recon
 responses without repeating creation. Cancellation uses a row lock when committing observations.
 Execution capacity is released once provider completion is observed, independently of CI and
 cleanup. Unknown canceled executions hold capacity for at most 24 hours. Jules cleanup closes
-known PRs through GitHub before attempting provider reconciliation, and discovers owned output
-from the isolated base even if provider credentials fail.
+positively identified PRs through GitHub before attempting provider reconciliation. Ownership
+requires a session output URL or the exact per-test marker, plus repository/ancestry validation.
+Codex owns its reserved branch PR. Confirmed PRs receive an HTML body marker and the
+`autohub-connection-test` label; metadata failures are warnings and persisted identity still protects them.
+Discovery scans recent PRs across bases with a page/time budget. Ancestry alone only quarantines
+a candidate for merge blocking; it never authorizes marking, closing, or deleting. Legacy records
+without ownership proof are revalidated before mutation. Incomplete scans cannot complete cleanup. Provider reconciliation has a separate timeout within the step
+budget so an outage leaves time for GitHub cleanup.
 
 Known test PR IDs remain excluded from enrollment and final merge authorization permanently.
-Ancestry checks protect undiscovered output while running or within the 24-hour cleanup grace
-period, with a bounded pending set; completed history adds no GitHub comparison calls to normal
-PRs. Cleanup outcome is separate from test outcome. External jobs are not forcibly canceled,
-and output recreated after the grace period is not guaranteed to be collected.
+Ancestry checks protect unconfirmed output until reconciliation, including after the 24-hour
+branch-retention period, with a bounded pending set; completed history adds no GitHub comparison
+calls to normal PRs. Unconfirmed sessions retain their isolated branches and cleanup schedule.
+A confirmed terminal session with no PR also resolves output discovery. Cleanup outcome is
+separate from test outcome. External jobs are not forcibly canceled, and output recreated after
+confirmed completion and cleanup is not guaranteed to be collected.
+
+Recipes opt into manual cleanup resolution through `manual_cleanup_resolution`. Terminal Jules
+tests with uncertain creation/output expose a review action. The operator must confirm no remote
+work is running or can resume, provide a reason, and review every unconfirmed PR as unrelated.
+The API locks the row, rejects active leases and changed candidate SHA sets, and records an
+idempotent request ID, reason, timestamp, and reviewed heads in evidence. It fences expired leases
+and rechecks GitHub without repeating session creation or changing the test result. Reviewed
+heads remain untouched; changed/new candidates require another review. The 24-hour retention
+still applies. Confirmed test PR identities cannot be dismissed.
+
+Connection-test schedules reject generic schedule create/update/delete operations. Connectors
+referenced by running tests or unfinished cleanup cannot be deleted, even after a project or
+catalog switches connectors. Creation and connector deletion use the same connector row locks;
+completed history does not prevent deletion of otherwise unused connectors.

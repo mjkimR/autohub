@@ -41,6 +41,10 @@ its printed `log:` path. Initialize the backend with `just init hub` before runn
 these commands, including frontend-only checks. Use `just lint-check` for read-only
 format/lint verification.
 
+This repository does not install Git hooks. Run `just lint`, `just check`, and
+the relevant tests before finishing changes, as required by `AGENTS.md`. CI uses
+the same recipes and locked Python dependencies; Ruff has no separate hook version.
+
 ## Agent skills
 
 

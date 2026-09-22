@@ -1,9 +1,11 @@
 """Provisioning preserves revocation and cleans up a failed one-time secret write."""
 
 import importlib.util
+import json
 from email.message import Message
 from io import BytesIO
 from pathlib import Path
+from subprocess import CompletedProcess
 from unittest.mock import Mock
 from urllib.request import HTTPSHandler
 from urllib.response import addinfourl
@@ -94,3 +96,51 @@ def test_management_success_returns_the_issued_key_without_printing(monkeypatch,
     )
     assert result == {"key": "test-one-time-secret"}
     assert capsys.readouterr() == ("", "")
+
+
+@pytest.mark.parametrize("schedule", [None, "*/5 * * * *"])
+def test_cli_reuses_machine_key_and_honors_configured_tick(monkeypatch, capsys, schedule):
+    commands = []
+
+    def cloud(command, **kwargs):
+        commands.append(command)
+        if command[1:4] == ["secrets", "versions", "access"]:
+            value = {"APP_API_KEY_ROOT_KEY": "management-root"} if "--secret=autohub-secrets" in command else SAVED
+        elif command[1:3] == ["secrets", "list"]:
+            value = [{"name": "projects/p/secrets/hub-scheduler-credential"}]
+        elif command[1:4] == ["scheduler", "jobs", "list"]:
+            value = [{"name": "projects/p/locations/r/jobs/hub-dispatcher-tick"}]
+        else:
+            assert command[1:5] == ["scheduler", "jobs", "update", "http"]
+            value = {}
+        return CompletedProcess(command, 0, json.dumps(value), "")
+
+    argv = [
+        "provision-scheduler.py",
+        "--project",
+        "p",
+        "--region",
+        "r",
+        "--service",
+        "hub",
+        "--url",
+        "https://hub.example",
+    ]
+    if schedule:
+        argv += ["--schedule", schedule]
+    monkeypatch.setattr("sys.argv", argv)
+    monkeypatch.setattr(module.subprocess, "run", cloud)
+    api = Mock(side_effect=[[MACHINE], [KEY]])
+    monkeypatch.setattr(module, "management_request", api)
+    module.main()
+
+    update = commands[-1]
+    assert f"--schedule={schedule or '* * * * *'}" in update
+    assert f"--update-headers=X-API-Key={SAVED['key']}" in update
+    assert "--remove-headers=X-Scheduler-Key,X-Root-API-Key,Authorization" in update
+    assert "--uri=https://hub.example/api/v1/dispatchers/trigger" in update
+    assert "management-root" not in " ".join(update)
+    assert [call.args[2] for call in api.call_args_list] == ["GET", "GET"]
+    output = capsys.readouterr()
+    assert SAVED["key"] not in output.out + output.err
+    assert "management-root" not in output.out + output.err

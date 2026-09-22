@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ConnectionTestRepository:
-    async def get(self, session: AsyncSession, test_id: UUID) -> ConnectionTest | None:
-        return await session.get(ConnectionTest, test_id)
+    async def get(self, session: AsyncSession, test_id: UUID, *, lock: bool = False) -> ConnectionTest | None:
+        return await session.get(ConnectionTest, test_id, with_for_update=lock)
 
     async def list(self, session: AsyncSession, project_id: UUID) -> list[ConnectionTest]:
         rows = await session.scalars(
@@ -102,6 +102,7 @@ class ConnectionTestRepository:
                     or_(
                         ConnectionTest.evidence["pull_number"].as_integer() == number,
                         ConnectionTest.evidence["owned_pulls"][str(number)].as_string().is_not(None),
+                        ConnectionTest.evidence["unconfirmed_pulls"][str(number)].as_string().is_not(None),
                     ),
                 )
                 .limit(1)
@@ -112,17 +113,15 @@ class ConnectionTestRepository:
     async def protected_heads(self, session: AsyncSession, repository: str) -> builtins.list[str]:
         """Only undiscovered provider output needs ancestry checks; known PR IDs remain protected forever.
 
-        Pending output discovery lasts at most the cancellation grace period. Completed history never adds
-        GitHub requests to unrelated PRs. The cap defers enrollment rather than making an unbounded scan.
+        Unconfirmed output stays protected until reconciliation, regardless of age. Completed history never
+        adds GitHub requests to unrelated PRs. The cap defers enrollment rather than making an unbounded scan.
         """
-        cutoff = get_current_utc_time() - timedelta(days=1)
         rows = list(
             await session.scalars(
                 select(ConnectionTest.evidence)
                 .where(
                     ConnectionTest.repository == repository,
                     ConnectionTest.cleanup_status != "completed",
-                    or_(ConnectionTest.status == ACTIVE, ConnectionTest.finished_at > cutoff),
                     or_(
                         ConnectionTest.evidence["output_discovery_pending"].as_boolean().is_(True),
                         # Compatibility for tests dispatched before recipe metadata existed.

@@ -63,6 +63,7 @@
 	// need. Dispatchers and owned agent-schedule entries are changed from the project instead.
 	const PROJECT_MANAGED_TASKS = new Set([
 		'pipeline.dispatch_project',
+		'pipeline.connection_test',
 		'pipeline.observe_project',
 		'jules.session',
 		'jules.sync_sessions'
@@ -332,6 +333,8 @@
 									>
 										Project settings
 									</Button>
+								{:else if config.task_func === 'pipeline.connection_test'}
+									<span class="text-xs text-muted-foreground">Manage in project Connections</span>
 								{:else}
 									<div class="flex items-center justify-end gap-1.5">
 										<Button

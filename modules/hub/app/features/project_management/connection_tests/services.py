@@ -4,6 +4,7 @@ from typing import Annotated
 from uuid import UUID
 
 from app.features.ai_catalogs.providers.errors import ProviderRequestError
+from app.features.configuration.connectors.repos import ConnectorRepository
 from app.features.project_management.connection_tests.adapters.base import TestContext
 from app.features.project_management.connection_tests.adapters.registry import adapter_for
 from app.features.project_management.connection_tests.catalogs import select_catalog
@@ -29,8 +30,10 @@ class ConnectionTestService:
     ):
         self.repo, self.projects = repo, projects
 
-    async def get(self, session: AsyncSession, project_id: UUID, test_id: UUID) -> ConnectionTest:
-        row = await self.repo.get(session, test_id)
+    async def get(
+        self, session: AsyncSession, project_id: UUID, test_id: UUID, *, lock: bool = False
+    ) -> ConnectionTest:
+        row = await self.repo.get(session, test_id, lock=lock)
         if row is None or row.project_id != project_id:
             raise ProjectError(404, "Connection test not found")
         return row
@@ -52,8 +55,15 @@ class ConnectionTestService:
         if any(row.status == ACTIVE for row in await self.repo.list(session, project_id)):
             raise ProjectError(409, "A connection test is already running")
         catalog = await select_catalog(session, model, catalog_id)
+        connector_ids = {project.github.github_connector_id}
+        if catalog.connector_id:
+            connector_ids.add(catalog.connector_id)
+        for connector_id in sorted(connector_ids):
+            if await ConnectorRepository().lock(session, connector_id) is None:
+                raise ProjectError(422, "A connection test connector was removed; reload configuration before testing")
         option = await describe_configuration(session, project, catalog)
-        assert option is not None
+        if option is None or not option.ready:
+            raise ProjectError(422, "Connection test configuration changed; reload before testing")
         return await self.repo.create(
             session,
             ConnectionTest(

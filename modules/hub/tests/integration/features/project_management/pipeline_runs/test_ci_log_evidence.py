@@ -1,4 +1,3 @@
-# ruff: noqa: F811
 import httpx
 import pytest
 

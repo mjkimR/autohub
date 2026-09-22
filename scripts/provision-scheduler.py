@@ -91,6 +91,7 @@ def main() -> None:
     parser.add_argument("--region", default=None, help="GCP region (default: us-west1 or GCP_REGION)")
     parser.add_argument("--service", default="autohub", help="Cloud Run service name (default: autohub)")
     parser.add_argument("--url", default=None, help="Cloud Run service URL (default: auto-detected from Cloud Run)")
+    parser.add_argument("--schedule", default="* * * * *", help="Cloud Scheduler cron schedule (default: every minute)")
     args = parser.parse_args()
 
     project = args.project or os.environ.get("PROJECT_ID") or os.environ.get("GCP_PROJECT_ID")
@@ -162,7 +163,7 @@ def main() -> None:
         "http",
         job,
         f"--location={args.region}",
-        "--schedule=* * * * *",
+        f"--schedule={args.schedule}",
         "--http-method=POST",
         f"--uri={args.url.rstrip('/')}/api/v1/dispatchers/trigger",
         f"{headers}=X-API-Key={credential['key']}",

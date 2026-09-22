@@ -4,6 +4,7 @@
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
 	import { toast } from 'svelte-sonner';
+	import ConnectionTestRecovery from './ConnectionTestRecovery.svelte';
 	type Test = components['schemas']['ConnectionTestRead'];
 	let {
 		project,
@@ -210,8 +211,9 @@
 	</p>
 	<p class="text-xs text-muted-foreground">
 		Tests continue on scheduler ticks after you leave this page. A test expires after one hour. On
-		failure or cancellation, the PR closes and branch deletion waits 24 hours for a possible late
-		cloud push.
+		failure or cancellation, the PR closes and branch deletion waits at least 24 hours for a
+		possible late cloud push. Unconfirmed provider output keeps cleanup and PR protection active
+		until resolved.
 	</p>
 	{#if error}<p role="alert" class="text-sm text-destructive">
 			{error} <button type="button" class="underline" onclick={load}>Retry</button>
@@ -249,7 +251,8 @@
 					<span>Cleanup: {test.cleanup_status}</span>
 				</div>
 				{#if test.cleanup_status === 'waiting'}<p class="text-xs text-muted-foreground">
-						Cleanup continues for 24 hours to close late PR output and retain isolated branches.
+						Cleanup retains isolated branches for at least 24 hours and continues while provider
+						output is unconfirmed. PR protection remains active during reconciliation.
 					</p>{/if}
 				{#if evidence(test, 'cleanup_warning')}<p class="text-xs text-muted-foreground">
 						Provider reconciliation: {evidence(test, 'cleanup_warning')}. GitHub cleanup continues
@@ -258,6 +261,12 @@
 				{#if evidence(test, 'cleanup_error')}<p class="text-xs text-destructive">
 						Cleanup: {evidence(test, 'cleanup_error')}
 					</p>{/if}
+				{#if test.evidence.marking_warnings && Object.keys(test.evidence.marking_warnings).length}
+					<p class="text-xs text-muted-foreground">
+						Some PR markers or labels could not be updated. Recorded test PRs remain protected.
+					</p>
+				{/if}
+				<ConnectionTestRecovery {test} onresolved={load} />
 				<div class="flex flex-wrap items-center gap-3">
 					{#each metadata(test).filter((item) => item.origin) as item (item.key)}
 						{#if evidenceLink(test, item.key, item.origin)}

@@ -5,6 +5,7 @@ from app.features.ai_catalogs.schemas import (
     AICatalogList,
     AICatalogRead,
     AICatalogSessionList,
+    CreateAICatalogRequest,
     SessionStatusFilter,
     SetAvailabilityRequest,
     SetConnectorRequest,
@@ -15,6 +16,14 @@ from app.features.ai_catalogs.usecases import AICatalogUseCase
 from fastapi import APIRouter, Depends, Query
 
 router = APIRouter(prefix="/ai-catalogs", tags=["AI Catalog"])
+
+
+@router.post("", response_model=AICatalogRead, status_code=201)
+async def create_ai_catalog(
+    request: CreateAICatalogRequest,
+    usecase: Annotated[AICatalogUseCase, Depends()],
+):
+    return await usecase.create(request)
 
 
 @router.get("", response_model=AICatalogList)

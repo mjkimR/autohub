@@ -3,7 +3,15 @@ from typing import Literal
 from uuid import UUID
 
 from app.features.project_management.connection_tests.adapters.specs import ConnectionTestSpec
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ResolveCleanup(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    request_id: UUID
+    confirmed_remote_stopped: Literal[True]
+    note: str = Field(min_length=1, max_length=1000)
+    unrelated_pulls: dict[str, str] = Field(default_factory=dict, max_length=1000)
 
 
 class StartConnectionTest(BaseModel):
@@ -33,6 +41,7 @@ class ConnectionTestRead(BaseModel):
     ai_catalog_id: UUID | None
     catalog_snapshot: ConnectionTestCatalog | None
     configuration_current: bool = False
+    cleanup_resolution_available: bool = False
     test_spec: ConnectionTestSpec | None = None
     status: Literal["running", "succeeded", "failed", "timed_out", "canceled"]
     phase: str

@@ -5,11 +5,16 @@ from uuid import UUID
 
 from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.ai_catalogs.services import AICatalogService
+from app.features.project_management.connection_tests import recovery
 from app.features.project_management.connection_tests.adapters.registry import find_adapter
 from app.features.project_management.connection_tests.adapters.specs import ConnectionTestSpec
 from app.features.project_management.connection_tests.catalogs import prepare_dispatch
 from app.features.project_management.connection_tests.configuration import current_fingerprint, describe_configuration
-from app.features.project_management.connection_tests.schemas import ConnectionTestOption, ConnectionTestRead
+from app.features.project_management.connection_tests.schemas import (
+    ConnectionTestOption,
+    ConnectionTestRead,
+    ResolveCleanup,
+)
 from app.features.project_management.connection_tests.services import ConnectionTestService
 from app.features.project_management.pipeline_runs.usecases.transitions import as_utc
 from app.features.project_management.pipelines.deps import get_pipeline_observer
@@ -64,6 +69,13 @@ class ConnectionTestUseCase:
             project = ProjectRead.model_validate(await self.service.projects.get(session, project_id))
             return self.read(row, await current_fingerprint(session, project, row.ai_catalog_id))
 
+    async def resolve_cleanup(self, project_id: UUID, test_id: UUID, request: ResolveCleanup) -> ConnectionTestRead:
+        async with AsyncTransaction() as session:
+            row = await self.service.get(session, project_id, test_id, lock=True)
+            recovery.resolve(row, request)
+        await self.advance(test_id)
+        return await self.get(project_id, test_id)
+
     @staticmethod
     def read(row, fingerprint: str | None) -> ConnectionTestRead:
         snapshot = row.catalog_snapshot or {}
@@ -76,6 +88,7 @@ class ConnectionTestUseCase:
         return ConnectionTestRead.model_validate(row).model_copy(
             update={
                 "configuration_current": bool(fingerprint and fingerprint == snapshot.get("configuration_fingerprint")),
+                "cleanup_resolution_available": recovery.can_resolve(row),
                 "test_spec": spec,
             }
         )

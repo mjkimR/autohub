@@ -8,6 +8,7 @@ from app.features.ai_catalogs.schemas import (
     AICatalogRead,
     AICatalogSessionList,
     AICatalogSessionRead,
+    CreateAICatalogRequest,
     SessionStatusFilter,
     SetAvailabilityRequest,
     UpdatePolicyConfigRequest,
@@ -48,6 +49,11 @@ class AICatalogUseCase:
                 "session_work_types": list(CATALOG_SESSION_WORK_TYPES.get(catalog.kind, ())),
             }
         )
+
+    async def create(self, request: CreateAICatalogRequest) -> AICatalogRead:
+        async with AsyncTransaction() as session:
+            catalog = await self.service.create(session, request)
+            return await self._read(catalog, session)
 
     async def list(self) -> AICatalogList:
         async with AsyncTransaction() as session:

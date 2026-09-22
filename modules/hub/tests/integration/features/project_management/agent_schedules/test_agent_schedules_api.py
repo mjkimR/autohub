@@ -346,3 +346,32 @@ async def test_recent_sessions_started_by_the_schedule_are_listed(client, sessio
     recent = response.json()["recent_sessions"]
     assert len(recent) == 5
     assert all(item["result_summary"].startswith("Report") for item in recent)
+
+
+async def test_api_created_jules_catalog_can_own_an_agent_schedule(client, session, project):
+    key = await client.post(
+        "/api/v1/connectors",
+        json={"name": "Extra Jules key", "provider": "jules", "credentials": {"token": "test-jules-key"}},
+    )
+    assert_status_code(key, 201)
+    catalog = await client.post(
+        "/api/v1/ai-catalogs",
+        json={
+            "key": "extra-jules",
+            "name": "Extra Jules",
+            "kind": "jules",
+            "connector_id": key.json()["id"],
+            "configured_concurrency": 2,
+            "policy_config": {"daily_task_limit": 5},
+        },
+    )
+    assert_status_code(catalog, 201)
+    schedule = await client.post(
+        f"/api/v1/projects/{project['id']}/agent-schedules", json=payload(catalog.json()["id"])
+    )
+    assert_status_code(schedule, 201)
+    [config] = await configs_by_task(session, "jules.session")
+    assert config.payload["catalog_key"] == "extra-jules"
+    [sync] = await configs_by_task(session, "jules.sync_sessions")
+    assert sync.payload == {"catalog_key": "extra-jules"}
+    assert (await client.get("/api/v1/ai-catalogs/extra-jules/sessions")).json()["items"] == []

@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 import httpx
 from app.features.project_management.connection_tests.models import TEST_BRANCH_PREFIX, ConnectionTest
+from app.features.project_management.connection_tests.ownership import TEST_LABEL, marker
 from app.features.project_management.pipeline_runs.usecases.transitions import as_utc
 from app.features.project_management.pipelines.github import (
     GitHubActionsReader,
@@ -94,10 +95,12 @@ class ConnectionTestGitHub:
                     "head": branch,
                     "base": base,
                     "draft": True,
-                    "body": f"Connection test {row.id}. AutoHub will close this PR. Do not merge or push to this branch.",
+                    "body": f"Connection test {row.id}. AutoHub will close this PR. Do not merge or push to this branch.\n\n{marker(row)}",
                 },
             )
         row.evidence.update(pull_number=pr["number"], pull_url=pr["html_url"], branch=branch)
+        self.record_owned_pull(row, pr, proof="reserved_branch")
+        await self.mark_pull(row, pr)
         if pr["state"] != "open":
             raise GitHubObservationError("The connection test PR was already closed", 422)
         row.phase = "dispatching"
@@ -176,7 +179,33 @@ class ConnectionTestGitHub:
         row.cleanup_status = "completed"
 
     @staticmethod
-    def record_owned_pull(row: ConnectionTest, pr: dict) -> None:
+    def record_owned_pull(row: ConnectionTest, pr: dict, *, proof: str) -> None:
         number, branch, url = pr["number"], pr["head"]["ref"], pr["html_url"]
         row.evidence.update(pull_number=number, pull_url=url, output_branch=branch)
-        row.evidence.setdefault("owned_pulls", {})[str(number)] = {"branch": branch, "url": url}
+        row.evidence.setdefault("owned_pulls", {})[str(number)] = {
+            "branch": branch,
+            "url": url,
+            "sha": pr["head"]["sha"],
+            "proof": proof,
+        }
+        row.evidence.get("unconfirmed_pulls", {}).pop(str(number), None)
+
+    async def mark_pull(self, row: ConnectionTest, pr: dict) -> None:
+        """Best-effort visible metadata; persisted ownership does not depend on label permissions."""
+        root, number = f"/repos/{row.repository}", pr["number"]
+        try:
+            body = pr.get("body") or ""
+            if marker(row) not in body:
+                await self.write("PATCH", f"{root}/pulls/{number}", {"body": f"{body}\n\n{marker(row)}"})
+            if TEST_LABEL not in {label.get("name") for label in pr.get("labels", [])}:
+                label_path = f"{root}/labels/{TEST_LABEL}"
+                if await self.optional(label_path) is None:
+                    try:
+                        await self.write("POST", f"{root}/labels", {"name": TEST_LABEL, "color": "d93f0b"})
+                    except GitHubObservationError as exc:
+                        if exc.status_code != 422 or await self.optional(label_path) is None:
+                            raise
+                await self.write("POST", f"{root}/issues/{number}/labels", {"labels": [TEST_LABEL]})
+            row.evidence.get("marking_warnings", {}).pop(str(number), None)
+        except GitHubObservationError as exc:
+            row.evidence.setdefault("marking_warnings", {})[str(number)] = str(exc)

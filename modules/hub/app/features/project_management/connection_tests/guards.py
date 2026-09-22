@@ -1,6 +1,7 @@
 """Recognize probe PRs before a provider's output has been discovered by the scheduler."""
 
 from app.features.project_management.connection_tests.models import TEST_BRANCH_PREFIX
+from app.features.project_management.connection_tests.ownership import TEST_LABEL
 from app.features.project_management.pipelines.github import GitHubActionsReader, GitHubObservationError
 from app.features.project_management.projects.errors import ProjectError
 
@@ -10,6 +11,7 @@ def reject_test_refs(pr: dict) -> None:
         any(str(pr.get(side, {}).get("ref", "")).startswith(TEST_BRANCH_PREFIX) for side in ("head", "base"))
         or str(pr.get("base_ref", "")).startswith(TEST_BRANCH_PREFIX)
         or "hub-connection-test:" in f"{pr.get('title', '')}\n{pr.get('body', '')}"
+        or any(label.get("name") == TEST_LABEL for label in pr.get("labels", []) if isinstance(label, dict))
     ):
         raise ProjectError(422, "Connection test pull requests cannot enter development or merge execution")
 

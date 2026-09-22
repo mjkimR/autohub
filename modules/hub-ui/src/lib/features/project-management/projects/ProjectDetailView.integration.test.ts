@@ -73,6 +73,7 @@ const testOptions = catalogs.map((catalog) => ({
 		version: 1,
 		create_once: catalog.kind === 'jules',
 		discovers_output_pr: catalog.kind === 'jules',
+		manual_cleanup_resolution: catalog.kind === 'jules',
 		title: `${catalog.name} recipe`,
 		description: `${catalog.name} instructions`,
 		delivery_key: 'request',

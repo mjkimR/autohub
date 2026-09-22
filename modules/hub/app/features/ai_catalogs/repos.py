@@ -20,6 +20,7 @@ from app.features.project_management.pipeline_runs.models import (
 )
 from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy import ColumnElement, and_, delete, func, not_, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -42,6 +43,19 @@ class AICatalogRepository:
             AICatalog.availability_state.not_in((AICatalogState.DISABLED, AICatalogState.UNKNOWN)),
             not_(hold),
         )
+
+    async def create(self, session: AsyncSession, catalog: AICatalog) -> bool:
+        try:
+            async with session.begin_nested():
+                session.add(catalog)
+                await session.flush()
+        except IntegrityError:
+            # The unique key also arbitrates concurrent requests. Do not turn
+            # unrelated integrity failures into misleading duplicate-key errors.
+            if await self.get_by_key(session, catalog.key) is None:
+                raise
+            return False
+        return True
 
     async def list(self, session: AsyncSession) -> list[AICatalog]:
         return list((await session.scalars(select(AICatalog).order_by(AICatalog.key))).all())

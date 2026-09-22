@@ -4,7 +4,9 @@ import { toast } from 'svelte-sonner';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import AICatalogsView from './AICatalogsView.svelte';
 
-const { api } = vi.hoisted(() => ({ api: { GET: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() } }));
+const { api } = vi.hoisted(() => ({
+	api: { GET: vi.fn(), POST: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() }
+}));
 
 vi.mock('$lib/api', () => ({ api }));
 vi.mock('svelte-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
@@ -236,4 +238,96 @@ test('pages through sessions and hides their reconciliation marker', async () =>
 			}
 		})
 	);
+});
+
+test('creates a Jules catalog with a matching connector and shows it immediately', async () => {
+	const user = userEvent.setup();
+	api.POST.mockResolvedValue({
+		data: {
+			...jules,
+			id: 'team-jules-id',
+			key: 'team-jules',
+			name: 'Team Jules',
+			connector_id: 'k1'
+		}
+	});
+	render(AICatalogsView);
+	await screen.findByText('Personal Jules');
+	await user.click(screen.getByRole('button', { name: 'Add catalog' }));
+	await user.selectOptions(screen.getByLabelText('Provider'), 'jules');
+	expect(screen.queryByRole('option', { name: 'GitHub token' })).toBeNull();
+	await user.selectOptions(screen.getByLabelText('Jules connector'), 'k1');
+	await user.type(screen.getByLabelText('Name'), 'Team Jules');
+	await user.type(screen.getByLabelText(/^Catalog key/), 'team-jules');
+	await user.clear(screen.getByLabelText('Concurrent work limit'));
+	await user.type(screen.getByLabelText('Concurrent work limit'), '2');
+	await user.clear(screen.getByLabelText('Daily task limit'));
+	await user.type(screen.getByLabelText('Daily task limit'), '25');
+	await user.click(screen.getByRole('button', { name: 'Create catalog' }));
+	await screen.findByText('Team Jules');
+	expect(api.POST).toHaveBeenCalledWith('/api/v1/ai-catalogs', {
+		body: {
+			name: 'Team Jules',
+			key: 'team-jules',
+			kind: 'jules',
+			connector_id: 'k1',
+			configured_concurrency: 2,
+			policy_config: { daily_task_limit: 25, window: 'rolling', timezone: 'UTC' },
+			enabled: true
+		}
+	});
+	await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+});
+
+test('switching from Jules to Codex does not submit Jules credentials or daily quota', async () => {
+	const user = userEvent.setup();
+	api.POST.mockResolvedValue({
+		data: { ...codex, id: 'team-codex-id', key: 'team-codex', name: 'Team Codex' }
+	});
+	render(AICatalogsView);
+	await screen.findByText('Personal Codex');
+	await user.click(screen.getByRole('button', { name: 'Add catalog' }));
+	await user.selectOptions(screen.getByLabelText('Provider'), 'jules');
+	await user.selectOptions(screen.getByLabelText('Jules connector'), 'k1');
+	await user.selectOptions(screen.getByLabelText('Provider'), 'codex');
+	expect(screen.queryByLabelText('Jules connector')).toBeNull();
+	await user.type(screen.getByLabelText('Name'), 'Team Codex');
+	await user.type(screen.getByLabelText(/^Catalog key/), 'team-codex');
+	await user.click(screen.getByRole('button', { name: 'Create catalog' }));
+	await screen.findByText('Team Codex');
+	expect(api.POST).toHaveBeenCalledWith('/api/v1/ai-catalogs', {
+		body: {
+			name: 'Team Codex',
+			key: 'team-codex',
+			kind: 'codex',
+			connector_id: null,
+			configured_concurrency: 1,
+			policy_config: {},
+			enabled: true
+		}
+	});
+});
+
+test('duplicate key refusal keeps the creation form editable for correction', async () => {
+	const user = userEvent.setup();
+	api.POST.mockResolvedValue({
+		error: { detail: 'An AI catalog with this key already exists; choose another key' }
+	});
+	render(AICatalogsView);
+	await screen.findByText('Personal Codex');
+	await user.click(screen.getByRole('button', { name: 'Add catalog' }));
+	await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('dialog')));
+	await user.type(screen.getByLabelText('Name'), 'Another Codex');
+	await user.type(screen.getByLabelText(/^Catalog key/), 'personal-codex');
+	expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Another Codex');
+	expect((screen.getByLabelText(/^Catalog key/) as HTMLInputElement).value).toBe('personal-codex');
+	await user.click(screen.getByRole('button', { name: 'Create catalog' }));
+	await waitFor(() =>
+		expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('already exists'))
+	);
+	expect(screen.getByRole('dialog')).toBeTruthy();
+	expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Another Codex');
+	expect(
+		(screen.getByRole('button', { name: 'Create catalog' }) as HTMLButtonElement).disabled
+	).toBe(false);
 });

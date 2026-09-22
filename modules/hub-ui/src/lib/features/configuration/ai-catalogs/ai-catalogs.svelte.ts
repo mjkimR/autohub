@@ -4,6 +4,7 @@ import { allPages, responseData } from '$lib/api/pagination';
 import { SvelteDate } from 'svelte/reactivity';
 import { toast } from 'svelte-sonner';
 
+export type CreateAICatalog = components['schemas']['CreateAICatalogRequest'];
 export type AICatalog = components['schemas']['AICatalogRead'];
 export type AICatalogSession = components['schemas']['AICatalogSessionRead'];
 export type SessionStatusFilter = 'open' | 'completed' | 'failed';
@@ -101,6 +102,28 @@ export class AICatalogsState {
 			toast.error(this.error);
 		} finally {
 			this.loading = false;
+		}
+	}
+
+	async create(request: CreateAICatalog) {
+		if (this.saving) return false;
+		this.saving = true;
+		try {
+			const res = await api.POST('/api/v1/ai-catalogs', { body: request });
+			if (res.error || !res.data) {
+				toast.error(apiErrorMessage(res.error, 'Failed to create AI catalog'));
+				return false;
+			}
+			this.items = [...this.items, res.data].sort((a, b) => a.key.localeCompare(b.key));
+			toast.success('AI catalog created');
+			return true;
+		} catch {
+			toast.error(
+				'Request failed. Refresh catalogs before retrying to check whether it was created.'
+			);
+			return false;
+		} finally {
+			this.saving = false;
 		}
 	}
 

@@ -246,10 +246,18 @@ Detailed rules are documented in [AI Catalog Gateway](ai-catalogs.md). Here, onl
 - `personal-codex` (codex / codex-github-mention)
 - `personal-jules` (jules / jules-api, concurrency 15, daily limit 100 rolling, no connector)
 
+Migration `e3c4d5e6f7a8` inserts missing defaults without updating existing accounts.
+The consolidated initial migration omitted these rows; the lazy Codex fallback
+masked the omission for PR work. Default catalog provisioning is deployment-managed.
+Additional catalogs are created through `POST /api/v1/ai-catalogs` or **Add catalog**; the provider fixes
+the adapter, and the provider policy validates the supplied limits. See the
+[supported setup path](ai-catalogs.md#initial-setup-and-jules-connection).
+
 ## API
 
 | Method | Path (`/api/v1/ai-catalogs`) | Description |
 | --- | --- | --- |
+| POST | `` | Create an additional catalog; provider determines adapter, unique key conflicts return 409 |
 | GET | `` | List catalogs. Includes `effective_concurrency`, `held_run_count`, `active_dispatch_count`, `open_session_count`, and the capability flags `connector_provider`, `pipeline_delivery`, and `session_work_types` |
 | GET | `/{key}/sessions?offset=&limit=&status=&schedule_config_id=` | A page of tracked sessions, most recent first, with `total_count` (default limit 50, max 100). `status` is `open` (not ended), `completed`, or `failed`; both filters narrow `total_count` too. Ties on `created_at` are broken by `id`, so pages never overlap. Each item carries `work_type`, `repository`, `pipeline_run_id`, and `result_summary` |
 | PUT / DELETE | `/{key}/availability` | Manually set / clear hold |

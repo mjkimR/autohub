@@ -10,11 +10,19 @@ delivery state; the durable `@codex` request contract lives in
 
 ## Delivered
 
+- Workbench scheduler deployment correction (2026-09-22): the parent deploy
+  path still configured retired static-key authentication. It now delegates to
+  Auto Hub's machine-key provisioner, reusing the stored credential and passing
+  the intentional five-minute tick through the new `--schedule` option. The
+  scheduler stage was applied and its credential/cadence verified live without
+  redeploying the image. Both repository changes are needed for future deploys.
+
 - CI-fix log evidence (2026-09-22): excerpts prioritize errors and surrounding
   context instead of the job-log tail, retaining assertions/tracebacks even when
   GitHub cleanup follows. Secret masking, bounded reads, and best-effort log access
   remain in place. Replaying the failed PR #7 job log preserved its actual error
-  in a 950-character excerpt. Not yet deployed.
+  in a 950-character excerpt. Deployed in `autohub-00009-mqv`; live PR #8 preserved the error
+  in its 981-character request excerpt and completed automatic CI repair and merge.
 
 - Project dispatch schedule recovery (2026-09-22): adding GitHub after creating
   a project now creates its dispatcher; saving a connected project also repairs
@@ -22,7 +30,8 @@ delivery state; the durable `@codex` request contract lives in
   history, and cadence changes reschedule the next tick. Generic schedule APIs
   reject direct dispatcher creation, modification, and deletion; the schedule
   UI links to project settings. Existing missing entries are repaired on project
-  save, not automatically at deployment. Not yet deployed. See
+  save, not automatically at deployment. Deployed in `autohub-00009-mqv`;
+  disabled-project API lifecycle and managed-schedule protection passed live. See
   [CI recovery canary and follow-up](canary-ci-recovery-2026-09-22.md).
 
 - Code hygiene and list correctness (2026-09-21): authenticated dashboard
@@ -216,6 +225,21 @@ Live deployment verification on 2026-09-21 (Cloud Run `us-west1` and Cloud Sched
 
 ## Follow-up canaries
 
+- [Completed 2026-09-22] CI recovery on `mjkimR/test-sandbox#7` and post-deploy
+  regression on `#8`: failure detection, one Codex repair request, preserved
+  assertions, successful new-head CI, and automatic merge. Revision
+  `autohub-00009-mqv` also passed disabled-project dispatcher lifecycle checks.
+  A mismatched Cloud Scheduler API key caused a 401 after redeployment; the
+  stored valid credential was restored and the next regular tick returned 200.
+  The external tick intentionally remains five minutes; the project's 60-second
+  interval is an internal minimum. See [evidence](canary-ci-recovery-2026-09-22.md).
+- [Completed 2026-09-22] Conflict recovery on `mjkimR/test-sandbox#10`:
+  merge setup PR #9 only after both initial CIs pass, confirm GitHub reports a
+  real conflict, then enroll. One `conflict-fix` request incorporated current main,
+  preserved both changes and assertions, passed new-head CI, and automatically
+  merged on the five-minute tick. Run completed at 10:25:11 KST. See
+  [conflict canary evidence](canary-conflict-recovery-2026-09-22.md).
+
 - [Completed 2026-09-21] First deploy with accounts & scheduler: browser sign-in
   silent token renewal after access token expiry, Cloud Scheduler 1-minute tick
   with managed machine key (`X-API-Key`), and route scope isolation (401 on
@@ -228,16 +252,24 @@ Live deployment verification on 2026-09-21 (Cloud Run `us-west1` and Cloud Sched
   scheduler concurrency and catalog admission control (`mjkimR/test-sandbox#4` and `#5`).
 - Add a Telegram channel in production, send a test, and confirm a paused run
   is announced.
-- On a sandbox repository without Branch Protection Rules, confirm a draft PR
-  waits with an approval notice, then merges only after it is marked ready and
-  required CI passes. Also confirm returning to draft holds merging again.
-  Required-review/branch-protection validation is outside the personal workflow.
+- [Completed 2026-09-22] Draft approval on `mjkimR/test-sandbox#11`: passing CI
+  while Draft waits for approval; Ready with no current-head CI remains unmerged;
+  returning to Draft holds merging again despite new passing CI. Final Ready and
+  current-head CI success completed automatic merge at 10:40:11 KST, with zero
+  agent requests. State gates used manual observation; final merge needed none.
+  See [Draft canary evidence](canary-draft-approval-2026-09-22.md).
+  Required-review/branch-protection validation remains outside the personal workflow.
 - Run one live Jules session of each work type: confirm the v1alpha field
   names (`outputs[].pullRequest.url`, `agentMessaged.message`), that a task
   session's pull request is adopted and merged, the error returned at the
   daily and concurrent caps, and whether a limit is reported as HTTP 429.
-- If webhook delivery reliability becomes a concern, validate a deliberately
-  missed delivery recovering on the next scheduler poll.
+- [Completed 2026-09-22] Missed-webhook recovery on `mjkimR/test-sandbox#12`:
+  the sandbox Auto Hub webhook was disabled before Ready approval and remained
+  disabled through automatic merge at 10:55:11 KST. The regular five-minute tick
+  completed the enrolled run with no new deliveries, manual advances, or agent
+  requests after Ready. The webhook was restored and verified. This covers
+  progress of an enrolled run, not discovery of an undelivered initial trigger.
+  See [webhook recovery evidence](canary-webhook-recovery-2026-09-22.md).
 - When onboarding a second repository, decide whether repository-specific
   branching policy is necessary.
 
@@ -252,6 +284,16 @@ Live deployment verification on 2026-09-21 (Cloud Run `us-west1` and Cloud Sched
 
 ## Project detail and repository connection tests (2026-09-22, not yet deployed)
 
+- Default catalog provisioning fix (not yet deployed): migration `e3c4d5e6f7a8`
+  inserts missing `personal-codex` and `personal-jules` accounts on fresh and
+  existing databases, preserving all existing account settings. After deployment, use
+  **Personal Jules → Connector** to assign the registered Jules credentials. See the
+  [catalog setup path](ai-catalogs.md#initial-setup-and-jules-connection).
+- Additional catalogs (not yet deployed): **AI Catalogs → Add catalog** and
+  authenticated `POST /api/v1/ai-catalogs` accept a permanent key, display name,
+  provider, optional Jules connector, and usage limits. Provider-derived adapters,
+  quota validation, and duplicate-key protection prevent invalid creation.
+  Selection remains explicit in projects/schedules; retirement uses Disable.
 - Project detail uses bookmarkable Overview, Runs, Connections, Automation, and Settings tabs. Runs remain available across projects in the existing global view.
 - Connections provides GitHub access checking, Codex/Jules setup guidance, catalog selection, and durable PR tests. Codex tests use a mention on a Draft PR; Jules tests use the catalog API connector, source discovery, and a dedicated session whose generated PR is verified and closed. Both check the unique test change and current-head CI.
 - Test history is separate from development runs. Enrollment and final merge authorization reject test PRs regardless of project auto-merge policy. Cleanup retries preserve the verification outcome; cancellation and timeout delay branch deletion for 24 hours.

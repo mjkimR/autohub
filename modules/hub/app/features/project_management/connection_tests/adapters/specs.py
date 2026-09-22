@@ -29,6 +29,7 @@ class ConnectionTestSpec(BaseModel):
     connector_provider: str | None = None
     create_once: bool = False
     discovers_output_pr: bool = False
+    manual_cleanup_resolution: bool = False
     delivery_key: str
     requirements: list[TestRequirement]
     phases: dict[str, str] = Field(default_factory=dict)
@@ -94,6 +95,7 @@ JULES_SPEC = ConnectionTestSpec(
     connector_provider="jules",
     create_once=True,
     discovers_output_pr=True,
+    manual_cleanup_resolution=True,
     delivery_key="session_name",
     description="Uses the catalog's Jules API connector to start a session on an isolated branch, then verifies its generated PR and CI. Test sessions never enter normal task PR adoption.",
     requirements=[
