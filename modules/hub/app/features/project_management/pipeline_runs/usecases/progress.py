@@ -24,8 +24,10 @@ from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.models import Project
 from app.features.project_management.projects.schemas import ProjectRead
 from app.features.project_management.projects.services import ProjectService
+from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 PROGRESS_IO_SECONDS = 90
@@ -109,12 +111,24 @@ class PipelineRunProgress:
             reject_test_refs(run.pull_snapshot)
             repository, connector_id, number = project.github_repository, project.github_connector_id, run.pull_number
             heads = await ConnectionTestRepository().protected_heads(session, repository or "")
-        if heads and repository and connector_id:
+            work_binding = (
+                await session.execute(
+                    select(WorkPlan.base_branch, WorkItem.branch)
+                    .join(WorkItem, WorkItem.plan_id == WorkPlan.id)
+                    .where(WorkItem.pipeline_run_id == run.id)
+                )
+            ).one_or_none()
+        if (heads or work_binding) and repository and connector_id:
             token = await self.observer.get_token(connector_id, "github")
             async with pipeline_services.create_github_client(token) as client:
                 reader = GitHubActionsReader(client)
                 pr = await reader._get(f"/repos/{repository}/pulls/{number}")
                 reject_test_refs(pr)
+                if work_binding and (
+                    pr.get("base", {}).get("ref") != work_binding.base_branch
+                    or pr.get("head", {}).get("ref") != work_binding.branch
+                ):
+                    raise ProjectError(409, "Work plan PR branch changed; restore its original target before merging")
                 await reject_test_ancestry(reader, repository, pr["head"]["sha"], heads)
             # An ancestry read can take time. Recheck lease and project policy after that I/O as well.
             async with AsyncTransaction() as session:

@@ -88,6 +88,12 @@ without a finish time use their last start time. Active, paused, blocked, or cur
 leased runs are preserved. Each pass removes at most 1,000 jobs and 200 runs; an existing
 backlog therefore drains over successive hours. Expired run detail and resume are no longer available.
 
+Runs linked to WorkItems have an additional protection: the Item must have explicit
+successful merge evidence at least 30 days old. Unresolved Item runs are retained,
+including after Plan revoke. Plan/Item specifications, dependencies, and final
+results do not expire; an absent Run never implies success. See
+[WorkPlan retention](work-plans.md#history-retention).
+
 AI catalog sessions and their report text and PR URLs are kept. When a linked run expires,
 its session records the expiry and cannot adopt the same PR again. This only removes local
 history; GitHub PRs/branches and remote Jules sessions are not deleted. The dispatch ledger

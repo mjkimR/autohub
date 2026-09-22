@@ -1,6 +1,7 @@
 export const projectTabs = [
 	{ id: 'overview', label: 'Overview' },
 	{ id: 'runs', label: 'Runs' },
+	{ id: 'plans', label: 'Plans' },
 	{ id: 'connections', label: 'Connections' },
 	{ id: 'automation', label: 'Automation' },
 	{ id: 'settings', label: 'Settings' }

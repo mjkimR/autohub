@@ -4,12 +4,17 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from uuid import UUID
 
+from app.features.configuration.connectors.crypto import ConnectorCredentialCipher, get_credential_key_provider
+from app.features.configuration.connectors.repos import ConnectorRepository
+from app.features.configuration.connectors.usecases.token import ReadConnectorTokenUseCase
 from app.features.execution.tasks import task
 from app.features.execution.tasks.domains.jules.task import _service as jules_service
 from app.features.execution.tasks.domains.maintenance.repos import MaintenanceGroup, MaintenanceRepository
 from app.features.execution.tasks.domains.maintenance.retention import HistoryRetentionUseCase
 from app.features.execution.tasks.domains.pipeline.connection_probe import connection_test_task
 from app.features.project_management.connection_tests.schemas import ConnectionTestPayload
+from app.features.project_management.pipelines.services import PipelineObservationService
+from app.features.project_management.work_plans.issue_sync import WorkIssueSync
 from app.features.scheduling.schedule_configs.system import MAINTENANCE_TASK
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.core.log import logger
@@ -34,6 +39,16 @@ async def maintain_task(payload: MaintenancePayload) -> None:
     except Exception:
         failures.append("history retention")
         logger.exception("Pruning expired maintenance history failed")
+    try:
+        observer = PipelineObservationService(
+            ReadConnectorTokenUseCase(
+                ConnectorRepository(), ConnectorCredentialCipher(get_credential_key_provider())
+            ).execute
+        )
+        await WorkIssueSync(observer).execute()
+    except Exception:
+        # Outbound record failures must not block execution or provider cleanup.
+        logger.exception("Work issue synchronization will retry")
     repo = MaintenanceRepository()
     async with AsyncTransaction() as session:
         test_ids = await repo.pending_tests(session)

@@ -15,8 +15,10 @@ from app.features.project_management.projects.schemas import (
     ProjectWrite,
 )
 from app.features.project_management.projects.templates import TEMPLATE_VERSION
+from app.features.project_management.work_plans.models import WorkPlan
 from fastapi import Depends
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -90,6 +92,8 @@ class ProjectService:
 
     async def delete(self, session: AsyncSession, project_id: UUID) -> None:
         project = await self.get(session, project_id, lock=True)
+        if await session.scalar(select(WorkPlan.id).where(WorkPlan.project_id == project_id).limit(1)):
+            raise ProjectError(409, "Work plan records prevent deleting this project")
         if await self.repo.has_schedules(session, project_id):
             raise ProjectError(409, "Remove the project's observation schedules before deleting it")
         if await self.repo.has_pipeline_runs(session, project_id):

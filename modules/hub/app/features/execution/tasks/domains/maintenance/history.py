@@ -11,7 +11,8 @@ from app.features.project_management.pipeline_runs.models import (
     ExecutionReply,
     PipelineRun,
 )
-from sqlalchemy import delete, or_, select, update
+from app.features.project_management.work_plans.models import WorkItem
+from sqlalchemy import delete, exists, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +37,17 @@ class HistoryRetentionRepository:
                 .where(
                     PipelineRun.state.in_(FINAL_RUN_STATES),
                     PipelineRun.updated_at < before,
+                    ~exists(
+                        select(WorkItem.id).where(
+                            WorkItem.pipeline_run_id == PipelineRun.id,
+                            or_(
+                                WorkItem.state != "succeeded",
+                                WorkItem.completed_at.is_(None),
+                                WorkItem.merge_sha.is_(None),
+                                WorkItem.completed_at >= before,
+                            ),
+                        )
+                    ),
                     or_(PipelineRun.lease_expires_at.is_(None), PipelineRun.lease_expires_at <= now),
                 )
                 .order_by(PipelineRun.updated_at, PipelineRun.id)
@@ -50,6 +62,14 @@ class HistoryRetentionRepository:
         await session.execute(
             update(AICatalogSession)
             .where(AICatalogSession.pipeline_run_id.in_(ids))
+            .values(
+                pipeline_run_id=None,
+                pipeline_run_retired_at=now,
+            )
+        )
+        await session.execute(
+            update(WorkItem)
+            .where(WorkItem.pipeline_run_id.in_(ids))
             .values(
                 pipeline_run_id=None,
                 pipeline_run_retired_at=now,

@@ -5,6 +5,7 @@
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
 	import { toast } from 'svelte-sonner';
+	import WorkPlansPanel from '../work-plans/WorkPlansPanel.svelte';
 	import ProjectOverview from './ProjectOverview.svelte';
 	import ProjectConnections from './ProjectConnections.svelte';
 	import ProjectSettingsForm from './ProjectSettingsForm.svelte';
@@ -101,6 +102,7 @@
 		</nav>
 		{#key `${project.id}:${project.revision}:${tab}`}
 			{#if tab === 'overview'}<ProjectOverview {project} />
+			{:else if tab === 'plans'}<WorkPlansPanel {project} />
 			{:else if tab === 'runs'}<PipelineRunsView scopedProject={project} />
 			{:else if tab === 'connections'}<ProjectConnections
 					{project}

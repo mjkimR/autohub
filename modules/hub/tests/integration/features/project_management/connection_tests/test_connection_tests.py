@@ -509,7 +509,7 @@ async def test_jules_test_cannot_bypass_final_merge_gate(client, project, github
         "_validate",
         AsyncMock(
             return_value=(
-                SimpleNamespace(branch="old-normal-branch", pull_number=42, pull_snapshot={}),
+                SimpleNamespace(id=uuid4(), branch="old-normal-branch", pull_number=42, pull_snapshot={}),
                 SimpleNamespace(
                     github_repository="owner/app", github_connector_id=UUID(project["github"]["github_connector_id"])
                 ),

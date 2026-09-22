@@ -13,7 +13,8 @@ These documents explicitly distinguish between design goals and current function
 8. [Development & Operations](development.md): Commands, testing, and constraints of the existing scheduler foundation.
 9. [Code Hygiene Review](code-hygiene-review.md): 2026-09-21 review, applied fixes, structural findings, and test follow-ups.
 10. [Project detail and connection tests](project-detail-and-connection-tests.md): Project tabs, catalog-specific Codex/Jules PR verification, merge exclusion, and cleanup behavior.
-11. [Work plans and dependencies — design](work-plans-design.md): Proposed Plan/Item ownership, dependency boundaries, pause/revoke behavior, and dependency-aware history retention. Not implemented.
+11. [Work plans and dependencies — design](work-plans-design.md): Agreed Plan/Item ownership, dependency boundaries, pause/revoke behavior, and outbound Issue records.
+12. [Work plans](work-plans.md): Local implementation, APIs, controls, retention, outbound GitHub records, and deployment boundaries.
 
 [Google login and approval](google-auth.md) describes the implementation, published dependency pins, configuration, and live validation still required.
 

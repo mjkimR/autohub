@@ -41,6 +41,7 @@ from app.features.project_management.projects.schemas import (
     ProjectRead,
 )
 from app.features.project_management.projects.services import ProjectService
+from app.features.project_management.work_plans.execution import WorkPlanExecution
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 
@@ -163,6 +164,7 @@ async def dispatch_project_task(payload: ProjectDispatchPayload) -> None:
                     runs = _within_limit(runs, limit - started)
         # Finish every worker and its lease cleanup even when another worker fails.
         results.extend(await asyncio.gather(*(advance_one(run) for run in runs), return_exceptions=True))
+    await WorkPlanExecution(observer).advance_project(payload.project_id, limit=batch_limit)
     for result in results:
         if isinstance(result, BaseException):
             raise result

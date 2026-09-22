@@ -111,6 +111,11 @@ bounded to 1,000 jobs and 200 runs. See [retention details](operator-notices.md#
 Migration `a5e6f7a8b9c0` adds a session marker so removing old runs cannot cause Jules
 PR re-adoption; session reports and PR links remain available.
 
+[WorkPlan-linked runs](work-plans.md#history-retention) also require explicit Item
+merge evidence at least 30 days old before pruning. Unresolved Item runs remain
+protected, and durable Item results survive Run expiry. Shared maintenance also
+publishes outbound WorkPlan/Item Issue records independently of execution.
+
 The internal interval is 60 seconds, subject to the external dispatcher tick (five
 minutes in production). Work uses bounded concurrency of four and the dispatcher's
 overall execution timeout. When both connection tests and Jules catalogs have pending

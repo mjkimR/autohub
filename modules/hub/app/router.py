@@ -17,6 +17,7 @@ from app.features.project_management.github_webhooks.api_v1 import router as v1_
 from app.features.project_management.pipeline_runs.api.v1 import router as v1_pipeline_runs_router
 from app.features.project_management.pipelines.api.v1 import router as v1_pipelines_router
 from app.features.project_management.projects.api.v1 import router as v1_projects_router
+from app.features.project_management.work_plans.api import router as v1_work_plans_router
 from app.features.scheduling.schedule_configs.api.v1 import router as v1_schedule_configs_router
 from app.features.scheduling.schedule_jobs.api.v1 import router as v1_schedule_jobs_router
 from app_layer_base.core.database.deps import get_session
@@ -65,6 +66,7 @@ v1_router.include_router(v1_connectors_router)
 v1_router.include_router(v1_pipelines_router)
 v1_router.include_router(v1_pipeline_runs_router)
 v1_router.include_router(v1_projects_router)
+v1_router.include_router(v1_work_plans_router)
 v1_router.include_router(v1_connection_tests_router)
 v1_router.include_router(v1_agent_schedules_router)
 v1_router.include_router(v1_github_webhook_deliveries_router)

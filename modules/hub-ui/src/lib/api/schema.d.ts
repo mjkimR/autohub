@@ -510,6 +510,65 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/projects/{project_id}/work-plans': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** List Work Plans */
+		get: operations['list_work_plans_api_v1_projects__project_id__work_plans_get'];
+		put?: never;
+		/**
+		 * Create Work Plan
+		 * @description Atomically register work; eligible items start on the next project tick without another approval.
+		 */
+		post: operations['create_work_plan_api_v1_projects__project_id__work_plans_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/projects/{project_id}/work-plans/{plan_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Get Work Plan */
+		get: operations['get_work_plan_api_v1_projects__project_id__work_plans__plan_id__get'];
+		/** Update Work Plan */
+		put: operations['update_work_plan_api_v1_projects__project_id__work_plans__plan_id__put'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/projects/{project_id}/work-plans/{plan_id}/control': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/**
+		 * Control Work Plan
+		 * @description Pause/resume/revoke unstarted work only; started PR runs continue through merging.
+		 */
+		post: operations['control_work_plan_api_v1_projects__project_id__work_plans__plan_id__control_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/projects/{project_id}/connection-tests': {
 		parameters: {
 			query?: never;
@@ -2321,6 +2380,15 @@ export interface components {
 			 */
 			schedule_id: string;
 		};
+		/** IssueMirrorRead */
+		IssueMirrorRead: {
+			/** Issue Url */
+			issue_url: string | null;
+			/** Error */
+			error: string | null;
+			/** Pending */
+			pending: boolean;
+		};
 		/** JobSnapshot */
 		JobSnapshot: {
 			/**
@@ -2816,6 +2884,16 @@ export interface components {
 			finished_at: string | null;
 			/** Elapsed Seconds */
 			elapsed_seconds: number;
+		};
+		/** PlanControl */
+		PlanControl: {
+			/**
+			 * Action
+			 * @enum {string}
+			 */
+			action: 'pause' | 'resume' | 'revoke';
+			/** Expected Revision */
+			expected_revision: number;
 		};
 		/** PrepareImplementationAttempt */
 		PrepareImplementationAttempt: {
@@ -3977,6 +4055,136 @@ export interface components {
 		 * @enum {string}
 		 */
 		VerificationStatus: 'passed' | 'waiting' | 'failed' | 'blocked' | 'closed';
+		/** WorkItemRead */
+		WorkItemRead: {
+			/**
+			 * Id
+			 * Format: uuid
+			 */
+			id: string;
+			/** Key */
+			key: string;
+			/** Title */
+			title: string;
+			/** Description */
+			description: string;
+			/** Acceptance */
+			acceptance: string;
+			/** State */
+			state: string;
+			/** Detail */
+			detail: string | null;
+			/** Depends On */
+			depends_on: string[];
+			/** Pipeline Run Id */
+			pipeline_run_id: string | null;
+			/** Pipeline Run Retired At */
+			pipeline_run_retired_at: string | null;
+			/** Pull Url */
+			pull_url: string | null;
+			/** Merge Sha */
+			merge_sha: string | null;
+			/** Started At */
+			started_at: string | null;
+			/** Completed At */
+			completed_at: string | null;
+			issue: components['schemas']['IssueMirrorRead'] | null;
+		};
+		/** WorkItemWrite */
+		WorkItemWrite: {
+			/** Key */
+			key: string;
+			/** Title */
+			title: string;
+			/** Description */
+			description: string;
+			/** Acceptance */
+			acceptance: string;
+			/** Depends On */
+			depends_on?: string[];
+		};
+		/** WorkPlanList */
+		WorkPlanList: {
+			/** Items */
+			items: components['schemas']['WorkPlanRead'][];
+			/** Total Count */
+			total_count: number;
+		};
+		/** WorkPlanRead */
+		WorkPlanRead: {
+			/**
+			 * Id
+			 * Format: uuid
+			 */
+			id: string;
+			/**
+			 * Project Id
+			 * Format: uuid
+			 */
+			project_id: string;
+			/** Title */
+			title: string;
+			/** Description */
+			description: string;
+			/** Base Branch */
+			base_branch: string;
+			/** State */
+			state: string;
+			/** Revision */
+			revision: number;
+			/**
+			 * Created At
+			 * Format: date-time
+			 */
+			created_at: string;
+			/** Completed At */
+			completed_at: string | null;
+			/** Depends On */
+			depends_on: string[];
+			/** Items */
+			items: components['schemas']['WorkItemRead'][];
+			issue: components['schemas']['IssueMirrorRead'] | null;
+		};
+		/** WorkPlanUpdate */
+		WorkPlanUpdate: {
+			/** Title */
+			title: string;
+			/**
+			 * Description
+			 * @default
+			 */
+			description: string;
+			/**
+			 * Base Branch
+			 * @default main
+			 */
+			base_branch: string;
+			/** Depends On */
+			depends_on?: string[];
+			/** Items */
+			items: components['schemas']['WorkItemWrite'][];
+			/** Expected Revision */
+			expected_revision: number;
+		};
+		/** WorkPlanWrite */
+		WorkPlanWrite: {
+			/** Title */
+			title: string;
+			/**
+			 * Description
+			 * @default
+			 */
+			description: string;
+			/**
+			 * Base Branch
+			 * @default main
+			 */
+			base_branch: string;
+			/** Depends On */
+			depends_on?: string[];
+			/** Items */
+			items: components['schemas']['WorkItemWrite'][];
+		};
 	};
 	responses: never;
 	parameters: never;
@@ -5098,6 +5306,179 @@ export interface operations {
 				};
 				content: {
 					'application/json': components['schemas']['ConnectionCheck'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	list_work_plans_api_v1_projects__project_id__work_plans_get: {
+		parameters: {
+			query?: {
+				offset?: number;
+				limit?: number;
+			};
+			header?: never;
+			path: {
+				project_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['WorkPlanList'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	create_work_plan_api_v1_projects__project_id__work_plans_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				project_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['WorkPlanWrite'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['WorkPlanRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	get_work_plan_api_v1_projects__project_id__work_plans__plan_id__get: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				project_id: string;
+				plan_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['WorkPlanRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	update_work_plan_api_v1_projects__project_id__work_plans__plan_id__put: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				project_id: string;
+				plan_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['WorkPlanUpdate'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['WorkPlanRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	control_work_plan_api_v1_projects__project_id__work_plans__plan_id__control_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				project_id: string;
+				plan_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['PlanControl'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['WorkPlanRead'];
 				};
 			};
 			/** @description Validation Error */
