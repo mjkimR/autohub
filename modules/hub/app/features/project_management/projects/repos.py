@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from app.features.configuration.connectors.models import Connector
+from app.features.project_management.connection_tests.models import ConnectionTest
 from app.features.project_management.pipeline_runs.models import PipelineRun
 from app.features.project_management.projects.models import Project
 from app.features.scheduling.schedule_configs.models import ScheduleConfig
@@ -67,23 +68,39 @@ class ProjectRepository:
             interval_seconds=_dispatch_interval(project),
             payload={"project_id": str(project.id)},
             enabled=project.enabled,
-            next_run_at=get_current_utc_time() + timedelta(seconds=60),
+            next_run_at=get_current_utc_time() + timedelta(seconds=_dispatch_interval(project)),
         )
         session.add(schedule)
         await session.flush()
         return schedule
 
     async def sync_dispatch_schedules(self, session: AsyncSession, project: Project) -> None:
-        schedules = await session.scalars(
-            select(ScheduleConfig).where(
-                ScheduleConfig.task_func == PROJECT_DISPATCH_TASK,
-                ScheduleConfig.payload["project_id"].as_string() == str(project.id),
+        from datetime import timedelta
+
+        schedules = list(
+            await session.scalars(
+                select(ScheduleConfig).where(
+                    ScheduleConfig.task_func == PROJECT_DISPATCH_TASK,
+                    ScheduleConfig.payload["project_id"].as_string() == str(project.id),
+                )
             )
         )
+        connected = bool(project.github_repository and project.github_connector_id)
+        if not schedules and connected:
+            await self.create_dispatch_schedule(session, project)
+            return
+        enabled = project.enabled and connected
+        interval = _dispatch_interval(project)
         for s in schedules:
+            if s.interval_seconds != interval or s.cron_expression is not None or (enabled and not s.enabled):
+                s.next_run_at = get_current_utc_time() + timedelta(seconds=interval)
             s.name = f"Dispatch {project.name}"
-            s.enabled = project.enabled
-            s.interval_seconds = _dispatch_interval(project)
+            s.description = f"Automated run dispatcher for {project.name}"
+            s.enabled = enabled
+            s.interval_seconds = interval
+            s.cron_expression = None
+            s.start_at = None
+            s.end_at = None
         await session.flush()
 
     async def delete_dispatch_schedules(self, session: AsyncSession, project_id: UUID) -> None:
@@ -113,6 +130,12 @@ class ProjectRepository:
         return (
             await session.scalar(select(PipelineRun.id).where(PipelineRun.project_id == project_id).limit(1))
         ) is not None
+
+    async def has_connection_tests(self, session: AsyncSession, project_id: UUID) -> bool:
+        return (
+            await session.scalar(select(ConnectionTest.id).where(ConnectionTest.project_id == project_id).limit(1))
+            is not None
+        )
 
     async def schedule(self, session: AsyncSession, schedule_id: UUID) -> ScheduleConfig | None:
         return (

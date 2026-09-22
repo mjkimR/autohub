@@ -308,12 +308,12 @@ Connector providers are `github` and `jules`. For `jules`, the API key is stored
 
 | Location | Target |
 | --- | --- |
-| `tests/unit/test_ai_catalogs/test_refresh_policy.py` | Gateway admission, rejection return, ledger recording conditions, Codex policy rules |
-| `tests/unit/test_ai_catalogs/test_daily_quota_policy.py` | Rolling and calendar boundaries, reduced limits, clearing holds, provider rejection, config validation |
-| `tests/unit/test_pipeline_runs/test_lifecycle.py` | Commit then raise on rejection, adapter resolution (501/409), quota reply handling |
-| `tests/e2e/test_ai_catalogs/test_ai_catalogs_api.py` | Per-kind validation for policy-config and connector APIs, session listing, capability flags |
-| `tests/e2e/test_ai_catalogs/test_jules_sessions.py` | Jules session creation, ledger, daily holds, 429 handling, reconciliation (using `httpx.MockTransport`) |
-| `tests/e2e/test_projects/test_pipeline_runs_api.py` | Pipeline integration including idempotent ledger records across retried deliveries and project catalog selection |
+| `tests/unit/features/ai_catalogs/policies/test_codex_window.py` | Gateway admission, rejection return, ledger recording conditions, Codex policy rules |
+| `tests/unit/features/ai_catalogs/policies/test_daily_quota.py` | Rolling and calendar boundaries, reduced limits, clearing holds, provider rejection, config validation |
+| `tests/unit/features/project_management/pipeline_runs/usecases/test_lifecycle.py` | Commit then raise on rejection, adapter resolution (501/409), quota reply handling |
+| `tests/integration/features/ai_catalogs/test_ai_catalogs_api.py` | Per-kind validation for policy-config and connector APIs, session listing, capability flags |
+| `tests/integration/features/ai_catalogs/test_jules_sessions.py` | Jules session creation, ledger, daily holds, 429 handling, reconciliation (using `httpx.MockTransport`) |
+| `tests/integration/features/project_management/pipeline_runs/test_pipeline_runs_api.py` | Pipeline integration including idempotent ledger records across retried deliveries and project catalog selection |
 | `modules/hub-ui/…/ai-catalogs/AICatalogsView.test.ts` | Per-kind policy editors, capability-driven controls, policy/connector saving, timezone validation, session listing |
 
 - Catalogs in unit tests are `MagicMock(spec=AICatalog)` instances, so `kind`, `policy_config`, and `policy_state` must be populated. `test_refresh_policy.py` builds Codex state with `make_catalog(**state)` and reads it back with `state_of()`.

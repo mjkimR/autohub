@@ -94,6 +94,8 @@ class ProjectService:
             raise ProjectError(409, "Remove the project's observation schedules before deleting it")
         if await self.repo.has_pipeline_runs(session, project_id):
             raise ProjectError(409, "Pipeline run history prevents deleting this project")
+        if await self.repo.has_connection_tests(session, project_id):
+            raise ProjectError(409, "Connection test history prevents deleting this project")
         await self.repo.delete_dispatch_schedules(session, project_id)
         await AgentScheduleRepository().delete_for_project(session, project_id)
         await self.repo.delete(session, project)

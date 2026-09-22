@@ -54,7 +54,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
     "e2e: mark tests as end-to-end tests",
-    "integrate: mark tests as integration tests",
+    "integration: real database and in-process API tests",
     "unit: mark tests as unit tests",
     "real_commit: use TRUNCATE strategy instead of savepoint rollback (allows real commits)",
 ]

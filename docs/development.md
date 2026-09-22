@@ -124,3 +124,10 @@ Node from `.nvmrc`, `just`) and calls the `justfile` recipes, so a check that pa
 The job names are stable, so this repository can itself be enrolled in a hub project with `ci.yml` as the workflow
 and these three jobs as the required jobs. Nothing needs a secret: the app imports and exports its OpenAPI schema
 without any environment, the tests set their own, and `app-common` is a public repository pinned by commit.
+
+## Test selection
+
+See [the test guide](../modules/hub/tests/README.md) for source-mirroring paths and
+unit/integration/e2e boundaries. `just test-unit` runs isolated logic;
+`just test-integration` runs real DB and in-process API contracts.
+`just test` retains all backend coverage.

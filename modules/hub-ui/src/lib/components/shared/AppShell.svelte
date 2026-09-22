@@ -79,6 +79,12 @@
 	] as const;
 
 	function isActive(href: string) {
+		if (
+			href === '/projects' &&
+			page.url.pathname.startsWith('/projects/') &&
+			page.url.pathname !== '/projects/runs'
+		)
+			return true;
 		return page.url.pathname === href;
 	}
 

@@ -60,6 +60,14 @@ During re-runs, the observer waits. If only selected failed jobs were re-run, Gi
 If the workflow was never triggered, it is never indefinitely marked as passed.
 The pipeline-run lifecycle handles wait timeouts and determines whether to issue a bounded CI-fix request, pause the run, or continue toward merge according to the configured policy.
 
+CI-fix requests include up to three failed-job log excerpts, each capped at 1,000
+characters. Excerpts prioritize recognized error/exception messages with nearby
+context. If no diagnostic matches, they use the output ending at the first Actions
+failure-exit annotation, or the log tail when no such boundary exists. Timestamps
+and ANSI formatting are removed and recognized secret patterns are redacted before
+selection and truncation. This is best-effort evidence: log access failure never
+prevents the CI state transition or fix request.
+
 PR CI may checkout the merge ref synthesized by GitHub. Matching the head commit here verifies which PR revision the run is tied to, rather than a strict SHA equality check against the checked-out merge commit.
 The current observer does not certify re-verification against the latest base branch updates or branch protection enforcement.
 During the merge step, base branch freshness, reviews, and branch rules must be verified anew.

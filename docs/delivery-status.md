@@ -10,6 +10,21 @@ delivery state; the durable `@codex` request contract lives in
 
 ## Delivered
 
+- CI-fix log evidence (2026-09-22): excerpts prioritize errors and surrounding
+  context instead of the job-log tail, retaining assertions/tracebacks even when
+  GitHub cleanup follows. Secret masking, bounded reads, and best-effort log access
+  remain in place. Replaying the failed PR #7 job log preserved its actual error
+  in a 950-character excerpt. Not yet deployed.
+
+- Project dispatch schedule recovery (2026-09-22): adding GitHub after creating
+  a project now creates its dispatcher; saving a connected project also repairs
+  a missing dispatcher. Disconnecting pauses it, reconnecting preserves its
+  history, and cadence changes reschedule the next tick. Generic schedule APIs
+  reject direct dispatcher creation, modification, and deletion; the schedule
+  UI links to project settings. Existing missing entries are repaired on project
+  save, not automatically at deployment. Not yet deployed. See
+  [CI recovery canary and follow-up](canary-ci-recovery-2026-09-22.md).
+
 - Code hygiene and list correctness (2026-09-21): authenticated dashboard
   counters aggregate all history; projects and pipeline runs support server
   search, state filtering for runs, and UI pagination. Failed reads have retry
@@ -55,6 +70,13 @@ delivery state; the durable `@codex` request contract lives in
   deliveries whose processing was lost are replayed by the next tick. See
   [Operator Notices](operator-notices.md). Verified against a mocked Telegram
   transport only. Not yet deployed.
+- Draft approval (2026-09-22): work stays in draft; marking the PR ready for review
+  approves merging after required CI passes. The explicit `draft` flag holds merging
+  even when GitHub reports a different `mergeable_state`; missing/skipped draft CI
+  shows an approval wait. Returning to draft revokes approval. Branch Protection
+  Rules are unused in the personal workflow; defensive block handling remains for
+  compatibility, with deletion/deprecation undecided. Verified with mocked GitHub
+  responses; not yet deployed.
 - Merge and GitHub robustness (2026-09-21): the merge stage follows GitHub's
   `mergeable_state`, so a merge blocked by a review, branch rule, or draft
   waits and is announced instead of being sent to the agent as a conflict; a
@@ -206,10 +228,10 @@ Live deployment verification on 2026-09-21 (Cloud Run `us-west1` and Cloud Sched
   scheduler concurrency and catalog admission control (`mjkimR/test-sandbox#4` and `#5`).
 - Add a Telegram channel in production, send a test, and confirm a paused run
   is announced.
-- On a sandbox repository that requires one approving review, confirm a
-  passing run waits with a notice and merges by itself after the approval, and
-  check which `mergeable_state` GitHub reports for a required check Hub does
-  not observe.
+- On a sandbox repository without Branch Protection Rules, confirm a draft PR
+  waits with an approval notice, then merges only after it is marked ready and
+  required CI passes. Also confirm returning to draft holds merging again.
+  Required-review/branch-protection validation is outside the personal workflow.
 - Run one live Jules session of each work type: confirm the v1alpha field
   names (`outputs[].pullRequest.url`, `agentMessaged.message`), that a task
   session's pull request is adopted and merged, the error returned at the
@@ -227,3 +249,12 @@ Live deployment verification on 2026-09-21 (Cloud Run `us-west1` and Cloud Sched
   endpoint for agents, and richer quota history. Open items are tracked in the
   [AI Catalog Implementation Notes](ai-catalog-implementation-notes.md#known-limitations-and-remaining-work).
 - A bounded LLM review lane before merge.
+
+## Project detail and repository connection tests (2026-09-22, not yet deployed)
+
+- Project detail uses bookmarkable Overview, Runs, Connections, Automation, and Settings tabs. Runs remain available across projects in the existing global view.
+- Connections provides GitHub access checking, Codex/Jules setup guidance, catalog selection, and durable PR tests. Codex tests use a mention on a Draft PR; Jules tests use the catalog API connector, source discovery, and a dedicated session whose generated PR is verified and closed. Both check the unique test change and current-head CI.
+- Test history is separate from development runs. Enrollment and final merge authorization reject test PRs regardless of project auto-merge policy. Cleanup retries preserve the verification outcome; cancellation and timeout delay branch deletion for 24 hours.
+- The dispatcher continues tests without an open page. See [behavior and limitations](project-detail-and-connection-tests.md), including required migrations `c1a2b3d4e5f6` and `d2b3c4d5e6f7`. Catalog quota/concurrency applies to tests; ambiguous Jules creation is reconciled without another create call. Jules PR ancestry is checked before enrollment and merge, including before scheduler output discovery.
+
+- Review follow-up: test requirements and evidence now come from a registered provider recipe; configuration fingerprints detect credential/connector changes without invalidation on quota updates. Shared Jules Source resolution is used by production and probes. GitHub cleanup survives loss of Jules access, capacity is released independently of cleanup, Codex quota replies update catalog state, and completed history no longer adds ancestry requests to ordinary PRs.

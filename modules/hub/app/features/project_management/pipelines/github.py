@@ -1,12 +1,12 @@
 """GitHub Actions adapter. It never checks out or executes repository code."""
 
-import re
 import time
 from typing import Any
 from urllib.parse import quote
 
 import httpx
 from app.features.project_management.pipelines.gate import evaluate_verification
+from app.features.project_management.pipelines.logs import failure_log_excerpt
 from app.features.project_management.pipelines.schemas import (
     JobSnapshot,
     PipelineObservationConfig,
@@ -143,7 +143,7 @@ class GitHubActionsReader:
                 if len(content) + len(chunk) > 2_000_000:
                     raise GitHubObservationError("GitHub job log exceeded its size limit")
                 content.extend(chunk)
-            return _redact_log(content.decode("utf-8", errors="replace"))[-max_chars:] or None
+            return failure_log_excerpt(content.decode("utf-8", errors="replace"), max_chars)
         except httpx.HTTPStatusError as exc:
             raise github_http_error("job log", exc.response) from None
         except httpx.RequestError:
@@ -267,6 +267,7 @@ class GitHubActionsReader:
             head_sha=head_sha,
             base_sha=pr["base"]["sha"],
             url=pr["html_url"],
+            draft=pr.get("draft") is True,
             result=VerificationResult(status=VerificationStatus.WAITING, reason="Awaiting verification"),
         )
         if pr["state"] != "open":
@@ -333,6 +334,7 @@ class GitHubActionsReader:
                 return observation
 
         current_pr = await self._get(pr_path)
+        observation.draft = current_pr.get("draft") is True
         if (
             current_pr["head"]["sha"] != head_sha
             or current_pr["base"]["sha"] != pr["base"]["sha"]
@@ -346,12 +348,3 @@ class GitHubActionsReader:
         observation.mergeable_state = mergeable_state if isinstance(mergeable_state, str) else None
         observation.result = evaluate_verification(config.verification, head_sha, observation.run)
         return observation
-
-
-_LOG_SECRET = re.compile(
-    r"(?i)(?:authorization:\s*bearer\s+|gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+|(?:token|password|secret)\s*[=:]\s*)[^\s]+"
-)
-
-
-def _redact_log(text: str) -> str:
-    return _LOG_SECRET.sub("[REDACTED]", text)

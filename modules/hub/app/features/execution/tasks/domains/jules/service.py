@@ -19,15 +19,15 @@ from app.features.ai_catalogs.models import (
     AICatalogSession,
 )
 from app.features.ai_catalogs.policies.base import utc
-from app.features.ai_catalogs.services import CATALOG_CONNECTOR_PROVIDERS, AICatalogService
-from app.features.configuration.connectors.crypto import ConnectorCredentialCipher, EncryptedCredentials
-from app.features.configuration.connectors.models import Connector
-from app.features.execution.tasks.domains.jules.client import (
+from app.features.ai_catalogs.providers.jules import (
     SESSION_NAME,
     JulesApiError,
     JulesClient,
     create_jules_client,
 )
+from app.features.ai_catalogs.services import CATALOG_CONNECTOR_PROVIDERS, AICatalogService
+from app.features.configuration.connectors.crypto import ConnectorCredentialCipher, EncryptedCredentials
+from app.features.configuration.connectors.models import Connector
 from app.features.project_management.pipeline_runs.schemas import EnrollPullRequest
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.projects.errors import ProjectError
@@ -114,6 +114,13 @@ class JulesSessionService:
         async with create_jules_client(api_key) as http:
             client = JulesClient(http)
             await self._observe(client, catalog_id)
+            try:
+                source_name = await client.resolve_source(payload.repository)
+            except JulesApiError as exc:
+                if exc.quota_exhausted:
+                    async with AsyncTransaction() as session:
+                        await self.catalogs.record_quota_event(session, catalog_id, get_current_utc_time())
+                raise ProjectError(exc.status_code if exc.status_code in (422, 429) else 502, str(exc)) from None
             session_id = uuid4()
             title = f"{payload.title} [{SESSION_MARKER}:{session_id}]"
             async with AsyncTransaction() as session:
@@ -138,6 +145,7 @@ class JulesSessionService:
             try:
                 remote = await client.create_session(
                     repository=payload.repository,
+                    source_name=source_name,
                     starting_branch=payload.starting_branch,
                     prompt=payload.session_prompt,
                     title=title,

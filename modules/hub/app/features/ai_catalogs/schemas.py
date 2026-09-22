@@ -39,6 +39,7 @@ class AICatalogRead(UUIDSchemaMixin, TimestampSchemaMixin):
     pipeline_delivery: bool = Field(
         default=False, description="Whether the catalog's adapter can deliver pull request pipeline work"
     )
+    connection_test: bool = Field(default=False, description="Supports an isolated project PR connection test")
     session_work_types: list[str] = Field(
         default_factory=list,
         description="Work types the catalog's scheduled sessions can do: 'task' (adopted pull requests), 'report'",

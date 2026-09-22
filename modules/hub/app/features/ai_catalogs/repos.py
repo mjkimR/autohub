@@ -11,12 +11,14 @@ from app.features.ai_catalogs.models import (
     AICatalogSession,
     AICatalogState,
 )
+from app.features.project_management.connection_tests.models import ConnectionTest
 from app.features.project_management.pipeline_runs.models import (
     ExecutionAttempt,
     ExecutionAttemptState,
     PipelineRun,
     PipelineRunState,
 )
+from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy import ColumnElement, and_, delete, func, not_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -110,7 +112,12 @@ class AICatalogRepository:
         )
 
     async def active_dispatch_count(
-        self, session: AsyncSession, catalog_id: UUID, exclude_run_id: UUID | None = None
+        self,
+        session: AsyncSession,
+        catalog_id: UUID,
+        exclude_run_id: UUID | None = None,
+        *,
+        exclude_test_id: UUID | None = None,
     ) -> int:
         """Count work holding catalog capacity: pipeline runs with a delivered or admitted mention, and sessions.
 
@@ -134,7 +141,20 @@ class AICatalogRepository:
         if exclude_run_id is not None:
             filters.append(PipelineRun.id != exclude_run_id)
         runs = await session.scalar(select(func.count()).select_from(PipelineRun).where(*filters))
-        return int(runs or 0) + await self.open_session_count(session, catalog_id)
+        probe_filters = [
+            ConnectionTest.ai_catalog_id == catalog_id,
+            ConnectionTest.evidence["catalog_admitted"].as_boolean().is_(True),
+            ConnectionTest.status != "succeeded",
+            ConnectionTest.evidence["execution_finished"].as_boolean().is_not(True),
+            or_(
+                ConnectionTest.status == "running",
+                ConnectionTest.finished_at > get_current_utc_time() - timedelta(days=1),
+            ),
+        ]
+        if exclude_test_id is not None:
+            probe_filters.append(ConnectionTest.id != exclude_test_id)
+        probes = await session.scalar(select(func.count()).select_from(ConnectionTest).where(*probe_filters))
+        return int(runs or 0) + int(probes or 0) + await self.open_session_count(session, catalog_id)
 
     async def open_session_count(self, session: AsyncSession, catalog_id: UUID) -> int:
         return int(

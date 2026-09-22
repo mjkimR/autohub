@@ -35,7 +35,7 @@ executes. Each step logs its own failure and never fails the tick. Every outgoin
 | Notice | Level | When |
 | --- | --- | --- |
 | Run stopped | `error` | A pipeline run is `paused`, `blocked`, or `failed` at a revision nobody was told about. The notice names the repository, pull request, and pause reason. |
-| Run waiting | `warning` | An in-flight run holds a reason it waits on GitHub for: a merge blocked by a review, branch rule, or draft, or a rejected connector token. See [Architecture](architecture.md#github-failures). |
+| Run waiting | `warning` | An in-flight run awaits draft-to-ready approval, a rejected connector token, or an external repository rule (compatibility only). See [Architecture](architecture.md#github-failures). |
 | Trigger resumed | `info` | A tick arrives more than 10 minutes after the previous one. |
 | Trigger stopped | `warning` | A GitHub webhook arrives while the last tick is more than 10 minutes old; at most once per hour. |
 | Login lockout | `warning` | A caller failed to sign in five times within a minute and is locked out for five minutes. See [Development & Operations](development.md). |

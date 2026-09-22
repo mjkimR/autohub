@@ -3,6 +3,7 @@
 import re
 from typing import Any
 
+from app.features.project_management.connection_tests.guards import reject_test_refs
 from app.features.project_management.pipeline_runs.dispatch import CODEX_MENTION
 from app.features.project_management.pipeline_runs.schemas import MAX_LINKED_ISSUES, LinkedIssue, PullRequestSnapshot
 from app.features.project_management.pipelines.github import GitHubActionsReader, GitHubObservationError
@@ -42,6 +43,7 @@ async def read_pull_request(reader: GitHubActionsReader, repository: str, number
 async def _read_pull_request(reader: GitHubActionsReader, repository: str, number: int) -> PullRequestSnapshot:
     root = f"/repos/{repository}"
     pr = await reader._get(f"{root}/pulls/{number}")
+    reject_test_refs(pr)
     if pr["state"] != "open":
         raise ProjectError(422, "Only open pull requests can be enrolled")
     if str((pr["head"].get("repo") or {}).get("full_name", "")).lower() != repository:

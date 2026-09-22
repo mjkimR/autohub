@@ -84,15 +84,28 @@ GitHub remains the source of implementation artifacts: a Codex reply alone does 
 
 Workspace Agents API triggers published ChatGPT workspace agents and is not a Codex cloud task API. `openai/codex-action` in the target repository's Actions remains the fallback adapter if the mention path becomes unusable; it keeps the same run, attempt, lease, and idempotency contracts but bills an OpenAI API key.
 
-Immediately prior to merging, the latest PR head and base, required checks, reviews, and branch protection rules must be re-verified.
+Immediately prior to merging, the latest PR head and base, draft status, and required CI jobs must be re-verified.
 Automatic merges must not rely solely on CI passing at the time of an earlier observation.
 
-Hub re-observes the pull request and its required jobs itself, and takes reviews and branch rules from GitHub's own verdict (`mergeable_state`) rather than re-implementing them:
+Approval uses the PR's explicit `draft` flag: work happens in draft, and the operator
+marks it ready for review to authorize automatic merging after required CI passes.
+An already non-draft PR counts as approved; converting it back to draft revokes
+that approval. Hub does not change draft status. This is a PR-level approval,
+not a separate review for each new commit; subsequent pushes still require fresh CI.
+Draft PRs with missing or skipped CI wait with an approval notice; failed code jobs
+can still receive CI fixes while draft. A ready transition wakes the existing run
+through the PR webhook, with polling as a fallback. `auto_merge=false` still disables merging.
+
+Branch Protection Rules and required reviews are **unused in the personal-repository
+workflow**. Their defensive refusal handling remains for compatibility; deletion or
+formal deprecation is deferred. Hub does not configure or bypass repository rules.
+After checking `draft`, Hub handles GitHub's `mergeable_state` as follows:
 
 | `mergeable_state` | Hub's action |
 | --- | --- |
 | `dirty`, `behind` | The branch conflicts with or trails its base: one `conflict-fix` request asks the agent to merge the base in (unless `auto_fix_conflicts` is off). No merge is attempted. |
-| `blocked`, `draft` | A person has to act (an approval, a branch rule, leaving draft). The run stays in `awaiting_ci` with the reason, is rechecked every 5 minutes, and merges by itself afterwards. Nothing is sent to the agent. |
+| `draft` | Approval is pending. The run stays in `awaiting_ci`, explains the ready-for-review action, and rechecks every 5 minutes. The explicit `draft` flag takes precedence over other mergeability states. |
+| `blocked` | Compatibility fallback for an externally configured repository rule. The run waits with a repository-rule notice; no conflict fix is dispatched. This is not Hub's approval mechanism. |
 | anything else, or not computed yet | Hub asks GitHub to merge the verified head. A refusal (HTTP 405/409) is classified by re-reading the state: only `dirty`/`behind` goes to the agent, everything else waits as above. |
 
 A waiting run is deliberately not paused: resuming a paused run replays its last request to the agent, and nothing here is the agent's to redo.
@@ -114,3 +127,34 @@ A run holding a reason while in flight is announced once through [Operator Notic
 We adopt principles such as the PR snapshot → decision structure, missing task reclamation, bounded revision counts, pause/resume semantics, and reuse of existing PRs/requests.
 From its PR gate we also adopt the Codex mention protocol: user-PAT mention identity, self-contained prompts with an explicit push block, head-movement completion detection, trusted-author marker filtering, and the silent/usage-limit watchdog.
 However, external issue-tracker backlogs and HITL queues, stub PR creation, `notes/*.md` project discovery, Godot installation / direct execution of `check.sh`, planning/prototype/maturity policies, and repo-specific marker compatibility are not part of the core migration scope.
+
+## Isolated connection-test recipes
+
+`project_management/connection_tests` owns a separate lifecycle and ledger from development runs.
+`adapters/registry.py` resolves a `(catalog kind, adapter key)` to a recipe implementing
+`prepare`, `dispatch`, `observe`, and `cleanup`. Serializable recipe metadata supplies the
+prerequisites, phases, and evidence links returned by `/projects/{id}/connection-tests/options`.
+The UI renders that contract. Add a recipe and registry entry for another test flow; do not
+add provider switches to the common lifecycle or project view. A new catalog kind still needs
+its normal quota policy and execution capabilities. Increment the recipe version when its
+verification contract changes.
+
+Connection fingerprints cover recipe version, connector identity/credential version, repository,
+activation, and CI contract. Runtime quota and display names are excluded. Only the final hash is
+exposed; cloud-side settings remain observable only through a real test. Provider clients live in
+`ai_catalogs/providers`, so production and diagnostic Jules sessions share Source resolution
+without importing scheduler task-registration packages.
+
+Claims persist before external I/O; state and delivery/quota events commit together only for
+the current lease. Create-once recipes persist intent before a request and reconcile uncertain
+responses without repeating creation. Cancellation uses a row lock when committing observations.
+Execution capacity is released once provider completion is observed, independently of CI and
+cleanup. Unknown canceled executions hold capacity for at most 24 hours. Jules cleanup closes
+known PRs through GitHub before attempting provider reconciliation, and discovers owned output
+from the isolated base even if provider credentials fail.
+
+Known test PR IDs remain excluded from enrollment and final merge authorization permanently.
+Ancestry checks protect undiscovered output while running or within the 24-hour cleanup grace
+period, with a bounded pending set; completed history adds no GitHub comparison calls to normal
+PRs. Cleanup outcome is separate from test outcome. External jobs are not forcibly canceled,
+and output recreated after the grace period is not guaranteed to be collected.

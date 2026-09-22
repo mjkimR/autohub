@@ -14,7 +14,7 @@ Currently provided for manual copying and adaptation; CLI generation and central
 2. If CI is missing, copy a template to `.github/workflows/ci.yml` in the target repository.
 3. Adjust runtime versions, dependency groups, and execution commands to match the project's command runner.
 4. If databases, headless browsers, or game engines are required, add corresponding services and setup steps.
-5. Open a PR in the target repository to verify that all required jobs execute successfully.
+5. Open a draft PR for work, then mark it ready for review to approve merging and verify all required jobs execute successfully.
 6. Register Hub's `verification.workflow` as `ci.yml` and `required_jobs` with the actual job names.
 
 Templates assume a single package with a lockfile at the repository root. Workspace or subdirectory packages must adjust each job's working directory and cache dependency paths accordingly.
@@ -33,6 +33,8 @@ Verification commands must not modify files in-place. For example, Auto Hub's `j
 - Do not use `continue-on-error` on required jobs.
 - `skipped` or `neutral` outcomes for required jobs are not accepted as passed by Hub. If checks are conditionally omitted based on changed file paths, define an aggregation/gate job that explicitly validates sub-check conditions and designate that gate job as required.
 - Starter templates run exclusively on `pull_request` events. Avoid duplicate triggers on both `push` and `pull_request`.
+- Required jobs skip draft PRs and run on `ready_for_review` and subsequent ready-PR pushes. Hub shows an approval wait while draft; skipped jobs never count as passing CI. Workflows that also run CI on drafts are supported, but a passing draft cannot merge.
+- Branch Protection Rules and required reviews are not prerequisites. The operator's draft-to-ready transition is the approval; workflows and agents must not make that transition automatically.
 - New commits to the same PR cancel previous CI runs. Hub waits for the latest run matching the current head.
 - Verification workflows must not mutate issue statuses, mention Codex, or perform automatic merges. Codex mentions are posted only by Hub with a user PAT, because mentions from the Actions `GITHUB_TOKEN` get no Codex response.
 

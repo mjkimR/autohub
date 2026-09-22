@@ -60,7 +60,7 @@
 	let deletingConfig = $state<ScheduleConfig | null>(null);
 
 	// Schedules the hub derives from a project: its dispatcher, its agent schedules, and the session sync they
-	// need. The backend refuses edits to agent-schedule entries; they are changed from the project instead.
+	// need. Dispatchers and owned agent-schedule entries are changed from the project instead.
 	const PROJECT_MANAGED_TASKS = new Set([
 		'pipeline.dispatch_project',
 		'pipeline.observe_project',
@@ -322,34 +322,46 @@
 								{config.next_run_at ? new Date(config.next_run_at).toLocaleString() : '—'}
 							</TableCell>
 							<TableCell class="text-right">
-								<div class="flex items-center justify-end gap-1.5">
+								{#if config.task_func === 'pipeline.dispatch_project'}
 									<Button
 										variant="outline"
 										size="sm"
-										onclick={() => toggleEnable(config)}
-										class="h-8 text-xs"
+										href={typeof config.payload.project_id === 'string'
+											? `/projects/${encodeURIComponent(config.payload.project_id)}?tab=settings`
+											: '/projects'}
 									>
-										{config.enabled ? 'Pause' : 'Resume'}
+										Project settings
 									</Button>
-									<Button
-										variant="outline"
-										size="icon"
-										class="size-8 text-muted-foreground hover:text-foreground"
-										onclick={() => openEdit(config)}
-										title="Edit Schedule"
-									>
-										<Pencil class="size-3.5" />
-									</Button>
-									<Button
-										variant="outline"
-										size="icon"
-										class="size-8 text-muted-foreground hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-										onclick={() => openDelete(config)}
-										title="Delete Schedule"
-									>
-										<Trash2 class="size-3.5" />
-									</Button>
-								</div>
+								{:else}
+									<div class="flex items-center justify-end gap-1.5">
+										<Button
+											variant="outline"
+											size="sm"
+											onclick={() => toggleEnable(config)}
+											class="h-8 text-xs"
+										>
+											{config.enabled ? 'Pause' : 'Resume'}
+										</Button>
+										<Button
+											variant="outline"
+											size="icon"
+											class="size-8 text-muted-foreground hover:text-foreground"
+											onclick={() => openEdit(config)}
+											title="Edit Schedule"
+										>
+											<Pencil class="size-3.5" />
+										</Button>
+										<Button
+											variant="outline"
+											size="icon"
+											class="size-8 text-muted-foreground hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+											onclick={() => openDelete(config)}
+											title="Delete Schedule"
+										>
+											<Trash2 class="size-3.5" />
+										</Button>
+									</div>
+								{/if}
 							</TableCell>
 						</TableRow>
 					{/each}

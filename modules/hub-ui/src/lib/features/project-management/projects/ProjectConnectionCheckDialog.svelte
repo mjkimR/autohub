@@ -53,7 +53,7 @@
 			} else if (res.data) {
 				checkResult = res.data;
 				if (res.data.ready) {
-					toast.success('Connection check passed! Project is ready.');
+					toast.success('GitHub and CI access check passed. Use the PR test to verify Codex.');
 				} else {
 					toast.warning('Connection check completed with issues.');
 				}

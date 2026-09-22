@@ -6,6 +6,9 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from app.features.ai_catalogs.services import AICatalogService
+from app.features.project_management.connection_tests.guards import reject_test_ancestry, reject_test_refs
+from app.features.project_management.connection_tests.models import TEST_BRANCH_PREFIX
+from app.features.project_management.connection_tests.repos import ConnectionTestRepository
 from app.features.project_management.pipeline_runs.adapters.base import DeliveryTarget
 from app.features.project_management.pipeline_runs.models import PipelineRun, PipelineRunState
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
@@ -14,6 +17,8 @@ from app.features.project_management.pipeline_runs.usecases.ci import CIProgress
 from app.features.project_management.pipeline_runs.usecases.implementation import ImplementationProgress
 from app.features.project_management.pipeline_runs.usecases.leases import raise_lease_conflict
 from app.features.project_management.pipeline_runs.usecases.transitions import as_utc, block_for_project_change
+from app.features.project_management.pipelines import services as pipeline_services
+from app.features.project_management.pipelines.github import GitHubActionsReader
 from app.features.project_management.pipelines.services import PipelineObservationService
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.models import Project
@@ -96,7 +101,24 @@ class PipelineRunProgress:
     async def _authorize_merge(self, checkpoint: ProgressCheckpoint) -> None:
         # This short transaction closes before the GitHub write. GitHub's head SHA check is the final fence.
         async with AsyncTransaction() as session:
-            await self._validate(session, checkpoint)
+            run, project = await self._validate(session, checkpoint)
+            if run.branch.startswith(TEST_BRANCH_PREFIX) or await ConnectionTestRepository().owns_pull(
+                session, project.github_repository or "", run.pull_number
+            ):
+                raise ProjectError(422, "Connection test pull requests must never be merged")
+            reject_test_refs(run.pull_snapshot)
+            repository, connector_id, number = project.github_repository, project.github_connector_id, run.pull_number
+            heads = await ConnectionTestRepository().protected_heads(session, repository or "")
+        if heads and repository and connector_id:
+            token = await self.observer.get_token(connector_id, "github")
+            async with pipeline_services.create_github_client(token) as client:
+                reader = GitHubActionsReader(client)
+                pr = await reader._get(f"/repos/{repository}/pulls/{number}")
+                reject_test_refs(pr)
+                await reject_test_ancestry(reader, repository, pr["head"]["sha"], heads)
+            # An ancestry read can take time. Recheck lease and project policy after that I/O as well.
+            async with AsyncTransaction() as session:
+                await self._validate(session, checkpoint)
 
     async def advance(
         self, run_id: UUID, *, owner: str, token: UUID, observer: PipelineObservationService

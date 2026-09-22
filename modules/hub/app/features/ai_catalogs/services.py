@@ -58,7 +58,14 @@ class AICatalogService:
         return 0 if policy is None else policy.effective_concurrency(catalog)
 
     async def request_dispatch(
-        self, session: AsyncSession, catalog_id: UUID, run_id: UUID | None, dispatch_key: str, now: datetime
+        self,
+        session: AsyncSession,
+        catalog_id: UUID,
+        run_id: UUID | None,
+        dispatch_key: str,
+        now: datetime,
+        *,
+        exclude_test_id: UUID | None = None,
     ) -> Admission:
         """Catalog gateway admission: shared checks and capacity are decided here, quota by the kind's policy.
 
@@ -73,7 +80,7 @@ class AICatalogService:
         policy = quota_policy_for(catalog)
         rejection = await policy.admit(session, catalog, dispatch_key, now)
         if rejection is None:
-            active = await self.repo.active_dispatch_count(session, catalog_id, run_id)
+            active = await self.repo.active_dispatch_count(session, catalog_id, run_id, exclude_test_id=exclude_test_id)
             if active >= policy.effective_concurrency(catalog):
                 rejection = "AI catalog has reached its concurrency limit"
         if rejection is None:

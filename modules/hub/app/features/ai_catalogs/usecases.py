@@ -17,6 +17,7 @@ from app.features.ai_catalogs.services import (
     CATALOG_SESSION_WORK_TYPES,
     AICatalogService,
 )
+from app.features.project_management.connection_tests.catalogs import supports_connection_test
 from app.features.project_management.pipeline_runs.adapters.capabilities import supports_pipeline_delivery
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
@@ -43,6 +44,7 @@ class AICatalogUseCase:
                 "effective_concurrency": self.service.effective_concurrency(catalog),
                 "connector_provider": CATALOG_CONNECTOR_PROVIDERS.get(catalog.kind),
                 "pipeline_delivery": supports_pipeline_delivery(catalog.adapter),
+                "connection_test": supports_connection_test(catalog.kind, catalog.adapter),
                 "session_work_types": list(CATALOG_SESSION_WORK_TYPES.get(catalog.kind, ())),
             }
         )

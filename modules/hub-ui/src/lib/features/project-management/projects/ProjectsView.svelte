@@ -248,7 +248,9 @@
 						<TableRow class="transition-colors hover:bg-muted/40">
 							<TableCell class="font-semibold text-foreground">
 								<div class="flex flex-col gap-0.5">
-									<span>{project.name}</span>
+									<a class="hover:text-primary hover:underline" href={`/projects/${project.id}`}
+										>{project.name}</a
+									>
 									<span class="font-mono text-[11px] text-muted-foreground"
 										>rev {project.revision}</span
 									>
@@ -281,7 +283,7 @@
 											onclick={() => openCheck(project)}
 										>
 											<CheckCircle2 class="size-3" />
-											Ready
+											Access OK
 										</Badge>
 									{:else}
 										<Badge
@@ -314,57 +316,69 @@
 								{/if}
 							</TableCell>
 							<TableCell class="text-right">
-								<div class="flex items-center justify-end gap-1">
-									<Button
-										variant="ghost"
-										size="icon"
-										onclick={() => openCheck(project)}
-										class="size-8 text-muted-foreground hover:text-primary"
-										title="Connection Check"
-										aria-label="Connection Check"
+								<div class="flex items-center justify-end gap-3">
+									<a class="text-sm text-primary hover:underline" href={`/projects/${project.id}`}
+										>Open</a
 									>
-										<Activity class="size-4" />
-									</Button>
-									<Button
-										variant="ghost"
-										size="icon"
-										onclick={() => openSchedule(project)}
-										class="size-8 text-muted-foreground hover:text-emerald-500"
-										title="Create Scheduled Automation"
-										aria-label="Create Schedule"
-									>
-										<CalendarClock class="size-4" />
-									</Button>
-									<Button
-										variant="ghost"
-										size="icon"
-										onclick={() => (schedulesProject = project)}
-										class="size-8 text-muted-foreground hover:text-foreground"
-										title="Agent Schedules"
-										aria-label="Agent Schedules"
-									>
-										<CalendarClock class="size-4" />
-									</Button>
-									<Button
-										variant="ghost"
-										size="icon"
-										onclick={() => openEdit(project)}
-										class="size-8 text-muted-foreground hover:text-foreground"
-										title="Configure Project"
-										aria-label="Configure Project"
-									>
-										<Settings2 class="size-4" />
-									</Button>
-									<Button
-										variant="ghost"
-										size="icon"
-										onclick={() => handleDelete(project.id)}
-										class="size-8 text-muted-foreground hover:text-destructive"
-										title="Delete Project"
-										aria-label="Delete Project"
-									>
-										<Trash2 class="size-4" />
-									</Button>
+									<details class="relative">
+										<summary class="cursor-pointer text-xs text-muted-foreground"
+											>Quick actions</summary
+										>
+										<div
+											class="mt-2 flex flex-wrap justify-end gap-1 rounded-lg border bg-popover p-2 shadow-md"
+										>
+											<Button
+												variant="ghost"
+												size="icon"
+												onclick={() => openCheck(project)}
+												class="size-8 text-muted-foreground hover:text-primary"
+												title="Connection Check"
+												aria-label="Connection Check"
+											>
+												<Activity class="size-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												onclick={() => openSchedule(project)}
+												class="size-8 text-muted-foreground hover:text-emerald-500"
+												title="Create Scheduled Automation"
+												aria-label="Create Schedule"
+											>
+												<CalendarClock class="size-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												onclick={() => (schedulesProject = project)}
+												class="size-8 text-muted-foreground hover:text-foreground"
+												title="Agent Schedules"
+												aria-label="Agent Schedules"
+											>
+												<CalendarClock class="size-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												onclick={() => openEdit(project)}
+												class="size-8 text-muted-foreground hover:text-foreground"
+												title="Configure Project"
+												aria-label="Configure Project"
+											>
+												<Settings2 class="size-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												onclick={() => handleDelete(project.id)}
+												class="size-8 text-muted-foreground hover:text-destructive"
+												title="Delete Project"
+												aria-label="Delete Project"
+											>
+												<Trash2 class="size-4" />
+											</Button>
+										</div>
+									</details>
 								</div>
 							</TableCell>
 						</TableRow>

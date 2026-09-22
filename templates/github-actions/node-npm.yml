@@ -15,6 +15,7 @@ concurrency:
 jobs:
   lint:
     name: lint
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -28,6 +29,7 @@ jobs:
 
   test:
     name: test
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -43,6 +45,7 @@ jobs:
 
   build:
     name: build
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

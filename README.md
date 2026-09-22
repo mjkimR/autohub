@@ -9,7 +9,14 @@ Each connection represents one GitHub repository. Work is specified in PRs;
 Codex cloud implements requests posted as `@codex` comments, and repository-owned
 GitHub Actions perform verification. The workflow is:
 
-`Open PR → Enroll and dispatch → Verify → Fix or merge`
+`Draft PR → Enroll and dispatch → Implement/fix → Mark ready (approval) → Verify → Merge`
+
+Work stays in a draft PR until the operator marks it ready for review. A non-draft
+PR is approved for automatic merge once the configured CI passes (`auto_merge`
+must be enabled); a PR enrolled already ready carries that approval. Returning it
+to draft holds merging again. Hub never marks a PR ready on the operator's behalf.
+Branch Protection Rules and required reviews are not used for this personal-repository
+approval workflow. Existing GitHub rule-block handling is retained for compatibility.
 
 Saved runs retain task snapshots and delivery history; dispatch reconciles comment
 markers to avoid duplicate requests. See [delivery status](docs/delivery-status.md)

@@ -16,7 +16,9 @@
 		"lint": "prettier --check . && eslint .",
 		"test": "vitest run",
 		"format": "prettier --write .",
-		"gen:api": "sh scripts/gen-api.sh"
+		"gen:api": "sh scripts/gen-api.sh",
+		"test:unit": "vitest run --project unit",
+		"test:integration": "vitest run --project integration"
 	},
 	"devDependencies": {
 		"@app-common/eslint-config": "git+https://github.com/mjkimR/app-common.git#98b4f05d6a8f1412b3fe6ccbb42607ae23e65c5f",

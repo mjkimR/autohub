@@ -42,6 +42,7 @@ def build_codex_mention_comment(request: ImplementationRequest, *, delivery: int
         "## Ground rules\n\n"
         "- Follow the repository's AGENTS.md.\n"
         "- Stay within the task scope; leave unrelated code untouched.\n"
+        "- Do not change this PR's draft status; only the operator approves merging.\n"
         "- Run the repository's required checks and make sure they pass before you push.",
         "Your environment provides network access to github.com and a `GH_TOKEN` environment variable "
         "with push rights to this repository. When your work is done, push your commit to this branch yourself:\n\n"

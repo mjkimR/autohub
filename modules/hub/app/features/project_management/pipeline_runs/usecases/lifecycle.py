@@ -7,6 +7,8 @@ from app.features.ai_catalogs.models import (
     AICatalog,
 )
 from app.features.ai_catalogs.services import AICatalogService
+from app.features.project_management.connection_tests.guards import reject_test_ancestry
+from app.features.project_management.connection_tests.repos import ConnectionTestRepository
 from app.features.project_management.pipeline_runs.github import read_pull_request
 from app.features.project_management.pipeline_runs.models import (
     IN_FLIGHT_RUN_STATES,
@@ -97,6 +99,9 @@ class PipelineRunUseCase:
                 project.github_connector_id,
                 project.revision,
             )
+            if await ConnectionTestRepository().owns_pull(session, repository, request.pull_number):
+                raise ProjectError(422, "Connection test pull requests cannot be enrolled as development runs")
+            test_heads = await ConnectionTestRepository().protected_heads(session, repository)
 
         # Keep GitHub reads outside database transactions.
         try:
@@ -107,6 +112,7 @@ class PipelineRunUseCase:
             async with asyncio.timeout(30):
                 async with pipeline_services.create_github_client(token) as client:
                     snapshot = await read_pull_request(GitHubActionsReader(client), repository, request.pull_number)
+                    await reject_test_ancestry(GitHubActionsReader(client), repository, snapshot.head_sha, test_heads)
         except TimeoutError:
             raise ProjectError(504, "Pull request read exceeded its time budget") from None
 

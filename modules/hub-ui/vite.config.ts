@@ -11,7 +11,21 @@ export default defineConfig({
 	},
 	test: {
 		environment: 'jsdom',
-		fsModuleCache: true
+		fsModuleCache: true,
+		projects: [
+			{
+				extends: true,
+				test: {
+					name: 'unit',
+					include: ['src/**/*.test.ts'],
+					exclude: ['src/**/*.integration.test.ts']
+				}
+			},
+			{
+				extends: true,
+				test: { name: 'integration', include: ['src/**/*.integration.test.ts'] }
+			}
+		]
 	},
 	server: {
 		proxy: {

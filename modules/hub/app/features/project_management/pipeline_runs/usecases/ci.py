@@ -35,20 +35,24 @@ from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.schemas import ProjectRead
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# GitHub `mergeable_state` values. A branch that conflicts with or trails its base is the agent's to update;
-# the others wait for a person (an approval, a branch rule, leaving draft) and are rechecked on a timer.
+# A branch that conflicts with or trails its base is the agent's to update.
+# Draft -> ready is the approval gate. Branch-rule handling remains for compatibility only.
 MERGE_NEEDS_UPDATE = ("dirty", "behind")
 MERGE_WAITS_FOR_OPERATOR = ("blocked", "draft")
 MERGE_RECHECK_DELAY = timedelta(minutes=5)
+DRAFT_WAIT_REASON = (
+    "Waiting for approval: the pull request is a draft. Mark it ready for review to approve merging. "
+    "Automatic merge requires passing CI and must be enabled for this project."
+)
 
 
 def _merge_wait_reason(mergeable_state: str | None) -> str:
     if mergeable_state == "draft":
-        return "Waiting on GitHub: CI passed but the pull request is a draft. Mark it ready; the run merges by itself."
+        return DRAFT_WAIT_REASON
     if mergeable_state == "blocked":
         return (
-            "Waiting on GitHub: CI passed but branch protection blocks the merge (a required review or a check "
-            "Hub does not observe). Satisfy it; the run merges by itself."
+            "Waiting on GitHub: CI passed but a repository rule blocks the merge. Branch protection is not "
+            "part of Hub's approval workflow; check the repository rules. The run retries by itself."
         )
     return (
         "Waiting on GitHub: CI passed but GitHub refused the merge without reporting a conflict. Check the "
@@ -110,7 +114,7 @@ class CIProgress:
                 # GitHub's own verdict decides what a refusal means: only a branch that conflicts with
                 # or trails its base is the agent's to fix. Reviews, branch rules, and drafts wait for
                 # a person, and asking the agent to "resolve conflicts" there only burns a task.
-                mergeable_state = current.mergeable_state
+                mergeable_state = "draft" if current.draft else current.mergeable_state
                 merge: dict = {"merged": False}
                 if mergeable_state not in (*MERGE_NEEDS_UPDATE, *MERGE_WAITS_FOR_OPERATOR):
                     try:
@@ -126,7 +130,9 @@ class CIProgress:
                             raise
                         refused = await reader._get(f"/repos/{project_read.github.repository}/pulls/{pull_number}")
                         state = refused.get("mergeable_state")
-                        mergeable_state = state if isinstance(state, str) else None
+                        mergeable_state = (
+                            "draft" if refused.get("draft") is True else (state if isinstance(state, str) else None)
+                        )
                         if mergeable_state not in MERGE_NEEDS_UPDATE:
                             mergeable_state = mergeable_state or "refused"
         except PipelineConfigurationError as exc:
@@ -142,6 +148,13 @@ class CIProgress:
             raise ProjectError(422, "Project missing GitHub connection for pipeline run")
         observation = observed.report
         pull_result = observation.pulls[0].result
+        if observation.pulls[0].draft and pull_result.status in (
+            VerificationStatus.WAITING,
+            VerificationStatus.BLOCKED,
+        ):
+            wait_on_github(run, DRAFT_WAIT_REASON, now, MERGE_RECHECK_DELAY)
+            await session.flush()
+            return PipelineRunRead.model_validate(run)
         if pull_result.status != VerificationStatus.PASSED and run.pause_reason is not None:
             # An earlier wait (a blocked merge, say) no longer describes this head.
             run.pause_reason = None

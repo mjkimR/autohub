@@ -26,6 +26,7 @@
 
 	type PipelineRun = components['schemas']['PipelineRunRead'];
 	type Project = components['schemas']['ProjectRead'];
+	let { scopedProject }: { scopedProject?: Project } = $props();
 
 	const list = new PaginatedState<PipelineRun>();
 	let runs = $derived(list.items);
@@ -50,6 +51,10 @@
 	}
 
 	async function loadProjects() {
+		if (scopedProject) {
+			projects = [scopedProject];
+			return;
+		}
 		try {
 			projects = await allPages(async (offset, limit) =>
 				responseData(
@@ -77,7 +82,7 @@
 		const filters = {
 			search: searchQuery.trim(),
 			state: selectedState || undefined,
-			project_id: selectedProjectId || undefined
+			project_id: scopedProject?.id ?? (selectedProjectId || undefined)
 		};
 		await list.load(
 			async (offset, limit) =>
@@ -207,6 +212,7 @@
 				return;
 			}
 			selectedProjectId = res.data.project_id;
+			if (scopedProject && res.data.project_id !== scopedProject.id) return;
 			await loadRuns(0);
 			openAttempts(res.data);
 		} catch {
@@ -215,6 +221,7 @@
 	}
 
 	onMount(() => {
+		selectedProjectId = scopedProject?.id ?? '';
 		loadProjects();
 		loadCatalogs();
 		loadRuns().then(openLinkedRun);
@@ -267,11 +274,12 @@
 		<!-- Project selector -->
 		<select
 			aria-label="Project filter"
+			disabled={!!scopedProject}
 			bind:value={selectedProjectId}
 			onchange={() => loadRuns(0)}
 			class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
 		>
-			<option value="">All Projects</option>
+			{#if !scopedProject}<option value="">All Projects</option>{/if}
 			{#each projects as project (project.id)}
 				<option value={project.id}>{project.name}</option>
 			{/each}

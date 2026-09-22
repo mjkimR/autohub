@@ -11,7 +11,7 @@ Official references:
 
 ## 1. Prerequisites
 
-These are onboarding steps. Hub cannot read Codex settings, so it records them as a checklist and proves them only through the canary.
+These are onboarding steps. Hub cannot read Codex settings. The project's Connections tab provides setup guidance and an isolated PR connection test to verify a repository's mention, push, and CI path. See [project detail and connection tests](project-detail-and-connection-tests.md). The broader adapter recovery canary in §8 remains separate.
 
 | Where | Requirement |
 | --- | --- |
