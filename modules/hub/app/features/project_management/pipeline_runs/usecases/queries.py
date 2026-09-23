@@ -41,12 +41,12 @@ class PipelineRunQueries:
                 raise ProjectError(404, "Pipeline run not found")
             return PipelineRunRead.model_validate(run)
 
-    async def list_attempts(self, run_id: UUID) -> ExecutionAttemptList:
+    async def list_attempts(self, run_id: UUID, *, offset: int = 0, limit: int | None = None) -> ExecutionAttemptList:
         async with AsyncTransaction() as session:
             run = await self.repo.get(session, run_id)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
-            rows = await self.repo.list_attempts(session, run_id)
+            rows = await self.repo.list_attempts(session, run_id, offset=offset, limit=limit)
             started_at = run.created_at.replace(tzinfo=UTC) if run.created_at.tzinfo is None else run.created_at
             # A final state is the last thing written to a run, so its last update is when it ended.
             finished_at = (
@@ -54,12 +54,10 @@ class PipelineRunQueries:
                 if run.state in FINAL_RUN_STATES
                 else None
             )
-            kinds: dict[str, int] = {}
-            for row in rows:
-                kinds[row.kind] = kinds.get(row.kind, 0) + 1
+            kinds = await self.repo.attempt_counts(session, run_id)
             return ExecutionAttemptList(
                 items=[ExecutionAttemptRead.model_validate(row) for row in rows],
-                total_count=len(rows),
+                total_count=sum(kinds.values()),
                 summary=PipelineRunSummary(
                     attempts_by_kind=kinds,
                     requests_sent=await self.repo.count_requests_sent(session, run_id),

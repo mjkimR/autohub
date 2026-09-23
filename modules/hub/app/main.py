@@ -13,6 +13,7 @@ from app.auth_settings import get_hub_auth_settings
 from app.features import tasks
 from app.features.project_management.projects.errors import ProjectError
 from app.features.scheduling.schedule_configs.system import ensure_maintenance_schedule
+from app.mcp.server import create_hub_mcp
 from app.router import router
 from app_http_client.instance import close_http_client
 from app_layer_base.base.exceptions.handler import set_exception_handler
@@ -84,7 +85,14 @@ def create_app():
     """Create the FastAPI app and include the router."""
     load_env()
     configure_access_logging()
-    lifespan = get_lifespan()
+    hub_lifespan = get_lifespan()
+    mcp_app = create_hub_mcp()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        async with hub_lifespan(app), mcp_app.lifespan(app):
+            yield
+
     app = FastAPI(
         title="Auto Hub",
         version="0.1.0",
@@ -119,6 +127,12 @@ def create_app():
     @app.exception_handler(ProjectError)
     async def project_error_handler(request, exc: ProjectError):
         return JSONResponse(status_code=exc.status, content={"detail": exc.detail})
+
+    @app.api_route("/mcp", methods=["GET", "POST", "DELETE", "OPTIONS"], include_in_schema=False)
+    async def mcp_redirect():
+        return RedirectResponse("/mcp/", status_code=307)
+
+    app.mount("/mcp", mcp_app)
 
     ui_dist = _resolve_ui_dist()
     if ui_dist is not None:

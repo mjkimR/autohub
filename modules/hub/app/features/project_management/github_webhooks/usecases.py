@@ -133,7 +133,13 @@ class GitHubWebhookUseCase:
                 )
 
             if run is not None:
-                await self.lifecycle.manual_advance(run.id, self.lifecycle.observer)
+                try:
+                    await self.lifecycle.manual_advance(run.id, self.lifecycle.observer)
+                except ProjectError as exc:
+                    # e.g. a burst of workflow_run events, or the scheduler tick, already holds the run's lease.
+                    # That holder advances the run, and polling covers anything it misses.
+                    await self._finish(delivery_id, "processed", f"Advance deferred: {exc.detail}")
+                    return True
             elif (
                 has_trigger
                 and project is not None

@@ -3,8 +3,8 @@ version: 0.1.0
 targets: [claude, codex]
 dependencies:
   apm:
-    # Match the shared Python and frontend dependency commit.
+    # Match the shared Python dependency commit.
     - git: mjkimR/app-common
       path: agents
-      ref: ca4e6a4fdca035314c4e032ca9397e633830ecf5
+      ref: e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca
       skills: [app-common]

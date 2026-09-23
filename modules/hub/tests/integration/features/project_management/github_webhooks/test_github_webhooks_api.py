@@ -336,6 +336,33 @@ async def test_out_of_order_webhooks_route_each_pull_request_to_its_own_active_r
     assert webhook._finish.await_args_list[1].args == ("push-7", "processed")
 
 
+async def test_webhook_notes_an_advance_deferred_by_a_held_lease():
+    """Concurrent workflow_run events race for the run's lease; the losers are not processing failures."""
+    from app.features.project_management.projects.errors import ProjectError
+
+    repo = MagicMock()
+    runs = MagicMock()
+    lifecycle = MagicMock()
+    lifecycle.observer = MagicMock()
+    project = MagicMock(id=uuid4(), enabled=True)
+    run = MagicMock(id=uuid4())
+    repo.project_for_repository = AsyncMock(return_value=project)
+    runs.get_active_for_pull = AsyncMock(return_value=run)
+    lifecycle.manual_advance = AsyncMock(side_effect=ProjectError(409, "Pipeline run lease acquire was rejected"))
+
+    webhook = GitHubWebhookUseCase(repo, runs, lifecycle)
+    webhook._finish = AsyncMock()
+    await webhook.process(
+        "leased-advance",
+        {"repository": {"full_name": "owner/app"}, "workflow_run": {"pull_requests": [{"number": 7}]}},
+        event="workflow_run",
+    )
+
+    webhook._finish.assert_awaited_once_with(
+        "leased-advance", "processed", "Advance deferred: Pipeline run lease acquire was rejected"
+    )
+
+
 async def test_failed_webhook_processing_is_acknowledged_for_polling_recovery():
     """A transient webhook failure must not be retried as a duplicate write."""
     repo = MagicMock()

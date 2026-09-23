@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.18.3",
     "app-layer-base",
+    "app-mcp",
     "app-http-client",
     "app-prebuilt-auth",
     "psycopg[binary]>=3.1",
@@ -27,12 +28,13 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-app-prebuilt-auth = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-auth", rev = "ca4e6a4fdca035314c4e032ca9397e633830ecf5" }
-app-http-client = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/adapters/app-http-client", rev = "ca4e6a4fdca035314c4e032ca9397e633830ecf5" }
-app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "ca4e6a4fdca035314c4e032ca9397e633830ecf5" }
-app-error = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-error", rev = "ca4e6a4fdca035314c4e032ca9397e633830ecf5" }
-app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "ca4e6a4fdca035314c4e032ca9397e633830ecf5" }
-app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "ca4e6a4fdca035314c4e032ca9397e633830ecf5" }
+app-mcp = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/transports/app-mcp", rev = "e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+app-prebuilt-auth = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-auth", rev = "e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+app-http-client = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/adapters/app-http-client", rev = "e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+app-error = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-error", rev = "e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
 
 [dependency-groups]
 dev = [

@@ -4,6 +4,20 @@
 배포 후 확인을 완료했다.** `autohub-00011-xpl`이 트래픽 100%를 처리하며,
 13:55 KST 정기 tick에서 프로젝트 dispatcher와 공용 유지보수가 모두 성공했다.
 
+## MCP 추가 작업: 로컬 구현, 배포 전
+
+2026-09-23: 기존 Hub에 Streamable HTTP `/mcp/`와 공개 도구 17개를 추가했다.
+프로젝트·연결 준비 상태·catalog/connector 조회, 연결 테스트 시작/조회/취소,
+PR 등록·실행 조회·이력·제어를 기존 UseCase에 연결한다. 기존 machine key에
+`autohub:mcp:read`/`autohub:mcp:write`를 추가하고 scheduler scope와 구분한다.
+별도 서버·skill·CLI·plugin은 추가하지 않았다. [연결 안내](mcp.md)
+
+공통 `app-mcp`의 모델 스키마·출력 계약·MCP 오류 플래그 보완을 반영한 공개 커밋
+`e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca`로 Python/APM 참조와 lock을 갱신했다.
+공개 패키지 기준 전체 테스트 765개 통과(6개 제외), 린트·타입 검사·UI 빌드,
+APM audit 및 Python/APM SHA 일치 검사를 완료했다.
+**배포와 실제 Codex 연결은 아직 하지 않았다.** 기존 배포 완료 현황과 구분한다.
+
 ## 완료한 범위
 
 | 영역 | 구현·검증 결과 | 상세 |

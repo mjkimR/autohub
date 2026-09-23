@@ -189,7 +189,7 @@ designation set  → get_by_key(designation)
                  → disabled → 422; adapter without pipeline delivery → 422
 ```
 
-- `EnrollPullRequest.catalog` carries the designation; the webhook parses it from `@auto-run:<catalog>` (`AUTO_RUN_TRIGGER`, group `catalog`). A refused webhook enrollment is still a processed delivery with `failure_detail = "Enrollment skipped: …"`; an enrollment whose first dispatch is refused (a quota hold, say) records `"Enrolled; first dispatch deferred: …"` and the scheduler dispatches the run later.
+- `EnrollPullRequest.catalog` carries the designation; the webhook parses it from `@auto-run:<catalog>` (`AUTO_RUN_TRIGGER`, group `catalog`). A refused webhook enrollment is still a processed delivery with `failure_detail = "Enrollment skipped: …"`; an enrollment whose first dispatch is refused (a quota hold, say) records `"Enrolled; first dispatch deferred: …"` and the scheduler dispatches the run later. An advance of an active run that is refused, typically because a concurrent delivery or the scheduler tick holds the run's lease, is likewise processed with `"Advance deferred: …"`; polling covers what the lease holder misses.
 - The resolved catalog is stored in `pipeline_runs.ai_catalog_id`; a designation is also kept in `requested_catalog_id`. `_run_catalog` (used by resume) prefers the requested catalog while it exists, is enabled, and can deliver, else the project's current selection.
 - `resolve_catalog` is the single chokepoint for mapping a request to a catalog, so a router can replace it without touching enrollment or the webhook.
 

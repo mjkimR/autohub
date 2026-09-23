@@ -50,9 +50,9 @@ the same recipes and locked Python dependencies; Ruff has no separate hook versi
 
 Microsoft APM 0.30.0 installs the `app-common` skill with `just skills` (also run
 by backend initialization). `just link-skills` remains a compatibility entry point.
-`apm.yml` pins the Git dependency to the same pushed commit as the shared frontend
-ESLint policy. Python runtime packages retain their independently pinned commit;
-no sibling app-common checkout is required. Install APM with
+`apm.yml` pins the Git dependency to the same pushed commit as the Python
+app-common packages. The frontend ESLint policy has its own pin; no sibling
+app-common checkout is required. Install APM with
 `uv tool install apm-cli==0.30.0`. Private repositories require Git credentials in
 local and cloud agent environments.
 

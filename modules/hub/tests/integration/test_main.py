@@ -31,6 +31,12 @@ def test_spa_served_when_ui_present(tmp_path: Path):
         assert root_res.status_code == 200
         assert "Test SPA" in root_res.text
 
+        # The MCP endpoint stays protected ahead of the SPA catch-all, with either spelling.
+        for endpoint in ("/mcp", "/mcp/"):
+            mcp_res = client.post(endpoint, json={})
+            assert mcp_res.status_code == 401
+            assert mcp_res.headers["content-type"].startswith("application/json")
+
         # Client-side route fallback returns index.html
         route_res = client.get("/projects/runs")
         assert route_res.status_code == 200

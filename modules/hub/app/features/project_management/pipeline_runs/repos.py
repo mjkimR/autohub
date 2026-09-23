@@ -192,13 +192,25 @@ class PipelineRunRepository:
         await session.refresh(attempt)
         return attempt
 
-    async def list_attempts(self, session: AsyncSession, run_id: UUID) -> list[ExecutionAttempt]:
+    async def list_attempts(
+        self, session: AsyncSession, run_id: UUID, *, offset: int = 0, limit: int | None = None
+    ) -> list[ExecutionAttempt]:
         rows = await session.scalars(
             select(ExecutionAttempt)
             .where(ExecutionAttempt.pipeline_run_id == run_id)
             .order_by(ExecutionAttempt.attempt_number)
+            .offset(offset)
+            .limit(limit)
         )
         return list(rows)
+
+    async def attempt_counts(self, session: AsyncSession, run_id: UUID) -> dict[str, int]:
+        rows = await session.execute(
+            select(ExecutionAttempt.kind, func.count())
+            .where(ExecutionAttempt.pipeline_run_id == run_id)
+            .group_by(ExecutionAttempt.kind)
+        )
+        return {kind: count for kind, count in rows}
 
     async def get_attempt(self, session: AsyncSession, attempt_id: UUID) -> ExecutionAttempt | None:
         return await session.get(ExecutionAttempt, attempt_id)

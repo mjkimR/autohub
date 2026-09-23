@@ -28,7 +28,10 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-MACHINE_SCOPES = frozenset({"autohub:dispatch"})
+MCP_READ = "autohub:mcp:read"
+MCP_WRITE = "autohub:mcp:write"
+MCP_SCOPES = frozenset({MCP_READ, MCP_WRITE})
+MACHINE_SCOPES = frozenset({"autohub:dispatch"}) | MCP_SCOPES
 
 # Every API route except signing in itself and the dispatcher trigger.
 require_user = get_current_user
