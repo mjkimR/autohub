@@ -88,7 +88,7 @@
 				.map((j) => j.trim())
 				.filter(Boolean);
 
-			const body: components['schemas']['ProjectUpdate'] = {
+			const body: components['schemas']['ProjectPatch'] = {
 				name: editName.trim(),
 				enabled: editEnabled,
 				expected_revision: project.revision,
@@ -119,7 +119,7 @@
 					: null
 			};
 
-			const res = await api.PUT('/api/v1/projects/{project_id}', {
+			const res = await api.PATCH('/api/v1/projects/{project_id}', {
 				params: { path: { project_id: project.id } },
 				body
 			});

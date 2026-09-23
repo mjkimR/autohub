@@ -8,8 +8,8 @@ from app.features.project_management.projects.schemas import (
     ConnectionCheck,
     ImportScheduleRequest,
     ProjectList,
+    ProjectPatch,
     ProjectRead,
-    ProjectUpdate,
     ProjectWrite,
     TemplateRead,
 )
@@ -61,9 +61,10 @@ async def enroll_pull_request(
     return await use_case.enroll(project_id, data)
 
 
-@router.put("/{project_id}", response_model=ProjectRead)
-async def update_project(project_id: UUID, data: ProjectUpdate, use_case: Annotated[ProjectUseCase, Depends()]):
-    return await use_case.update(project_id, data)
+@router.patch("/{project_id}", response_model=ProjectRead)
+async def update_project(project_id: UUID, data: ProjectPatch, use_case: Annotated[ProjectUseCase, Depends()]):
+    """Change only the fields present in the body; ``expected_revision`` rejects stale edits."""
+    return await use_case.patch(project_id, data)
 
 
 @router.delete("/{project_id}", status_code=204)

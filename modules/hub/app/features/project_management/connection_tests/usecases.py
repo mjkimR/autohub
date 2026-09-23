@@ -54,7 +54,11 @@ class ConnectionTestUseCase:
                 project = ProjectRead.model_validate(await self.service.projects.get(session, project_id))
                 return self.read(row, await current_fingerprint(session, project, row.ai_catalog_id))
         except IntegrityError:
-            raise ProjectError(409, "A connection test is already running; refresh its status") from None
+            raise ProjectError(
+                409,
+                "A connection test is already running; refresh its status",
+                fix="Read the project's running connection test instead of starting another.",
+            ) from None
 
     async def cancel(self, project_id: UUID, test_id: UUID) -> ConnectionTestRead:
         async with AsyncTransaction() as session:

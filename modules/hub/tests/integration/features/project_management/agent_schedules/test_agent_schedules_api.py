@@ -202,7 +202,7 @@ async def test_project_changes_flow_into_owned_entries(client, session, project,
     root = f"/api/v1/projects/{project['id']}/agent-schedules"
     await client.post(root, json=payload(jules))
 
-    renamed = await client.put(
+    renamed = await client.patch(
         f"/api/v1/projects/{project['id']}",
         json={
             "name": "Renamed",
@@ -286,7 +286,7 @@ async def test_an_operator_sync_entry_for_the_catalog_is_left_alone(client, sess
 async def test_disconnecting_the_project_from_github_pauses_its_agent_schedules(client, session, project, jules):
     await client.post(f"/api/v1/projects/{project['id']}/agent-schedules", json=payload(jules))
 
-    disconnected = await client.put(
+    disconnected = await client.patch(
         f"/api/v1/projects/{project['id']}",
         json={"name": project["name"], "enabled": True, "expected_revision": project["revision"], "github": None},
     )

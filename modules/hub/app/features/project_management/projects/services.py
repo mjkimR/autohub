@@ -10,6 +10,7 @@ from app.features.project_management.projects.models import Project
 from app.features.project_management.projects.repos import PROJECT_OBSERVATION_TASK, ProjectRepository
 from app.features.project_management.projects.schemas import (
     ProjectObservationPayload,
+    ProjectPatch,
     ProjectRead,
     ProjectUpdate,
     ProjectWrite,
@@ -20,6 +21,8 @@ from fastapi import Depends
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+CONFIG_FIELDS = {"name", "enabled", "github"}
 
 
 class ProjectService:
@@ -71,7 +74,11 @@ class ProjectService:
     async def update(self, session: AsyncSession, project_id: UUID, data: ProjectUpdate) -> Project:
         project = await self.get(session, project_id, lock=True)
         if project.revision != data.expected_revision:
-            raise ProjectError(409, "Project changed; reload before saving")
+            raise ProjectError(
+                409,
+                "Project changed; reload before saving",
+                fix="Read the project again and resend only your change with its current revision.",
+            )
         await self.validate(session, data, project_id)
         project.name = data.name
         project.enabled = data.enabled
@@ -89,6 +96,21 @@ class ProjectService:
         # Owned agent schedules derive their payload and enabled state from the project.
         await AgentScheduleRepository().resync_project(session, saved)
         return saved
+
+    async def patch(self, session: AsyncSession, project_id: UUID, data: ProjectPatch) -> Project:
+        project = await self.get(session, project_id, lock=True)
+        current = ProjectWrite.model_validate(ProjectRead.model_validate(project).model_dump(include=CONFIG_FIELDS))
+        try:
+            merged = data.apply_to(current)
+        except ValidationError as exc:
+            error = exc.errors()[0]
+            location = ".".join(str(part) for part in error["loc"])
+            raise ProjectError(
+                422,
+                f"Invalid project after applying changes: {location}: {error['msg']}",
+                fix="Omit fields you do not change; connecting GitHub for the first time needs repository, connector and verification.",
+            ) from None
+        return await self.update(session, project_id, merged)
 
     async def delete(self, session: AsyncSession, project_id: UUID) -> None:
         project = await self.get(session, project_id, lock=True)

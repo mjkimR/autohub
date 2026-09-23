@@ -1,20 +1,47 @@
 from app.features.project_management.pipeline_runs.schemas import PauseRunRequest
-from app.mcp.contracts import AttemptFilter, AttemptList, AttemptView, Enroll, Items, Pause, RunFilter, RunId, RunView
+from app.mcp.contracts import (
+    AttemptFilter,
+    AttemptList,
+    AttemptView,
+    Enroll,
+    Items,
+    Pause,
+    RunFilter,
+    RunId,
+    RunView,
+    RunWait,
+)
 from app.mcp.dependencies import Dependencies
+from app.mcp.names import catalog_keys
 from app.mcp.registration import register
+from app.mcp.waiting import wait_for_change
 from app_mcp import ToolRegistry
 
 
 def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
-    async def list_runs(args: RunFilter) -> Items[RunView]:
-        result = await deps.queries.list_runs(args.project_id, args.offset, args.limit, args.state, args.search)
-        return Items(items=[RunView.model_validate(row) for row in result.items], total_count=result.total_count)
+    async def view(row, keys: dict | None = None) -> RunView:
+        keys = keys if keys is not None else await catalog_keys(deps)
+        return RunView.model_validate(row).model_copy(update={"catalog_key": keys.get(row.ai_catalog_id)})
 
-    async def get_run(args: RunId) -> RunView:
-        return RunView.model_validate(await deps.queries.get(args.run_id))
+    async def list_runs(args: RunFilter) -> Items[RunView]:
+        result = await deps.queries.list_runs(
+            args.project_id, args.offset, args.limit, args.state, args.search, args.pull_number
+        )
+        keys = await catalog_keys(deps)
+        return Items(items=[await view(row, keys) for row in result.items], total_count=result.total_count)
+
+    async def get_run(args: RunWait) -> RunView:
+        keys = await catalog_keys(deps)
+
+        async def read() -> RunView:
+            return await view(await deps.queries.get(args.run_id), keys)
+
+        return await wait_for_change(
+            read, lambda run: (run.state, run.revision), lambda run: run.settled, args.wait_seconds
+        )
 
     async def enroll(args: Enroll) -> RunView:
-        return RunView.model_validate(await deps.runs.enroll(args.project_id, args.pull_request))
+        return await view(await deps.runs.enroll(args.project_id, args.pull_request))
 
     async def attempts(args: AttemptFilter) -> AttemptList:
         result = await deps.queries.list_attempts(args.run_id, offset=args.offset, limit=args.limit)
@@ -25,18 +52,18 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
         )
 
     async def pause(args: Pause) -> RunView:
-        return RunView.model_validate(await deps.runs.pause_run(args.run_id, PauseRunRequest(reason=args.reason)))
+        return await view(await deps.runs.pause_run(args.run_id, PauseRunRequest(reason=args.reason)))
 
     async def resume(args: RunId) -> RunView:
-        return RunView.model_validate(await deps.runs.resume_run(args.run_id))
+        return await view(await deps.runs.resume_run(args.run_id))
 
     async def cancel(args: RunId) -> RunView:
-        return RunView.model_validate(await deps.runs.cancel_run(args.run_id))
+        return await view(await deps.runs.cancel_run(args.run_id))
 
     register(
         registry,
         "runs.list",
-        "List runs, including prior enrollment after a lost response. Results omit PR bodies and worker state.",
+        "List runs, including prior enrollment after a lost response; filter by pull_number for one pull request. Results omit PR bodies and worker state.",
         RunFilter,
         Items[RunView],
         list_runs,
@@ -44,8 +71,8 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
     register(
         registry,
         "runs.get",
-        "Read current run state and PR link. Background work continues after disconnect; query again when needed.",
-        RunId,
+        "Read current run state and PR link. Set wait_seconds to wait for the next state change; background work continues after disconnect.",
+        RunWait,
         RunView,
         get_run,
     )

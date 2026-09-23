@@ -2,7 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from app.features.project_management.projects.errors import ProjectError
-from app.features.project_management.projects.schemas import ProjectList, ProjectRead, ProjectUpdate, ProjectWrite
+from app.features.project_management.projects.schemas import ProjectList, ProjectPatch, ProjectRead, ProjectWrite
 from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 from fastapi import Depends
@@ -22,6 +22,13 @@ class ProjectUseCase:
         async with AsyncTransaction() as session:
             return ProjectRead.model_validate(await self.service.get(session, project_id))
 
+    async def get_by_repository(self, repository: str) -> ProjectRead:
+        async with AsyncTransaction() as session:
+            matches = await self.service.repo.conflicts(session, repository.strip().lower())
+            if not matches:
+                raise ProjectError(404, "No project is connected to this repository")
+            return ProjectRead.model_validate(matches[0])
+
     async def create(self, data: ProjectWrite) -> ProjectRead:
         try:
             async with AsyncTransaction() as session:
@@ -29,10 +36,10 @@ class ProjectUseCase:
         except IntegrityError:
             raise ProjectError(409, "Project mapping conflicts or a connector was removed; reload and retry") from None
 
-    async def update(self, project_id: UUID, data: ProjectUpdate) -> ProjectRead:
+    async def patch(self, project_id: UUID, data: ProjectPatch) -> ProjectRead:
         try:
             async with AsyncTransaction() as session:
-                return ProjectRead.model_validate(await self.service.update(session, project_id, data))
+                return ProjectRead.model_validate(await self.service.patch(session, project_id, data))
         except IntegrityError:
             raise ProjectError(409, "Project mapping conflicts or a connector was removed; reload and retry") from None
 

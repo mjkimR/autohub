@@ -36,7 +36,7 @@ async def test_later_github_connection_creates_one_dispatcher(client, project_pa
     assert await dispatches(client, project["id"]) == []
 
     for _ in range(2):
-        updated = await client.put(
+        updated = await client.patch(
             f"/api/v1/projects/{project['id']}",
             json={**project_payload, "enabled": enabled, "expected_revision": project["revision"]},
         )
@@ -59,7 +59,7 @@ async def test_project_save_repairs_a_missing_dispatcher(client, session, projec
     await session.delete(config)
     await session.commit()
 
-    updated = await client.put(
+    updated = await client.patch(
         f"/api/v1/projects/{project['id']}",
         json={**project_payload, "expected_revision": project["revision"]},
     )
@@ -78,7 +78,7 @@ async def test_disconnect_pauses_dispatch_and_reconnect_preserves_history(client
     config.next_run_at = last_run
     await session.commit()
 
-    disconnected = await client.put(
+    disconnected = await client.patch(
         f"/api/v1/projects/{project['id']}",
         json={"name": project["name"], "github": None, "expected_revision": project["revision"]},
     )
@@ -87,7 +87,7 @@ async def test_disconnect_pauses_dispatch_and_reconnect_preserves_history(client
     assert paused["id"] == initial["id"] and paused["enabled"] is False
 
     before_reconnect = utc_now()
-    reconnected = await client.put(
+    reconnected = await client.patch(
         f"/api/v1/projects/{project['id']}",
         json={**project_payload, "expected_revision": disconnected.json()["revision"]},
     )
@@ -109,7 +109,7 @@ async def test_dispatch_cadence_controls_first_run_and_changes(client, project_p
     assert datetime.fromisoformat(initial["next_run_at"]).replace(tzinfo=UTC) >= before_create + timedelta(seconds=300)
 
     before_update = utc_now()
-    changed = await client.put(
+    changed = await client.patch(
         f"/api/v1/projects/{project['id']}",
         json={
             **project_payload,

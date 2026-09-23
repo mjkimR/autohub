@@ -231,7 +231,7 @@ class TestPullRequestEnrollment:
         assert response.json()["pull_snapshot"]["linked_issues"] == []
 
     async def test_disabled_project_is_rejected_without_reading_github(self, client, project, github):
-        updated = await client.put(
+        updated = await client.patch(
             f"/api/v1/projects/{project['id']}",
             json={
                 "name": project["name"],
@@ -635,10 +635,10 @@ async def test_project_catalog_selection_routes_enrollment_to_pipeline_capable_c
             "github": {**project["github"], "ai_catalog_id": catalog_id},
         }
 
-    rejected = await client.put(f"/api/v1/projects/{project['id']}", json=selecting(team_jules_id))
+    rejected = await client.patch(f"/api/v1/projects/{project['id']}", json=selecting(team_jules_id))
     assert_status_code(rejected, 422)
 
-    selected = await client.put(f"/api/v1/projects/{project['id']}", json=selecting(team_codex_id))
+    selected = await client.patch(f"/api/v1/projects/{project['id']}", json=selecting(team_codex_id))
     assert_status_code(selected, 200)
     assert selected.json()["github"]["ai_catalog_id"] == team_codex_id
 
@@ -733,7 +733,7 @@ class TestCatalogDesignation:
         other_codex_id = await add_catalog(session, "other-codex", "codex", "codex-github-mention")
         run = (await enroll_with(client, project, "team-codex")).json()
         # The project now prefers another catalog; the run was enrolled for team-codex and stays there.
-        selected = await client.put(
+        selected = await client.patch(
             f"/api/v1/projects/{project['id']}",
             json={
                 "name": project["name"],

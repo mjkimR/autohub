@@ -129,10 +129,13 @@ class PipelineRunRepository:
         limit: int,
         state: PipelineRunState | None = None,
         search: str = "",
+        pull_number: int | None = None,
     ) -> tuple[list[PipelineRun], int]:
         filters = []
         if project_id is not None:
             filters.append(PipelineRun.project_id == project_id)
+        if pull_number is not None:
+            filters.append(PipelineRun.pull_number == pull_number)
         if state is not None:
             filters.append(PipelineRun.state == state)
         if search.strip():

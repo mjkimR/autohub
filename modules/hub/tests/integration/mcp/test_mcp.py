@@ -89,7 +89,7 @@ async def test_handshake_auth_discovery_and_scope_isolation(client, key):
     assert init.status_code == 200, init.text
     tools = (await rpc(client, key, "tools/list")).json()["result"]["tools"]
     names = {tool["name"] for tool in tools}
-    assert {"projects.list", "runs.enroll", "runs.get", "connection_tests.start"} <= names
+    assert {"projects.list", "runs.enroll", "runs.get", "connection_tests.start", "connection_tests.list"} <= names
     assert not any(word in name for name in names for word in ("lease", "complete", "dispatch", "delete", "key"))
     schema = next(tool["inputSchema"] for tool in tools if tool["name"] == "runs.list")
     assert schema["properties"]["limit"]["maximum"] == 100
@@ -102,7 +102,7 @@ async def test_handshake_auth_discovery_and_scope_isolation(client, key):
     invalid = await call(client, key, "projects.list", {"limit": 101}, error=True)
     assert invalid["error"]["code"] == "MCP_INVALID_ARGUMENTS"
     missing = await call(client, key, "projects.get", {"project_id": str(uuid4())}, error=True)
-    assert missing["error"]["code"] == "PROJECT_ERROR"
+    assert missing["error"]["code"] == "NOT_FOUND"
 
 
 @pytest.mark.parametrize("change", ["revoked", "expired", "inactive"])
@@ -178,19 +178,46 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
     }
     project = (await call(client, key, "projects.create", {"project": config}))["result"]
     project_id = project["id"]
+    assert project["github_connector_name"] == "GitHub"
     found = await call(client, key, "projects.list", {"search": "owner/app"})
     assert found["result"]["items"][0]["id"] == project_id
-    update = {"project_id": project_id, "project": config | {"expected_revision": project["revision"]}}
-    await call(client, key, "projects.update", update)
+    by_repository = await call(client, key, "projects.get", {"repository": "Owner/App"})
+    assert by_repository["result"]["id"] == project_id
+    unknown = await call(client, key, "projects.get", {"repository": "owner/unknown"}, error=True)
+    assert unknown["error"]["code"] == "NOT_FOUND"
+    ambiguous = await call(
+        client, key, "projects.get", {"project_id": project_id, "repository": "owner/app"}, error=True
+    )
+    assert ambiguous["error"]["code"] == "MCP_INVALID_ARGUMENTS"
+    update = {
+        "project_id": project_id,
+        "project": {"expected_revision": project["revision"], "github": {"automation": {"auto_merge": False}}},
+    }
+    updated = (await call(client, key, "projects.update", update))["result"]
+    assert updated["github"]["automation"]["auto_merge"] is False
+    assert updated["github"]["verification"] == config["github"]["verification"]
+    renamed = {"project_id": project_id, "project": {"expected_revision": updated["revision"], "name": "Renamed"}}
+    renamed_result = (await call(client, key, "projects.update", renamed))["result"]
+    assert renamed_result["name"] == "Renamed"
+    assert renamed_result["github"]["automation"]["auto_merge"] is False
     stale = await call(client, key, "projects.update", update, error=True)
-    assert "reload" in stale["error"]["message"]
+    assert stale["error"]["code"] == "CONFLICT"
+    invalid_patch = {"expected_revision": renamed_result["revision"], "github": {"automation": {"auto_merge": None}}}
+    invalid = await call(
+        client, key, "projects.update", {"project_id": project_id, "project": invalid_patch}, error=True
+    )
+    assert invalid["error"]["code"] == "INVALID_REQUEST"
+    assert "auto_merge" in invalid["error"]["message"]
     args = {"project_id": project_id, "pull_request": {"pull_number": 7, "implemented": True}}
     run = (await call(client, key, "runs.enroll", args))["result"]
     assert run["state"] == "awaiting_ci"
+    assert run["catalog_key"]
     assert "private PR body" not in str(run)
     duplicate = await call(client, key, "runs.enroll", args, error=True)
-    assert duplicate["error"]["code"] == "PROJECT_ERROR"
+    assert duplicate["error"]["code"] == "CONFLICT"
     assert (await call(client, key, "runs.list", {"project_id": project_id}))["result"]["total_count"] == 1
+    assert (await call(client, key, "runs.list", {"pull_number": 7}))["result"]["items"][0]["id"] == run["id"]
+    assert (await call(client, key, "runs.list", {"pull_number": 70}))["result"]["total_count"] == 0
     run_args = {"run_id": run["id"]}
     outcomes = (await call(client, key, "runs.attempts", run_args))["result"]
     assert len(outcomes["items"]) == 1
@@ -198,7 +225,8 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
     assert (await call(client, key, "runs.pause", run_args))["result"]["state"] == "paused"
     assert (await call(client, key, "runs.resume", run_args))["result"]["state"] == "awaiting_ci"
     assert (await call(client, key, "runs.cancel", run_args))["result"]["state"] == "canceled"
-    assert (await call(client, key, "runs.get", run_args))["result"]["state"] == "canceled"
+    # A settled run returns at once even when asked to wait.
+    assert (await call(client, key, "runs.get", run_args | {"wait_seconds": 20}))["result"]["state"] == "canceled"
     # A later page must retain totals and summary across the entire history.
     async with session_maker() as session:
         session.add(
@@ -221,14 +249,19 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
     assert empty["items"] == [] and empty["total_count"] == 2
     catalogs = (await call(client, key, "catalogs.list"))["result"]["items"]
     assert catalogs
-    options = await call(client, key, "projects.readiness", {"project_id": project_id})
-    assert options["result"]["items"]
+    options = (await call(client, key, "projects.readiness", {"project_id": project_id}))["result"]["items"]
+    assert options and all("spec" not in option for option in options)
+    assert all(item["status"] != "configured" for option in options for item in option["pending"])
     request = {"project_id": project_id, "request_id": str(uuid4())}
     first = (await call(client, key, "connection_tests.start", request))["result"]
     repeated = (await call(client, key, "connection_tests.start", request))["result"]
     assert first["id"] == repeated["id"]
+    listed = (await call(client, key, "connection_tests.list", {"project_id": project_id}))["result"]
+    assert [test["id"] for test in listed["items"]] == [first["id"]]
     current = await call(client, key, "connection_tests.get", {"project_id": project_id, "test_id": first["id"]})
     assert current["result"]["cleanup_status"] == "pending"
+    assert isinstance(current["result"]["evidence"], dict)
+    assert current["result"]["phase_label"]
 
     canceled = await call(client, key, "connection_tests.cancel", {"project_id": project_id, "test_id": first["id"]})
     assert canceled["result"]["cancel_requested"] is True

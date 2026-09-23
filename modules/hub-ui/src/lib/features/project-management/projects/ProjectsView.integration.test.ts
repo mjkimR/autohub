@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import ProjectsView from './ProjectsView.svelte';
 
 const { api } = vi.hoisted(() => ({
-	api: { GET: vi.fn(), POST: vi.fn(), PUT: vi.fn(), PATCH: vi.fn(), DELETE: vi.fn() }
+	api: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), DELETE: vi.fn() }
 }));
 
 vi.mock('$lib/api', () => ({ api }));
@@ -50,7 +50,7 @@ beforeEach(() => {
 		return { data: { items: [project], total_count: 1 } };
 	});
 	api.POST.mockResolvedValue({ data: project });
-	api.PUT.mockResolvedValue({ data: project });
+	api.PATCH.mockResolvedValue({ data: project });
 	api.DELETE.mockResolvedValue({ data: {} });
 });
 
@@ -92,8 +92,8 @@ test('an edit sends the revision it started from and keeps the automation it did
 	await fireEvent.input(limit, { target: { value: '2' } });
 	await user.click(screen.getByRole('button', { name: 'Save Changes' }));
 
-	await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(1));
-	const [path, request] = api.PUT.mock.calls[0];
+	await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
+	const [path, request] = api.PATCH.mock.calls[0];
 	expect(path).toBe('/api/v1/projects/{project_id}');
 	expect(request.params).toEqual({ path: { project_id: 'p1' } });
 	expect(request.body).toMatchObject({ name: 'Application', enabled: true, expected_revision: 4 });
@@ -121,7 +121,9 @@ test('a connection check reports what the backend found', async () => {
 });
 
 test('an invalid edit shows validation messages and keeps the dialog open', async () => {
-	api.PUT.mockResolvedValue({ error: { detail: [{ msg: 'Dispatch interval must be positive' }] } });
+	api.PATCH.mockResolvedValue({
+		error: { detail: [{ msg: 'Dispatch interval must be positive' }] }
+	});
 	const user = userEvent.setup();
 	render(ProjectsView);
 	await screen.findByText('Application');

@@ -166,6 +166,83 @@ class ProjectUpdate(ProjectWrite):
     expected_revision: int = Field(ge=1, description="Reject edits based on an outdated project version.")
 
 
+class GitHubAutomationPatch(BaseModel):
+    """Omitted fields keep their current value."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    auto_merge: bool | None = None
+    merge_method: MergeMethod | None = None
+    auto_fix_ci: bool | None = None
+    auto_fix_conflicts: bool | None = None
+    auto_enroll_on_trigger: bool | None = None
+    auto_enroll_sessions: bool | None = None
+    dispatch_interval_seconds: int | None = Field(default=None, ge=30, le=3600)
+    max_in_flight_runs: int | None = Field(default=None, ge=1, le=50, description="null removes the project limit")
+
+
+class VerificationPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workflow: str | None = Field(default=None, description="Workflow filename, not display name.")
+    required_jobs: list[str] | None = Field(
+        default=None, description="Exact GitHub Actions job names; replaces the whole list."
+    )
+    event: Literal["pull_request"] | None = None
+
+
+class GitHubConnectionPatch(BaseModel):
+    """Omitted fields keep their current value; connecting a project for the first time needs every required field."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    repository: str | None = Field(default=None, max_length=255)
+    github_connector_id: UUID | None = None
+    verification: VerificationPatch | None = None
+    template_id: TemplateId | None = None
+    automation: GitHubAutomationPatch | None = None
+    ai_catalog_id: UUID | None = Field(default=None, description="null selects the default Codex catalog")
+
+
+LEGACY_CONNECTION_FIELDS = ("repository", "github_connector_id", "verification", "template_id", "automation")
+
+
+class ProjectPatch(BaseModel):
+    """Change only the fields present in the request; the merged result is validated as a whole."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    expected_revision: int = Field(ge=1, description="Reject edits based on an outdated project version.")
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    enabled: bool | None = None
+    github: GitHubConnectionPatch | None = Field(default=None, description="null disconnects GitHub")
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_connection_payload(cls, value: object) -> object:
+        """Nest the former flat connection fields during the API transition."""
+        if not isinstance(value, dict) or "github" in value:
+            return value
+        result = dict(value)
+        github = {key: result.pop(key) for key in LEGACY_CONNECTION_FIELDS if key in result}
+        if github:
+            result["github"] = github
+        return result
+
+    def apply_to(self, current: ProjectWrite) -> ProjectUpdate:
+        """Merge present fields onto ``current``: objects merge recursively, lists and scalars replace."""
+        merged = _merge(current.model_dump(mode="json"), self.model_dump(mode="json", exclude_unset=True))
+        return ProjectUpdate.model_validate(merged)
+
+
+def _merge(base: dict[str, Any], changes: dict[str, Any]) -> dict[str, Any]:
+    result = dict(base)
+    for key, value in changes.items():
+        current = result.get(key)
+        result[key] = _merge(current, value) if isinstance(value, dict) and isinstance(current, dict) else value
+    return result
+
+
 class ProjectList(BaseModel):
     items: list[ProjectRead]
     total_count: int

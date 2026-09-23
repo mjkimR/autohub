@@ -427,7 +427,7 @@ async def test_a_task_session_without_a_pull_request_is_noted(client, session, j
 
 async def test_a_project_can_opt_out_of_adopting_session_pull_requests(client, session, jules, github, project):
     automation = {**project["github"]["automation"], "auto_enroll_sessions": False}
-    updated = await client.put(
+    updated = await client.patch(
         f"/api/v1/projects/{project['id']}",
         json={
             "name": project["name"],

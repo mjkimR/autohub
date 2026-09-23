@@ -35,8 +35,9 @@ async def list_pipeline_runs(
     limit: int = Query(50, ge=1, le=100),
     state: PipelineRunState | None = None,
     search: str = Query("", max_length=255),
+    pull_number: int | None = Query(None, gt=0),
 ):
-    return await use_case.list_runs(project_id, offset, limit, state, search)
+    return await use_case.list_runs(project_id, offset, limit, state, search, pull_number)
 
 
 @router.get("/{run_id}", response_model=PipelineRunRead)

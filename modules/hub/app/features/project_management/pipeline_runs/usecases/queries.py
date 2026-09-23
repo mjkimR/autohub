@@ -26,11 +26,23 @@ class PipelineRunQueries:
         self.repo = repo
 
     async def list_runs(
-        self, project_id: UUID | None, offset: int, limit: int, state: PipelineRunState | None = None, search: str = ""
+        self,
+        project_id: UUID | None,
+        offset: int,
+        limit: int,
+        state: PipelineRunState | None = None,
+        search: str = "",
+        pull_number: int | None = None,
     ) -> PipelineRunList:
         async with AsyncTransaction() as session:
             rows, total = await self.repo.list(
-                session, project_id=project_id, offset=offset, limit=limit, state=state, search=search
+                session,
+                project_id=project_id,
+                offset=offset,
+                limit=limit,
+                state=state,
+                search=search,
+                pull_number=pull_number,
             )
             return PipelineRunList(items=[PipelineRunRead.model_validate(row) for row in rows], total_count=total)
 

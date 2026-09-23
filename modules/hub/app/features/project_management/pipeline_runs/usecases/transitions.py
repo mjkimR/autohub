@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Marks the synthetic attempt of a pull request implemented outside the pipeline; nothing was sent for it.
 EXTERNAL_IMPLEMENTATION_STATUS = "implemented-externally"
 ACTIVE_RUN_CONFLICT = "This pull request already has an active pipeline run"
+ACTIVE_RUN_FIX = "List the project's runs filtered by this pull_number to find the active run."
 PROJECT_CHANGED_BLOCK_REASON = (
     "Project changed after this pipeline run was enrolled; resume to continue with the new settings, "
     "or cancel it and enroll the pull request again if its repository or GitHub connection changed"

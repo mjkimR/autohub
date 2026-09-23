@@ -304,7 +304,7 @@ async def test_other_project_cannot_control_test_and_settings_change_stops_dispa
     assert response.status_code == 404
     update_project = {key: project[key] for key in ("name", "github", "enabled")}
     update_project.update(name="Renamed", expected_revision=project["revision"])
-    assert (await client.put(f"/api/v1/projects/{project['id']}", json=update_project)).status_code == 200
+    assert (await client.patch(f"/api/v1/projects/{project['id']}", json=update_project)).status_code == 200
     test = await step(client, test)
     assert test["status"] == "canceled" and not github.comments
 

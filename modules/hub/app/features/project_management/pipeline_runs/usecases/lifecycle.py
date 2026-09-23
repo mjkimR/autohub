@@ -42,6 +42,7 @@ from app.features.project_management.pipeline_runs.usecases.progress import Pipe
 from app.features.project_management.pipeline_runs.usecases.queries import PipelineRunQueries
 from app.features.project_management.pipeline_runs.usecases.transitions import (
     ACTIVE_RUN_CONFLICT,
+    ACTIVE_RUN_FIX,
     EXTERNAL_IMPLEMENTATION_STATUS,
     wait_on_github,
 )
@@ -93,7 +94,7 @@ class PipelineRunUseCase:
             if project.github_repository is None or project.github_connector_id is None:
                 raise ProjectError(422, "Project missing GitHub connection for pipeline run")
             if await self.repo.get_active_for_pull(session, project_id, request.pull_number) is not None:
-                raise ProjectError(409, ACTIVE_RUN_CONFLICT)
+                raise ProjectError(409, ACTIVE_RUN_CONFLICT, fix=ACTIVE_RUN_FIX)
             repository, connector_id, expected_revision = (
                 project.github_repository,
                 project.github_connector_id,
@@ -124,7 +125,7 @@ class PipelineRunUseCase:
                 if project.revision != expected_revision:
                     raise ProjectError(409, "Project changed during pull request enrollment; retry")
                 if await self.repo.get_active_for_pull(session, project_id, snapshot.number, lock=True) is not None:
-                    raise ProjectError(409, ACTIVE_RUN_CONFLICT)
+                    raise ProjectError(409, ACTIVE_RUN_CONFLICT, fix=ACTIVE_RUN_FIX)
                 catalog = await self.resolve_catalog(session, project, request.catalog)
                 run = await self.repo.create(
                     session,
@@ -147,7 +148,7 @@ class PipelineRunUseCase:
                     await self._record_external_implementation(session, run, repository)
                 return PipelineRunRead.model_validate(run)
         except IntegrityError:
-            raise ProjectError(409, ACTIVE_RUN_CONFLICT) from None
+            raise ProjectError(409, ACTIVE_RUN_CONFLICT, fix=ACTIVE_RUN_FIX) from None
 
     async def _record_external_implementation(self, session: AsyncSession, run: PipelineRun, repository: str) -> None:
         """Adopt a pull request implemented outside the pipeline: its attempt is already running, nothing is sent.

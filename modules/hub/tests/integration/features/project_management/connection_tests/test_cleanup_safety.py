@@ -177,7 +177,7 @@ async def test_generic_schedule_api_cannot_create_duplicate_test_workers(client,
 
 async def test_detached_github_connector_is_retained_until_cleanup_completes(client, project, github, session):
     test = await step(client, await start(client, project))
-    detached = await client.put(
+    detached = await client.patch(
         f"/api/v1/projects/{project['id']}",
         json={
             "name": project["name"],

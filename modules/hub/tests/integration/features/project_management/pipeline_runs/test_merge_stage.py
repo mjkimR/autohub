@@ -344,7 +344,7 @@ async def test_ci_observation_rejects_changes_before_merge(client, run, github, 
         elif mutation == "project":
             project = (await client.get(f"/api/v1/projects/{run['project_id']}")).json()
             response = await asyncio.wait_for(
-                client.put(
+                client.patch(
                     f"/api/v1/projects/{run['project_id']}",
                     json={
                         "name": "Changed while observing",

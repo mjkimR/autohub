@@ -50,30 +50,34 @@ GitHub tokens and user login tokens are not MCP credentials.
 
 ## First repository
 
-- Find an existing project with `projects.list` using `owner/repository`.
+- Find an existing project with `projects.get` using `repository` (`owner/repository`),
+  or search with `projects.list`.
   For a new connection, inspect `connectors.list` and `catalogs.list`, then call
   `projects.create` with the repository, connector ID and existing CI verification
   contract. Connector credentials are created/rotated in the existing Hub UI.
   See [CI connection contract](ci-contract.md) and the
   [existing templates](../templates/github-actions/README.md).
-- Use `projects.readiness` to inspect configured provider requirements. This is a
-  configuration check. `connection_tests.start` verifies the actual provider/CI
+- Use `projects.readiness` to see, per catalog, whether a test can start and which
+  requirements are missing or need manual confirmation. This is a configuration check. `connection_tests.start` verifies the actual provider/CI
   integration and may create a temporary branch and PR. Generate its `request_id`
-  once and reuse it if the response is lost. Observe status and cleanup with
-  `connection_tests.get`; the existing maintenance scheduler advances the test.
+  once and reuse it if the response is lost. Observe status, evidence links (test PR,
+  CI run, provider response) and cleanup with `connection_tests.get`; the existing
+  maintenance scheduler advances the test. `connection_tests.list` shows a project's
+  recent tests after a lost ID.
 - Prepare an open PR through your normal Git/GitHub workflow, then call
   `runs.enroll`. Set `pull_request.implemented=true` for code already implemented;
   otherwise the selected catalog receives the implementation work. The project's
   existing automation and Draft/Ready policies still apply.
 - Keep the run ID and PR link. Use `runs.get` for state and `runs.attempts` for
   outcomes, failure details and provider conversation links. Disconnecting the
-  MCP client does not cancel work. Poll only when needed.
+  MCP client does not cancel work. `runs.get` and `connection_tests.get` accept
+  `wait_seconds` (up to 20) to return on the next state change instead of polling.
 
 ## Public tools
 
 | Scope | Tools |
 | --- | --- |
-| `autohub:mcp:read` | `projects.list`, `projects.get`, `projects.readiness`, `catalogs.list`, `connectors.list`, `runs.list`, `runs.get`, `runs.attempts`, `connection_tests.get` |
+| `autohub:mcp:read` | `projects.list`, `projects.get`, `projects.readiness`, `catalogs.list`, `connectors.list`, `runs.list`, `runs.get`, `runs.attempts`, `connection_tests.list`, `connection_tests.get` |
 | `autohub:mcp:write` | `projects.create`, `projects.update`, `runs.enroll`, `runs.pause`, `runs.resume`, `runs.cancel`, `connection_tests.start`, `connection_tests.cancel` |
 
 Discovery exposes this fixed public list; calls enforce the matching scope.
@@ -87,9 +91,13 @@ issue bodies, request snapshots and lease tokens. Tools return structured
 `{ok, result, error}` content. Failures set MCP `isError` and include the shared
 application error/advisory. Tool annotations describe effects but do not authorize them.
 
-`projects.update` requires the latest `expected_revision`. Duplicate repository
+`projects.update` changes only the fields it receives (REST: `PATCH /api/v1/projects/{id}`):
+nested objects merge, lists replace, and `github: null` disconnects. The merged
+configuration is validated as a whole, and it requires the latest `expected_revision`.
+Error codes follow the HTTP status (`NOT_FOUND`, `CONFLICT`, `INVALID_REQUEST`, ...),
+and recoverable conflicts carry a `fix` hint. Duplicate repository
 creation and active PR enrollment conflict; find the existing project/run after a
-lost response. There is no universal mutation deduplication layer. After losing a
+lost response (`runs.list` filters by exact `pull_number`). There is no universal mutation deduplication layer. After losing a
 pause/resume/cancel response, read status before retrying. Connection test request
 IDs use the existing durable deduplication. Cancellation does not promise to stop
 already delivered provider work; follow cleanup status for connection tests.

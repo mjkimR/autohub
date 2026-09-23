@@ -172,14 +172,14 @@ class TestProjectRegistration:
 
     async def test_edits_require_the_revision_the_editor_loaded(self, client, project, project_payload):
         stale = {**project_payload, "expected_revision": project["revision"] + 1}
-        assert_status_code(await client.put(f"/api/v1/projects/{project['id']}", json=stale), 409)
+        assert_status_code(await client.patch(f"/api/v1/projects/{project['id']}", json=stale), 409)
 
         current = {**project_payload, "name": "Renamed", "expected_revision": project["revision"]}
-        response = await client.put(f"/api/v1/projects/{project['id']}", json=current)
+        response = await client.patch(f"/api/v1/projects/{project['id']}", json=current)
         assert_status_code(response, 200)
         assert response.json()["name"] == "Renamed"
         assert response.json()["revision"] == project["revision"] + 1
-        assert_status_code(await client.put(f"/api/v1/projects/{project['id']}", json=current), 409)
+        assert_status_code(await client.patch(f"/api/v1/projects/{project['id']}", json=current), 409)
 
     async def test_unknown_project_is_not_found(self, client, github_scenario):
         assert_status_code(await client.get(f"/api/v1/projects/{uuid4()}"), 404)
@@ -292,7 +292,7 @@ class TestConnectionCheck:
 
     async def test_editing_a_project_discards_its_previous_check(self, client, project, project_payload):
         assert_status_code(await client.post(f"/api/v1/projects/{project['id']}/check", json={"pull_number": 42}), 200)
-        response = await client.put(
+        response = await client.patch(
             f"/api/v1/projects/{project['id']}",
             json={**project_payload, "name": "Renamed", "expected_revision": project["revision"]},
         )
@@ -326,7 +326,7 @@ class TestScheduledProjectObservation:
         ).scalar_one().status == "success"
 
         # Editing the connection invalidates the stored report instead of serving a stale contract.
-        response = await client.put(
+        response = await client.patch(
             f"/api/v1/projects/{project['id']}",
             json={
                 "name": project["name"],
@@ -354,7 +354,7 @@ class TestScheduledProjectObservation:
         assert_status_code(response, 201)
         schedule_id = response.json()["id"]
         assert_status_code(
-            await client.put(
+            await client.patch(
                 f"/api/v1/projects/{project['id']}",
                 json={**project_payload, "enabled": False, "expected_revision": project["revision"]},
             ),
@@ -509,7 +509,7 @@ class TestProjectDispatchScheduleLifecycle:
         assert dispatch_sched["interval_seconds"] == 60
 
         # 2. Updating project name/enabled syncs the dispatch schedule
-        update_res = await client.put(
+        update_res = await client.patch(
             f"/api/v1/projects/{project['id']}",
             json={**project_payload, "name": "Renamed App", "enabled": False, "expected_revision": project["revision"]},
         )
@@ -530,7 +530,7 @@ class TestProjectDispatchScheduleLifecycle:
 
         # 3. A project automation override updates the managed dispatch cadence.
         automation = {**update_res.json()["github"]["automation"], "dispatch_interval_seconds": 300}
-        update_res = await client.put(
+        update_res = await client.patch(
             f"/api/v1/projects/{project['id']}",
             json={
                 "name": "Renamed App",
@@ -586,7 +586,7 @@ async def test_project_changed_during_observation_does_not_save_report(
 
     async def observe_then_edit(self, config):
         report = await original(self, config)
-        changed = await client.put(
+        changed = await client.patch(
             f"/api/v1/projects/{project['id']}",
             json={**project_payload, "name": "Changed during observation", "expected_revision": project["revision"]},
         )

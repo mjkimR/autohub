@@ -460,14 +460,17 @@ export interface paths {
 		};
 		/** Get Project */
 		get: operations['get_project_api_v1_projects__project_id__get'];
-		/** Update Project */
-		put: operations['update_project_api_v1_projects__project_id__put'];
+		put?: never;
 		post?: never;
 		/** Delete Project */
 		delete: operations['delete_project_api_v1_projects__project_id__delete'];
 		options?: never;
 		head?: never;
-		patch?: never;
+		/**
+		 * Update Project
+		 * @description Change only the fields present in the body; ``expected_revision`` rejects stale edits.
+		 */
+		patch: operations['update_project_api_v1_projects__project_id__patch'];
 		trace?: never;
 	};
 	'/api/v1/projects/{project_id}/runs': {
@@ -522,7 +525,7 @@ export interface paths {
 		put?: never;
 		/**
 		 * Create Work Plan
-		 * @description Atomically register work; eligible items start on the next project tick without another approval.
+		 * @description Atomically register work; ready items start in this request (the tick finishes the rest), without approval.
 		 */
 		post: operations['create_work_plan_api_v1_projects__project_id__work_plans_post'];
 		delete?: never;
@@ -1283,7 +1286,8 @@ export interface paths {
 		/** Callback */
 		get: operations['callback_api_v1_auth_google_callback_get'];
 		put?: never;
-		post?: never;
+		/** Callback Form Post */
+		post: operations['callback_form_post_api_v1_auth_google_callback_post'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -1679,6 +1683,24 @@ export interface components {
 			pull_number: number;
 			/** Pull Url */
 			pull_url?: string | null;
+		};
+		/** Body_callback_form_post_api_v1_auth_google_callback_post */
+		Body_callback_form_post_api_v1_auth_google_callback_post: {
+			/**
+			 * State
+			 * @default
+			 */
+			state: string;
+			/**
+			 * Code
+			 * @default
+			 */
+			code: string;
+			/**
+			 * Error
+			 * @default
+			 */
+			error: string;
 		};
 		/** Body_login_api_v1_users_login__post */
 		Body_login_api_v1_users_login__post: {
@@ -2264,6 +2286,50 @@ export interface components {
 			dispatch_interval_seconds: number;
 			/** Max In Flight Runs */
 			max_in_flight_runs?: number | null;
+		};
+		/**
+		 * GitHubAutomationPatch
+		 * @description Omitted fields keep their current value.
+		 */
+		GitHubAutomationPatch: {
+			/** Auto Merge */
+			auto_merge?: boolean | null;
+			/** Merge Method */
+			merge_method?: ('squash' | 'merge' | 'rebase') | null;
+			/** Auto Fix Ci */
+			auto_fix_ci?: boolean | null;
+			/** Auto Fix Conflicts */
+			auto_fix_conflicts?: boolean | null;
+			/** Auto Enroll On Trigger */
+			auto_enroll_on_trigger?: boolean | null;
+			/** Auto Enroll Sessions */
+			auto_enroll_sessions?: boolean | null;
+			/** Dispatch Interval Seconds */
+			dispatch_interval_seconds?: number | null;
+			/**
+			 * Max In Flight Runs
+			 * @description null removes the project limit
+			 */
+			max_in_flight_runs?: number | null;
+		};
+		/**
+		 * GitHubConnectionPatch
+		 * @description Omitted fields keep their current value; connecting a project for the first time needs every required field.
+		 */
+		GitHubConnectionPatch: {
+			/** Repository */
+			repository?: string | null;
+			/** Github Connector Id */
+			github_connector_id?: string | null;
+			verification?: components['schemas']['VerificationPatch'] | null;
+			/** Template Id */
+			template_id?: ('python-uv' | 'node-npm') | null;
+			automation?: components['schemas']['GitHubAutomationPatch'] | null;
+			/**
+			 * Ai Catalog Id
+			 * @description null selects the default Codex catalog
+			 */
+			ai_catalog_id?: string | null;
 		};
 		/** GitHubProjectConnection */
 		GitHubProjectConnection: {
@@ -2923,6 +2989,23 @@ export interface components {
 			/** Total Count */
 			total_count: number;
 		};
+		/**
+		 * ProjectPatch
+		 * @description Change only the fields present in the request; the merged result is validated as a whole.
+		 */
+		ProjectPatch: {
+			/**
+			 * Expected Revision
+			 * @description Reject edits based on an outdated project version.
+			 */
+			expected_revision: number;
+			/** Name */
+			name?: string | null;
+			/** Enabled */
+			enabled?: boolean | null;
+			/** @description null disconnects GitHub */
+			github?: components['schemas']['GitHubConnectionPatch'] | null;
+		};
 		/** ProjectRead */
 		ProjectRead: {
 			/** Name */
@@ -2958,22 +3041,6 @@ export interface components {
 			/** Github Connector Id */
 			github_connector_id?: string | null;
 			verification?: components['schemas']['VerificationConfig'] | null;
-		};
-		/** ProjectUpdate */
-		ProjectUpdate: {
-			/** Name */
-			name: string;
-			github?: components['schemas']['GitHubProjectConnection'] | null;
-			/**
-			 * Enabled
-			 * @default true
-			 */
-			enabled: boolean;
-			/**
-			 * Expected Revision
-			 * @description Reject edits based on an outdated project version.
-			 */
-			expected_revision: number;
 		};
 		/**
 		 * ProjectWrite
@@ -4040,6 +4107,21 @@ export interface components {
 			 */
 			event: 'pull_request';
 		};
+		/** VerificationPatch */
+		VerificationPatch: {
+			/**
+			 * Workflow
+			 * @description Workflow filename, not display name.
+			 */
+			workflow?: string | null;
+			/**
+			 * Required Jobs
+			 * @description Exact GitHub Actions job names; replaces the whole list.
+			 */
+			required_jobs?: string[] | null;
+			/** Event */
+			event?: 'pull_request' | null;
+		};
 		/** VerificationResult */
 		VerificationResult: {
 			status: components['schemas']['VerificationStatus'];
@@ -4545,6 +4627,7 @@ export interface operations {
 				limit?: number;
 				state?: components['schemas']['PipelineRunState'] | null;
 				search?: string;
+				pull_number?: number | null;
 			};
 			header?: never;
 			path?: never;
@@ -5185,41 +5268,6 @@ export interface operations {
 			};
 		};
 	};
-	update_project_api_v1_projects__project_id__put: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				project_id: string;
-			};
-			cookie?: never;
-		};
-		requestBody: {
-			content: {
-				'application/json': components['schemas']['ProjectUpdate'];
-			};
-		};
-		responses: {
-			/** @description Successful Response */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['ProjectRead'];
-				};
-			};
-			/** @description Validation Error */
-			422: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['HTTPValidationError'];
-				};
-			};
-		};
-	};
 	delete_project_api_v1_projects__project_id__delete: {
 		parameters: {
 			query?: never;
@@ -5237,6 +5285,41 @@ export interface operations {
 					[name: string]: unknown;
 				};
 				content?: never;
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	update_project_api_v1_projects__project_id__patch: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				project_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['ProjectPatch'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['ProjectRead'];
+				};
 			};
 			/** @description Validation Error */
 			422: {
@@ -7460,6 +7543,39 @@ export interface operations {
 			cookie?: never;
 		};
 		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': unknown;
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	callback_form_post_api_v1_auth_google_callback_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: {
+			content: {
+				'application/x-www-form-urlencoded': components['schemas']['Body_callback_form_post_api_v1_auth_google_callback_post'];
+			};
+		};
 		responses: {
 			/** @description Successful Response */
 			200: {

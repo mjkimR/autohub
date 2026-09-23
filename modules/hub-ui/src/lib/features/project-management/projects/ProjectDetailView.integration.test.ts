@@ -7,7 +7,7 @@ import type { components } from '$lib/api';
 import { projectTab } from './project-tabs';
 
 const { api } = vi.hoisted(() => ({
-	api: { GET: vi.fn(), POST: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() }
+	api: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), DELETE: vi.fn() }
 }));
 vi.mock('$lib/api', () => ({ api }));
 vi.mock('svelte-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() } }));
@@ -123,7 +123,7 @@ beforeEach(() => {
 			};
 		return { data: { items: [], total_count: 0 } };
 	});
-	api.PUT.mockResolvedValue({ data: project });
+	api.PATCH.mockResolvedValue({ data: project });
 });
 afterEach(() => {
 	cleanup();
@@ -157,7 +157,7 @@ test('settings edit preserves connection, template and automatic merge policy', 
 	await fireEvent.input(name, { target: { value: 'Renamed' } });
 	await user.click(screen.getByRole('button', { name: 'Save Changes' }));
 	await waitFor(() =>
-		expect(api.PUT).toHaveBeenCalledWith(
+		expect(api.PATCH).toHaveBeenCalledWith(
 			'/api/v1/projects/{project_id}',
 			expect.objectContaining({
 				body: expect.objectContaining({
