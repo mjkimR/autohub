@@ -83,12 +83,12 @@ wheels = [
 [[package]]
 name = "app-error"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-error&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca#e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-error&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6#125f8f7e849a52af89b022b3700f274bb34bc7e6" }
 
 [[package]]
 name = "app-http-client"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fadapters%2Fapp-http-client&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca#e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fadapters%2Fapp-http-client&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6#125f8f7e849a52af89b022b3700f274bb34bc7e6" }
 dependencies = [
     { name = "dotenv" },
     { name = "httpx" },
@@ -100,7 +100,7 @@ dependencies = [
 [[package]]
 name = "app-layer-base"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-layer-base&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca#e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-layer-base&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6#125f8f7e849a52af89b022b3700f274bb34bc7e6" }
 dependencies = [
     { name = "app-error" },
     { name = "dotenv" },
@@ -116,7 +116,7 @@ dependencies = [
 [[package]]
 name = "app-mcp"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Ftransports%2Fapp-mcp&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca#e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Ftransports%2Fapp-mcp&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6#125f8f7e849a52af89b022b3700f274bb34bc7e6" }
 dependencies = [
     { name = "app-error" },
     { name = "fastmcp" },
@@ -126,7 +126,7 @@ dependencies = [
 [[package]]
 name = "app-prebuilt-auth"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fprebuilt%2Fapp-prebuilt-auth&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca#e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fprebuilt%2Fapp-prebuilt-auth&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6#125f8f7e849a52af89b022b3700f274bb34bc7e6" }
 dependencies = [
     { name = "app-http-client" },
     { name = "app-layer-base" },
@@ -142,7 +142,7 @@ dependencies = [
 [[package]]
 name = "app-testing-base"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca#e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6#125f8f7e849a52af89b022b3700f274bb34bc7e6" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "app-layer-base" },
@@ -158,7 +158,7 @@ dependencies = [
 [[package]]
 name = "app-tools"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca#e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6#125f8f7e849a52af89b022b3700f274bb34bc7e6" }
 dependencies = [
     { name = "app-error" },
     { name = "click" },
@@ -2133,10 +2133,10 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.18.3" },
-    { name = "app-http-client", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fadapters%2Fapp-http-client&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" },
-    { name = "app-layer-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-layer-base&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" },
-    { name = "app-mcp", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Ftransports%2Fapp-mcp&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" },
-    { name = "app-prebuilt-auth", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fprebuilt%2Fapp-prebuilt-auth&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" },
+    { name = "app-http-client", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fadapters%2Fapp-http-client&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6" },
+    { name = "app-layer-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-layer-base&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6" },
+    { name = "app-mcp", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Ftransports%2Fapp-mcp&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6" },
+    { name = "app-prebuilt-auth", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fprebuilt%2Fapp-prebuilt-auth&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6" },
     { name = "cachetools", specifier = ">=7.0.0" },
     { name = "croniter", specifier = ">=6.0.0" },
     { name = "dotenv", specifier = ">=0.9.9" },
@@ -2157,8 +2157,8 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "aiosqlite" },
-    { name = "app-testing-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" },
-    { name = "app-tools", git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca" },
+    { name = "app-testing-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6" },
+    { name = "app-tools", git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=125f8f7e849a52af89b022b3700f274bb34bc7e6" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
     { name = "pytest-mock", specifier = ">=3.14.0" },
