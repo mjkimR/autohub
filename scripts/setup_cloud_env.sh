@@ -20,14 +20,20 @@ esac
 
 echo "==> Configuring cloud environment for target: $TARGET"
 
-# Ensure tool binary paths are prioritized
-export UV_TOOL_BIN_DIR="${UV_TOOL_BIN_DIR:-/usr/local/bin}"
+# Ensure tool binary paths are prioritized (support both root and non-root users)
+if [ -w /usr/local/bin ]; then
+    export UV_TOOL_BIN_DIR="${UV_TOOL_BIN_DIR:-/usr/local/bin}"
+else
+    export UV_TOOL_BIN_DIR="${UV_TOOL_BIN_DIR:-$HOME/.local/bin}"
+fi
 export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
 
 # 1. uv (Python package and environment manager)
 if ! command -v uv >/dev/null 2>&1; then
     echo "==> Installing uv..."
-    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/bin" sh
+    INSTALL_DIR="/usr/local/bin"
+    [ ! -w /usr/local/bin ] && INSTALL_DIR="$HOME/.local/bin"
+    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$INSTALL_DIR" sh
 else
     echo "==> uv already installed: $(uv --version)"
 fi
