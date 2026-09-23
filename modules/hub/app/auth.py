@@ -12,7 +12,6 @@ from typing import Annotated
 
 from app.common.auth_throttle import caller_address, masked_address
 from app.features.notifications.notifier import Notifier
-from app_layer_base.core.database.deps import get_session
 from app_layer_base.core.log import logger
 from app_prebuilt_auth.api_key.config import get_api_key_settings
 from app_prebuilt_auth.api_key.deps import machine_key_header, require_key_admin
@@ -26,7 +25,6 @@ from app_prebuilt_auth.user.services import UserService
 from app_prebuilt_auth.user.token_schemas import TokenPayload
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
 
 MCP_READ = "autohub:mcp:read"
 MCP_WRITE = "autohub:mcp:write"
@@ -40,7 +38,6 @@ _optional_bearer = OAuth2PasswordBearer(tokenUrl=oauth2.model.flows.password.tok
 
 
 async def require_scheduler_or_user(
-    session: Annotated[AsyncSession, Depends(get_session)],
     keys: Annotated[ApiKeyUseCase, Depends()],
     key: Annotated[str | None, Depends(machine_key_header)] = None,
     token: Annotated[str | None, Depends(_optional_bearer)] = None,
@@ -57,13 +54,10 @@ async def require_scheduler_or_user(
         raise InvalidCredentialsException()
     users = UserService(get_auth_settings(), UserRepository())
     payload: TokenPayload = get_token_data(token, users)
-    await get_current_user(payload, session, users)
+    await get_current_user(payload, users)
 
 
-async def require_machine_admin(
-    request: Request,
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> None:
+async def require_machine_admin(request: Request) -> None:
     root = request.headers.get("X-Root-API-Key")
     if root is not None:
         require_key_admin(get_api_key_settings(), root)
@@ -72,7 +66,7 @@ async def require_machine_admin(
     if scheme.lower() != "bearer" or not token:
         raise InvalidCredentialsException()
     users = UserService(get_auth_settings(), UserRepository())
-    user = await get_current_user(get_token_data(token, users), session, users)
+    user = await get_current_user(get_token_data(token, users), users)
     if not user.is_superadmin:
         raise HTTPException(403, "A human administrator is required")
 

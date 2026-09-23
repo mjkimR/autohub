@@ -6,5 +6,5 @@ dependencies:
     # Match the shared Python dependency commit.
     - git: mjkimR/app-common
       path: agents
-      ref: e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca
+      ref: 8a4b9c75d27bc0eac0bc49ffa5625e8efcd223ef
       skills: [app-common]
