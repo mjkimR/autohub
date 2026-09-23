@@ -41,13 +41,24 @@ fi
 # 2. just (command runner)
 if ! command -v just >/dev/null 2>&1; then
     echo "==> Installing just..."
-    if [ -f "$REPO_ROOT/scripts/install-just.sh" ]; then
-        bash "$REPO_ROOT/scripts/install-just.sh" /usr/local/bin
-    else
-        curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
-    fi
+    INSTALL_DIR="/usr/local/bin"
+    [ ! -w /usr/local/bin ] && INSTALL_DIR="$HOME/.local/bin"
+    mkdir -p "$INSTALL_DIR"
+    curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to "$INSTALL_DIR" --force
 else
     echo "==> just already installed: $(just --version)"
+fi
+
+# Ensure both /usr/local/bin and ~/.local/bin have just available
+if [ -x /usr/local/bin/just ] && [ -d "$HOME/.local/bin" ] && [ ! -e "$HOME/.local/bin/just" ]; then
+    ln -sfn /usr/local/bin/just "$HOME/.local/bin/just" 2>/dev/null || true
+elif [ -x "$HOME/.local/bin/just" ] && [ -w /usr/local/bin ] && [ ! -e /usr/local/bin/just ]; then
+    ln -sfn "$HOME/.local/bin/just" /usr/local/bin/just 2>/dev/null || true
+fi
+
+# Persist PATH in /etc/profile.d if root
+if [ -w /etc/profile.d ]; then
+    echo 'export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"' > /etc/profile.d/cloud_env.sh 2>/dev/null || true
 fi
 
 # 3. apm-cli (for agent skills)
