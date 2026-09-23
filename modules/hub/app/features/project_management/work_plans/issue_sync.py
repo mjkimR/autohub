@@ -11,13 +11,30 @@ from app.features.project_management.work_plans.github import WorkGitHub
 from app.features.project_management.work_plans.mirror_records import refresh_mirrors
 from app.features.project_management.work_plans.models import WorkIssueMirror, WorkPlan
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.core.log import logger
 from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy import or_, select, update
+
+# A webhook's processing request runs under a 60-second deadline, after its advance and follow-up.
+PROMPT_SYNC_BUDGET_SECONDS = 20
+PROMPT_SYNC_LIMIT = 4
 
 
 class WorkIssueSync:
     def __init__(self, observer: PipelineObservationService):
         self.observer = observer
+
+    async def run_promptly(self) -> None:
+        """Publish a few due records now instead of on the next maintenance tick; never raises.
+
+        Records left unpublished, including one interrupted by the budget, stay leased or cooling down and the
+        maintenance tick retries them as before.
+        """
+        try:
+            async with asyncio.timeout(PROMPT_SYNC_BUDGET_SECONDS):
+                await self.execute(limit=PROMPT_SYNC_LIMIT)
+        except Exception as exc:
+            logger.warning(f"Prompt work issue synchronization deferred to maintenance: {exc!r}")
 
     async def execute(self, *, limit: int = 4) -> None:
         # Serial, bounded publication; each attempt gets a durable cooldown and lease.

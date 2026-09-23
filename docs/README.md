@@ -20,7 +20,7 @@ These documents explicitly distinguish between design goals and current function
 
 [Google login and approval](google-auth.md) describes the implementation, published dependency pins, configuration, and live validation still required.
 
-[Live Canary Results](canary-results-2026-09-22.md) consolidates the completed Codex/Jules, recovery, approval, and connection-test evidence from 2026-09-21–22.
+[Live Canary Results](canary-results-2026-09-22.md) consolidates the completed Codex/Jules, recovery, approval, and connection-test evidence from 2026-09-21–22. [Work Plan Canary Results](canary-results-2026-09-23.md) covers live work plan execution, immediate follow-up, and Cloud Tasks webhook processing.
 
 [CI Template Usage](../templates/github-actions/README.md) covers CI setup in target repositories.
 The root `justfile` is the single source of truth for commands, and connector credential encryption details are documented in the [Hub module documentation](../modules/hub/README.md#connector-credential-encryption).

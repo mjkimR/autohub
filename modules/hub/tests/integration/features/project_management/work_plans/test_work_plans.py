@@ -1,9 +1,12 @@
+import asyncio
 from datetime import timedelta
+from unittest.mock import AsyncMock
 from uuid import UUID
 
 import pytest
 from app.features.execution.tasks.domains.maintenance.history import HistoryRetentionRepository
 from app.features.project_management.pipeline_runs.models import PipelineRun
+from app.features.project_management.work_plans import issue_sync
 from app.features.project_management.work_plans.models import WorkIssueMirror, WorkItem
 from app_testing_base import utc_now
 from sqlalchemy import update
@@ -185,6 +188,23 @@ async def test_confirmed_issue_publish_leaves_the_next_local_change_due(client, 
     assert (await get(client, project, plan))["issue"]["pending"]
     await sync.execute(limit=4)
     assert not (await get(client, project, plan))["issue"]["pending"]
+
+
+async def test_prompt_issue_sync_publishes_due_records_and_never_raises(client, setup_work, monkeypatch):
+    project, _, _, sync = setup_work
+    plan = await create(client, project)
+
+    await sync.run_promptly()
+    assert (await get(client, project, plan))["issue"]["issue_url"]
+
+    async def stalled(*, limit):
+        await asyncio.sleep(60)
+
+    monkeypatch.setattr(issue_sync, "PROMPT_SYNC_BUDGET_SECONDS", 0.01)
+    monkeypatch.setattr(sync, "execute", stalled)
+    await sync.run_promptly()
+    monkeypatch.setattr(sync, "execute", AsyncMock(side_effect=RuntimeError("GitHub down")))
+    await sync.run_promptly()
 
 
 async def test_retention_requires_durable_success_and_preserves_failed_work(client, setup_work, session):

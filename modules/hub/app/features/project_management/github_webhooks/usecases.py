@@ -11,6 +11,7 @@ from app.features.project_management.pipeline_runs.repos import PipelineRunRepos
 from app.features.project_management.pipeline_runs.schemas import EnrollPullRequest
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.projects.errors import ProjectError
+from app.features.project_management.work_plans.issue_sync import WorkIssueSync
 from app.features.project_management.work_plans.kick import WorkPlanKick
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.core.log import logger
@@ -158,6 +159,8 @@ class GitHubWebhookUseCase:
                     return True
                 # A work item's merge releases its dependents now rather than on the next tick.
                 await WorkPlanKick(self.lifecycle).run(run.project_id, run_id=run.id)
+                # Issue records follow the work they mirror: created after a plan's first PR opens, closed on merge.
+                await WorkIssueSync(self.lifecycle.observer).run_promptly()
             elif (
                 has_trigger
                 and project is not None

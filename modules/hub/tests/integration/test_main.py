@@ -37,6 +37,11 @@ def test_spa_served_when_ui_present(tmp_path: Path):
             assert mcp_res.status_code == 401
             assert mcp_res.headers["content-type"].startswith("application/json")
 
+        # Well-known discovery paths are not served by the SPA fallback.
+        well_known_res = client.get("/.well-known/oauth-protected-resource")
+        assert well_known_res.status_code == 404
+        assert well_known_res.headers["content-type"].startswith("application/json")
+
         # Client-side route fallback returns index.html
         route_res = client.get("/projects/runs")
         assert route_res.status_code == 200

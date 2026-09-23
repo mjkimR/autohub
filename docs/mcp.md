@@ -12,19 +12,16 @@ been deployed or verified in a live Codex session.
 
 ## Connect once
 
-1. Open the Hub's `/docs`, use **Authorize** to sign in as the human administrator,
-   and create a dedicated machine with `POST /api/v1/machines`:
-
-   ```json
-   {"name": "personal-mcp", "scopes": ["autohub:mcp:read", "autohub:mcp:write"]}
-   ```
-
-   A read-only connection needs only `autohub:mcp:read`. Scopes apply to the whole
-   installation; this first release does not provide project-specific ACLs.
-2. Issue a key using `POST /api/v1/machines/{machine_id}/keys`, with a label and
-   optional `expires_at`. Save the returned `key` once; it is not retrievable later.
-   Keep the machine ID and key ID for rotation and revocation. Existing machine
-   management also accepts the deployment root credential, but MCP does not.
+1. Sign in to the Hub as an administrator and open **Machine keys**
+   (`/admin/machines`). Create a dedicated machine, for example `personal-mcp`,
+   with the **MCP read** and **MCP write** scopes (`autohub:mcp:read`,
+   `autohub:mcp:write`). A read-only connection needs only MCP read. Scopes apply
+   to the whole installation; this first release does not provide project-specific ACLs.
+2. Under the machine's **Keys**, issue a key with a label and optional expiry.
+   The key is shown once with ready-to-copy Claude Code and Codex snippets; it is
+   not retrievable later. The same operations are available through
+   `POST /api/v1/machines` and `POST /api/v1/machines/{machine_id}/keys` in `/docs`.
+   Existing machine management also accepts the deployment root credential, but MCP does not.
 3. Make the key available as `AUTOHUB_MCP_KEY` in the environment of the client
    process, then add this to your **user** `~/.codex/config.toml`:
 
@@ -40,11 +37,14 @@ been deployed or verified in a live Codex session.
    No `codex mcp login` is needed: this endpoint uses manual bearer authentication,
    not an OAuth discovery/login flow.
 4. Confirm the server appears in `/mcp` and ask it to list AutoHub projects.
+   For Claude Code, run the copied `claude mcp add --transport http ... --header
+   "Authorization: Bearer <key>"` command in the project directory; it registers the
+   server in local scope for that project only.
    Other Streamable HTTP clients can use the same URL with
    `Authorization: Bearer <issued-key>`; their live compatibility remains to be verified.
 
 To rotate, issue a replacement on the same machine, switch the client, then
-`DELETE /api/v1/machines/{machine_id}/keys/{old_key_id}`. Revoked/expired keys and
+revoke the old key on the **Machine keys** page. Revoked/expired keys and
 inactive machines fail on the next request. Scheduler-only keys, root keys,
 GitHub tokens and user login tokens are not MCP credentials.
 

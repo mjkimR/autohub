@@ -101,7 +101,10 @@ separate visible error/pending fields and a retry time.
 An outbound snapshot is stored transactionally with each local control/result.
 A lease and digest protect concurrent publication. Each maintenance pass publishes
 at most four records sequentially with a one-second gap and a five-minute retry
-cooldown (or GitHub's rate-limit delay). The same GitHub connector needs Issues
+cooldown (or GitHub's rate-limit delay). A webhook for an active run also runs one
+such pass after its follow-up, within a 20-second budget, so a plan's Issues appear
+once its first PR opens and close on the merge that completes them; maintenance
+retries whatever that pass leaves. The same GitHub connector needs Issues
 write permission in addition to the existing contents/PR permissions. Missing
 Issues permissions do not prevent PR execution.
 
@@ -163,6 +166,7 @@ Automated coverage includes graph validation, controls, capacity, PR response-lo
 recovery, manual-merge observation, outbound Issue failures and response loss,
 retained completion evidence, unexpected missing runs, PostgreSQL concurrent
 admission, migration upgrade/downgrade, and frontend registration/control behavior.
-A live canary should verify creation of a two-item dependent plan, its PR workflow,
-Issue permissions/sub-issue links, pause/revoke, and post-merge release in a target
-repository. Automated tests use stubbed GitHub I/O; no live plan is created by them.
+The [2026-09-23 canary](canary-results-2026-09-23.md) verified a two-item dependent
+plan, its PR workflow, Issue permissions/sub-issue links, pause/revoke, and immediate
+post-merge release in a target repository; prompt Issue sync after webhooks was added
+afterwards and is not yet live-verified. Automated tests use stubbed GitHub I/O; no live plan is created by them.

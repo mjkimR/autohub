@@ -106,6 +106,7 @@
 
 	function currentPageLabel() {
 		if (page.url.pathname === '/admin/users') return 'Account approval';
+		if (page.url.pathname === '/admin/machines') return 'Machine keys';
 		for (const section of navSections) {
 			for (const item of section.items) {
 				if (isActive(item.href)) return item.label;
@@ -182,6 +183,12 @@
 					aria-current={isActive('/admin/users') ? 'page' : undefined}
 					class="block rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-sidebar-accent"
 					>Account approval</a
+				>
+				<a
+					href="/admin/machines"
+					aria-current={isActive('/admin/machines') ? 'page' : undefined}
+					class="block rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-sidebar-accent"
+					>Machine keys</a
 				>
 			{/if}
 		</nav>

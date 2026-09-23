@@ -96,6 +96,26 @@ test('revoked plans retain started tasks and expose no resume', async () => {
 	expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
 });
 
+test('waiting tasks explain themselves from dependencies when the API sends no detail', async () => {
+	api.GET.mockResolvedValue({
+		data: {
+			items: [
+				{
+					...plan,
+					items: [
+						{ ...item, state: 'running' },
+						{ ...item, id: 'i2', key: 'b', title: 'API', depends_on: ['a'] }
+					]
+				}
+			],
+			total_count: 1
+		}
+	});
+	render(WorkPlansPanel, { project });
+	await screen.findByText('Login');
+	expect(screen.getByText('Waiting for tasks: a')).toBeTruthy();
+});
+
 test('bulk task input creates one plan and preserves item dependencies', async () => {
 	const onsaved = vi.fn();
 	render(WorkPlanForm, { projectId: 'p1', plans: [], onsaved, oncancel: vi.fn() });

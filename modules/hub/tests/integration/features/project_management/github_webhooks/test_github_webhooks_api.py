@@ -342,8 +342,9 @@ async def test_webhook_follows_an_advanced_run_with_its_work_plan(monkeypatch, a
     from app.features.project_management.github_webhooks import usecases
     from app.features.project_management.projects.errors import ProjectError
 
-    kick = AsyncMock()
+    kick, sync = AsyncMock(), AsyncMock()
     monkeypatch.setattr(usecases.WorkPlanKick, "run", kick)
+    monkeypatch.setattr(usecases.WorkIssueSync, "run_promptly", sync)
     repo, runs, lifecycle = MagicMock(), MagicMock(), MagicMock()
     project, run = MagicMock(id=uuid4(), enabled=True), MagicMock(id=uuid4())
     repo.project_for_repository = AsyncMock(return_value=project)
@@ -358,8 +359,10 @@ async def test_webhook_follows_an_advanced_run_with_its_work_plan(monkeypatch, a
 
     if advanced:
         kick.assert_awaited_once_with(run.project_id, run_id=run.id)
+        sync.assert_awaited_once()
     else:
         kick.assert_not_awaited()
+        sync.assert_not_awaited()
 
 
 async def test_webhook_notes_an_advance_deferred_by_a_held_lease():

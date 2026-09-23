@@ -98,7 +98,7 @@ run 만료가 PR 재등록으로 이어지지 않도록 기록한다. 첫 운영
 app-common Google OIDC prebuilt와 승인/정지/관리자 권한 API, AutoHub 로그인 및 `/admin/users` 화면을 추가했다. 화이트리스트는 사용하지 않는다. 게시된 app-common `ca4e6a4`의 `app-prebuilt-auth` 단일 패키지로 전환하고 Python/APM SHA와 lock을 갱신했다. 현재 운영 카나리 검증 결과와는 별개이며, [도입 절차와 제한](google-auth.md)을 따라 운영 설정·마이그레이션 후 실계정 검증이 필요하다.
 
 
-## WorkPlan·WorkItem: 로컬 구현, 배포 대기
+## WorkPlan·WorkItem: 운영 배포, 카나리 완료
 
 프로젝트 Plans 탭과 Plan·Item 일괄 등록, 같은 프로젝트의 Plan 의존성 및 동일 Plan 내부
 Item 의존성, 대기 작업 대상 pause/resume/revoke를 추가했다. 등록 후 별도 승인 없이
@@ -107,7 +107,8 @@ GitHub Issue는 명세·처리 이력의 단방향 사본이며 실행 판단에
 Issue 동기화 실패는 작업 실행을 막지 않는다. 성공 증거는 Item에 보존하고 미해결
 작업이 참조하는 Run은 만료 삭제에서 보호한다.
 
-마이그레이션은 `c7d8e9f0a1b2`이며 운영 배포·실제 GitHub 카나리는 아직 하지 않았다.
+마이그레이션은 `c7d8e9f0a1b2`다. 운영 배포 후 의존 실행·Issue 사본·pause/revoke와 등록·머지
+직후 즉시 후속 실행을 [카나리](canary-results-2026-09-23.md)로 확인했다.
 [구현 가이드와 제한](work-plans.md), [설계 합의](work-plans-design.md)를 참고한다.
 
 로컬 검증은 SQLite 백엔드 전체 730개 통과·6개 제외, UI 전체 128개 통과,

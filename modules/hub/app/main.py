@@ -146,6 +146,9 @@ def create_app():
 
         @app.get("/{full_path:path}")
         async def serve_spa(full_path: str):
+            # Well-known discovery (e.g. OAuth metadata) must not fall back to the SPA shell.
+            if full_path.startswith(".well-known/"):
+                return JSONResponse({"detail": "Not Found"}, status_code=404)
             target = (ui_dist / full_path).resolve()
             if full_path and target.is_relative_to(ui_dist.resolve()) and target.is_file():
                 return FileResponse(target)
