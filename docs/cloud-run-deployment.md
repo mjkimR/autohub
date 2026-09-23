@@ -242,6 +242,30 @@ server's secret bundle followed by restarting every instance. Management also ac
 a human administrator's bearer token. Concurrent provisioning jobs should be serialized;
 a lost issuance response requires reconciling key history and explicitly issuing/storing a replacement. The helper never treats missing Secret Manager data as permission to replace prior keys.
 
+### 6.1 Webhook Processing Queue (Cloud Tasks, recommended)
+
+With request-based billing, Cloud Run barely allocates CPU after a response is sent.
+Without a queue, webhook deliveries are processed in in-process background tasks after
+the 202 response, so merges, CI fixes, and work plan follow-up can stall until the
+scheduler replays the delivery. With a queue, the webhook stores the delivery, creates
+a Cloud Task, and answers; the task calls
+`POST /api/github/webhooks/deliveries/{id}/process`, which runs with CPU allocated.
+
+- Enable `cloudtasks.googleapis.com`, create a queue in the service's region, and grant
+  the runtime service account `roles/cloudtasks.enqueuer`. The workbench deployment
+  does all three from its inventory.
+- Set `WEBHOOK_TASK_QUEUE=projects/<project>/locations/<region>/queues/<queue>` and
+  `WEBHOOK_TASK_BASE_URL=<service URL>` as plain environment variables.
+- The callback is authenticated with an HMAC derived from `GITHUB_WEBHOOK_SECRET`
+  that names one stored delivery and expires in an hour. No extra credential, OIDC
+  setup, or `actAs` grant is needed. Rotating the webhook secret invalidates queued
+  tasks; the scheduler replays those deliveries.
+- The callback always succeeds once authenticated; processing failures are recorded
+  on the delivery as before. Tasks are retried only when the request itself fails.
+  A delivery that was already handled is skipped, so duplicate tasks are harmless.
+- When the settings are unset or task creation fails (4-second limit), the delivery
+  falls back to in-process background processing. Local development needs no queue.
+
 ---
 
 ## 7. Post-Deployment Verification & Integration

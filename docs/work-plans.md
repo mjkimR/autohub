@@ -27,7 +27,12 @@ Independent plans/items share the project's and catalog's capacity. A database
 transaction fixes the item's start before branch preparation. Preparation reserves
 local admission space; the existing catalog gateway still authorizes actual agent
 delivery and owns quota accounting. Waiting dependencies hold no execution slot.
-Registration is visible immediately; work starts on the next scheduler tick.
+Registration, edits, and resume start newly ready items within the same request,
+including branch/PR preparation and the first agent dispatch. A webhook for a work
+item's run observes that item at once, so a confirmed merge starts its dependents
+without waiting for the tick. This follow-up has a 25-second budget and at most two
+admissions; anything unfinished, refused, or failed stays due for the scheduler tick,
+which remains the recovery path. Pause and revoke never start work.
 
 A deterministic `autohub/work/<item-id>` branch is created from the target head
 recorded at admission/preparation. A temporary `.autohub/work-items/<item-id>.md`

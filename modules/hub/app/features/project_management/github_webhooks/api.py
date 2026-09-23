@@ -2,6 +2,7 @@ from typing import Annotated
 
 from app.common.config import get_github_webhook_config
 from app.features.execution.dispatchers.usecases.housekeeping import TickHousekeepingUseCase
+from app.features.project_management.github_webhooks import tasks
 from app.features.project_management.github_webhooks.repos import GitHubWebhookRepository
 from app.features.project_management.github_webhooks.usecases import GitHubWebhookUseCase
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
@@ -39,7 +40,27 @@ async def receive_github_webhook(
         raise HTTPException(status_code=400, detail="Invalid GitHub webhook payload")
     if not await use_case.receive(x_github_delivery, x_github_event, raw_body, payload):
         return {"status": "duplicate"}
-    background_tasks.add_task(use_case.process, x_github_delivery, payload, x_github_event)
+    # A queued task processes the delivery in a request of its own, where Cloud Run allocates CPU.
+    if not await tasks.enqueue(config, x_github_delivery):
+        background_tasks.add_task(use_case.process, x_github_delivery, payload, x_github_event)
     # Webhooks keep arriving when the scheduler trigger has stopped, which nothing else would notice.
     background_tasks.add_task(housekeeping.report_stopped_trigger)
     return {"status": "accepted"}
+
+
+@router.post("/deliveries/{delivery_id}/process", status_code=status.HTTP_204_NO_CONTENT, include_in_schema=False)
+async def process_queued_delivery(
+    delivery_id: str,
+    lifecycle: Annotated[PipelineRunUseCase, Depends()],
+    x_autohub_task_expires: Annotated[str | None, Header()] = None,
+    x_autohub_task_signature: Annotated[str | None, Header()] = None,
+):
+    """Cloud Tasks callback. Failures are recorded on the delivery and replayed by the tick, so it always succeeds."""
+    secret = get_github_webhook_config().GITHUB_WEBHOOK_SECRET
+    if secret is None or not tasks.verify(
+        secret.get_secret_value(), delivery_id, x_autohub_task_expires, x_autohub_task_signature
+    ):
+        raise HTTPException(status_code=401, detail="Invalid task signature")
+    await GitHubWebhookUseCase(GitHubWebhookRepository(), PipelineRunRepository(), lifecycle).process_queued(
+        delivery_id
+    )

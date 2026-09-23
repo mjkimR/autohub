@@ -11,6 +11,7 @@ from app.features.project_management.pipeline_runs.repos import PipelineRunRepos
 from app.features.project_management.pipeline_runs.schemas import EnrollPullRequest
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.projects.errors import ProjectError
+from app.features.project_management.work_plans.kick import WorkPlanKick
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.core.log import logger
 from app_layer_base.utils.time_util import get_current_utc_time
@@ -43,6 +44,10 @@ class DeliveryFacts:
             auto_run=trigger is not None,
             catalog=trigger.group("catalog") if trigger is not None else None,
         )
+
+    @classmethod
+    def of_row(cls, row: GitHubWebhookDelivery) -> "DeliveryFacts":
+        return cls(row.repository, row.pull_number, row.auto_run, row.requested_catalog)
 
 
 # `@auto-run` enrolls the pull request; `@auto-run:<catalog key or kind>` also names the catalog that delivers it.
@@ -85,6 +90,17 @@ class GitHubWebhookUseCase:
         """Advance the matching active run, or enroll a new run if @auto-run is mentioned."""
         await self._handle(delivery_id, DeliveryFacts.of(event, payload))
 
+    async def process_queued(self, delivery_id: str) -> None:
+        """Process a stored delivery for its queued task; a delivery already handled or replaying is left alone.
+
+        Tasks are delivered at least once, and the in-process fallback may already have run.
+        """
+        async with AsyncTransaction() as session:
+            row = await self.repo.get(session, delivery_id)
+            facts = DeliveryFacts.of_row(row) if row is not None and row.status == "received" else None
+        if facts is not None:
+            await self._handle(delivery_id, facts)
+
     async def sweep_stalled(self, now: datetime) -> list[str]:
         """Replay deliveries whose processing was lost, and failed `@auto-run` triggers, once each.
 
@@ -93,7 +109,7 @@ class GitHubWebhookUseCase:
         """
         async with AsyncTransaction() as session:
             stalled = [
-                (row, DeliveryFacts(row.repository, row.pull_number, row.auto_run, row.requested_catalog))
+                (row, DeliveryFacts.of_row(row))
                 for row in await self.repo.list_stalled(
                     session,
                     received_before=now - STALLED_DELIVERY_AGE,
@@ -140,6 +156,8 @@ class GitHubWebhookUseCase:
                     # That holder advances the run, and polling covers anything it misses.
                     await self._finish(delivery_id, "processed", f"Advance deferred: {exc.detail}")
                     return True
+                # A work item's merge releases its dependents now rather than on the next tick.
+                await WorkPlanKick(self.lifecycle).run(run.project_id, run_id=run.id)
             elif (
                 has_trigger
                 and project is not None

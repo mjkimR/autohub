@@ -31,12 +31,28 @@ class WorkPlanExecution:
         # Observation and admission have separate budgets: long-running work must
         # not starve ready items when the catalog has more slots than a tick batch.
         for phase in ("observe", "admit"):
-            for _ in range(limit):
-                async with AsyncTransaction() as session:
-                    claimed = await self.repo.claim(session, project_id, phase=phase)
-                if claimed is None:
-                    break
-                await self.advance(*claimed)
+            await self.advance_phase(project_id, phase, limit=limit)
+
+    async def advance_phase(self, project_id: UUID, phase: str, *, limit: int) -> list[UUID]:
+        """Advance up to `limit` claimed items of one phase; returns the advanced item IDs."""
+        advanced = []
+        for _ in range(limit):
+            async with AsyncTransaction() as session:
+                claimed = await self.repo.claim(session, project_id, phase=phase)
+            if claimed is None:
+                break
+            await self.advance(*claimed)
+            advanced.append(claimed[1].id)
+        return advanced
+
+    async def observe_run(self, project_id: UUID, run_id: UUID) -> bool:
+        """Observe the item executed by this run now; False when it is not a work run or is leased elsewhere."""
+        async with AsyncTransaction() as session:
+            claimed = await self.repo.claim(session, project_id, phase="observe", run_id=run_id)
+        if claimed is None:
+            return False
+        await self.advance(*claimed)
+        return True
 
     async def advance(self, plan: WorkPlan, item: WorkItem) -> None:
         try:

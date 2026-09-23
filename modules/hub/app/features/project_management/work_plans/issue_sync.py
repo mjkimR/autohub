@@ -190,7 +190,8 @@ class WorkIssueSync:
         async with AsyncTransaction() as session:
             current = await self.leased(session, row.id, row.lease_token)
             if current:
-                current.synced_digest, current.error = row.digest, None
+                # The cooldown only paces retries; a confirmed publish leaves the next local change due at once.
+                current.synced_digest, current.error, current.next_action_at = row.digest, None, None
                 # Refresh links as mappings become known; a newer local revision remains pending.
         async with AsyncTransaction() as session:
             saved_plan = await session.get(WorkPlan, plan.id, with_for_update=True)

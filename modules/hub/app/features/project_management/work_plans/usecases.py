@@ -1,6 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
+from app.features.project_management.work_plans.kick import WorkPlanKick
 from app.features.project_management.work_plans.mirror_records import refresh_mirrors
 from app.features.project_management.work_plans.models import ItemDependency, PlanDependency, WorkIssueMirror
 from app.features.project_management.work_plans.schemas import (
@@ -19,8 +20,12 @@ from sqlalchemy import select
 
 
 class WorkPlanUseCase:
-    def __init__(self, service: Annotated[WorkPlanService, Depends()]):
-        self.service = service
+    def __init__(
+        self,
+        service: Annotated[WorkPlanService, Depends()],
+        kick: Annotated[WorkPlanKick, Depends()],
+    ):
+        self.service, self.kick = service, kick
 
     async def read(self, session, plan) -> WorkPlanRead:
         items = await self.service.repo.items(session, plan.id)
@@ -76,16 +81,24 @@ class WorkPlanUseCase:
         async with AsyncTransaction() as session:
             plan = await self.service.create(session, project_id, data)
             await refresh_mirrors(session, plan)
-            return await self.read(session, plan)
+            plan_id = plan.id
+        return await self._started(project_id, plan_id)
 
     async def update(self, project_id: UUID, plan_id: UUID, data: WorkPlanUpdate) -> WorkPlanRead:
         async with AsyncTransaction() as session:
             plan = await self.service.update(session, project_id, plan_id, data)
             await refresh_mirrors(session, plan)
-            return await self.read(session, plan)
+        return await self._started(project_id, plan_id)
 
     async def control(self, project_id: UUID, plan_id: UUID, data: PlanControl) -> WorkPlanRead:
         async with AsyncTransaction() as session:
             plan = await self.service.control(session, project_id, plan_id, data)
             await refresh_mirrors(session, plan)
-            return await self.read(session, plan)
+            if data.action != "resume":
+                return await self.read(session, plan)
+        return await self._started(project_id, plan_id)
+
+    async def _started(self, project_id: UUID, plan_id: UUID) -> WorkPlanRead:
+        """After the change commits, start newly ready items now and answer with their state."""
+        await self.kick.run(project_id)
+        return await self.get(project_id, plan_id)

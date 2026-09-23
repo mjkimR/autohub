@@ -17,8 +17,9 @@ from sqlalchemy.orm import aliased
 
 class WorkExecutionRepository:
     async def claim(
-        self, session: AsyncSession, project_id: UUID, *, phase: str = "any"
+        self, session: AsyncSession, project_id: UUID, *, phase: str = "any", run_id: UUID | None = None
     ) -> tuple[WorkPlan, WorkItem] | None:
+        """Claim the next due item; `run_id` selects that run's item now, ahead of its polling cadence."""
         project = await ProjectRepository().get(session, project_id, lock=True)
         if project is None:
             return None
@@ -63,7 +64,9 @@ class WorkExecutionRepository:
                         WorkItem.state.not_in(("succeeded", "revoked", "preparation_failed")),
                     ),
                 ),
-                or_(WorkItem.next_action_at.is_(None), WorkItem.next_action_at <= now),
+                WorkItem.pipeline_run_id == run_id
+                if run_id is not None
+                else or_(WorkItem.next_action_at.is_(None), WorkItem.next_action_at <= now),
                 or_(WorkItem.lease_expires_at.is_(None), WorkItem.lease_expires_at <= now),
             )
             .order_by(

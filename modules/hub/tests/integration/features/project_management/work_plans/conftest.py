@@ -5,6 +5,13 @@ import pytest
 from app.features.project_management.pipelines import services
 from app.features.project_management.work_plans.execution import WorkPlanExecution
 from app.features.project_management.work_plans.issue_sync import WorkIssueSync
+from app.features.project_management.work_plans.kick import WorkPlanKick
+
+LIVE_KICK = WorkPlanKick.run
+
+
+async def _tick_only(self, project_id, *, run_id=None):
+    return None
 
 
 class GitHubWorkScenario:
@@ -111,6 +118,8 @@ class GitHubWorkScenario:
 
 @pytest.fixture
 async def setup_work(client, monkeypatch):
+    # These scenarios drive the scheduler tick path; immediate follow-up is enabled by `live_kick`.
+    monkeypatch.setattr(WorkPlanKick, "run", _tick_only)
     github = GitHubWorkScenario()
     monkeypatch.setattr(
         services,
@@ -146,3 +155,16 @@ async def setup_work(client, monkeypatch):
 
     observer = services.PipelineObservationService(token)
     return project, github, WorkPlanExecution(observer), WorkIssueSync(observer)
+
+
+@pytest.fixture
+def live_kick(setup_work, monkeypatch):
+    """Immediate follow-up with agent dispatch recorded instead of performed."""
+    from unittest.mock import AsyncMock
+
+    from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
+
+    monkeypatch.setattr(WorkPlanKick, "run", LIVE_KICK)
+    dispatch = AsyncMock()
+    monkeypatch.setattr(PipelineRunUseCase, "manual_advance", dispatch)
+    return dispatch

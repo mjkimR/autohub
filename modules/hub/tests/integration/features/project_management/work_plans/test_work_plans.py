@@ -167,6 +167,26 @@ async def test_issue_failure_does_not_gate_execution_and_lost_response_reconcile
     assert current["state"] == "active"
 
 
+async def test_confirmed_issue_publish_leaves_the_next_local_change_due(client, setup_work, session):
+    """The five-minute cooldown paces retries only; with a five-minute tick it must not delay the next change."""
+    project, _, _, sync = setup_work
+    plan = await create(client, project)
+    await sync.execute(limit=4)
+    await due(session)  # Only the item that waited for its parent issue is cooling down.
+    await sync.execute(limit=4)
+    synced = await get(client, project, plan)
+    assert not synced["issue"]["pending"] and not any(item["issue"]["pending"] for item in synced["items"])
+
+    response = await client.post(
+        f"/api/v1/projects/{project['id']}/work-plans/{plan['id']}/control",
+        json={"action": "pause", "expected_revision": synced["revision"]},
+    )
+    assert response.status_code == 200, response.text
+    assert (await get(client, project, plan))["issue"]["pending"]
+    await sync.execute(limit=4)
+    assert not (await get(client, project, plan))["issue"]["pending"]
+
+
 async def test_retention_requires_durable_success_and_preserves_failed_work(client, setup_work, session):
     project, github, worker, _ = setup_work
     plan = await create(client, project)

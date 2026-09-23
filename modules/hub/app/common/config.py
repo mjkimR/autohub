@@ -34,6 +34,14 @@ class GitHubWebhookConfig(BaseSettings):
     GITHUB_WEBHOOK_SECRET: SecretStr | None = Field(
         default=None, description="GitHub webhook HMAC secret; webhook delivery is disabled when unset"
     )
+    WEBHOOK_TASK_QUEUE: str | None = Field(
+        default=None,
+        description="Cloud Tasks queue (projects/<p>/locations/<l>/queues/<q>) that processes deliveries in their "
+        "own request, where Cloud Run allocates CPU; in-process background tasks are used when unset",
+    )
+    WEBHOOK_TASK_BASE_URL: str | None = Field(
+        default=None, description="HTTPS base URL of this service that the queue calls back; required with the queue"
+    )
 
 
 @lru_cache

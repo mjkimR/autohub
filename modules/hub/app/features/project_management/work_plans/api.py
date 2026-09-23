@@ -26,7 +26,7 @@ async def list_work_plans(
 
 @router.post("", response_model=WorkPlanRead, status_code=201)
 async def create_work_plan(project_id: UUID, data: WorkPlanWrite, use_case: Annotated[WorkPlanUseCase, Depends()]):
-    """Atomically register work; eligible items start on the next project tick without another approval."""
+    """Atomically register work; ready items start in this request (the tick finishes the rest), without approval."""
     return await use_case.create(project_id, data)
 
 
