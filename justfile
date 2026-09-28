@@ -162,6 +162,10 @@ test-ui:
 gen-ui-api:
     @bash ./scripts/gen-ui-api.sh
 
+# Sign in to a hub and print a short-lived access token for ad-hoc API calls (prompts for the password)
+login-token +args="":
+    @bash ./scripts/login-token.sh {{ args }}
+
 # Sync the local signed-in Codex quota reset time to the global personal-codex AI catalog.
 sync-codex-quota:
     @uv run --no-active python ./scripts/sync-codex-quota.py

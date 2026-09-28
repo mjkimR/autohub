@@ -46,7 +46,7 @@ webhook 처리를 확인했다. PR/Issue 링크는 GitHub 증거이며 이전 �
 
 - 카나리 PR은 모두 머지됐고 `autohub/work/*` 브랜치는 저장소 설정상 남아 있다.
 - 큐 대기 run의 슬롯 반환, base 변경 뒤 충돌 감지, Jules 수집, 재시도는 여전히 tick
-  주기를 따른다. Issue는 카나리 이후 webhook 처리 뒤 즉시 동기화하도록 바꿨으며 live
-  확인은 아직 하지 않았다.
+  주기를 따른다. Issue는 카나리 이후 webhook 처리 뒤 즉시 동기화하도록 바꿨으며
+  [2026-09-28 카나리](canary-results-2026-09-28.md)에서 확인했다.
 - 실패 Item 재시도, Plan 수정에 따른 revision 충돌, 실제 CI 실패가 섞인 Plan은 live로
   유발하지 않았다.

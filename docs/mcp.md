@@ -7,8 +7,10 @@ server package, skill, plugin, or per-repository agent configuration is required
 Status: implemented with the published `app-common` commit
 `e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca`, pinned in the Python and APM
 manifests and locks. The full test suite, lint, type checks, UI build, and APM
-audit pass with packages installed from this commit. This endpoint has not yet
-been deployed or verified in a live Codex session.
+audit pass with packages installed from this commit. The endpoint is deployed on
+the managed Cloud Run service and is in use from a Claude Code HTTP MCP
+connection. Codex and other clients connect the same way when needed; no separate
+verification step is tracked for them.
 
 ## Connect once
 
@@ -41,7 +43,7 @@ been deployed or verified in a live Codex session.
    "Authorization: Bearer <key>"` command in the project directory; it registers the
    server in local scope for that project only.
    Other Streamable HTTP clients can use the same URL with
-   `Authorization: Bearer <issued-key>`; their live compatibility remains to be verified.
+   `Authorization: Bearer <issued-key>`.
 
 To rotate, issue a replacement on the same machine, switch the client, then
 revoke the old key on the **Machine keys** page. Revoked/expired keys and

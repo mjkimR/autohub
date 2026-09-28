@@ -52,7 +52,15 @@ class WorkIssueSync:
                         or_(WorkIssueMirror.lease_expires_at.is_(None), WorkIssueMirror.lease_expires_at <= now),
                     )
                     .order_by(
-                        WorkIssueMirror.next_action_at.nullsfirst(), WorkIssueMirror.created_at, WorkIssueMirror.id
+                        WorkIssueMirror.next_action_at.nullsfirst(),
+                        # A plan whose Issue does not exist yet goes first: its items link to it as sub-issues, and
+                        # rows written in one transaction share created_at, so the id would otherwise decide.
+                        or_(
+                            WorkIssueMirror.entity_id != WorkIssueMirror.plan_id,
+                            WorkIssueMirror.issue_number.is_not(None),
+                        ),
+                        WorkIssueMirror.created_at,
+                        WorkIssueMirror.id,
                     )
                     .limit(1)
                     .with_for_update(skip_locked=True)

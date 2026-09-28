@@ -1,8 +1,8 @@
 # Work plans
 
-Work plans manage work before a pull request exists. The local implementation is
-available in **Project → Plans** and the API below; deployment and a live GitHub
-canary are still pending. [Design decisions](work-plans-design.md) record the
+Work plans manage work before a pull request exists. They are available in
+**Project → Plans** and the API below, deployed, and verified by live GitHub
+canaries. [Design decisions](work-plans-design.md) record the
 agreed domain boundaries and the original proposals.
 
 ## Registration and dependencies
@@ -168,5 +168,7 @@ retained completion evidence, unexpected missing runs, PostgreSQL concurrent
 admission, migration upgrade/downgrade, and frontend registration/control behavior.
 The [2026-09-23 canary](canary-results-2026-09-23.md) verified a two-item dependent
 plan, its PR workflow, Issue permissions/sub-issue links, pause/revoke, and immediate
-post-merge release in a target repository; prompt Issue sync after webhooks was added
-afterwards and is not yet live-verified. Automated tests use stubbed GitHub I/O; no live plan is created by them.
+post-merge release in a target repository. The [2026-09-28 canary](canary-results-2026-09-28.md)
+verified Issue creation and closure within seconds of webhook processing; synchronization
+publishes a plan whose Issue does not exist yet before its items so they can link to it.
+Automated tests use stubbed GitHub I/O; no live plan is created by them.

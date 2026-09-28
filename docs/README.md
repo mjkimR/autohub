@@ -14,13 +14,13 @@ These documents explicitly distinguish between design goals and current function
 9. [Code Hygiene Review](code-hygiene-review.md): 2026-09-21 review, applied fixes, structural findings, and test follow-ups.
 10. [Project detail and connection tests](project-detail-and-connection-tests.md): Project tabs, catalog-specific Codex/Jules PR verification, merge exclusion, and cleanup behavior.
 11. [Work plans and dependencies — design](work-plans-design.md): Agreed Plan/Item ownership, dependency boundaries, pause/revoke behavior, and outbound Issue records.
-12. [Work plans](work-plans.md): Local implementation, APIs, controls, retention, outbound GitHub records, and deployment boundaries.
-13. [MCP](mcp.md): User-level connection, managed credentials, public tools, and local validation/release boundaries.
+12. [Work plans](work-plans.md): APIs, controls, retention, outbound GitHub records, and verification boundaries.
+13. [MCP](mcp.md): User-level connection, managed credentials, public tools, and deployment status.
 14. [MCP distribution review](autohub-distribution-review-2026-09-22.md): MCP-first delivery decision, app-mcp reuse assessment, and implementation review.
 
-[Google login and approval](google-auth.md) describes the implementation, published dependency pins, configuration, and live validation still required.
+[Google login and approval](google-auth.md) describes the implementation, published dependency pins, configuration, and the completed live validation.
 
-[Live Canary Results](canary-results-2026-09-22.md) consolidates the completed Codex/Jules, recovery, approval, and connection-test evidence from 2026-09-21–22. [Work Plan Canary Results](canary-results-2026-09-23.md) covers live work plan execution, immediate follow-up, and Cloud Tasks webhook processing.
+[Live Canary Results](canary-results-2026-09-22.md) consolidates the completed Codex/Jules, recovery, approval, and connection-test evidence from 2026-09-21–22. [Work Plan Canary Results](canary-results-2026-09-23.md) covers live work plan execution, immediate follow-up, and Cloud Tasks webhook processing. [Prompt Issue Sync Canary](canary-results-2026-09-28.md) verifies Issue synchronization right after webhook processing, before and after the plan-first ordering fix.
 
 [CI Template Usage](../templates/github-actions/README.md) covers CI setup in target repositories.
 The root `justfile` is the single source of truth for commands, and connector credential encryption details are documented in the [Hub module documentation](../modules/hub/README.md#connector-credential-encryption).

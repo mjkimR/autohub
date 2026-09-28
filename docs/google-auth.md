@@ -1,6 +1,6 @@
 # Google login and account approval
 
-Implementation consumes published app-common commit `ca4e6a4fdca035314c4e032ca9397e633830ecf5` through pinned Git dependencies. Python and APM locks are updated; no sibling checkout links are required. Production deployment and live Google login verification are still pending.
+Implementation consumes published app-common commit `ca4e6a4fdca035314c4e032ca9397e633830ecf5` through pinned Git dependencies. Python and APM locks are updated; no sibling checkout links are required. Google login is deployed and enabled on the managed Cloud Run service; the live validation below was completed with a real account in both callback modes.
 
 ## Behavior
 
@@ -43,6 +43,8 @@ GOOGLE_AUTH_FRONTEND_URL=https://YOUR_HUB_ORIGIN/
 GOOGLE_AUTH_COOKIE_SECURE=true
 ```
 
+`GOOGLE_AUTH_RESPONSE_MODE=form_post` switches the callback to a POST form response; it requires HTTPS and secure cookies. Both `query` (default) and `form_post` were verified live.
+
 AutoHub forces external registration approval independently of the shared package's default. Keep the existing bootstrap credentials/signing key configuration. Callback and frontend must share the same origin. Do not rely on Google's Testing app mode as the Hub access gate.
 
 For local development, use the Vite `/api` proxy: both URLs use `http://localhost:5173`, the callback keeps `/api/v1/auth/google/callback`, and `GOOGLE_AUTH_COOKIE_SECURE=false`. The client requests only `openid email profile`; no Drive/Gmail permissions are needed.
@@ -65,7 +67,7 @@ AutoHub removes the Google callback query string from its Uvicorn access log whi
 5. Verify a regular Google user cannot list/manage accounts. Verify the bootstrap account cannot be disabled or demoted.
 6. Check callback cancellation/failure messages and confirm no credential values are recorded in access logs.
 
-Automated tests use synthetic signed Google ID tokens and isolated SQLite/PostgreSQL databases. Google Console credentials, live Google browser consent, production migrations and Cloud Run rollout have not been performed.
+These steps were completed on the production deployment in both `query` and `form_post` callback modes. Automated tests use synthetic signed Google ID tokens and isolated SQLite/PostgreSQL databases.
 
 ## Rollback
 

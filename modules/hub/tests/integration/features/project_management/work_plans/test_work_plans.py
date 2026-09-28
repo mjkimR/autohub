@@ -175,8 +175,7 @@ async def test_confirmed_issue_publish_leaves_the_next_local_change_due(client, 
     project, _, _, sync = setup_work
     plan = await create(client, project)
     await sync.execute(limit=4)
-    await due(session)  # Only the item that waited for its parent issue is cooling down.
-    await sync.execute(limit=4)
+    await sync.execute(limit=4)  # Link refreshes after each Issue becomes known; nothing waits for a cooldown.
     synced = await get(client, project, plan)
     assert not synced["issue"]["pending"] and not any(item["issue"]["pending"] for item in synced["items"])
 
@@ -188,6 +187,28 @@ async def test_confirmed_issue_publish_leaves_the_next_local_change_due(client, 
     assert (await get(client, project, plan))["issue"]["pending"]
     await sync.execute(limit=4)
     assert not (await get(client, project, plan))["issue"]["pending"]
+
+
+async def test_plan_issue_publishes_before_its_items_regardless_of_row_order(client, setup_work, session):
+    """Items link to the plan's Issue as sub-issues, so one pass must publish the plan first even when its
+    mirror row sorts last; otherwise the items wait for the parent under the retry cooldown until the tick."""
+    project, github, _, sync = setup_work
+    plan = await create(client, project)
+    await session.execute(
+        update(WorkIssueMirror)
+        .where(WorkIssueMirror.entity_id != WorkIssueMirror.plan_id)
+        .values(created_at=utc_now() - timedelta(days=1))
+    )
+    await session.commit()
+
+    await sync.execute(limit=4)
+    assert github.issues[1]["title"].startswith("[AutoHub Plan]")
+    assert not any(item["issue"]["error"] for item in (await get(client, project, plan))["items"])
+    assert github.parents == {2: 1, 3: 1}
+    await sync.execute(limit=4)  # Link refreshes only; nothing is cooling down.
+    synced = await get(client, project, plan)
+    issues = {"plan": synced["issue"], **{item["key"]: item["issue"] for item in synced["items"]}}
+    assert not any(issue["pending"] or issue["error"] for issue in issues.values()), issues
 
 
 async def test_prompt_issue_sync_publishes_due_records_and_never_raises(client, setup_work, monkeypatch):
