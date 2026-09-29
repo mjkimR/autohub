@@ -23,6 +23,7 @@ from app_layer_base.core.log import logger
 from app_prebuilt_auth.api_key.config import get_api_key_settings
 from app_prebuilt_auth.api_key.deps import require_key_admin
 from app_prebuilt_auth.api_key.usecases import get_machine_scopes
+from app_prebuilt_auth.browser.config import get_browser_auth_settings
 from app_prebuilt_auth.google.config import get_google_auth_settings
 from app_prebuilt_auth.user.config import get_auth_settings
 from app_prebuilt_auth.user.deps import get_login_caller, get_login_lockout_listener
@@ -117,6 +118,9 @@ def create_app():
 
     app.include_router(router)
     app.dependency_overrides[get_auth_settings] = get_hub_auth_settings
+    app.dependency_overrides[get_browser_auth_settings] = lambda: get_browser_auth_settings().model_copy(
+        update={"cookie_name": "autohub_refresh"}
+    )
     app.dependency_overrides[require_key_admin] = require_machine_admin
     app.dependency_overrides[get_machine_scopes] = lambda: MACHINE_SCOPES
     app.dependency_overrides[get_login_caller] = login_caller

@@ -238,3 +238,17 @@ async def test_pending_and_suspended_accounts_cannot_use_hub_apis(client, sessio
     await session.commit()
     assert (await client.get(PROTECTED, headers=bearer(token))).status_code == 200
     assert (await client.get("/api/v1/users/admin/", headers=bearer(token))).status_code == 403
+
+
+async def test_browser_session_survives_page_state_and_logout_revokes_it(client):
+    headers = {"Origin": str(client.base_url).rstrip("/"), "X-Browser-Session": "1"}
+    signed_in = await client.post("/api/v1/auth/browser/login", data=OPERATOR, headers=headers)
+    assert_status_code(signed_in, 200)
+    assert "refresh_token" not in signed_in.json()
+    assert "autohub_refresh=" in signed_in.headers["set-cookie"]
+    cookie = {"Cookie": "autohub_refresh=" + client.cookies.get("autohub_refresh")}
+    renewed = await client.post("/api/v1/auth/browser/refresh", headers={**headers, **cookie})
+    assert_status_code(renewed, 200)
+    assert_status_code(await client.get(PROTECTED, headers=bearer(renewed.json()["access_token"])), 200)
+    assert_status_code(await client.post("/api/v1/auth/browser/logout", headers={**headers, **cookie}), 204)
+    assert_status_code(await client.post("/api/v1/auth/browser/refresh", headers={**headers, **cookie}), 401)

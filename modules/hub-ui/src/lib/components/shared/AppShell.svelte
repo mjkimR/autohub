@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { logoutSession } from '$lib/api/client';
+	import { toast } from 'svelte-sonner';
 	import { session } from '$lib/stores/session.svelte';
 	import { api } from '$lib/api';
 	import { page } from '$app/state';
@@ -232,7 +234,8 @@
 				<Button
 					variant="ghost"
 					size="icon"
-					onclick={() => session.logout()}
+					onclick={() =>
+						logoutSession().catch(() => toast.error('Sign-out failed. Please try again.'))}
 					class="size-8 text-muted-foreground hover:text-destructive"
 					title="Logout"
 					aria-label="Logout"

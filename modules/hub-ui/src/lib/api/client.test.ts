@@ -32,7 +32,7 @@ afterEach(() => {
 
 test('an expired access token is renewed once and the request repeated with its body', async () => {
 	respond = (url, authorization) => {
-		if (url === '/api/v1/users/login/refresh')
+		if (url === '/api/v1/auth/browser/refresh')
 			return json(200, { access_token: 'fresh', refresh_token: 'refresh-2', token_type: 'bearer' });
 		return authorization === 'Bearer fresh' ? json(201, { id: 'c1' }) : json(401, {});
 	};
@@ -50,13 +50,13 @@ test('an expired access token is renewed once and the request repeated with its 
 	expect(res.response.status).toBe(201);
 	expect(calls.map((call) => [call.url, call.authorization])).toEqual([
 		['/api/v1/connectors', 'Bearer expired'],
-		['/api/v1/users/login/refresh', null],
+		['/api/v1/auth/browser/refresh', null],
 		['/api/v1/connectors', 'Bearer fresh']
 	]);
 	expect(calls[2].body).toBe(calls[0].body);
-	expect(JSON.parse(calls[1].body)).toEqual({ refresh_token: 'refresh-1' });
-	// The session now holds the new pair.
-	expect([session.accessToken, session.refreshToken]).toEqual(['fresh', 'refresh-2']);
+	expect(calls[1].body).toBe('');
+	// Only the access token is visible to JavaScript.
+	expect(session.accessToken).toBe('fresh');
 });
 
 test('a session that cannot be renewed is signed out', async () => {
@@ -66,12 +66,11 @@ test('a session that cannot be renewed is signed out', async () => {
 
 	expect(res.response.status).toBe(401);
 	expect(session.isAuthenticated).toBe(false);
-	expect(session.refreshToken).toBe('');
 });
 
 test('requests made together share one renewal', async () => {
 	respond = (url, authorization) => {
-		if (url === '/api/v1/users/login/refresh')
+		if (url === '/api/v1/auth/browser/refresh')
 			return json(200, { access_token: 'fresh', refresh_token: 'refresh-2', token_type: 'bearer' });
 		return authorization === 'Bearer fresh' ? json(200, { items: [] }) : json(401, {});
 	};
@@ -83,18 +82,18 @@ test('requests made together share one renewal', async () => {
 		client.GET('/api/v1/ai-catalogs')
 	]);
 
-	expect(calls.filter((call) => call.url === '/api/v1/users/login/refresh')).toHaveLength(1);
+	expect(calls.filter((call) => call.url === '/api/v1/auth/browser/refresh')).toHaveLength(1);
 });
 
 test('a failed sign-in is not mistaken for an expired session', async () => {
 	respond = () => json(401, {});
 
-	await createApiClient().POST('/api/v1/users/login/', {
+	await createApiClient().POST('/api/v1/auth/browser/login', {
 		body: { username: 'a@example.com', password: 'x', scope: '' },
 		bodySerializer: (body) => new URLSearchParams(body as Record<string, string>)
 	});
 
-	expect(calls.map((call) => call.url)).toEqual(['/api/v1/users/login/']);
+	expect(calls.map((call) => call.url)).toEqual(['/api/v1/auth/browser/login']);
 });
 
 test.each([new TypeError('offline'), new DOMException('Canceled', 'AbortError')])(
@@ -109,7 +108,7 @@ test.each([new TypeError('offline'), new DOMException('Canceled', 'AbortError')]
 		expect(calls).toHaveLength(1);
 
 		respond = (url, authorization) => {
-			if (url === '/api/v1/users/login/refresh')
+			if (url === '/api/v1/auth/browser/refresh')
 				return json(200, { access_token: 'fresh', refresh_token: 'refresh-2' });
 			return authorization === 'Bearer fresh' ? json(200, { items: [] }) : json(401, {});
 		};
@@ -160,7 +159,6 @@ test.each([200, 401])(
 		finish(json(status, { access_token: 'stale', refresh_token: 'stale-refresh' }));
 		await request;
 		expect(session.accessToken).toBe('new-login');
-		expect(session.refreshToken).toBe('new-refresh');
 	}
 );
 
@@ -197,4 +195,37 @@ test('a delayed 401 reuses the token another request already renewed', async () 
 	finish(json(401, {}));
 	expect((await delayed).response.status).toBe(200);
 	expect(renewals).toBe(1);
+});
+
+test('a new page restores using the HttpOnly cookie without a JavaScript refresh token', async () => {
+	const { refreshSession } = await import('./client');
+	session.logout();
+	const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+		expect(init?.credentials).toBe('include');
+		expect(new Headers(init?.headers).get('X-Browser-Session')).toBe('1');
+		expect(init?.body).toBeUndefined();
+		return json(200, { access_token: 'restored' });
+	});
+	expect(await refreshSession(fetcher)).toBe(true);
+	expect(session.accessToken).toBe('restored');
+});
+
+test('explicit logout revokes the cookie on the server before clearing the session', async () => {
+	const { logoutSession } = await import('./client');
+	session.setTokens({ access_token: 'signed-in' });
+	const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+		expect(String(input)).toContain('/auth/browser/logout');
+		expect(init?.credentials).toBe('include');
+		expect(session.isAuthenticated).toBe(true);
+		return new Response(null, { status: 204 });
+	});
+	await logoutSession(fetcher);
+	expect(session.isAuthenticated).toBe(false);
+});
+
+test('failed logout keeps the session available for a retry', async () => {
+	const { logoutSession } = await import('./client');
+	session.setTokens({ access_token: 'signed-in' });
+	await expect(logoutSession(async () => json(503, {}))).rejects.toThrow('Sign-out failed');
+	expect(session.isAuthenticated).toBe(true);
 });

@@ -24,26 +24,27 @@ function write(storage: 'sessionStorage' | 'localStorage', key: string, value: s
 	}
 }
 
-/**
- * The signed-in session. Only tokens are kept, and only for the tab (sessionStorage): the password exists in the
- * sign-in form and nowhere else. The access token is short-lived; the refresh token renews it and dies with the
- * password it was issued under.
- */
+/** Access tokens live only in memory; the server owns the HttpOnly refresh cookie. */
 class Session {
 	generation = 0;
-	accessToken = $state(read('sessionStorage', ACCESS_TOKEN_STORAGE));
-	refreshToken = $state(read('sessionStorage', REFRESH_TOKEN_STORAGE));
+	accessToken = $state('');
 	email = $state(read('localStorage', EMAIL_STORAGE));
 	isAuthenticated = $derived(this.accessToken.length > 0);
 
 	constructor() {
-		write('sessionStorage', LEGACY_API_KEY_STORAGE, '');
-		write('localStorage', LEGACY_API_KEY_STORAGE, '');
+		for (const key of [ACCESS_TOKEN_STORAGE, REFRESH_TOKEN_STORAGE, LEGACY_API_KEY_STORAGE]) {
+			write('sessionStorage', key, '');
+			write('localStorage', key, '');
+		}
+		if (typeof window !== 'undefined') {
+			window.addEventListener('storage', (event) => {
+				if (event.key === `${EMAIL_STORAGE}.logout`) this.logout();
+			});
+		}
 	}
 
 	setTokens(tokens: TokenPair) {
 		this.generation += 1;
-		this.refreshToken = '';
 		this.storeTokens(tokens);
 	}
 
@@ -55,10 +56,6 @@ class Session {
 
 	private storeTokens(tokens: TokenPair) {
 		this.accessToken = tokens.access_token;
-		// A refresh answers with a new refresh token; keep the old one only if it did not.
-		this.refreshToken = tokens.refresh_token || this.refreshToken;
-		write('sessionStorage', ACCESS_TOKEN_STORAGE, this.accessToken);
-		write('sessionStorage', REFRESH_TOKEN_STORAGE, this.refreshToken);
 	}
 
 	rememberEmail(email: string) {
@@ -66,12 +63,11 @@ class Session {
 		write('localStorage', EMAIL_STORAGE, email);
 	}
 
-	logout() {
+	logout(broadcast = false) {
 		this.generation += 1;
 		this.accessToken = '';
-		this.refreshToken = '';
-		write('sessionStorage', ACCESS_TOKEN_STORAGE, '');
-		write('sessionStorage', REFRESH_TOKEN_STORAGE, '');
+		if (broadcast)
+			write('localStorage', `${EMAIL_STORAGE}.logout`, `${Date.now()}-${Math.random()}`);
 	}
 }
 

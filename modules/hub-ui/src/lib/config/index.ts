@@ -5,8 +5,8 @@ export const EMAIL_STORAGE = 'autohub-email';
 /** The key the UI stored before sessions existed; removed on load so a stale one cannot linger. */
 export const LEGACY_API_KEY_STORAGE = 'scheduler-api-key';
 
-export const LOGIN_PATH = '/api/v1/users/login/';
-export const REFRESH_PATH = '/api/v1/users/login/refresh';
+export const LOGIN_PATH = '/api/v1/auth/browser/login';
+export const REFRESH_PATH = '/api/v1/auth/browser/refresh';
 
 export function apiBaseUrl(): string {
 	if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) {
@@ -14,3 +14,6 @@ export function apiBaseUrl(): string {
 	}
 	return '';
 }
+
+export const LOGOUT_PATH = '/api/v1/auth/browser/logout';
+export const BROWSER_HEADERS = { 'X-Browser-Session': '1' };

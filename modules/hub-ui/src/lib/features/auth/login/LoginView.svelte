@@ -32,7 +32,7 @@
 		errorMsg = null;
 
 		try {
-			const res = await api.POST('/api/v1/users/login/', {
+			const res = await api.POST('/api/v1/auth/browser/login', {
 				body: { username: email.trim(), password, scope: '' },
 				// The login endpoint is an OAuth2 password form, not JSON.
 				bodySerializer: (body) => new URLSearchParams(body as Record<string, string>),

@@ -33,7 +33,7 @@ test('signs in with the remembered email and keeps only the tokens', async () =>
 	await waitFor(() => expect(session.setTokens).toHaveBeenCalledWith(tokens));
 	expect(session.rememberEmail).toHaveBeenCalledWith('operator@example.com');
 	const [path, request] = api.POST.mock.calls[0];
-	expect(path).toBe('/api/v1/users/login/');
+	expect(path).toBe('/api/v1/auth/browser/login');
 	// An OAuth2 password form, not JSON.
 	expect(request.bodySerializer(request.body).toString()).toBe(
 		'username=operator%40example.com&password=operator-password&scope='

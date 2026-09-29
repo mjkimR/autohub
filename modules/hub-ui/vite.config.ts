@@ -29,7 +29,7 @@ export default defineConfig({
 	},
 	server: {
 		proxy: {
-			'^/api': backend,
+			'^/api': { target: backend, changeOrigin: false },
 			'^/docs': backend,
 			'^/openapi.json': backend
 		}
