@@ -10,6 +10,7 @@ from pathlib import Path
 from app.access_logging import configure_access_logging
 from app.auth import MACHINE_SCOPES, login_caller, login_lockout_listener, require_machine_admin
 from app.auth_settings import get_hub_auth_settings
+from app.common.database_schema import configure_schema
 from app.features import tasks
 from app.features.project_management.projects.errors import ProjectError
 from app.features.scheduling.schedule_configs.system import ensure_maintenance_schedule
@@ -18,6 +19,7 @@ from app.router import router
 from app_http_client.instance import close_http_client
 from app_layer_base.base.exceptions.handler import set_exception_handler
 from app_layer_base.core import middlewares
+from app_layer_base.core.database.engine import get_async_engine
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.core.log import logger
 from app_prebuilt_auth.api_key.config import get_api_key_settings
@@ -66,6 +68,7 @@ async def ensure_first_user() -> None:
 def get_lifespan():
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        configure_schema(get_async_engine())
         logger.info("Starting app lifespan")
         tasks.autodiscover()
         get_api_key_settings()

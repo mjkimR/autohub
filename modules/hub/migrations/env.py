@@ -3,6 +3,14 @@ from logging.config import fileConfig
 
 from alembic import context
 from app_layer_base.base.models.mixin import Base
+from sqlalchemy.engine import make_url
+from app.common.database_schema import (
+    database_schema,
+    include_schema_object,
+    offline_schema_sql,
+    prepare_migration_schema,
+)
+
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 import sqlalchemy as sa
@@ -65,9 +73,12 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_url()
+    schema = database_schema(make_url(url).get_backend_name())
     context.configure(
         url=url,
+        version_table_schema=schema,
+        include_object=include_schema_object,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -75,12 +86,17 @@ def run_migrations_offline() -> None:
     )
 
     with context.begin_transaction():
+        if schema:
+            for statement in offline_schema_sql(schema):
+                context.execute(statement)
         context.run_migrations()
 
 
 # Using Asyncio with Alembic
 # https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic
 def do_run_migrations(connection):
+    schema = prepare_migration_schema(connection)
+
     def process_revision_directives(context, revision, directives):
         if config.cmd_opts is None:
             print("No command options detected.")
@@ -105,6 +121,8 @@ def do_run_migrations(connection):
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
+        version_table_schema=schema,
+        include_object=include_schema_object,
         process_revision_directives=process_revision_directives,
         compare_type=compare_type,
         render_item=render_item,
@@ -112,6 +130,7 @@ def do_run_migrations(connection):
 
     with context.begin_transaction():
         context.run_migrations()
+    connection.commit()
 
 
 async def run_async_migrations():
