@@ -1,5 +1,6 @@
 """Bind typed application handlers to the shared policy registry."""
 
+import re
 from collections.abc import Awaitable, Callable
 from typing import cast
 
@@ -19,6 +20,9 @@ def register[InputModel: BaseModel, OutputModel: BaseModel](
     write: bool = False,
     ops: bool = False,
 ) -> None:
+    if len(name) > 64 or not re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", name):
+        raise ValueError("MCP tool names must be lowercase snake_case and at most 64 characters")
+
     async def invoke(_: ToolContext, arguments: BaseModel) -> ToolResult:
         return ToolResult.success(await handler(cast(InputModel, arguments)))
 

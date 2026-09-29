@@ -101,7 +101,7 @@ def register_projects(registry: ToolRegistry, deps: Dependencies) -> None:
                 raise ProjectError(
                     404,
                     "No connection-test option for this catalog",
-                    fix="Use projects.options with capability=connection_test to find a supported catalog.",
+                    fix="Use projects_options with capability=connection_test to find a supported catalog.",
                 )
         return ReadinessReport(
             items=[ReadinessView.from_option(option) for option in options], total_count=len(options)
@@ -109,7 +109,7 @@ def register_projects(registry: ToolRegistry, deps: Dependencies) -> None:
 
     register(
         registry,
-        "projects.list",
+        "projects_list",
         "Find projects by name or owner/repository; use the returned project ID.",
         Search,
         Items[ProjectView],
@@ -117,7 +117,7 @@ def register_projects(registry: ToolRegistry, deps: Dependencies) -> None:
     )
     register(
         registry,
-        "projects.get",
+        "projects_get",
         "Read project configuration and revision by project_id or owner/repository; use the returned ID for other tools.",
         ProjectLookup,
         ProjectView,
@@ -125,7 +125,7 @@ def register_projects(registry: ToolRegistry, deps: Dependencies) -> None:
     )
     register(
         registry,
-        "projects.create",
+        "projects_create",
         "Operator onboarding: find any existing project first, then connect the repository using an existing connector and verified CI contract. Explicitly set github.automation.auto_merge; all effective automation settings are returned. On conflict, find the existing project; do not blindly retry.",
         CreateProject,
         ProjectView,
@@ -135,8 +135,8 @@ def register_projects(registry: ToolRegistry, deps: Dependencies) -> None:
     )
     register(
         registry,
-        "projects.update",
-        "Patch configuration using expected_revision from projects.get. Set dry_run=true to validate and inspect changed paths without saving; apply the same patch/revision to save. Nested objects merge, lists replace, github=null disconnects. A preview is optional and does not reserve the revision.",
+        "projects_update",
+        "Patch configuration using expected_revision from projects_get. Set dry_run=true to validate and inspect changed paths without saving; apply the same patch/revision to save. Nested objects merge, lists replace, github=null disconnects. A preview is optional and does not reserve the revision.",
         UpdateProject,
         ProjectUpdateView,
         update_project,
@@ -145,7 +145,7 @@ def register_projects(registry: ToolRegistry, deps: Dependencies) -> None:
     )
     register(
         registry,
-        "projects.options",
+        "projects_options",
         "Read catalog choices and capacity; filter by capability/enabled_only and pass project_id to identify its configured selection. For onboarding or connection changes, include connectors_page={} for credential-free connector choices. Catalog and connector pages are independent. Skip when the current project selection suffices.",
         ProjectOptionsRequest,
         ProjectOptions,
@@ -153,7 +153,7 @@ def register_projects(registry: ToolRegistry, deps: Dependencies) -> None:
     )
     register(
         registry,
-        "projects.readiness",
+        "projects_readiness",
         "For onboarding, configuration changes or readiness diagnosis, report per catalog whether a connection test can start and which requirements are missing or need manual confirmation. This does not contact providers or prove CI readiness; an operator can start a connection test to verify it. Filter ai_catalog_id to inspect one catalog. status distinguishes blocked, manual_checks and configured. Not required before every run.",
         ReadinessRequest,
         ReadinessReport,

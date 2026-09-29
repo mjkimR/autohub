@@ -12,10 +12,13 @@
 시작·취소는 별도 machine의 `autohub:mcp:ops` 키로 호출한다. 양쪽 도구 목록과 호출을
 서버에서 분리하며 운영 키는 REST·scheduler·machine 관리 권한을 받지 않는다.
 키 발급 UI도 scope에 맞는 연결 주소를 제공한다. DB migration은 없다.
-기존 catalog·connector 조회는 `projects.options`로 통합했다. 중 등급 도구 8개에는
+기존 catalog·connector 조회는 `projects_options`로 통합했다. 중 등급 도구 8개에는
 설정 미리보기, 명시적인 자동 머지·구현 여부 선택, 재개 revision 검사, readiness 상태 구분,
 테스트 필터·paging·재시도와 후속 행동 안내를 보완했다. REST 입력 기본값은 유지한다.
 관련 MCP·인증·프로젝트·실행·연결 테스트 244개와 전체 lint·check를 통과했다.
+후속 이름 정리에서 공개 도구 17개를 snake_case로 통일하고 등록 시 최대 64자·문자 규칙을 검사한다.
+점 표기 별칭은 제공하지 않으므로 배포 후 도구 discovery와 저장된 호출·허용 목록 갱신이 필요하다.
+이름 변경 후 관련 테스트 58개와 전체 lint·check를 통과했다.
 배포와 실제 운영 키 발급·클라이언트 연결은 아직 수행하지 않았다.
 [연결·전환 안내](mcp.md), [도구별 평가](mcp-tool-review-2026-09-29.md)를 참고한다.
 

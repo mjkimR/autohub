@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import timedelta
 from uuid import UUID, uuid4
 
@@ -99,19 +100,19 @@ async def test_handshake_auth_discovery_and_scope_isolation(client, key, ops_key
     assert init.status_code == 200, init.text
     tools = (await rpc(client, key, "tools/list")).json()["result"]["tools"]
     names = {tool["name"] for tool in tools}
-    assert {"projects.list", "runs.enroll", "runs.get", "connection_tests.list"} <= names
+    assert {"projects_list", "runs_enroll", "runs_get", "connection_tests_list"} <= names
     assert not any(word in name for name in names for word in ("lease", "complete", "dispatch", "delete", "key"))
-    schema = next(tool["inputSchema"] for tool in tools if tool["name"] == "runs.list")
+    schema = next(tool["inputSchema"] for tool in tools if tool["name"] == "runs_list")
     assert schema["properties"]["limit"]["maximum"] == 100
     _, reader = await issue(client, [MCP_READ])
-    denied = await call(client, reader["key"], "runs.cancel", {"run_id": str(uuid4())}, error=True)
+    denied = await call(client, reader["key"], "runs_cancel", {"run_id": str(uuid4())}, error=True)
     assert denied["error"]["code"] == "MCP_FORBIDDEN"
-    created = await ops_call(client, ops_key, "projects.create", {"project": {"name": "Allowed"}})
+    created = await ops_call(client, ops_key, "projects_create", {"project": {"name": "Allowed"}})
     assert created["result"]["name"] == "Allowed"
-    assert (await call(client, reader["key"], "projects.list"))["result"]["total_count"] == 1
-    invalid = await call(client, key, "projects.list", {"limit": 101}, error=True)
+    assert (await call(client, reader["key"], "projects_list"))["result"]["total_count"] == 1
+    invalid = await call(client, key, "projects_list", {"limit": 101}, error=True)
     assert invalid["error"]["code"] == "MCP_INVALID_ARGUMENTS"
-    missing = await call(client, key, "projects.get", {"project_id": str(uuid4())}, error=True)
+    missing = await call(client, key, "projects_get", {"project_id": str(uuid4())}, error=True)
     assert missing["error"]["code"] == "NOT_FOUND"
 
 
@@ -176,7 +177,7 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
         json={"name": "GitHub", "provider": "github", "credentials": {"token": "secret-not-for-mcp"}},
     )
     assert connector.status_code == 201, connector.text
-    connectors = await call(client, key, "projects.options", {"connectors_page": {}})
+    connectors = await call(client, key, "projects_options", {"connectors_page": {}})
     assert connectors["result"]["connectors"]["items"][0]["id"] == connector.json()["id"]
     assert "secret-not-for-mcp" not in str(connectors)
     config = {
@@ -188,72 +189,72 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
             "automation": {"auto_merge": True},
         },
     }
-    project = (await ops_call(client, ops_key, "projects.create", {"project": config}))["result"]
+    project = (await ops_call(client, ops_key, "projects_create", {"project": config}))["result"]
     project_id = project["id"]
     assert project["github_connector_name"] == "GitHub"
-    found = await call(client, key, "projects.list", {"search": "owner/app"})
+    found = await call(client, key, "projects_list", {"search": "owner/app"})
     assert found["result"]["items"][0]["id"] == project_id
-    by_repository = await call(client, key, "projects.get", {"repository": "Owner/App"})
+    by_repository = await call(client, key, "projects_get", {"repository": "Owner/App"})
     assert by_repository["result"]["id"] == project_id
-    unknown = await call(client, key, "projects.get", {"repository": "owner/unknown"}, error=True)
+    unknown = await call(client, key, "projects_get", {"repository": "owner/unknown"}, error=True)
     assert unknown["error"]["code"] == "NOT_FOUND"
     ambiguous = await call(
-        client, key, "projects.get", {"project_id": project_id, "repository": "owner/app"}, error=True
+        client, key, "projects_get", {"project_id": project_id, "repository": "owner/app"}, error=True
     )
     assert ambiguous["error"]["code"] == "MCP_INVALID_ARGUMENTS"
     update = {
         "project_id": project_id,
         "project": {"expected_revision": project["revision"], "github": {"automation": {"auto_merge": False}}},
     }
-    preview = (await ops_call(client, ops_key, "projects.update", update | {"dry_run": True}))["result"]
+    preview = (await ops_call(client, ops_key, "projects_update", update | {"dry_run": True}))["result"]
     assert preview["applied"] is False
     assert preview["revision"] == project["revision"]
     assert preview["changes"] == [{"path": "github.automation.auto_merge", "before": True, "after": False}]
-    unchanged = (await call(client, key, "projects.get", {"project_id": project_id}))["result"]
+    unchanged = (await call(client, key, "projects_get", {"project_id": project_id}))["result"]
     assert unchanged["github"]["automation"]["auto_merge"] is True
     assert unchanged["revision"] == project["revision"]
-    updated = (await ops_call(client, ops_key, "projects.update", update))["result"]
+    updated = (await ops_call(client, ops_key, "projects_update", update))["result"]
     assert updated["applied"] is True
     assert updated["changes"] == preview["changes"]
     assert updated["github"]["automation"]["auto_merge"] is False
     assert updated["github"]["verification"] == config["github"]["verification"]
     renamed = {"project_id": project_id, "project": {"expected_revision": updated["revision"], "name": "Renamed"}}
-    renamed_result = (await ops_call(client, ops_key, "projects.update", renamed))["result"]
+    renamed_result = (await ops_call(client, ops_key, "projects_update", renamed))["result"]
     assert renamed_result["name"] == "Renamed"
     assert renamed_result["github"]["automation"]["auto_merge"] is False
-    stale = await ops_call(client, ops_key, "projects.update", update, error=True)
+    stale = await ops_call(client, ops_key, "projects_update", update, error=True)
     assert stale["error"]["code"] == "CONFLICT"
     invalid_patch = {"expected_revision": renamed_result["revision"], "github": {"automation": {"auto_merge": None}}}
     invalid = await ops_call(
-        client, ops_key, "projects.update", {"project_id": project_id, "project": invalid_patch}, error=True
+        client, ops_key, "projects_update", {"project_id": project_id, "project": invalid_patch}, error=True
     )
     assert invalid["error"]["code"] == "INVALID_REQUEST"
     assert "auto_merge" in invalid["error"]["message"]
     args = {"project_id": project_id, "pull_request": {"pull_number": 7, "implemented": True}}
-    run = (await call(client, key, "runs.enroll", args))["result"]
+    run = (await call(client, key, "runs_enroll", args))["result"]
     assert run["state"] == "awaiting_ci"
     assert run["catalog_key"]
     assert "private PR body" not in str(run)
-    duplicate = await call(client, key, "runs.enroll", args, error=True)
+    duplicate = await call(client, key, "runs_enroll", args, error=True)
     assert duplicate["error"]["code"] == "CONFLICT"
-    assert (await call(client, key, "runs.list", {"project_id": project_id}))["result"]["total_count"] == 1
-    assert (await call(client, key, "runs.list", {"pull_number": 7}))["result"]["items"][0]["id"] == run["id"]
-    assert (await call(client, key, "runs.list", {"pull_number": 70}))["result"]["total_count"] == 0
+    assert (await call(client, key, "runs_list", {"project_id": project_id}))["result"]["total_count"] == 1
+    assert (await call(client, key, "runs_list", {"pull_number": 7}))["result"]["items"][0]["id"] == run["id"]
+    assert (await call(client, key, "runs_list", {"pull_number": 70}))["result"]["total_count"] == 0
     run_args = {"run_id": run["id"]}
-    outcomes = (await call(client, key, "runs.attempts", run_args))["result"]
+    outcomes = (await call(client, key, "runs_attempts", run_args))["result"]
     assert len(outcomes["items"]) == 1
     assert "request_snapshot" not in str(outcomes)
-    paused = (await call(client, key, "runs.pause", run_args))["result"]
+    paused = (await call(client, key, "runs_pause", run_args))["result"]
     assert paused["state"] == "paused"
-    stale_resume = await call(client, key, "runs.resume", run_args | {"expected_revision": run["revision"]}, error=True)
+    stale_resume = await call(client, key, "runs_resume", run_args | {"expected_revision": run["revision"]}, error=True)
     assert stale_resume["error"]["code"] == "CONFLICT"
-    assert (await call(client, key, "runs.get", run_args))["result"]["revision"] == paused["revision"]
-    assert (await call(client, key, "runs.resume", run_args | {"expected_revision": paused["revision"]}))["result"][
+    assert (await call(client, key, "runs_get", run_args))["result"]["revision"] == paused["revision"]
+    assert (await call(client, key, "runs_resume", run_args | {"expected_revision": paused["revision"]}))["result"][
         "state"
     ] == "awaiting_ci"
-    assert (await call(client, key, "runs.cancel", run_args))["result"]["state"] == "canceled"
+    assert (await call(client, key, "runs_cancel", run_args))["result"]["state"] == "canceled"
     # A settled run returns at once even when asked to wait.
-    assert (await call(client, key, "runs.get", run_args | {"wait_seconds": 20}))["result"]["state"] == "canceled"
+    assert (await call(client, key, "runs_get", run_args | {"wait_seconds": 20}))["result"]["state"] == "canceled"
     # A later page must retain totals and summary across the entire history.
     async with session_maker() as session:
         session.add(
@@ -268,19 +269,19 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
             )
         )
         await session.commit()
-    page = (await call(client, key, "runs.attempts", run_args | {"offset": 1, "limit": 1}))["result"]
+    page = (await call(client, key, "runs_attempts", run_args | {"offset": 1, "limit": 1}))["result"]
     assert [item["attempt_number"] for item in page["items"]] == [2]
     assert page["total_count"] == 2
     assert page["summary"]["attempts_by_kind"] == {"implementation": 1, "ci-fix": 1}
-    empty = (await call(client, key, "runs.attempts", run_args | {"offset": 2, "limit": 1}))["result"]
+    empty = (await call(client, key, "runs_attempts", run_args | {"offset": 2, "limit": 1}))["result"]
     assert empty["items"] == [] and empty["total_count"] == 2
-    catalogs = (await call(client, key, "projects.options"))["result"]["catalogs"]["items"]
+    catalogs = (await call(client, key, "projects_options"))["result"]["catalogs"]["items"]
     assert catalogs
     selected = (
         await call(
             client,
             key,
-            "projects.options",
+            "projects_options",
             {"project_id": project_id, "capability": "pipeline_delivery", "enabled_only": True, "offset": 100},
         )
     )["result"]
@@ -289,11 +290,11 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
     assert selected["selected_catalog_key"] == "personal-codex"
     assert selected["selection_source"] == "default"
     assert selected["connectors"] is None
-    options = (await call(client, key, "projects.readiness", {"project_id": project_id}))["result"]["items"]
+    options = (await call(client, key, "projects_readiness", {"project_id": project_id}))["result"]["items"]
     assert options and all("spec" not in option for option in options)
     assert all(item["status"] != "configured" for option in options for item in option["pending"])
     readiness = (
-        await call(client, key, "projects.readiness", {"project_id": project_id, "ai_catalog_id": catalogs[0]["id"]})
+        await call(client, key, "projects_readiness", {"project_id": project_id, "ai_catalog_id": catalogs[0]["id"]})
     )["result"]
     assert readiness["check_kind"] == "configuration_only"
     assert len(readiness["items"]) == 1
@@ -306,40 +307,40 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
     stale_test = await ops_call(
         client,
         ops_key,
-        "connection_tests.start",
+        "connection_tests_start",
         request | {"expected_project_revision": project["revision"]},
         error=True,
     )
     assert stale_test["error"]["code"] == "CONFLICT"
-    first = (await ops_call(client, ops_key, "connection_tests.start", request))["result"]
-    repeated = (await ops_call(client, ops_key, "connection_tests.start", request))["result"]
+    first = (await ops_call(client, ops_key, "connection_tests_start", request))["result"]
+    repeated = (await ops_call(client, ops_key, "connection_tests_start", request))["result"]
     assert first["id"] == repeated["id"] == request["request_id"]
     assert first["next_action"] == "wait"
     replay_after_change = await ops_call(
-        client, ops_key, "connection_tests.start", request | {"expected_project_revision": project["revision"]}
+        client, ops_key, "connection_tests_start", request | {"expected_project_revision": project["revision"]}
     )
     assert replay_after_change["result"]["id"] == first["id"]
-    listed = (await call(client, key, "connection_tests.list", {"project_id": project_id}))["result"]
+    listed = (await call(client, key, "connection_tests_list", {"project_id": project_id}))["result"]
     assert [test["id"] for test in listed["items"]] == [first["id"]]
     assert listed["history_limit"] == 30 and listed["next_offset"] is None
-    assert (await call(client, key, "connection_tests.list", {"project_id": project_id, "status": "succeeded"}))[
+    assert (await call(client, key, "connection_tests_list", {"project_id": project_id, "status": "succeeded"}))[
         "result"
     ]["items"] == []
     assert (
         await call(
             client,
             key,
-            "connection_tests.list",
+            "connection_tests_list",
             {"project_id": project_id, "configuration_current": True, "ai_catalog_id": first["ai_catalog_id"]},
         )
     )["result"]["total_count"] == 1
-    current = await call(client, key, "connection_tests.get", {"project_id": project_id, "test_id": first["id"]})
+    current = await call(client, key, "connection_tests_get", {"project_id": project_id, "test_id": first["id"]})
     assert current["result"]["cleanup_status"] == "pending"
     assert isinstance(current["result"]["evidence"], dict)
     assert current["result"]["phase_label"]
 
     canceled = await ops_call(
-        client, ops_key, "connection_tests.cancel", {"project_id": project_id, "test_id": first["id"]}
+        client, ops_key, "connection_tests_cancel", {"project_id": project_id, "test_id": first["id"]}
     )
     assert canceled["result"]["cancel_requested"] is True
     assert canceled["result"]["status"] == "canceled"
@@ -348,18 +349,18 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
 
 async def test_surfaces_expose_exact_tools_and_reject_cross_surface_calls(client, key, ops_key):
     reads = {
-        "projects.list",
-        "projects.get",
-        "projects.readiness",
-        "projects.options",
-        "runs.list",
-        "runs.get",
-        "runs.attempts",
-        "connection_tests.list",
-        "connection_tests.get",
+        "projects_list",
+        "projects_get",
+        "projects_readiness",
+        "projects_options",
+        "runs_list",
+        "runs_get",
+        "runs_attempts",
+        "connection_tests_list",
+        "connection_tests_get",
     }
-    work_writes = {"runs.enroll", "runs.pause", "runs.resume", "runs.cancel"}
-    ops_writes = {"projects.create", "projects.update", "connection_tests.start", "connection_tests.cancel"}
+    work_writes = {"runs_enroll", "runs_pause", "runs_resume", "runs_cancel"}
+    ops_writes = {"projects_create", "projects_update", "connection_tests_start", "connection_tests_cancel"}
     _, combined = await issue(client, [MCP_READ, MCP_WRITE, MCP_OPS])
     discovered = set()
     for path, credential, expected, excluded in (
@@ -369,6 +370,7 @@ async def test_surfaces_expose_exact_tools_and_reject_cross_surface_calls(client
         tools = (await rpc(client, credential, "tools/list", path=path)).json()["result"]["tools"]
         names = {tool["name"] for tool in tools}
         assert names == expected
+        assert all(len(name) <= 64 and re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", name) for name in names)
         assert discovered.isdisjoint(names)
         discovered.update(names)
         for name in excluded:
@@ -386,12 +388,32 @@ async def test_surfaces_expose_exact_tools_and_reject_cross_surface_calls(client
                 )
             ).json()["result"]
             assert result["isError"] is True
+    # Dotted names are not exposed as compatibility aliases on either surface.
+    for path, credential, names in (
+        ("/mcp/", key, reads | work_writes),
+        ("/ops/mcp/", ops_key, ops_writes),
+    ):
+        for name in names:
+            prefix, operation = name.rsplit("_", 1)
+            result = (
+                await rpc(
+                    client,
+                    credential,
+                    "tools/call",
+                    {
+                        "name": f"{prefix}.{operation}",
+                        "arguments": {},
+                    },
+                    path=path,
+                )
+            ).json()["result"]
+            assert result["isError"] is True
     assert len(discovered) == 17
     for removed in ("catalogs.list", "connectors.list"):
         assert removed not in discovered
         result = (await rpc(client, key, "tools/call", {"name": removed, "arguments": {}})).json()["result"]
         assert result["isError"] is True
-    assert (await call(client, key, "projects.list"))["ok"]
+    assert (await call(client, key, "projects_list"))["ok"]
     for path, credential in (("/ops/mcp/", key), ("/mcp/", ops_key)):
         for method, params in (
             (
@@ -399,7 +421,7 @@ async def test_surfaces_expose_exact_tools_and_reject_cross_surface_calls(client
                 {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}},
             ),
             ("tools/list", {}),
-            ("tools/call", {"name": "projects.list", "arguments": {}}),
+            ("tools/call", {"name": "projects_list", "arguments": {}}),
         ):
             assert (await rpc(client, credential, method, params, path=path)).status_code == 403
 
@@ -444,7 +466,7 @@ async def test_options_independent_pages_and_explicit_mutation_inputs(client, ke
         await call(
             client,
             key,
-            "projects.options",
+            "projects_options",
             {
                 "offset": 100,
                 "connectors_page": {"limit": 1},
@@ -455,7 +477,7 @@ async def test_options_independent_pages_and_explicit_mutation_inputs(client, ke
         await call(
             client,
             key,
-            "projects.options",
+            "projects_options",
             {
                 "connectors_page": {"offset": 1, "limit": 1},
             },
@@ -467,16 +489,16 @@ async def test_options_independent_pages_and_explicit_mutation_inputs(client, ke
     assert first["connectors"]["items"][0]["id"] != second["connectors"]["items"][0]["id"]
     assert "must-stay-private" not in str(first) + str(second)
     assert any(item["key"] == "disabled-codex" for item in second["catalogs"]["items"])
-    enabled = (await call(client, key, "projects.options", {"enabled_only": True, "capability": "pipeline_delivery"}))[
+    enabled = (await call(client, key, "projects_options", {"enabled_only": True, "capability": "pipeline_delivery"}))[
         "result"
     ]
     assert all(item["enabled"] and item["pipeline_delivery"] for item in enabled["catalogs"]["items"])
     assert all(item["key"] != "disabled-codex" for item in enabled["catalogs"]["items"])
     for name, args, path, credential in (
-        ("runs.enroll", {"project_id": str(uuid4()), "pull_request": {"pull_number": 7}}, "/mcp/", key),
-        ("runs.resume", {"run_id": str(uuid4())}, "/mcp/", key),
+        ("runs_enroll", {"project_id": str(uuid4()), "pull_request": {"pull_number": 7}}, "/mcp/", key),
+        ("runs_resume", {"run_id": str(uuid4())}, "/mcp/", key),
         (
-            "projects.create",
+            "projects_create",
             {
                 "project": {
                     "name": "Missing policy",
@@ -493,7 +515,7 @@ async def test_options_independent_pages_and_explicit_mutation_inputs(client, ke
     ):
         denied = await call(client, credential, name, args, error=True, path=path)
         assert denied["error"]["code"] == "MCP_INVALID_ARGUMENTS"
-    assert (await call(client, key, "projects.list"))["result"]["total_count"] == 0
+    assert (await call(client, key, "projects_list"))["result"]["total_count"] == 0
 
 
 async def test_project_preview_validates_and_apply_rejects_intervening_changes(client, key, ops_key):
@@ -510,10 +532,10 @@ async def test_project_preview_validates_and_apply_rejects_intervening_changes(c
             "automation": {"auto_merge": False},
         },
     }
-    project = (await ops_call(client, ops_key, "projects.create", {"project": config}))["result"]
+    project = (await ops_call(client, ops_key, "projects_create", {"project": config}))["result"]
     target = {"project_id": project["id"]}
     changes = {"expected_revision": project["revision"], "github": {"verification": {"required_jobs": ["check"]}}}
-    preview = (await ops_call(client, ops_key, "projects.update", target | {"project": changes, "dry_run": True}))[
+    preview = (await ops_call(client, ops_key, "projects_update", target | {"project": changes, "dry_run": True}))[
         "result"
     ]
     assert preview["github"]["verification"]["required_jobs"] == ["check"]
@@ -524,7 +546,7 @@ async def test_project_preview_validates_and_apply_rejects_intervening_changes(c
         await ops_call(
             client,
             ops_key,
-            "projects.update",
+            "projects_update",
             target
             | {
                 "project": {"expected_revision": project["revision"], "github": None},
@@ -533,12 +555,12 @@ async def test_project_preview_validates_and_apply_rejects_intervening_changes(c
         )
     )["result"]
     assert detached["github"] is None and detached["applied"] is False
-    persisted = (await call(client, key, "projects.get", target))["result"]
+    persisted = (await call(client, key, "projects_get", target))["result"]
     assert persisted["github"] == project["github"] and persisted["revision"] == project["revision"]
     invalid = await ops_call(
         client,
         ops_key,
-        "projects.update",
+        "projects_update",
         target
         | {
             "project": {"expected_revision": project["revision"], "github": {"github_connector_id": str(uuid4())}},
@@ -551,16 +573,16 @@ async def test_project_preview_validates_and_apply_rejects_intervening_changes(c
         await ops_call(
             client,
             ops_key,
-            "projects.update",
+            "projects_update",
             target
             | {
                 "project": {"expected_revision": project["revision"], "name": "Concurrent edit"},
             },
         )
     )["result"]
-    stale = await ops_call(client, ops_key, "projects.update", target | {"project": changes}, error=True)
+    stale = await ops_call(client, ops_key, "projects_update", target | {"project": changes}, error=True)
     assert stale["error"]["code"] == "CONFLICT"
-    current = (await call(client, key, "projects.get", target))["result"]
+    current = (await call(client, key, "projects_get", target))["result"]
     assert current["name"] == renamed["name"]
     assert current["github"]["verification"]["required_jobs"] == ["lint", "test"]
 
@@ -568,7 +590,7 @@ async def test_project_preview_validates_and_apply_rejects_intervening_changes(c
 async def test_connection_history_filters_and_paginates_only_recent_window(client, key, ops_key, session_maker):
     from app.features.project_management.connection_tests.models import ConnectionTest
 
-    project = (await ops_call(client, ops_key, "projects.create", {"project": {"name": "History"}}))["result"]
+    project = (await ops_call(client, ops_key, "projects_create", {"project": {"name": "History"}}))["result"]
     now = utc_now()
     ids = [uuid4() for _ in range(32)]
     async with session_maker() as session:
@@ -594,7 +616,7 @@ async def test_connection_history_filters_and_paginates_only_recent_window(clien
         await call(
             client,
             key,
-            "connection_tests.list",
+            "connection_tests_list",
             target
             | {
                 "status": "succeeded",
@@ -609,7 +631,7 @@ async def test_connection_history_filters_and_paginates_only_recent_window(clien
         await call(
             client,
             key,
-            "connection_tests.list",
+            "connection_tests_list",
             target
             | {
                 "status": "succeeded",
@@ -619,7 +641,7 @@ async def test_connection_history_filters_and_paginates_only_recent_window(clien
         )
     )["result"]
     assert [test["id"] for test in next_page["items"]] == [str(ids[4]), str(ids[6])]
-    empty = (await call(client, key, "connection_tests.list", target | {"offset": 30}))["result"]
+    empty = (await call(client, key, "connection_tests_list", target | {"offset": 30}))["result"]
     assert empty["items"] == [] and empty["total_count"] == 30 and empty["next_offset"] is None
-    old = (await call(client, key, "connection_tests.get", target | {"test_id": str(ids[31])}))["result"]
+    old = (await call(client, key, "connection_tests_get", target | {"test_id": str(ids[31])}))["result"]
     assert old["id"] == str(ids[31])

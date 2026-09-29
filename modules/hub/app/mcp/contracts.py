@@ -234,7 +234,7 @@ class ReadinessRequest(ProjectId):
 
 class StartTest(ProjectId):
     request_id: UUID = Field(
-        description="Generate once and reuse on retries. This is also the test_id for connection_tests.get, even if the response is lost"
+        description="Generate once and reuse on retries. This is also the test_id for connection_tests_get, even if the response is lost"
     )
     expected_project_revision: int | None = Field(
         default=None,

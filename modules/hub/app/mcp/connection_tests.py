@@ -54,8 +54,8 @@ def register_connection_tests(registry: ToolRegistry, deps: Dependencies) -> Non
 
     register(
         registry,
-        "connection_tests.start",
-        "Operator onboarding/configuration validation, not a prerequisite for each run: queue an isolated provider/CI test that can create a temporary branch and PR. Reuse request_id on retries; it is also the test_id, so recover via connection_tests.get even after a lost response. Optionally pass expected_project_revision from projects.get to guard new tests. Existing request IDs replay before that check. The scheduler progresses work and cleanup; follow next_action until settled.",
+        "connection_tests_start",
+        "Operator onboarding/configuration validation, not a prerequisite for each run: queue an isolated provider/CI test that can create a temporary branch and PR. Reuse request_id on retries; it is also the test_id, so recover via connection_tests_get even after a lost response. Optionally pass expected_project_revision from projects_get to guard new tests. Existing request IDs replay before that check. The scheduler progresses work and cleanup; follow next_action until settled.",
         StartTest,
         TestView,
         start,
@@ -64,7 +64,7 @@ def register_connection_tests(registry: ToolRegistry, deps: Dependencies) -> Non
     )
     register(
         registry,
-        "connection_tests.list",
+        "connection_tests_list",
         "Recover a lost test ID or inspect prior validation; use get directly when the ID is known. Filter by catalog, status or configuration_current and paginate with next_offset. Results and total_count cover only the latest history_limit=30 entries, newest first; use get for older known IDs.",
         TestFilter,
         TestList,
@@ -72,7 +72,7 @@ def register_connection_tests(registry: ToolRegistry, deps: Dependencies) -> Non
     )
     register(
         registry,
-        "connection_tests.get",
+        "connection_tests_get",
         "Read connection-test progress, evidence links and cleanup status. Set wait_seconds to wait for the next change; the test is done when status is not running and cleanup is completed or failed.",
         TestWait,
         TestView,
@@ -80,7 +80,7 @@ def register_connection_tests(registry: ToolRegistry, deps: Dependencies) -> Non
     )
     register(
         registry,
-        "connection_tests.cancel",
+        "connection_tests_cancel",
         "Request test cancellation and advance cleanup once. If the response is lost, get the test again; cleanup continues in the scheduler.",
         TestId,
         TestView,

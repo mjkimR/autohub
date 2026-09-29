@@ -13,6 +13,15 @@
 - 일반 write 키는 운영 endpoint에 접근할 수 없고, 모든 scope가 있어도 다른 endpoint의 도구를 호출할 수 없다.
 - scope는 machine 단위다. 동일 machine에서 키만 하나 더 발급해서는 권한이 분리되지 않는다.
 
+## 도구 이름 호환성
+
+공개 이름 17개는 모두 소문자 snake_case이며 최대 64자로 제한한다.
+예: `projects.options` → `projects_options`, `runs.enroll` → `runs_enroll`,
+`connection_tests.start` → `connection_tests_start`. 등록 시 규칙을 검사한다.
+점이 있는 이름은 별칭으로 남기지 않는다. 배포 후 discovery와 저장된 호출·허용 목록을 갱신한다.
+내부 Python 메서드 경로나 scheduler task 이름은 별개의 계약이며 이 변경 대상이 아니다.
+이름 변경 후 관련 테스트 58개와 전체 lint·check를 통과했다.
+
 ## 평가 기준
 
 - **상: 그대로 유지.** 독립된 목적과 효과가 분명하고 현재 계약으로 직접 필요하다.
@@ -23,7 +32,7 @@
 
 ## 하 1개 통합 결과
 
-`connectors.list`를 `catalogs.list`와 묶어 **`projects.options`**로 통합했다.
+`connectors.list`를 `catalogs.list`와 묶어 **`projects_options`**로 통합했다.
 기존 두 이름은 공개 목록·호출에서 제거했고 별칭을 남기지 않았다.
 기본 응답은 catalog 선택지이며, 온보딩에는 `connectors_page={}`를 지정해 connector 선택지도 받는다.
 기존 프로젝트 정보가 없어도 호출 가능하다. credential·connector config·catalog 내부 정책은 반환하지 않는다.
@@ -33,14 +42,14 @@ Catalog와 connector에 독립된 pagination과 total을 제공하므로 한쪽 
 
 | 기존 도구 → 현재 도구 | 연결 | 구현한 보완 |
 | --- | --- | --- |
-| `catalogs.list` → `projects.options` | 작업용 | capability·enabled 필터, 필터 적용 후 paging, project_id 지정 시 설정된 catalog 선택을 페이지와 무관하게 반환. 온보딩 connector 선택지 통합. 기본 설정이 충분하면 호출 생략 가능. |
-| `projects.readiness` | 작업용 | catalog 하나를 지정해 조회 가능. `check_kind=configuration_only`와 `blocked/manual_checks/configured` 상태를 반환해 설정 확인과 실제 검증을 구분. `ready=true`여도 manual 항목은 완료로 취급하지 않음. |
-| `connection_tests.list` | 작업용 | catalog·실행 상태·현재 설정 일치 여부 필터와 offset paging 제공. `history_limit=30`, 해당 범위의 matching total, `next_offset` 명시. 오래된 ID는 get으로 직접 조회. |
-| `runs.enroll` | 작업용 | `pull_request.implemented`를 필수로 받아 구현 요청과 기존 코드 CI 관측을 구분. 누락·오타 필드를 거부. 응답 유실 시 project_id + pull_number로 기존 실행을 찾도록 안내. |
-| `runs.resume` | 작업용 | 검사한 run의 `expected_revision` 필수. 잠금 안에서 비교해 오래된 상태의 재개를 GitHub I/O 전에 거부. 기존 외부 조회 후 revision 재검사도 유지. |
-| `projects.create` | 운영용 | GitHub 연결 생성 시 `github.automation.auto_merge` 명시적 선택 필수. 나머지 기본 설정은 schema·응답에 공개. GitHub 없는 프로젝트 생성은 유지. |
-| `projects.update` | 운영용 | 선택적 `dry_run`으로 실제 merge·설정 검증을 저장 없이 수행. 경로별 before/after와 `applied` 반환. 같은 expected_revision으로 적용하고 중간 변경은 거부. 기존 nested merge·list replace·연결 해제 규칙 유지. |
-| `connection_tests.start` | 운영용 | request_id = test_id 계약을 schema에 명시해 응답 유실 후 바로 get 가능. 선택적 project revision 검사로 오래된 설정에서 새 테스트 시작 방지. 기존 request ID 재전송은 검사보다 먼저 복구. 응답의 next_action으로 cleanup·실패·설정 불일치 후속 행동 구분. |
+| `catalogs.list` → `projects_options` | 작업용 | capability·enabled 필터, 필터 적용 후 paging, project_id 지정 시 설정된 catalog 선택을 페이지와 무관하게 반환. 온보딩 connector 선택지 통합. 기본 설정이 충분하면 호출 생략 가능. |
+| `projects_readiness` | 작업용 | catalog 하나를 지정해 조회 가능. `check_kind=configuration_only`와 `blocked/manual_checks/configured` 상태를 반환해 설정 확인과 실제 검증을 구분. `ready=true`여도 manual 항목은 완료로 취급하지 않음. |
+| `connection_tests_list` | 작업용 | catalog·실행 상태·현재 설정 일치 여부 필터와 offset paging 제공. `history_limit=30`, 해당 범위의 matching total, `next_offset` 명시. 오래된 ID는 get으로 직접 조회. |
+| `runs_enroll` | 작업용 | `pull_request.implemented`를 필수로 받아 구현 요청과 기존 코드 CI 관측을 구분. 누락·오타 필드를 거부. 응답 유실 시 project_id + pull_number로 기존 실행을 찾도록 안내. |
+| `runs_resume` | 작업용 | 검사한 run의 `expected_revision` 필수. 잠금 안에서 비교해 오래된 상태의 재개를 GitHub I/O 전에 거부. 기존 외부 조회 후 revision 재검사도 유지. |
+| `projects_create` | 운영용 | GitHub 연결 생성 시 `github.automation.auto_merge` 명시적 선택 필수. 나머지 기본 설정은 schema·응답에 공개. GitHub 없는 프로젝트 생성은 유지. |
+| `projects_update` | 운영용 | 선택적 `dry_run`으로 실제 merge·설정 검증을 저장 없이 수행. 경로별 before/after와 `applied` 반환. 같은 expected_revision으로 적용하고 중간 변경은 거부. 기존 nested merge·list replace·연결 해제 규칙 유지. |
+| `connection_tests_start` | 운영용 | request_id = test_id 계약을 schema에 명시해 응답 유실 후 바로 get 가능. 선택적 project revision 검사로 오래된 설정에서 새 테스트 시작 방지. 기존 request ID 재전송은 검사보다 먼저 복구. 응답의 next_action으로 cleanup·실패·설정 불일치 후속 행동 구분. |
 
 필수 입력은 에이전트가 의도를 명시하도록 하는 계약이다. 별도의 사용자 승인 단계를 추가하지 않는다.
 설정 미리보기 역시 선택 사항이고, 이미 최신 문맥이 있으면 선행 조회를 반복할 필요가 없다.
@@ -50,15 +59,15 @@ Catalog와 connector에 독립된 pagination과 total을 제공하므로 한쪽 
 
 | 도구 | 연결 | 유지 이유 |
 | --- | --- | --- |
-| `projects.list` | 작업용 | 이름·repository로 프로젝트 탐색. |
-| `projects.get` | 작업용 | 대상·설정·최신 revision 확인. |
-| `runs.list` | 작업용 | 진행 작업 탐색과 등록 응답 유실 복구. |
-| `runs.get` | 작업용 | 실행 상태·PR 링크 확인과 변경 대기. |
-| `runs.attempts` | 작업용 | 필요할 때만 시도별 실패 원인·외부 대화 링크 조회. |
-| `connection_tests.get` | 작업용 | 실제 검증 근거와 cleanup 확인. 공통 테스트 응답에 next_action 추가. |
-| `runs.pause` | 작업용 | 재개 가능한 중지. 이미 전달된 외부 작업은 계속될 수 있음. |
-| `runs.cancel` | 작업용 | Hub 진행 종료. pause와 다른 효과이므로 독립 유지. |
-| `connection_tests.cancel` | 운영용 | 테스트 취소·cleanup 요청. 완료 여부는 get으로 확인. |
+| `projects_list` | 작업용 | 이름·repository로 프로젝트 탐색. |
+| `projects_get` | 작업용 | 대상·설정·최신 revision 확인. |
+| `runs_list` | 작업용 | 진행 작업 탐색과 등록 응답 유실 복구. |
+| `runs_get` | 작업용 | 실행 상태·PR 링크 확인과 변경 대기. |
+| `runs_attempts` | 작업용 | 필요할 때만 시도별 실패 원인·외부 대화 링크 조회. |
+| `connection_tests_get` | 작업용 | 실제 검증 근거와 cleanup 확인. 공통 테스트 응답에 next_action 추가. |
+| `runs_pause` | 작업용 | 재개 가능한 중지. 이미 전달된 외부 작업은 계속될 수 있음. |
+| `runs_cancel` | 작업용 | Hub 진행 종료. pause와 다른 효과이므로 독립 유지. |
+| `connection_tests_cancel` | 운영용 | 테스트 취소·cleanup 요청. 완료 여부는 get으로 확인. |
 
 현재 도구는 **상으로 평가했던 9개 + 보완한 중 8개 = 17개**다.
 하 1개는 options에 통합했으며, 중 도구의 실제 모델 사용성이 검증됐다는 이유로 등급을 자동 상향하지 않는다.

@@ -63,7 +63,7 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
 
     register(
         registry,
-        "runs.list",
+        "runs_list",
         "List runs, including prior enrollment after a lost response; filter by pull_number for one pull request. Results omit PR bodies and worker state.",
         RunFilter,
         Items[RunView],
@@ -71,7 +71,7 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
     )
     register(
         registry,
-        "runs.get",
+        "runs_get",
         "Read current run state and PR link. Set wait_seconds to wait for the next state change; background work continues after disconnect.",
         RunWait,
         RunView,
@@ -79,8 +79,8 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
     )
     register(
         registry,
-        "runs.enroll",
-        "Register an existing open PR for background execution. Does not create a PR. Explicitly set implemented=true for completed code or false to request implementation; omission is rejected. Existing project automation and merge policies apply. Active duplicates conflict; use runs.list with project_id and pull_number to recover after a lost response.",
+        "runs_enroll",
+        "Register an existing open PR for background execution. Does not create a PR. Explicitly set implemented=true for completed code or false to request implementation; omission is rejected. Existing project automation and merge policies apply. Active duplicates conflict; use runs_list with project_id and pull_number to recover after a lost response.",
         Enroll,
         RunView,
         enroll,
@@ -88,7 +88,7 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
     )
     register(
         registry,
-        "runs.attempts",
+        "runs_attempts",
         "Read bounded attempt outcomes, failure details and conversation links without request snapshots.",
         AttemptFilter,
         AttemptList,
@@ -96,7 +96,7 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
     )
     register(
         registry,
-        "runs.pause",
+        "runs_pause",
         "Pause a run and release its lease; already delivered external work may continue.",
         Pause,
         RunView,
@@ -105,7 +105,7 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
     )
     register(
         registry,
-        "runs.resume",
+        "runs_resume",
         "Resume a paused or blocked run after inspecting and resolving its blocking cause and reconciling its PR. Pass the inspected expected_revision; stale revisions fail before external work. May resume agent work; after a lost response read status before retrying.",
         Resume,
         RunView,
@@ -114,7 +114,7 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
     )
     register(
         registry,
-        "runs.cancel",
+        "runs_cancel",
         "Cancel Hub progression for a run. Already delivered external work may continue.",
         RunId,
         RunView,
