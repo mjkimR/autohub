@@ -19,7 +19,6 @@
 	let busy = $state(false);
 	let issued = $state<Issued | null>(null);
 	let confirmRevoke = $state('');
-	const mcp = $derived((machine.scopes ?? []).some((scope) => scope.startsWith('autohub:mcp:')));
 
 	onMount(() => {
 		void load();
@@ -91,7 +90,7 @@
 
 <div class="space-y-4 bg-muted/30 p-4">
 	{#if issued}
-		<IssuedKeyNotice {issued} {mcp} ondismiss={() => (issued = null)} />
+		<IssuedKeyNotice {issued} scopes={machine.scopes ?? []} ondismiss={() => (issued = null)} />
 	{/if}
 	{#if loading}
 		<p role="status" class="text-sm">Loading keys…</p>

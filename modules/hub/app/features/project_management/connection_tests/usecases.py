@@ -47,10 +47,19 @@ class ConnectionTestUseCase:
                 result.append(self.read(row, cache[row.ai_catalog_id]))
             return result
 
-    async def start(self, project_id: UUID, request_id: UUID, catalog_id: UUID | None = None) -> ConnectionTestRead:
+    async def start(
+        self,
+        project_id: UUID,
+        request_id: UUID,
+        catalog_id: UUID | None = None,
+        *,
+        expected_project_revision: int | None = None,
+    ) -> ConnectionTestRead:
         try:
             async with AsyncTransaction() as session:
-                row = await self.service.create(session, project_id, request_id, catalog_id)
+                row = await self.service.create(
+                    session, project_id, request_id, catalog_id, expected_project_revision=expected_project_revision
+                )
                 project = ProjectRead.model_validate(await self.service.projects.get(session, project_id))
                 return self.read(row, await current_fingerprint(session, project, row.ai_catalog_id))
         except IntegrityError:

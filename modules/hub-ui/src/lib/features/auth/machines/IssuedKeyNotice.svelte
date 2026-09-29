@@ -4,14 +4,24 @@
 	import { toast } from 'svelte-sonner';
 
 	type Issued = components['schemas']['KeyIssued'];
-	let { issued, mcp, ondismiss }: { issued: Issued; mcp: boolean; ondismiss: () => void } =
+	let { issued, scopes, ondismiss }: { issued: Issued; scopes: string[]; ondismiss: () => void } =
 		$props();
 
-	const endpoint = `${window.location.origin}/mcp/`;
-	const claudeCommand = $derived(
-		`claude mcp add --transport http autohub ${endpoint} --header "Authorization: Bearer ${issued.key}"`
-	);
-	const codexConfig = `[mcp_servers.autohub]\nurl = "${endpoint}"\nbearer_token_env_var = "AUTOHUB_MCP_KEY"`;
+	const connections = $derived([
+		...(scopes.some((scope) => ['autohub:mcp:read', 'autohub:mcp:write'].includes(scope))
+			? [{ name: 'autohub', path: '/mcp/', env: 'AUTOHUB_MCP_KEY', label: 'Work MCP' }]
+			: []),
+		...(scopes.includes('autohub:mcp:ops')
+			? [
+					{
+						name: 'autohub-ops',
+						path: '/ops/mcp/',
+						env: 'AUTOHUB_OPS_MCP_KEY',
+						label: 'Operations MCP'
+					}
+				]
+			: [])
+	]);
 
 	async function copy(text: string, what: string) {
 		try {
@@ -34,8 +44,12 @@
 		>
 		<Button size="sm" variant="outline" onclick={() => copy(issued.key, 'Key')}>Copy key</Button>
 	</div>
-	{#if mcp}
+	{#each connections as connection (connection.name)}
+		{@const endpoint = `${window.location.origin}${connection.path}`}
+		{@const claudeCommand = `claude mcp add --transport http ${connection.name} ${endpoint} --header "Authorization: Bearer ${issued.key}"`}
+		{@const codexConfig = `[mcp_servers.${connection.name}]\nurl = "${endpoint}"\nbearer_token_env_var = "${connection.env}"`}
 		<div class="space-y-2">
+			<p class="text-sm font-semibold">{connection.label}</p>
 			<p class="text-sm font-medium">Claude Code (run in the project directory)</p>
 			<div class="flex items-start gap-2">
 				<code class="min-w-0 flex-1 rounded bg-muted p-2 text-xs break-all">{claudeCommand}</code>
@@ -43,13 +57,13 @@
 					>Copy</Button
 				>
 			</div>
-			<p class="text-sm font-medium">Codex (~/.codex/config.toml, key in AUTOHUB_MCP_KEY)</p>
+			<p class="text-sm font-medium">Codex (~/.codex/config.toml, key in {connection.env})</p>
 			<div class="flex items-start gap-2">
 				<pre class="min-w-0 flex-1 overflow-x-auto rounded bg-muted p-2 text-xs">{codexConfig}</pre>
 				<Button size="sm" variant="outline" onclick={() => copy(codexConfig, 'Config')}>Copy</Button
 				>
 			</div>
 		</div>
-	{/if}
+	{/each}
 	<Button size="sm" onclick={ondismiss}>I stored the key</Button>
 </section>

@@ -3,7 +3,7 @@ from uuid import UUID
 
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.schemas import ProjectList, ProjectPatch, ProjectRead, ProjectWrite
-from app.features.project_management.projects.services import ProjectService
+from app.features.project_management.projects.services import CONFIG_FIELDS, ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 from fastapi import Depends
 from sqlalchemy.exc import IntegrityError
@@ -42,6 +42,24 @@ class ProjectUseCase:
                 return ProjectRead.model_validate(await self.service.patch(session, project_id, data))
         except IntegrityError:
             raise ProjectError(409, "Project mapping conflicts or a connector was removed; reload and retry") from None
+
+    async def preview_patch(self, project_id: UUID, data: ProjectPatch) -> tuple[ProjectRead, ProjectRead]:
+        async with AsyncTransaction() as session:
+            row = await self.service.get(session, project_id)
+            before = ProjectRead.model_validate(row)
+            merged = self.service.prepare_patch(row, data)
+            await self.service.validate(session, merged, project_id)
+            connection = merged.github
+            after = ProjectRead.model_validate(
+                before.model_dump()
+                | merged.model_dump(include=CONFIG_FIELDS)
+                | {
+                    "repository": connection.repository if connection else None,
+                    "github_connector_id": connection.github_connector_id if connection else None,
+                    "verification": connection.verification if connection else None,
+                }
+            )
+            return before, after
 
     async def delete(self, project_id: UUID) -> None:
         async with AsyncTransaction() as session:

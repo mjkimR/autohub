@@ -113,3 +113,37 @@ class TestWaitForChange:
 
 async def _value[T](value: T) -> T:
     return value
+
+
+@pytest.mark.parametrize(
+    "status,cleanup,current,action",
+    [
+        ("succeeded", "pending", True, "wait"),
+        ("succeeded", "failed", True, "inspect_cleanup"),
+        ("failed", "completed", True, "inspect_failure"),
+        ("succeeded", "completed", False, "review_configuration"),
+        ("succeeded", "completed", True, "done"),
+    ],
+)
+def test_connection_test_next_action_respects_cleanup_and_configuration(status, cleanup, current, action):
+    view = ConnectionTestView.from_read(
+        make_test({}, status=status, cleanup_status=cleanup, configuration_current=current)
+    )
+    assert view.model_dump()["next_action"] == action
+
+
+@pytest.mark.parametrize(
+    "ready,manual,status", [(False, True, "blocked"), (True, True, "manual_checks"), (True, False, "configured")]
+)
+def test_readiness_status_does_not_claim_manual_verification(ready, manual, status):
+    option = ConnectionTestOption(
+        ai_catalog_id=uuid4(),
+        name="Catalog",
+        kind="codex",
+        spec=CODEX_SPEC,
+        requirements=[RequirementStatus(key="codex_account", status="manual" if manual else "configured")],
+        configuration_fingerprint="fingerprint",
+        ready=ready,
+    )
+    view = ReadinessView.from_option(option)
+    assert view.model_dump()["status"] == status

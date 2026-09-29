@@ -18,8 +18,9 @@ async def authenticated_context() -> ToolContext:
 
 
 class MCPAuthentication:
-    def __init__(self, app: ASGIApp):
+    def __init__(self, app: ASGIApp, allowed_scopes: frozenset[str]):
         self.app = app
+        self.allowed_scopes = allowed_scopes
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -47,8 +48,10 @@ class MCPAuthentication:
         except InvalidApiKey:
             await self._unauthorized(scope, receive, send)
             return
-        if not principal.scopes & MCP_SCOPES:
-            await JSONResponse({"detail": "An MCP scope is required"}, status_code=403)(scope, receive, send)
+        if not principal.scopes & self.allowed_scopes:
+            await JSONResponse({"detail": "An MCP scope for this endpoint is required"}, status_code=403)(
+                scope, receive, send
+            )
             return
         scope.setdefault("state", {})["mcp_context"] = ToolContext(
             subject=str(principal.machine_id), scopes=principal.scopes

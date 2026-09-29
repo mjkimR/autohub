@@ -39,7 +39,13 @@ class ConnectionTestService:
         return row
 
     async def create(
-        self, session: AsyncSession, project_id: UUID, request_id: UUID, catalog_id: UUID | None = None
+        self,
+        session: AsyncSession,
+        project_id: UUID,
+        request_id: UUID,
+        catalog_id: UUID | None = None,
+        *,
+        expected_project_revision: int | None = None,
     ) -> ConnectionTest:
         model = await self.projects.get(session, project_id, lock=True)
         project = ProjectRead.model_validate(model)
@@ -50,6 +56,12 @@ class ConnectionTestService:
             if catalog_id is not None and existing.ai_catalog_id != catalog_id:
                 raise ProjectError(409, "Request ID belongs to another AI catalog")
             return existing
+        if expected_project_revision is not None and project.revision != expected_project_revision:
+            raise ProjectError(
+                409,
+                "Project changed since inspection",
+                fix="Read the project and recheck connection readiness before starting a new test.",
+            )
         if not project.enabled or project.github is None:
             raise ProjectError(422, "Enable this project and configure GitHub before testing")
         if any(row.status == ACTIVE for row in await self.repo.list(session, project_id)):

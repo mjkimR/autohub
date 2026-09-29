@@ -314,8 +314,10 @@ class PipelineRunUseCase:
     async def pause_run(self, run_id: UUID, request: PauseRunRequest | None = None) -> PipelineRunRead:
         return await PipelineRunControl(self.repo, self.projects, self.observer).pause_run(run_id, request)
 
-    async def resume_run(self, run_id: UUID) -> PipelineRunRead:
-        return await PipelineRunControl(self.repo, self.projects, self.observer).resume_run(run_id)
+    async def resume_run(self, run_id: UUID, *, expected_revision: int | None = None) -> PipelineRunRead:
+        return await PipelineRunControl(self.repo, self.projects, self.observer).resume_run(
+            run_id, expected_revision=expected_revision
+        )
 
     async def cancel_run(self, run_id: UUID) -> PipelineRunRead:
         return await PipelineRunControl(self.repo, self.projects, self.observer).cancel_run(run_id)

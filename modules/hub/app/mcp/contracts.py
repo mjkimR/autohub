@@ -1,6 +1,7 @@
 """Explicit input and bounded output contracts for public tools."""
 
 from datetime import datetime
+from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
 
@@ -8,8 +9,13 @@ from app.features.project_management.connection_tests.adapters.specs import COMM
 from app.features.project_management.connection_tests.schemas import ConnectionTestOption, ConnectionTestRead
 from app.features.project_management.pipeline_runs.models import PipelineRunState
 from app.features.project_management.pipeline_runs.schemas import EnrollPullRequest, PipelineRunSummary
-from app.features.project_management.projects.schemas import GitHubProjectConnection, ProjectPatch, ProjectWrite
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from app.features.project_management.projects.schemas import (
+    GitHubAutomationConfig,
+    GitHubProjectConnection,
+    ProjectPatch,
+    ProjectWrite,
+)
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 
 class Input(BaseModel):
@@ -55,12 +61,30 @@ class ProjectLookup(Input):
         return self
 
 
+class CreateAutomation(GitHubAutomationConfig):
+    auto_merge: bool = Field(description="Explicitly choose whether successful runs may merge their PR automatically")
+
+
+class CreateConnection(GitHubProjectConnection):
+    automation: CreateAutomation = Field(
+        description="Choose auto_merge explicitly; other automation defaults are shown in the schema"
+    )
+
+
+class CreateConfiguration(ProjectWrite):
+    github: CreateConnection | None = None
+
+
 class CreateProject(Input):
-    project: ProjectWrite
+    project: CreateConfiguration
 
 
 class UpdateProject(ProjectId):
     project: ProjectPatch
+    dry_run: bool = Field(
+        default=False,
+        description="Validate the merged configuration and show changes without saving; apply with the same expected_revision",
+    )
 
 
 class ProjectView(BaseModel):
@@ -72,6 +96,17 @@ class ProjectView(BaseModel):
     github: GitHubProjectConnection | None
     github_connector_name: str | None = None
     ai_catalog_key: str | None = Field(default=None, description="null means the default Codex catalog")
+
+
+class ProjectChange(BaseModel):
+    path: str
+    before: Any
+    after: Any
+
+
+class ProjectUpdateView(ProjectView):
+    applied: bool
+    changes: list[ProjectChange]
 
 
 class RunId(Input):
@@ -89,8 +124,21 @@ class RunFilter(Page):
     search: str = Field(default="", max_length=255)
 
 
+class Enrollment(EnrollPullRequest):
+    model_config = ConfigDict(extra="forbid")
+    implemented: bool = Field(
+        description="Required: true observes CI for existing implementation; false requests implementation work"
+    )
+
+
 class Enroll(ProjectId):
-    pull_request: EnrollPullRequest
+    pull_request: Enrollment
+
+
+class Resume(RunId):
+    expected_revision: int = Field(
+        ge=1, description="Revision of the paused/blocked run you inspected; stale resumes fail without starting work"
+    )
 
 
 class Pause(RunId):
@@ -161,8 +209,38 @@ class ConnectorView(BaseModel):
     has_credentials: bool
 
 
+class ProjectOptionsRequest(Page):
+    project_id: UUID | None = Field(default=None, description="Include the project's configured catalog selection")
+    capability: Literal["pipeline_delivery", "connection_test"] | None = None
+    enabled_only: bool = False
+    connectors_page: Page | None = Field(
+        default=None, description="Include safe connector choices for onboarding; omit for catalog selection only"
+    )
+
+
+class ProjectOptions(BaseModel):
+    catalogs: Items[CatalogView]
+    connectors: Items[ConnectorView] | None = None
+    selected_catalog_id: UUID | None = None
+    selected_catalog_key: str | None = None
+    selection_source: Literal["project", "default"] | None = None
+
+
+class ReadinessRequest(ProjectId):
+    ai_catalog_id: UUID | None = Field(
+        default=None, description="Inspect just this catalog; omit to inspect all supported test catalogs"
+    )
+
+
 class StartTest(ProjectId):
-    request_id: UUID = Field(description="Generate once for this test and reuse on retries")
+    request_id: UUID = Field(
+        description="Generate once and reuse on retries. This is also the test_id for connection_tests.get, even if the response is lost"
+    )
+    expected_project_revision: int | None = Field(
+        default=None,
+        ge=1,
+        description="Reject a new test if the inspected project changed; replaying an existing request_id still returns that test",
+    )
     ai_catalog_id: UUID | None = None
 
 
@@ -171,7 +249,15 @@ class TestId(ProjectId):
 
 
 class TestFilter(ProjectId):
-    limit: int = Field(default=10, ge=1, le=30, description="Most recent tests first; at most 30 are kept for listing")
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(
+        default=10, ge=1, le=30, description="Page within the latest 30 retained list entries, newest first"
+    )
+    ai_catalog_id: UUID | None = None
+    status: Literal["running", "succeeded", "failed", "timed_out", "canceled"] | None = None
+    configuration_current: bool | None = Field(
+        default=None, description="Filter whether the test still matches the current configuration"
+    )
 
 
 class TestWait(TestId):
@@ -183,7 +269,7 @@ CLEANUP_NOTES = ("cleanup_warning", "cleanup_error")
 
 class TestView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    id: UUID
+    id: UUID = Field(description="The request_id supplied to start; reuse as test_id for get/cancel")
     project_id: UUID
     ai_catalog_id: UUID | None
     catalog_key: str | None = None
@@ -222,6 +308,22 @@ class TestView(BaseModel):
     def settled(self) -> bool:
         return self.status != "running" and self.cleanup_status in ("completed", "failed")
 
+    @computed_field
+    @property
+    def next_action(self) -> Literal["wait", "inspect_cleanup", "inspect_failure", "review_configuration", "done"]:
+        if self.cleanup_status == "failed":
+            return "inspect_cleanup"
+        if not self.settled:
+            return "wait"
+        if self.status != "succeeded":
+            return "inspect_failure"
+        return "done" if self.configuration_current else "review_configuration"
+
+
+class TestList(Items[TestView]):
+    history_limit: Literal[30] = 30
+    next_offset: int | None = None
+
 
 def trusted_link(value: str, origin: str) -> bool:
     try:
@@ -244,7 +346,9 @@ class ReadinessView(BaseModel):
     name: str
     kind: str
     test_title: str
-    ready: bool
+    ready: bool = Field(
+        description="Configuration permits starting a test; does not prove CI/provider access or satisfy manual checks"
+    )
     pending: list[PendingRequirement] = Field(
         description="Missing requirements, and manual ones AutoHub cannot check; configured ones are omitted"
     )
@@ -271,3 +375,14 @@ class ReadinessView(BaseModel):
             ready=option.ready,
             pending=pending,
         )
+
+    @computed_field
+    @property
+    def status(self) -> Literal["blocked", "manual_checks", "configured"]:
+        if not self.ready:
+            return "blocked"
+        return "manual_checks" if any(item.status == "manual" for item in self.pending) else "configured"
+
+
+class ReadinessReport(Items[ReadinessView]):
+    check_kind: Literal["configuration_only"] = "configuration_only"

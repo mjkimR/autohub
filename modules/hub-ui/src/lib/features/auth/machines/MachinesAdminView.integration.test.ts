@@ -28,14 +28,14 @@ const activeKey = {
 	revoked_at: null
 };
 
-function serve(keys: unknown[] = []) {
+function serve(keys: unknown[] = [], scopes = machine.scopes) {
 	api.GET.mockImplementation((path: string) =>
 		Promise.resolve({
 			data: path.endsWith('/me')
 				? { id: 'admin', is_superadmin: true }
 				: path.endsWith('/keys')
 					? keys
-					: [machine]
+					: [{ ...machine, scopes }]
 		})
 	);
 }
@@ -100,4 +100,26 @@ test('revoking a key requires confirmation', async () => {
 			params: { path: { machine_id: 'machine-1', key_id: 'key-1' } }
 		})
 	);
+});
+
+test.each([
+	{ scopes: ['autohub:mcp:ops'], names: ['autohub-ops'] },
+	{ scopes: [...machine.scopes, 'autohub:mcp:ops'], names: ['autohub', 'autohub-ops'] },
+	{ scopes: ['autohub:dispatch'], names: [] }
+])('issued key snippets match scopes $scopes', async ({ scopes, names }) => {
+	serve([], scopes);
+	api.POST.mockResolvedValue({ data: { ...activeKey, key: 'ahk_secret' } });
+	const user = userEvent.setup();
+	render(MachinesAdminView);
+	await user.click(await screen.findByRole('button', { name: 'Keys' }));
+	await user.type(await screen.findByLabelText('Key label'), 'operator');
+	await user.click(screen.getByRole('button', { name: 'Issue key' }));
+	await screen.findByTestId('issued-key');
+	const configs = screen.queryAllByText(/\[mcp_servers\./).map((node) => node.textContent);
+	expect(configs).toHaveLength(names.length);
+	for (const name of names) {
+		const config = configs.find((text) => text?.includes(`[mcp_servers.${name}]`));
+		expect(config).toContain(name === 'autohub-ops' ? '/ops/mcp/' : '/mcp/');
+		expect(config).toContain(name === 'autohub-ops' ? 'AUTOHUB_OPS_MCP_KEY' : 'AUTOHUB_MCP_KEY');
+	}
 });

@@ -15,8 +15,9 @@ These documents explicitly distinguish between design goals and current function
 10. [Project detail and connection tests](project-detail-and-connection-tests.md): Project tabs, catalog-specific Codex/Jules PR verification, merge exclusion, and cleanup behavior.
 11. [Work plans and dependencies — design](work-plans-design.md): Agreed Plan/Item ownership, dependency boundaries, pause/revoke behavior, and outbound Issue records.
 12. [Work plans](work-plans.md): APIs, controls, retention, outbound GitHub records, and verification boundaries.
-13. [MCP](mcp.md): User-level connection, managed credentials, public tools, and deployment status.
+13. [MCP](mcp.md): User-level connection, managed credentials, work/operations tools, and deployment status.
 14. [MCP distribution review](autohub-distribution-review-2026-09-22.md): MCP-first delivery decision, app-mcp reuse assessment, and implementation review.
+15. [MCP tool review](mcp-tool-review-2026-09-29.md): Work/operations split and per-tool retain/improve/reconsider ratings (Korean).
 
 [Google login and approval](google-auth.md) describes the implementation, published dependency pins, configuration, and the completed live validation.
 

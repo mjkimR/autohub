@@ -252,3 +252,17 @@ async def test_browser_session_survives_page_state_and_logout_revokes_it(client)
     assert_status_code(await client.get(PROTECTED, headers=bearer(renewed.json()["access_token"])), 200)
     assert_status_code(await client.post("/api/v1/auth/browser/logout", headers={**headers, **cookie}), 204)
     assert_status_code(await client.post("/api/v1/auth/browser/refresh", headers={**headers, **cookie}), 401)
+
+
+@pytest.mark.parametrize("scopes", [["autohub:mcp:read", "autohub:mcp:write"], ["autohub:mcp:ops"]])
+async def test_mcp_keys_cannot_bypass_surfaces_through_rest(client, scopes):
+    root = {"X-Root-API-Key": "root-test-credential-at-least-32-characters"}
+    machine = await client.post("/api/v1/machines", headers=root, json={"name": "mcp-rest", "scopes": scopes})
+    assert machine.status_code == 201
+    issued = await client.post(f"/api/v1/machines/{machine.json()['id']}/keys", headers=root, json={"label": "test"})
+    assert issued.status_code == 201
+    key = issued.json()["key"]
+    for headers in (bearer(key), {"X-API-Key": key}):
+        assert (await client.get("/api/v1/projects", headers=headers)).status_code == 401
+        assert (await client.post("/api/v1/projects", headers=headers, json={"name": "Denied"})).status_code == 401
+        assert (await client.post(TRIGGER, headers=headers)).status_code in {401, 403}

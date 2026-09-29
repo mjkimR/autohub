@@ -91,10 +91,11 @@ def create_app():
     configure_access_logging()
     hub_lifespan = get_lifespan()
     mcp_app = create_hub_mcp()
+    ops_mcp_app = create_hub_mcp(ops=True)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        async with hub_lifespan(app), mcp_app.lifespan(app):
+        async with hub_lifespan(app), mcp_app.lifespan(app), ops_mcp_app.lifespan(app):
             yield
 
     app = FastAPI(
@@ -139,7 +140,12 @@ def create_app():
     async def mcp_redirect():
         return RedirectResponse("/mcp/", status_code=307)
 
+    @app.api_route("/ops/mcp", methods=["GET", "POST", "DELETE", "OPTIONS"], include_in_schema=False)
+    async def ops_mcp_redirect():
+        return RedirectResponse("/ops/mcp/", status_code=307)
+
     app.mount("/mcp", mcp_app)
+    app.mount("/ops/mcp", ops_mcp_app)
 
     ui_dist = _resolve_ui_dist()
     if ui_dist is not None:

@@ -28,7 +28,9 @@ from fastapi.security import OAuth2PasswordBearer
 
 MCP_READ = "autohub:mcp:read"
 MCP_WRITE = "autohub:mcp:write"
-MCP_SCOPES = frozenset({MCP_READ, MCP_WRITE})
+MCP_OPS = "autohub:mcp:ops"
+MCP_WORK_SCOPES = frozenset({MCP_READ, MCP_WRITE})
+MCP_SCOPES = MCP_WORK_SCOPES | {MCP_OPS}
 MACHINE_SCOPES = frozenset({"autohub:dispatch"}) | MCP_SCOPES
 
 # Every API route except signing in itself and the dispatcher trigger.

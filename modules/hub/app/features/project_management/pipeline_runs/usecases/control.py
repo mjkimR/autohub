@@ -60,11 +60,17 @@ class PipelineRunControl:
             await session.flush()
             return PipelineRunRead.model_validate(run)
 
-    async def resume_run(self, run_id: UUID) -> PipelineRunRead:
+    async def resume_run(self, run_id: UUID, *, expected_revision: int | None = None) -> PipelineRunRead:
         async with AsyncTransaction() as session:
             run = await self.repo.get(session, run_id, lock=True)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
+            if expected_revision is not None and run.revision != expected_revision:
+                raise ProjectError(
+                    409,
+                    "Run changed since inspection",
+                    fix="Read the run and inspect its state and pause reason before resuming with the current revision.",
+                )
             if run.state not in (PipelineRunState.PAUSED, PipelineRunState.BLOCKED):
                 raise ProjectError(
                     422, f"Cannot resume a run that is not paused or blocked (current state: {run.state})"

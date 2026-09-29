@@ -6,6 +6,7 @@ from app.mcp.contracts import (
     Enroll,
     Items,
     Pause,
+    Resume,
     RunFilter,
     RunId,
     RunView,
@@ -54,8 +55,8 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
     async def pause(args: Pause) -> RunView:
         return await view(await deps.runs.pause_run(args.run_id, PauseRunRequest(reason=args.reason)))
 
-    async def resume(args: RunId) -> RunView:
-        return await view(await deps.runs.resume_run(args.run_id))
+    async def resume(args: Resume) -> RunView:
+        return await view(await deps.runs.resume_run(args.run_id, expected_revision=args.expected_revision))
 
     async def cancel(args: RunId) -> RunView:
         return await view(await deps.runs.cancel_run(args.run_id))
@@ -79,7 +80,7 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
     register(
         registry,
         "runs.enroll",
-        "Register an existing open PR for background execution. Does not create a PR. Set implemented when code is already complete. Active duplicates conflict; use runs.list to recover.",
+        "Register an existing open PR for background execution. Does not create a PR. Explicitly set implemented=true for completed code or false to request implementation; omission is rejected. Existing project automation and merge policies apply. Active duplicates conflict; use runs.list with project_id and pull_number to recover after a lost response.",
         Enroll,
         RunView,
         enroll,
@@ -105,8 +106,8 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
     register(
         registry,
         "runs.resume",
-        "Resume a paused or blocked run after reconciling its PR. May resume agent work; after a lost response read status before retrying.",
-        RunId,
+        "Resume a paused or blocked run after inspecting and resolving its blocking cause and reconciling its PR. Pass the inspected expected_revision; stale revisions fail before external work. May resume agent work; after a lost response read status before retrying.",
+        Resume,
         RunView,
         resume,
         write=True,

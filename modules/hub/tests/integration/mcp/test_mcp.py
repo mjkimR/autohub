@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 import httpx
 import pytest
-from app.auth import MCP_READ, MCP_WRITE
+from app.auth import MCP_OPS, MCP_READ, MCP_WRITE
 from app.features.project_management.pipeline_runs.models import ExecutionAttempt
 from app.features.project_management.pipelines import services
 from app.mcp import auth, dependencies
@@ -58,23 +58,33 @@ async def key(client):
     return result["key"]
 
 
-async def rpc(client, key, method, params=None):
+@pytest.fixture
+async def ops_key(client):
+    _, result = await issue(client, [MCP_OPS])
+    return result["key"]
+
+
+async def rpc(client, key, method, params=None, *, path="/mcp/"):
     return await client.post(
-        "/mcp/",
+        path,
         headers=HEADERS | {"Authorization": f"Bearer {key}"},
         json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params or {}},
     )
 
 
-async def call(client, key, name, arguments=None, *, error=False):
-    response = await rpc(client, key, "tools/call", {"name": name, "arguments": arguments or {}})
+async def call(client, key, name, arguments=None, *, error=False, path="/mcp/"):
+    response = await rpc(client, key, "tools/call", {"name": name, "arguments": arguments or {}}, path=path)
     assert response.status_code == 200, response.text
     result = response.json()["result"]
     assert result.get("isError", False) == error, result
     return result["structuredContent"]
 
 
-async def test_handshake_auth_discovery_and_scope_isolation(client, key):
+async def ops_call(client, key, name, arguments=None, *, error=False):
+    return await call(client, key, name, arguments, error=error, path="/ops/mcp/")
+
+
+async def test_handshake_auth_discovery_and_scope_isolation(client, key, ops_key):
     assert (await client.post("/mcp/", json={})).status_code == 401
     assert (await client.get("/mcp/", headers=ROOT)).status_code == 401
     assert (await rpc(client, "invalid", "tools/list")).status_code == 401
@@ -89,14 +99,14 @@ async def test_handshake_auth_discovery_and_scope_isolation(client, key):
     assert init.status_code == 200, init.text
     tools = (await rpc(client, key, "tools/list")).json()["result"]["tools"]
     names = {tool["name"] for tool in tools}
-    assert {"projects.list", "runs.enroll", "runs.get", "connection_tests.start", "connection_tests.list"} <= names
+    assert {"projects.list", "runs.enroll", "runs.get", "connection_tests.list"} <= names
     assert not any(word in name for name in names for word in ("lease", "complete", "dispatch", "delete", "key"))
     schema = next(tool["inputSchema"] for tool in tools if tool["name"] == "runs.list")
     assert schema["properties"]["limit"]["maximum"] == 100
     _, reader = await issue(client, [MCP_READ])
-    denied = await call(client, reader["key"], "projects.create", {"project": {"name": "Denied"}}, error=True)
+    denied = await call(client, reader["key"], "runs.cancel", {"run_id": str(uuid4())}, error=True)
     assert denied["error"]["code"] == "MCP_FORBIDDEN"
-    created = await call(client, key, "projects.create", {"project": {"name": "Allowed"}})
+    created = await ops_call(client, ops_key, "projects.create", {"project": {"name": "Allowed"}})
     assert created["result"]["name"] == "Allowed"
     assert (await call(client, reader["key"], "projects.list"))["result"]["total_count"] == 1
     invalid = await call(client, key, "projects.list", {"limit": 101}, error=True)
@@ -105,10 +115,11 @@ async def test_handshake_auth_discovery_and_scope_isolation(client, key):
     assert missing["error"]["code"] == "NOT_FOUND"
 
 
+@pytest.mark.parametrize("scopes,path", [([MCP_READ], "/mcp/"), ([MCP_OPS], "/ops/mcp/")])
 @pytest.mark.parametrize("change", ["revoked", "expired", "inactive"])
-async def test_key_changes_take_effect_on_next_request(client, session_maker, change):
-    machine, key = await issue(client, [MCP_READ])
-    assert (await rpc(client, key["key"], "tools/list")).status_code == 200
+async def test_key_changes_take_effect_on_next_request(client, session_maker, change, scopes, path):
+    machine, key = await issue(client, scopes)
+    assert (await rpc(client, key["key"], "tools/list", path=path)).status_code == 200
     async with session_maker() as session:
         if change == "inactive":
             row = await session.get(Machine, UUID(machine["id"]))
@@ -117,7 +128,7 @@ async def test_key_changes_take_effect_on_next_request(client, session_maker, ch
             row = await session.get(MachineKey, UUID(key["id"]))
             setattr(row, "revoked_at" if change == "revoked" else "expires_at", utc_now() - timedelta(seconds=1))
         await session.commit()
-    assert (await rpc(client, key["key"], "tools/list")).status_code == 401
+    assert (await rpc(client, key["key"], "tools/list", path=path)).status_code == 401
 
 
 async def test_origin_and_spa_route_are_protected(client, key):
@@ -134,7 +145,7 @@ async def test_origin_and_spa_route_are_protected(client, key):
     assert response.status_code == 403
 
 
-async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key, monkeypatch, session_maker):
+async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key, ops_key, monkeypatch, session_maker):
     def github(request):
         assert request.method == "GET"
         if request.url.path == "/repos/owner/app":
@@ -165,8 +176,8 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
         json={"name": "GitHub", "provider": "github", "credentials": {"token": "secret-not-for-mcp"}},
     )
     assert connector.status_code == 201, connector.text
-    connectors = await call(client, key, "connectors.list")
-    assert connectors["result"]["items"][0]["id"] == connector.json()["id"]
+    connectors = await call(client, key, "projects.options", {"connectors_page": {}})
+    assert connectors["result"]["connectors"]["items"][0]["id"] == connector.json()["id"]
     assert "secret-not-for-mcp" not in str(connectors)
     config = {
         "name": "App",
@@ -174,9 +185,10 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
             "repository": "owner/app",
             "github_connector_id": connector.json()["id"],
             "verification": {"workflow": "ci.yml", "required_jobs": ["lint"], "event": "pull_request"},
+            "automation": {"auto_merge": True},
         },
     }
-    project = (await call(client, key, "projects.create", {"project": config}))["result"]
+    project = (await ops_call(client, ops_key, "projects.create", {"project": config}))["result"]
     project_id = project["id"]
     assert project["github_connector_name"] == "GitHub"
     found = await call(client, key, "projects.list", {"search": "owner/app"})
@@ -193,18 +205,27 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
         "project_id": project_id,
         "project": {"expected_revision": project["revision"], "github": {"automation": {"auto_merge": False}}},
     }
-    updated = (await call(client, key, "projects.update", update))["result"]
+    preview = (await ops_call(client, ops_key, "projects.update", update | {"dry_run": True}))["result"]
+    assert preview["applied"] is False
+    assert preview["revision"] == project["revision"]
+    assert preview["changes"] == [{"path": "github.automation.auto_merge", "before": True, "after": False}]
+    unchanged = (await call(client, key, "projects.get", {"project_id": project_id}))["result"]
+    assert unchanged["github"]["automation"]["auto_merge"] is True
+    assert unchanged["revision"] == project["revision"]
+    updated = (await ops_call(client, ops_key, "projects.update", update))["result"]
+    assert updated["applied"] is True
+    assert updated["changes"] == preview["changes"]
     assert updated["github"]["automation"]["auto_merge"] is False
     assert updated["github"]["verification"] == config["github"]["verification"]
     renamed = {"project_id": project_id, "project": {"expected_revision": updated["revision"], "name": "Renamed"}}
-    renamed_result = (await call(client, key, "projects.update", renamed))["result"]
+    renamed_result = (await ops_call(client, ops_key, "projects.update", renamed))["result"]
     assert renamed_result["name"] == "Renamed"
     assert renamed_result["github"]["automation"]["auto_merge"] is False
-    stale = await call(client, key, "projects.update", update, error=True)
+    stale = await ops_call(client, ops_key, "projects.update", update, error=True)
     assert stale["error"]["code"] == "CONFLICT"
     invalid_patch = {"expected_revision": renamed_result["revision"], "github": {"automation": {"auto_merge": None}}}
-    invalid = await call(
-        client, key, "projects.update", {"project_id": project_id, "project": invalid_patch}, error=True
+    invalid = await ops_call(
+        client, ops_key, "projects.update", {"project_id": project_id, "project": invalid_patch}, error=True
     )
     assert invalid["error"]["code"] == "INVALID_REQUEST"
     assert "auto_merge" in invalid["error"]["message"]
@@ -222,8 +243,14 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
     outcomes = (await call(client, key, "runs.attempts", run_args))["result"]
     assert len(outcomes["items"]) == 1
     assert "request_snapshot" not in str(outcomes)
-    assert (await call(client, key, "runs.pause", run_args))["result"]["state"] == "paused"
-    assert (await call(client, key, "runs.resume", run_args))["result"]["state"] == "awaiting_ci"
+    paused = (await call(client, key, "runs.pause", run_args))["result"]
+    assert paused["state"] == "paused"
+    stale_resume = await call(client, key, "runs.resume", run_args | {"expected_revision": run["revision"]}, error=True)
+    assert stale_resume["error"]["code"] == "CONFLICT"
+    assert (await call(client, key, "runs.get", run_args))["result"]["revision"] == paused["revision"]
+    assert (await call(client, key, "runs.resume", run_args | {"expected_revision": paused["revision"]}))["result"][
+        "state"
+    ] == "awaiting_ci"
     assert (await call(client, key, "runs.cancel", run_args))["result"]["state"] == "canceled"
     # A settled run returns at once even when asked to wait.
     assert (await call(client, key, "runs.get", run_args | {"wait_seconds": 20}))["result"]["state"] == "canceled"
@@ -247,23 +274,352 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
     assert page["summary"]["attempts_by_kind"] == {"implementation": 1, "ci-fix": 1}
     empty = (await call(client, key, "runs.attempts", run_args | {"offset": 2, "limit": 1}))["result"]
     assert empty["items"] == [] and empty["total_count"] == 2
-    catalogs = (await call(client, key, "catalogs.list"))["result"]["items"]
+    catalogs = (await call(client, key, "projects.options"))["result"]["catalogs"]["items"]
     assert catalogs
+    selected = (
+        await call(
+            client,
+            key,
+            "projects.options",
+            {"project_id": project_id, "capability": "pipeline_delivery", "enabled_only": True, "offset": 100},
+        )
+    )["result"]
+    assert selected["catalogs"]["items"] == []
+    assert selected["catalogs"]["total_count"] >= 1
+    assert selected["selected_catalog_key"] == "personal-codex"
+    assert selected["selection_source"] == "default"
+    assert selected["connectors"] is None
     options = (await call(client, key, "projects.readiness", {"project_id": project_id}))["result"]["items"]
     assert options and all("spec" not in option for option in options)
     assert all(item["status"] != "configured" for option in options for item in option["pending"])
-    request = {"project_id": project_id, "request_id": str(uuid4())}
-    first = (await call(client, key, "connection_tests.start", request))["result"]
-    repeated = (await call(client, key, "connection_tests.start", request))["result"]
-    assert first["id"] == repeated["id"]
+    readiness = (
+        await call(client, key, "projects.readiness", {"project_id": project_id, "ai_catalog_id": catalogs[0]["id"]})
+    )["result"]
+    assert readiness["check_kind"] == "configuration_only"
+    assert len(readiness["items"]) == 1
+    assert readiness["items"][0]["status"] == "manual_checks"
+    request = {
+        "project_id": project_id,
+        "request_id": str(uuid4()),
+        "expected_project_revision": renamed_result["revision"],
+    }
+    stale_test = await ops_call(
+        client,
+        ops_key,
+        "connection_tests.start",
+        request | {"expected_project_revision": project["revision"]},
+        error=True,
+    )
+    assert stale_test["error"]["code"] == "CONFLICT"
+    first = (await ops_call(client, ops_key, "connection_tests.start", request))["result"]
+    repeated = (await ops_call(client, ops_key, "connection_tests.start", request))["result"]
+    assert first["id"] == repeated["id"] == request["request_id"]
+    assert first["next_action"] == "wait"
+    replay_after_change = await ops_call(
+        client, ops_key, "connection_tests.start", request | {"expected_project_revision": project["revision"]}
+    )
+    assert replay_after_change["result"]["id"] == first["id"]
     listed = (await call(client, key, "connection_tests.list", {"project_id": project_id}))["result"]
     assert [test["id"] for test in listed["items"]] == [first["id"]]
+    assert listed["history_limit"] == 30 and listed["next_offset"] is None
+    assert (await call(client, key, "connection_tests.list", {"project_id": project_id, "status": "succeeded"}))[
+        "result"
+    ]["items"] == []
+    assert (
+        await call(
+            client,
+            key,
+            "connection_tests.list",
+            {"project_id": project_id, "configuration_current": True, "ai_catalog_id": first["ai_catalog_id"]},
+        )
+    )["result"]["total_count"] == 1
     current = await call(client, key, "connection_tests.get", {"project_id": project_id, "test_id": first["id"]})
     assert current["result"]["cleanup_status"] == "pending"
     assert isinstance(current["result"]["evidence"], dict)
     assert current["result"]["phase_label"]
 
-    canceled = await call(client, key, "connection_tests.cancel", {"project_id": project_id, "test_id": first["id"]})
+    canceled = await ops_call(
+        client, ops_key, "connection_tests.cancel", {"project_id": project_id, "test_id": first["id"]}
+    )
     assert canceled["result"]["cancel_requested"] is True
     assert canceled["result"]["status"] == "canceled"
     assert canceled["result"]["cleanup_status"] == "waiting"
+
+
+async def test_surfaces_expose_exact_tools_and_reject_cross_surface_calls(client, key, ops_key):
+    reads = {
+        "projects.list",
+        "projects.get",
+        "projects.readiness",
+        "projects.options",
+        "runs.list",
+        "runs.get",
+        "runs.attempts",
+        "connection_tests.list",
+        "connection_tests.get",
+    }
+    work_writes = {"runs.enroll", "runs.pause", "runs.resume", "runs.cancel"}
+    ops_writes = {"projects.create", "projects.update", "connection_tests.start", "connection_tests.cancel"}
+    _, combined = await issue(client, [MCP_READ, MCP_WRITE, MCP_OPS])
+    discovered = set()
+    for path, credential, expected, excluded in (
+        ("/mcp/", key, reads | work_writes, ops_writes),
+        ("/ops/mcp/", ops_key, ops_writes, reads | work_writes),
+    ):
+        tools = (await rpc(client, credential, "tools/list", path=path)).json()["result"]["tools"]
+        names = {tool["name"] for tool in tools}
+        assert names == expected
+        assert discovered.isdisjoint(names)
+        discovered.update(names)
+        for name in excluded:
+            # Even a key with every scope cannot reach an unregistered tool.
+            result = (
+                await rpc(
+                    client,
+                    combined["key"],
+                    "tools/call",
+                    {
+                        "name": name,
+                        "arguments": {},
+                    },
+                    path=path,
+                )
+            ).json()["result"]
+            assert result["isError"] is True
+    assert len(discovered) == 17
+    for removed in ("catalogs.list", "connectors.list"):
+        assert removed not in discovered
+        result = (await rpc(client, key, "tools/call", {"name": removed, "arguments": {}})).json()["result"]
+        assert result["isError"] is True
+    assert (await call(client, key, "projects.list"))["ok"]
+    for path, credential in (("/ops/mcp/", key), ("/mcp/", ops_key)):
+        for method, params in (
+            (
+                "initialize",
+                {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}},
+            ),
+            ("tools/list", {}),
+            ("tools/call", {"name": "projects.list", "arguments": {}}),
+        ):
+            assert (await rpc(client, credential, method, params, path=path)).status_code == 403
+
+
+async def test_ops_redirect_auth_and_origin(client, ops_key):
+    assert (await client.post("/ops/mcp/", json={})).status_code == 401
+    assert (await client.get("/ops/mcp/", headers=ROOT)).status_code == 401
+    assert (await rpc(client, "invalid", "tools/list", path="/ops/mcp/")).status_code == 401
+    _, scheduler = await issue(client, ["autohub:dispatch"])
+    assert (await rpc(client, scheduler["key"], "tools/list", path="/ops/mcp/")).status_code == 403
+    assert (await rpc(client, ops_key, "tools/list", path="/ops/mcp")).status_code == 200
+    response = await client.post(
+        "/ops/mcp/",
+        headers=HEADERS | {"Authorization": f"Bearer {ops_key}", "Origin": "https://untrusted.example"},
+        json={},
+    )
+    assert response.status_code == 403
+
+
+async def test_options_independent_pages_and_explicit_mutation_inputs(client, key, ops_key):
+    for name in ("First", "Second"):
+        response = await client.post(
+            "/api/v1/connectors",
+            json={
+                "name": name,
+                "provider": "github",
+                "credentials": {"token": "must-stay-private"},
+            },
+        )
+        assert response.status_code == 201
+    catalog = await client.post(
+        "/api/v1/ai-catalogs",
+        json={
+            "key": "disabled-codex",
+            "name": "Disabled Codex",
+            "kind": "codex",
+            "enabled": False,
+        },
+    )
+    assert catalog.status_code == 201, catalog.text
+    first = (
+        await call(
+            client,
+            key,
+            "projects.options",
+            {
+                "offset": 100,
+                "connectors_page": {"limit": 1},
+            },
+        )
+    )["result"]
+    second = (
+        await call(
+            client,
+            key,
+            "projects.options",
+            {
+                "connectors_page": {"offset": 1, "limit": 1},
+            },
+        )
+    )["result"]
+    assert first["catalogs"]["items"] == []
+    assert first["connectors"]["total_count"] == second["connectors"]["total_count"] == 2
+    assert len(first["connectors"]["items"]) == len(second["connectors"]["items"]) == 1
+    assert first["connectors"]["items"][0]["id"] != second["connectors"]["items"][0]["id"]
+    assert "must-stay-private" not in str(first) + str(second)
+    assert any(item["key"] == "disabled-codex" for item in second["catalogs"]["items"])
+    enabled = (await call(client, key, "projects.options", {"enabled_only": True, "capability": "pipeline_delivery"}))[
+        "result"
+    ]
+    assert all(item["enabled"] and item["pipeline_delivery"] for item in enabled["catalogs"]["items"])
+    assert all(item["key"] != "disabled-codex" for item in enabled["catalogs"]["items"])
+    for name, args, path, credential in (
+        ("runs.enroll", {"project_id": str(uuid4()), "pull_request": {"pull_number": 7}}, "/mcp/", key),
+        ("runs.resume", {"run_id": str(uuid4())}, "/mcp/", key),
+        (
+            "projects.create",
+            {
+                "project": {
+                    "name": "Missing policy",
+                    "github": {
+                        "repository": "owner/new",
+                        "github_connector_id": first["connectors"]["items"][0]["id"],
+                        "verification": {"workflow": "ci.yml", "required_jobs": ["test"]},
+                    },
+                }
+            },
+            "/ops/mcp/",
+            ops_key,
+        ),
+    ):
+        denied = await call(client, credential, name, args, error=True, path=path)
+        assert denied["error"]["code"] == "MCP_INVALID_ARGUMENTS"
+    assert (await call(client, key, "projects.list"))["result"]["total_count"] == 0
+
+
+async def test_project_preview_validates_and_apply_rejects_intervening_changes(client, key, ops_key):
+    connector = await client.post(
+        "/api/v1/connectors", json={"name": "GitHub", "provider": "github", "credentials": {"token": "test-only"}}
+    )
+    assert connector.status_code == 201
+    config = {
+        "name": "Preview",
+        "github": {
+            "repository": "owner/preview",
+            "github_connector_id": connector.json()["id"],
+            "verification": {"workflow": "ci.yml", "required_jobs": ["lint", "test"]},
+            "automation": {"auto_merge": False},
+        },
+    }
+    project = (await ops_call(client, ops_key, "projects.create", {"project": config}))["result"]
+    target = {"project_id": project["id"]}
+    changes = {"expected_revision": project["revision"], "github": {"verification": {"required_jobs": ["check"]}}}
+    preview = (await ops_call(client, ops_key, "projects.update", target | {"project": changes, "dry_run": True}))[
+        "result"
+    ]
+    assert preview["github"]["verification"]["required_jobs"] == ["check"]
+    assert preview["changes"] == [
+        {"path": "github.verification.required_jobs", "before": ["lint", "test"], "after": ["check"]}
+    ]
+    detached = (
+        await ops_call(
+            client,
+            ops_key,
+            "projects.update",
+            target
+            | {
+                "project": {"expected_revision": project["revision"], "github": None},
+                "dry_run": True,
+            },
+        )
+    )["result"]
+    assert detached["github"] is None and detached["applied"] is False
+    persisted = (await call(client, key, "projects.get", target))["result"]
+    assert persisted["github"] == project["github"] and persisted["revision"] == project["revision"]
+    invalid = await ops_call(
+        client,
+        ops_key,
+        "projects.update",
+        target
+        | {
+            "project": {"expected_revision": project["revision"], "github": {"github_connector_id": str(uuid4())}},
+            "dry_run": True,
+        },
+        error=True,
+    )
+    assert invalid["error"]["code"] == "INVALID_REQUEST"
+    renamed = (
+        await ops_call(
+            client,
+            ops_key,
+            "projects.update",
+            target
+            | {
+                "project": {"expected_revision": project["revision"], "name": "Concurrent edit"},
+            },
+        )
+    )["result"]
+    stale = await ops_call(client, ops_key, "projects.update", target | {"project": changes}, error=True)
+    assert stale["error"]["code"] == "CONFLICT"
+    current = (await call(client, key, "projects.get", target))["result"]
+    assert current["name"] == renamed["name"]
+    assert current["github"]["verification"]["required_jobs"] == ["lint", "test"]
+
+
+async def test_connection_history_filters_and_paginates_only_recent_window(client, key, ops_key, session_maker):
+    from app.features.project_management.connection_tests.models import ConnectionTest
+
+    project = (await ops_call(client, ops_key, "projects.create", {"project": {"name": "History"}}))["result"]
+    now = utc_now()
+    ids = [uuid4() for _ in range(32)]
+    async with session_maker() as session:
+        for index, test_id in enumerate(ids):
+            session.add(
+                ConnectionTest(
+                    id=test_id,
+                    project_id=UUID(project["id"]),
+                    project_revision=1,
+                    repository="owner/history",
+                    connector_id=uuid4(),
+                    verification={},
+                    created_at=now - timedelta(minutes=index),
+                    deadline=now,
+                    status="succeeded" if index % 2 == 0 else "failed",
+                    phase="done",
+                    cleanup_status="completed",
+                )
+            )
+        await session.commit()
+    target = {"project_id": project["id"]}
+    page = (
+        await call(
+            client,
+            key,
+            "connection_tests.list",
+            target
+            | {
+                "status": "succeeded",
+                "configuration_current": False,
+                "limit": 2,
+            },
+        )
+    )["result"]
+    assert page["total_count"] == 15 and page["history_limit"] == 30 and page["next_offset"] == 2
+    assert [test["id"] for test in page["items"]] == [str(ids[0]), str(ids[2])]
+    next_page = (
+        await call(
+            client,
+            key,
+            "connection_tests.list",
+            target
+            | {
+                "status": "succeeded",
+                "offset": page["next_offset"],
+                "limit": 2,
+            },
+        )
+    )["result"]
+    assert [test["id"] for test in next_page["items"]] == [str(ids[4]), str(ids[6])]
+    empty = (await call(client, key, "connection_tests.list", target | {"offset": 30}))["result"]
+    assert empty["items"] == [] and empty["total_count"] == 30 and empty["next_offset"] is None
+    old = (await call(client, key, "connection_tests.get", target | {"test_id": str(ids[31])}))["result"]
+    assert old["id"] == str(ids[31])

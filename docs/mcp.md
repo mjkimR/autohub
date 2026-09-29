@@ -4,13 +4,23 @@ The existing Hub process serves a Streamable HTTP MCP endpoint at
 `https://YOUR_HUB_HOST/mcp/`. `/mcp` redirects to this canonical URL. No local
 server package, skill, plugin, or per-repository agent configuration is required.
 
-Status: implemented with the published `app-common` commit
-`e4b8d1dee7c2b79e0bcb4ac246802eafc13c77ca`, pinned in the Python and APM
-manifests and locks. The full test suite, lint, type checks, UI build, and APM
-audit pass with packages installed from this commit. The endpoint is deployed on
-the managed Cloud Run service and is in use from a Claude Code HTTP MCP
-connection. Codex and other clients connect the same way when needed; no separate
-verification step is tracked for them.
+Status: the original single endpoint has been deployed. The work/operations split
+below is implemented locally and still needs deployment. Both endpoints share the
+Hub process, database and scheduler; neither starts a separate service.
+
+- Work: `/mcp/`, 13 tools, existing `autohub:mcp:read` / `autohub:mcp:write` keys.
+- Operations: `/ops/mcp/`, 4 additional tools, dedicated `autohub:mcp:ops` key.
+- Work owns all 9 inspection tools and four run mutations. Operations adds only
+  four project/connection-test mutations, with no duplicate tool names. Even a key with all scopes cannot call
+  a tool through the wrong endpoint. Ops-only keys cannot enter the work endpoint.
+
+Keep the work connection enabled as the base. Issue the operations key on
+**a separate machine** and enable its connection alongside work for configuration
+or connection testing. Operations relies on work for inspection; disabling
+operations leaves everyday execution and all inspection available.
+Scopes belong to machines: issuing another key on the same machine does not
+isolate permissions. Operations does not grant machine/key administration, REST
+access, scheduler dispatch, credential editing or internal worker callbacks.
 
 ## Connect once
 
@@ -50,25 +60,54 @@ revoke the old key on the **Machine keys** page. Revoked/expired keys and
 inactive machines fail on the next request. Scheduler-only keys, root keys,
 GitHub tokens and user login tokens are not MCP credentials.
 
+## Operations connection and upgrade
+
+Create a separate machine such as `personal-mcp-ops` with **MCP operations**
+(`autohub:mcp:ops`) only. Its issued-key notice generates `/ops/mcp/` connection
+snippets with server name `autohub-ops` and environment variable
+`AUTOHUB_OPS_MCP_KEY`. Store the raw key in that variable in the client environment.
+Keep operations scope on its separate machine. Enable or disable the operations
+connection as an addition to work, without replacing the base connection.
+A combined-scope machine is supported for deliberate use; its notice
+shows both configurations and each endpoint retains its own tool inventory.
+
+Existing work keys and URLs keep working after deployment, but `projects.create`,
+`projects.update`, `connection_tests.start` and `connection_tests.cancel` move to
+operations. Existing callers must use the new connection for those tools; there
+is no compatibility alias granting old write keys operational access. Refresh the
+client's discovered tool list after upgrade. No database migration is required.
+`/ops/mcp` redirects to `/ops/mcp/`, just as `/mcp` redirects to `/mcp/`.
+
+### Tool contract changes
+
+Refresh tool discovery after deployment; old tool names are not kept as aliases.
+`catalogs.list` and `connectors.list` are replaced by `projects.options`, returning
+`catalogs` and optional `connectors` pages. Use `connectors_page={}` for onboarding.
+MCP now requires `pull_request.implemented` for enrollment,
+`expected_revision` for resume, and `github.automation.auto_merge` when creating
+a connected project. REST input contracts retain their existing defaults.
+
 ## First repository
 
-- Find an existing project with `projects.get` using `repository` (`owner/repository`),
+- On the work connection, find an existing project with `projects.get` using `repository` (`owner/repository`),
   or search with `projects.list`.
-  For a new connection, inspect `connectors.list` and `catalogs.list`, then call
-  `projects.create` with the repository, connector ID and existing CI verification
-  contract. Connector credentials are created/rotated in the existing Hub UI.
+  For a new repository, call `projects.options` with `connectors_page={}` on the
+  work connection, then call `projects.create` on the operations connection with
+  the repository, connector ID, existing CI verification contract and an explicit
+  `github.automation.auto_merge` choice. Connector credentials are created/rotated in the existing Hub UI.
   See [CI connection contract](ci-contract.md) and the
   [existing templates](../templates/github-actions/README.md).
 - Use `projects.readiness` to see, per catalog, whether a test can start and which
-  requirements are missing or need manual confirmation. This is a configuration check. `connection_tests.start` verifies the actual provider/CI
-  integration and may create a temporary branch and PR. Generate its `request_id`
+  requirements are missing or need manual confirmation. This is a configuration check,
+  not a mandatory test before each run. On the operations connection,
+  `connection_tests.start` verifies the actual provider/CI integration and may create a temporary branch and PR. Generate its `request_id`
   once and reuse it if the response is lost. Observe status, evidence links (test PR,
   CI run, provider response) and cleanup with `connection_tests.get`; the existing
   maintenance scheduler advances the test. `connection_tests.list` shows a project's
-  recent tests after a lost ID.
+  recent tests after a lost ID. Work can inspect existing results without starting a test.
 - Prepare an open PR through your normal Git/GitHub workflow, then call
   `runs.enroll`. Set `pull_request.implemented=true` for code already implemented;
-  otherwise the selected catalog receives the implementation work. The project's
+  set it to `false` to request implementation work. The field is required. The project's
   existing automation and Draft/Ready policies still apply.
 - Keep the run ID and PR link. Use `runs.get` for state and `runs.attempts` for
   outcomes, failure details and provider conversation links. Disconnecting the
@@ -77,15 +116,21 @@ GitHub tokens and user login tokens are not MCP credentials.
 
 ## Public tools
 
-| Scope | Tools |
-| --- | --- |
-| `autohub:mcp:read` | `projects.list`, `projects.get`, `projects.readiness`, `catalogs.list`, `connectors.list`, `runs.list`, `runs.get`, `runs.attempts`, `connection_tests.list`, `connection_tests.get` |
-| `autohub:mcp:write` | `projects.create`, `projects.update`, `runs.enroll`, `runs.pause`, `runs.resume`, `runs.cancel`, `connection_tests.start`, `connection_tests.cancel` |
+| Surface | Required scope | Tools |
+| --- | --- | --- |
+| Work only (inspection) | `autohub:mcp:read` | `projects.list`, `projects.get`, `projects.readiness`, `projects.options`, `runs.list`, `runs.get`, `runs.attempts`, `connection_tests.list`, `connection_tests.get` |
+| Work only | `autohub:mcp:write` | `runs.enroll`, `runs.pause`, `runs.resume`, `runs.cancel` |
+| Operations only | `autohub:mcp:ops` | `projects.create`, `projects.update`, `connection_tests.start`, `connection_tests.cancel` |
 
-Discovery exposes this fixed public list; calls enforce the matching scope.
-Grant both scopes for a normal interactive connection. Internal leases, worker
-callbacks, credential operations, deletion, recurring schedules, WorkPlans and
-standalone session/report operations are not exposed in this first set.
+Discovery exposes each endpoint's fixed list; calls enforce the matching scope.
+Grant read and write for a normal work connection, or read only for observation.
+The operations scope covers only its four mutations. Read configuration, revisions,
+readiness, test evidence and cleanup status through the work connection.
+Internal leases, worker callbacks, credential operations, deletion, recurring
+schedules, WorkPlans and standalone session/report operations remain unexposed.
+With both connections enabled, discovery contains 17 unique tools and no duplicates.
+The [tool review](mcp-tool-review-2026-09-29.md) rates each unique tool and records
+the completed consolidation and usage improvements.
 
 List inputs bound page size to 100. Attempt history applies offset/limit in the
 database and aggregates totals across the full run. Run and attempt outputs omit PR bodies, linked
@@ -104,16 +149,71 @@ pause/resume/cancel response, read status before retrying. Connection test reque
 IDs use the existing durable deduplication. Cancellation does not promise to stop
 already delivered provider work; follow cleanup status for connection tests.
 
+## Choosing options and interpreting readiness
+
+`projects.options` returns catalog choices with public capacity/capability fields.
+Use `capability="pipeline_delivery"` or `"connection_test"`, and optionally
+`enabled_only=true`. `offset`/`limit` page catalogs **after** filtering. Provide
+`project_id` to return its configured selection independently of the page/filter;
+this selection is not a guarantee of current availability. With no project, the
+selection fields are null. The default Codex key is reported even if a metadata-only
+installation has not seeded its catalog row yet; options does not create it.
+
+Connector choices are omitted unless `connectors_page` is supplied. Its independent
+`offset`/`limit` apply to the connector page, with a separate total. Credentials
+and connector configuration are never returned. Create/rotate credentials in the UI.
+
+`projects.readiness` accepts optional `ai_catalog_id` and returns
+`check_kind="configuration_only"`. Per-catalog `status` is `blocked`,
+`manual_checks`, or `configured`; `ready=true` means the configuration permits a
+test, **not** that manual requirements or actual provider/CI access were verified.
+The `pending` entries describe missing/manual checks. It is not a per-run prerequisite.
+
+## Mutation and recovery workflow
+
+- `projects.create`: explicitly supply `github.automation.auto_merge` when connecting
+  GitHub. Other automation defaults remain visible in the input schema and the
+  effective settings are returned. A project without GitHub can still be created.
+- `projects.update`: optionally set `dry_run=true` to validate the merged configuration,
+  including connector/catalog validity and repository conflicts, without saving.
+  The response includes `applied=false`, the proposed configuration at the current
+  revision and `changes` with each path's before/after values. Apply the same patch
+  and expected revision with `dry_run=false`; `applied=true` returns the new revision.
+  A preview does not reserve anything. A concurrent edit still causes a conflict;
+  re-read and reconsider the patch. No human approval or mandatory preview is added.
+  Preview validates stored configuration, not live provider access.
+- `runs.enroll`: `implemented` is required to distinguish CI observation from requesting
+  implementation. After a lost response, use `runs.list` with both `project_id` and
+  `pull_number` before retrying. Existing duplicate-enrollment conflict rules remain.
+- `runs.resume`: inspect the paused/blocked run and its cause, then send its
+  `expected_revision`. The comparison runs under the run lock before GitHub I/O;
+  the existing second-phase revision check also rejects changes during reconciliation.
+  If the response is lost, read the current state rather than blindly replaying.
+- `connection_tests.start`: its `request_id` is also the resulting test ID. After a
+  lost response, call `connection_tests.get` with that ID or replay the original
+  request. Optional `expected_project_revision` rejects a new test if the project
+  changed. An existing request ID replays before that check, preserving recovery.
+  It does not pin catalog/connector changes; the existing start/worker checks still
+  validate the configuration. One active test per project remains enforced.
+- `connection_tests.list`: filter by `ai_catalog_id`, `status`, or
+  `configuration_current`. Filters and pagination apply within the latest 30 entries;
+  `history_limit=30` makes that boundary explicit. `total_count` is the matching count
+  in that window; use `next_offset` with the same filters, or get an older known ID.
+  Concurrent new tests can shift offset pages, so use IDs for stable tracking.
+- Test responses include `next_action`: `wait`, `inspect_cleanup`, `inspect_failure`,
+  `review_configuration`, or `done`. Cleanup failure takes precedence; a successful
+  test with pending cleanup is still `wait`, and a stale successful test is not `done`.
+
 ## Runtime and verification
 
 MCP uses stateless HTTP and JSON responses, sharing Hub startup/shutdown and the
 existing database/scheduler. Authentication runs before initialization, discovery
-and calls. Authentication's database transaction closes before a tool starts.
+and calls on each endpoint. Authentication's database transaction closes before a tool starts.
 Browser Origin headers must match the endpoint host. The MCP routes precede the
 SPA catch-all; REST authorization remains separate.
 
-Run `just test tests/integration/mcp tests/integration/test_main.py tests/integration/auth`
-for HTTP handshake/discovery, scope isolation, credential lifecycle, SPA routing,
+Run `just test tests/unit/mcp tests/integration/mcp tests/integration/test_main.py tests/integration/auth`
+for HTTP handshake/discovery, cross-endpoint discovery and call isolation, credential lifecycle, REST bypass rejection, SPA routing,
 project revisions, duplicate PR enrollment, run controls and connection-test retry
 coverage. GitHub is mocked; these tests do not create remote branches or PRs.
 Use `just lint`, `just check` and `just test` for the normal repository checks.

@@ -97,8 +97,13 @@ class ProjectService:
         await AgentScheduleRepository().resync_project(session, saved)
         return saved
 
-    async def patch(self, session: AsyncSession, project_id: UUID, data: ProjectPatch) -> Project:
-        project = await self.get(session, project_id, lock=True)
+    def prepare_patch(self, project: Project, data: ProjectPatch) -> ProjectUpdate:
+        if project.revision != data.expected_revision:
+            raise ProjectError(
+                409,
+                "Project changed; reload before saving",
+                fix="Read the project again and resend only your change with its current revision.",
+            )
         current = ProjectWrite.model_validate(ProjectRead.model_validate(project).model_dump(include=CONFIG_FIELDS))
         try:
             merged = data.apply_to(current)
@@ -110,6 +115,11 @@ class ProjectService:
                 f"Invalid project after applying changes: {location}: {error['msg']}",
                 fix="Omit fields you do not change; connecting GitHub for the first time needs repository, connector and verification.",
             ) from None
+        return merged
+
+    async def patch(self, session: AsyncSession, project_id: UUID, data: ProjectPatch) -> Project:
+        project = await self.get(session, project_id, lock=True)
+        merged = self.prepare_patch(project, data)
         return await self.update(session, project_id, merged)
 
     async def delete(self, session: AsyncSession, project_id: UUID) -> None:

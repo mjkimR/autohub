@@ -3,7 +3,7 @@
 from collections.abc import Awaitable, Callable
 from typing import cast
 
-from app.auth import MCP_READ, MCP_WRITE
+from app.auth import MCP_OPS, MCP_READ, MCP_WRITE
 from app_mcp import ToolContext, ToolDefinition, ToolRegistry, ToolResult, ToolRisk
 from pydantic import BaseModel
 
@@ -17,6 +17,7 @@ def register[InputModel: BaseModel, OutputModel: BaseModel](
     handler: Callable[[InputModel], Awaitable[OutputModel]],
     *,
     write: bool = False,
+    ops: bool = False,
 ) -> None:
     async def invoke(_: ToolContext, arguments: BaseModel) -> ToolResult:
         return ToolResult.success(await handler(cast(InputModel, arguments)))
@@ -28,7 +29,7 @@ def register[InputModel: BaseModel, OutputModel: BaseModel](
             handler=invoke,
             input_model=input_model,
             output_model=output_model,
-            required_scopes=frozenset({MCP_WRITE if write else MCP_READ}),
+            required_scopes=frozenset({MCP_OPS if ops else MCP_WRITE if write else MCP_READ}),
             risk=ToolRisk.WRITE if write else ToolRisk.READ,
         )
     )
