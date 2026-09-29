@@ -31,13 +31,19 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
-      - run: uv sync --locked
+      - run: uv sync --locked --all-packages
       - name: Format, lint, and architecture checks
         run: just lint-check hub
       - name: Type check
         run: just check hub
       - name: Tests (SQLite)
         run: just test
+      - name: Standalone pipeline SDK
+        run: |
+          just lint-check sdk
+          just check sdk
+          just test-sdk
+          just build-sdk
 
   backend-postgres:
     name: backend-postgres
@@ -63,7 +69,7 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
-      - run: uv sync --locked
+      - run: uv sync --locked --all-packages
       - name: Tests (PostgreSQL, testcontainers)
         run: just test-pg
       - name: Migrations apply, reverse one step, and match the models
@@ -93,7 +99,7 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
-      - run: uv sync --locked
+      - run: uv sync --locked --all-packages
       - run: npm --prefix modules/hub-ui ci
       - name: Format and lint
         run: just lint-check hub-ui

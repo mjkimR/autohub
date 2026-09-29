@@ -25,6 +25,7 @@ WORKDIR /app
 # uv workspace: root pyproject.toml + uv.lock, then member pyproject.toml
 COPY pyproject.toml uv.lock ./
 COPY modules/hub/pyproject.toml ./modules/hub/pyproject.toml
+COPY packages/sdk/pyproject.toml ./packages/sdk/pyproject.toml
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-editable --no-dev --package scheduler-mgr
@@ -53,5 +54,4 @@ ENV WORKERS=3
 ENV TIMEOUT=1200
 
 ENTRYPOINT ["./run_hub.sh"]
-
 

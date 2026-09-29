@@ -2,6 +2,8 @@
 
 Auto Hub automates GitHub PR work and CI observation on a scheduler foundation.
 Backend: `modules/hub` (FastAPI). Frontend: `modules/hub-ui` (SvelteKit SPA).
+Standalone pipeline SDK: `packages/sdk` (`autohub-sdk`, import `autohub_sdk`).
+Keep SDK runtime dependencies independent of the backend and its database.
 See [README](README.md) and [documentation guide](docs/README.md) for scope.
 
 ## Commands and verification
@@ -13,6 +15,8 @@ See [README](README.md) and [documentation guide](docs/README.md) for scope.
   `just lint-check` provides the read-only lint equivalent. Follow
   [development guidance](docs/development.md) for tests and PostgreSQL coverage.
 - When API definitions change, regenerate the typed client with `just gen-ui-api`.
+- For SDK changes, also run `just test-sdk` and `just build-sdk`; `just lint` and
+  `just check` include SDK checks. See [SDK README](packages/sdk/README.md).
 
 ## Backend
 

@@ -33,6 +33,8 @@ are manually installed starter files.
 ## Development
 
 Python/FastAPI lives in `modules/hub`; Svelte/TypeScript in `modules/hub-ui`.
+The standalone [pipeline SDK](packages/sdk/README.md) lives in `packages/sdk`.
+It currently supports local declarations, validation, and manifest export only.
 PostgreSQL is the standard database, with SQLite used for default testing.
 [justfile](justfile) defines commands, aliases, and defaults; run `just --list`.
 

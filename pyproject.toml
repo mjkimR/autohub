@@ -1,8 +1,8 @@
 [tool.uv.workspace]
-members = ["modules/hub"]
+members = ["modules/hub", "packages/sdk"]
 
 [tool.rye.workspace]
-members = ["modules/hub"]
+members = ["modules/hub", "packages/sdk"]
 
 [tool.ruff]
 exclude = [".git", ".venv", "migrations", "node_modules"]

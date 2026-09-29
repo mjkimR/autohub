@@ -4,16 +4,17 @@ default_test_path := "modules/hub"
 default:
     @just --list
 
-# Initialize project modules (all, hub, or hub-ui)
+# Initialize project modules (all, hub, hub-ui, or sdk)
 init module="all":
     #!/usr/bin/env bash
     source ./scripts/_lib.sh
     target=$(resolve_module "{{ module }}")
 
+    if should_run "$target" "hub" || should_run "$target" "sdk"; then
+        echo "Initializing Python workspace..."
+        uv sync --no-active --all-packages
+    fi
     if should_run "$target" "hub"; then
-        path=$(resolve_module_path "hub")
-        echo "Initializing Python backend ($path)..."
-        uv sync --no-active
         just skills
     fi
 
@@ -24,7 +25,7 @@ init module="all":
         npm --prefix "$path" install
     fi
 
-# Run linters for a specific module (all, hub, or hub-ui)
+# Run linters for a specific module (all, hub, hub-ui, or sdk)
 lint module="all":
     #!/usr/bin/env bash
     set -e
@@ -35,6 +36,11 @@ lint module="all":
         path=$(resolve_module_path "hub")
         echo "Linting Python backend ($path)..."
         uv run --no-active --no-sync app-tools run lint --fix --path "$path"
+    fi
+
+    if should_run "$target" "sdk"; then
+        uv run --no-active --no-sync ruff check --fix packages/sdk
+        uv run --no-active --no-sync ruff format packages/sdk
     fi
 
     if should_run "$target" "hub-ui"; then
@@ -53,12 +59,16 @@ lint-check module="all":
     if should_run "$target" "hub"; then
         uv run --no-active --no-sync app-tools run lint --path "$(resolve_module_path hub)"
     fi
+    if should_run "$target" "sdk"; then
+        uv run --no-active --no-sync ruff check packages/sdk
+        uv run --no-active --no-sync ruff format --check packages/sdk
+    fi
     if should_run "$target" "hub-ui"; then
         activate_frontend_node
         uv run --no-active --no-sync app-tools run npm --path "$(resolve_module_path hub-ui)" -- run lint
     fi
 
-# Run static type checks for a specific module (all, hub, or hub-ui)
+# Run static type checks for a specific module (all, hub, hub-ui, or sdk)
 check module="all":
     #!/usr/bin/env bash
     set -e
@@ -69,6 +79,10 @@ check module="all":
         path=$(resolve_module_path "hub")
         echo "Type checking Python backend ($path)..."
         uv run --no-active --no-sync app-tools run pyright -- --project "$path"
+    fi
+
+    if should_run "$target" "sdk"; then
+        uv run --no-active --no-sync pyright --project packages/sdk
     fi
 
     if should_run "$target" "hub-ui"; then
@@ -157,6 +171,14 @@ test-ui:
     path=$(resolve_module_path "hub-ui")
     activate_frontend_node
     uv run --no-active --no-sync app-tools run npm --path "$path" -- test
+
+# Test the standalone pipeline SDK without backend fixtures
+test-sdk:
+    @uv run --no-active --no-sync pytest -q -c packages/sdk/pyproject.toml packages/sdk/tests
+
+# Build the standalone SDK wheel and source distribution
+build-sdk:
+    @uv build --package autohub-sdk
 
 # Generate OpenAPI client for the frontend UI module from Python backend schema
 gen-ui-api:

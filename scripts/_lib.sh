@@ -3,7 +3,7 @@
 # Source this file from other scripts: source "$(dirname "$0")/_lib.sh"
 # Or from justfile recipes: source ./scripts/_lib.sh
 
-AVAILABLE_MODULES="all hub hub-ui"
+AVAILABLE_MODULES="all hub hub-ui sdk"
 
 resolve_module() {
     case "$1" in
@@ -18,6 +18,7 @@ resolve_module_path() {
     case "$1" in
         hub) echo "modules/hub" ;;
         hub-ui) echo "modules/hub-ui" ;;
+        sdk) echo "packages/sdk" ;;
         *) echo "modules/$1" ;;
     esac
 }

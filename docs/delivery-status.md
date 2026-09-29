@@ -1,7 +1,16 @@
 # 구현·검증 현황
 
-2026-09-28 기준. 아래 범위는 모두 운영 Cloud Run에 배포됐고 실서비스 카나리로 확인했다.
-현재 revision은 `autohub-00006-dz7`이다.
+운영 현황은 2026-09-28 기준이다. 아래의 운영 완료 범위는 Cloud Run에 배포됐고 실서비스 카나리로 확인했다.
+당시 revision은 `autohub-00006-dz7`이다.
+
+## SDK 초기 골격: 로컬 구현, 미발행
+
+2026-09-29 `packages/sdk`에 독립 `autohub-sdk` 패키지를 추가했다.
+`@pipeline` 선언, 입력·출력 모델 검증, 명시적인 `Registry`, 결정론적 JSON manifest export와
+로컬 실행 예제를 제공한다. 서버·DB 의존성과 자동 등록 부작용은 없다.
+원격 등록 API·Cloud Run 실행·단계별 복구·rside 연결은 구현하지 않았으며 패키지를 발행하지 않았다.
+계약 테스트 10개, 전체 lint·check, wheel/sdist 빌드, 서버 의존성이 없는 별도 환경의 wheel 실행을 확인했다.
+명령과 범위는 [SDK README](../packages/sdk/README.md)에 있다.
 
 ## 완료한 범위
 

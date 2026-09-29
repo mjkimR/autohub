@@ -19,6 +19,10 @@ just gen-ui-api
 `just check` runs Python type checking and the Frontend production build.
 Default tests use SQLite; `just test-pg` uses PostgreSQL testcontainers and needs a running Docker daemon.
 `just test-ui` runs the frontend component test suite.
+The standalone pipeline SDK lives in `packages/sdk`. `just init sdk` prepares the
+Python workspace, `just lint sdk` and `just check sdk` check it, and `just test-sdk`
+and `just build-sdk` test and package it. Default lint/check include the SDK;
+`just test` remains the backend suite. See the [SDK README](../packages/sdk/README.md).
 Vitest keeps transformed modules on disk between runs; every test still executes.
 To compare without the transform cache, run
 `npm --prefix modules/hub-ui test -- --fsModuleCache=false` with the repository's Node version.
