@@ -9,6 +9,11 @@ class WorkPlanRepository:
     async def get(self, session: AsyncSession, plan_id: UUID, *, lock: bool = False) -> WorkPlan | None:
         return await session.get(WorkPlan, plan_id, with_for_update=lock)
 
+    async def by_request(self, session: AsyncSession, project_id: UUID, request_id: UUID) -> WorkPlan | None:
+        return await session.scalar(
+            select(WorkPlan).where(WorkPlan.project_id == project_id, WorkPlan.registration_request_id == request_id)
+        )
+
     async def items(self, session: AsyncSession, plan_id: UUID) -> list[WorkItem]:
         return list(await session.scalars(select(WorkItem).where(WorkItem.plan_id == plan_id).order_by(WorkItem.key)))
 

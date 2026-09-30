@@ -34,6 +34,7 @@
 		})) ?? [{ key: 'task-1', title: '', description: '', acceptance: '', depends_on: [] }]
 	);
 	let saving = $state(false);
+	const registrationId = crypto.randomUUID();
 	let error = $state('');
 	let bulkOpen = $state(false);
 	let bulk = $state('');
@@ -101,7 +102,7 @@
 					})
 				: await api.POST('/api/v1/projects/{project_id}/work-plans', {
 						params: { path: { project_id: projectId } },
-						body
+						body: { ...body, request_id: registrationId }
 					});
 			if (!result.data) throw new Error(apiErrorMessage(result.error, 'Could not save work plan'));
 			onsaved();
@@ -123,7 +124,8 @@
 	<h2 class="text-xl font-semibold">{editing ? 'Edit plan' : 'Add work plan'}</h2>
 	<p class="text-sm text-muted-foreground">
 		Adding a plan schedules eligible work immediately. PRs merge according to project policy.
-		Dependencies wait for merged results.
+		Dependencies wait for merged results. After a lost response, retry the same content to recover
+		this plan.
 	</p>
 	{#if error}<p role="alert" class="text-sm text-destructive">{error}</p>{/if}
 	<div class="grid gap-4 sm:grid-cols-2">

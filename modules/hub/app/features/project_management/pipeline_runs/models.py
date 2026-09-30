@@ -168,3 +168,34 @@ class ExecutionReply(Base, UUIDMixin, TimestampMixin):
     replied_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_quota_limit: Mapped[bool] = mapped_column(nullable=False, default=False)
+
+
+class RunQuestion(Base, UUIDMixin, TimestampMixin):
+    """A durable operator decision tied to one execution and PR revision."""
+
+    __tablename__ = "run_questions"
+    pipeline_run_id: Mapped[UUID] = mapped_column(ForeignKey("pipeline_runs.id", ondelete="CASCADE"), index=True)
+    execution_attempt_id: Mapped[UUID | None] = mapped_column(ForeignKey("execution_attempts.id", ondelete="SET NULL"))
+    head_sha: Mapped[str] = mapped_column(String(64))
+    question: Mapped[str] = mapped_column(Text)
+    actor: Mapped[str] = mapped_column(String(255))
+    source: Mapped[str] = mapped_column(String(30))
+    state: Mapped[str] = mapped_column(String(30), default="open")
+    resolution: Mapped[str | None] = mapped_column(Text)
+
+
+class RunAnswer(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "run_answers"
+    question_id: Mapped[UUID] = mapped_column(ForeignKey("run_questions.id", ondelete="CASCADE"), index=True)
+    answer: Mapped[str] = mapped_column(Text)
+    actor: Mapped[str] = mapped_column(String(255))
+    applied_attempt_id: Mapped[UUID | None] = mapped_column(ForeignKey("execution_attempts.id", ondelete="SET NULL"))
+
+
+class RunResumeReceipt(Base, UUIDMixin, TimestampMixin):
+    """Request identity survives subsequent run state changes and response loss."""
+
+    __tablename__ = "run_resume_receipts"
+    pipeline_run_id: Mapped[UUID] = mapped_column(ForeignKey("pipeline_runs.id", ondelete="CASCADE"), index=True)
+    request_digest: Mapped[str] = mapped_column(String(64))
+    execution_attempt_id: Mapped[UUID | None] = mapped_column(ForeignKey("execution_attempts.id", ondelete="SET NULL"))

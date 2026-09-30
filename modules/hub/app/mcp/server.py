@@ -2,8 +2,10 @@ from app.auth import MCP_OPS, MCP_WORK_SCOPES
 from app.mcp.auth import MCPAuthentication, authenticated_context
 from app.mcp.connection_tests import register_connection_tests
 from app.mcp.dependencies import Dependencies
+from app.mcp.interactions import register_interactions
 from app.mcp.projects import register_projects
 from app.mcp.runs import register_runs
+from app.mcp.work_plans import register_work_plans
 from app_mcp import ToolRegistry, create_mcp
 from starlette.middleware import Middleware
 
@@ -13,6 +15,8 @@ def create_hub_mcp(*, ops: bool = False):
     deps = Dependencies()
     register_projects(definitions, deps)
     register_runs(definitions, deps)
+    register_work_plans(definitions, deps)
+    register_interactions(definitions, deps)
     register_connection_tests(definitions, deps)
     registry = ToolRegistry()
     for tool in definitions.definitions():

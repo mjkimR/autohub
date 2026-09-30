@@ -7,6 +7,7 @@ from uuid import UUID
 
 from app.features.project_management.connection_tests.adapters.specs import COMMON_EVIDENCE
 from app.features.project_management.connection_tests.schemas import ConnectionTestOption, ConnectionTestRead
+from app.features.project_management.pipeline_runs.interaction_schemas import ResumeRunRequest
 from app.features.project_management.pipeline_runs.models import PipelineRunState
 from app.features.project_management.pipeline_runs.schemas import EnrollPullRequest, PipelineRunSummary
 from app.features.project_management.projects.schemas import (
@@ -135,10 +136,8 @@ class Enroll(ProjectId):
     pull_request: Enrollment
 
 
-class Resume(RunId):
-    expected_revision: int = Field(
-        ge=1, description="Revision of the paused/blocked run you inspected; stale resumes fail without starting work"
-    )
+class Resume(RunId, ResumeRunRequest):
+    pass
 
 
 class Pause(RunId):

@@ -10,6 +10,7 @@ from app.features.ai_catalogs.services import AICatalogService
 from app.features.project_management.connection_tests.guards import reject_test_ancestry
 from app.features.project_management.connection_tests.repos import ConnectionTestRepository
 from app.features.project_management.pipeline_runs.github import read_pull_request
+from app.features.project_management.pipeline_runs.interaction_schemas import ResumeRunRequest
 from app.features.project_management.pipeline_runs.models import (
     IN_FLIGHT_RUN_STATES,
     ExecutionAttempt,
@@ -314,9 +315,16 @@ class PipelineRunUseCase:
     async def pause_run(self, run_id: UUID, request: PauseRunRequest | None = None) -> PipelineRunRead:
         return await PipelineRunControl(self.repo, self.projects, self.observer).pause_run(run_id, request)
 
-    async def resume_run(self, run_id: UUID, *, expected_revision: int | None = None) -> PipelineRunRead:
+    async def resume_run(
+        self,
+        run_id: UUID,
+        *,
+        expected_revision: int | None = None,
+        request: ResumeRunRequest | None = None,
+        actor: str = "operator",
+    ) -> PipelineRunRead:
         return await PipelineRunControl(self.repo, self.projects, self.observer).resume_run(
-            run_id, expected_revision=expected_revision
+            run_id, expected_revision=expected_revision, request=request, actor=actor
         )
 
     async def cancel_run(self, run_id: UUID) -> PipelineRunRead:

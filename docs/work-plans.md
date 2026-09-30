@@ -2,7 +2,8 @@
 
 Work plans manage work before a pull request exists. They are available in
 **Project → Plans** and the API below, deployed, and verified by live GitHub
-canaries. [Design decisions](work-plans-design.md) record the
+canaries. The registration identity and MCP additions dated 2026-09-30 are local
+and not yet deployed. [Design decisions](work-plans-design.md) record the
 agreed domain boundaries and the original proposals.
 
 ## Registration and dependencies
@@ -46,6 +47,33 @@ are not loaded into these requests, including on retries. Work PR target/head
 branches are checked again before Hub merges them. Unexpected branch changes
 require correction and never release dependencies.
 
+## Registration identity and MCP
+
+New UI registrations send a UUID `request_id`; MCP `work_plans_register` requires
+it. REST `POST` accepts it optionally to preserve older clients. Callers that omit
+it do not get registration deduplication. Generate the ID before issuing the
+request and retain it across retries.
+
+A unique constraint on `(project_id, registration_request_id)` and the project
+lock serialize concurrent registrations. The normalized digest includes defaults,
+text, branch, specifications and dependencies; item/dependency ordering does not
+change it. Same key and content returns the existing Plan's current state, even
+if it has since paused or progressed. Different content with the same key returns
+409 and never edits the existing Plan. A different key creates different work;
+Hub does not detect semantic duplicates.
+
+Recover a lost response with `GET /registrations/{request_id}` or MCP
+`work_plans_get` with `project_id` and `request_id`. The key lives as long as the
+Plan. After a saved Plan's immediate kick fails, retrieve that Plan and let the
+existing scheduler recover; do not mint another key. The UI retains its key while
+the form remains mounted. If the form was closed/reloaded after an uncertain
+response, inspect existing Plans before submitting anew.
+
+Work MCP exposes `work_plans_list`, `work_plans_get` (read scope), and
+`work_plans_register`, `work_plans_update`, `work_plans_control` (write scope).
+These reuse the same services, validation and admission paths as REST. Operations
+scope is not required. [MCP contracts](mcp.md) describe the nested inputs.
+
 ## Controls and recovery
 
 - **Pause** prevents new Item starts. Already admitted preparation and existing
@@ -70,7 +98,9 @@ identities reconcile lost responses before creating another resource.
 The Plans view distinguishes dependency waits, capacity waits, pauses, run
 failures, and Issue synchronization delays. Use the linked Runs view for existing
 pipeline pause/resume controls; Plan resume never replays an agent request.
-Failed/canceled Run retry and PR replacement do not yet have an Item-level API.
+Failed/canceled Run retry and PR replacement do not have an Item-level API.
+[Run decisions and recovery](run-decisions.md#replacing-failed-work) gives the
+replacement inventory, explicit links and dependent-work rebuilding procedure.
 A target branch confirmed absent before preparation writes stops in
 `preparation_failed` and releases its reserved execution capacity. A ref lookup's
 404 alone is insufficient: a successful matching-ref listing must also lack the
@@ -147,19 +177,21 @@ Base path: `/api/v1/projects/{project_id}/work-plans`.
 | --- | --- |
 | `GET /` | List plans with their items and Issue sync status; `offset`, `limit` (1–100). |
 | `POST /` | Atomically register a plan and its Item graph. |
+| `GET /registrations/{request_id}` | Recover a registration without creating work. |
 | `GET /{plan_id}` | Read local state; no external writes. |
 | `PUT /{plan_id}` | Edit unstarted work, including dependency graphs; requires `expected_revision`. |
 | `POST /{plan_id}/control` | `action`: `pause`, `resume`, or `revoke`; requires `expected_revision`. |
 
-Creation fields: `title`, optional `description`, `base_branch`, `depends_on`
+Creation fields: optional `request_id` (required for reliable retries), `title`, optional `description`, `base_branch`, `depends_on`
 (existing Plan UUIDs), and `items`. Each Item requires a stable `key`, `title`,
 `description`, `acceptance`, and optional `depends_on` (local Item keys).
 The generated OpenAPI client is the definitive request/response contract.
 
 ## Deployment and validation
 
-Apply migration `c7d8e9f0a1b2` with the matching application version. It adds five
-work tables and does not alter existing tables. Keep the project dispatcher and
+The original migration `c7d8e9f0a1b2` added five work tables. Current deployment
+must apply the full migration head, including `e14a217d0910` (Run decisions) and
+`f25b328e1021` (Plan registration identity), with the matching application/UI. Keep the project dispatcher and
 shared maintenance worker enabled. No per-Plan schedules are created.
 
 Automated coverage includes graph validation, controls, capacity, PR response-loss

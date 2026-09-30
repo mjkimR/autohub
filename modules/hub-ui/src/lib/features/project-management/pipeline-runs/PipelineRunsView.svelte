@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { SvelteMap } from 'svelte/reactivity';
+	import RunDecisionsDialog from './RunDecisionsDialog.svelte';
 	import PipelineRunRow from './PipelineRunRow.svelte';
 	import AttemptHistoryDialog from './AttemptHistoryDialog.svelte';
 	import EnrollPullRequestDialog from './EnrollPullRequestDialog.svelte';
@@ -38,6 +40,8 @@
 	let selectedProjectId = $state<string>('');
 	let selectedState = $state<components['schemas']['PipelineRunState'] | ''>('');
 
+	let decisionRun = $state<PipelineRun | null>(null);
+	const resumeRequests = new SvelteMap<string, string>();
 	let selectedRun = $state<PipelineRun | null>(null);
 	let isAcquireOpen = $state(false);
 	let attachTargetRun = $state<PipelineRun | null>(null);
@@ -152,8 +156,11 @@
 		const runId = run.id;
 		operatingRunId = runId;
 		try {
+			const key = `${runId}:${run.revision}`;
+			if (!resumeRequests.has(key)) resumeRequests.set(key, crypto.randomUUID());
 			const res = await api.POST('/api/v1/pipeline-runs/{run_id}/resume', {
-				params: { path: { run_id: runId } }
+				params: { path: { run_id: runId } },
+				body: { request_id: resumeRequests.get(key)!, expected_revision: run.revision }
 			});
 			if (res.error) {
 				const detail = apiErrorMessage(res.error, 'Failed to resume run');
@@ -354,6 +361,7 @@
 							oncancel={handleCancel}
 							onattach={openAttachPr}
 							onhistory={openAttempts}
+							ondecisions={(run) => (decisionRun = run)}
 						/>
 					{/each}
 				{/if}
@@ -370,6 +378,13 @@
 		/>
 	{/if}
 
+	{#if decisionRun}
+		{#key decisionRun.id}<RunDecisionsDialog
+				run={decisionRun}
+				onclose={() => (decisionRun = null)}
+				onchange={() => loadRuns()}
+			/>{/key}
+	{/if}
 	{#if selectedRun}
 		{#key selectedRun.id}
 			<AttemptHistoryDialog run={selectedRun} onclose={() => (selectedRun = null)} />

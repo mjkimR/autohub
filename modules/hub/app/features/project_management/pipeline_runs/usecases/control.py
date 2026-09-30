@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 from uuid import UUID, uuid4
 
+from app.features.project_management.pipeline_runs.interaction_schemas import ResumeRunRequest
+from app.features.project_management.pipeline_runs.interaction_service import RunInteractionService
 from app.features.project_management.pipeline_runs.models import (
     FINAL_RUN_STATES,
     ExecutionAttempt,
@@ -10,6 +12,7 @@ from app.features.project_management.pipeline_runs.models import (
     ExecutionAttemptState,
     ExecutionDelivery,
     PipelineRunState,
+    RunResumeReceipt,
 )
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.requests import build_implementation_request, request_digest
@@ -60,11 +63,49 @@ class PipelineRunControl:
             await session.flush()
             return PipelineRunRead.model_validate(run)
 
-    async def resume_run(self, run_id: UUID, *, expected_revision: int | None = None) -> PipelineRunRead:
+    async def resume_run(
+        self,
+        run_id: UUID,
+        *,
+        expected_revision: int | None = None,
+        request: ResumeRunRequest | None = None,
+        actor: str = "operator",
+    ) -> PipelineRunRead:
+        interactions = RunInteractionService()
+        digest = (
+            request_digest({"run_id": str(run_id), "actor": actor, "request": request.model_dump(mode="json")})
+            if request
+            else None
+        )
+        if request:
+            expected_revision = request.expected_revision
+
+        async def replay(session, run):
+            receipt = await session.get(RunResumeReceipt, request.request_id) if request else None
+            if receipt:
+                if receipt.pipeline_run_id != run_id or receipt.request_digest != digest:
+                    raise ProjectError(409, "Resume request ID was already used for different input")
+                return PipelineRunRead.model_validate(run)
+            return None
+
+        async def remember(session, attempt_id=None):
+            if request:
+                session.add(
+                    RunResumeReceipt(
+                        id=request.request_id,
+                        pipeline_run_id=run_id,
+                        request_digest=digest,
+                        execution_attempt_id=attempt_id,
+                    )
+                )
+                await session.flush()
+
         async with AsyncTransaction() as session:
             run = await self.repo.get(session, run_id, lock=True)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
+            if result := await replay(session, run):
+                return result
             if expected_revision is not None and run.revision != expected_revision:
                 raise ProjectError(
                     409,
@@ -75,6 +116,7 @@ class PipelineRunControl:
                 raise ProjectError(
                     422, f"Cannot resume a run that is not paused or blocked (current state: {run.state})"
                 )
+            await interactions.response_for_resume(session, run, request.answer_id if request else None)
             attempts = await self.repo.list_attempts(session, run.id)
             expected_revision = run.revision
             project = await self.projects.get(session, run.project_id)
@@ -125,24 +167,33 @@ class PipelineRunControl:
 
         async with AsyncTransaction() as session:
             run = await self.repo.get(session, run_id, lock=True)
+            if run is not None and (result := await replay(session, run)):
+                return result
             if run is None or run.revision != expected_revision:
                 raise ProjectError(409, "Pipeline run changed while resuming; reload and retry")
             project = await self.projects.get(session, run.project_id)
             if not project.enabled or project.revision != project_revision:
                 raise ProjectError(409, "Project changed while resuming; reload and retry")
+            response = await interactions.response_for_resume(session, run, request.answer_id if request else None)
             now = get_current_utc_time()
             if pr["state"] == "closed":
                 await finish_closed_pull(self.repo, session, run, pr, now)
+                await remember(session)
                 return PipelineRunRead.model_validate(run)
             if pull.head_ref != run.branch:
                 raise ProjectError(409, "Pull request branch changed; enroll it again")
-            if external:
+            if response is not None and response[0].head_sha != pull.head_sha:
+                raise ProjectError(
+                    409, "PR head changed since the question; inspect and dismiss the stale question before resuming"
+                )
+            if external and response is None:
                 run.state = PipelineRunState.AWAITING_CI
                 run.next_action_at = None
                 run.pause_reason = None
                 run.project_revision = project_revision
                 run.ai_catalog_id = (await run_catalog(session, project, run)).id
                 run.revision += 1
+                await remember(session)
                 await session.flush()
                 return PipelineRunRead.model_validate(run)
             active = await self.repo.active_attempt(session, run.id)
@@ -154,6 +205,15 @@ class PipelineRunControl:
             run.epoch += 1
             key = uuid4()
             implementation = prior.model_copy(update={"correlation_marker": f"hub-attempt:{key}", "pull_request": pull})
+            if response is not None:
+                question, answer = response
+                implementation = implementation.model_copy(
+                    update={
+                        "instructions": prior.instructions
+                        + f"\n\nOperator decision ({question.id}):\nQuestion: {question.question}\nAnswer: {answer.answer}\n"
+                        "Apply this clarification within the original scope. If it changes acceptance criteria, stop and ask again."
+                    }
+                )
             snapshot = implementation.model_dump(mode="json")
             attempt = await self.repo.create_attempt(
                 session,
@@ -171,6 +231,10 @@ class PipelineRunControl:
             await self.repo.create_delivery(
                 session, ExecutionDelivery(execution_attempt_id=attempt.id, delivery_number=1, cause="resume")
             )
+            if response is not None:
+                response[0].state = "applied"
+                response[1].applied_attempt_id = attempt.id
+            await remember(session, attempt.id)
             run.state = PipelineRunState.DISPATCHING
             run.next_action_at = None
             run.pause_reason = None

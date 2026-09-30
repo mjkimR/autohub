@@ -1,6 +1,7 @@
 """Codex PR mention payloads (docs/codex-pr-mention.md). Posting and reconciliation belong to
 ``adapters.codex_github_mention``."""
 
+import json
 import re
 
 from app.features.project_management.pipeline_runs.schemas import ImplementationRequest
@@ -51,6 +52,11 @@ def build_codex_mention_comment(request: ImplementationRequest, *, delivery: int
         "```\n\n"
         "After pushing, verify with `git ls-remote` that the remote branch tip equals your commit. "
         "Do not create another branch or pull request.",
+        "If a human decision is needed, stop before pushing and include this single-line marker in your final PR reply "
+        "(replace QUESTION with the actual question; do not mention the agent again):\n```html\n"
+        + "<!-- autohub-question "
+        + json.dumps({"attempt": request.correlation_marker, "head": pull.head_sha, "question": "QUESTION"})
+        + " -->\n```",
         f"<!-- {request.correlation_marker} kind={request.kind} delivery={delivery} head={pull.head_sha} -->",
     ]
     return "\n\n".join(sections)

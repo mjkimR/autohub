@@ -31,7 +31,8 @@
 		onresume,
 		oncancel,
 		onattach,
-		onhistory
+		onhistory,
+		ondecisions
 	}: {
 		run: PipelineRun;
 		projectName: string;
@@ -42,6 +43,7 @@
 		oncancel: (runId: string) => void;
 		onattach: (run: PipelineRun) => void;
 		onhistory: (run: PipelineRun) => void;
+		ondecisions: (run: PipelineRun) => void;
 	} = $props();
 </script>
 
@@ -146,6 +148,7 @@
 
 	<TableCell class="text-right">
 		<div class="flex flex-wrap items-center gap-2 md:justify-end md:gap-1">
+			<Button variant="outline" size="sm" onclick={() => ondecisions(run)}>Decisions</Button>
 			{#if run.state !== 'completed' && run.state !== 'failed' && run.state !== 'canceled'}
 				{#if run.state === 'paused' || run.state === 'blocked'}
 					<Button

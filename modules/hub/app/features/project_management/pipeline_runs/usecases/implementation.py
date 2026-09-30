@@ -3,12 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+from uuid import NAMESPACE_URL, uuid5
 
 from app.features.ai_catalogs.services import AICatalogService
 from app.features.project_management.pipeline_runs.adapters.base import AgentReply, DeliveryTarget, ExecutionAdapter
 from app.features.project_management.pipeline_runs.adapters.registry import (
     resolve_execution_adapter,
 )
+from app.features.project_management.pipeline_runs.dispatch import CODEX_CONNECTOR_LOGIN
+from app.features.project_management.pipeline_runs.interaction_service import RunInteractionService
 from app.features.project_management.pipeline_runs.models import (
     ExecutionAttemptState,
     ExecutionDelivery,
@@ -16,6 +19,7 @@ from app.features.project_management.pipeline_runs.models import (
     PipelineRun,
     PipelineRunState,
 )
+from app.features.project_management.pipeline_runs.questions import parse_question
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.schemas import (
     PipelineRunRead,
@@ -109,6 +113,24 @@ class ImplementationProgress:
                         is_quota_limit=reply.is_quota_limit,
                     ),
                 )
+        for reply in replies:
+            question = parse_question(
+                reply.body, str(attempt.request_snapshot.get("correlation_marker", "")), observed.delivered_head
+            )
+            if question and reply.external_id and reply.author == CODEX_CONNECTOR_LOGIN:
+                await RunInteractionService().ask(
+                    session,
+                    run,
+                    request_id=uuid5(NAMESPACE_URL, f"autohub-question:{run.id}:{reply.external_id}"),
+                    question=question,
+                    actor=f"github:{reply.author}",
+                    source="agent",
+                    head_sha=observed.delivered_head,
+                    attempt_id=attempt.id,
+                    # The observing worker still owns this lease and releases it on return.
+                    invalidate_lease=False,
+                )
+                return PipelineRunRead.model_validate(run)
         quota_replied_at = max((reply.replied_at for reply in replies if reply.is_quota_limit), default=None)
         if delivery is not None and delivery.posted_at is not None and quota_replied_at is not None:
             run.quota_block_count += 1

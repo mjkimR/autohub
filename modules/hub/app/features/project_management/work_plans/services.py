@@ -1,12 +1,14 @@
 from typing import Annotated
 from uuid import UUID, uuid4
 
+from app.features.project_management.pipeline_runs.requests import request_digest
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.services import ProjectService
 from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 from app.features.project_management.work_plans.repos import WorkPlanRepository
 from app.features.project_management.work_plans.schemas import (
     PlanControl,
+    WorkPlanCreate,
     WorkPlanUpdate,
     WorkPlanWrite,
     validate_graph,
@@ -27,12 +29,29 @@ class WorkPlanService:
 
     async def create(self, session: AsyncSession, project_id: UUID, data: WorkPlanWrite) -> WorkPlan:
         project = await self.projects.get(session, project_id, lock=True)
+        request_id = data.request_id if isinstance(data, WorkPlanCreate) else None
+        content = data.model_dump(mode="json", exclude={"request_id"})
+        content["depends_on"] = sorted(content["depends_on"])
+        content["items"] = sorted(content["items"], key=lambda item: item["key"])
+        for item in content["items"]:
+            item["depends_on"] = sorted(item["depends_on"])
+        digest = request_digest(content)
+        existing = await self.repo.by_request(session, project_id, request_id) if request_id else None
+        if existing:
+            if existing.registration_digest != digest:
+                raise ProjectError(
+                    409,
+                    "Registration request ID was already used for different work; recover the original plan before registering another request",
+                )
+            return existing
         if not project.github_repository or not project.github_connector_id:
             raise ProjectError(422, "Connect a GitHub repository before adding work plans")
         plan_id = uuid4()
         await self.validate_parents(session, project_id, plan_id, data.depends_on)
         plan = WorkPlan(
             id=plan_id,
+            registration_request_id=request_id,
+            registration_digest=digest if request_id else None,
             project_id=project_id,
             title=data.title,
             description=data.description,

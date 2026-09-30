@@ -65,7 +65,9 @@ class TestCodexMentionComment:
 
         assert "forged" not in comment
         assert "template hint" not in comment
-        assert comment.count("<!--") == 1
+        assert comment.count("<!--") == 2
+        assert comment.count("<!-- hub-attempt:") == 1
+        assert comment.count("<!-- autohub-question ") == 1
         assert "tail &lt;!-- open" in comment
 
     def test_template_never_selects_the_review_mode(self):
@@ -117,7 +119,9 @@ class TestCodexMentionComment:
 
         assert "Fix lint: F821 undefined name. Merge main into this branch." in comment
         assert "forged" not in comment
-        assert comment.count("<!--") == 1
+        assert comment.count("<!--") == 2
+        assert comment.count("<!-- hub-attempt:") == 1
+        assert comment.count("<!-- autohub-question ") == 1
 
     def test_instructions_cannot_add_another_codex_mention(self):
         request = make_request()

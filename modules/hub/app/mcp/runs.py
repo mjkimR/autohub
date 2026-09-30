@@ -1,4 +1,6 @@
+from app.features.project_management.pipeline_runs.interaction_schemas import ResumeRunRequest
 from app.features.project_management.pipeline_runs.schemas import PauseRunRequest
+from app.mcp.auth import authenticated_context
 from app.mcp.contracts import (
     AttemptFilter,
     AttemptList,
@@ -56,7 +58,13 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
         return await view(await deps.runs.pause_run(args.run_id, PauseRunRequest(reason=args.reason)))
 
     async def resume(args: Resume) -> RunView:
-        return await view(await deps.runs.resume_run(args.run_id, expected_revision=args.expected_revision))
+        return await view(
+            await deps.runs.resume_run(
+                args.run_id,
+                request=ResumeRunRequest(**args.model_dump(exclude={"run_id"})),
+                actor=f"machine:{(await authenticated_context()).subject}",
+            )
+        )
 
     async def cancel(args: RunId) -> RunView:
         return await view(await deps.runs.cancel_run(args.run_id))
@@ -106,7 +114,7 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
     register(
         registry,
         "runs_resume",
-        "Resume a paused or blocked run after inspecting and resolving its blocking cause and reconciling its PR. Pass the inspected expected_revision; stale revisions fail before external work. May resume agent work; after a lost response read status before retrying.",
+        "Resume a paused or blocked run after inspecting its cause and PR. Pass request_id and the inspected expected_revision, plus answer_id for a pending decision. This may request agent work. Retry identical input with the same request_id after response loss; the receipt returns current state without creating another attempt.",
         Resume,
         RunView,
         resume,

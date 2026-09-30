@@ -11,10 +11,13 @@ async def test_work_plan_migration_roundtrip_matches_metadata(session):
 
     def roundtrip(sync_connection):
         with Operations.context(MigrationContext.configure(sync_connection)):
+            registration = scripts().get_revision('f25b328e1021').module
+            registration.downgrade()
             migration = scripts().get_revision('c7d8e9f0a1b2').module
             migration.downgrade()
             assert 'work_plans' not in inspect(sync_connection).get_table_names()
             migration.upgrade()
+            registration.upgrade()
         context = MigrationContext.configure(sync_connection, opts={
             'compare_type': lambda context, col, meta, reflected, model: False if context.dialect.name == 'sqlite' and isinstance(model, UUID) else None,
             'include_object': lambda obj, name, kind, reflected, compare_to: (

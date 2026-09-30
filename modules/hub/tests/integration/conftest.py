@@ -26,8 +26,9 @@ def app(credential_key_provider):
     application = create_app()
     application.dependency_overrides[get_credential_key_provider] = lambda: credential_key_provider
     # Tests exercise features, not signing in; `tests/integration/auth` removes these to test the real thing.
+    user_id = uuid4()
     application.dependency_overrides[get_current_user] = lambda: User(
-        id=uuid4(), firstname="Test", email="operator@example.com", is_active=True, is_superadmin=True
+        id=user_id, firstname="Test", email="operator@example.com", is_active=True, is_superadmin=True
     )
     application.dependency_overrides[require_scheduler_or_user] = lambda: None
     yield application

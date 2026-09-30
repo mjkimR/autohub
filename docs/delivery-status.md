@@ -3,6 +3,51 @@
 운영 현황은 2026-09-28 기준이다. 아래의 운영 완료 범위는 Cloud Run에 배포됐고 실서비스 카나리로 확인했다.
 당시 revision은 `autohub-00006-dz7`이다.
 
+## 질문·답변·Plan MCP: 로컬 구현, 미배포
+
+2026-09-30 g-sandbox 전환과 독립적으로 사용할 선행 기능을 구현했다.
+기준 커밋 `5ede72e` 위의 로컬 미커밋 변경이며 운영 revision은 아직 변경하지 않았다.
+
+- Run 질문·답변과 재개 요청 영수증을 DB에 보존한다. 답변 저장은 실행을 시작하지
+  않고, 명시적 재개가 선택한 답변을 새 attempt와 delivery에 고정한다.
+- UI의 Decisions, REST, 작업용 MCP가 동일한 revision·상태·PR head 검사를 사용한다.
+  답변·재개 응답 유실과 동시 요청은 동일 요청 키로 회수하며 이전 재개를 반복해도
+  이후 pause가 풀리지 않는다. 외부 에이전트 실행 중단을 보장하지는 않는다.
+- Codex PR 질문 마커는 신뢰할 작성자·attempt·head를 검사한다. 자동 수집은 모의
+  GitHub 테스트로 확인했으며 실제 provider의 질문 작성·답변 반영은 **미검증**이다.
+- Work Plan MCP 5개와 질문 MCP 4개를 추가했다. 현재 로컬 도구는 작업용 22개
+  (조회 12, 변경 10), 운영용 4개다. 기존 키의 read/write scope를 재사용한다.
+- Plan 등록은 프로젝트+요청 키 유일 제약과 내용 digest로 중복을 막는다. MCP는
+  요청 키 필수, REST는 기존 소비자 호환을 위해 선택이다. UI도 키를 발행한다.
+- 실패·취소 Run의 복구는 대체 Plan과 명시적 원본 링크를 사용한다. 원래 실패나
+  의존성을 성공으로 바꾸지 않는 복구 절차를 통합 테스트로 검증했다.
+
+마이그레이션 `e14a217d0910`, `f25b328e1021`을 matching UI/API와 함께 배포해야 한다.
+REST resume의 `request_id`, `expected_revision`은 이제 필수이므로 외부 호출도 갱신해야 한다.
+질문·답변은 Run의 보관 기간을 따르고 Plan 등록 키는 Plan과 함께 남는다.
+최초 구현의 로컬 검증 결과:
+
+- `just test`: 백엔드 전체 850 passed, 9 skipped. PostgreSQL 전용 사례 등은 SQLite에서 제외된다.
+- `just test-pg tests/integration/features/project_management/pipeline_runs tests/integration/features/project_management/work_plans tests/integration/migrations/test_run_decisions.py tests/integration/migrations/test_work_plan_migration.py tests/integration/mcp/test_work_decisions.py`: 167 passed.
+- `just test-ui`: 27개 파일, 145 passed.
+- `just lint-check`, `just check`: 통과. 타입 검사·Svelte 검사·production build 포함.
+  기존 HTTP client architecture 경고 3건은 그대로다.
+- OpenAPI UI 타입 재생성, 문서 링크, `git diff --check` 확인.
+
+자동 테스트의 GitHub/provider I/O는 모의 응답이며 외부 PR을 만들지 않는다.
+
+같은 날 자체 리뷰에서 확인한 3건도 수정했다. Decisions 조회 실패 또는 두 응답의
+revision 불일치 시 제어를 막고, 응답 유실 후 새로고침해도 답변 제출 키를 유지한다.
+질문 파서는 JSON 이스케이프 길이와 디코딩한 질문 길이를 분리해 한글·이모지의
+정상 질문이 잘리지 않도록 했다. 회귀 테스트를 추가하고 관련 백엔드 18 passed,
+1 skipped, UI 전체 150 passed, `just lint-check`·`just check` 통과를 확인했다.
+이 후속 수정에서는 전체 백엔드·PostgreSQL 테스트를 다시 실행하지 않았다.
+
+A1은 live 질문 전달·답변 반영 canary 전까지 부분 완료이고, A4 운영 검증은 남아 있다.
+게임별 분류·일괄 제어, Jules 질문, 자동 successor 치환은 이번 범위가 아니다.
+g-sandbox 코드·CI·실행 큐 및 Linear 연동은 변경하지 않았다.
+[제어·복구 계약](run-decisions.md), [계획 등록](work-plans.md), [MCP](mcp.md)를 참고한다.
+
 ## MCP 작업용·운영용 분리: 로컬 구현, 미배포
 
 2026-09-29 작업용 `/mcp/`와 운영용 `/ops/mcp/`를 같은 서버에 분리했다.

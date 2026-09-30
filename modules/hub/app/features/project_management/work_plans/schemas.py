@@ -64,6 +64,13 @@ class WorkPlanWrite(BaseModel):
         return self
 
 
+class WorkPlanCreate(WorkPlanWrite):
+    request_id: UUID | None = Field(
+        default=None,
+        description="Reuse on retries to recover the original plan; different content with the same key conflicts",
+    )
+
+
 class PlanControl(BaseModel):
     model_config = ConfigDict(extra="forbid")
     action: Literal["pause", "resume", "revoke"]
@@ -101,6 +108,7 @@ class WorkItemRead(BaseModel):
 
 
 class WorkPlanRead(BaseModel):
+    registration_request_id: UUID | None = None
     model_config = ConfigDict(from_attributes=True, json_schema_serialization_defaults_required=True)
     id: UUID
     project_id: UUID

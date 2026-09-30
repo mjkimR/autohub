@@ -393,6 +393,58 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/pipeline-runs/{run_id}/questions': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** List Questions */
+		get: operations['list_questions_api_v1_pipeline_runs__run_id__questions_get'];
+		put?: never;
+		/** Ask Question */
+		post: operations['ask_question_api_v1_pipeline_runs__run_id__questions_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/pipeline-runs/{run_id}/questions/{question_id}/answers': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Answer Question */
+		post: operations['answer_question_api_v1_pipeline_runs__run_id__questions__question_id__answers_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/pipeline-runs/{run_id}/questions/{question_id}/dismiss': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Dismiss Question */
+		post: operations['dismiss_question_api_v1_pipeline_runs__run_id__questions__question_id__dismiss_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/projects': {
 		parameters: {
 			query?: never;
@@ -566,6 +618,23 @@ export interface paths {
 		 * @description Pause/resume/revoke unstarted work only; started PR runs continue through merging.
 		 */
 		post: operations['control_work_plan_api_v1_projects__project_id__work_plans__plan_id__control_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/projects/{project_id}/work-plans/registrations/{request_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Get Registered Plan */
+		get: operations['get_registered_plan_api_v1_projects__project_id__work_plans_registrations__request_id__get'];
+		put?: never;
+		post?: never;
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -1727,6 +1796,42 @@ export interface components {
 			cron_expression?: string | null;
 			/** Interval Seconds */
 			interval_seconds?: number | null;
+		};
+		/** AnswerRead */
+		AnswerRead: {
+			/**
+			 * Id
+			 * Format: uuid
+			 */
+			id: string;
+			/**
+			 * Question Id
+			 * Format: uuid
+			 */
+			question_id: string;
+			/** Answer */
+			answer: string;
+			/** Actor */
+			actor: string;
+			/**
+			 * Created At
+			 * Format: date-time
+			 */
+			created_at: string;
+			/** Applied Attempt Id */
+			applied_attempt_id: string | null;
+		};
+		/** AnswerWrite */
+		AnswerWrite: {
+			/**
+			 * Request Id
+			 * Format: uuid
+			 */
+			request_id: string;
+			/** Expected Revision */
+			expected_revision: number;
+			/** Answer */
+			answer: string;
 		};
 		/** AttachPRRequest */
 		AttachPRRequest: {
@@ -3173,6 +3278,68 @@ export interface components {
 			/** Linked Issues */
 			linked_issues?: components['schemas']['LinkedIssue'][];
 		};
+		/** QuestionDismiss */
+		QuestionDismiss: {
+			/** Expected Revision */
+			expected_revision: number;
+			/** Reason */
+			reason: string;
+		};
+		/** QuestionList */
+		QuestionList: {
+			/** Items */
+			items: components['schemas']['QuestionRead'][];
+			/** Total Count */
+			total_count: number;
+			/** Run Revision */
+			run_revision: number;
+		};
+		/** QuestionRead */
+		QuestionRead: {
+			/**
+			 * Id
+			 * Format: uuid
+			 */
+			id: string;
+			/**
+			 * Pipeline Run Id
+			 * Format: uuid
+			 */
+			pipeline_run_id: string;
+			/** Execution Attempt Id */
+			execution_attempt_id: string | null;
+			/** Head Sha */
+			head_sha: string;
+			/** Question */
+			question: string;
+			/** Actor */
+			actor: string;
+			/** Source */
+			source: string;
+			/** State */
+			state: string;
+			/** Resolution */
+			resolution: string | null;
+			/**
+			 * Created At
+			 * Format: date-time
+			 */
+			created_at: string;
+			/** Answers */
+			answers?: components['schemas']['AnswerRead'][];
+		};
+		/** QuestionWrite */
+		QuestionWrite: {
+			/**
+			 * Request Id
+			 * Format: uuid
+			 */
+			request_id: string;
+			/** Expected Revision */
+			expected_revision: number;
+			/** Question */
+			question: string;
+		};
 		/** RefreshRequest */
 		RefreshRequest: {
 			/** Refresh Token */
@@ -3206,6 +3373,18 @@ export interface components {
 			unrelated_pulls?: {
 				[key: string]: string;
 			};
+		};
+		/** ResumeRunRequest */
+		ResumeRunRequest: {
+			/**
+			 * Request Id
+			 * Format: uuid
+			 */
+			request_id: string;
+			/** Expected Revision */
+			expected_revision: number;
+			/** Answer Id */
+			answer_id?: string | null;
 		};
 		/** RunSnapshot */
 		RunSnapshot: {
@@ -4260,6 +4439,30 @@ export interface components {
 			/** Depends On */
 			depends_on?: string[];
 		};
+		/** WorkPlanCreate */
+		WorkPlanCreate: {
+			/** Title */
+			title: string;
+			/**
+			 * Description
+			 * @default
+			 */
+			description: string;
+			/**
+			 * Base Branch
+			 * @default main
+			 */
+			base_branch: string;
+			/** Depends On */
+			depends_on?: string[];
+			/** Items */
+			items: components['schemas']['WorkItemWrite'][];
+			/**
+			 * Request Id
+			 * @description Reuse on retries to recover the original plan; different content with the same key conflicts
+			 */
+			request_id?: string | null;
+		};
 		/** WorkPlanList */
 		WorkPlanList: {
 			/** Items */
@@ -4269,6 +4472,8 @@ export interface components {
 		};
 		/** WorkPlanRead */
 		WorkPlanRead: {
+			/** Registration Request Id */
+			registration_request_id: string | null;
 			/**
 			 * Id
 			 * Format: uuid
@@ -4322,25 +4527,6 @@ export interface components {
 			items: components['schemas']['WorkItemWrite'][];
 			/** Expected Revision */
 			expected_revision: number;
-		};
-		/** WorkPlanWrite */
-		WorkPlanWrite: {
-			/** Title */
-			title: string;
-			/**
-			 * Description
-			 * @default
-			 */
-			description: string;
-			/**
-			 * Base Branch
-			 * @default main
-			 */
-			base_branch: string;
-			/** Depends On */
-			depends_on?: string[];
-			/** Items */
-			items: components['schemas']['WorkItemWrite'][];
 		};
 	};
 	responses: never;
@@ -5069,7 +5255,11 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: never;
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['ResumeRunRequest'];
+			};
+		};
 		responses: {
 			/** @description Successful Response */
 			200: {
@@ -5180,6 +5370,147 @@ export interface operations {
 				};
 				content: {
 					'application/json': components['schemas']['ExecutionAttemptRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	list_questions_api_v1_pipeline_runs__run_id__questions_get: {
+		parameters: {
+			query?: {
+				offset?: number;
+				limit?: number;
+			};
+			header?: never;
+			path: {
+				run_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['QuestionList'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	ask_question_api_v1_pipeline_runs__run_id__questions_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				run_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['QuestionWrite'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['QuestionRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	answer_question_api_v1_pipeline_runs__run_id__questions__question_id__answers_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				run_id: string;
+				question_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['AnswerWrite'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['AnswerRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	dismiss_question_api_v1_pipeline_runs__run_id__questions__question_id__dismiss_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				run_id: string;
+				question_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['QuestionDismiss'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['QuestionRead'];
 				};
 			};
 			/** @description Validation Error */
@@ -5522,7 +5853,7 @@ export interface operations {
 		};
 		requestBody: {
 			content: {
-				'application/json': components['schemas']['WorkPlanWrite'];
+				'application/json': components['schemas']['WorkPlanCreate'];
 			};
 		};
 		responses: {
@@ -5629,6 +5960,38 @@ export interface operations {
 				'application/json': components['schemas']['PlanControl'];
 			};
 		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['WorkPlanRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	get_registered_plan_api_v1_projects__project_id__work_plans_registrations__request_id__get: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				project_id: string;
+				request_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
 		responses: {
 			/** @description Successful Response */
 			200: {

@@ -5,12 +5,12 @@ The existing Hub process serves a Streamable HTTP MCP endpoint at
 server package, skill, plugin, or per-repository agent configuration is required.
 
 Status: the original single endpoint has been deployed. The work/operations split
-below is implemented locally and still needs deployment. Both endpoints share the
+and the decision/Work Plan tools below are implemented locally and still need deployment. Both endpoints share the
 Hub process, database and scheduler; neither starts a separate service.
 
-- Work: `/mcp/`, 13 tools, existing `autohub:mcp:read` / `autohub:mcp:write` keys.
+- Work: `/mcp/`, 22 tools, existing `autohub:mcp:read` / `autohub:mcp:write` keys.
 - Operations: `/ops/mcp/`, 4 additional tools, dedicated `autohub:mcp:ops` key.
-- Work owns all 9 inspection tools and four run mutations. Operations adds only
+- Work owns 12 inspection tools and 10 run/plan mutations. Operations adds only
   four project/connection-test mutations, with no duplicate tool names. Even a key with all scopes cannot call
   a tool through the wrong endpoint. Ops-only keys cannot enter the work endpoint.
 
@@ -75,12 +75,12 @@ Existing work keys and URLs keep working after deployment, but `projects_create`
 `projects_update`, `connection_tests_start` and `connection_tests_cancel` move to
 operations. Existing callers must use the new connection for those tools; there
 is no compatibility alias granting old write keys operational access. Refresh the
-client's discovered tool list after upgrade. No database migration is required.
+client's discovered tool list after upgrade. The endpoint split itself needs no migration. The decision/registration extension below requires migrations `e14a217d0910` and `f25b328e1021`.
 `/ops/mcp` redirects to `/ops/mcp/`, just as `/mcp` redirects to `/mcp/`.
 
 ### Tool contract changes
 
-All 17 public tool names use lowercase snake_case and at most 64 characters.
+All 26 public tool names use lowercase snake_case and at most 64 characters.
 Registration rejects other characters or longer names to avoid relying on client
 name rewriting. For example, `projects.options` becomes `projects_options`,
 `runs.enroll` becomes `runs_enroll`, and `connection_tests.start` becomes
@@ -89,8 +89,8 @@ Refresh tool discovery after deployment and update saved calls/allowlists.
 `catalogs.list` and `connectors.list` are replaced by `projects_options`, returning
 `catalogs` and optional `connectors` pages. Use `connectors_page={}` for onboarding.
 MCP now requires `pull_request.implemented` for enrollment,
-`expected_revision` for resume, and `github.automation.auto_merge` when creating
-a connected project. REST input contracts retain their existing defaults.
+`request_id` and `expected_revision` for resume, and `github.automation.auto_merge` when creating
+a connected project. REST resume also requires these two fields; other existing REST defaults remain.
 
 ## First repository
 
@@ -123,8 +123,8 @@ a connected project. REST input contracts retain their existing defaults.
 
 | Surface | Required scope | Tools |
 | --- | --- | --- |
-| Work only (inspection) | `autohub:mcp:read` | `projects_list`, `projects_get`, `projects_readiness`, `projects_options`, `runs_list`, `runs_get`, `runs_attempts`, `connection_tests_list`, `connection_tests_get` |
-| Work only | `autohub:mcp:write` | `runs_enroll`, `runs_pause`, `runs_resume`, `runs_cancel` |
+| Work only (inspection) | `autohub:mcp:read` | `projects_list`, `projects_get`, `projects_readiness`, `projects_options`, `runs_list`, `runs_get`, `runs_attempts`, `connection_tests_list`, `connection_tests_get`, `runs_questions`, `work_plans_list`, `work_plans_get` |
+| Work only | `autohub:mcp:write` | `runs_enroll`, `runs_pause`, `runs_resume`, `runs_cancel`, `runs_ask`, `runs_answer`, `runs_dismiss_question`, `work_plans_register`, `work_plans_update`, `work_plans_control` |
 | Operations only | `autohub:mcp:ops` | `projects_create`, `projects_update`, `connection_tests_start`, `connection_tests_cancel` |
 
 Discovery exposes each endpoint's fixed list; calls enforce the matching scope.
@@ -132,8 +132,8 @@ Grant read and write for a normal work connection, or read only for observation.
 The operations scope covers only its four mutations. Read configuration, revisions,
 readiness, test evidence and cleanup status through the work connection.
 Internal leases, worker callbacks, credential operations, deletion, recurring
-schedules, WorkPlans and standalone session/report operations remain unexposed.
-With both connections enabled, discovery contains 17 unique tools and no duplicates.
+schedules and standalone session/report operations remain unexposed.
+With both connections enabled, discovery contains 26 unique tools and no duplicates.
 The [tool review](mcp-tool-review-2026-09-29.md) rates each unique tool and records
 the completed consolidation and usage improvements.
 
@@ -150,7 +150,7 @@ Error codes follow the HTTP status (`NOT_FOUND`, `CONFLICT`, `INVALID_REQUEST`, 
 and recoverable conflicts carry a `fix` hint. Duplicate repository
 creation and active PR enrollment conflict; find the existing project/run after a
 lost response (`runs_list` filters by exact `pull_number`). There is no universal mutation deduplication layer. After losing a
-pause/resume/cancel response, read status before retrying. Connection test request
+pause/cancel response, read status before retrying. Resume uses durable request receipts. Connection test request
 IDs use the existing durable deduplication. Cancellation does not promise to stop
 already delivered provider work; follow cleanup status for connection tests.
 
@@ -190,10 +190,21 @@ The `pending` entries describe missing/manual checks. It is not a per-run prereq
 - `runs_enroll`: `implemented` is required to distinguish CI observation from requesting
   implementation. After a lost response, use `runs_list` with both `project_id` and
   `pull_number` before retrying. Existing duplicate-enrollment conflict rules remain.
-- `runs_resume`: inspect the paused/blocked run and its cause, then send its
-  `expected_revision`. The comparison runs under the run lock before GitHub I/O;
-  the existing second-phase revision check also rejects changes during reconciliation.
-  If the response is lost, read the current state rather than blindly replaying.
+- `runs_resume`: inspect the paused/blocked run and its cause, then send a stable
+  `request_id` and `expected_revision`. Select `answer_id` if a pending question
+  has a saved response. Saving an answer alone does not resume. Revision and PR
+  checks run before/after GitHub I/O; a changed question head rejects the answer.
+  Retry identical input with the same request ID after response loss. Its receipt
+  returns current state without preparing another attempt or undoing a later pause.
+  See [Run decisions and recovery](run-decisions.md) for question tools and limits.
+- `work_plans_register`: register approved work with `project_id` and a nested
+  `plan` containing required `request_id`, title, specification and item graph.
+  Registration requests execution immediately. Same project/key/content returns
+  the existing Plan; different content conflicts. Recover with `work_plans_get`
+  using project ID and request ID (or Plan ID, not both). `work_plans_update` and
+  `work_plans_control` require the observed Plan revision in their nested `plan`
+  and `control` inputs. Plan controls only affect unstarted items; use Run controls
+  for started work. See [Work plans](work-plans.md).
 - `connection_tests_start`: its `request_id` is also the resulting test ID. After a
   lost response, call `connection_tests_get` with that ID or replay the original
   request. Optional `expected_project_revision` rejects a new test if the project

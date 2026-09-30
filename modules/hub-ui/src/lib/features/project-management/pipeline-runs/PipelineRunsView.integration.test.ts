@@ -96,7 +96,10 @@ test.each([
 
 	await waitFor(() =>
 		expect(api.POST).toHaveBeenCalledWith(`/api/v1/pipeline-runs/{run_id}/${action}`, {
-			params: { path: { run_id: 'run-1' } }
+			params: { path: { run_id: 'run-1' } },
+			...(action === 'resume'
+				? { body: { request_id: expect.any(String), expected_revision: 1 } }
+				: {})
 		})
 	);
 	await waitFor(() =>

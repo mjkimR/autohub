@@ -1,6 +1,8 @@
 from typing import Annotated
 from uuid import UUID
 
+from app.auth import CurrentUser
+from app.features.project_management.pipeline_runs.interaction_schemas import ResumeRunRequest
 from app.features.project_management.pipeline_runs.models import PipelineRunState
 from app.features.project_management.pipeline_runs.schemas import (
     AttachPRRequest,
@@ -115,10 +117,12 @@ async def pause_pipeline_run(
 @router.post("/{run_id}/resume", response_model=PipelineRunRead)
 async def resume_pipeline_run(
     run_id: UUID,
+    request: ResumeRunRequest,
+    user: CurrentUser,
     use_case: Annotated[PipelineRunUseCase, Depends()],
 ):
     """Resume a paused pipeline run."""
-    return await use_case.resume_run(run_id)
+    return await use_case.resume_run(run_id, request=request, actor=f"user:{user.id}")
 
 
 @router.post("/{run_id}/cancel", response_model=PipelineRunRead)

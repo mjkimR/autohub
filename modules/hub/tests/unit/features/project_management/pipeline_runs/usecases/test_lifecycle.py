@@ -285,6 +285,7 @@ async def test_resume_run_transitions_paused_run_back_to_active(monkeypatch):
 
     with MagicMock() as mock_tx:
         mock_session = AsyncMock()
+        mock_session.scalar.return_value = None  # No pending operator question.
         mock_tx.__aenter__ = AsyncMock(return_value=mock_session)
         mock_tx.__aexit__ = AsyncMock(return_value=None)
 

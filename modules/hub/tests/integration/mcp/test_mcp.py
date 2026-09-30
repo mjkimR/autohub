@@ -246,12 +246,20 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
     assert "request_snapshot" not in str(outcomes)
     paused = (await call(client, key, "runs_pause", run_args))["result"]
     assert paused["state"] == "paused"
-    stale_resume = await call(client, key, "runs_resume", run_args | {"expected_revision": run["revision"]}, error=True)
+    stale_resume = await call(
+        client,
+        key,
+        "runs_resume",
+        run_args | {"request_id": str(uuid4()), "expected_revision": run["revision"]},
+        error=True,
+    )
     assert stale_resume["error"]["code"] == "CONFLICT"
     assert (await call(client, key, "runs_get", run_args))["result"]["revision"] == paused["revision"]
-    assert (await call(client, key, "runs_resume", run_args | {"expected_revision": paused["revision"]}))["result"][
-        "state"
-    ] == "awaiting_ci"
+    assert (
+        await call(
+            client, key, "runs_resume", run_args | {"request_id": str(uuid4()), "expected_revision": paused["revision"]}
+        )
+    )["result"]["state"] == "awaiting_ci"
     assert (await call(client, key, "runs_cancel", run_args))["result"]["state"] == "canceled"
     # A settled run returns at once even when asked to wait.
     assert (await call(client, key, "runs_get", run_args | {"wait_seconds": 20}))["result"]["state"] == "canceled"
@@ -356,10 +364,24 @@ async def test_surfaces_expose_exact_tools_and_reject_cross_surface_calls(client
         "runs_list",
         "runs_get",
         "runs_attempts",
+        "runs_questions",
+        "work_plans_list",
+        "work_plans_get",
         "connection_tests_list",
         "connection_tests_get",
     }
-    work_writes = {"runs_enroll", "runs_pause", "runs_resume", "runs_cancel"}
+    work_writes = {
+        "runs_enroll",
+        "runs_pause",
+        "runs_resume",
+        "runs_cancel",
+        "runs_ask",
+        "runs_answer",
+        "runs_dismiss_question",
+        "work_plans_register",
+        "work_plans_update",
+        "work_plans_control",
+    }
     ops_writes = {"projects_create", "projects_update", "connection_tests_start", "connection_tests_cancel"}
     _, combined = await issue(client, [MCP_READ, MCP_WRITE, MCP_OPS])
     discovered = set()
@@ -408,7 +430,7 @@ async def test_surfaces_expose_exact_tools_and_reject_cross_surface_calls(client
                 )
             ).json()["result"]
             assert result["isError"] is True
-    assert len(discovered) == 17
+    assert len(discovered) == 26
     for removed in ("catalogs.list", "connectors.list"):
         assert removed not in discovered
         result = (await rpc(client, key, "tools/call", {"name": removed, "arguments": {}})).json()["result"]

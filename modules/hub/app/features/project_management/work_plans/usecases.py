@@ -1,6 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.work_plans.kick import WorkPlanKick
 from app.features.project_management.work_plans.mirror_records import refresh_mirrors
 from app.features.project_management.work_plans.models import ItemDependency, PlanDependency, WorkIssueMirror
@@ -76,6 +77,14 @@ class WorkPlanUseCase:
     async def get(self, project_id: UUID, plan_id: UUID) -> WorkPlanRead:
         async with AsyncTransaction() as session:
             return await self.read(session, await self.service.get(session, project_id, plan_id))
+
+    async def by_request(self, project_id: UUID, request_id: UUID) -> WorkPlanRead:
+        async with AsyncTransaction() as session:
+            await self.service.projects.get(session, project_id)
+            plan = await self.service.repo.by_request(session, project_id, request_id)
+            if plan is None:
+                raise ProjectError(404, "No plan registered with this request ID")
+            return await self.read(session, plan)
 
     async def create(self, project_id: UUID, data: WorkPlanWrite) -> WorkPlanRead:
         async with AsyncTransaction() as session:

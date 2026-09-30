@@ -3,10 +3,10 @@ from uuid import UUID
 
 from app.features.project_management.work_plans.schemas import (
     PlanControl,
+    WorkPlanCreate,
     WorkPlanList,
     WorkPlanRead,
     WorkPlanUpdate,
-    WorkPlanWrite,
 )
 from app.features.project_management.work_plans.usecases import WorkPlanUseCase
 from fastapi import APIRouter, Depends, Query
@@ -25,7 +25,7 @@ async def list_work_plans(
 
 
 @router.post("", response_model=WorkPlanRead, status_code=201)
-async def create_work_plan(project_id: UUID, data: WorkPlanWrite, use_case: Annotated[WorkPlanUseCase, Depends()]):
+async def create_work_plan(project_id: UUID, data: WorkPlanCreate, use_case: Annotated[WorkPlanUseCase, Depends()]):
     """Atomically register work; ready items start in this request (the tick finishes the rest), without approval."""
     return await use_case.create(project_id, data)
 
@@ -54,3 +54,8 @@ async def control_work_plan(
 ):
     """Pause/resume/revoke unstarted work only; started PR runs continue through merging."""
     return await use_case.control(project_id, plan_id, data)
+
+
+@router.get("/registrations/{request_id}", response_model=WorkPlanRead)
+async def get_registered_plan(project_id: UUID, request_id: UUID, use_case: Annotated[WorkPlanUseCase, Depends()]):
+    return await use_case.by_request(project_id, request_id)

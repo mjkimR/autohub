@@ -101,6 +101,11 @@ async def enroll(client, project: dict, number: int = 7) -> httpx.Response:
     return await client.post(f"/api/v1/projects/{project['id']}/runs", json={"pull_number": number})
 
 
+async def resume(client, root):
+    revision = (await client.get(root)).json()["revision"]
+    return await client.post(root + "/resume", json={"request_id": str(uuid4()), "expected_revision": revision})
+
+
 class TestPullRequestEnrollment:
     async def test_enrolls_an_implemented_pull_request_straight_into_ci_observation(self, client, project, github):
         response = await client.post(
@@ -455,7 +460,7 @@ class TestRunRecovery:
         root = f"/api/v1/pipeline-runs/{run['id']}"
         assert_status_code(await client.post(f"{root}/pause"), 200)
         github.pulls[7]["head"]["sha"] = "e" * 40
-        resumed = await client.post(f"{root}/resume")
+        resumed = await resume(client, root)
         assert_status_code(resumed, 200)
         assert resumed.json()["state"] == "dispatching"
         attempts = (await client.get(f"{root}/attempts")).json()["items"]
@@ -498,7 +503,7 @@ class TestRunRecovery:
 
         monkeypatch.setattr(github, "respond", respond)
         root = f"/api/v1/pipeline-runs/{run['id']}"
-        resumed = await client.post(f"{root}/resume")
+        resumed = await resume(client, root)
         assert_status_code(resumed, 200)
         assert resumed.json()["state"] == "dispatching"
         advanced = await client.post(f"{root}/advance")
@@ -746,7 +751,7 @@ class TestCatalogDesignation:
         root = f"/api/v1/pipeline-runs/{run['id']}"
         assert_status_code(await client.post(f"{root}/pause"), 200)
 
-        resumed = await client.post(f"{root}/resume")
+        resumed = await resume(client, root)
 
         assert_status_code(resumed, 200)
         assert resumed.json()["ai_catalog_id"] == team_codex_id
@@ -817,7 +822,7 @@ async def test_project_change_blocks_a_stuck_run_and_a_settings_only_resume_cont
     assert [item["active_dispatch_count"] for item in catalogs] == [0]
 
     # The repository and GitHub connection are unchanged, so a resume adopts the new project revision.
-    resumed = await client.post(f"/api/v1/pipeline-runs/{run['id']}/resume")
+    resumed = await resume(client, f"/api/v1/pipeline-runs/{run['id']}")
     assert_status_code(resumed, 200)
     assert resumed.json()["state"] == "dispatching"
     assert resumed.json()["project_revision"] == run["project_revision"] + 1
@@ -843,7 +848,7 @@ async def test_resume_requires_enrolling_again_when_the_github_binding_changed(
     await session.commit()
     reads = len(github.paths)
 
-    response = await client.post(f"/api/v1/pipeline-runs/{run['id']}/resume")
+    response = await resume(client, f"/api/v1/pipeline-runs/{run['id']}")
 
     assert_status_code(response, 409)
     assert response.json()["detail"] == run_transitions.GITHUB_BINDING_CHANGED_CONFLICT
@@ -884,7 +889,7 @@ async def test_resume_requires_a_new_push_and_preserves_previous_request(client,
     assert (await client.post(f"{root}/advance")).json()["state"] == "awaiting_ci"
     assert_status_code(await client.post(f"{root}/pause"), 200)
 
-    resumed = await client.post(f"{root}/resume")
+    resumed = await resume(client, root)
     assert_status_code(resumed, 200)
     assert resumed.json()["state"] == "dispatching"
     assert (await client.post(f"{root}/advance")).json()["state"] == "implementing"
@@ -1203,7 +1208,7 @@ class TestImplementedRunRecovery:
         root = f"/api/v1/pipeline-runs/{run['id']}"
         assert_status_code(await client.post(f"{root}/pause"), 200)
 
-        resumed = await client.post(f"{root}/resume")
+        resumed = await resume(client, root)
 
         assert_status_code(resumed, 200)
         assert resumed.json()["state"] == "awaiting_ci"
@@ -1223,7 +1228,7 @@ class TestImplementedRunRecovery:
         assert_status_code(await client.post(f"{root}/pause"), 200)
         assert_status_code(await client.put("/api/v1/ai-catalogs/team-codex/enabled", json={"enabled": False}), 200)
 
-        resumed = await client.post(f"{root}/resume")
+        resumed = await resume(client, root)
 
         assert_status_code(resumed, 200)
         assert resumed.json()["ai_catalog_id"] == personal_codex

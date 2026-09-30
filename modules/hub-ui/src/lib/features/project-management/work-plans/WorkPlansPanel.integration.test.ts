@@ -24,6 +24,7 @@ const item = {
 	issue: { issue_url: null, error: 'Rate limited', pending: true }
 } satisfies components['schemas']['WorkItemRead'];
 const plan = {
+	registration_request_id: null,
 	id: 'plan1',
 	project_id: 'p1',
 	title: 'Login',
