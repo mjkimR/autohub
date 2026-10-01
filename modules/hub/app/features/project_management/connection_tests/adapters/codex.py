@@ -1,11 +1,18 @@
 """Codex mention recipe, using the production quota-response classifier."""
 
+from datetime import datetime, timedelta
+from typing import Any
+
 from app.features.project_management.connection_tests.adapters.base import TestContext
 from app.features.project_management.connection_tests.adapters.specs import CODEX_SPEC
-from app.features.project_management.connection_tests.models import ConnectionTest
+from app.features.project_management.connection_tests.models import ACTIVE, ConnectionTest
 from app.features.project_management.pipeline_runs.dispatch import CODEX_CONNECTOR_LOGIN, is_codex_quota_reply
+from app.features.project_management.pipeline_runs.usecases.transitions import as_utc
 from app.features.project_management.pipelines.github import GitHubObservationError
 from app_layer_base.utils.time_util import get_current_utc_time
+
+# Codex pushes before posting its final reply; allow GitHub ref reads to catch up before failing.
+REPLY_PUSH_GRACE = timedelta(minutes=5)
 
 
 class CodexConnectionTestAdapter:
@@ -43,15 +50,14 @@ class CodexConnectionTestAdapter:
         row.phase = "waiting_for_push"
 
     async def observe(self, row: ConnectionTest, context: TestContext) -> None:
-        comments = await context.github.reader.list_issue_comments(row.repository, row.evidence["pull_number"])
-        for comment in comments:
-            author = comment.get("user", {}).get("login", "").removesuffix("[bot]")
-            if comment.get("id", 0) <= row.evidence.get("comment_id", 0) or author != CODEX_CONNECTOR_LOGIN:
-                continue
-            row.evidence["reply_url"] = comment.get("html_url")
-            if is_codex_quota_reply(author, comment.get("body")):
-                row.evidence["quota_observed_at"] = comment.get("created_at") or get_current_utc_time().isoformat()
-                row.evidence["execution_finished"] = True
+        reply = await self.final_reply(row, context)
+        if reply is not None:
+            row.evidence["reply_url"] = reply.get("html_url")
+            # The cloud task has ended once Codex replies, so it no longer holds catalog capacity.
+            row.evidence["execution_finished"] = True
+            row.evidence.setdefault("reply_observed_at", get_current_utc_time().isoformat())
+            if is_codex_quota_reply(CODEX_CONNECTOR_LOGIN, reply.get("body")):
+                row.evidence["quota_observed_at"] = reply.get("created_at") or get_current_utc_time().isoformat()
                 row.status, row.detail = (
                     "failed",
                     "Codex reported its usage limit; the catalog will wait for quota recovery",
@@ -60,6 +66,30 @@ class CodexConnectionTestAdapter:
         await context.github.observe(row, expected_branch=context.github.branch(row))
         if row.evidence.get("verified_sha"):
             row.evidence["execution_finished"] = True
+        elif (
+            reply is not None
+            and row.status == ACTIVE
+            and get_current_utc_time()
+            >= as_utc(datetime.fromisoformat(row.evidence["reply_observed_at"])) + REPLY_PUSH_GRACE
+        ):
+            row.status, row.detail = (
+                "failed",
+                "Codex replied without pushing the test change; read its reply and check the environment GH_TOKEN",
+            )
+
+    async def final_reply(self, row: ConnectionTest, context: TestContext) -> dict[str, Any] | None:
+        """Return Codex's first reply after the test mention, which it posts when its cloud task ends."""
+        comments = await context.github.reader.list_issue_comments(row.repository, row.evidence["pull_number"])
+        for comment in comments:
+            author = comment.get("user", {}).get("login", "").removesuffix("[bot]")
+            if comment.get("id", 0) > row.evidence.get("comment_id", 0) and author == CODEX_CONNECTOR_LOGIN:
+                return comment
+        return None
 
     async def cleanup(self, row: ConnectionTest, context: TestContext) -> None:
+        # A canceled or failed test stops observing; still release capacity once Codex has replied.
+        if row.evidence.get("comment_id") and not row.evidence.get("execution_finished"):
+            reply = await self.final_reply(row, context)
+            if reply is not None:
+                row.evidence.update(reply_url=reply.get("html_url"), execution_finished=True)
         await context.github.cleanup(row)

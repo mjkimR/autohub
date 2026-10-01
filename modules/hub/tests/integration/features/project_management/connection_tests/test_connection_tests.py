@@ -760,6 +760,61 @@ async def test_codex_quota_reply_records_catalog_block_once(client, project, git
     assert catalog.revision == revision
 
 
+def codex_reply(github, body="Committed locally; the push was rejected."):
+    github.comments.append(
+        {
+            "id": len(github.comments) + 1,
+            "user": {"login": "chatgpt-codex-connector[bot]"},
+            "body": body,
+            "html_url": "https://github.com/owner/app/pull/42#issuecomment-2",
+        }
+    )
+
+
+@pytest.mark.parametrize("pushed", [True, False])
+async def test_codex_reply_releases_capacity_and_fails_without_push_after_grace(
+    client, project, github, session, pushed
+):
+    from app.features.ai_catalogs.repos import AICatalogRepository
+
+    repo = AICatalogRepository()
+    test = await step(client, await step(client, await start(client, project)))
+    catalog_id = UUID(test["ai_catalog_id"])
+    assert await repo.active_dispatch_count(session, catalog_id) == 1
+    codex_reply(github)
+    test = await step(client, test)
+    assert test["status"] == "running" and test["evidence"]["execution_finished"]
+    assert await repo.active_dispatch_count(session, catalog_id) == 0
+    if pushed:
+        # A push that becomes visible within the grace period still verifies the test.
+        github.push(test["id"])
+        test = await step(client, test)
+        assert test["status"] == "succeeded"
+        return
+    evidence = {**test["evidence"], "reply_observed_at": (utc_now() - timedelta(minutes=6)).isoformat()}
+    await session.execute(update(ConnectionTest).where(ConnectionTest.id == UUID(test["id"])).values(evidence=evidence))
+    await session.commit()
+    test = await step(client, test)
+    assert test["status"] == "failed" and "without pushing" in test["detail"]
+
+
+async def test_canceled_codex_test_releases_capacity_after_late_reply(client, project, github, session):
+    from app.features.ai_catalogs.repos import AICatalogRepository
+
+    repo = AICatalogRepository()
+    test = await step(client, await step(client, await start(client, project)))
+    test = await step(client, test, "cancel")
+    catalog_id = UUID(test["ai_catalog_id"])
+    assert test["status"] == "canceled" and await repo.active_dispatch_count(session, catalog_id) == 1
+    test = await step(client, test)
+    assert await repo.active_dispatch_count(session, catalog_id) == 1
+    codex_reply(github)
+    test = await step(client, test)
+    assert test["status"] == "canceled" and test["evidence"]["execution_finished"]
+    assert test["cleanup_status"] == "waiting"
+    assert await repo.active_dispatch_count(session, catalog_id) == 0
+
+
 async def test_registered_recipe_runs_without_provider_branches_in_engine(
     client, project, github, session, monkeypatch
 ):
