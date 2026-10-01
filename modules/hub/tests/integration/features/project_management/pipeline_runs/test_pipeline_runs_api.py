@@ -930,7 +930,7 @@ async def test_reconciled_delivery_preserves_time_and_processes_existing_quota_r
                 "id": 78,
                 "body": "You reached a Codex usage limit.",
                 "created_at": replied_at.isoformat(),
-                "user": {"login": "chatgpt-codex-connector"},
+                "user": {"login": "chatgpt-codex-connector[bot]"},
             },
         ]
     )

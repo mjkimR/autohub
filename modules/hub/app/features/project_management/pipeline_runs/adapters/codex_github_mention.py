@@ -73,7 +73,8 @@ class CodexGithubMentionAdapter:
             return []
         replies: list[AgentReply] = []
         for comment in comments:
-            author = comment.get("user", {}).get("login")
+            # The REST API reports the GitHub App as "chatgpt-codex-connector[bot]".
+            author = str(comment.get("user", {}).get("login") or "").removesuffix("[bot]")
             comment_id = comment.get("id")
             created_at = comment.get("created_at", "")
             if author != CODEX_CONNECTOR_LOGIN or not isinstance(created_at, str):

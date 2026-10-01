@@ -188,7 +188,7 @@ async def test_agent_question_is_attempt_bound_and_delivery_failure_preserves_an
     }
     for index, author, question in (
         (101, "random-user", marker),
-        (102, "chatgpt-codex-connector", marker | {"attempt": "hub-attempt:stale"}),
+        (102, "chatgpt-codex-connector[bot]", marker | {"attempt": "hub-attempt:stale"}),
     ):
         mention_github.append(
             {
@@ -205,7 +205,7 @@ async def test_agent_question_is_attempt_bound_and_delivery_failure_preserves_an
             "id": 103,
             "body": "<!-- autohub-question " + json.dumps(marker) + " -->",
             "created_at": (utc_now() + timedelta(seconds=2)).isoformat(),
-            "user": {"login": "chatgpt-codex-connector"},
+            "user": {"login": "chatgpt-codex-connector[bot]"},
         }
     )
     assert (await client.post(root + "/advance")).json()["state"] == "blocked"

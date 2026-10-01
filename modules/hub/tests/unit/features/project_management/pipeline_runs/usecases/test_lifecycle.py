@@ -142,7 +142,7 @@ async def test_quota_reply_sets_a_global_catalog_hold_without_a_run_retry_cap(de
     observer.list_pull_comments = AsyncMock(
         return_value=[
             {
-                "user": {"login": "chatgpt-codex-connector"},
+                "user": {"login": "chatgpt-codex-connector[bot]"},
                 "body": "You reached a Codex usage limit.",
                 "created_at": delivery.posted_at.isoformat(),
             }
@@ -501,7 +501,7 @@ async def test_pushed_head_wins_over_watchdog_and_quota_replies(monkeypatch, ela
     observer = MagicMock()
     observer.get_pull_request = AsyncMock(return_value={"state": "open", "head": {"sha": "b" * 40}})
     observer.list_pull_comments = AsyncMock(
-        return_value=[{"user": {"login": "chatgpt-codex-connector"}, "body": "Codex usage limit"}]
+        return_value=[{"user": {"login": "chatgpt-codex-connector[bot]"}, "body": "Codex usage limit"}]
     )
     tx = MagicMock()
     tx.__aenter__ = AsyncMock(return_value=AsyncMock())
@@ -605,7 +605,7 @@ async def test_codex_reply_without_push_blocks_after_grace(monkeypatch, since_re
     observer.list_pull_comments = AsyncMock(
         return_value=[
             {
-                "user": {"login": "chatgpt-codex-connector"},
+                "user": {"login": "chatgpt-codex-connector[bot]"},
                 "body": "Committed locally, but the push was rejected: invalid token.",
                 "created_at": (frozen_now - since_reply).isoformat(),
             }
