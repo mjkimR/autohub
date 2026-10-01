@@ -569,3 +569,64 @@ async def test_silent_watchdog_uses_an_exact_fixed_clock(monkeypatch, elapsed, e
         repo.create_delivery.assert_not_awaited()
     else:
         repo.create_delivery.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    ("since_reply", "cause", "expected_state"),
+    [
+        (timedelta(minutes=4, seconds=59), "initial", PipelineRunState.IMPLEMENTING),
+        (timedelta(minutes=5), "initial", PipelineRunState.BLOCKED),
+        (timedelta(minutes=5), "resume", PipelineRunState.BLOCKED),
+        # After a silent retry the reply may come from the earlier task; the watchdog keeps ownership.
+        (timedelta(minutes=30), "silent", PipelineRunState.IMPLEMENTING),
+    ],
+)
+async def test_codex_reply_without_push_blocks_after_grace(monkeypatch, since_reply, cause, expected_state):
+    from app.features.project_management.pipeline_runs.usecases import progress
+
+    frozen_now = datetime(2026, 9, 14, 12, tzinfo=UTC)
+    run = create_mock_run()
+    repo, projects, observer = MagicMock(), MagicMock(), MagicMock()
+    attempt = MagicMock(spec=ExecutionAttempt)
+    attempt.id = uuid4()
+    attempt.request_snapshot = {"pull_request": run.pull_snapshot}
+    delivery = MagicMock(spec=ExecutionDelivery)
+    delivery.delivery_number, delivery.cause = 1, cause
+    delivery.posted_at = frozen_now - timedelta(hours=1)
+    repo.get_leased = AsyncMock(return_value=run)
+    repo.active_attempt = AsyncMock(return_value=attempt)
+    repo.latest_delivery = AsyncMock(return_value=delivery)
+    repo.list_deliveries = AsyncMock(return_value=[])
+    repo.create_delivery = AsyncMock()
+    projects.get = AsyncMock(
+        return_value=MagicMock(enabled=True, revision=1, github_repository="owner/repo", github_connector_id=uuid4())
+    )
+    observer.get_pull_request = AsyncMock(return_value={"state": "open", "head": {"sha": "a" * 40}})
+    observer.list_pull_comments = AsyncMock(
+        return_value=[
+            {
+                "user": {"login": "chatgpt-codex-connector"},
+                "body": "Committed locally, but the push was rejected: invalid token.",
+                "created_at": (frozen_now - since_reply).isoformat(),
+            }
+        ]
+    )
+    tx = MagicMock()
+    tx.__aenter__ = AsyncMock(return_value=AsyncMock())
+    tx.__aexit__ = AsyncMock(return_value=None)
+    monkeypatch.setattr(progress, "get_current_utc_time", lambda: frozen_now)
+    monkeypatch.setattr(progress, "AsyncTransaction", lambda: tx)
+    monkeypatch.setattr(
+        f"{IMPLEMENTATION}.resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter())
+    )
+
+    result = await PipelineRunUseCase(repo, projects, observer).advance_run(
+        run.id, owner="worker-1", token=run.lease_token, observer=observer
+    )
+
+    assert result.state == expected_state
+    repo.create_delivery.assert_not_awaited()
+    if expected_state == PipelineRunState.BLOCKED:
+        assert run.pause_reason == CodexGithubMentionAdapter.reply_block_reason
+    else:
+        assert run.pause_reason is None

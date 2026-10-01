@@ -25,6 +25,9 @@ class CodexGithubMentionAdapter:
     key = CODEX_GITHUB_MENTION
     silent_timeout = timedelta(hours=2, minutes=5)
     silent_block_reason = "Codex did not push after a silent retry; resume manually"
+    # Codex posts its PR reply when the cloud task ends and pushes before replying.
+    reply_push_grace = timedelta(minutes=5)
+    reply_block_reason = "Codex replied without pushing; read its PR reply, fix the cause, then resume"
 
     async def deliver(
         self,

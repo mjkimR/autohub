@@ -150,6 +150,21 @@ class ImplementationProgress:
             run.revision += 1
             await session.flush()
             return PipelineRunRead.model_validate(run)
+        replied_at = min((reply.replied_at for reply in replies if not reply.is_quota_limit), default=None)
+        if (
+            delivery is not None
+            and delivery.cause != "silent"
+            and replied_at is not None
+            and now - replied_at >= observed.adapter.reply_push_grace
+        ):
+            # The task ended without a push. After a silent retry the reply may belong to the earlier,
+            # slower task while the retried one is still running, so that case keeps the watchdog.
+            run.state = PipelineRunState.BLOCKED
+            run.pause_reason = observed.adapter.reply_block_reason
+            run.next_action_at = None
+            run.revision += 1
+            await session.flush()
+            return PipelineRunRead.model_validate(run)
         if (
             delivery is not None
             and observed.posted_at is not None

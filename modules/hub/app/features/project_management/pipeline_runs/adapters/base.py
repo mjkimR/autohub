@@ -38,6 +38,9 @@ class ExecutionAdapter(Protocol):
     # How long a delivery may go without a push before the lifecycle retries it once.
     silent_timeout: timedelta
     silent_block_reason: str
+    # How long after a non-quota agent reply a missing push blocks the run.
+    reply_push_grace: timedelta
+    reply_block_reason: str
 
     async def deliver(
         self,

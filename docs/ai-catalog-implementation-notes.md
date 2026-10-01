@@ -112,6 +112,7 @@ During observation (`advance_run`), the flow proceeds as follows:
 - `adapter.collect_replies()` returns a list of `AgentReply` objects. Lifecycle persists these as `ExecutionReply`.
 - If a quota reply is present, increments `quota_block_count` on the run and calls `record_quota_event(catalog_id, observed_at)`.
 - Silent retry thresholds utilize the adapter's `silent_timeout` and `silent_block_reason`.
+- A non-quota reply without a head change blocks the run after `reply_push_grace` with `reply_block_reason`, except after a `silent` delivery.
 
 ### Jules Session Start (`JulesSessionService.start`)
 
@@ -306,7 +307,7 @@ Connector providers are `github` and `jules`. For `jules`, the API key is stored
 5. Add a policy dialog component (props: `CatalogDialogProps`) and register it in `catalogKinds` in `catalog-kinds.ts`.
 
 **Adding a New Pipeline Execution Adapter (`adapter`)**
-1. Implement `ExecutionAdapter`: `deliver`, `collect_replies`, `silent_timeout`, `silent_block_reason`.
+1. Implement `ExecutionAdapter`: `deliver`, `collect_replies`, `silent_timeout`, `silent_block_reason`, `reply_push_grace`, `reply_block_reason`.
 2. Register it in `_ADAPTERS` in `adapters/registry.py`. If under development, place it in `_NOT_IMPLEMENTED`.
 
 **Session-based Work Outside the Pipeline**
