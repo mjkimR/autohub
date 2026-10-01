@@ -33,6 +33,7 @@ const plan = {
 	state: 'active',
 	revision: 3,
 	created_at: '2026-09-22T00:00:00Z',
+	scheduled_at: null,
 	completed_at: null,
 	depends_on: [],
 	items: [item],
@@ -71,7 +72,7 @@ test('shows sync failure separately and pauses with the observed revision', asyn
 			'/api/v1/projects/{project_id}/work-plans/{plan_id}/control',
 			{
 				params: { path: { project_id: 'p1', plan_id: 'plan1' } },
-				body: { action: 'pause', expected_revision: 3 }
+				body: { action: 'pause', expected_revision: 3, reason: '' }
 			}
 		)
 	);
@@ -121,6 +122,7 @@ test('bulk task input creates one plan and preserves item dependencies', async (
 	const onsaved = vi.fn();
 	render(WorkPlanForm, { projectId: 'p1', plans: [], onsaved, oncancel: vi.fn() });
 	await fireEvent.input(screen.getByLabelText('Plan title'), { target: { value: 'Feature' } });
+	await fireEvent.change(screen.getByLabelText('Save as'), { target: { value: 'active' } });
 	await fireEvent.click(screen.getByRole('button', { name: 'Import task list' }));
 	const tasks = [
 		{ key: 'a', title: 'Schema', description: 'Create schema', acceptance: 'Tests pass' },
@@ -156,4 +158,126 @@ test('failed save retains specification and surfaces the API error', async () =>
 	await screen.findByRole('alert');
 	expect((screen.getByLabelText('Plan title') as HTMLInputElement).value).toBe('Login');
 	expect(onsaved).not.toHaveBeenCalled();
+});
+
+test('creates a reservation using local input converted to UTC', async () => {
+	render(WorkPlanForm, {
+		projectId: 'p1',
+		plans: [],
+		onsaved: vi.fn(),
+		oncancel: vi.fn()
+	});
+	await fireEvent.input(screen.getByLabelText('Plan title'), {
+		target: { value: 'Scheduled work' }
+	});
+	await fireEvent.change(screen.getByLabelText('Save as'), { target: { value: 'active' } });
+	await fireEvent.click(screen.getByRole('button', { name: 'Add task' }));
+	await fireEvent.input(screen.getByLabelText('Title'), { target: { value: 'Task' } });
+	await fireEvent.input(screen.getByLabelText('Specification'), {
+		target: { value: 'Implement it' }
+	});
+	await fireEvent.input(screen.getByLabelText('Acceptance criteria'), {
+		target: { value: 'Tests pass' }
+	});
+	const local = '2099-10-01T09:30';
+	await fireEvent.input(screen.getByLabelText('Start no earlier than'), {
+		target: { value: local }
+	});
+	await fireEvent.click(screen.getByRole('button', { name: 'Add and schedule' }));
+	await waitFor(() => expect(api.POST).toHaveBeenCalledOnce());
+	expect(api.POST.mock.calls[0][1].body.scheduled_at).toBe(new Date(local).toISOString());
+});
+
+test('editing preserves an existing instant and allows clearing the reservation', async () => {
+	const scheduled = { ...plan, scheduled_at: '2099-10-01T09:30:12.123456+09:00' };
+	render(WorkPlanForm, {
+		projectId: 'p1',
+		plans: [scheduled],
+		editing: scheduled,
+		onsaved: vi.fn(),
+		oncancel: vi.fn()
+	});
+	const input = screen.getByLabelText('Start no earlier than') as HTMLInputElement;
+	expect(new Date(input.value).getTime()).toBe(new Date(scheduled.scheduled_at).getTime());
+	await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+	await waitFor(() => expect(api.PUT).toHaveBeenCalledOnce());
+	expect(api.PUT.mock.calls[0][1].body.scheduled_at).toBe(scheduled.scheduled_at);
+	await fireEvent.input(input, { target: { value: '' } });
+	await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+	await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(2));
+	expect(api.PUT.mock.calls[1][1].body.scheduled_at).toBeNull();
+});
+
+test('future reservations show a waiting reason while paused plans retain the pause reason', async () => {
+	api.GET.mockResolvedValue({
+		data: {
+			items: [{ ...plan, scheduled_at: '2099-10-01T00:00:00Z' }],
+			total_count: 1
+		}
+	});
+	render(WorkPlansPanel, { project });
+	expect(await screen.findByText(/Scheduled; waiting until/)).toBeTruthy();
+	expect(screen.getByText(/Start no earlier than:/)).toBeTruthy();
+	api.GET.mockResolvedValue({
+		data: {
+			items: [{ ...plan, state: 'paused', scheduled_at: '2099-10-01T00:00:00Z' }],
+			total_count: 1
+		}
+	});
+	await fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+	expect(await screen.findByText('Plan paused')).toBeTruthy();
+	expect(screen.queryByText(/Scheduled; waiting until/)).toBeNull();
+});
+
+test('saves a title-only seed without requesting execution', async () => {
+	render(WorkPlanForm, { projectId: 'p1', plans: [], onsaved: vi.fn(), oncancel: vi.fn() });
+	await fireEvent.input(screen.getByLabelText('Plan title'), { target: { value: 'New idea' } });
+	await fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+	await waitFor(() => expect(api.POST).toHaveBeenCalledOnce());
+	expect(api.POST.mock.calls[0][1].body).toMatchObject({
+		title: 'New idea',
+		state: 'draft',
+		scheduled_at: null,
+		items: []
+	});
+});
+
+test('proposal edits permit removing all items and explain returning to draft', async () => {
+	render(WorkPlanForm, {
+		projectId: 'p1',
+		plans: [],
+		editing: { ...plan, state: 'proposed' },
+		onsaved: vi.fn(),
+		oncancel: vi.fn()
+	});
+	expect(screen.getByText(/Saving changes returns this proposal to Draft/)).toBeTruthy();
+	await fireEvent.click(screen.getByRole('button', { name: 'Remove task' }));
+	await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+	await waitFor(() => expect(api.PUT).toHaveBeenCalledOnce());
+	expect(api.PUT.mock.calls[0][1].body.items).toEqual([]);
+	expect(api.PUT.mock.calls[0][1].body.expected_revision).toBe(3);
+});
+
+test('decision view isolates proposals and submits the observed revision', async () => {
+	api.GET.mockResolvedValue({
+		data: {
+			items: [plan, { ...plan, id: 'proposal', title: 'Candidate', state: 'proposed' }],
+			total_count: 2
+		}
+	});
+	render(WorkPlansPanel, { project });
+	await screen.findByText('Candidate');
+	await fireEvent.change(screen.getByLabelText('Show'), { target: { value: 'proposed' } });
+	expect(screen.queryByText('Login')).toBeNull();
+	expect(screen.getByText(/Proposed · decision needed/)).toBeTruthy();
+	await fireEvent.click(screen.getByRole('button', { name: 'Mark ready' }));
+	await waitFor(() =>
+		expect(api.POST).toHaveBeenCalledWith(
+			'/api/v1/projects/{project_id}/work-plans/{plan_id}/control',
+			{
+				params: { path: { project_id: 'p1', plan_id: 'proposal' } },
+				body: { action: 'ready', expected_revision: 3, reason: '' }
+			}
+		)
+	);
 });

@@ -5,6 +5,7 @@
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
 	import WorkPlanForm from './WorkPlanForm.svelte';
+	import WorkPlanActivity from './WorkPlanActivity.svelte';
 	type Plan = components['schemas']['WorkPlanRead'];
 	let { project }: { project: components['schemas']['ProjectRead'] } = $props();
 	let plans = $state<Plan[]>([]);
@@ -12,6 +13,26 @@
 	let error = $state('');
 	let busy = $state('');
 	let creating = $state(false);
+	let filter = $state('all');
+	let visible = $derived(
+		plans.filter(
+			(plan) =>
+				filter === 'all' ||
+				(filter === 'next'
+					? ['draft', 'proposed'].includes(plan.state) ||
+						(plan.state === 'paused' && plan.items.every((item) => !item.started_at))
+					: filter === 'finished'
+						? ['completed', 'revoked'].includes(plan.state)
+						: plan.state === filter)
+		)
+	);
+	function label(plan: Plan) {
+		if (plan.state === 'draft') return 'Draft · needs refinement';
+		if (plan.state === 'proposed') return 'Proposed · decision needed';
+		if (plan.state === 'paused' && plan.items.every((item) => !item.started_at))
+			return 'Ready · on hold';
+		return plan.state;
+	}
 	let editing = $state<Plan | undefined>();
 	async function load() {
 		try {
@@ -30,7 +51,7 @@
 			loading = false;
 		}
 	}
-	async function control(plan: Plan, action: 'pause' | 'resume' | 'revoke') {
+	async function control(plan: Plan, action: components['schemas']['PlanControl']['action']) {
 		if (
 			action === 'revoke' &&
 			!confirm(
@@ -42,7 +63,7 @@
 		try {
 			const result = await api.POST('/api/v1/projects/{project_id}/work-plans/{plan_id}/control', {
 				params: { path: { project_id: project.id, plan_id: plan.id } },
-				body: { action, expected_revision: plan.revision }
+				body: { action, expected_revision: plan.revision, reason: '' }
 			});
 			if (!result.data) throw new Error(apiErrorMessage(result.error, 'Could not update plan'));
 			await load();
@@ -54,8 +75,12 @@
 	}
 	function waitingReason(plan: Plan, item: Plan['items'][number]) {
 		if (item.state !== 'waiting') return item.detail;
+		if (plan.state === 'draft') return 'Draft; refine before starting';
+		if (plan.state === 'proposed') return 'Waiting for a decision';
 		if (plan.state === 'paused') return 'Plan paused';
 		if (!project.enabled) return 'Project disabled';
+		if (plan.scheduled_at && new Date(plan.scheduled_at).getTime() > Date.now())
+			return 'Scheduled; waiting until ' + new Date(plan.scheduled_at).toLocaleString();
 		const parents = plan.depends_on
 			.map((id) => plans.find((parent) => parent.id === id))
 			.filter((parent) => !parent || parent.state !== 'completed');
@@ -114,35 +139,75 @@
 				editing = undefined;
 			}}
 		/>{/if}
+	<label class="flex items-center gap-3 text-sm"
+		>Show
+		<select class="rounded-md border bg-background p-2" bind:value={filter}>
+			<option value="all">All plans</option>
+			<option value="next">Next work</option>
+			<option value="proposed">Needs a decision</option>
+			<option value="active">Execution requested</option>
+			<option value="paused">On hold / paused</option>
+			<option value="finished">Finished</option>
+		</select>
+	</label>
 	{#if loading}<p class="text-sm text-muted-foreground">Loading plans…</p>
 	{:else if !plans.length && !creating}<div
 			class="rounded-xl border border-dashed p-8 text-center text-muted-foreground"
 		>
-			Add a plan with tasks and dependencies to start.
+			Save an idea as a draft, or add a complete plan to start.
 		</div>{/if}
-	{#each plans as plan (plan.id)}
+	{#if !loading && plans.length && !visible.length}<p class="text-sm text-muted-foreground">
+			No plans in this view.
+		</p>{/if}
+	{#each visible as plan (plan.id)}
 		<article class="space-y-4 rounded-xl border bg-card p-5">
 			<header class="flex flex-wrap justify-between gap-3">
 				<div>
 					<h3 class="text-lg font-semibold">{plan.title}</h3>
 					<p class="mt-1 text-sm text-muted-foreground">
-						{plan.state} · {plan.items.filter((item) => item.state === 'succeeded').length}/{plan
+						{label(plan)} · {plan.items.filter((item) => item.state === 'succeeded').length}/{plan
 							.items.length} merged · {plan.base_branch}
 					</p>
+					{#if plan.scheduled_at}<p class="mt-1 text-sm text-muted-foreground">
+							Start no earlier than: {new Date(plan.scheduled_at).toLocaleString(undefined, {
+								timeZoneName: 'short'
+							})}
+						</p>{/if}
 				</div>
 				<div class="flex flex-wrap gap-2">
-					{#if plan.state === 'active' || plan.state === 'paused'}
+					{#if ['draft', 'proposed', 'active', 'paused'].includes(plan.state)}
 						{#if plan.items.every((item) => !item.started_at)}<Button
 								variant="outline"
 								disabled={!!busy || creating || !!editing}
 								onclick={() => (editing = plan)}>Edit</Button
 							>{/if}
-						<Button
-							variant="outline"
-							disabled={!!busy}
-							onclick={() => control(plan, plan.state === 'paused' ? 'resume' : 'pause')}
-							>{plan.state === 'paused' ? 'Resume' : 'Pause'}</Button
-						>
+						{#if plan.state === 'draft' || plan.state === 'proposed'}
+							{#if plan.state === 'draft'}
+								<Button variant="outline" disabled={!!busy} onclick={() => control(plan, 'propose')}
+									>Submit proposal</Button
+								>
+							{:else}
+								<Button variant="outline" disabled={!!busy} onclick={() => control(plan, 'draft')}
+									>Return to draft</Button
+								>
+							{/if}
+							<Button variant="outline" disabled={!!busy} onclick={() => control(plan, 'ready')}
+								>Mark ready</Button
+							>
+							<Button disabled={!!busy} onclick={() => control(plan, 'resume')}>Start</Button>
+						{:else}
+							<Button
+								variant="outline"
+								disabled={!!busy}
+								onclick={() => control(plan, plan.state === 'paused' ? 'resume' : 'pause')}
+							>
+								{plan.state === 'paused'
+									? plan.items.every((item) => !item.started_at)
+										? 'Start'
+										: 'Resume'
+									: 'Pause'}
+							</Button>
+						{/if}
 						<Button variant="outline" disabled={!!busy} onclick={() => control(plan, 'revoke')}
 							>Revoke</Button
 						>
@@ -167,6 +232,9 @@
 			</div>
 			{#if plan.issue?.error}<p class="text-sm text-muted-foreground">
 					Record sync: {plan.issue.error}. Work continues independently.
+				</p>{/if}
+			{#if !plan.items.length}<p class="text-sm text-muted-foreground">
+					No tasks yet. Edit this draft to refine the plan.
 				</p>{/if}
 			<div class="divide-y rounded-lg border">
 				{#each plan.items as item (item.id)}
@@ -214,6 +282,7 @@
 					</details>
 				{/each}
 			</div>
+			<WorkPlanActivity projectId={project.id} planId={plan.id} revision={plan.revision} />
 		</article>
 	{/each}
 </section>

@@ -3,18 +3,41 @@
 Work plans manage work before a pull request exists. They are available in
 **Project → Plans** and the API below, deployed, and verified by live GitHub
 canaries. The registration identity and MCP additions dated 2026-09-30 are local
-and not yet deployed. [Design decisions](work-plans-design.md) record the
+and not yet deployed. One-time start reservations added on 2026-10-01 are also
+local and not yet deployed. Draft/proposed plans and activity history added on
+2026-10-01 are local and not yet deployed. [Design decisions](work-plans-design.md) record the
 agreed domain boundaries and the original proposals.
 
 ## Registration and dependencies
 
-Adding a plan requests execution without a second approval. Register 1–100 items,
-including their specification and acceptance criteria, in one atomic request.
+Adding an `active` plan (the API default) requests execution without a second
+approval. Register 1–100 complete items in one atomic request. Set `state=draft`
+to save a seed with zero or incomplete items; `proposed` submits complete work for
+a decision, and `paused` stores validated work on hold. None of these three states
+admits work. The UI defaults to Draft. See [backlog and activity](work-plan-backlog.md)
+for the lifecycle, editing rules and discussion contract.
 The form also accepts a JSON task array for bulk input. Plan dependencies select
 existing plans in the same project. Item dependencies use keys within that plan.
 Cross-plan item references and direct plan/item edges are permanently unsupported.
 Self references, cycles, missing targets, and duplicate keys/edges are rejected.
 Composite foreign keys enforce project/plan boundaries in the database.
+
+Set optional `scheduled_at` to reserve a one-time earliest start for the whole
+plan. Omit it or use `null` for immediate eligibility. REST and MCP require a
+timezone offset or `Z`; Hub normalizes the instant to UTC. The form accepts and
+displays the browser's local time zone. A past time is already eligible. Before
+the reserved time, no item is admitted and no execution capacity is reserved;
+registration, edits, resume, and webhook follow-up all honor this condition.
+At or after that time, the existing dispatcher admits work when dependencies,
+project/catalog availability, and capacity allow it. This is not an exact-time
+guarantee: the production external tick currently runs every five minutes, and
+outages or other holds can delay execution further. Overdue work remains eligible
+after recovery. There are no per-plan timers or recurring plan schedules.
+
+Change or clear the reservation through the normal revision-checked edit while
+all items are unstarted. Clearing it can start eligible work immediately. Pause
+continues to hold overdue work, resume still respects a future reservation, and
+revoke permanently withdraws unstarted work. Already started work continues.
 
 The first release uses one GitHub repository per project and a specified target
 branch (`main` by default; change it for repositories using another branch).
@@ -28,7 +51,7 @@ Independent plans/items share the project's and catalog's capacity. A database
 transaction fixes the item's start before branch preparation. Preparation reserves
 local admission space; the existing catalog gateway still authorizes actual agent
 delivery and owns quota accounting. Waiting dependencies hold no execution slot.
-Registration, edits, and resume start newly ready items within the same request,
+Active registration, active edits, and resume start newly ready items within the same request,
 including branch/PR preparation and the first agent dispatch. A webhook for a work
 item's run observes that item at once, so a confirmed merge starts its dependents
 without waiting for the tick. This follow-up has a 25-second budget and at most two
@@ -70,7 +93,7 @@ the form remains mounted. If the form was closed/reloaded after an uncertain
 response, inspect existing Plans before submitting anew.
 
 Work MCP exposes `work_plans_list`, `work_plans_get` (read scope), and
-`work_plans_register`, `work_plans_update`, `work_plans_control` (write scope).
+`work_plans_register`, `work_plans_update`, `work_plans_control` (write scope). Activity adds `work_plans_activity` (read) and `work_plans_comment` (write).
 These reuse the same services, validation and admission paths as REST. Operations
 scope is not required. [MCP contracts](mcp.md) describe the nested inputs.
 
@@ -85,9 +108,15 @@ scope is not required. [MCP contracts](mcp.md) describe the nested inputs.
   and cannot resume. Completed plans cannot be controlled.
 - A paused plan can become completed if all already started items succeed.
 - Failed/blocked work holds its dependents; independent work continues.
-- Edit a plan's text and dependencies only before any item has started. Item keys
-  and membership are fixed; adding/removing work requires another plan. All edits
-  and controls require the observed plan revision.
+- Edit a plan's text and dependencies only before any item has started. Draft/proposed
+  plans permit item additions/removals; editing proposed work returns it to draft.
+  Active/paused plans retain fixed membership. All edits and controls require the
+  observed revision; an optional `reason` is stored in activity history.
+- `propose` validates and submits a draft for review; `draft` withdraws a proposal.
+  `ready` validates draft/proposed work and holds it paused. `resume` explicitly
+  authorizes execution from draft/proposed/paused after full validation. Incomplete
+  work cannot leave draft. `pause` cannot bypass draft/proposal validation.
+  Published plans cannot return to draft; started Runs retain their existing controls.
 
 Pause/revoke and Item admission lock the same project and plan. If control wins,
 no waiting item starts. If admission wins, that item is already started and may
@@ -116,7 +145,9 @@ restore the original binding or register new work in the intended project.
 
 ## GitHub Issues are outbound records only
 
-The shared maintenance worker publishes a parent Issue for each Plan and a
+Draft/proposed plans stay local and create no Issue records. Revoking one before
+publication also creates none. Once ready or active, the shared maintenance worker
+publishes a parent Issue for each Plan and a
 sub-issue for each Item. It copies the local specification, acceptance criteria,
 status history, dependency references, and PR/merge links. Dependencies are shown
 as body links in this release, not synchronized native blocking relationships.
@@ -175,23 +206,27 @@ Base path: `/api/v1/projects/{project_id}/work-plans`.
 
 | Method and suffix | Operation |
 | --- | --- |
-| `GET /` | List plans with their items and Issue sync status; `offset`, `limit` (1–100). |
+| `GET /` | List plans with their items and Issue sync status; `offset`, `limit` (1–100), optional `state`. |
 | `POST /` | Atomically register a plan and its Item graph. |
 | `GET /registrations/{request_id}` | Recover a registration without creating work. |
 | `GET /{plan_id}` | Read local state; no external writes. |
 | `PUT /{plan_id}` | Edit unstarted work, including dependency graphs; requires `expected_revision`. |
-| `POST /{plan_id}/control` | `action`: `pause`, `resume`, or `revoke`; requires `expected_revision`. |
+| `POST /{plan_id}/control` | `action`: `propose`, `draft`, `ready`, `pause`, `resume`, or `revoke`; requires `expected_revision`. |
+| `GET /{plan_id}/activity` | Append-only changes/comments, `offset`, `limit`, optional `comments_only`. |
+| `POST /{plan_id}/comments` | Bounded text `body` and client UUID `request_id`; retries are idempotent per Plan. |
 
-Creation fields: optional `request_id` (required for reliable retries), `title`, optional `description`, `base_branch`, `depends_on`
-(existing Plan UUIDs), and `items`. Each Item requires a stable `key`, `title`,
-`description`, `acceptance`, and optional `depends_on` (local Item keys).
+Creation fields: optional `state` (`active` default, `draft`, `proposed`, `paused`), optional `request_id` (required for reliable retries), `title`, optional `description`, `base_branch`, `depends_on`
+(existing Plan UUIDs), optional `scheduled_at` (timezone-aware earliest start), and `items`. Draft items require a stable `key`; title, description and acceptance
+can be filled later. All other initial states require 1–100 complete items.
+`depends_on` contains local Item keys and is validated even in drafts.
 The generated OpenAPI client is the definitive request/response contract.
 
 ## Deployment and validation
 
 The original migration `c7d8e9f0a1b2` added five work tables. Current deployment
-must apply the full migration head, including `e14a217d0910` (Run decisions) and
-`f25b328e1021` (Plan registration identity), with the matching application/UI. Keep the project dispatcher and
+must apply the full migration head, including `e14a217d0910` (Run decisions),
+`f25b328e1021` (Plan registration identity), `a36c439f2132` (Plan start reservation),
+and `b47d540a3243` (Plan activity), with the matching application/UI. Keep the project dispatcher and
 shared maintenance worker enabled. No per-Plan schedules are created.
 
 Automated coverage includes graph validation, controls, capacity, PR response-loss

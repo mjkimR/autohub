@@ -1,5 +1,7 @@
+from typing import Literal
 from uuid import UUID
 
+from app.features.project_management.work_plans.activity_schemas import PlanActivityList, PlanActivityRead, PlanComment
 from app.features.project_management.work_plans.kick import WorkPlanKick
 from app.features.project_management.work_plans.repos import WorkPlanRepository
 from app.features.project_management.work_plans.schemas import (
@@ -11,6 +13,7 @@ from app.features.project_management.work_plans.schemas import (
 )
 from app.features.project_management.work_plans.services import WorkPlanService
 from app.features.project_management.work_plans.usecases import WorkPlanUseCase
+from app.mcp.auth import authenticated_context
 from app.mcp.contracts import Page, ProjectId
 from app.mcp.dependencies import Dependencies
 from app.mcp.registration import register
@@ -19,7 +22,7 @@ from pydantic import Field, model_validator
 
 
 class PlanPage(ProjectId, Page):
-    pass
+    state: Literal["draft", "proposed", "paused", "active", "completed", "revoked"] | None = None
 
 
 class PlanLookup(ProjectId):
@@ -51,11 +54,21 @@ class ControlPlan(ProjectId):
     control: PlanControl
 
 
+class ActivityPage(ProjectId, Page):
+    plan_id: UUID
+    comments_only: bool = False
+
+
+class CommentPlan(ProjectId):
+    plan_id: UUID
+    comment: PlanComment
+
+
 def register_work_plans(registry: ToolRegistry, deps: Dependencies) -> None:
     use_case = WorkPlanUseCase(WorkPlanService(WorkPlanRepository(), deps.runs.projects), WorkPlanKick(deps.runs))
 
     async def list_plans(args: PlanPage) -> WorkPlanList:
-        return await use_case.list(args.project_id, args.offset, args.limit)
+        return await use_case.list(args.project_id, args.offset, args.limit, args.state)
 
     async def get_plan(args: PlanLookup) -> WorkPlanRead:
         if args.plan_id is not None:
@@ -64,13 +77,43 @@ def register_work_plans(registry: ToolRegistry, deps: Dependencies) -> None:
         return await use_case.by_request(args.project_id, args.request_id)
 
     async def create(args: RegisterPlan) -> WorkPlanRead:
-        return await use_case.create(args.project_id, args.plan)
+        return await use_case.create(args.project_id, args.plan, f"machine:{(await authenticated_context()).subject}")
 
     async def update(args: UpdatePlan) -> WorkPlanRead:
-        return await use_case.update(args.project_id, args.plan_id, args.plan)
+        return await use_case.update(
+            args.project_id, args.plan_id, args.plan, f"machine:{(await authenticated_context()).subject}"
+        )
 
     async def control(args: ControlPlan) -> WorkPlanRead:
-        return await use_case.control(args.project_id, args.plan_id, args.control)
+        return await use_case.control(
+            args.project_id, args.plan_id, args.control, f"machine:{(await authenticated_context()).subject}"
+        )
+
+    async def activity(args: ActivityPage) -> PlanActivityList:
+        return await use_case.activity(args.project_id, args.plan_id, args.offset, args.limit, args.comments_only)
+
+    async def comment(args: CommentPlan) -> PlanActivityRead:
+        return await use_case.comment(
+            args.project_id, args.plan_id, args.comment, f"machine:{(await authenticated_context()).subject}"
+        )
+
+    register(
+        registry,
+        "work_plans_activity",
+        "Read paginated Plan comments and before/after changes; no execution.",
+        ActivityPage,
+        PlanActivityList,
+        activity,
+    )
+    register(
+        registry,
+        "work_plans_comment",
+        "Append context only, never execution input. Reuse request_id after response loss.",
+        CommentPlan,
+        PlanActivityRead,
+        comment,
+        write=True,
+    )
 
     register(
         registry,
@@ -91,7 +134,7 @@ def register_work_plans(registry: ToolRegistry, deps: Dependencies) -> None:
     register(
         registry,
         "work_plans_register",
-        "Register approved work and request immediate execution. Reuse request_id and identical content after response loss; different content with the same key conflicts. Registration is not a draft or backlog operation.",
+        "Create a draft seed (zero/incomplete items allowed), proposed work for review, paused ready work, or active work for execution (default). Only active starts, respecting scheduled_at, dependencies and capacity. Reuse request_id with identical content after response loss.",
         RegisterPlan,
         WorkPlanRead,
         create,
@@ -100,7 +143,7 @@ def register_work_plans(registry: ToolRegistry, deps: Dependencies) -> None:
     register(
         registry,
         "work_plans_update",
-        "Edit only wholly unstarted plans using expected_revision. Item membership is fixed. This may start newly eligible work.",
+        "Edit wholly unstarted plans using expected_revision. Draft/proposed allow membership changes; proposed edits return to draft. Active/paused membership is fixed. Only active edits may start work.",
         UpdatePlan,
         WorkPlanRead,
         update,
@@ -109,7 +152,7 @@ def register_work_plans(registry: ToolRegistry, deps: Dependencies) -> None:
     register(
         registry,
         "work_plans_control",
-        "Pause/resume/revoke unstarted tasks using expected_revision. Started runs continue; pause/cancel them separately. Failed or canceled tasks need inspected replacement work, not plan resume.",
+        "Control using expected_revision: propose submits a complete draft; draft withdraws a proposal; ready validates and holds draft/proposed; resume explicitly authorizes execution; pause holds active work; revoke withdraws. Started runs continue. Failed tasks need inspected replacement work.",
         ControlPlan,
         WorkPlanRead,
         control,

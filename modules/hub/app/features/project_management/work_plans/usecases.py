@@ -2,6 +2,8 @@ from typing import Annotated
 from uuid import UUID
 
 from app.features.project_management.projects.errors import ProjectError
+from app.features.project_management.work_plans.activity import WorkPlanActivityRepository
+from app.features.project_management.work_plans.activity_schemas import PlanActivityList, PlanActivityRead, PlanComment
 from app.features.project_management.work_plans.kick import WorkPlanKick
 from app.features.project_management.work_plans.mirror_records import refresh_mirrors
 from app.features.project_management.work_plans.models import ItemDependency, PlanDependency, WorkIssueMirror
@@ -68,10 +70,10 @@ class WorkPlanUseCase:
             }
         )
 
-    async def list(self, project_id: UUID, offset: int, limit: int) -> WorkPlanList:
+    async def list(self, project_id: UUID, offset: int, limit: int, state: str | None = None) -> WorkPlanList:
         async with AsyncTransaction() as session:
             await self.service.projects.get(session, project_id)
-            rows, total = await self.service.repo.list_for_project(session, project_id, offset, limit)
+            rows, total = await self.service.repo.list_for_project(session, project_id, offset, limit, state)
             return WorkPlanList(items=[await self.read(session, row) for row in rows], total_count=total)
 
     async def get(self, project_id: UUID, plan_id: UUID) -> WorkPlanRead:
@@ -86,22 +88,28 @@ class WorkPlanUseCase:
                 raise ProjectError(404, "No plan registered with this request ID")
             return await self.read(session, plan)
 
-    async def create(self, project_id: UUID, data: WorkPlanWrite) -> WorkPlanRead:
+    async def create(self, project_id: UUID, data: WorkPlanWrite, actor: str = "system") -> WorkPlanRead:
         async with AsyncTransaction() as session:
-            plan = await self.service.create(session, project_id, data)
+            plan = await self.service.create(session, project_id, data, actor)
             await refresh_mirrors(session, plan)
             plan_id = plan.id
+            if plan.state != "active":
+                return await self.read(session, plan)
         return await self._started(project_id, plan_id)
 
-    async def update(self, project_id: UUID, plan_id: UUID, data: WorkPlanUpdate) -> WorkPlanRead:
+    async def update(
+        self, project_id: UUID, plan_id: UUID, data: WorkPlanUpdate, actor: str = "system"
+    ) -> WorkPlanRead:
         async with AsyncTransaction() as session:
-            plan = await self.service.update(session, project_id, plan_id, data)
+            plan = await self.service.update(session, project_id, plan_id, data, actor)
             await refresh_mirrors(session, plan)
+            if plan.state != "active":
+                return await self.read(session, plan)
         return await self._started(project_id, plan_id)
 
-    async def control(self, project_id: UUID, plan_id: UUID, data: PlanControl) -> WorkPlanRead:
+    async def control(self, project_id: UUID, plan_id: UUID, data: PlanControl, actor: str = "system") -> WorkPlanRead:
         async with AsyncTransaction() as session:
-            plan = await self.service.control(session, project_id, plan_id, data)
+            plan = await self.service.control(session, project_id, plan_id, data, actor)
             await refresh_mirrors(session, plan)
             if data.action != "resume":
                 return await self.read(session, plan)
@@ -111,3 +119,15 @@ class WorkPlanUseCase:
         """After the change commits, start newly ready items now and answer with their state."""
         await self.kick.run(project_id)
         return await self.get(project_id, plan_id)
+
+    async def activity(
+        self, project_id: UUID, plan_id: UUID, offset: int = 0, limit: int = 50, comments_only: bool = False
+    ) -> PlanActivityList:
+        async with AsyncTransaction() as session:
+            await self.service.get(session, project_id, plan_id)
+            return await WorkPlanActivityRepository().list(session, plan_id, offset, limit, comments_only)
+
+    async def comment(self, project_id: UUID, plan_id: UUID, data: PlanComment, actor: str) -> PlanActivityRead:
+        async with AsyncTransaction() as session:
+            plan = await self.service.get(session, project_id, plan_id, lock=True)
+            return await WorkPlanActivityRepository().comment(session, plan, data, actor)

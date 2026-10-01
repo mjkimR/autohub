@@ -12,6 +12,7 @@ from app.features.project_management.pipelines import services as github_service
 from app.features.project_management.pipelines.github import GitHubObservationError
 from app.features.project_management.pipelines.services import PipelineObservationService
 from app.features.project_management.projects.models import Project
+from app.features.project_management.work_plans.activity import record_change, snapshot
 from app.features.project_management.work_plans.execution_repo import WorkExecutionRepository
 from app.features.project_management.work_plans.github import MissingWorkBaseBranch, WorkGitHub
 from app.features.project_management.work_plans.mirror_records import refresh_mirrors
@@ -192,5 +193,7 @@ class WorkPlanExecution:
     async def complete_plan(session, plan: WorkPlan) -> None:
         items = await WorkPlanRepository().items(session, plan.id)
         if plan.state in ("active", "paused") and items and all(item.state == "succeeded" for item in items):
+            before = await snapshot(session, plan)
             plan.state, plan.completed_at = "completed", get_current_utc_time()
             plan.revision += 1
+            await record_change(session, plan, before, "completed", "system:work-execution")

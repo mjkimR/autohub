@@ -39,6 +39,7 @@ class WorkExecutionRepository:
             and_(
                 WorkItem.state == "waiting",
                 WorkPlan.state == "active",
+                or_(WorkPlan.scheduled_at.is_(None), WorkPlan.scheduled_at <= now),
                 ~plan_wait,
                 ~item_wait,
                 WorkPlan.repository == project.github_repository,

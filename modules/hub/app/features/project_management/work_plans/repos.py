@@ -17,14 +17,17 @@ class WorkPlanRepository:
     async def items(self, session: AsyncSession, plan_id: UUID) -> list[WorkItem]:
         return list(await session.scalars(select(WorkItem).where(WorkItem.plan_id == plan_id).order_by(WorkItem.key)))
 
-    async def list_for_project(self, session: AsyncSession, project_id: UUID, offset=0, limit=50):
-        query = select(WorkPlan).where(WorkPlan.project_id == project_id)
+    async def list_for_project(
+        self, session: AsyncSession, project_id: UUID, offset=0, limit=50, state: str | None = None
+    ):
+        conditions = [WorkPlan.project_id == project_id]
+        if state:
+            conditions.append(WorkPlan.state == state)
+        query = select(WorkPlan).where(*conditions)
         rows = await session.scalars(
             query.order_by(WorkPlan.created_at.desc(), WorkPlan.id).offset(offset).limit(limit)
         )
-        count = await session.scalar(
-            select(func.count()).select_from(WorkPlan).where(WorkPlan.project_id == project_id)
-        )
+        count = await session.scalar(select(func.count()).select_from(WorkPlan).where(*conditions))
         return list(rows), count or 0
 
     async def plan_graph(self, session: AsyncSession, project_id: UUID) -> dict[UUID, list[UUID]]:
@@ -44,3 +47,18 @@ class WorkPlanRepository:
             for parent in data.depends_on:
                 session.add(ItemDependency(plan_id=plan.id, item_id=by_key[data.key], depends_on_id=by_key[parent]))
         await session.flush()
+
+    async def reconcile_items(self, session, plan, items, writes):
+        await session.execute(delete(ItemDependency).where(ItemDependency.plan_id == plan.id))
+        wanted = {write.key for write in writes}
+        retained = {item.key: item for item in items if item.key in wanted}
+        for item in items:
+            if item.key not in wanted:
+                await session.delete(item)
+        for write in writes:
+            if write.key not in retained:
+                row = WorkItem(plan_id=plan.id, **write.model_dump(exclude={"depends_on"}))
+                session.add(row)
+                retained[write.key] = row
+        await session.flush()
+        return list(retained.values())

@@ -33,6 +33,7 @@ class WorkPlan(Base, UUIDMixin, TimestampMixin):
     base_branch: Mapped[str] = mapped_column(String(255))
     state: Mapped[str] = mapped_column(String(30), default="active")
     revision: Mapped[int] = mapped_column(default=1)
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -106,3 +107,16 @@ class WorkIssueMirror(Base, UUIDMixin, TimestampMixin):
     next_action_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     lease_token: Mapped[UUID | None] = mapped_column()
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WorkPlanActivity(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "work_plan_activities"
+    __table_args__ = (UniqueConstraint("plan_id", "request_id", name="uq_work_plan_comment_request"),)
+
+    plan_id: Mapped[UUID] = mapped_column(ForeignKey("work_plans.id", ondelete="CASCADE"), index=True)
+    request_id: Mapped[UUID | None] = mapped_column()
+    kind: Mapped[str] = mapped_column(String(30))
+    actor: Mapped[str] = mapped_column(String(255))
+    revision: Mapped[int] = mapped_column()
+    body: Mapped[str] = mapped_column(Text, default="")
+    changes: Mapped[dict] = mapped_column(JSON_VARIANT, default=dict)

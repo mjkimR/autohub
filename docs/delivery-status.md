@@ -3,6 +3,45 @@
 운영 현황은 2026-09-28 기준이다. 아래의 운영 완료 범위는 Cloud Run에 배포됐고 실서비스 카나리로 확인했다.
 당시 revision은 `autohub-00006-dz7`이다.
 
+## Work Plan backlog·댓글·변경이력: 로컬 구현, 미배포
+
+2026-10-01 [상태·활동 계약](work-plan-backlog.md)을 먼저 작성한 뒤 구현했다.
+기존 시작 예약 변경을 보존하면서 REST·MCP·UI를 함께 확장했다.
+
+- `draft`는 제목만으로 등록하고 Item 0개·미완성 명세를 보관한다. `proposed`는
+  실행 가능한 계획을 검토 대기로 제출한다. 두 상태는 PR·Run·GitHub Issue를 만들지 않는다.
+- 등록 시 `paused`를 선택하면 준비된 계획을 즉시 보류한다. 기존 API 기본값은
+  `active`이며 대화에서 승인한 작업은 바로 실행할 수 있다. UI 기본 선택은 Draft다.
+- Draft·Proposed의 Item 추가·삭제를 지원하고, Proposed 수정은 Draft로 되돌린다.
+  `propose`, `ready`, `resume`에서 완성도·의존성·저장소 연결을 검증한다.
+  공개한 active/paused Plan은 기존 고정 Item·미시작 편집 계약을 유지한다.
+- 댓글과 수정 전후 값, 인증된 사용자·machine, 시각·revision·선택적 사유를
+  Plan 활동에 보존한다. 댓글 재전송은 요청 키로 중복을 막고 실행에 영향을 주지 않는다.
+  수정 이력은 Plan 변경과 같은 트랜잭션에 저장하며 자동 완료도 system 주체로 기록한다.
+- UI에 다음 작업·판단 대기 필터, Draft/Proposed/Ready 선택, 명세 편집,
+  댓글·활동 목록과 이전/이후 비교를 제공한다. 댓글은 별도로 새로고침할 수 있다.
+- MCP에 `work_plans_activity`, `work_plans_comment`를 추가했다. 현재 작업용은
+  24개(조회 13, 변경 11), 운영용은 4개다. 기존 read/write scope를 그대로 사용한다.
+
+검증 결과:
+
+- 백엔드 전체 `just test`: 875 passed, 10 skipped. 이후 추가한 연결 변경·직접 시작·
+  이력 실패 롤백·동시 편집 테스트와 관련 MCP 재검증: 17 passed, 2 skipped.
+- PostgreSQL의 Plan 전체·migration 왕복: 70 passed. 추가 사례·MCP·실제 전체
+  migration 신규 적용·metadata 일치·왕복 재검증: 24 passed.
+- UI 전체 `just test-ui`: 28개 파일, 158 passed. 예약 시각 보존 회귀를 수정했고
+  Draft 저장·제안 편집·판단 필터·댓글 재전송·활동 조회를 검증했다.
+- `just lint`, 최종 `just lint-check`, `just check`와 변경 후 해당 모듈 재검사 통과.
+  기존 HTTP client architecture 경고 3건은 유지된다. OpenAPI 타입을 재생성했고
+  문서 로컬 링크·`git diff --check`를 확인했다.
+
+GitHub/provider I/O는 모의 응답이다. 배포·실서비스 canary·커밋은 수행하지 않았다.
+`a36c439f2132` 다음에 `b47d540a3243`을 적용하고 UI/API를 함께 배포해야 한다.
+Draft·Proposed가 남아 있으면 downgrade를 거부한다. 먼저 Ready 또는 철회로
+전환해야 하며, downgrade는 활동 테이블을 삭제하므로 이력 보존이 필요하면 백업한다.
+기존 Plan의 과거 수정 이력은 역으로 생성하지 않고 이후 변경부터 기록한다.
+댓글 편집·삭제·스레드·알림·GitHub 댓글 동기화·자동 복원은 포함하지 않는다.
+
 ## 질문·답변·Plan MCP: 로컬 구현, 미배포
 
 2026-09-30 g-sandbox 전환과 독립적으로 사용할 선행 기능을 구현했다.

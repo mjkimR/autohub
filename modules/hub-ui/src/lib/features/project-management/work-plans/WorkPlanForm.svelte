@@ -21,8 +21,20 @@
 	} = $props();
 	const initial = untrack(() => editing);
 	let title = $state(initial?.title ?? '');
+	let mode = $state<components['schemas']['WorkPlanCreate']['state']>('draft');
+	const flexible = !initial || ['draft', 'proposed'].includes(initial.state);
+	let draft = $derived(initial ? flexible : mode === 'draft');
+	let reason = $state('');
 	let description = $state(initial?.description ?? '');
 	let baseBranch = $state(initial?.base_branch ?? 'main');
+	const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	function localSchedule(value?: string | null) {
+		if (!value) return '';
+		const date = new Date(value);
+		return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, -1);
+	}
+	const initialSchedule = localSchedule(initial?.scheduled_at);
+	let scheduledAt = $state(initialSchedule);
 	let parents = $state<string[]>(initial?.depends_on ?? []);
 	let items = $state<Item[]>(
 		initial?.items.map((item) => ({
@@ -31,7 +43,7 @@
 			description: item.description,
 			acceptance: item.acceptance,
 			depends_on: [...item.depends_on]
-		})) ?? [{ key: 'task-1', title: '', description: '', acceptance: '', depends_on: [] }]
+		})) ?? []
 	);
 	let saving = $state(false);
 	const registrationId = crypto.randomUUID();
@@ -60,13 +72,13 @@
 			const value: unknown = JSON.parse(bulk);
 			if (
 				!Array.isArray(value) ||
-				value.length < 1 ||
+				(!draft && value.length < 1) ||
 				value.length > 100 ||
 				value.some(
 					(item) =>
 						!item ||
 						typeof item !== 'object' ||
-						['key', 'title', 'description', 'acceptance'].some(
+						(draft ? ['key'] : ['key', 'title', 'description', 'acceptance']).some(
 							(key) => typeof item[key] !== 'string'
 						) ||
 						(item.depends_on !== undefined &&
@@ -79,9 +91,9 @@
 				);
 			items = value.map((item) => ({
 				key: item.key,
-				title: item.title,
-				description: item.description,
-				acceptance: item.acceptance,
+				title: item.title ?? '',
+				description: item.description ?? '',
+				acceptance: item.acceptance ?? '',
 				depends_on: item.depends_on ?? []
 			}));
 			bulkOpen = false;
@@ -93,16 +105,27 @@
 	async function save() {
 		saving = true;
 		error = '';
-		const body = { title, description, base_branch: baseBranch, depends_on: parents, items };
 		try {
+			const body = {
+				title,
+				description,
+				base_branch: baseBranch,
+				scheduled_at: scheduledAt
+					? scheduledAt === initialSchedule
+						? initial!.scheduled_at
+						: new Date(scheduledAt).toISOString()
+					: null,
+				depends_on: parents,
+				items
+			};
 			const result = editing
 				? await api.PUT('/api/v1/projects/{project_id}/work-plans/{plan_id}', {
 						params: { path: { project_id: projectId, plan_id: editing.id } },
-						body: { ...body, expected_revision: editing.revision }
+						body: { ...body, expected_revision: editing.revision, reason }
 					})
 				: await api.POST('/api/v1/projects/{project_id}/work-plans', {
 						params: { path: { project_id: projectId } },
-						body: { ...body, request_id: registrationId }
+						body: { ...body, state: mode, request_id: registrationId }
 					});
 			if (!result.data) throw new Error(apiErrorMessage(result.error, 'Could not save work plan'));
 			onsaved();
@@ -123,16 +146,41 @@
 >
 	<h2 class="text-xl font-semibold">{editing ? 'Edit plan' : 'Add work plan'}</h2>
 	<p class="text-sm text-muted-foreground">
-		Adding a plan schedules eligible work immediately. PRs merge according to project policy.
-		Dependencies wait for merged results. After a lost response, retry the same content to recover
-		this plan.
+		Drafts can hold an idea without tasks. Proposals wait for a decision. Ready plans stay on hold.
+		Only Start requests execution, respecting the start time and project merge policy. After a lost
+		response, retry the same content to recover this plan.
 	</p>
+	{#if !editing}
+		<label class="block space-y-2 text-sm"
+			>Save as
+			<select class="w-full rounded-md border bg-background p-2" bind:value={mode}>
+				<option value="draft">Draft — refine later</option>
+				<option value="proposed">Proposed — request a decision</option>
+				<option value="paused">Ready — keep on hold</option>
+				<option value="active">Start — request execution</option>
+			</select>
+		</label>
+	{:else if editing.state === 'proposed'}
+		<p class="text-sm text-muted-foreground">
+			Saving changes returns this proposal to Draft for review.
+		</p>
+	{/if}
 	{#if error}<p role="alert" class="text-sm text-destructive">{error}</p>{/if}
 	<div class="grid gap-4 sm:grid-cols-2">
 		<label class="space-y-2 text-sm"
 			>Plan title<Input required maxlength={200} bind:value={title} /></label
 		>
 		<label class="space-y-2 text-sm">Target branch<Input required bind:value={baseBranch} /></label>
+	</div>
+	<div class="space-y-2 text-sm">
+		<label class="block space-y-2">
+			Start no earlier than
+			<Input type="datetime-local" step="any" bind:value={scheduledAt} />
+		</label>
+		<p class="text-muted-foreground">
+			Time zone: {localTimezone}. Leave blank to start when ready. Work starts on or after this
+			time, subject to dependencies, capacity, and the scheduler interval.
+		</p>
 	</div>
 	<label class="block space-y-2 text-sm"
 		>Goal and scope<textarea class={textareaClass} bind:value={description}></textarea></label
@@ -153,7 +201,7 @@
 	{/if}
 	<div class="flex items-center justify-between gap-3">
 		<h3 class="font-semibold">Work items ({items.length}/100)</h3>
-		{#if !editing}<Button type="button" variant="outline" onclick={() => (bulkOpen = !bulkOpen)}
+		{#if flexible}<Button type="button" variant="outline" onclick={() => (bulkOpen = !bulkOpen)}
 				>Import task list</Button
 			>{/if}
 	</div>
@@ -176,19 +224,23 @@
 			<legend class="px-1 text-sm font-medium">Task {index + 1}</legend>
 			<div class="grid gap-4 sm:grid-cols-[10rem_1fr]">
 				<label class="space-y-2 text-sm"
-					>Key<Input required readonly={!!editing} bind:value={item.key} /></label
+					>Key<Input required readonly={!flexible} bind:value={item.key} /></label
 				>
 				<label class="space-y-2 text-sm"
-					>Title<Input required maxlength={200} bind:value={item.title} /></label
+					>Title<Input required={!draft} maxlength={200} bind:value={item.title} /></label
 				>
 			</div>
 			<label class="block space-y-2 text-sm"
-				>Specification<textarea required class={textareaClass} bind:value={item.description}
-				></textarea></label
+				>Specification<textarea
+					required={!draft}
+					class={textareaClass}
+					bind:value={item.description}></textarea></label
 			>
 			<label class="block space-y-2 text-sm"
-				>Acceptance criteria<textarea required class={textareaClass} bind:value={item.acceptance}
-				></textarea></label
+				>Acceptance criteria<textarea
+					required={!draft}
+					class={textareaClass}
+					bind:value={item.acceptance}></textarea></label
 			>
 			{#if items.length > 1}<div class="space-y-2">
 					<p class="text-sm font-medium">Wait for tasks in this plan</p>
@@ -202,22 +254,38 @@
 						>
 					{/each}
 				</div>{/if}
-			{#if !editing && items.length > 1}<Button
+			{#if flexible && (draft || items.length > 1)}<Button
 					type="button"
 					variant="ghost"
 					onclick={() => removeItem(item.key)}>Remove task</Button
 				>{/if}
 		</fieldset>
 	{/each}
+	{#if editing}<label class="block space-y-2 text-sm"
+			>Change reason (optional)
+			<Input maxlength={4000} bind:value={reason} />
+		</label>{/if}
 	<div class="flex flex-wrap gap-3">
-		{#if !editing}<Button
+		{#if flexible}<Button
 				type="button"
 				variant="outline"
 				disabled={items.length >= 100 || saving}
 				onclick={addItem}>Add task</Button
 			>{/if}
 		<Button type="submit" disabled={saving}
-			>{saving ? 'Saving…' : editing ? 'Save plan' : 'Add and start'}</Button
+			>{saving
+				? 'Saving…'
+				: editing
+					? 'Save plan'
+					: mode === 'draft'
+						? 'Save draft'
+						: mode === 'proposed'
+							? 'Submit proposal'
+							: mode === 'paused'
+								? 'Save ready plan'
+								: scheduledAt
+									? 'Add and schedule'
+									: 'Add and start'}</Button
 		>
 		<Button type="button" variant="ghost" disabled={saving} onclick={oncancel}>Cancel</Button>
 	</div>

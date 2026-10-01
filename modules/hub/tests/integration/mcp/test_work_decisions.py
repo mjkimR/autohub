@@ -85,3 +85,62 @@ async def test_mcp_answer_does_not_resume_and_replay_keeps_one_attempt(client, k
     assert (await mcp.call(client, key, "runs_resume", resume))["result"]["state"] == "dispatching"
     assert (await mcp.call(client, key, "runs_resume", resume))["ok"]
     assert (await mcp.call(client, key, "runs_attempts", args))["result"]["total_count"] == 1
+
+
+async def test_mcp_register_and_update_scheduled_plan(client, key, setup_work, monkeypatch):
+    from app.features.project_management.work_plans.kick import WorkPlanKick
+
+    project, github, _, _ = setup_work
+    monkeypatch.setattr(WorkPlanKick, "run", work.LIVE_KICK)
+    data = payload() | {"scheduled_at": "2099-10-01T09:00:00+09:00"}
+    plan = (await mcp.call(client, key, "work_plans_register", {"project_id": project["id"], "plan": data}))["result"]
+    assert plan["scheduled_at"] == "2099-10-01T00:00:00Z"
+    assert all(item["started_at"] is None for item in plan["items"])
+    edited = {k: v for k, v in data.items() if k != "request_id"}
+    edited.update(scheduled_at="2099-10-02T00:00:00Z", expected_revision=plan["revision"])
+    updated = (
+        await mcp.call(
+            client,
+            key,
+            "work_plans_update",
+            {"project_id": project["id"], "plan_id": plan["id"], "plan": edited},
+        )
+    )["result"]
+    assert updated["scheduled_at"] == "2099-10-02T00:00:00Z"
+    assert github.requests == []
+
+
+async def test_mcp_backlog_activity_and_comment_permissions(client, key, setup_work):
+    project, github, _, _ = setup_work
+    data = {"request_id": str(uuid4()), "state": "draft", "title": "Idea seed"}
+    plan = (await mcp.call(client, key, "work_plans_register", {"project_id": project["id"], "plan": data}))["result"]
+    args = {"project_id": project["id"], "plan_id": plan["id"]}
+    assert plan["items"] == []
+    invalid = await mcp.call(
+        client, key, "work_plans_control", args | {"control": {"action": "propose", "expected_revision": 1}}, error=True
+    )
+    assert not invalid["ok"]
+    refined = {k: v for k, v in payload().items() if k != "request_id"} | {"expected_revision": 1}
+    plan = (await mcp.call(client, key, "work_plans_update", args | {"plan": refined}))["result"]
+    plan = (
+        await mcp.call(
+            client,
+            key,
+            "work_plans_control",
+            args | {"control": {"action": "propose", "expected_revision": plan["revision"]}},
+        )
+    )["result"]
+    assert plan["state"] == "proposed" and not github.requests
+    _, reader = await mcp.issue(client, [MCP_READ])
+    comments = args | {"comment": {"request_id": str(uuid4()), "body": "Review this proposal"}}
+    assert not (await mcp.call(client, reader["key"], "work_plans_comment", comments, error=True))["ok"]
+    saved = (await mcp.call(client, key, "work_plans_comment", comments))["result"]
+    assert saved["actor"].startswith("machine:")
+    assert (await mcp.call(client, key, "work_plans_comment", comments))["result"]["id"] == saved["id"]
+    history = (await mcp.call(client, reader["key"], "work_plans_activity", args))["result"]
+    assert history["total_count"] == 4
+    assert all(row["actor"].startswith("machine:") for row in history["items"])
+    filtered = (
+        await mcp.call(client, reader["key"], "work_plans_list", {"project_id": project["id"], "state": "proposed"})
+    )["result"]
+    assert filtered["total_count"] == 1

@@ -3,6 +3,7 @@
 from uuid import UUID
 
 from app.features.project_management.pipeline_runs.requests import request_digest
+from app.features.project_management.pipeline_runs.usecases.transitions import as_utc
 from app.features.project_management.work_plans.models import ItemDependency, PlanDependency, WorkIssueMirror, WorkPlan
 from app.features.project_management.work_plans.repos import WorkPlanRepository
 from app_layer_base.utils.time_util import get_current_utc_time
@@ -13,6 +14,12 @@ NOTICE = "AutoHub-managed record. Changes to this issue do not change execution,
 
 
 async def refresh_mirrors(session: AsyncSession, plan: WorkPlan) -> None:
+    if plan.state in ("draft", "proposed"):
+        return
+    if plan.state == "revoked" and not await session.scalar(
+        select(WorkIssueMirror.id).where(WorkIssueMirror.plan_id == plan.id).limit(1)
+    ):
+        return
     items = await WorkPlanRepository().items(session, plan.id)
     plan_deps = list(
         await session.scalars(select(PlanDependency.depends_on_id).where(PlanDependency.plan_id == plan.id))
@@ -48,6 +55,8 @@ async def refresh_mirrors(session: AsyncSession, plan: WorkPlan) -> None:
             if entity.merge_sha:
                 body += f"Merge commit: `{entity.merge_sha}`\n\n"
         else:
+            if plan.scheduled_at is not None:
+                body += f"Start no earlier than: {as_utc(plan.scheduled_at).isoformat()}\n\n"
             body += (
                 "## Work items\n\n"
                 + "\n".join(f"- {link(item.id, item.key + ': ' + item.title)} — {item.state}" for item in items)
