@@ -42,19 +42,20 @@ async def record_change(session, plan, before: dict, kind: str, actor: str, reas
         for key, value in after.items()
         if key not in before or before[key] != value
     }
-    if changes:
-        session.add(
-            WorkPlanActivity(
-                plan_id=plan.id,
-                kind=kind,
-                actor=actor,
-                revision=plan.revision,
-                body=reason,
-                changes=changes,
-                created_at=get_current_utc_time(),
-            )
+    # Accepted updates/controls advance revision even when values are unchanged.
+    # Registration retries return before this function and must not add an event.
+    session.add(
+        WorkPlanActivity(
+            plan_id=plan.id,
+            kind=kind,
+            actor=actor,
+            revision=plan.revision,
+            body=reason,
+            changes=changes,
+            created_at=get_current_utc_time(),
         )
-        await session.flush()
+    )
+    await session.flush()
 
 
 class WorkPlanActivityRepository:

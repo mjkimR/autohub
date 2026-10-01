@@ -12,6 +12,32 @@ def endpoint(project, plan=None):
     return root if plan is None else root + f"/{plan['id']}"
 
 
+@pytest.mark.parametrize("mutation", ["update", "pause"])
+@pytest.mark.parametrize("reason", ["", "Hold until product review"])
+async def test_unchanged_mutations_record_accepted_revision_and_reason(client, setup_work, mutation, reason):
+    project, _, _, _ = setup_work
+    plan = await create(client, project, spec(state="draft" if mutation == "update" else "paused"))
+    path = endpoint(project, plan)
+
+    async def mutate():
+        if mutation == "update":
+            return await client.put(path, json=spec(expected_revision=1, reason=reason))
+        return await client.post(path + "/control", json={"action": "pause", "expected_revision": 1, "reason": reason})
+
+    response = await mutate()
+    assert response.status_code == 200, response.text
+    assert response.json()["revision"] == 2
+    assert response.json()["state"] == plan["state"]
+    history = (await client.get(path + "/activity")).json()
+    assert history["total_count"] == 2
+    event = next(row for row in history["items"] if row["revision"] == 2)
+    assert event["body"] == reason and event["changes"] == {}
+    assert event["actor"].startswith("user:")
+    assert event["kind"] == ("updated" if mutation == "update" else "control")
+    assert (await mutate()).status_code == 409
+    assert (await client.get(path + "/activity")).json()["total_count"] == 2
+
+
 @pytest.mark.parametrize("state", ["draft", "proposed", "paused"])
 async def test_nonactive_registration_never_admits(client, setup_work, live_kick, state):
     project, github, worker, mirror = setup_work

@@ -34,6 +34,12 @@ authorization. `pause` cannot bypass draft/proposal validation. `revoke` withdra
 any nonterminal plan. Never move published or started plans back to draft.
 
 Draft/proposed edits can add/remove items; a proposed edit returns to draft.
+Renaming an item in the UI updates its dependents together. Invalid or duplicate
+keys cannot replace the last valid key or alter its dependency references.
+Entered keys survive other item edits, additions and removals; key edits and
+membership changes revalidate all entries. Once every entered key is valid and
+unique, the UI applies renames and dependency references together, including
+key swaps. Pending input and DOM validation state are never sent to the API.
 Active/paused plans retain fixed item keys/membership and all-item-unstarted edit
 rules. Exiting draft requires at least one item with title, specification and
 acceptance, a valid graph and repository binding. All mutations serialize with
@@ -48,6 +54,9 @@ field-level before/after values (including item membership and dependencies).
 Creation and user mutations are recorded in the same transaction as the Plan;
 automatic Plan completion is recorded with a system actor. Existing Plans start
 recording on their next change; historical edits are not invented.
+An accepted update/control records its revision and optional reason even if no
+specification or state value changed (`changes={}`). Rejected stale revisions and
+registration retries do not add activity entries.
 
 Comments have a client-generated request ID, bounded plain text, authenticated
 author and timestamp. Identical retries recover the original comment; different

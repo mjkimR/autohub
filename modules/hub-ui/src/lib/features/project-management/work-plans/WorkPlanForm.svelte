@@ -6,6 +6,14 @@
 	import { Input } from '$lib/components/ui/input';
 	type Plan = components['schemas']['WorkPlanRead'];
 	type Item = components['schemas']['WorkItemWrite'];
+	type EditableItem = Item & {
+		keyInput: string;
+		keyError: string;
+		keyElement: HTMLInputElement | null;
+	};
+	function editableItem(item: Item): EditableItem {
+		return { ...item, keyInput: item.key, keyError: '', keyElement: null };
+	}
 	let {
 		projectId,
 		plans,
@@ -36,15 +44,20 @@
 	const initialSchedule = localSchedule(initial?.scheduled_at);
 	let scheduledAt = $state(initialSchedule);
 	let parents = $state<string[]>(initial?.depends_on ?? []);
-	let items = $state<Item[]>(
-		initial?.items.map((item) => ({
-			key: item.key,
-			title: item.title,
-			description: item.description,
-			acceptance: item.acceptance,
-			depends_on: [...item.depends_on]
-		})) ?? []
+	let items = $state<EditableItem[]>(
+		initial?.items.map((item) =>
+			editableItem({
+				key: item.key,
+				title: item.title,
+				description: item.description,
+				acceptance: item.acceptance,
+				depends_on: [...item.depends_on]
+			})
+		) ?? []
 	);
+	$effect(() => {
+		for (const item of items) item.keyElement?.setCustomValidity(item.keyError);
+	});
 	let saving = $state(false);
 	const registrationId = crypto.randomUUID();
 	let error = $state('');
@@ -56,16 +69,46 @@
 	}
 	function addItem() {
 		let index = items.length + 1;
-		while (items.some((item) => item.key === `task-${index}`)) index++;
+		while (items.some((item) => item.key === `task-${index}` || item.keyInput === `task-${index}`))
+			index++;
 		items = [
 			...items,
-			{ key: `task-${index}`, title: '', description: '', acceptance: '', depends_on: [] }
+			editableItem({
+				key: `task-${index}`,
+				title: '',
+				description: '',
+				acceptance: '',
+				depends_on: []
+			})
 		];
+		reconcileKeys();
 	}
-	function removeItem(key: string) {
-		items = items
-			.filter((item) => item.key !== key)
-			.map((item) => ({ ...item, depends_on: item.depends_on?.filter((id) => id !== key) }));
+	function removeItem(removed: EditableItem) {
+		items = items.filter((item) => item !== removed);
+		for (const item of items) {
+			item.depends_on = item.depends_on?.filter((key) => key !== removed.key);
+		}
+		reconcileKeys();
+	}
+	function renameItem(item: EditableItem, key: string) {
+		item.keyInput = key;
+		reconcileKeys();
+	}
+	function reconcileKeys() {
+		for (const item of items) {
+			item.keyError = !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,59}$/.test(item.keyInput)
+				? 'Use 1–60 letters, digits, underscores or hyphens, starting with a letter or digit.'
+				: items.some((other) => other !== item && other.keyInput === item.keyInput)
+					? 'Each task needs a unique key.'
+					: '';
+		}
+		if (items.some((item) => item.keyError)) return;
+		// Commit the whole key set together so swaps cannot redirect dependency edges.
+		const renamed = new Map(items.map((item) => [item.key, item.keyInput]));
+		for (const item of items) {
+			item.key = item.keyInput;
+			item.depends_on = item.depends_on?.map((parent) => renamed.get(parent) ?? parent);
+		}
 	}
 	function importItems() {
 		try {
@@ -89,13 +132,16 @@
 				throw new Error(
 					'Use an array of 1–100 tasks with key, title, description, acceptance, and optional depends_on.'
 				);
-			items = value.map((item) => ({
-				key: item.key,
-				title: item.title ?? '',
-				description: item.description ?? '',
-				acceptance: item.acceptance ?? '',
-				depends_on: item.depends_on ?? []
-			}));
+			items = value.map((item) =>
+				editableItem({
+					key: item.key,
+					title: item.title ?? '',
+					description: item.description ?? '',
+					acceptance: item.acceptance ?? '',
+					depends_on: item.depends_on ?? []
+				})
+			);
+			reconcileKeys();
 			bulkOpen = false;
 			error = '';
 		} catch (e) {
@@ -116,7 +162,13 @@
 						: new Date(scheduledAt).toISOString()
 					: null,
 				depends_on: parents,
-				items
+				items: items.map((item) => ({
+					key: item.key,
+					title: item.title,
+					description: item.description,
+					acceptance: item.acceptance,
+					depends_on: item.depends_on
+				}))
 			};
 			const result = editing
 				? await api.PUT('/api/v1/projects/{project_id}/work-plans/{plan_id}', {
@@ -219,12 +271,18 @@
 			>
 			<Button type="button" variant="outline" onclick={importItems}>Use task list</Button>
 		</div>{/if}
-	{#each items as item, index (index)}
+	{#each items as item, index (item)}
 		<fieldset class="space-y-4 rounded-lg border p-4">
 			<legend class="px-1 text-sm font-medium">Task {index + 1}</legend>
 			<div class="grid gap-4 sm:grid-cols-[10rem_1fr]">
 				<label class="space-y-2 text-sm"
-					>Key<Input required readonly={!flexible} bind:value={item.key} /></label
+					>Key<Input
+						required
+						readonly={!flexible}
+						bind:ref={item.keyElement}
+						value={item.keyInput}
+						oninput={(event) => renameItem(item, event.currentTarget.value)}
+					/></label
 				>
 				<label class="space-y-2 text-sm"
 					>Title<Input required={!draft} maxlength={200} bind:value={item.title} /></label
@@ -257,7 +315,7 @@
 			{#if flexible && (draft || items.length > 1)}<Button
 					type="button"
 					variant="ghost"
-					onclick={() => removeItem(item.key)}>Remove task</Button
+					onclick={() => removeItem(item)}>Remove task</Button
 				>{/if}
 		</fieldset>
 	{/each}

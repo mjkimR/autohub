@@ -281,3 +281,150 @@ test('decision view isolates proposals and submits the observed revision', async
 		)
 	);
 });
+
+test.each(['draft', 'proposed'])(
+	'renames %s task keys and preserves dependent references',
+	async (state) => {
+		const editing = {
+			...plan,
+			state,
+			items: [item, { ...item, id: 'i2', key: 'b', title: 'Consumer', depends_on: ['a'] }]
+		};
+		render(WorkPlanForm, {
+			projectId: 'p1',
+			plans: [],
+			editing,
+			onsaved: vi.fn(),
+			oncancel: vi.fn()
+		});
+		const key = screen.getAllByLabelText('Key')[0] as HTMLInputElement;
+		// An empty or colliding intermediate value must not rewrite the graph.
+		await fireEvent.input(key, { target: { value: '' } });
+		expect(key.checkValidity()).toBe(false);
+		await fireEvent.input(key, { target: { value: 'b' } });
+		expect(key.checkValidity()).toBe(false);
+		await fireEvent.input(key, { target: { value: 'base' } });
+		expect(key.checkValidity()).toBe(true);
+		await fireEvent.input(key, { target: { value: 'foundation' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+		await waitFor(() => expect(api.PUT).toHaveBeenCalledOnce());
+		expect(api.PUT.mock.calls[0][1].body.items).toMatchObject([
+			{ key: 'foundation', depends_on: [] },
+			{ key: 'b', depends_on: ['foundation'] }
+		]);
+		expect((screen.getByLabelText('foundation: Schema') as HTMLInputElement).checked).toBe(true);
+		// Removing an invalid key field must not leave its validity error on the next task.
+		await fireEvent.input(key, { target: { value: 'b' } });
+		await fireEvent.click(screen.getAllByRole('button', { name: 'Remove task' })[0]);
+		expect((screen.getByLabelText('Key') as HTMLInputElement).checkValidity()).toBe(true);
+	}
+);
+
+function renderKeyEditor(state: 'draft' | 'proposed' = 'draft') {
+	render(WorkPlanForm, {
+		projectId: 'p1',
+		plans: [],
+		editing: {
+			...plan,
+			state,
+			items: [
+				item,
+				{ ...item, id: 'i2', key: 'b', title: 'Consumer', depends_on: ['a'] },
+				{ ...item, id: 'i3', key: 'c', title: 'Final', depends_on: ['a', 'b'] }
+			]
+		},
+		onsaved: vi.fn(),
+		oncancel: vi.fn()
+	});
+	return screen.getAllByLabelText('Key') as HTMLInputElement[];
+}
+
+test.each(['draft', 'proposed'] as const)(
+	'revalidates %s keys when the conflicting task is renamed',
+	async (state) => {
+		const [first, second] = renderKeyEditor(state);
+		await fireEvent.input(first, { target: { value: 'b' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+		expect(api.PUT).not.toHaveBeenCalled();
+		await fireEvent.input(second, { target: { value: 'renamed' } });
+		expect(first.value).toBe('b');
+		expect(first.checkValidity()).toBe(true);
+		expect(second.checkValidity()).toBe(true);
+		await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+		await waitFor(() => expect(api.PUT).toHaveBeenCalledOnce());
+		expect(api.PUT.mock.calls[0][1].body.items).toEqual([
+			{
+				key: 'b',
+				title: 'Schema',
+				description: 'Create schema',
+				acceptance: 'Tests pass',
+				depends_on: []
+			},
+			{
+				key: 'renamed',
+				title: 'Consumer',
+				description: 'Create schema',
+				acceptance: 'Tests pass',
+				depends_on: ['b']
+			},
+			{
+				key: 'c',
+				title: 'Final',
+				description: 'Create schema',
+				acceptance: 'Tests pass',
+				depends_on: ['b', 'renamed']
+			}
+		]);
+	}
+);
+
+test.each(['draft', 'proposed'] as const)(
+	'preserves the entered %s key when deleting the conflicting task',
+	async (state) => {
+		const [first] = renderKeyEditor(state);
+		await fireEvent.input(first, { target: { value: 'b' } });
+		await fireEvent.click(screen.getAllByRole('button', { name: 'Remove task' })[1]);
+		const remaining = screen.getAllByLabelText('Key') as HTMLInputElement[];
+		expect(remaining[0].value).toBe('b');
+		expect(remaining[0].checkValidity()).toBe(true);
+		await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+		await waitFor(() => expect(api.PUT).toHaveBeenCalledOnce());
+		expect(api.PUT.mock.calls[0][1].body.items).toMatchObject([
+			{ key: 'b', depends_on: [] },
+			{ key: 'c', depends_on: ['b'] }
+		]);
+	}
+);
+
+test('swaps task keys without redirecting their dependency relationships', async () => {
+	const [first, second] = renderKeyEditor();
+	await fireEvent.input(first, { target: { value: 'b' } });
+	await fireEvent.input(second, { target: { value: 'a' } });
+	await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+	await waitFor(() => expect(api.PUT).toHaveBeenCalledOnce());
+	expect(api.PUT.mock.calls[0][1].body.items).toMatchObject([
+		{ key: 'b', depends_on: [] },
+		{ key: 'a', depends_on: ['b'] },
+		{ key: 'c', depends_on: ['b', 'a'] }
+	]);
+});
+
+test('retains an invalid key and blocks saving after other tasks are removed or added', async () => {
+	const [first] = renderKeyEditor();
+	await fireEvent.input(first, { target: { value: 'invalid!' } });
+	await fireEvent.click(screen.getAllByRole('button', { name: 'Remove task' })[1]);
+	await fireEvent.click(screen.getByRole('button', { name: 'Add task' }));
+	const remaining = screen.getAllByLabelText('Key') as HTMLInputElement[];
+	expect(remaining[0].value).toBe('invalid!');
+	expect(remaining[0].checkValidity()).toBe(false);
+	await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+	expect(api.PUT).not.toHaveBeenCalled();
+	await fireEvent.input(remaining[0], { target: { value: 'foundation' } });
+	await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+	await waitFor(() => expect(api.PUT).toHaveBeenCalledOnce());
+	expect(api.PUT.mock.calls[0][1].body.items).toMatchObject([
+		{ key: 'foundation', depends_on: [] },
+		{ key: 'c', depends_on: ['foundation'] },
+		{ key: 'task-3', depends_on: [] }
+	]);
+});
