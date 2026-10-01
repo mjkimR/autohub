@@ -3,9 +3,11 @@ from uuid import UUID
 
 from app.auth import CurrentUser
 from app.features.project_management.work_plans.activity_schemas import PlanActivityList, PlanActivityRead, PlanComment
+from app.features.project_management.work_plans.grouping import GroupFilter
 from app.features.project_management.work_plans.schemas import (
     PlanControl,
     WorkPlanCreate,
+    WorkPlanGroupUpdate,
     WorkPlanList,
     WorkPlanRead,
     WorkPlanUpdate,
@@ -23,8 +25,9 @@ async def list_work_plans(
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     state: str | None = Query(None, pattern="^(draft|proposed|paused|active|completed|revoked)$"),
+    group_key: GroupFilter = None,
 ):
-    return await use_case.list(project_id, offset, limit, state)
+    return await use_case.list(project_id, offset, limit, state, group_key)
 
 
 @router.post("", response_model=WorkPlanRead, status_code=201)
@@ -61,6 +64,18 @@ async def control_work_plan(
 ):
     """Pause/resume/revoke unstarted work only; started PR runs continue through merging."""
     return await use_case.control(project_id, plan_id, data, f"user:{user.id}")
+
+
+@router.patch("/{plan_id}/group", response_model=WorkPlanRead)
+async def set_work_plan_group(
+    project_id: UUID,
+    plan_id: UUID,
+    data: WorkPlanGroupUpdate,
+    user: CurrentUser,
+    use_case: Annotated[WorkPlanUseCase, Depends()],
+):
+    """Change classification at any lifecycle stage without starting or controlling execution."""
+    return await use_case.set_group(project_id, plan_id, data, f"user:{user.id}")
 
 
 @router.get("/registrations/{request_id}", response_model=WorkPlanRead)

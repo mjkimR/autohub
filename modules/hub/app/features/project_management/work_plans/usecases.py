@@ -11,6 +11,7 @@ from app.features.project_management.work_plans.schemas import (
     IssueMirrorRead,
     PlanControl,
     WorkItemRead,
+    WorkPlanGroupUpdate,
     WorkPlanList,
     WorkPlanRead,
     WorkPlanUpdate,
@@ -70,10 +71,12 @@ class WorkPlanUseCase:
             }
         )
 
-    async def list(self, project_id: UUID, offset: int, limit: int, state: str | None = None) -> WorkPlanList:
+    async def list(
+        self, project_id: UUID, offset: int, limit: int, state: str | None = None, group_key: str | None = None
+    ) -> WorkPlanList:
         async with AsyncTransaction() as session:
             await self.service.projects.get(session, project_id)
-            rows, total = await self.service.repo.list_for_project(session, project_id, offset, limit, state)
+            rows, total = await self.service.repo.list_for_project(session, project_id, offset, limit, state, group_key)
             return WorkPlanList(items=[await self.read(session, row) for row in rows], total_count=total)
 
     async def get(self, project_id: UUID, plan_id: UUID) -> WorkPlanRead:
@@ -106,6 +109,13 @@ class WorkPlanUseCase:
             if plan.state != "active":
                 return await self.read(session, plan)
         return await self._started(project_id, plan_id)
+
+    async def set_group(
+        self, project_id: UUID, plan_id: UUID, data: WorkPlanGroupUpdate, actor: str = "system"
+    ) -> WorkPlanRead:
+        async with AsyncTransaction() as session:
+            plan = await self.service.set_group(session, project_id, plan_id, data, actor)
+            return await self.read(session, plan)
 
     async def control(self, project_id: UUID, plan_id: UUID, data: PlanControl, actor: str = "system") -> WorkPlanRead:
         async with AsyncTransaction() as session:

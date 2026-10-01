@@ -33,6 +33,7 @@ class PipelineRunQueries:
         state: PipelineRunState | None = None,
         search: str = "",
         pull_number: int | None = None,
+        group_key: str | None = None,
     ) -> PipelineRunList:
         async with AsyncTransaction() as session:
             rows, total = await self.repo.list(
@@ -43,6 +44,7 @@ class PipelineRunQueries:
                 state=state,
                 search=search,
                 pull_number=pull_number,
+                group_key=group_key,
             )
             return PipelineRunList(items=[PipelineRunRead.model_validate(row) for row in rows], total_count=total)
 

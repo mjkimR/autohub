@@ -24,6 +24,7 @@ from app.features.project_management.pipeline_runs.usecases.lifecycle import Pip
 from app.features.project_management.pipeline_runs.usecases.queries import PipelineRunQueries
 from app.features.project_management.pipelines.deps import get_pipeline_observer
 from app.features.project_management.pipelines.services import PipelineObservationService
+from app.features.project_management.work_plans.grouping import GroupFilter
 from fastapi import APIRouter, Depends, Query, Response, status
 
 router = APIRouter(prefix="/pipeline-runs", tags=["Pipeline Run"])
@@ -38,8 +39,9 @@ async def list_pipeline_runs(
     state: PipelineRunState | None = None,
     search: str = Query("", max_length=255),
     pull_number: int | None = Query(None, gt=0),
+    group_key: GroupFilter = None,
 ):
-    return await use_case.list_runs(project_id, offset, limit, state, search, pull_number)
+    return await use_case.list_runs(project_id, offset, limit, state, search, pull_number, group_key)
 
 
 @router.get("/{run_id}", response_model=PipelineRunRead)

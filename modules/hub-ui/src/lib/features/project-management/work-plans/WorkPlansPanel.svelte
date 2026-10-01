@@ -6,6 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import WorkPlanForm from './WorkPlanForm.svelte';
 	import WorkPlanActivity from './WorkPlanActivity.svelte';
+	import WorkPlanGroup from './WorkPlanGroup.svelte';
 	type Plan = components['schemas']['WorkPlanRead'];
 	let { project }: { project: components['schemas']['ProjectRead'] } = $props();
 	let plans = $state<Plan[]>([]);
@@ -14,16 +15,25 @@
 	let busy = $state('');
 	let creating = $state(false);
 	let filter = $state('all');
+	let groupFilter = $state('all');
+	let groupEditing = $state<Plan | undefined>();
+	let currentGroupPlan = $derived(
+		groupEditing ? (plans.find((plan) => plan.id === groupEditing?.id) ?? groupEditing) : undefined
+	);
+	let groupKeys = $derived(
+		[...new Set(plans.flatMap((plan) => (plan.group_key == null ? [] : [plan.group_key])))].sort()
+	);
 	let visible = $derived(
 		plans.filter(
 			(plan) =>
-				filter === 'all' ||
-				(filter === 'next'
-					? ['draft', 'proposed'].includes(plan.state) ||
-						(plan.state === 'paused' && plan.items.every((item) => !item.started_at))
-					: filter === 'finished'
-						? ['completed', 'revoked'].includes(plan.state)
-						: plan.state === filter)
+				(groupFilter === 'all' || JSON.stringify(plan.group_key ?? null) === groupFilter) &&
+				(filter === 'all' ||
+					(filter === 'next'
+						? ['draft', 'proposed'].includes(plan.state) ||
+							(plan.state === 'paused' && plan.items.every((item) => !item.started_at))
+						: filter === 'finished'
+							? ['completed', 'revoked'].includes(plan.state)
+							: plan.state === filter))
 		)
 	);
 	function label(plan: Plan) {
@@ -99,12 +109,13 @@
 	function saved() {
 		creating = false;
 		editing = undefined;
+		groupEditing = undefined;
 		void load();
 	}
 	onMount(() => {
 		void load();
 		const timer = setInterval(() => {
-			if (!creating && !editing && !busy) void load();
+			if (!creating && !editing && !groupEditing && !busy) void load();
 		}, 15000);
 		return () => clearInterval(timer);
 	});
@@ -121,7 +132,7 @@
 		</div>
 		<div class="flex gap-2">
 			<Button variant="outline" onclick={load}>Refresh</Button><Button
-				disabled={!project.github || creating || !!editing}
+				disabled={!project.github || creating || !!editing || !!groupEditing}
 				onclick={() => (creating = true)}>Add plan</Button
 			>
 		</div>
@@ -139,6 +150,11 @@
 				editing = undefined;
 			}}
 		/>{/if}
+	{#if currentGroupPlan}<WorkPlanGroup
+			plan={currentGroupPlan}
+			onsaved={saved}
+			onclose={() => (groupEditing = undefined)}
+		/>{/if}
 	<label class="flex items-center gap-3 text-sm"
 		>Show
 		<select class="rounded-md border bg-background p-2" bind:value={filter}>
@@ -148,6 +164,16 @@
 			<option value="active">Execution requested</option>
 			<option value="paused">On hold / paused</option>
 			<option value="finished">Finished</option>
+		</select>
+	</label>
+	<label class="flex items-center gap-3 text-sm"
+		>Group
+		<select class="rounded-md border bg-background p-2" bind:value={groupFilter}>
+			<option value="all">All groups</option>
+			<option value="null">(null)</option>
+			{#each groupKeys as key (key)}<option value={JSON.stringify(key)}
+					>{JSON.stringify(key)}</option
+				>{/each}
 		</select>
 	</label>
 	{#if loading}<p class="text-sm text-muted-foreground">Loading plans…</p>
@@ -165,6 +191,9 @@
 				<div>
 					<h3 class="text-lg font-semibold">{plan.title}</h3>
 					<p class="mt-1 text-sm text-muted-foreground">
+						Group: {plan.group_key == null ? '(null)' : JSON.stringify(plan.group_key)}
+					</p>
+					<p class="mt-1 text-sm text-muted-foreground">
 						{label(plan)} · {plan.items.filter((item) => item.state === 'succeeded').length}/{plan
 							.items.length} merged · {plan.base_branch}
 					</p>
@@ -175,10 +204,15 @@
 						</p>{/if}
 				</div>
 				<div class="flex flex-wrap gap-2">
+					<Button
+						variant="outline"
+						disabled={!!busy || creating || !!editing || !!groupEditing}
+						onclick={() => (groupEditing = plan)}>Change group</Button
+					>
 					{#if ['draft', 'proposed', 'active', 'paused'].includes(plan.state)}
 						{#if plan.items.every((item) => !item.started_at)}<Button
 								variant="outline"
-								disabled={!!busy || creating || !!editing}
+								disabled={!!busy || creating || !!editing || !!groupEditing}
 								onclick={() => (editing = plan)}>Edit</Button
 							>{/if}
 						{#if plan.state === 'draft' || plan.state === 'proposed'}

@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     String,
     Text,
     UniqueConstraint,
@@ -21,12 +22,14 @@ class WorkPlan(Base, UUIDMixin, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("project_id", "id"),
         UniqueConstraint("project_id", "registration_request_id", name="uq_work_plan_registration"),
+        Index("ix_work_plans_project_group", "project_id", "group_key"),
     )
 
     project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id", ondelete="RESTRICT"), index=True)
     registration_request_id: Mapped[UUID | None] = mapped_column()
     registration_digest: Mapped[str | None] = mapped_column(String(64))
     title: Mapped[str] = mapped_column(String(200))
+    group_key: Mapped[str | None] = mapped_column(String(100), nullable=True)
     description: Mapped[str] = mapped_column(Text)
     repository: Mapped[str] = mapped_column(String(255))
     connector_id: Mapped[UUID] = mapped_column(ForeignKey("connectors.id", ondelete="RESTRICT"))

@@ -2,11 +2,13 @@ from typing import Literal
 from uuid import UUID
 
 from app.features.project_management.work_plans.activity_schemas import PlanActivityList, PlanActivityRead, PlanComment
+from app.features.project_management.work_plans.grouping import GroupFilter
 from app.features.project_management.work_plans.kick import WorkPlanKick
 from app.features.project_management.work_plans.repos import WorkPlanRepository
 from app.features.project_management.work_plans.schemas import (
     PlanControl,
     WorkPlanCreate,
+    WorkPlanGroupUpdate,
     WorkPlanList,
     WorkPlanRead,
     WorkPlanUpdate,
@@ -23,6 +25,7 @@ from pydantic import Field, model_validator
 
 class PlanPage(ProjectId, Page):
     state: Literal["draft", "proposed", "paused", "active", "completed", "revoked"] | None = None
+    group_key: GroupFilter = None
 
 
 class PlanLookup(ProjectId):
@@ -54,6 +57,11 @@ class ControlPlan(ProjectId):
     control: PlanControl
 
 
+class SetPlanGroup(ProjectId):
+    plan_id: UUID
+    group: WorkPlanGroupUpdate
+
+
 class ActivityPage(ProjectId, Page):
     plan_id: UUID
     comments_only: bool = False
@@ -68,7 +76,7 @@ def register_work_plans(registry: ToolRegistry, deps: Dependencies) -> None:
     use_case = WorkPlanUseCase(WorkPlanService(WorkPlanRepository(), deps.runs.projects), WorkPlanKick(deps.runs))
 
     async def list_plans(args: PlanPage) -> WorkPlanList:
-        return await use_case.list(args.project_id, args.offset, args.limit, args.state)
+        return await use_case.list(args.project_id, args.offset, args.limit, args.state, args.group_key)
 
     async def get_plan(args: PlanLookup) -> WorkPlanRead:
         if args.plan_id is not None:
@@ -87,6 +95,11 @@ def register_work_plans(registry: ToolRegistry, deps: Dependencies) -> None:
     async def control(args: ControlPlan) -> WorkPlanRead:
         return await use_case.control(
             args.project_id, args.plan_id, args.control, f"machine:{(await authenticated_context()).subject}"
+        )
+
+    async def set_group(args: SetPlanGroup) -> WorkPlanRead:
+        return await use_case.set_group(
+            args.project_id, args.plan_id, args.group, f"machine:{(await authenticated_context()).subject}"
         )
 
     async def activity(args: ActivityPage) -> PlanActivityList:
@@ -115,6 +128,15 @@ def register_work_plans(registry: ToolRegistry, deps: Dependencies) -> None:
         write=True,
     )
 
+    register(
+        registry,
+        "work_plans_set_group",
+        "Change or clear classification using expected_revision, including started/finished plans. Does not start, pause or isolate work. Registration retries never overwrite the current group.",
+        SetPlanGroup,
+        WorkPlanRead,
+        set_group,
+        write=True,
+    )
     register(
         registry,
         "work_plans_list",

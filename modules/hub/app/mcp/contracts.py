@@ -16,6 +16,7 @@ from app.features.project_management.projects.schemas import (
     ProjectPatch,
     ProjectWrite,
 )
+from app.features.project_management.work_plans.grouping import GroupFilter
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 
@@ -123,6 +124,7 @@ class RunFilter(Page):
     state: PipelineRunState | None = None
     pull_number: int | None = Field(default=None, gt=0, description="Exact pull request number")
     search: str = Field(default="", max_length=255)
+    group_key: GroupFilter = None
 
 
 class Enrollment(EnrollPullRequest):

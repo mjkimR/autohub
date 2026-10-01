@@ -4,7 +4,9 @@ import type { components } from '$lib/api';
 import WorkPlansPanel from './WorkPlansPanel.svelte';
 import WorkPlanForm from './WorkPlanForm.svelte';
 
-const { api } = vi.hoisted(() => ({ api: { GET: vi.fn(), POST: vi.fn(), PUT: vi.fn() } }));
+const { api } = vi.hoisted(() => ({
+	api: { GET: vi.fn(), POST: vi.fn(), PUT: vi.fn(), PATCH: vi.fn() }
+}));
 vi.mock('$lib/api', () => ({ api }));
 const item = {
 	id: 'i1',
@@ -27,6 +29,7 @@ const plan = {
 	registration_request_id: null,
 	id: 'plan1',
 	project_id: 'p1',
+	group_key: null,
 	title: 'Login',
 	description: 'Login feature',
 	base_branch: 'main',
@@ -56,6 +59,7 @@ beforeEach(() => {
 	});
 	api.POST.mockReset().mockResolvedValue({ data: plan });
 	api.PUT.mockReset().mockResolvedValue({ data: plan });
+	api.PATCH.mockReset().mockResolvedValue({ data: plan });
 });
 afterEach(() => {
 	cleanup();
@@ -338,6 +342,154 @@ function renderKeyEditor(state: 'draft' | 'proposed' = 'draft') {
 	});
 	return screen.getAllByLabelText('Key') as HTMLInputElement[];
 }
+
+test('group filters distinguish all, null, and literal keys alongside state filters', async () => {
+	api.GET.mockResolvedValue({
+		data: {
+			items: [
+				plan,
+				{ ...plan, id: 'a', title: 'Game A', group_key: 'game-a' },
+				{ ...plan, id: 'b', title: 'Proposal A', group_key: 'game-a', state: 'proposed' },
+				{ ...plan, id: 'c', title: 'Literal null', group_key: '(null)' }
+			],
+			total_count: 4
+		}
+	});
+	render(WorkPlansPanel, { project });
+	await screen.findByText('Game A');
+	await fireEvent.change(screen.getByLabelText('Group'), { target: { value: 'null' } });
+	expect(screen.getByText('Login')).toBeTruthy();
+	expect(screen.queryByText('Game A')).toBeNull();
+	expect(screen.queryByText('Literal null')).toBeNull();
+	await fireEvent.change(screen.getByLabelText('Group'), {
+		target: { value: JSON.stringify('game-a') }
+	});
+	await fireEvent.change(screen.getByLabelText('Show'), { target: { value: 'proposed' } });
+	expect(screen.getByText('Proposal A')).toBeTruthy();
+	expect(screen.queryByText('Game A')).toBeNull();
+});
+
+test('saves a normalized group on creation', async () => {
+	render(WorkPlanForm, { projectId: 'p1', plans: [], onsaved: vi.fn(), oncancel: vi.fn() });
+	await fireEvent.input(screen.getByLabelText('Plan title'), { target: { value: 'New idea' } });
+	await fireEvent.input(screen.getByLabelText('Group key'), { target: { value: ' game-a ' } });
+	await fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+	await waitFor(() => expect(api.POST).toHaveBeenCalledOnce());
+	expect(api.POST.mock.calls[0][1].body.group_key).toBe('game-a');
+});
+
+test('group editing survives group and state filters with its input and cancel action', async () => {
+	api.GET.mockResolvedValue({
+		data: {
+			items: [
+				{ ...plan, group_key: 'game-a' },
+				{ ...plan, id: 'other', title: 'Other game', group_key: 'game-b', state: 'proposed' }
+			],
+			total_count: 2
+		}
+	});
+	render(WorkPlansPanel, { project });
+	await screen.findByText('Login');
+	await fireEvent.change(screen.getByLabelText('Group'), {
+		target: { value: JSON.stringify('game-a') }
+	});
+	await fireEvent.click(screen.getByRole('button', { name: 'Change group' }));
+	await fireEvent.input(screen.getByLabelText('Group key'), { target: { value: 'shared-work' } });
+	await fireEvent.change(screen.getByLabelText('Group'), {
+		target: { value: JSON.stringify('game-b') }
+	});
+	await fireEvent.change(screen.getByLabelText('Show'), { target: { value: 'proposed' } });
+	expect(screen.queryByText('Login', { selector: 'h3' })).toBeNull();
+	expect(screen.getByRole('heading', { name: 'Change group: Login' })).toBeTruthy();
+	expect((screen.getByLabelText('Group key') as HTMLInputElement).value).toBe('shared-work');
+	await fireEvent.change(screen.getByLabelText('Group'), { target: { value: 'all' } });
+	await fireEvent.change(screen.getByLabelText('Show'), { target: { value: 'all' } });
+	expect((screen.getByLabelText('Group key') as HTMLInputElement).value).toBe('shared-work');
+	await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+	expect((screen.getByRole('button', { name: 'Add plan' }) as HTMLButtonElement).disabled).toBe(
+		false
+	);
+	for (const button of screen.getAllByRole('button', { name: 'Change group' })) {
+		expect((button as HTMLButtonElement).disabled).toBe(false);
+	}
+	expect(api.PATCH).not.toHaveBeenCalled();
+});
+
+test('refresh after a group conflict preserves input and retries with the newly displayed revision', async () => {
+	render(WorkPlansPanel, { project });
+	await screen.findByText('Login');
+	await fireEvent.click(screen.getByRole('button', { name: 'Change group' }));
+	await fireEvent.input(screen.getByLabelText('Group key'), { target: { value: 'game-a' } });
+	api.PATCH.mockResolvedValueOnce({
+		error: { detail: 'Work plan changed; reload before modifying it' }
+	});
+	await fireEvent.click(screen.getByRole('button', { name: 'Save group' }));
+	await screen.findByRole('alert');
+	api.GET.mockResolvedValue({
+		data: { items: [{ ...plan, group_key: 'platform', revision: 4 }], total_count: 1 }
+	});
+	await fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+	await screen.findByText('Current saved group: "platform"');
+	expect(screen.getByRole('status').textContent).toContain('Your input is preserved');
+	expect((screen.getByLabelText('Group key') as HTMLInputElement).value).toBe('game-a');
+	expect(api.PATCH).toHaveBeenCalledTimes(1);
+	await fireEvent.click(screen.getByRole('button', { name: 'Save group' }));
+	await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(2));
+	expect(api.PATCH.mock.calls[0][1].body.expected_revision).toBe(3);
+	expect(api.PATCH.mock.calls[1][1].body).toEqual({
+		group_key: 'game-a',
+		expected_revision: 4,
+		reason: ''
+	});
+	await waitFor(() => expect(screen.queryByLabelText('Group key')).toBeNull());
+	expect(api.POST).not.toHaveBeenCalled();
+	expect(api.PUT).not.toHaveBeenCalled();
+});
+
+test('failed refresh keeps the group draft and last observed revision', async () => {
+	render(WorkPlansPanel, { project });
+	await screen.findByText('Login');
+	await fireEvent.click(screen.getByRole('button', { name: 'Change group' }));
+	await fireEvent.input(screen.getByLabelText('Group key'), { target: { value: 'game-a' } });
+	api.GET.mockRejectedValueOnce(new Error('Refresh unavailable'));
+	await fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+	await screen.findByText('Refresh unavailable');
+	expect((screen.getByLabelText('Group key') as HTMLInputElement).value).toBe('game-a');
+	expect(api.PATCH).not.toHaveBeenCalled();
+	await fireEvent.click(screen.getByRole('button', { name: 'Save group' }));
+	await waitFor(() => expect(api.PATCH).toHaveBeenCalledOnce());
+	expect(api.PATCH.mock.calls[0][1].body.expected_revision).toBe(3);
+});
+
+test('can clear the group of started work without invoking plan control or specification edits', async () => {
+	api.GET.mockResolvedValue({
+		data: {
+			items: [
+				{ ...plan, group_key: 'game-a', items: [{ ...item, started_at: '2026-10-01T00:00:00Z' }] }
+			],
+			total_count: 1
+		}
+	});
+	render(WorkPlansPanel, { project });
+	await screen.findByText('Login');
+	await fireEvent.click(screen.getByRole('button', { name: 'Change group' }));
+	await fireEvent.input(screen.getByLabelText('Group key'), { target: { value: ' ' } });
+	api.PATCH.mockResolvedValueOnce({
+		error: { detail: 'Work plan changed; reload before modifying it' }
+	});
+	await fireEvent.click(screen.getByRole('button', { name: 'Save group' }));
+	expect(await screen.findByRole('alert')).toBeTruthy();
+	expect(screen.getByLabelText('Group key')).toBeTruthy();
+	await fireEvent.click(screen.getByRole('button', { name: 'Save group' }));
+	await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(2));
+	expect(api.PATCH.mock.calls[0][1].body).toEqual({
+		group_key: null,
+		expected_revision: 3,
+		reason: ''
+	});
+	expect(api.POST).not.toHaveBeenCalled();
+	expect(api.PUT).not.toHaveBeenCalled();
+});
 
 test.each(['draft', 'proposed'] as const)(
 	'revalidates %s keys when the conflicting task is renamed',

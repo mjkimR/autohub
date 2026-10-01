@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import PipelineRunsView from './PipelineRunsView.svelte';
@@ -39,6 +39,35 @@ const run = {
 	lease_expires_at: null,
 	created_at: '2026-09-14T00:00:00Z'
 };
+
+test('combines inherited group and run state filters, preserving the empty null query', async () => {
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+	await fireEvent.change(screen.getByLabelText('Run state'), { target: { value: 'blocked' } });
+	await fireEvent.change(screen.getByLabelText('Run group'), { target: { value: 'null' } });
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs', {
+			params: { query: expect.objectContaining({ group_key: '', state: 'blocked', offset: 0 }) }
+		})
+	);
+	await fireEvent.change(screen.getByLabelText('Run group'), { target: { value: 'key' } });
+	await fireEvent.input(screen.getByLabelText('Run group key'), { target: { value: ' game-a ' } });
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs', {
+			params: {
+				query: expect.objectContaining({ group_key: 'game-a', state: 'blocked', offset: 0 })
+			}
+		})
+	);
+	await fireEvent.change(screen.getByLabelText('Run group'), { target: { value: 'all' } });
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenLastCalledWith('/api/v1/pipeline-runs', {
+			params: {
+				query: expect.objectContaining({ group_key: undefined, state: 'blocked', offset: 0 })
+			}
+		})
+	);
+});
 
 beforeEach(() => {
 	api.GET.mockReset();

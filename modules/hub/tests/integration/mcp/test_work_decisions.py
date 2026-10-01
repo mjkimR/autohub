@@ -144,3 +144,25 @@ async def test_mcp_backlog_activity_and_comment_permissions(client, key, setup_w
         await mcp.call(client, reader["key"], "work_plans_list", {"project_id": project["id"], "state": "proposed"})
     )["result"]
     assert filtered["total_count"] == 1
+
+
+async def test_mcp_group_classification_and_filters(client, key, setup_work):
+    project, github, _, _ = setup_work
+    data = payload() | {"state": "proposed", "group_key": " game-a "}
+    args = {"project_id": project["id"]}
+    plan = (await mcp.call(client, key, "work_plans_register", args | {"plan": data}))["result"]
+    assert plan["group_key"] == "game-a"
+    assert (await mcp.call(client, key, "work_plans_list", args | {"group_key": "game-a"}))["result"][
+        "total_count"
+    ] == 1
+    assert (await mcp.call(client, key, "work_plans_list", args | {"group_key": ""}))["result"]["total_count"] == 0
+    change = args | {"plan_id": plan["id"], "group": {"group_key": " ", "expected_revision": plan["revision"]}}
+    _, reader = await mcp.issue(client, [MCP_READ])
+    denied = await mcp.call(client, reader["key"], "work_plans_set_group", change, error=True)
+    assert denied["error"]["code"] == "MCP_FORBIDDEN"
+    updated = (await mcp.call(client, key, "work_plans_set_group", change))["result"]
+    assert updated["group_key"] is None and updated["state"] == "proposed"
+    assert not github.requests
+    assert (await mcp.call(client, key, "work_plans_list", args | {"group_key": ""}))["result"]["total_count"] == 1
+    assert not (await mcp.call(client, key, "work_plans_set_group", change, error=True))["ok"]
+    assert (await mcp.call(client, key, "runs_list", args | {"group_key": ""}))["result"]["total_count"] == 0

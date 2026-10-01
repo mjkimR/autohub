@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from app.features.project_management.work_plans.grouping import normalize_group_key
 from app.features.project_management.work_plans.models import ItemDependency, PlanDependency, WorkItem, WorkPlan
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,11 +19,19 @@ class WorkPlanRepository:
         return list(await session.scalars(select(WorkItem).where(WorkItem.plan_id == plan_id).order_by(WorkItem.key)))
 
     async def list_for_project(
-        self, session: AsyncSession, project_id: UUID, offset=0, limit=50, state: str | None = None
+        self,
+        session: AsyncSession,
+        project_id: UUID,
+        offset=0,
+        limit=50,
+        state: str | None = None,
+        group_key: str | None = None,
     ):
         conditions = [WorkPlan.project_id == project_id]
         if state:
             conditions.append(WorkPlan.state == state)
+        if group_key is not None:
+            conditions.append(WorkPlan.group_key == normalize_group_key(group_key))
         query = select(WorkPlan).where(*conditions)
         rows = await session.scalars(
             query.order_by(WorkPlan.created_at.desc(), WorkPlan.id).offset(offset).limit(limit)

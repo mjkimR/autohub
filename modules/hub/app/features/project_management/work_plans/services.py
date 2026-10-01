@@ -10,6 +10,7 @@ from app.features.project_management.work_plans.repos import WorkPlanRepository
 from app.features.project_management.work_plans.schemas import (
     PlanControl,
     WorkPlanCreate,
+    WorkPlanGroupUpdate,
     WorkPlanUpdate,
     WorkPlanWrite,
     validate_graph,
@@ -33,7 +34,8 @@ class WorkPlanService:
     ) -> WorkPlan:
         project = await self.projects.get(session, project_id, lock=True)
         request_id = data.request_id if isinstance(data, WorkPlanCreate) else None
-        content = data.model_dump(mode="json", exclude={"request_id"})
+        # Classification is mutable metadata, not registration identity or execution input.
+        content = data.model_dump(mode="json", exclude={"request_id", "group_key"})
         initial_state = data.state if isinstance(data, WorkPlanCreate) else "active"
         if initial_state == "active":
             content.pop("state", None)
@@ -65,6 +67,7 @@ class WorkPlanService:
             registration_digest=digest if request_id else None,
             project_id=project_id,
             title=data.title,
+            group_key=data.group_key,
             description=data.description,
             base_branch=data.base_branch,
             scheduled_at=data.scheduled_at,
@@ -109,6 +112,8 @@ class WorkPlanService:
             items = await self.repo.reconcile_items(session, plan, items, data.items)
             plan.state = "draft"
         plan.title, plan.description, plan.base_branch = data.title, data.description, data.base_branch
+        if "group_key" in data.model_fields_set:
+            plan.group_key = data.group_key
         plan.scheduled_at = data.scheduled_at
         by_key = {item.key: item for item in items}
         for write in data.items:
@@ -117,6 +122,19 @@ class WorkPlanService:
         await self.repo.replace_edges(session, plan, data.depends_on, items, data.items)
         plan.revision += 1
         await record_change(session, plan, before, "updated", actor, data.reason)
+        return plan
+
+    async def set_group(
+        self, session: AsyncSession, project_id: UUID, plan_id: UUID, data: WorkPlanGroupUpdate, actor: str
+    ) -> WorkPlan:
+        await self.projects.get(session, project_id, lock=True)
+        plan = await self.get(session, project_id, plan_id, lock=True)
+        self.check_revision(plan, data.expected_revision)
+        if plan.group_key != data.group_key:
+            before = await snapshot(session, plan)
+            plan.group_key = data.group_key
+            plan.revision += 1
+            await record_change(session, plan, before, "updated", actor, data.reason)
         return plan
 
     async def control(

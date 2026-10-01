@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { SvelteMap } from 'svelte/reactivity';
 	import RunDecisionsDialog from './RunDecisionsDialog.svelte';
+	import RunGroupFilter from './RunGroupFilter.svelte';
 	import PipelineRunRow from './PipelineRunRow.svelte';
 	import AttemptHistoryDialog from './AttemptHistoryDialog.svelte';
 	import EnrollPullRequestDialog from './EnrollPullRequestDialog.svelte';
@@ -39,6 +40,7 @@
 	let searchQuery = $state('');
 	let selectedProjectId = $state<string>('');
 	let selectedState = $state<components['schemas']['PipelineRunState'] | ''>('');
+	let selectedGroupKey = $state<string | undefined>();
 
 	let decisionRun = $state<PipelineRun | null>(null);
 	const resumeRequests = new SvelteMap<string, string>();
@@ -86,6 +88,7 @@
 		const filters = {
 			search: searchQuery.trim(),
 			state: selectedState || undefined,
+			group_key: selectedGroupKey,
 			project_id: scopedProject?.id ?? (selectedProjectId || undefined)
 		};
 		await list.load(
@@ -293,6 +296,12 @@
 		</select>
 
 		<!-- State selector -->
+		<RunGroupFilter
+			onchange={(value) => {
+				selectedGroupKey = value;
+				void loadRuns(0);
+			}}
+		/>
 		<select
 			aria-label="Run state"
 			bind:value={selectedState}

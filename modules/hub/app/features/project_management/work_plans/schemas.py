@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
+from app.features.project_management.work_plans.grouping import GroupKey
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
@@ -37,6 +38,7 @@ class WorkItemWrite(BaseModel):
 class WorkPlanWrite(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     title: str = Field(min_length=1, max_length=200)
+    group_key: GroupKey = None
     description: str = Field(default="", max_length=16000)
     base_branch: str = Field(default="main", min_length=1, max_length=255)
     scheduled_at: AwareDatetime | None = Field(
@@ -103,6 +105,13 @@ class WorkPlanUpdate(WorkPlanWrite):
     reason: str = Field(default="", max_length=4000)
 
 
+class WorkPlanGroupUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    group_key: GroupKey
+    expected_revision: int = Field(ge=1)
+    reason: str = Field(default="", max_length=4000)
+
+
 class IssueMirrorRead(BaseModel):
     model_config = ConfigDict(from_attributes=True, json_schema_serialization_defaults_required=True)
     issue_url: str | None
@@ -134,6 +143,7 @@ class WorkPlanRead(BaseModel):
     model_config = ConfigDict(from_attributes=True, json_schema_serialization_defaults_required=True)
     id: UUID
     project_id: UUID
+    group_key: str | None
     title: str
     description: str
     base_branch: str

@@ -29,6 +29,7 @@
 	} = $props();
 	const initial = untrack(() => editing);
 	let title = $state(initial?.title ?? '');
+	let groupKey = $state(initial?.group_key ?? '');
 	let mode = $state<components['schemas']['WorkPlanCreate']['state']>('draft');
 	const flexible = !initial || ['draft', 'proposed'].includes(initial.state);
 	let draft = $derived(initial ? flexible : mode === 'draft');
@@ -154,6 +155,7 @@
 		try {
 			const body = {
 				title,
+				group_key: groupKey.trim() || null,
 				description,
 				base_branch: baseBranch,
 				scheduled_at: scheduledAt
@@ -223,7 +225,13 @@
 			>Plan title<Input required maxlength={200} bind:value={title} /></label
 		>
 		<label class="space-y-2 text-sm">Target branch<Input required bind:value={baseBranch} /></label>
+		<label class="space-y-2 text-sm"
+			>Group key<Input maxlength={100} placeholder="(null)" bind:value={groupKey} /></label
+		>
 	</div>
+	<p class="text-sm text-muted-foreground">
+		Group keys organize plans. A plan can change code across multiple groups.
+	</p>
 	<div class="space-y-2 text-sm">
 		<label class="block space-y-2">
 			Start no earlier than

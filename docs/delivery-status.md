@@ -3,6 +3,42 @@
 운영 현황은 2026-09-28 기준이다. 아래의 운영 완료 범위는 Cloud Run에 배포됐고 실서비스 카나리로 확인했다.
 당시 revision은 `autohub-00006-dz7`이다.
 
+## Work Plan group key: 로컬 구현, 미배포
+
+2026-10-01 실행 격리 없이 작업을 분류하는 nullable `WorkPlan.group_key`를 추가했다.
+[분류 계약](work-plans.md#group-classification)에 입력·조회·수정 의미를 기록했다.
+
+- 기본값은 null이고 앞뒤 공백 제거 후 빈 값도 null로 저장한다. UI는 `(null)`로 표시한다.
+  Plan 등록·편집·분류 변경과 그룹/상태 필터를 제공하며, Run 필터는 연결된 Plan의 현재 키를 따른다.
+  직접 등록 Run은 미분류로 조회한다. 여러 그룹의 코드를 함께 수정하는 작업도 허용한다.
+- REST `PATCH /{plan_id}/group`과 MCP `work_plans_set_group`은 revision 검사와 변경 이력을
+  적용하며 실행 중·완료 후에도 분류만 변경한다. 스케줄러를 호출하거나 상태·명세를 바꾸지 않는다.
+  작업용 MCP는 25개(조회 13, 변경 12), 운영용은 4개다.
+- 키는 등록 digest에서 제외한다. 기존 등록 재전송은 현재 분류를 보존하고 새 키로 덮어쓰지 않는다.
+  기존 클라이언트의 일반 수정 요청에서 필드를 생략해도 현재 분류를 유지한다.
+- 분류별 권한·실행 제한·경로 잠금·영구 보류·일괄 제어는 이번 범위에 포함하지 않는다.
+
+검증 결과:
+
+- Work Plan·MCP·Run API·migration 관련 SQLite 테스트: 169 passed, 5 skipped.
+- PostgreSQL 분류·등록 멱등성·동시 등록·migration 왕복·기존 데이터 보존: 17 passed.
+- UI 전체: 28개 파일, 170 passed. 기존 RunDecisions 입력 테스트의 간헐적 실패가 첫 실행에서
+  재현됐으며 재실행은 통과했다. 이번 변경의 그룹 입력·필터·분류 수정 테스트는 통과했다.
+- `just lint`, Python/SDK 타입 검사, UI 검사·빌드 통과. OpenAPI 타입을 재생성했다.
+  기존 SQLite migration 테스트가 후속 테스트의 스키마에 영향을 주지 않도록 검증 DB를 분리했다.
+
+배포 시 `b47d540a3243` 다음 migration `c58e651b4354`와 UI/API를 함께 적용한다.
+기존 Plan은 null로 유지한다. downgrade는 분류 컬럼·인덱스만 제거하므로 분류 값은 사라지고
+Plan·Item·실행 기록은 유지된다. 배포·실서비스 canary·커밋은 수행하지 않았다.
+
+자체 리뷰에서 발견한 그룹 편집 UI 두 건을 수정했다. 그룹·상태 필터를 바꿔도
+편집 폼과 입력값·취소 버튼을 유지한다. revision 충돌 후 새로고침하면 현재 저장된
+그룹을 보여주고 입력값을 보존하며, 사용자가 다시 저장할 때 최신 revision을 사용한다.
+새로고침 실패 시에는 마지막으로 조회한 revision을 유지한다. 관련 UI 25 passed,
+UI 전체 173 passed와 lint·타입 검사·빌드를 확인했다. UI 전체 첫 실행에서는 기존
+RunDecisions 입력 테스트의 간헐적 실패가 재현됐고 재실행은 통과했다.
+이번 보완은 백엔드·API 스키마를 변경하지 않았다.
+
 ## Work Plan backlog·댓글·변경이력: 로컬 구현, 미배포
 
 2026-10-01 [상태·활동 계약](work-plan-backlog.md)을 먼저 작성한 뒤 구현했다.
@@ -21,7 +57,7 @@
 - UI에 다음 작업·판단 대기 필터, Draft/Proposed/Ready 선택, 명세 편집,
   댓글·활동 목록과 이전/이후 비교를 제공한다. 댓글은 별도로 새로고침할 수 있다.
 - MCP에 `work_plans_activity`, `work_plans_comment`를 추가했다. 현재 작업용은
-  24개(조회 13, 변경 11), 운영용은 4개다. 기존 read/write scope를 그대로 사용한다.
+  당시 24개(조회 13, 변경 11), 운영용은 4개였다. 기존 read/write scope를 그대로 사용한다.
 
 검증 결과:
 

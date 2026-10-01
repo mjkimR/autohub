@@ -28,7 +28,7 @@ def register_runs(registry: ToolRegistry, deps: Dependencies) -> None:
 
     async def list_runs(args: RunFilter) -> Items[RunView]:
         result = await deps.queries.list_runs(
-            args.project_id, args.offset, args.limit, args.state, args.search, args.pull_number
+            args.project_id, args.offset, args.limit, args.state, args.search, args.pull_number, args.group_key
         )
         keys = await catalog_keys(deps)
         return Items(items=[await view(row, keys) for row in result.items], total_count=result.total_count)

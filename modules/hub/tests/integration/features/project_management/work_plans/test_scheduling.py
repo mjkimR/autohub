@@ -127,7 +127,7 @@ async def test_legacy_registration_digest_survives_optional_schedule(client, set
     data = SINGLE | {"request_id": str(uuid4())}
     plan = await create(client, project, data)
     legacy = WorkPlanCreate.model_validate(data).model_dump(
-        mode="json", exclude={"request_id", "scheduled_at", "state"}
+        mode="json", exclude={"request_id", "scheduled_at", "state", "group_key"}
     )
     await session.execute(
         update(WorkPlan).where(WorkPlan.id == UUID(plan["id"])).values(registration_digest=request_digest(legacy))

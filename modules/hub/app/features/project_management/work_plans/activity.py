@@ -17,6 +17,7 @@ async def snapshot(session, plan) -> dict:
     parents = list(await session.scalars(select(PlanDependency.depends_on_id).where(PlanDependency.plan_id == plan.id)))
     data = WorkPlanWrite(
         title=plan.title,
+        group_key=plan.group_key,
         description=plan.description,
         base_branch=plan.base_branch,
         scheduled_at=as_utc(plan.scheduled_at) if plan.scheduled_at else None,

@@ -624,6 +624,26 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/projects/{project_id}/work-plans/{plan_id}/group': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		/**
+		 * Set Work Plan Group
+		 * @description Change classification at any lifecycle stage without starting or controlling execution.
+		 */
+		patch: operations['set_work_plan_group_api_v1_projects__project_id__work_plans__plan_id__group_patch'];
+		trace?: never;
+	};
 	'/api/v1/projects/{project_id}/work-plans/registrations/{request_id}': {
 		parameters: {
 			query?: never;
@@ -4536,6 +4556,8 @@ export interface components {
 		WorkPlanCreate: {
 			/** Title */
 			title: string;
+			/** Group Key */
+			group_key?: string | null;
 			/**
 			 * Description
 			 * @default
@@ -4567,6 +4589,18 @@ export interface components {
 			 */
 			request_id?: string | null;
 		};
+		/** WorkPlanGroupUpdate */
+		WorkPlanGroupUpdate: {
+			/** Group Key */
+			group_key: string | null;
+			/** Expected Revision */
+			expected_revision: number;
+			/**
+			 * Reason
+			 * @default
+			 */
+			reason: string;
+		};
 		/** WorkPlanList */
 		WorkPlanList: {
 			/** Items */
@@ -4588,6 +4622,8 @@ export interface components {
 			 * Format: uuid
 			 */
 			project_id: string;
+			/** Group Key */
+			group_key: string | null;
 			/** Title */
 			title: string;
 			/** Description */
@@ -4617,6 +4653,8 @@ export interface components {
 		WorkPlanUpdate: {
 			/** Title */
 			title: string;
+			/** Group Key */
+			group_key?: string | null;
 			/**
 			 * Description
 			 * @default
@@ -5005,6 +5043,7 @@ export interface operations {
 				state?: components['schemas']['PipelineRunState'] | null;
 				search?: string;
 				pull_number?: number | null;
+				group_key?: string | null;
 			};
 			header?: never;
 			path?: never;
@@ -5930,6 +5969,7 @@ export interface operations {
 				offset?: number;
 				limit?: number;
 				state?: string | null;
+				group_key?: string | null;
 			};
 			header?: never;
 			path: {
@@ -6075,6 +6115,42 @@ export interface operations {
 		requestBody: {
 			content: {
 				'application/json': components['schemas']['PlanControl'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['WorkPlanRead'];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	set_work_plan_group_api_v1_projects__project_id__work_plans__plan_id__group_patch: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				project_id: string;
+				plan_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['WorkPlanGroupUpdate'];
 			};
 		};
 		responses: {

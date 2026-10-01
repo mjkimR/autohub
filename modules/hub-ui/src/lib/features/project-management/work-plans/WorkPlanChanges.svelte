@@ -2,6 +2,7 @@
 	let { changes }: { changes: Record<string, unknown> } = $props();
 	const labels: Record<string, string> = {
 		title: 'Title',
+		group_key: 'Group key',
 		description: 'Goal and scope',
 		base_branch: 'Target branch',
 		scheduled_at: 'Start no earlier than',
@@ -39,13 +40,17 @@
 					<div class="min-w-0 rounded bg-muted p-3">
 						<p class="mb-2 text-xs text-muted-foreground">Before</p>
 						<p class="max-h-64 overflow-auto wrap-anywhere whitespace-pre-wrap">
-							{text(pair(value).before)}
+							{key === 'group_key' && pair(value).before == null
+								? '(null)'
+								: text(pair(value).before)}
 						</p>
 					</div>
 					<div class="min-w-0 rounded bg-muted p-3">
 						<p class="mb-2 text-xs text-muted-foreground">After</p>
 						<p class="max-h-64 overflow-auto wrap-anywhere whitespace-pre-wrap">
-							{text(pair(value).after)}
+							{key === 'group_key' && pair(value).after == null
+								? '(null)'
+								: text(pair(value).after)}
 						</p>
 					</div>
 				</div>

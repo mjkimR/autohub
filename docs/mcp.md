@@ -8,9 +8,9 @@ Status: the original single endpoint has been deployed. The work/operations spli
 and the decision/Work Plan tools below are implemented locally and still need deployment. Both endpoints share the
 Hub process, database and scheduler; neither starts a separate service.
 
-- Work: `/mcp/`, 24 tools, existing `autohub:mcp:read` / `autohub:mcp:write` keys.
+- Work: `/mcp/`, 25 tools, existing `autohub:mcp:read` / `autohub:mcp:write` keys.
 - Operations: `/ops/mcp/`, 4 additional tools, dedicated `autohub:mcp:ops` key.
-- Work owns 13 inspection tools and 11 run/plan mutations. Operations adds only
+- Work owns 13 inspection tools and 12 run/plan mutations. Operations adds only
   four project/connection-test mutations, with no duplicate tool names. Even a key with all scopes cannot call
   a tool through the wrong endpoint. Ops-only keys cannot enter the work endpoint.
 
@@ -80,7 +80,7 @@ client's discovered tool list after upgrade. The endpoint split itself needs no 
 
 ### Tool contract changes
 
-All 28 public tool names use lowercase snake_case and at most 64 characters.
+All 29 public tool names use lowercase snake_case and at most 64 characters.
 Registration rejects other characters or longer names to avoid relying on client
 name rewriting. For example, `projects.options` becomes `projects_options`,
 `runs.enroll` becomes `runs_enroll`, and `connection_tests.start` becomes
@@ -124,7 +124,7 @@ a connected project. REST resume also requires these two fields; other existing 
 | Surface | Required scope | Tools |
 | --- | --- | --- |
 | Work only (inspection) | `autohub:mcp:read` | `projects_list`, `projects_get`, `projects_readiness`, `projects_options`, `runs_list`, `runs_get`, `runs_attempts`, `connection_tests_list`, `connection_tests_get`, `runs_questions`, `work_plans_list`, `work_plans_get`, `work_plans_activity` |
-| Work only | `autohub:mcp:write` | `runs_enroll`, `runs_pause`, `runs_resume`, `runs_cancel`, `runs_ask`, `runs_answer`, `runs_dismiss_question`, `work_plans_register`, `work_plans_update`, `work_plans_control`, `work_plans_comment` |
+| Work only | `autohub:mcp:write` | `runs_enroll`, `runs_pause`, `runs_resume`, `runs_cancel`, `runs_ask`, `runs_answer`, `runs_dismiss_question`, `work_plans_register`, `work_plans_update`, `work_plans_set_group`, `work_plans_control`, `work_plans_comment` |
 | Operations only | `autohub:mcp:ops` | `projects_create`, `projects_update`, `connection_tests_start`, `connection_tests_cancel` |
 
 Discovery exposes each endpoint's fixed list; calls enforce the matching scope.
@@ -133,7 +133,7 @@ The operations scope covers only its four mutations. Read configuration, revisio
 readiness, test evidence and cleanup status through the work connection.
 Internal leases, worker callbacks, credential operations, deletion, recurring
 schedules and standalone session/report operations remain unexposed.
-With both connections enabled, discovery contains 28 unique tools and no duplicates.
+With both connections enabled, discovery contains 29 unique tools and no duplicates.
 The [tool review](mcp-tool-review-2026-09-29.md) rates each unique tool and records
 the completed consolidation and usage improvements.
 
@@ -255,3 +255,21 @@ Comments are context only, not commands or Run answers. Authenticated machine ID
 identify MCP authors; request-provided author names are not accepted. Update and
 control may include a reason. See [the contract](work-plan-backlog.md).
 Apply `b47d540a3243` after `a36c439f2132` with the matching UI/API.
+
+## Plan group classification
+
+`work_plans_register.plan.group_key` and `work_plans_update.plan.group_key` accept
+an optional string (100 characters maximum). Trimmed empty values become null.
+The key is classification only; it does not restrict execution or cross-group
+dependencies. Omitting it on an update preserves the existing key.
+
+`work_plans_set_group` requires work-write permission and accepts `project_id`,
+`plan_id`, and `group={group_key, expected_revision, reason?}`. It can reclassify
+started or finished work without executing anything or changing lifecycle state.
+Use explicit null to clear a key. Stale revisions return a conflict. Registration
+retries preserve the current group; the key is excluded from registration identity.
+
+`work_plans_list.group_key` and `runs_list.group_key` use the same filters: omitted
+or null selects all groups; an empty string selects ungrouped work; any other
+string matches the exact trimmed key. Combine with project/state filters. Runs
+inherit the current Plan key; directly enrolled Runs are ungrouped.

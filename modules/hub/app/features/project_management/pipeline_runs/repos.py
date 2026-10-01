@@ -17,6 +17,8 @@ from app.features.project_management.pipeline_runs.models import (
     PipelineRun,
     PipelineRunState,
 )
+from app.features.project_management.work_plans.grouping import normalize_group_key
+from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 from sqlalchemy import String, and_, case, cast, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -130,6 +132,7 @@ class PipelineRunRepository:
         state: PipelineRunState | None = None,
         search: str = "",
         pull_number: int | None = None,
+        group_key: str | None = None,
     ) -> tuple[list[PipelineRun], int]:
         filters = []
         if project_id is not None:
@@ -138,6 +141,15 @@ class PipelineRunRepository:
             filters.append(PipelineRun.pull_number == pull_number)
         if state is not None:
             filters.append(PipelineRun.state == state)
+        if group_key is not None:
+            inherited_group = (
+                select(WorkPlan.group_key)
+                .join(WorkItem, WorkItem.plan_id == WorkPlan.id)
+                .where(WorkItem.pipeline_run_id == PipelineRun.id)
+                .scalar_subquery()
+            )
+            # A Run enrolled directly has no Plan and belongs to the ungrouped view.
+            filters.append(inherited_group == normalize_group_key(group_key))
         if search.strip():
             term = search.strip().lower()
             filters.append(

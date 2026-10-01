@@ -93,9 +93,47 @@ the form remains mounted. If the form was closed/reloaded after an uncertain
 response, inspect existing Plans before submitting anew.
 
 Work MCP exposes `work_plans_list`, `work_plans_get` (read scope), and
-`work_plans_register`, `work_plans_update`, `work_plans_control` (write scope). Activity adds `work_plans_activity` (read) and `work_plans_comment` (write).
+`work_plans_register`, `work_plans_update`, `work_plans_set_group`, `work_plans_control` (write scope). Activity adds `work_plans_activity` (read) and `work_plans_comment` (write).
 These reuse the same services, validation and admission paths as REST. Operations
 scope is not required. [MCP contracts](mcp.md) describe the nested inputs.
+
+## Group classification
+
+`WorkPlan.group_key` is optional, project-local classification metadata (up to 100
+characters, case-sensitive). Leading/trailing whitespace is removed; empty values
+become SQL/JSON `null`. Existing plans remain ungrouped. The UI displays this as
+`(null)` and distinguishes it from All groups and a literal string key.
+
+Groups do not restrict code paths, dependencies, permissions, execution capacity,
+or merge policy. A Plan may span several games/modules with or without a key;
+`null` means unclassified, not membership in every group. Filtering a group does
+not find every task that can affect that group's code.
+
+Plan lists and Run lists support `group_key`: omit it (or pass MCP `null`) for all
+groups, pass an empty string for ungrouped work, or a nonempty string for an exact
+match after trimming. Filtering precedes pagination/counts and combines with
+existing project/state filters. Runs inherit classification through their Work
+Item's Plan, so reclassification affects their next list query. Directly enrolled
+Runs without a Plan also appear in the ungrouped view. No key is copied to Items,
+Runs, or execution request snapshots.
+
+Use `PATCH /{plan_id}/group` with `group_key`, `expected_revision`, and optional
+`reason` to change/clear classification in any lifecycle state. This only changes
+metadata, revision and activity history; it does not kick execution or withdraw a
+proposal. A stale revision returns 409. Normal unstarted-plan edits also accept
+`group_key`; omitting it preserves the current value, while explicit null clears it.
+
+The group editor stays open when list filters change and retains unsaved input.
+After a revision conflict, Refresh loads the current saved group without replacing
+that input or submitting it. Review the displayed group and explicitly save again;
+the retry uses the refreshed Plan revision. Cancel remains available even when
+the edited Plan is outside the current list filter.
+
+The key is excluded from the registration digest. Retrying a registration returns
+the existing Plan with its current group, even if the retry supplies a different
+key; retries never reclassify existing work. Specification changes still conflict.
+Use the explicit group update to change classification. Group-wide bulk controls,
+persistent holds and isolation policies are outside this feature.
 
 ## Controls and recovery
 
@@ -206,16 +244,17 @@ Base path: `/api/v1/projects/{project_id}/work-plans`.
 
 | Method and suffix | Operation |
 | --- | --- |
-| `GET /` | List plans with their items and Issue sync status; `offset`, `limit` (1–100), optional `state`. |
+| `GET /` | List plans with their items and Issue sync status; `offset`, `limit` (1–100), optional `state` and `group_key`. |
 | `POST /` | Atomically register a plan and its Item graph. |
 | `GET /registrations/{request_id}` | Recover a registration without creating work. |
 | `GET /{plan_id}` | Read local state; no external writes. |
 | `PUT /{plan_id}` | Edit unstarted work, including dependency graphs; requires `expected_revision`. |
+| `PATCH /{plan_id}/group` | Reclassify any Plan without execution; requires `group_key` and `expected_revision`. |
 | `POST /{plan_id}/control` | `action`: `propose`, `draft`, `ready`, `pause`, `resume`, or `revoke`; requires `expected_revision`. |
 | `GET /{plan_id}/activity` | Append-only changes/comments, `offset`, `limit`, optional `comments_only`. |
 | `POST /{plan_id}/comments` | Bounded text `body` and client UUID `request_id`; retries are idempotent per Plan. |
 
-Creation fields: optional `state` (`active` default, `draft`, `proposed`, `paused`), optional `request_id` (required for reliable retries), `title`, optional `description`, `base_branch`, `depends_on`
+Creation fields: optional `state` (`active` default, `draft`, `proposed`, `paused`), optional `request_id` (required for reliable retries), `title`, optional `group_key`, `description`, `base_branch`, `depends_on`
 (existing Plan UUIDs), optional `scheduled_at` (timezone-aware earliest start), and `items`. Draft items require a stable `key`; title, description and acceptance
 can be filled later. All other initial states require 1–100 complete items.
 `depends_on` contains local Item keys and is validated even in drafts.
@@ -226,7 +265,7 @@ The generated OpenAPI client is the definitive request/response contract.
 The original migration `c7d8e9f0a1b2` added five work tables. Current deployment
 must apply the full migration head, including `e14a217d0910` (Run decisions),
 `f25b328e1021` (Plan registration identity), `a36c439f2132` (Plan start reservation),
-and `b47d540a3243` (Plan activity), with the matching application/UI. Keep the project dispatcher and
+`b47d540a3243` (Plan activity), and `c58e651b4354` (Plan group classification), with the matching application/UI. Keep the project dispatcher and
 shared maintenance worker enabled. No per-Plan schedules are created.
 
 Automated coverage includes graph validation, controls, capacity, PR response-loss
