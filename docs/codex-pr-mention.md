@@ -108,7 +108,7 @@ All delays include a five-minute tolerance for scheduler jitter. Timers reset fo
 | No head change 2 h after the latest delivery or Codex reply, no silent retry yet | Post delivery `n+1` with cause `silent` |
 | No head change 2 h after a silent retry, even if Codex replied | Pause the run: `codex-unresponsive` |
 | Usage-limit reply | Record the quota event on the run's AI catalog, which holds all of that catalog's work by its policy (see [AI Catalog Gateway](ai-catalogs.md)), and plan delivery `n+1` with cause `quota`; it is posted once the catalog admits work again |
-| User resumes a paused run | Post delivery with cause `resume`; fix-loop caps restart |
+| User resumes a paused run | Post delivery with cause `resume`; fix-loop caps restart. Without an answer, a head that changed after the latest posted delivery (e.g. Codex pushed while paused) returns the run to CI observation instead |
 
 After a silent retry a reply may come from the first, slower task while the retried task is still running, so replies do not block that delivery early. A silent retry can duplicate work if the first task was only slow. That is accepted because both tasks push to the same branch and Hub evaluates only the resulting head. A usage limit belongs to the account, not to one pull request, so there is no per-run cap on quota retries: the catalog's hold is the brake for every run at once, and an operator who knows the real reset time sets the catalog's availability. The run counts its usage-limit replies (`quota_block_count`, and the run summary in the UI).
 

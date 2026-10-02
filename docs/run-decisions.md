@@ -18,7 +18,8 @@ They do not add a planning chat service or another execution engine.
 
 Only paused/blocked Runs can resume. Failed/canceled/completed Runs cannot. A
 resume of an externally implemented PR without a decision returns to CI
-observation. Applying an answer explicitly requests implementation work even for
+observation, as does one whose PR head changed after the last delivered request
+(e.g. the agent pushed while paused); otherwise resume re-sends that request. Applying an answer explicitly requests implementation work even for
 that PR. Plan resume never retries an existing Run.
 
 Controls share the Run lock and revision/lease fencing with result observation.

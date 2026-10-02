@@ -1,9 +1,32 @@
 # 구현·검증 현황
 
-운영 현황은 2026-09-28 기준이다. 아래의 운영 완료 범위는 Cloud Run에 배포됐고 실서비스 카나리로 확인했다.
-당시 revision은 `autohub-00006-dz7`이다.
+운영 현황은 2026-10-01 기준이다. 아래의 운영 완료 범위는 Cloud Run에 배포됐고 실서비스 카나리로 확인했다.
+현재 revision은 `autohub-00013-l4q`다. 2026-09-28 카나리 당시 revision은 `autohub-00006-dz7`이었다.
 
-## Work Plan group key: 로컬 구현, 미배포
+## 2026-10-01 배포와 새 스키마 카나리
+
+`DB_SCHEMA: autohub`의 새 스키마에 아래 네 섹션(MCP 분리, 질문·답변·Plan MCP, backlog·활동,
+group key)을 함께 배포했다. 각 섹션의 "배포·커밋하지 않았다"는 문장은 로컬 구현 당시 기록이다.
+`mjkimR/test-sandbox`에서 [새 스키마 카나리](canary-results-2026-10-01.md)로 다음을 확인했다.
+
+- 운영용 `/ops/mcp/`로 Codex 연결 테스트를 시작하고 PR 푸시·CI 통과로 성공했다.
+- 작업용 `/mcp/`의 25개 도구로 `group_key`가 있는 Plan을 등록했다. 같은 요청 키 재전송은
+  같은 Plan·Item을 돌려줬고, 의존 Item은 선행 PR 머지 뒤 시작했다. 그룹 필터로 Run을 조회했다.
+- Codex가 PR 답글에 남긴 질문을 `blocked`와 질문으로 기록했다. MCP 답변·재개는 반복 호출에도
+  같은 답변·영수증을 돌려줬고, 새 attempt의 멘션에 답변이 실려 Codex가 그대로 구현·머지했다.
+
+카나리 중 발견해 배포한 보정은 세 건이다.
+
+- `dc8fc8b`: Codex 연결 테스트가 첫 답글에서 catalog 슬롯을 반납하고, 답글 뒤 5분 안에 푸시가
+  없으면 GH_TOKEN 점검 안내와 함께 실패한다.
+- `74f8f53`: 첫 전달·재개 뒤 Codex가 답글만 달고 5분간 푸시하지 않으면 Run을 `blocked`로 멈춘다.
+- `fa9bea7`: REST가 반환하는 `chatgpt-codex-connector[bot]`의 `[bot]`을 떼고 작성자를 비교한다.
+  이전에는 pipeline의 질문·quota 감지와 위 답글 처리가 Codex 답글을 인식하지 못했다.
+
+Draft·Proposed·댓글·활동, 분류 변경, 대체 Plan 복구, 실행 중 pause·cancel은 이번 카나리에서
+실서비스로 유발하지 않았다.
+
+## Work Plan group key: 배포
 
 2026-10-01 실행 격리 없이 작업을 분류하는 nullable `WorkPlan.group_key`를 추가했다.
 [분류 계약](work-plans.md#group-classification)에 입력·조회·수정 의미를 기록했다.
@@ -39,7 +62,7 @@ UI 전체 173 passed와 lint·타입 검사·빌드를 확인했다. UI 전체 �
 RunDecisions 입력 테스트의 간헐적 실패가 재현됐고 재실행은 통과했다.
 이번 보완은 백엔드·API 스키마를 변경하지 않았다.
 
-## Work Plan backlog·댓글·변경이력: 로컬 구현, 미배포
+## Work Plan backlog·댓글·변경이력: 배포, 실서비스 미검증
 
 2026-10-01 [상태·활동 계약](work-plan-backlog.md)을 먼저 작성한 뒤 구현했다.
 기존 시작 예약 변경을 보존하면서 REST·MCP·UI를 함께 확장했다.
@@ -95,7 +118,7 @@ UI 첫 실행에서 기존 RunDecisions 입력 테스트가 간헐적으로 실�
 관련 UI 19 passed, UI 전체 166 passed와 `just lint-check`, `just check`를 확인했다.
 백엔드 코드는 이번 2차 보완에서 추가 변경하지 않았다.
 
-## 질문·답변·Plan MCP: 로컬 구현, 미배포
+## 질문·답변·Plan MCP: 배포·카나리 확인
 
 2026-09-30 g-sandbox 전환과 독립적으로 사용할 선행 기능을 구현했다.
 기준 커밋 `5ede72e` 위의 로컬 미커밋 변경이며 운영 revision은 아직 변경하지 않았다.
@@ -106,7 +129,7 @@ UI 첫 실행에서 기존 RunDecisions 입력 테스트가 간헐적으로 실�
   답변·재개 응답 유실과 동시 요청은 동일 요청 키로 회수하며 이전 재개를 반복해도
   이후 pause가 풀리지 않는다. 외부 에이전트 실행 중단을 보장하지는 않는다.
 - Codex PR 질문 마커는 신뢰할 작성자·attempt·head를 검사한다. 자동 수집은 모의
-  GitHub 테스트로 확인했으며 실제 provider의 질문 작성·답변 반영은 **미검증**이다.
+  GitHub 테스트로 확인했다. 실제 provider의 질문 작성·답변 반영은 2026-10-01 카나리로 확인했다.
 - Work Plan MCP 5개와 질문 MCP 4개를 추가했다. 현재 로컬 도구는 작업용 22개
   (조회 12, 변경 10), 운영용 4개다. 기존 키의 read/write scope를 재사용한다.
 - Plan 등록은 프로젝트+요청 키 유일 제약과 내용 digest로 중복을 막는다. MCP는
@@ -135,12 +158,12 @@ revision 불일치 시 제어를 막고, 응답 유실 후 새로고침해도 �
 1 skipped, UI 전체 150 passed, `just lint-check`·`just check` 통과를 확인했다.
 이 후속 수정에서는 전체 백엔드·PostgreSQL 테스트를 다시 실행하지 않았다.
 
-A1은 live 질문 전달·답변 반영 canary 전까지 부분 완료이고, A4 운영 검증은 남아 있다.
+2026-10-01 카나리로 live 질문 전달·답변 반영을 확인했다. 실서비스 복구 사례는 아직 없다.
 게임별 분류·일괄 제어, Jules 질문, 자동 successor 치환은 이번 범위가 아니다.
 g-sandbox 코드·CI·실행 큐 및 Linear 연동은 변경하지 않았다.
 [제어·복구 계약](run-decisions.md), [계획 등록](work-plans.md), [MCP](mcp.md)를 참고한다.
 
-## MCP 작업용·운영용 분리: 로컬 구현, 미배포
+## MCP 작업용·운영용 분리: 배포·카나리 확인
 
 2026-09-29 작업용 `/mcp/`와 운영용 `/ops/mcp/`를 같은 서버에 분리했다.
 작업용은 조회 9개와 실행 제어 4개, 운영용은 설정·연결 테스트 제어 4개를 제공한다.
@@ -179,8 +202,11 @@ g-sandbox 코드·CI·실행 큐 및 Linear 연동은 변경하지 않았다.
 | 공용 유지보수·보관 | 설치당 `System maintenance` 1개, 이력 보관 정책, 첫 운영 정리 성공 | [운영 절차](development.md#system-maintenance) |
 | 인증·배포 | 계정 로그인·토큰 갱신, managed machine key와 scope 격리, workbench 배포 경로 | [배포 가이드](cloud-run-deployment.md) |
 | Google 로그인·가입 승인 | 실계정 가입→승인→정지/재활성→권한 확인, `query`·`form_post` callback 모두 확인 | [Google 인증](google-auth.md) |
-| MCP | `/mcp/` Streamable HTTP, 공개 도구 17개, `autohub:mcp:read/write` scope. Claude Code에서 사용 중 | [연결 안내](mcp.md) |
+| MCP | 작업용 `/mcp/` 25개(`autohub:mcp:read/write`), 운영용 `/ops/mcp/` 4개(`autohub:mcp:ops`). Claude Code에서 사용 중 | [연결 안내](mcp.md), [카나리 10-01](canary-results-2026-10-01.md) |
 | WorkPlan·WorkItem | Plans 탭, Plan/Item 의존성, pause/resume/revoke, 등록·머지 직후 즉시 후속 실행, webhook 직후 Issue 동기화 | [카나리 09-23](canary-results-2026-09-23.md), [카나리 09-28](canary-results-2026-09-28.md) |
+| Plan MCP 등록 | 요청 키 멱등 등록, `group_key` 분류와 Run 그룹 필터, MCP로 의존 Plan 완료 | [카나리 10-01](canary-results-2026-10-01.md) |
+| 질문·답변·재개 | Codex PR 질문 감지→`blocked`, MCP 답변·재개 멱등성, 새 attempt에 답변 전달·구현·머지 | [카나리 10-01](canary-results-2026-10-01.md) |
+| Codex 답글 처리 | 연결 테스트 슬롯 반납, 푸시 없는 답글의 5분 감지, `[bot]` 작성자 인식 | [카나리 10-01](canary-results-2026-10-01.md) |
 
 ## 운영 상수
 
@@ -198,13 +224,15 @@ g-sandbox 코드·CI·실행 큐 및 Linear 연동은 변경하지 않았다.
 시간당 한 번 최대 job 1,000개·run 200개를 정리한다. 대기·재시도 가능한 job, 활성/일시 중지/차단된
 run, 유효한 lease, 미해결 WorkItem이 참조하는 run은 보존한다. run 만료는 PR 재등록으로 이어지지 않는다.
 마이그레이션: `f4d5e6f7a8b9`(공용 스케줄), `a5e6f7a8b9c0`(run 만료 표시), `b6f7a8b9c0d1`(인증),
-`c7d8e9f0a1b2`(work plan).
+`c7d8e9f0a1b2`(work plan), `e14a217d0910`·`f25b328e1021`(질문·답변·등록 키),
+`b47d540a3243`(backlog·활동), `c58e651b4354`(group key).
 
 ## 제외·보류
 
 - live로 유발하지 않은 것: Telegram, Jules quota 소진/429, required review·branch protection,
   연결 테스트의 취소·timeout·응답 유실·인증 장애, 실제 만료 행 삭제, 실패 Item 재시도,
-  Plan 수정 revision 충돌, CI 실패가 섞인 Plan. 모두 자동화 테스트 범위다.
+  Plan 수정 revision 충돌, CI 실패가 섞인 Plan, Draft·Proposed·댓글·활동, 분류 변경,
+  대체 Plan 복구, 실행 중 Run의 pause·cancel. 모두 자동화 테스트 범위다.
 - 보류: 자동 계획/WBS, 동적 catalog 선택, 병합 전 LLM 리뷰, 실패 Item 재시도 API.
   추가 저장소의 branching 정책은 온보딩 때 정한다. provider 불확실성은
   [Catalog 미해결 항목](ai-catalog-implementation-notes.md#known-limitations-and-remaining-work)에 있다.

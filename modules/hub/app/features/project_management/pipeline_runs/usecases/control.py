@@ -186,7 +186,17 @@ class PipelineRunControl:
                 raise ProjectError(
                     409, "PR head changed since the question; inspect and dismiss the stale question before resuming"
                 )
-            if external and response is None:
+            active = await self.repo.active_attempt(session, run.id)
+            delivery = await self.repo.latest_delivery(session, active.id) if active is not None else None
+            # The agent pushed after the last delivered request, e.g. while the run was paused. Sending it again
+            # would only produce a reply without a push, so watch CI for that push. An answer still sends new work.
+            pushed = (
+                active is not None
+                and delivery is not None
+                and delivery.posted_at is not None
+                and ImplementationRequest.model_validate(active.request_snapshot).pull_request.head_sha != pull.head_sha
+            )
+            if (external or pushed) and response is None:
                 run.state = PipelineRunState.AWAITING_CI
                 run.next_action_at = None
                 run.pause_reason = None
@@ -196,7 +206,6 @@ class PipelineRunControl:
                 await remember(session)
                 await session.flush()
                 return PipelineRunRead.model_validate(run)
-            active = await self.repo.active_attempt(session, run.id)
             if active is not None:
                 active.state = ExecutionAttemptState.FAILED
                 active.finished_at = now

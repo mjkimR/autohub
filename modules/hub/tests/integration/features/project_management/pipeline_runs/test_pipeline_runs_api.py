@@ -881,12 +881,10 @@ def mention_github(github, monkeypatch):
     return comments
 
 
-async def test_resume_requires_a_new_push_and_preserves_previous_request(client, project, github, mention_github):
+async def test_resume_without_a_push_resends_and_preserves_previous_request(client, project, github, mention_github):
     run, original = await prepare_run(client, project)
     root = f"/api/v1/pipeline-runs/{run['id']}"
-    assert_status_code(await client.post(f"{root}/advance"), 200)
-    github.pulls[7]["head"]["sha"] = "e" * 40
-    assert (await client.post(f"{root}/advance")).json()["state"] == "awaiting_ci"
+    assert (await client.post(f"{root}/advance")).json()["state"] == "implementing"
     assert_status_code(await client.post(f"{root}/pause"), 200)
 
     resumed = await resume(client, root)
@@ -898,16 +896,41 @@ async def test_resume_requires_a_new_push_and_preserves_previous_request(client,
     assert len(attempts) == 2
     assert attempts[0]["request_snapshot"] == original["request_snapshot"]
     assert attempts[0]["state"] == "failed"
-    assert attempts[1]["request_snapshot"]["pull_request"]["head_sha"] == "e" * 40
+    head = original["request_snapshot"]["pull_request"]["head_sha"]
+    assert attempts[1]["request_snapshot"]["pull_request"]["head_sha"] == head
     assert attempts[1]["idempotency_key"] != original["idempotency_key"]
     canonical = json.dumps(attempts[1]["request_snapshot"], sort_keys=True, separators=(",", ":"))
     assert attempts[1]["request_digest"] == sha256(canonical.encode()).hexdigest()
     deliveries = (await client.get(f"{root}/attempts/{attempts[1]['id']}/deliveries")).json()
     assert deliveries[0]["cause"] == "resume"
-    assert f"head={'e' * 40}" in mention_github[-1]["body"]
+    assert len(mention_github) == 2
+    assert f"head={head}" in mention_github[-1]["body"]
 
     github.pulls[7]["head"]["sha"] = "f" * 40
     assert (await client.post(f"{root}/advance")).json()["state"] == "awaiting_ci"
+
+
+@pytest.mark.parametrize("observed", [False, True])
+async def test_resume_after_a_push_watches_ci_without_sending(client, project, github, mention_github, observed):
+    """A push made while paused is observed on resume rather than requested again."""
+    run, original = await prepare_run(client, project)
+    root = f"/api/v1/pipeline-runs/{run['id']}"
+    assert (await client.post(f"{root}/advance")).json()["state"] == "implementing"
+    if observed:
+        github.pulls[7]["head"]["sha"] = "e" * 40
+        assert (await client.post(f"{root}/advance")).json()["state"] == "awaiting_ci"
+    assert_status_code(await client.post(f"{root}/pause"), 200)
+    github.pulls[7]["head"]["sha"] = "e" * 40
+
+    resumed = await resume(client, root)
+
+    assert_status_code(resumed, 200)
+    assert resumed.json()["state"] == "awaiting_ci"
+    assert resumed.json()["pause_reason"] is None
+    [attempt] = (await client.get(f"{root}/attempts")).json()["items"]
+    assert attempt["id"] == original["id"]
+    assert attempt["state"] == "running"
+    assert len(mention_github) == 1
 
 
 async def test_reconciled_delivery_preserves_time_and_processes_existing_quota_reply(client, project, mention_github):
