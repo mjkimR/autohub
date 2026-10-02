@@ -112,6 +112,7 @@ async def test_handshake_auth_discovery_and_scope_isolation(client, key, ops_key
     assert (await call(client, reader["key"], "projects_list"))["result"]["total_count"] == 1
     invalid = await call(client, key, "projects_list", {"limit": 101}, error=True)
     assert invalid["error"]["code"] == "MCP_INVALID_ARGUMENTS"
+    assert invalid["error"]["advisory"]["details"] == ["limit: Input should be less than or equal to 100"]
     missing = await call(client, key, "projects_get", {"project_id": str(uuid4())}, error=True)
     assert missing["error"]["code"] == "NOT_FOUND"
 

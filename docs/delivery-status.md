@@ -1,7 +1,7 @@
 # 구현·검증 현황
 
 운영 현황은 2026-10-01 기준이다. 아래의 운영 완료 범위는 Cloud Run에 배포됐고 실서비스 카나리로 확인했다.
-현재 revision은 `autohub-00013-l4q`다. 2026-09-28 카나리 당시 revision은 `autohub-00006-dz7`이었다.
+현재 revision은 `autohub-00014-hrs`다. 2026-09-28 카나리 당시 revision은 `autohub-00006-dz7`이었다.
 
 ## 2026-10-01 배포와 새 스키마 카나리
 
@@ -23,8 +23,12 @@ group key)을 함께 배포했다. 각 섹션의 "배포·커밋하지 않았다
 - `fa9bea7`: REST가 반환하는 `chatgpt-codex-connector[bot]`의 `[bot]`을 떼고 작성자를 비교한다.
   이전에는 pipeline의 질문·quota 감지와 위 답글 처리가 Codex 답글을 인식하지 못했다.
 
-Draft·Proposed·댓글·활동, 분류 변경, 대체 Plan 복구, 실행 중 pause·cancel은 이번 카나리에서
-실서비스로 유발하지 않았다.
+Draft·Proposed·댓글·활동, 분류 변경은 실서비스로 유발하지 않았다.
+
+2026-10-02 [중단·복구 카나리](canary-results-2026-10-02.md)로 Run pause 중 Codex 푸시의 보류, Plan pause의
+후속 Item 보류와 resume, Run cancel, Plan revoke와 원본 링크를 기록한 대체 Plan 완료를 확인했다.
+일시정지 중 푸시된 Run의 resume이 같은 요청을 다시 보내 `blocked`가 되던 문제를 `746959d`로 보정했다.
+이제 마지막 요청 이후 head가 바뀌었으면 답변 없는 resume은 CI 관찰로 돌아간다.
 
 ## Work Plan group key: 배포
 
@@ -158,7 +162,7 @@ revision 불일치 시 제어를 막고, 응답 유실 후 새로고침해도 �
 1 skipped, UI 전체 150 passed, `just lint-check`·`just check` 통과를 확인했다.
 이 후속 수정에서는 전체 백엔드·PostgreSQL 테스트를 다시 실행하지 않았다.
 
-2026-10-01 카나리로 live 질문 전달·답변 반영을 확인했다. 실서비스 복구 사례는 아직 없다.
+2026-10-01 카나리로 live 질문 전달·답변 반영을, 2026-10-02 카나리로 대체 Plan 복구를 확인했다.
 게임별 분류·일괄 제어, Jules 질문, 자동 successor 치환은 이번 범위가 아니다.
 g-sandbox 코드·CI·실행 큐 및 Linear 연동은 변경하지 않았다.
 [제어·복구 계약](run-decisions.md), [계획 등록](work-plans.md), [MCP](mcp.md)를 참고한다.
@@ -207,6 +211,7 @@ g-sandbox 코드·CI·실행 큐 및 Linear 연동은 변경하지 않았다.
 | Plan MCP 등록 | 요청 키 멱등 등록, `group_key` 분류와 Run 그룹 필터, MCP로 의존 Plan 완료 | [카나리 10-01](canary-results-2026-10-01.md) |
 | 질문·답변·재개 | Codex PR 질문 감지→`blocked`, MCP 답변·재개 멱등성, 새 attempt에 답변 전달·구현·머지 | [카나리 10-01](canary-results-2026-10-01.md) |
 | Codex 답글 처리 | 연결 테스트 슬롯 반납, 푸시 없는 답글의 5분 감지, `[bot]` 작성자 인식 | [카나리 10-01](canary-results-2026-10-01.md) |
+| 중단·복구 | Run pause 중 외부 푸시 보류와 CI 관찰 resume, Plan pause/resume, Run cancel, Plan revoke, 대체 Plan 완료와 원본 보존 | [카나리 10-02](canary-results-2026-10-02.md) |
 
 ## 운영 상수
 
@@ -231,8 +236,8 @@ run, 유효한 lease, 미해결 WorkItem이 참조하는 run은 보존한다. ru
 
 - live로 유발하지 않은 것: Telegram, Jules quota 소진/429, required review·branch protection,
   연결 테스트의 취소·timeout·응답 유실·인증 장애, 실제 만료 행 삭제, 실패 Item 재시도,
-  Plan 수정 revision 충돌, CI 실패가 섞인 Plan, Draft·Proposed·댓글·활동, 분류 변경,
-  대체 Plan 복구, 실행 중 Run의 pause·cancel. 모두 자동화 테스트 범위다.
+  Plan 수정 revision 충돌, CI 실패가 섞인 Plan, Draft·Proposed·댓글·활동, 분류 변경.
+  모두 자동화 테스트 범위다.
 - 보류: 자동 계획/WBS, 동적 catalog 선택, 병합 전 LLM 리뷰, 실패 Item 재시도 API.
   추가 저장소의 branching 정책은 온보딩 때 정한다. provider 불확실성은
   [Catalog 미해결 항목](ai-catalog-implementation-notes.md#known-limitations-and-remaining-work)에 있다.

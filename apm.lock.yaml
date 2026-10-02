@@ -5,8 +5,8 @@ dependencies:
   materialization_repo_url: mjkimR/app-common
   name: app-common
   host: github.com
-  resolved_commit: 120f7a571c08f0d429899c50629e746093a8c049
-  resolved_ref: 120f7a571c08f0d429899c50629e746093a8c049
+  resolved_commit: a36b829190a162971a6963351d65fee6a3c69b1e
+  resolved_ref: a36b829190a162971a6963351d65fee6a3c69b1e
   version: 0.1.0
   virtual_path: agents
   is_virtual: true
