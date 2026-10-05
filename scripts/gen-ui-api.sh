@@ -4,7 +4,7 @@ source "$(dirname "$0")/_lib.sh"
 
 ui_path=$(resolve_module_path "hub-ui")
 
-echo "Generating OpenAPI client for frontend UI module..."
+echo "Running frontend API contract command..."
 activate_frontend_node
-npm --prefix "$ui_path" run gen:api
-echo "Frontend API client successfully generated!"
+npm --prefix "$ui_path" run gen:api -- "$@"
+echo "Frontend API contract command completed."

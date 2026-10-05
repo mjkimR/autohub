@@ -184,6 +184,10 @@ build-sdk:
 gen-ui-api:
     @bash ./scripts/gen-ui-api.sh
 
+# Verify the tag-based frontend API declarations without writing files
+check-ui-api:
+    @bash ./scripts/gen-ui-api.sh --check
+
 # Sign in to a hub and print a short-lived access token for ad-hoc API calls (prompts for the password)
 login-token +args="":
     @bash ./scripts/login-token.sh {{ args }}

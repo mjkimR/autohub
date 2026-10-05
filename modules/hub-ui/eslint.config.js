@@ -10,6 +10,7 @@ import { structure } from '@app-common/eslint-config/structure';
 const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
 
 export default defineConfig(
+	{ ignores: ['src/lib/api/generated/**'] },
 	includeIgnoreFile(gitignorePath),
 	js.configs.recommended,
 	ts.configs.recommended,

@@ -1,27 +1,15 @@
 #!/usr/bin/env sh
-# Extract the OpenAPI schema from the FastAPI app and generate TypeScript types (schema.d.ts).
-# Usage: sh scripts/gen-api.sh
+# Export backend OpenAPI and generate or check tag-based frontend declarations.
 set -eu
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/../../.." && pwd)"
-hub_dir="$repo/modules/hub"
-
-api_dir="$here/../src/lib/api"
-mkdir -p "$api_dir"
-schema_json="$api_dir/openapi.json"
-schema_ts="$api_dir/schema.d.ts"
-
-echo "Exporting OpenAPI JSON from Autohub FastAPI backend..."
-PYTHONPATH="$hub_dir" uv run --no-active --directory "$hub_dir" python -c \
-  "import json; from app.main import create_app; print(json.dumps(create_app().openapi(), indent=2))" \
-  > "$schema_json"
-
-echo "Generating TypeScript definitions with openapi-typescript..."
-npx openapi-typescript "$schema_json" -o "$schema_ts"
-
+case "${1:-write}" in write|--check) ;; *) echo "usage: gen-api.sh [--check]" >&2; exit 2 ;; esac
+api_tmp="$(mktemp -d)"
+trap 'rm -rf "$api_tmp"' EXIT HUP INT TERM
+PYTHONPATH="$repo/modules/hub" uv run --no-active --project "$repo" python "$here/export-openapi.py" > "$api_tmp/openapi.json"
 cd "$here/.."
-rm -f "$schema_json"
-echo "Formatting generated schema..."
-npm run format "$schema_ts"
-
-echo "Generated: $schema_ts"
+if [ "${1:-write}" = "--check" ]; then
+  npx --no-install app-common-gen-api --input "$api_tmp/openapi.json" --output src/lib/api/generated --default-non-nullable --check
+else
+  npx --no-install app-common-gen-api --input "$api_tmp/openapi.json" --output src/lib/api/generated --default-non-nullable
+fi

@@ -108,9 +108,4 @@ jobs:
       - name: Tests
         run: just test-ui
       - name: The generated API client matches the backend
-        run: |
-          just gen-ui-api
-          git diff --exit-code -- modules/hub-ui/src/lib/api/schema.d.ts || {
-            echo "::error::modules/hub-ui/src/lib/api/schema.d.ts is stale. Run 'just gen-ui-api' and commit the result."
-            exit 1
-          }
+        run: just check-ui-api

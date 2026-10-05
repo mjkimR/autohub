@@ -173,7 +173,7 @@ Node from `.nvmrc`, `just`) and calls the `justfile` recipes, so a check that pa
 | --- | --- |
 | `backend` | `just lint-check hub` (ruff format and lint, architecture checks), `just check hub` (pyright), `just test` (SQLite) |
 | `backend-postgres` | `just test-pg` (testcontainers), then against a PostgreSQL 16 service: `alembic upgrade head`, `alembic check` (the migrations match the models), one step down and up again |
-| `frontend` | `just lint-check hub-ui`, `just check hub-ui` (`svelte-check` and the production build), `just test-ui`, and `just gen-ui-api` followed by a diff: a stale `schema.d.ts` fails the build |
+| `frontend` | `just lint-check hub-ui`, `just check hub-ui` (`svelte-check` and the production build), `just test-ui`, and `just check-ui-api`: stale or missing tag-based API declarations fail the build |
 
 The job names are stable, so this repository can itself be enrolled in a hub project with `ci.yml` as the workflow
 and these three jobs as the required jobs. Nothing needs a secret: the app imports and exports its OpenAPI schema

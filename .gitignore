@@ -8,6 +8,7 @@ wheels/
 
 # Hidden files
 .*
+!/modules/hub-ui/.prettierignore
 !.gitignore
 !.env.example
 !.nvmrc

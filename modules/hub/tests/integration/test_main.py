@@ -5,6 +5,19 @@ from app.main import create_app
 from starlette.testclient import TestClient
 
 
+def test_openapi_independent_of_ui_build(tmp_path: Path):
+    (tmp_path / "index.html").write_text("<!DOCTYPE html><html><body>Test SPA</body></html>")
+    with patch.dict("os.environ", {"UI_DIST_PATH": str(tmp_path)}):
+        with_ui = create_app().openapi()
+    with patch.dict("os.environ", {"UI_DIST_PATH": str(tmp_path / "missing")}):
+        without_ui = create_app().openapi()
+
+    assert with_ui == without_ui
+    assert "/" not in with_ui["paths"]
+    assert "/{full_path:path}" not in with_ui["paths"]
+    assert with_ui["paths"]["/api/health"]["get"]["tags"] == ["health"]
+
+
 def test_root_redirect_when_no_ui(tmp_path: Path):
     with patch.dict("os.environ", {"UI_DIST_PATH": str(tmp_path / "non_existent")}):
         app = create_app()

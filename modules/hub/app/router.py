@@ -36,12 +36,12 @@ v1_open_router = APIRouter(prefix="/v1")
 v1_trigger_router = APIRouter(prefix="/v1", dependencies=[Depends(require_scheduler_or_user)])
 
 
-@router.get("/health", status_code=status.HTTP_200_OK)
+@router.get("/health", tags=["health"], status_code=status.HTTP_200_OK)
 async def health():
     return {"status": "ok"}
 
 
-@router.get("/health/deep", status_code=status.HTTP_200_OK)
+@router.get("/health/deep", tags=["health"], status_code=status.HTTP_200_OK)
 async def deep_health_check(session: Annotated[AsyncSession, Depends(get_session)]):
     try:
         await session.execute(text("SELECT 1"))

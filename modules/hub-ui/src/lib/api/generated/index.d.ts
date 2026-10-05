@@ -1,0 +1,27 @@
+/** Generated from OpenAPI domain tags. Do not edit manually. */
+import type { components as CommonComponents } from './common';
+import type { paths as Paths0, components as Components0, operations as Operations0 } from './agent-schedule';
+import type { paths as Paths1, components as Components1, operations as Operations1 } from './ai-catalog';
+import type { paths as Paths2, components as Components2, operations as Operations2 } from './browser-sessions';
+import type { paths as Paths3, components as Components3, operations as Operations3 } from './connection-tests';
+import type { paths as Paths4, components as Components4, operations as Operations4 } from './connector';
+import type { paths as Paths5, components as Components5, operations as Operations5 } from './dashboard';
+import type { paths as Paths6, components as Components6, operations as Operations6 } from './dispatcher';
+import type { paths as Paths7, components as Components7, operations as Operations7 } from './github-webhook';
+import type { paths as Paths8, components as Components8, operations as Operations8 } from './google-authentication';
+import type { paths as Paths9, components as Components9, operations as Operations9 } from './health';
+import type { paths as Paths10, components as Components10, operations as Operations10 } from './machine-api-keys';
+import type { paths as Paths11, components as Components11, operations as Operations11 } from './notification-channel';
+import type { paths as Paths12, components as Components12, operations as Operations12 } from './pipeline';
+import type { paths as Paths13, components as Components13, operations as Operations13 } from './pipeline-run';
+import type { paths as Paths14, components as Components14, operations as Operations14 } from './project';
+import type { paths as Paths15, components as Components15, operations as Operations15 } from './run-decisions';
+import type { paths as Paths16, components as Components16, operations as Operations16 } from './scheduleconfig';
+import type { paths as Paths17, components as Components17, operations as Operations17 } from './schedulejob';
+import type { paths as Paths18, components as Components18, operations as Operations18 } from './systemconfig';
+import type { paths as Paths19, components as Components19, operations as Operations19 } from './task';
+import type { paths as Paths20, components as Components20, operations as Operations20 } from './users';
+import type { paths as Paths21, components as Components21, operations as Operations21 } from './work-plan';
+export type paths = Paths0 & Paths1 & Paths2 & Paths3 & Paths4 & Paths5 & Paths6 & Paths7 & Paths8 & Paths9 & Paths10 & Paths11 & Paths12 & Paths13 & Paths14 & Paths15 & Paths16 & Paths17 & Paths18 & Paths19 & Paths20 & Paths21;
+export type components = CommonComponents & Components0 & Components1 & Components2 & Components3 & Components4 & Components5 & Components6 & Components7 & Components8 & Components9 & Components10 & Components11 & Components12 & Components13 & Components14 & Components15 & Components16 & Components17 & Components18 & Components19 & Components20 & Components21;
+export type operations = Operations0 & Operations1 & Operations2 & Operations3 & Operations4 & Operations5 & Operations6 & Operations7 & Operations8 & Operations9 & Operations10 & Operations11 & Operations12 & Operations13 & Operations14 & Operations15 & Operations16 & Operations17 & Operations18 & Operations19 & Operations20 & Operations21;

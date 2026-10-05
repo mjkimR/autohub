@@ -153,11 +153,11 @@ def create_app():
         if app_dir.is_dir():
             app.mount("/_app", StaticFiles(directory=str(app_dir)), name="spa_app")
 
-        @app.get("/")
+        @app.get("/", include_in_schema=False)
         async def root_spa():
             return FileResponse(ui_dist / "index.html")
 
-        @app.get("/{full_path:path}")
+        @app.get("/{full_path:path}", include_in_schema=False)
         async def serve_spa(full_path: str):
             # Well-known discovery (e.g. OAuth metadata) must not fall back to the SPA shell.
             if full_path.startswith(".well-known/"):
@@ -168,7 +168,7 @@ def create_app():
             return FileResponse(ui_dist / "index.html")
     else:
 
-        @app.get("/")
+        @app.get("/", include_in_schema=False)
         async def root_docs():
             return RedirectResponse(url="/docs")
 
