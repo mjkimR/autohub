@@ -31,7 +31,9 @@ MCP_WRITE = "autohub:mcp:write"
 MCP_OPS = "autohub:mcp:ops"
 MCP_WORK_SCOPES = frozenset({MCP_READ, MCP_WRITE})
 MCP_SCOPES = MCP_WORK_SCOPES | {MCP_OPS}
-MACHINE_SCOPES = frozenset({"autohub:dispatch"}) | MCP_SCOPES
+MACHINE_SCOPES = (
+    frozenset({"autohub:dispatch", "autohub:task:read", "autohub:task:write", "autohub:task:approve"}) | MCP_SCOPES
+)
 
 # Every API route except signing in itself and the dispatcher trigger.
 require_user = get_current_user

@@ -112,6 +112,8 @@ using the same run request key/command ID before creating new work. Redirects
 are not followed, avoiding credential forwarding to other hosts.
 
 See [remote contract](../../docs/sdk-task-flow.md) for endpoints and ownership.
+The Auto Hub backend implements this contract with a durable database host;
+configure scoped machine keys and worker targets before using remote execution.
 There is no startup hook, code scanning, scheduler, worker deployment, or durable
 step recovery engine in the SDK. Declaration registration does not deploy code.
 

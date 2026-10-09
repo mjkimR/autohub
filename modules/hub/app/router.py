@@ -8,6 +8,7 @@ from app.features.configuration.system_configs.models import SystemConfig
 from app.features.dashboard.api import router as v1_dashboard_router
 from app.features.execution.dispatchers.api.v1 import router as v1_dispatchers_router
 from app.features.execution.dispatchers.usecases.housekeeping import HEARTBEAT_CONFIG, parse_instant, tick_status
+from app.features.execution.flows.api import router as v1_flows_router
 from app.features.execution.tasks.api.v1 import router as v1_tasks_router
 from app.features.notifications.api.v1 import router as v1_notification_channels_router
 from app.features.project_management.agent_schedules.api.v1 import router as v1_agent_schedules_router
@@ -79,6 +80,7 @@ v1_router.include_router(v1_ai_catalogs_router)
 v1_router.include_router(v1_schedule_jobs_router)
 v1_trigger_router.include_router(v1_dispatchers_router)
 v1_open_router.include_router(create_auth_router())
+v1_open_router.include_router(v1_flows_router)
 v1_router.include_router(v1_tasks_router)
 router.include_router(v1_router)
 router.include_router(v1_trigger_router)

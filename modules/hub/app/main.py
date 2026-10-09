@@ -12,6 +12,7 @@ from app.auth import MACHINE_SCOPES, login_caller, login_lockout_listener, requi
 from app.auth_settings import get_hub_auth_settings
 from app.common.database_schema import configure_schema
 from app.features import tasks
+from app.features.execution.flows.errors import FlowError
 from app.features.project_management.projects.errors import ProjectError
 from app.features.scheduling.schedule_configs.system import ensure_maintenance_schedule
 from app.mcp.server import create_hub_mcp
@@ -131,6 +132,10 @@ def create_app():
     app.dependency_overrides[get_login_lockout_listener] = login_lockout_listener
 
     set_exception_handler(app)
+
+    @app.exception_handler(FlowError)
+    async def flow_error_handler(request, exc: FlowError):
+        return JSONResponse(status_code=exc.status, content={"code": exc.code, "message": exc.message})
 
     @app.exception_handler(ProjectError)
     async def project_error_handler(request, exc: ProjectError):

@@ -52,5 +52,7 @@ docker/helper/
 # README & Docs
 README.md
 **/README.md
+# Required by the installed SDK wheel metadata in the backend build.
+!packages/sdk/README.md
 docs/
 

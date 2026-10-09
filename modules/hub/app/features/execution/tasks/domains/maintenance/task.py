@@ -7,6 +7,7 @@ from uuid import UUID
 from app.features.configuration.connectors.crypto import ConnectorCredentialCipher, get_credential_key_provider
 from app.features.configuration.connectors.repos import ConnectorRepository
 from app.features.configuration.connectors.usecases.token import ReadConnectorTokenUseCase
+from app.features.execution.flows.worker import FlowWorker
 from app.features.execution.tasks import task
 from app.features.execution.tasks.domains.jules.task import _service as jules_service
 from app.features.execution.tasks.domains.maintenance.repos import MaintenanceGroup, MaintenanceRepository
@@ -49,6 +50,11 @@ async def maintain_task(payload: MaintenancePayload) -> None:
     except Exception:
         # Outbound record failures must not block execution or provider cleanup.
         logger.exception("Work issue synchronization will retry")
+    try:
+        await FlowWorker().tick()
+    except Exception:
+        failures.append("SDK flow maintenance")
+        logger.exception("SDK flow maintenance will retry")
     repo = MaintenanceRepository()
     async with AsyncTransaction() as session:
         test_ids = await repo.pending_tests(session)

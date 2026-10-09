@@ -1,0 +1,38 @@
+{
+  "kind": "final-report",
+  "status": "completed",
+  "mode": "self-review",
+  "summary": "Implemented and locally verified F2 backend SDK release/run/command APIs, scoped ownership, durable flow state and worker recovery. F3/F4 remain separate. No commit, release or deployment created.",
+  "findings": [],
+  "resolved_findings": [
+    "Recovered intents inspect first; authoritative absence persists readiness and resubmits the same attempt ID.",
+    "Generic worker 404 is not absence/termination evidence; cancellation requires terminal receipts/tombstones.",
+    "Late worker results require unexpired lease and unchanged run revision.",
+    "Finite JSON, storage limits, task output schema and cumulative attempt/rework budgets are checked.",
+    "Backend image includes SDK source and its README build metadata.",
+    "Existing observation race test uses SQLite dispatcher isolation; PostgreSQL retains real contention."
+  ],
+  "checks": {
+    "backend": "PASS just test: 925 passed, 12 skipped",
+    "flow_sqlite": "PASS host + migration: 19 passed, 1 skipped",
+    "flow_postgres": "PASS host: 19 passed; migration roundtrip matches metadata",
+    "static": "PASS just lint, just check; existing 3 architecture warnings unchanged",
+    "generated_api": "PASS just gen-ui-api, just check-ui-api",
+    "sdk": "PASS 27 tests; wheel/sdist build",
+    "hygiene": "PASS migration single head, local links and diff whitespace"
+  },
+  "assumptions": [
+    "HTTP workers durably deduplicate attempt IDs and fence late submissions with cancellation tombstones.",
+    "Generic machine approval grants flow progress, not PR approval evidence.",
+    "Maintenance/dispatcher owns advancement; GET and submission are read/accept operations."
+  ],
+  "unverified_areas": [
+    "Production deployment and container image build",
+    "Deployed domain worker, planhub application integration, specrig/PR adapter",
+    "F4 scope/coordination integration"
+  ],
+  "diff_scope": {
+    "base": "HEAD",
+    "head": "worktree"
+  }
+}

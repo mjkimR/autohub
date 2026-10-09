@@ -185,3 +185,69 @@ See [the test guide](../modules/hub/tests/README.md) for source-mirroring paths 
 unit/integration/e2e boundaries. `just test-unit` runs isolated logic;
 `just test-integration` runs real DB and in-process API contracts.
 `just test` retains all backend coverage.
+
+
+## SDK flow host
+
+Apply migration `d69f762c5465` with the matching backend. The backend depends on
+`autohub-sdk` through the UV workspace; the backend Docker build includes its source.
+SDK releases are immutable definitions, not executable uploads. Native bindings
+accept only `autohub.identity`, a pure input echo for contract verification.
+
+Provision a managed machine with `autohub:task:write` and `autohub:task:read` for
+catalog registration, activation, submission and polling. Approval/rework commands
+also require `autohub:task:approve`. The first machine registering a provider/environment
+owns it across key rotations. `autohub:dispatch` alone grants no flow API access.
+See the [wire contract](sdk-task-flow.md) for SDK endpoints.
+
+Configure HTTP workers using the server environment, for example:
+
+```sh
+AUTOHUB_FLOW_HTTP_TARGETS='{"planhub-worker":{"base_url":"https://worker.example","credential_env":"PLANHUB_WORKER_KEY"}}'
+```
+
+A release binding uses executor `http` and target `planhub-worker`. HTTPS is required
+except for loopback HTTP. URLs cannot contain credentials, query strings or fragments.
+Resolved target URLs and credential environment variable names are pinned in the
+release/run snapshot; changing target configuration requires a new release. Rotate
+credential values independently. Secrets are not accepted in release definitions.
+Workers must validate task contract and release identity/digest before execution.
+
+Workers implement this protocol relative to `base_url`:
+
+| Operation | Request | Response |
+| --- | --- | --- |
+| Submit | `POST /executions`, JSON `attempt_id`, `run_id`, `task`, `inputs`, `release_id`, `release_digest` | Accepted `pending` or terminal result |
+| Inspect | `GET /executions/{attempt_id}` | Current result, or typed authoritative `not_found` |
+| Cancel | `DELETE /executions/{attempt_id}` | `pending` until stopped, then a terminal result |
+
+Every request includes `Idempotency-Key: <attempt UUID>` and, if configured,
+`X-API-Key` from the referenced environment variable. Responses contain
+`attempt_id`, status (`pending`, `completed`, `failed`, `canceled`, `not_found`),
+optional `output` object and `error`. Completed results require output. A 404 is
+accepted as absence only for inspection and only with the matching typed
+`not_found` response. Redirects are disabled and calls have a five-second timeout.
+
+The worker must persist idempotent attempt receipts and cancellation tombstones:
+a cancellation of an unknown ID must fence a later submit of the same ID. A
+plain 404 from DELETE is not cancellation evidence. Terminal completion/failure
+can acknowledge cancellation while preserving evidence of an already finished
+external effect; host cancellation does not roll that effect back. This protocol
+requires cooperation from the worker and does not guarantee exactly-once effects.
+
+`System maintenance` advances up to 32 ready runs, one action per run per tick.
+It commits dispatch intent before I/O and fences result writes with a 60-second
+lease and run revision. Unknown results reconcile the same attempt instead of
+starting a new one. Polling is eligible after five seconds, but production's
+five-minute dispatcher tick determines actual latency. POST/GET run APIs never
+advance workers themselves. Approval expiry is checked on commands and persisted
+on the next maintenance advance. SDK flow records have no automatic retention yet.
+
+Run `just test modules/hub/tests/integration/features/execution/flows` for API,
+recovery and real SDK HTTP tests; `just test-pg` with the same path also verifies
+PostgreSQL contention. For a disposable local PostgreSQL without Docker, set
+`AUTOHUB_FLOW_TEST_POSTGRES_URL` to a `postgresql+psycopg` URL whose host is
+`127.0.0.1` and database name starts with `autohub_test_`. Test fixtures create and
+drop model tables, so use a dedicated test database. Run `just gen-ui-api` after
+wire/API changes. PR/GitHub/specrig adapters and planhub application wiring are
+tracked separately; generic machine approval is not PR approval evidence.

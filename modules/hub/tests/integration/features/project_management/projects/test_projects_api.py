@@ -564,6 +564,7 @@ class TestProjectDispatchScheduleLifecycle:
         assert dispatch_sched is None
 
 
+@pytest.mark.usefixtures("isolated_sqlite_dispatch")
 async def test_project_changed_during_observation_does_not_save_report(
     client, project, project_payload, github_scenario, session, monkeypatch
 ):
