@@ -12,9 +12,12 @@ async def test_sdk_flow_migration_roundtrip(session):
     def roundtrip(connection):
         with Operations.context(MigrationContext.configure(connection)):
             migration = scripts().get_revision("d69f762c5465").module
+            bridge = scripts().get_revision("e70a873d6576").module
+            bridge.downgrade()
             migration.downgrade()
             assert not any(name.startswith("sdk_flow_") for name in inspect(connection).get_table_names())
             migration.upgrade()
+            bridge.upgrade()
         context = MigrationContext.configure(connection, opts={
             "include_object": lambda obj, name, kind, reflected, compare_to: name.startswith("sdk_flow_") if kind == "table" else True,
         })

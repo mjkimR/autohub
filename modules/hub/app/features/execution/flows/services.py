@@ -15,11 +15,12 @@ from autohub_sdk import (
     TaskRef,
 )
 from fastapi import Depends
+from sqlalchemy import select
 
 from .adapters import WorkerBindings, get_worker_bindings
 from .auth import FLOW_APPROVE, FLOW_READ, FLOW_WRITE, require_scope
 from .errors import FlowError
-from .models import FlowCommand, FlowEnvironment, FlowRelease, FlowRun, FlowStep
+from .models import FlowCommand, FlowEnvironment, FlowPRLink, FlowRelease, FlowRun, FlowStep
 from .repos import FlowRepository
 from .validation import check_ref, check_release, definition, digest, steps_for, validate
 
@@ -55,7 +56,7 @@ class FlowService:
                 raise FlowError(409, "release-conflict", "release ID already has different contents")
             return self.receipt(prior)
         check_release(data)
-        resolved = self.bindings.resolve(data)
+        resolved = self.bindings.resolve(data, provider, environment)
         await self.repo.insert_once(
             session,
             FlowRelease,
@@ -95,7 +96,11 @@ class FlowService:
             raise FlowError(422, "contract-limit", "provider or environment exceeds host limits")
         check_ref(data.task)
         owner = await self.owned(session, data.provider, data.environment, principal, lock=True)
-        request_digest = digest(data.model_dump(mode="python"))
+        request_body = data.model_dump(mode="python")
+        for key in ("expected_release_id", "expected_release_digest"):
+            if request_body.get(key) is None:
+                request_body.pop(key, None)
+        request_digest = digest(request_body)
         existing = await self.repo.request(session, data.provider, data.environment, data.idempotency_key)
         if existing:
             if existing.request_digest != request_digest:
@@ -104,6 +109,10 @@ class FlowService:
         if owner.active_release_id is None:
             raise FlowError(409, "no-active-release", "activate a release first")
         release = await self.repo.release(session, data.provider, data.environment, owner.active_release_id)
+        if (getattr(data, "expected_release_id", None) not in (None, release.release_id)) or (
+            getattr(data, "expected_release_digest", None) not in (None, release.digest)
+        ):
+            raise FlowError(409, "release-mismatch", "active release differs from the requested snapshot")
         spec = ReleaseSpec.model_validate(release.definition)
         item = definition(spec, data.task)
         validate(item.input_schema, data.inputs)
@@ -203,6 +212,12 @@ class FlowService:
         now = get_current_utc_time()
         await self.repo.bump(session, run, now)
         await command_transition(session, self.repo, run, data.action, now)
+        if data.action == "approve":
+            link = await session.scalar(select(FlowPRLink).where(FlowPRLink.flow_run_id == run_id))
+            if link is not None:
+                link.approved_revision = run.revision
+                link.approved_digest = digest(link.evidence)
+                link.approved_actor = f"{principal.machine_id}/{principal.key_id}"
         await session.flush()
         receipt = await self.read(session, run)
         session.add(

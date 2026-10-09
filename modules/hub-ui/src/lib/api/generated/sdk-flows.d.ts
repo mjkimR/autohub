@@ -225,6 +225,27 @@ export interface components {
             /** Value */
             value: unknown;
         };
+        /**
+         * PinnedRunRequest
+         * @description Optional host extension; existing SDK 0.2 requests remain valid.
+         */
+        PinnedRunRequest: {
+            /** Provider */
+            provider: string;
+            /** Environment */
+            environment: string;
+            task: components["schemas"]["TaskRef"];
+            /** Inputs */
+            inputs: {
+                [key: string]: unknown;
+            };
+            /** Idempotency Key */
+            idempotency_key: string;
+            /** Expected Release Id */
+            expected_release_id?: string | null;
+            /** Expected Release Digest */
+            expected_release_digest?: string | null;
+        };
         /** PipelineSpec */
         PipelineSpec: {
             /** Key */
@@ -272,20 +293,6 @@ export interface components {
              * @enum {string}
              */
             action: "approve" | "revise" | "cancel" | "resume";
-        };
-        /** RunRequest */
-        RunRequest: {
-            /** Provider */
-            provider: string;
-            /** Environment */
-            environment: string;
-            task: components["schemas"]["TaskRef"];
-            /** Inputs */
-            inputs: {
-                [key: string]: unknown;
-            };
-            /** Idempotency Key */
-            idempotency_key: string;
         };
         /** RunView */
         RunView: {
@@ -456,7 +463,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RunRequest"];
+                "application/json": components["schemas"]["PinnedRunRequest"];
             };
         };
         responses: {

@@ -37,7 +37,8 @@ The standalone [pipeline SDK](packages/sdk/README.md) lives in `packages/sdk`.
 It supports local declarations and validation, manifest export, remote task/flow
 contracts, and an HTTP client. The backend now provides release/run/command APIs and durable flow execution
 through system maintenance, with scoped machine keys and configured worker targets.
-See the [host contract](docs/sdk-task-flow.md). PR/domain integration remains separate.
+See the [host contract](docs/sdk-task-flow.md). The first native specrig/PR bridge resumes an existing paused PR after evidence
+verification and approval; production rollout and live GitHub validation remain separate.
 PostgreSQL is the standard database, with SQLite used for default testing.
 [justfile](justfile) defines commands, aliases, and defaults; run `just --list`.
 

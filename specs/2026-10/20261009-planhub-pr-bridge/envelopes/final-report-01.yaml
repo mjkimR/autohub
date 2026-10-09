@@ -1,0 +1,31 @@
+{
+  "kind": "final-report",
+  "status": "completed",
+  "mode": "self-review",
+  "summary": "Implemented F3 pinned release admission, native specrig evidence and single existing PR owner bridge. Production/live GitHub and F4 remain separate. No commit/push/deploy.",
+  "findings": [],
+  "resolved_findings": [
+    "Persist scoped approval actor/revision/evidence; task-only flow cannot bypass approval.",
+    "Terminal failed/canceled attempt output now records current PR owner state, verified by four state projections.",
+    "Check actual Git/CLI evidence and GitHub head before guarded replay-safe resume."
+  ],
+  "checks": {
+    "tests": "PASS full backend 934 passed/12 skipped before terminal-output fix; affected SQLite/HTTP/migration 32 passed/1 skipped and PostgreSQL 31 passed/1 skipped after fix",
+    "build": "PASS just check frontend build",
+    "lint": "PASS just lint; existing three architecture warnings unchanged",
+    "migration": "PASS SQLite and PostgreSQL upgrade/downgrade matches ORM; one migration head",
+    "generated_api": "PASS just gen-ui-api and just check-ui-api"
+  },
+  "assumptions": [
+    "Existing PR owner retains ready/CI/merge policy.",
+    "Server operator provisions trusted CLI and clean checkout; catalog registration is not deployment.",
+    "PlanHub consumes pushed SDK commit a39f59542d26ad874f882d1b3deb249f3e7a38a5."
+  ],
+  "unverified_areas": [
+    "Live GitHub writes/CI/merge, production image/checkout/CLI packaging, full development workflow and F4 remote coordination"
+  ],
+  "diff_scope": {
+    "base": "HEAD",
+    "head": "worktree"
+  }
+}

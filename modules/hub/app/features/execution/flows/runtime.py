@@ -178,11 +178,13 @@ class FlowRuntime:
             return
         if result.status == "pending":
             attempt.status, run.status = "observing", "waiting"
-            run.error = None
+            attempt.output, attempt.error = result.output, result.error
+            run.error = result.error
             run.next_action_at = now + timedelta(seconds=5)
             return
         if result.status in ("failed", "canceled"):
             attempt.status, attempt.error = result.status, result.error or f"worker-{result.status}"
+            attempt.output = result.output
             row.status, run.status, run.error, run.next_action_at = "failed", "failed", attempt.error, None
             return
         spec = specs[run.step_index]

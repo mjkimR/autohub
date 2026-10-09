@@ -249,5 +249,37 @@ PostgreSQL contention. For a disposable local PostgreSQL without Docker, set
 `AUTOHUB_FLOW_TEST_POSTGRES_URL` to a `postgresql+psycopg` URL whose host is
 `127.0.0.1` and database name starts with `autohub_test_`. Test fixtures create and
 drop model tables, so use a dedicated test database. Run `just gen-ui-api` after
-wire/API changes. PR/GitHub/specrig adapters and planhub application wiring are
-tracked separately; generic machine approval is not PR approval evidence.
+wire/API changes. The native specrig/PR bridge has an additional domain approval contract; generic
+machine approval alone is not PR approval evidence.
+
+### Native specrig and existing PR bridge
+
+Configure server-owned targets before registering the planhub release:
+
+```sh
+AUTOHUB_FLOW_DELIVERY_TARGETS='{"local":{"provider":"planhub","environment":"local","project_id":"<existing-project-uuid>","checkout":"/absolute/clean/checkout"}}'
+```
+
+This allows `autohub.specrig:local` and `autohub.pr_delivery:local` only in that
+provider/environment. Provision Git and the specrig CLI on the server PATH and
+mount a clean checkout whose HEAD matches the reviewed PR. Release registration
+does not deploy worker code, CLI binaries or checkout files; the production image
+has not been updated to package this environment. Apply migration `e70a873d6576`
+for durable PR claims and approval evidence.
+
+The initial flow accepts an existing paused PipelineRun whose latest attempt was
+implemented externally. It verifies review/reconcile/final-report through the real
+CLI, then requires a scoped approve command before resuming the same PR owner.
+Approval records the machine/key actor and evidence digest. GitHub head and PR
+revision are rechecked at resume; retries reuse the existing resume receipt.
+The operator still controls PR ready, while the existing owner handles CI/merge.
+A failed delivery attempt cannot be automatically retried under a different PR
+owner; resolve the existing PR state explicitly. Cancellation fences future
+resume and stops the PR controller, without rolling back posted agent requests.
+
+For the optional two-application HTTP test, set
+`PLANHUB_APPLICATION_TEST_ROOT` to the planhub checkout and
+`PLANHUB_APPLICATION_TEST_PYTHON` to its installed Python 3.13+ interpreter, then
+run the flow test path. The test launches loopback applications with isolated
+state and uses planhub's installed SDK. Git/specrig are real; GitHub and PR owner
+completion are fixtures. Live CI/merge and production rollout remain separate.

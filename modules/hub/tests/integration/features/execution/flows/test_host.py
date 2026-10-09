@@ -380,3 +380,15 @@ async def test_worker_output_schema_blocks_downstream_tasks(client, owner):
 def test_worker_nonfinite_output_is_invalid_protocol():
     with pytest.raises(ValueError):
         WorkerResult(attempt_id=uuid4(), status="completed", output={"value": float("nan")})
+
+
+async def test_expected_release_rejects_activation_race_before_creating_run(client, owner, session_maker):
+    from app.features.execution.flows.models import FlowRun
+
+    await setup(client)
+    response = await client.post(RUNS, json={**inputs(), "expected_release_id": "wrong-release"})
+    assert response.status_code == 409 and response.json()["code"] == "release-mismatch"
+    async with session_maker() as session:
+        assert list(await session.scalars(select(FlowRun))) == []
+    run = await start(client)
+    assert run["release_id"] == "release-1"

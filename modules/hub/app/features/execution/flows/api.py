@@ -8,7 +8,6 @@ from autohub_sdk import (
     ReleaseReceipt,
     ReleaseSpec,
     RunCommand,
-    RunRequest,
     RunView,
 )
 from fastapi import APIRouter, Depends, Path
@@ -17,6 +16,7 @@ from fastapi.routing import APIRoute
 
 from .auth import get_flow_principal
 from .errors import FlowError
+from .schemas import PinnedRunRequest
 from .usecases import FlowUseCase
 
 
@@ -66,7 +66,7 @@ async def activate(
 
 
 @router.post("/task-runs", response_model=RunView, status_code=202)
-async def start(body: RunRequest, principal: Principal, use_case: UseCase):
+async def start(body: PinnedRunRequest, principal: Principal, use_case: UseCase):
     return await use_case.start(body, principal)
 
 

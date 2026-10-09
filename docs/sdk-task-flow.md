@@ -24,19 +24,29 @@ ReleaseSpec은 manifest와 task별 정확히 하나의 binding을 묶는다. bin
 
 RunCommand는 command_id·expected_revision과 approve/revise/cancel/resume을 전달한다. 명령 재전송은 최초 receipt를 반환하고 같은 ID의 내용 변경은 충돌한다. run revision은 상태 전이마다 증가한다. AttemptView는 step·number·status·input·output·error를, RunView는 release snapshot 식별자·status·현재 step·대기 이유·attempt·결과를 제공한다. 재시도와 보완 방문은 누적 task step 시도 상한을 소비한다.
 
-client는 기존 host 방식에 맞춰 X-API-Key를 전송하고 redirect·자동 재시도는 수행하지 않는다. AutoHubError는 HTTP status·error code를 제공하며 network timeout은 전달된다. 실제 승인 evidence·허용 명령 주체·head/revision binding은 도메인 host 계약의 후속 범위다.
+client는 기존 host 방식에 맞춰 X-API-Key를 전송하고 redirect·자동 재시도는 수행하지 않는다. AutoHubError는 HTTP status·error code를 제공하며 network timeout은 전달된다. 일반 승인과 별도로 PR bridge는 승인 actor·revision·evidence digest와 head를 검사한다.
 
 ## 실행 원장과 복구
 
 SDK는 DB와 scheduler를 소유하지 않는다. 기존 내부 scheduler @task, Work Plan/Item, PR PipelineRun은 외부 SDK task·flow와 별개다. 별도 `sdk_flow_*` 테이블에 환경·release·run·step·attempt·command receipt를 저장한다. dispatch intent를 먼저 커밋하고 DB transaction 밖에서 worker를 호출한다. 60초 lease와 revision 조건부 쓰기로 늦은 결과를 차단한다. 응답이 불확실하면 기존 attempt를 조회하며, worker가 같은 ID의 부재를 명시적으로 확인한 뒤에만 그 ID로 다시 접수한다. 같은 PR을 기존 PR 실행기와 flow 실행기가 동시에 제어하지 않는다.
 
-SDK 계약·planhub mock은 specs/2026-10/20261009-sdk-task-flow-contract에서 추적한다. durable host는 [구현 spec](../specs/2026-10/20261009-durable-sdk-host/spec.md)에서 추적한다. 후속 planhub application·specrig/PR·범위 연결은 workbench의 `docs/planhub-autohub-task-flow-design.md` F3~F4와 planhub PROP-autohub-delivery-host에 연결된다. 기존 단일 pipeline 소비자는 manifest v1과 로컬 실행을 계속 사용할 수 있다.
+SDK 계약·planhub mock은 specs/2026-10/20261009-sdk-task-flow-contract에서 추적한다. durable host는 [구현 spec](../specs/2026-10/20261009-durable-sdk-host/spec.md)에서 추적한다. planhub application·specrig/PR bridge는 로컬 구현했고 운영 검증·범위 연결은 workbench의 `docs/planhub-autohub-task-flow-design.md` F3~F4와 planhub PROP-autohub-delivery-host에 연결된다. 기존 단일 pipeline 소비자는 manifest v1과 로컬 실행을 계속 사용할 수 있다.
 
 
 ## 인증과 실행 대상
 
 관리 API에서 발급한 `X-API-Key`를 사용한다. `autohub:task:write`는 등록·활성화·실행·제어, `autohub:task:read`는 조회에 필요하다. approve/revise는 write와 `autohub:task:approve`가 모두 필요하다. provider/environment는 최초 등록 machine이 소유하며 같은 machine의 key 교체는 소유권을 유지한다. command 원장에는 machine/key actor와 receipt를 남긴다. 일반 승인 명령은 PR head·review evidence의 검증을 대신하지 않는다.
 
-native executor는 부작용 없는 `autohub.identity`만 지원한다. HTTP worker 설정과 프로토콜은 [개발 가이드](development.md#sdk-flow-host)를 따른다. 등록은 worker 코드 배포를 수행하지 않는다. host 한도는 provider/environment 64자, task key 256자, step ID 128자, 계약 버전 32비트 양의 정수, approval deadline 1년이다. JSON Schema는 draft 2020-12를 사용하고 외부 `$ref`는 거절한다.
+native executor는 `autohub.identity`와 서버 allowlist의 `autohub.specrig:<name>`·`autohub.pr_delivery:<name>`를 지원한다. HTTP worker 설정과 프로토콜은 [개발 가이드](development.md#sdk-flow-host)를 따른다. 등록은 worker 코드 배포를 수행하지 않는다. host 한도는 provider/environment 64자, task key 256자, step ID 128자, 계약 버전 32비트 양의 정수, approval deadline 1년이다. JSON Schema는 draft 2020-12를 사용하고 외부 `$ref`는 거절한다.
 
 `System maintenance`가 최대 32개 run을 한 단계씩 진행한다. GET·실행 접수는 worker를 실행하지 않는다. 승인 deadline은 명령 수신 때도 검사하고 기한 만료 전이는 다음 maintenance에서 기록한다. 외부 polling의 다음 시점은 5초 이후지만 실제 진행 간격은 dispatcher tick에 따른다. 취소는 외부 worker의 terminal 결과 확인까지 `canceling`이며, transport 오류·일반 404는 종료 증거로 사용하지 않는다.
+
+## planhub PR bridge
+
+[구현 spec](../specs/2026-10/20261009-planhub-pr-bridge/spec.md)의 첫 도메인 flow는 실제 checkout의 specrig 증거를 확인하고 명시적 승인 뒤 이미 외부에서 구현된 paused PipelineRun을 재개·관찰한다. 새 PR이나 실행기를 만들지 않는다. 서버 allowlist는 provider/environment·project·절대 checkout 경로를 release binding에 고정한다.
+
+실행 wire extension `expected_release_id`·`expected_release_digest`는 현재 활성 release를 확인하여 잘못된 정의 실행을 접수 전에 409로 거절한다. 필드를 생략한 SDK 0.2.0 요청은 기존 계약을 유지한다. planhub는 Pydantic RunRequest subclass로 필드를 전달하며 SDK dependency는 기존 pushed commit에 고정한다.
+
+깨끗한 Git HEAD와 실제 `specrig workflow show/next --format json`의 review·resolved reconcile·completed spec·final-report 및 human gate를 확인한다. PR claim은 DB에 유일하고 approve scope로 발급한 명령의 actor·revision·evidence digest를 저장한다. delivery 단계만 정의해서 승인을 우회할 수 없다. 재개 전 증거·GitHub head·PR revision을 재검사하고 기존 Resume receipt의 attempt ID를 사용한다. worker 재시작은 같은 receipt를 회수한다.
+
+PR ready·CI·merge는 기존 PipelineRun owner가 소유한다. flow는 pending·paused/blocked 오류·terminal 결과를 투영한다. 취소는 claim tombstone과 기존 run cancel로 제어를 중단하며 이미 게시한 외부 agent 요청이나 효과는 롤백하지 않는다. CLI/git·checkout 배치는 별도이며 live GitHub CI/merge와 전체 개발 workflow 연결을 이번 fixture 검증으로 완료 처리하지 않는다.

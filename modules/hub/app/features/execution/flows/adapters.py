@@ -11,6 +11,7 @@ from app_http_client import get_http_client
 from autohub_sdk import ReleaseSpec, TaskRef, content_digest
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .bridge_config import DeliveryTarget
 from .errors import FlowError
 
 
@@ -31,15 +32,28 @@ class HttpTarget(BaseModel):
 
 
 class WorkerBindings:
-    def __init__(self, targets: dict[str, HttpTarget] | None = None):
+    def __init__(
+        self, targets: dict[str, HttpTarget] | None = None, deliveries: dict[str, DeliveryTarget] | None = None
+    ):
         self.targets = targets or {}
+        self.deliveries = deliveries or {}
 
-    def resolve(self, release: ReleaseSpec) -> dict:
+    def resolve(self, release: ReleaseSpec, provider=None, environment=None) -> dict:
         resolved = {}
         for binding in release.bindings:
             key = f"{binding.task.key}@{binding.task.contract_version}"
             if binding.executor == "native" and binding.target == "autohub.identity":
                 resolved[key] = {"executor": "native", "target": binding.target}
+            elif binding.executor == "native" and binding.target.startswith(
+                ("autohub.specrig:", "autohub.pr_delivery:")
+            ):
+                name = binding.target.split(":", 1)[1]
+                target = self.deliveries.get(name)
+                if target is None or (target.provider, target.environment) != (provider, environment):
+                    raise FlowError(
+                        422, "worker-binding", "delivery target is not configured for this provider environment"
+                    )
+                resolved[key] = {"executor": "native", "target": binding.target, **target.snapshot()}
             elif binding.executor == "http" and binding.target in self.targets:
                 resolved[key] = {
                     "executor": "http",
@@ -55,7 +69,8 @@ def get_worker_bindings() -> WorkerBindings:
     from pydantic import TypeAdapter
 
     targets = TypeAdapter(dict[str, HttpTarget]).validate_json(os.getenv("AUTOHUB_FLOW_HTTP_TARGETS", "{}"))
-    return WorkerBindings(targets)
+    deliveries = TypeAdapter(dict[str, DeliveryTarget]).validate_json(os.getenv("AUTOHUB_FLOW_DELIVERY_TARGETS", "{}"))
+    return WorkerBindings(targets, deliveries)
 
 
 class WorkerResult(BaseModel):
@@ -88,6 +103,10 @@ class WorkerAction:
 
 class WorkerAdapter:
     async def execute(self, action: WorkerAction) -> WorkerResult:
+        if action.binding["executor"] == "native" and action.binding["target"] != "autohub.identity":
+            from .bridge import PRBridgeWorker
+
+            return await PRBridgeWorker().execute(action)
         if action.binding["executor"] == "native":
             return WorkerResult(
                 attempt_id=action.attempt_id,

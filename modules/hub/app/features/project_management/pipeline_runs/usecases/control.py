@@ -70,6 +70,8 @@ class PipelineRunControl:
         expected_revision: int | None = None,
         request: ResumeRunRequest | None = None,
         actor: str = "operator",
+        expected_head_sha: str | None = None,
+        guard=None,
     ) -> PipelineRunRead:
         interactions = RunInteractionService()
         digest = (
@@ -104,6 +106,8 @@ class PipelineRunControl:
             run = await self.repo.get(session, run_id, lock=True)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
+            if guard is not None:
+                await guard(session, run)
             if result := await replay(session, run):
                 return result
             if expected_revision is not None and run.revision != expected_revision:
@@ -156,6 +160,8 @@ class PipelineRunControl:
             pull = prior.pull_request.model_copy(
                 update={"head_sha": pr["head"]["sha"], "head_ref": pr["head"]["ref"], "base_ref": pr["base"]["ref"]}
             )
+            if expected_head_sha is not None and pull.head_sha != expected_head_sha:
+                raise ProjectError(409, "PR head changed since flow approval")
             if not pull.head_sha or not pull.head_ref or not pull.base_ref:
                 raise ValueError("Missing pull request revision")
         except TimeoutError:
@@ -167,6 +173,8 @@ class PipelineRunControl:
 
         async with AsyncTransaction() as session:
             run = await self.repo.get(session, run_id, lock=True)
+            if guard is not None and run is not None:
+                await guard(session, run)
             if run is not None and (result := await replay(session, run)):
                 return result
             if run is None or run.revision != expected_revision:
