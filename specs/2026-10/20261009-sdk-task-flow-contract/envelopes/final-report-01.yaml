@@ -1,0 +1,22 @@
+{
+  "kind": "final-report",
+  "status": "completed",
+  "summary": "SDK 0.2.0 remote task/flow 계약·HTTP client와 기존 API 호환을 구현·검증했다. 커밋·발행·운영 배포는 수행하지 않았다.",
+  "findings": [],
+  "checks": {
+    "tests": "PASS SDK 27; installed-wheel HTTP/CLI 18",
+    "static": "PASS just lint/check; uv lock --check",
+    "build": "PASS just build-sdk wheel/sdist"
+  },
+  "assumptions": [
+    "실제 backend catalog·durable flow 실행기는 F2 후속이다.",
+    "SDK는 기존 host X-API-Key convention을 사용한다."
+  ],
+  "unverified_areas": [
+    "실제 worker deployment·DB recovery·GitHub 승인 evidence"
+  ],
+  "diff_scope": {
+    "base": "HEAD",
+    "head": "worktree"
+  }
+}

@@ -38,7 +38,9 @@
 ## 로컬 구현, 미발행
 
 - [autohub-sdk](../packages/sdk/README.md): `@pipeline` 선언, 입출력 검증, `Registry`, JSON manifest export,
-  로컬 실행 예제. 원격 등록·Cloud Run 실행·단계별 복구는 없다.
+  로컬 실행 예제. 0.2.0은 task/approval 순차 FlowSpec·release/run/command wire 모델과 HTTP client를
+  제공한다. planhub의 독립 환경 mock에서 실제 HTTP 등록·실행·대기·재개·오류 시나리오를 검증한다.
+  [SDK 계약](sdk-task-flow.md)에 현재 범위가 있다. 실제 backend 원격 catalog·Cloud Run task 실행·DB 단계별 복구는 미구현이다.
 
 ## 운영 상수와 호환성
 

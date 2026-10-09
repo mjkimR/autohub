@@ -1,0 +1,18 @@
+{
+  "kind": "review",
+  "status": "completed",
+  "summary": "기존 v1/local 회귀와 SDK 모델·HTTP 오류·redirect 테스트 27개, 분리 wheel mock HTTP/CLI 테스트 18개를 확인했다. 미해결 발견 없음.",
+  "findings": [],
+  "checks": {
+    "tests": "PASS SDK 27; installed-wheel HTTP/CLI 18",
+    "static": "PASS just lint/check; uv lock --check",
+    "build": "PASS just build-sdk wheel/sdist"
+  },
+  "assumptions": [
+    "실제 backend catalog·durable flow 실행기는 F2 후속이다.",
+    "SDK는 기존 host X-API-Key convention을 사용한다."
+  ],
+  "unverified_areas": [
+    "실제 worker deployment·DB recovery·GitHub 승인 evidence"
+  ]
+}

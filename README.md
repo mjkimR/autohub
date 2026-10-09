@@ -34,7 +34,9 @@ are manually installed starter files.
 
 Python/FastAPI lives in `modules/hub`; Svelte/TypeScript in `modules/hub-ui`.
 The standalone [pipeline SDK](packages/sdk/README.md) lives in `packages/sdk`.
-It currently supports local declarations, validation, and manifest export only.
+It supports local declarations and validation, manifest export, remote task/flow
+contracts, and an HTTP client. Remote host APIs and durable flow execution are
+not implemented; the first consumer validates the client against a local mock.
 PostgreSQL is the standard database, with SQLite used for default testing.
 [justfile](justfile) defines commands, aliases, and defaults; run `just --list`.
 

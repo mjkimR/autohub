@@ -1,6 +1,6 @@
 [project]
 name = "autohub-sdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Pipeline declarations and manifest export for Auto Hub consumers"
 readme = "README.md"
 requires-python = ">=3.13"
