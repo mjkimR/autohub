@@ -12,6 +12,7 @@
 	import ProjectScheduleDialog from './ProjectScheduleDialog.svelte';
 	import AgentSchedulesDialog from '../agent-schedules/AgentSchedulesDialog.svelte';
 	import PipelineRunsView from '../pipeline-runs/PipelineRunsView.svelte';
+	import RepositoryView from '../repositories/RepositoryView.svelte';
 	import { projectTabs, type ProjectTab } from './project-tabs';
 	let { projectId, tab = 'overview' }: { projectId: string; tab?: ProjectTab } = $props();
 	let project = $state<components['schemas']['ProjectRead'] | null>(null);
@@ -102,6 +103,7 @@
 		</nav>
 		{#key `${project.id}:${project.revision}:${tab}`}
 			{#if tab === 'overview'}<ProjectOverview {project} />
+			{:else if tab === 'repository'}<RepositoryView {project} />
 			{:else if tab === 'plans'}<WorkPlansPanel {project} />
 			{:else if tab === 'runs'}<PipelineRunsView scopedProject={project} />
 			{:else if tab === 'connections'}<ProjectConnections

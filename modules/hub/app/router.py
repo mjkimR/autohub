@@ -19,6 +19,7 @@ from app.features.project_management.pipeline_runs.api.interactions import route
 from app.features.project_management.pipeline_runs.api.v1 import router as v1_pipeline_runs_router
 from app.features.project_management.pipelines.api.v1 import router as v1_pipelines_router
 from app.features.project_management.projects.api.v1 import router as v1_projects_router
+from app.features.project_management.repositories.api.v1 import router as v1_repositories_router
 from app.features.project_management.work_plans.api import router as v1_work_plans_router
 from app.features.scheduling.schedule_configs.api.v1 import router as v1_schedule_configs_router
 from app.features.scheduling.schedule_jobs.api.v1 import router as v1_schedule_jobs_router
@@ -69,6 +70,7 @@ v1_router.include_router(v1_pipelines_router)
 v1_router.include_router(v1_pipeline_runs_router)
 v1_router.include_router(v1_interactions_router)
 v1_router.include_router(v1_projects_router)
+v1_router.include_router(v1_repositories_router)
 v1_router.include_router(v1_work_plans_router)
 v1_router.include_router(v1_connection_tests_router)
 v1_router.include_router(v1_agent_schedules_router)
