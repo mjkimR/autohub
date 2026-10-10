@@ -26,28 +26,18 @@
 	let readmeBlob = $state<RepoBlob | null>(null);
 
 	let viewerMode = $state<ViewerMode>('default');
+	let viewerRevision = $state(0);
 	let loading = $state(true);
 	let error = $state('');
 
-	// Check if the project has a custom viewer configuration in its metadata/automation
-	let customViewerConfig = $derived.by<CustomViewerConfig | null>(() => {
-		const auto = (project.github?.automation || {}) as Record<string, unknown>;
-		if (auto.viewer && typeof auto.viewer === 'object') {
-			const v = auto.viewer as Record<string, unknown>;
-			if (typeof v.tagName === 'string' && typeof v.scriptUrl === 'string') {
-				return {
-					tagName: v.tagName,
-					scriptUrl: v.scriptUrl,
-					version: typeof v.version === 'string' ? v.version : undefined
-				};
-			}
-		}
-		// Default specrig viewer preset if repo has specrig indication
-		return {
-			tagName: 'specrig-repo-viewer',
-			scriptUrl: '/plugins/specrig/viewer.js',
-			version: '1.0.0'
-		};
+	let customViewerConfig = $derived<CustomViewerConfig | null>(
+		project.github?.automation?.repository_viewer &&
+			project.github.automation.repository_viewer !== 'default'
+			? { viewerId: project.github.automation.repository_viewer }
+			: null
+	);
+	$effect(() => {
+		if (!customViewerConfig) viewerMode = 'default';
 	});
 
 	let breadcrumbs = $derived.by(() => {
@@ -197,6 +187,7 @@
 					{#if info && (info.branches ?? []).length > 0}
 						<select
 							value={currentRef}
+							aria-label="Repository branch"
 							onchange={(e) => handleBranchChange(e.currentTarget.value)}
 							class="cursor-pointer bg-transparent font-mono text-xs font-semibold text-foreground outline-hidden"
 						>
@@ -248,14 +239,16 @@
 						Default View
 					</button>
 
-					<button
-						type="button"
-						onclick={() => (viewerMode = 'custom')}
-						class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'custom' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
-					>
-						<Sparkles class="h-3.5 w-3.5 text-amber-300 dark:text-amber-400" />
-						Custom Specrig View
-					</button>
+					{#if customViewerConfig}
+						<button
+							type="button"
+							onclick={() => (viewerMode = 'custom')}
+							class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'custom' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+						>
+							<Sparkles class="h-3.5 w-3.5 text-amber-300 dark:text-amber-400" />
+							Custom View
+						</button>
+					{/if}
 				</div>
 
 				<Button
@@ -263,15 +256,17 @@
 					size="sm"
 					class="h-8 gap-1.5 text-xs"
 					onclick={() =>
-						activeBlob
-							? openFile({
-									name: '',
-									path: activeBlob.path,
-									type: 'file',
-									size: activeBlob.size,
-									sha: activeBlob.sha
-								})
-							: loadTree(currentPath, currentRef)}
+						viewerMode === 'custom'
+							? viewerRevision++
+							: activeBlob
+								? openFile({
+										name: '',
+										path: activeBlob.path,
+										type: 'file',
+										size: activeBlob.size,
+										sha: activeBlob.sha
+									})
+								: loadTree(currentPath, currentRef)}
 				>
 					<RefreshCw class="h-3.5 w-3.5" />
 					Refresh
@@ -302,12 +297,15 @@
 		{:else if viewerMode === 'custom' && customViewerConfig}
 			<!-- Custom Web Component Slot -->
 			<section class="rounded-xl border bg-card p-6 shadow-xs">
-				<CustomViewerHost
-					config={customViewerConfig}
-					projectId={project.id}
-					apiBase={`/api/v1/projects/${project.id}/repository`}
-					ref={currentRef}
-				/>
+				{#key viewerRevision}
+					<CustomViewerHost
+						config={customViewerConfig}
+						projectId={project.id}
+						apiBase={`/api/v1/projects/${project.id}/repository`}
+						ref={currentRef}
+						onfallback={() => (viewerMode = 'default')}
+					/>
+				{/key}
 			</section>
 		{:else if activeBlob}
 			<!-- File Content Viewer -->

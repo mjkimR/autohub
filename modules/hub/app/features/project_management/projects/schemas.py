@@ -30,6 +30,7 @@ class GitHubAutomationConfig(BaseModel):
     # How many of the project's runs may be with an agent or in CI at once; further enrolled runs stay queued.
     # Paused and blocked runs wait for a person and hold no slot. Empty leaves only the AI catalog's limits.
     max_in_flight_runs: int | None = Field(default=None, ge=1, le=50)
+    repository_viewer: str = Field(default="default", pattern=r"^[a-z][a-z0-9-]{0,63}$")
 
 
 class GitHubProjectConnection(BaseModel):
@@ -179,6 +180,7 @@ class GitHubAutomationPatch(BaseModel):
     auto_enroll_sessions: bool | None = None
     dispatch_interval_seconds: int | None = Field(default=None, ge=30, le=3600)
     max_in_flight_runs: int | None = Field(default=None, ge=1, le=50, description="null removes the project limit")
+    repository_viewer: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9-]{0,63}$")
 
 
 class VerificationPatch(BaseModel):

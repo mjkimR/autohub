@@ -20,6 +20,7 @@ These documents explicitly distinguish between design goals and current function
 15. [Run decisions and recovery](run-decisions.md): Questions, answers, explicit resume, provider markers, idempotency and replacement work.
 16. [MCP tool review](mcp-tool-review-2026-09-29.md): Work/operations split and per-tool retain/improve/reconsider ratings (Korean).
 17. [Work Plan backlog and activity](work-plan-backlog.md): Draft/proposed/ready lifecycle, comments and change history contract.
+18. [Repository viewer](repository-viewer.md): Per-repository renderer selection, authentication, and deployment-time plugin installation.
 
 [Google login and approval](google-auth.md) describes the implementation, published dependency pins, configuration, and the completed live validation.
 

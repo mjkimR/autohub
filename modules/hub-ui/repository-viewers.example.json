@@ -1,0 +1,19 @@
+{
+	"viewers": [
+		{
+			"id": "specrig",
+			"label": "Specrig Documents",
+			"tagName": "specrig-repo-viewer",
+			"initialPath": "docs/",
+			"url": "https://YOUR_ARTIFACT_HOST/specrig/VERSION/specrig-viewer.js",
+			"sha256": "REPLACE_WITH_SHA256_OF_THE_RELEASED_BUNDLE"
+		},
+		{
+			"id": "custom-architecture",
+			"label": "Architecture Explorer",
+			"tagName": "architecture-repo-viewer",
+			"url": "https://YOUR_ARTIFACT_HOST/architecture/VERSION/viewer.js",
+			"sha256": "REPLACE_WITH_SHA256_OF_THE_RELEASED_BUNDLE"
+		}
+	]
+}

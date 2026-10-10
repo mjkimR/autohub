@@ -220,6 +220,11 @@ export interface components {
             dispatch_interval_seconds: number;
             /** Max In Flight Runs */
             max_in_flight_runs?: number | null;
+            /**
+             * Repository Viewer
+             * @default default
+             */
+            repository_viewer: string;
         };
         /**
          * GitHubAutomationPatch
@@ -245,6 +250,8 @@ export interface components {
              * @description null removes the project limit
              */
             max_in_flight_runs?: number | null;
+            /** Repository Viewer */
+            repository_viewer?: string | null;
         };
         /**
          * GitHubConnectionPatch

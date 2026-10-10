@@ -37,6 +37,8 @@
 
 ## 로컬 구현, 미발행
 
+- [저장소 문서 뷰어](repository-viewer.md): 저장소별 렌더러 ID 선택, 인증 클라이언트를 통한 조회·갱신, branch 전달 및 Git에서 무시되는 배포 설정 기반 다중 렌더러 설치를 연결했다. 로컬 자동화 검증과 운영 배포 검증은 구분한다.
+
 - [autohub-sdk](../packages/sdk/README.md): `@pipeline` 선언, 입출력 검증, `Registry`, JSON manifest export,
   로컬 실행 예제. 0.2.0은 task/approval 순차 FlowSpec·release/run/command wire 모델과 HTTP client를
   제공한다. planhub의 독립 환경 mock에서 실제 HTTP 등록·실행·대기·재개·오류 시나리오를 검증한다.

@@ -7,9 +7,13 @@ export type RepoInfo = components['schemas']['RepoInfoRead'];
 
 export type ViewerMode = 'default' | 'custom';
 
-export interface CustomViewerConfig {
-	type?: string;
+export interface InstalledViewer {
+	id: string;
+	label: string;
 	scriptUrl: string;
 	tagName: string;
-	version?: string;
+	version: string;
+	initialPath?: string;
 }
+
+export type CustomViewerConfig = InstalledViewer | { viewerId: string };

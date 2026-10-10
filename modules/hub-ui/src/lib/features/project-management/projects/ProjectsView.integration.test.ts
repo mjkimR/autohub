@@ -26,6 +26,7 @@ const project = {
 		verification: { workflow: 'ci.yml', required_jobs: ['lint', 'test'], event: 'pull_request' },
 		automation: {
 			auto_merge: true,
+			repository_viewer: 'default',
 			merge_method: 'squash',
 			auto_fix_ci: true,
 			auto_fix_conflicts: false,

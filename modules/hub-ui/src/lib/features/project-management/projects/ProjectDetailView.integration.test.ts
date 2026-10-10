@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/sv
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import ProjectDetailView from './ProjectDetailView.svelte';
+import ProjectSettingsForm from './ProjectSettingsForm.svelte';
 import ConnectionTestsPanel from './ConnectionTestsPanel.svelte';
 import type { components } from '$lib/api';
 import { projectTab } from './project-tabs';
@@ -10,6 +11,16 @@ const { api } = vi.hoisted(() => ({
 	api: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), DELETE: vi.fn() }
 }));
 vi.mock('$lib/api', () => ({ api }));
+vi.mock('../repositories/viewer-loader', () => ({
+	readViewerRegistry: async () =>
+		['specrig', 'custom-architecture'].map((id) => ({
+			id,
+			label: id,
+			tagName: `${id}-viewer`,
+			version: '0'.repeat(64),
+			scriptUrl: `/plugins/repository-viewers/${id}/viewer.${'0'.repeat(64)}.js`
+		}))
+}));
 vi.mock('svelte-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() } }));
 
 const project = {
@@ -25,6 +36,7 @@ const project = {
 		verification: { workflow: 'ci.yml', required_jobs: ['test'], event: 'pull_request' },
 		automation: {
 			auto_merge: true,
+			repository_viewer: 'default',
 			merge_method: 'squash',
 			auto_fix_ci: true,
 			auto_fix_conflicts: false,
@@ -308,4 +320,31 @@ test('a new recipe renders its own prerequisites without a provider-specific UI 
 		(screen.getByRole('button', { name: 'Start PR test' }) as HTMLButtonElement).disabled
 	).toBe(true);
 	expect(screen.queryByText('Personal Codex instructions')).toBeNull();
+});
+
+test('connection settings save a custom renderer while preserving automation policy', async () => {
+	const user = userEvent.setup();
+	render(ProjectSettingsForm, {
+		project,
+		connectors: [],
+		catalogs: [],
+		section: 'connection',
+		onsaved: vi.fn()
+	});
+	await screen.findByRole('option', { name: 'custom-architecture' });
+	await user.selectOptions(
+		screen.getByRole('combobox', { name: 'Repository viewer' }),
+		'custom-architecture'
+	);
+	await user.click(screen.getByRole('button', { name: 'Save Changes' }));
+	expect(api.PATCH).toHaveBeenCalledWith(
+		'/api/v1/projects/{project_id}',
+		expect.objectContaining({
+			body: expect.objectContaining({
+				github: expect.objectContaining({
+					automation: { ...project.github.automation, repository_viewer: 'custom-architecture' }
+				})
+			})
+		})
+	);
 });

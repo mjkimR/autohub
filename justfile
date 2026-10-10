@@ -223,3 +223,15 @@ update-password password="":
 # Provision/reuse the deployment's scheduler credential through the M2M API
 provision-scheduler +args="":
     python3 scripts/provision-scheduler.py {{ args }}
+
+# Install a deployed viewer using ignored deployment-local settings
+install-repository-viewers config="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source ./scripts/_lib.sh
+    activate_frontend_node
+    if [ -n "{{ config }}" ]; then
+        node modules/hub-ui/scripts/prepare-viewers.mjs "{{ config }}"
+    else
+        node modules/hub-ui/scripts/prepare-viewers.mjs
+    fi

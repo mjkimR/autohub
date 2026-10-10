@@ -75,6 +75,7 @@ class TestProjectWrite:
             "auto_enroll_sessions": True,
             "dispatch_interval_seconds": 60,
             "max_in_flight_runs": None,
+            "repository_viewer": "default",
         }
 
     @pytest.mark.parametrize("interval", [29, 3601])
@@ -176,3 +177,26 @@ class TestTemplates:
             assert "pull_request" in template.content
             for job in template.required_jobs:
                 assert f"{job}:" in template.content
+
+
+@pytest.mark.parametrize("viewer", ["default", "specrig", "custom-architecture"])
+def test_repository_viewer_patch_round_trips_without_changing_automation(viewer):
+    current = ProjectWrite.model_validate(make_write())
+    assert current.github is not None
+    patch = ProjectPatch.model_validate(
+        {"expected_revision": 1, "github": {"automation": {"repository_viewer": viewer}}}
+    )
+    updated = patch.apply_to(current)
+    assert updated.github is not None
+    assert updated.github.automation.repository_viewer == viewer
+    assert updated.github.automation.auto_merge == current.github.automation.auto_merge
+    preserved = ProjectPatch.model_validate({"expected_revision": 2, "name": "Renamed"}).apply_to(updated)
+    assert preserved.github is not None
+    assert preserved.github.automation.repository_viewer == viewer
+
+
+def test_repository_viewer_rejects_invalid_renderer_id():
+    data = make_write()
+    data["github"]["automation"] = {"repository_viewer": "https://untrusted.example/viewer.js"}
+    with pytest.raises(ValidationError):
+        ProjectWrite.model_validate(data)

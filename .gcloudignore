@@ -1,0 +1,5 @@
+# Upload the same source context as Docker, including optional deployment-local viewer metadata.
+.gcloudignore
+.git
+.gitignore
+#!include:.dockerignore
