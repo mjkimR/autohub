@@ -55,6 +55,18 @@ class TestProjectWrite:
         with pytest.raises(ValidationError):
             ProjectWrite.model_validate(make_write(template_id="python-poetry"))
 
+    def test_project_type_defaults_to_general(self):
+        project = ProjectWrite.model_validate(make_write())
+        assert project.project_type == "general"
+
+    def test_project_type_accepts_specrig(self):
+        project = ProjectWrite.model_validate(make_write(project_type="specrig"))
+        assert project.project_type == "specrig"
+
+    def test_invalid_project_type_is_rejected(self):
+        with pytest.raises(ValidationError):
+            ProjectWrite.model_validate(make_write(project_type="invalid"))
+
     def test_observation_config_carries_the_saved_connection(self):
         data = ProjectWrite.model_validate(make_write())
         assert data.github is not None

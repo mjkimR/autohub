@@ -7,14 +7,14 @@
 	},
 	"type": "module",
 	"scripts": {
-		"dev": "node scripts/prepare-viewers.mjs && vite dev --port 5173",
-		"build": "node scripts/prepare-viewers.mjs && vite build",
+		"dev": "vite dev --port 5173",
+		"build": "vite build",
 		"preview": "vite preview --port 5173",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
-		"test": "node --test --test-isolation=none scripts/prepare-viewers.test.mjs && vitest run",
+		"test": "vitest run",
 		"format": "prettier --write .",
 		"gen:api": "sh scripts/gen-api.sh",
 		"test:unit": "vitest run --project unit",
@@ -61,6 +61,11 @@
 		"vitest": "^5.0.0"
 	},
 	"dependencies": {
-		"openapi-fetch": "^0.17.0"
+		"@types/dompurify": "^3.0.5",
+		"dompurify": "^3.4.16",
+		"marked": "^18.1.0",
+		"mermaid": "^12.1.0",
+		"openapi-fetch": "^0.17.0",
+		"yaml": "^2.9.1"
 	}
 }

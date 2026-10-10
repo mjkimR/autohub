@@ -62,6 +62,7 @@
 	let isCreateOpen = $state(false);
 	let isCreating = $state(false);
 	let newName = $state('');
+	let newProjectType = $state<'general' | 'specrig'>('general');
 
 	let editingProject = $state<Project | null>(null);
 
@@ -111,6 +112,7 @@
 			const res = await api.POST('/api/v1/projects', {
 				body: {
 					name: newName.trim(),
+					project_type: newProjectType,
 					enabled: true
 				}
 			});
@@ -121,6 +123,7 @@
 				toast.success(`Project ${newName} created`);
 				isCreateOpen = false;
 				newName = '';
+				newProjectType = 'general';
 				loadProjects();
 			}
 		} catch {
@@ -248,9 +251,19 @@
 						<TableRow class="transition-colors hover:bg-muted/40">
 							<TableCell class="font-semibold text-foreground">
 								<div class="flex flex-col gap-0.5">
-									<a class="hover:text-primary hover:underline" href={`/projects/${project.id}`}
-										>{project.name}</a
-									>
+									<div class="flex items-center gap-1.5">
+										<a class="hover:text-primary hover:underline" href={`/projects/${project.id}`}
+											>{project.name}</a
+										>
+										{#if project.project_type === 'specrig'}
+											<Badge
+												variant="outline"
+												class="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-500"
+											>
+												specrig
+											</Badge>
+										{/if}
+									</div>
 									<span class="font-mono text-[11px] text-muted-foreground"
 										>rev {project.revision}</span
 									>
@@ -420,6 +433,19 @@
 						>Project Name</label
 					>
 					<Input id="pName" placeholder="e.g. backend-pipeline" bind:value={newName} required />
+				</div>
+				<div class="space-y-2">
+					<label for="pType" class="text-xs font-semibold text-muted-foreground uppercase"
+						>Project Type</label
+					>
+					<select
+						id="pType"
+						bind:value={newProjectType}
+						class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs"
+					>
+						<option value="general">General (Standard Git Repository)</option>
+						<option value="specrig">Specrig (Spec-Driven Engineering)</option>
+					</select>
 				</div>
 				<DialogFooter class="pt-4">
 					<Button type="button" variant="outline" onclick={() => (isCreateOpen = false)}>

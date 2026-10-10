@@ -325,6 +325,8 @@ export interface components {
             expected_revision: number;
             /** Name */
             name?: string | null;
+            /** Project Type */
+            project_type?: ("general" | "specrig") | null;
             /** Enabled */
             enabled?: boolean | null;
             /** @description null disconnects GitHub */
@@ -334,6 +336,12 @@ export interface components {
         ProjectRead: {
             /** Name */
             name: string;
+            /**
+             * Project Type
+             * @default general
+             * @enum {string}
+             */
+            project_type: "general" | "specrig";
             github?: components["schemas"]["GitHubProjectConnection"] | null;
             /**
              * Enabled
@@ -373,6 +381,12 @@ export interface components {
         ProjectWrite: {
             /** Name */
             name: string;
+            /**
+             * Project Type
+             * @default general
+             * @enum {string}
+             */
+            project_type: "general" | "specrig";
             github?: components["schemas"]["GitHubProjectConnection"] | null;
             /**
              * Enabled

@@ -9,6 +9,7 @@ from app.features.project_management.pipeline_runs.schemas import LeaseGrant
 from app.features.project_management.pipeline_runs.usecases.delivery import CATALOG_HOLD_CODE
 from app.features.project_management.pipelines.github import GitHubObservationError
 from app.features.project_management.projects.errors import ProjectError
+from app.features.project_management.projects.models import Project  # noqa: F401
 from app.features.project_management.projects.schemas import ProjectDispatchPayload
 
 pytestmark = pytest.mark.unit
@@ -28,6 +29,16 @@ def project_run_limit(monkeypatch):
     limit = AsyncMock(return_value=None)
     monkeypatch.setattr("app.features.execution.tasks.domains.pipeline.task._project_run_limit", limit)
     return limit
+
+
+@pytest.fixture(autouse=True)
+def mock_work_plan_execution(monkeypatch):
+    advance = AsyncMock()
+    monkeypatch.setattr(
+        "app.features.execution.tasks.domains.pipeline.task.WorkPlanExecution.advance_project",
+        advance,
+    )
+    return advance
 
 
 async def test_dispatch_task_fails_outside_task_context():

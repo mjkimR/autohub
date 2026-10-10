@@ -6,8 +6,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { GitBranch } from '@lucide/svelte';
-	import { readViewerRegistry } from '../repositories/viewer-loader';
-	import type { InstalledViewer } from '../repositories/types';
 	type Project = components['schemas']['ProjectRead'];
 	let {
 		project,
@@ -27,6 +25,7 @@
 	// Edit / Settings dialog
 	let isUpdating = $state(false);
 	let editName = $state('');
+	let editProjectType = $state<'general' | 'specrig'>('general');
 	let editEnabled = $state(true);
 	let hasGithub = $state(false);
 	let githubRepo = $state('');
@@ -43,11 +42,10 @@
 	// Empty leaves only the AI catalog's limits.
 	let maxInFlightRuns = $state('');
 	let aiCatalogId = $state('');
-	let repositoryViewer = $state('default');
-	let installedViewers = $state<InstalledViewer[]>([]);
 
 	function initialize(project: Project) {
 		editName = project.name;
+		editProjectType = project.project_type ?? 'general';
 		editEnabled = project.enabled;
 		if (project.github) {
 			hasGithub = true;
@@ -63,7 +61,6 @@
 			autoEnrollSessions = project.github.automation?.auto_enroll_sessions ?? true;
 			dispatchIntervalSeconds = String(project.github.automation?.dispatch_interval_seconds ?? 60);
 			maxInFlightRuns = String(project.github.automation?.max_in_flight_runs ?? '');
-			repositoryViewer = project.github.automation?.repository_viewer ?? 'default';
 			aiCatalogId = project.github.ai_catalog_id ?? '';
 		} else {
 			hasGithub = false;
@@ -80,7 +77,6 @@
 			dispatchIntervalSeconds = '60';
 			maxInFlightRuns = '';
 			aiCatalogId = '';
-			repositoryViewer = 'default';
 		}
 	}
 
@@ -96,6 +92,7 @@
 
 			const body: components['schemas']['ProjectPatch'] = {
 				name: editName.trim(),
+				project_type: editProjectType,
 				enabled: editEnabled,
 				expected_revision: project.revision,
 				github: hasGithub
@@ -112,7 +109,6 @@
 							},
 							automation: {
 								...project.github?.automation,
-								repository_viewer: repositoryViewer,
 								auto_merge: autoMerge,
 								merge_method: mergeMethod,
 								auto_fix_ci: autoFixCi,
@@ -147,13 +143,6 @@
 
 	onMount(() => {
 		initialize(project);
-		void readViewerRegistry()
-			.then((viewers) => {
-				installedViewers = viewers;
-			})
-			.catch(() => {
-				/* Keep the saved selection when the registry is unavailable. */
-			});
 	});
 </script>
 
@@ -166,6 +155,19 @@
 					>Project Name</label
 				>
 				<Input id="editName" bind:value={editName} required />
+			</div>
+			<div class="space-y-1.5">
+				<label for="editProjectType" class="text-xs font-semibold text-muted-foreground uppercase"
+					>Project Type</label
+				>
+				<select
+					id="editProjectType"
+					bind:value={editProjectType}
+					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs"
+				>
+					<option value="general">General (Standard Git repository)</option>
+					<option value="specrig">Specrig (Spec-Driven Development with Living Spec)</option>
+				</select>
 			</div>
 			<div class="flex items-center gap-2">
 				<input
@@ -201,26 +203,6 @@
 			{/if}
 			{#if hasGithub}
 				<div class="space-y-3 pt-2">
-					<div class="space-y-1">
-						<label
-							for="repositoryViewer"
-							class="text-[11px] font-semibold text-muted-foreground uppercase"
-							>Repository viewer</label
-						>
-						<select
-							id="repositoryViewer"
-							bind:value={repositoryViewer}
-							class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-						>
-							<option value="default">Git browser</option>
-							{#each installedViewers as viewer (viewer.id)}
-								<option value={viewer.id}>{viewer.label}</option>
-							{/each}
-							{#if repositoryViewer !== 'default' && !installedViewers.some((viewer) => viewer.id === repositoryViewer)}
-								<option value={repositoryViewer}>{repositoryViewer} (unavailable)</option>
-							{/if}
-						</select>
-					</div>
 					{#if section !== 'automation'}
 						<div class="space-y-1">
 							<label for="ghRepo" class="text-[11px] font-semibold text-muted-foreground uppercase">

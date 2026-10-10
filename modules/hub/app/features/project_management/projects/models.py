@@ -12,6 +12,7 @@ class Project(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "projects"
 
     name: Mapped[str] = mapped_column(String(255))
+    project_type: Mapped[str] = mapped_column(String(50), nullable=False, default="general")
     github_repository: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     github_connector_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("connectors.id", ondelete="RESTRICT"), nullable=True

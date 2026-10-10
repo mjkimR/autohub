@@ -22,7 +22,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-CONFIG_FIELDS = {"name", "enabled", "github"}
+CONFIG_FIELDS = {"name", "project_type", "enabled", "github"}
 
 
 class ProjectService:
@@ -52,6 +52,7 @@ class ProjectService:
         await self.validate(session, data)
         values = {
             "name": data.name,
+            "project_type": data.project_type,
             "enabled": data.enabled,
             "github_repository": data.github.repository if data.github else None,
             "github_connector_id": data.github.github_connector_id if data.github else None,
@@ -81,6 +82,7 @@ class ProjectService:
             )
         await self.validate(session, data, project_id)
         project.name = data.name
+        project.project_type = data.project_type
         project.enabled = data.enabled
         project.github_repository = data.github.repository if data.github else None
         project.github_connector_id = data.github.github_connector_id if data.github else None

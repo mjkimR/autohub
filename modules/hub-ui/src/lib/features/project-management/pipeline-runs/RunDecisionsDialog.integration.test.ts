@@ -33,7 +33,8 @@ beforeEach(() => {
 });
 afterEach(() => {
 	cleanup();
-	document.body.style.removeProperty('pointer-events');
+	document.body.innerHTML = '';
+	document.body.removeAttribute('style');
 });
 
 test('saves an answer separately and explicitly resumes with the new revision', async () => {
@@ -71,6 +72,7 @@ test('saves an answer separately and explicitly resumes with the new revision', 
 			body: { request_id: expect.any(String), expected_revision: 3, answer_id: 'answer-1' }
 		})
 	);
+	await screen.findByText('Resume recorded. Agent delivery may still be pending.');
 });
 
 test('retries a lost answer response with the same request identity', async () => {
@@ -86,7 +88,7 @@ test('retries a lost answer response with the same request identity', async () =
 });
 
 test('keeps the answer request identity after response loss and a revision refresh', async () => {
-	const user = userEvent.setup();
+	const user = userEvent.setup({ delay: null });
 	api.POST.mockImplementationOnce(async () => {
 		api.GET.mockImplementation(async (path: string) => ({
 			data: path.endsWith('/questions')

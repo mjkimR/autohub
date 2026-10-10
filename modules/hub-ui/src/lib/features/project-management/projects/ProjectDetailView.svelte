@@ -4,6 +4,7 @@
 	import { allPages, responseData } from '$lib/api/pagination';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
+	import { Badge } from '$lib/components/ui/badge';
 	import { toast } from 'svelte-sonner';
 	import WorkPlansPanel from '../work-plans/WorkPlansPanel.svelte';
 	import ProjectOverview from './ProjectOverview.svelte';
@@ -75,7 +76,17 @@
 	{#if loading}<p>Loading project…</p>{:else if project}
 		<header class="flex flex-wrap items-center justify-between gap-4">
 			<div>
-				<h1 class="text-3xl font-semibold tracking-tight">{project.name}</h1>
+				<div class="flex items-center gap-2">
+					<h1 class="text-3xl font-semibold tracking-tight">{project.name}</h1>
+					{#if project.project_type === 'specrig'}
+						<Badge
+							variant="outline"
+							class="border-amber-500/30 bg-amber-500/10 text-xs text-amber-500"
+						>
+							specrig
+						</Badge>
+					{/if}
+				</div>
 				<p class="mt-2 text-sm text-muted-foreground">
 					{project.github?.repository ?? 'No repository connected'}
 				</p>

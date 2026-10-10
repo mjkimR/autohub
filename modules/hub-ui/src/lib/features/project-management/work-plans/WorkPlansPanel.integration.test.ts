@@ -49,6 +49,7 @@ const plan = {
 const project = {
 	id: 'p1',
 	name: 'Application',
+	project_type: 'general',
 	enabled: true,
 	github: { repository: 'owner/app' }
 } as components['schemas']['ProjectRead'];

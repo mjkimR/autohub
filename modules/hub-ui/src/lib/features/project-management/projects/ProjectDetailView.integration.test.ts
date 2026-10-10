@@ -11,21 +11,12 @@ const { api } = vi.hoisted(() => ({
 	api: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), DELETE: vi.fn() }
 }));
 vi.mock('$lib/api', () => ({ api }));
-vi.mock('../repositories/viewer-loader', () => ({
-	readViewerRegistry: async () =>
-		['specrig', 'custom-architecture'].map((id) => ({
-			id,
-			label: id,
-			tagName: `${id}-viewer`,
-			version: '0'.repeat(64),
-			scriptUrl: `/plugins/repository-viewers/${id}/viewer.${'0'.repeat(64)}.js`
-		}))
-}));
 vi.mock('svelte-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() } }));
 
 const project = {
 	id: 'p1',
 	name: 'Application',
+	project_type: 'general',
 	enabled: true,
 	revision: 4,
 	github: {
@@ -322,28 +313,22 @@ test('a new recipe renders its own prerequisites without a provider-specific UI 
 	expect(screen.queryByText('Personal Codex instructions')).toBeNull();
 });
 
-test('connection settings save a custom renderer while preserving automation policy', async () => {
+test('general settings save project_type successfully', async () => {
 	const user = userEvent.setup();
 	render(ProjectSettingsForm, {
 		project,
 		connectors: [],
 		catalogs: [],
-		section: 'connection',
+		section: 'general',
 		onsaved: vi.fn()
 	});
-	await screen.findByRole('option', { name: 'custom-architecture' });
-	await user.selectOptions(
-		screen.getByRole('combobox', { name: 'Repository viewer' }),
-		'custom-architecture'
-	);
+	await user.selectOptions(screen.getByRole('combobox', { name: 'Project Type' }), 'specrig');
 	await user.click(screen.getByRole('button', { name: 'Save Changes' }));
 	expect(api.PATCH).toHaveBeenCalledWith(
 		'/api/v1/projects/{project_id}',
 		expect.objectContaining({
 			body: expect.objectContaining({
-				github: expect.objectContaining({
-					automation: { ...project.github.automation, repository_viewer: 'custom-architecture' }
-				})
+				project_type: 'specrig'
 			})
 		})
 	);

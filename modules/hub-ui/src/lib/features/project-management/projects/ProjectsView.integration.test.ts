@@ -16,6 +16,7 @@ vi.mock('svelte-sonner', () => ({
 const project = {
 	id: 'p1',
 	name: 'Application',
+	project_type: 'general',
 	enabled: true,
 	revision: 4,
 	github: {
@@ -75,7 +76,7 @@ test('registers a project by name', async () => {
 
 	await waitFor(() =>
 		expect(api.POST).toHaveBeenCalledWith('/api/v1/projects', {
-			body: { name: 'backend-pipeline', enabled: true }
+			body: { name: 'backend-pipeline', project_type: 'general', enabled: true }
 		})
 	);
 });

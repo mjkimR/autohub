@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 TemplateId = Literal["python-uv", "node-npm"]
 MergeMethod = Literal["squash", "merge", "rebase"]
+ProjectType = Literal["general", "specrig"]
 
 
 class GitHubAutomationConfig(BaseModel):
@@ -57,6 +58,7 @@ class ProjectWrite(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=255)
+    project_type: ProjectType = "general"
     github: GitHubProjectConnection | None = None
     enabled: bool = True
 
@@ -152,6 +154,7 @@ class ProjectRead(UUIDSchemaMixin, TimestampSchemaMixin, ProjectWrite):
             "created_at": row.created_at,
             "updated_at": row.updated_at,
             "name": row.name,
+            "project_type": getattr(row, "project_type", "general"),
             "enabled": row.enabled,
             "github": github,
             "revision": row.revision,
@@ -216,6 +219,7 @@ class ProjectPatch(BaseModel):
 
     expected_revision: int = Field(ge=1, description="Reject edits based on an outdated project version.")
     name: str | None = Field(default=None, min_length=1, max_length=255)
+    project_type: ProjectType | None = None
     enabled: bool | None = None
     github: GitHubConnectionPatch | None = Field(default=None, description="null disconnects GitHub")
 

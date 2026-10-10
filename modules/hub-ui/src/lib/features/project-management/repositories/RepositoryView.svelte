@@ -6,15 +6,9 @@
 	import { Button } from '$lib/components/ui/button';
 	import FileTreeTable from './FileTreeTable.svelte';
 	import FileBlobViewer from './FileBlobViewer.svelte';
-	import CustomViewerHost from './CustomViewerHost.svelte';
-	import type {
-		RepoBlob,
-		RepoInfo,
-		RepoItem,
-		RepoTree,
-		ViewerMode,
-		CustomViewerConfig
-	} from './types';
+	import SpecrigViewer from './specrig/SpecrigViewer.svelte';
+	import { repositoryDataSource } from './data-source';
+	import type { RepoBlob, RepoInfo, RepoItem, RepoTree } from './types';
 
 	let { project }: { project: components['schemas']['ProjectRead'] } = $props();
 
@@ -25,20 +19,12 @@
 	let activeBlob = $state<RepoBlob | null>(null);
 	let readmeBlob = $state<RepoBlob | null>(null);
 
-	let viewerMode = $state<ViewerMode>('default');
+	let isSpecrig = $derived(project.project_type === 'specrig');
+	let userSelectedMode = $state<'default' | 'specrig' | null>(null);
+	let viewerMode = $derived(userSelectedMode ?? (isSpecrig ? 'specrig' : 'default'));
 	let viewerRevision = $state(0);
 	let loading = $state(true);
 	let error = $state('');
-
-	let customViewerConfig = $derived<CustomViewerConfig | null>(
-		project.github?.automation?.repository_viewer &&
-			project.github.automation.repository_viewer !== 'default'
-			? { viewerId: project.github.automation.repository_viewer }
-			: null
-	);
-	$effect(() => {
-		if (!customViewerConfig) viewerMode = 'default';
-	});
 
 	let breadcrumbs = $derived.by(() => {
 		if (!currentPath) return [];
@@ -229,34 +215,33 @@
 
 			<!-- View Mode & Action Controls -->
 			<div class="flex items-center gap-2">
-				<div class="flex rounded-lg border bg-muted/40 p-0.5 text-xs">
-					<button
-						type="button"
-						onclick={() => (viewerMode = 'default')}
-						class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'default' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
-					>
-						<Layers class="h-3.5 w-3.5" />
-						Default View
-					</button>
-
-					{#if customViewerConfig}
+				{#if isSpecrig}
+					<div class="flex rounded-lg border bg-muted/40 p-0.5 text-xs">
 						<button
 							type="button"
-							onclick={() => (viewerMode = 'custom')}
-							class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'custom' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+							onclick={() => (userSelectedMode = 'specrig')}
+							class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'specrig' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
 						>
 							<Sparkles class="h-3.5 w-3.5 text-amber-300 dark:text-amber-400" />
-							Custom View
+							Specrig View
 						</button>
-					{/if}
-				</div>
+						<button
+							type="button"
+							onclick={() => (userSelectedMode = 'default')}
+							class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'default' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+						>
+							<Layers class="h-3.5 w-3.5" />
+							Git Browser
+						</button>
+					</div>
+				{/if}
 
 				<Button
 					variant="outline"
 					size="sm"
 					class="h-8 gap-1.5 text-xs"
 					onclick={() =>
-						viewerMode === 'custom'
+						viewerMode === 'specrig'
 							? viewerRevision++
 							: activeBlob
 								? openFile({
@@ -290,20 +275,19 @@
 			</div>
 		{/if}
 
-		{#if loading && !tree && !activeBlob}
+		{#if loading && !tree && !activeBlob && viewerMode !== 'specrig'}
 			<div class="flex items-center justify-center py-20 text-sm text-muted-foreground">
 				Loading repository…
 			</div>
-		{:else if viewerMode === 'custom' && customViewerConfig}
-			<!-- Custom Web Component Slot -->
-			<section class="rounded-xl border bg-card p-6 shadow-xs">
+		{:else if viewerMode === 'specrig'}
+			<!-- Native Specrig Viewer -->
+			<section class="rounded-xl border bg-card p-4 shadow-xs">
 				{#key viewerRevision}
-					<CustomViewerHost
-						config={customViewerConfig}
-						projectId={project.id}
-						apiBase={`/api/v1/projects/${project.id}/repository`}
-						ref={currentRef}
-						onfallback={() => (viewerMode = 'default')}
+					<SpecrigViewer
+						dataSource={repositoryDataSource(project.id)}
+						branch={currentRef || 'main'}
+						repoId={project.github?.repository || project.name}
+						initialPath="docs/"
 					/>
 				{/key}
 			</section>
