@@ -79,9 +79,13 @@ test('an issued key is shown once with MCP connection snippets', async () => {
 		})
 	);
 	expect((await screen.findByTestId('issued-key')).textContent).toBe('ahk_secret');
+	expect(screen.getByText(/Antigravity \(\.agents\/mcp_config\.json\)/)).toBeDefined();
 	expect(screen.getByText(/claude mcp add --transport http autohub/).textContent).toContain(
 		'Bearer ahk_secret'
 	);
+	await user.click(screen.getByRole('tab', { name: 'Global' }));
+	expect(screen.getByText(/Antigravity \(~\/\.gemini\/config\/mcp_config\.json\)/)).toBeDefined();
+	expect(screen.getByText(/--scope user/).textContent).toContain('Bearer ahk_secret');
 	await user.click(screen.getByRole('button', { name: 'I stored the key' }));
 	expect(screen.queryByTestId('issued-key')).toBeNull();
 });

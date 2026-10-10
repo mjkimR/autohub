@@ -30,28 +30,51 @@ access, scheduler dispatch, credential editing or internal worker callbacks.
    `autohub:mcp:write`). A read-only connection needs only MCP read. Scopes apply
    to the whole installation; this first release does not provide project-specific ACLs.
 2. Under the machine's **Keys**, issue a key with a label and optional expiry.
-   The key is shown once with ready-to-copy Claude Code and Codex snippets; it is
+   The key is shown once with ready-to-copy Antigravity, Claude Code, and Codex snippets; it is
    not retrievable later. The same operations are available through
    `POST /api/v1/machines` and `POST /api/v1/machines/{machine_id}/keys` in `/docs`.
    Existing machine management also accepts the deployment root credential, but MCP does not.
-3. Make the key available as `AUTOHUB_MCP_KEY` in the environment of the client
-   process, then add this to your **user** `~/.codex/config.toml`:
+3. Configure your MCP client (Project-level or Global):
 
-   ```toml
-   [mcp_servers.autohub]
-   url = "https://YOUR_HUB_HOST/mcp/"
-   bearer_token_env_var = "AUTOHUB_MCP_KEY"
-   ```
+   - **Antigravity**:
+     - *Project-level*: Add to `.agents/mcp_config.json` in your repository root.
+     - *Global*: Add to `~/.gemini/config/mcp_config.json`.
+     ```json
+     {
+       "mcpServers": {
+         "autohub": {
+           "serverUrl": "https://YOUR_HUB_HOST/mcp/",
+           "headers": {
+             "Authorization": "Bearer <issued-key>"
+           }
+         }
+       }
+     }
+     ```
+   - **Codex**: Make the key available as `AUTOHUB_MCP_KEY` in the environment of the client process:
+     - *Project-level*: Add to `.codex/config.toml` in your repository root.
+     - *Global*: Add to your user `~/.codex/config.toml`.
+     ```toml
+     [mcp_servers.autohub]
+     url = "https://YOUR_HUB_HOST/mcp/"
+     bearer_token_env_var = "AUTOHUB_MCP_KEY"
+     ```
 
-   Restart the client after changing its environment/configuration. The variable
-   value is the issued key, without a `Bearer ` prefix. This uses the documented
-   [Codex HTTP MCP settings](https://developers.openai.com/codex/mcp#configure-with-configtoml).
-   No `codex mcp login` is needed: this endpoint uses manual bearer authentication,
-   not an OAuth discovery/login flow.
-4. Confirm the server appears in `/mcp` and ask it to list AutoHub projects.
-   For Claude Code, run the copied `claude mcp add --transport http ... --header
-   "Authorization: Bearer <key>"` command in the project directory; it registers the
-   server in local scope for that project only.
+     Restart the client after changing its environment/configuration. The variable
+     value is the issued key, without a `Bearer ` prefix. This uses the documented
+     [Codex HTTP MCP settings](https://developers.openai.com/codex/mcp#configure-with-configtoml).
+     No `codex mcp login` is needed: this endpoint uses manual bearer authentication,
+     not an OAuth discovery/login flow.
+   - **Claude Code**:
+     - *Project-level*: Run in the project directory:
+       ```bash
+       claude mcp add --transport http autohub https://YOUR_HUB_HOST/mcp/ --header "Authorization: Bearer <key>"
+       ```
+     - *Global*: Run with `--scope user`:
+       ```bash
+       claude mcp add --transport http --scope user autohub https://YOUR_HUB_HOST/mcp/ --header "Authorization: Bearer <key>"
+       ```
+4. Confirm the server appears in the client tool list and ask it to list AutoHub projects.
    Other Streamable HTTP clients can use the same URL with
    `Authorization: Bearer <issued-key>`.
 
