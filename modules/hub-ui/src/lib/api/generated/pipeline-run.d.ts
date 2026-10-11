@@ -261,6 +261,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pipeline-runs/{run_id}/specrig-decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Specrig Decisions */
+        get: operations["list_specrig_decisions_api_v1_pipeline_runs__run_id__specrig_decisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export interface components {
     schemas: {
@@ -428,6 +445,10 @@ export interface components {
         HTTPValidationError: CommonComponents["schemas"]["HTTPValidationError"];
         /** ImplementationRequest */
         ImplementationRequest: {
+            /** Specrig Stage */
+            specrig_stage?: string | null;
+            /** Specrig Base Sha */
+            specrig_base_sha?: string | null;
             /**
              * Version
              * @default 2
@@ -566,6 +587,10 @@ export interface components {
             expected_revision: number;
             /** Answer Id */
             answer_id?: string | null;
+            /** Decision */
+            decision?: ("approve" | "revise" | "reject" | "revoke") | null;
+            /** Feedback */
+            feedback?: string | null;
         };
         ValidationError: CommonComponents["schemas"]["ValidationError"];
     };
@@ -1067,6 +1092,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExecutionAttemptRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_specrig_decisions_api_v1_pipeline_runs__run_id__specrig_decisions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
                 };
             };
             /** @description Validation Error */

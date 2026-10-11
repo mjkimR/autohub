@@ -90,6 +90,16 @@ class WorkPlanExecution:
                 await refresh_mirrors(session, saved_plan)
 
     async def prepare(self, plan: WorkPlan, item: WorkItem, github: WorkGitHub) -> None:
+        async with AsyncTransaction() as session:
+            project = await session.get(Project, plan.project_id)
+            if project is not None and project.project_type == "specrig":
+                current = await self.repo.leased(session, item.id, item.lease_token)
+                if current is not None:
+                    current.state, current.detail = (
+                        "attention",
+                        "Native specrig execution requires a bound spec; start it from the repository spec view",
+                    )
+                return
         if item.base_sha is None:
             sha = await github.base_sha(plan)
             async with AsyncTransaction() as session:

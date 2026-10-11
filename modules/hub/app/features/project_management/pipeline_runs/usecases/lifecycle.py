@@ -104,6 +104,11 @@ class PipelineRunUseCase:
             if await ConnectionTestRepository().owns_pull(session, repository, request.pull_number):
                 raise ProjectError(422, "Connection test pull requests cannot be enrolled as development runs")
             test_heads = await ConnectionTestRepository().protected_heads(session, repository)
+            native = project.project_type == "specrig"
+            if native and not request.spec_dir:
+                raise ProjectError(422, "Select a bound specrig spec before enrolling this project")
+            if not native and request.spec_dir:
+                raise ProjectError(422, "Spec execution requires a specrig project")
 
         # Keep GitHub reads outside database transactions.
         try:
@@ -118,6 +123,18 @@ class PipelineRunUseCase:
         except TimeoutError:
             raise ProjectError(504, "Pull request read exceeded its time budget") from None
 
+        evidence = None
+        if native:
+            from app.features.project_management.specrig.services import SpecrigService
+
+            pull = await self.observer.get_pull_request(connector_id, repository, request.pull_number)
+            if pull["head"]["sha"] != snapshot.head_sha:
+                raise ProjectError(409, "PR changed during enrollment; retry")
+            evidence = await SpecrigService().inspect(repository, request.spec_dir, pull, token)
+
+        inspect_only = request.implemented or bool(
+            evidence and (evidence["current"].get("stage") or {}).get("human_gate")
+        )
         try:
             async with AsyncTransaction() as session:
                 project = await self.projects.get(session, project_id, lock=True)
@@ -140,12 +157,16 @@ class PipelineRunUseCase:
                         pull_number=snapshot.number,
                         pull_url=snapshot.url,
                         pull_snapshot=snapshot.model_dump(mode="json"),
-                        state=PipelineRunState.AWAITING_CI if request.implemented else PipelineRunState.QUEUED,
+                        specrig_snapshot=evidence["snapshot"] if evidence else None,
+                        specrig_progress=evidence,
+                        state=(PipelineRunState.IMPLEMENTING if native else PipelineRunState.AWAITING_CI)
+                        if inspect_only
+                        else PipelineRunState.QUEUED,
                         branch=snapshot.head_ref,
                         revision=1,
                     ),
                 )
-                if request.implemented:
+                if inspect_only:
                     await self._record_external_implementation(session, run, repository)
                 return PipelineRunRead.model_validate(run)
         except IntegrityError:

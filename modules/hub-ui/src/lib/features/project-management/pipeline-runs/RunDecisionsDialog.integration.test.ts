@@ -76,7 +76,7 @@ test('saves an answer separately and explicitly resumes with the new revision', 
 });
 
 test('retries a lost answer response with the same request identity', async () => {
-	const user = userEvent.setup();
+	const user = userEvent.setup({ delay: null });
 	api.POST.mockRejectedValue(new Error('Connection lost'));
 	render(RunDecisionsDialog, { run, onclose: vi.fn(), onchange: vi.fn() });
 	await screen.findByText('Keep existing behavior?');

@@ -34,6 +34,7 @@ class PullRequestSnapshot(BaseModel):
 
 
 class EnrollPullRequest(BaseModel):
+    spec_dir: str | None = Field(default=None, pattern=r"^specs/[0-9]{4}-[0-9]{2}/[a-zA-Z0-9_-]+$", max_length=255)
     pull_number: int = Field(gt=0)
     catalog: str | None = Field(
         default=None,
@@ -55,6 +56,8 @@ class PipelineRunRead(UUIDSchemaMixin, TimestampSchemaMixin):
     project_id: UUID
     ai_catalog_id: UUID
     requested_catalog_id: UUID | None = None
+    specrig_snapshot: dict | None = None
+    specrig_progress: dict | None = None
     project_revision: int
     pull_number: int
     pull_url: str
@@ -158,6 +161,8 @@ class LeaseGrant(BaseModel):
 
 
 class ImplementationRequest(BaseModel):
+    specrig_stage: str | None = None
+    specrig_base_sha: str | None = None
     version: Literal[2] = 2
     kind: Literal["implementation", "ci-fix", "conflict-fix"] = "implementation"
     correlation_marker: str

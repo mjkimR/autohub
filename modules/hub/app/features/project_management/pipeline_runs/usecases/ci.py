@@ -109,7 +109,10 @@ class CIProgress:
             async with pipeline_services.create_github_client(token_value) as client:
                 reader = GitHubActionsReader(client)
                 current = await reader.observe_pull(project_read.observation_config([pull_number]), pull_number)
-                if current.result.status != VerificationStatus.PASSED:
+                if (
+                    current.result.status != VerificationStatus.PASSED
+                    or current.head_sha != observation.pulls[0].head_sha
+                ):
                     return CIObservation(observation, head_changed=True)
                 # GitHub's own verdict decides what a refusal means: only a branch that conflicts with
                 # or trails its base is the agent's to fix. Reviews, branch rules, and drafts wait for

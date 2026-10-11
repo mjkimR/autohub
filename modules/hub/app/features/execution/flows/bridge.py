@@ -108,6 +108,8 @@ class PRBridgeWorker:
         return WorkerResult(attempt_id=action.attempt_id, status="completed", output=output)
 
     async def check_pipeline(self, session, pipeline, action, data):
+        if pipeline is not None and pipeline.specrig_snapshot:
+            raise BridgeRejected("pr-owned-by-native-specrig")
         if pipeline is None or str(pipeline.project_id) != action.binding["project_id"]:
             raise BridgeRejected("pr-project-mismatch")
         if pipeline.state != PipelineRunState.PAUSED or pipeline.revision != data.pipeline_revision:

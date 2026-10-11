@@ -19,7 +19,7 @@ from app.features.project_management.projects.templates import TEMPLATE_VERSION
 from app.features.project_management.work_plans.models import WorkPlan
 from fastapi import Depends
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 CONFIG_FIELDS = {"name", "project_type", "enabled", "github"}
@@ -81,6 +81,11 @@ class ProjectService:
                 fix="Read the project again and resend only your change with its current revision.",
             )
         await self.validate(session, data, project_id)
+        previous = ProjectWrite.model_validate(ProjectRead.model_validate(project).model_dump(include=CONFIG_FIELDS))
+        mode_only = previous.model_dump(exclude={"project_type"}) == data.model_dump(
+            exclude={"project_type", "expected_revision"}
+        )
+        old_revision = project.revision
         project.name = data.name
         project.project_type = data.project_type
         project.enabled = data.enabled
@@ -92,6 +97,18 @@ class ProjectService:
         project.ai_catalog_id = data.github.ai_catalog_id if data.github else None
         project.template_version = TEMPLATE_VERSION if data.github and data.github.template_id else None
         project.revision += 1
+        if mode_only:
+            from app.features.project_management.pipeline_runs.models import ACTIVE_RUN_STATES, PipelineRun
+
+            await session.execute(
+                update(PipelineRun)
+                .where(
+                    PipelineRun.project_id == project_id,
+                    PipelineRun.project_revision == old_revision,
+                    PipelineRun.state.in_(ACTIVE_RUN_STATES),
+                )
+                .values(project_revision=project.revision)
+            )
         project.last_check = None
         saved = await self.repo.save(session, project)
         await self.repo.sync_dispatch_schedules(session, saved)

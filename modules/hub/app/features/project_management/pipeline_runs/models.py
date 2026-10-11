@@ -82,6 +82,8 @@ class PipelineRun(Base, UUIDMixin, TimestampMixin):
     requested_catalog_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("ai_catalogs.id", ondelete="SET NULL"), nullable=True
     )
+    specrig_snapshot: Mapped[dict | None] = mapped_column(JSON_VARIANT, nullable=True)
+    specrig_progress: Mapped[dict | None] = mapped_column(JSON_VARIANT, nullable=True)
     project_revision: Mapped[int] = mapped_column(Integer, nullable=False)
     # The GitHub binding captured at enrollment; a resume may adopt newer project settings only while it still holds.
     github_repository: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -197,5 +199,6 @@ class RunResumeReceipt(Base, UUIDMixin, TimestampMixin):
 
     __tablename__ = "run_resume_receipts"
     pipeline_run_id: Mapped[UUID] = mapped_column(ForeignKey("pipeline_runs.id", ondelete="CASCADE"), index=True)
+    decision_evidence: Mapped[dict | None] = mapped_column(JSON_VARIANT, nullable=True)
     request_digest: Mapped[str] = mapped_column(String(64))
     execution_attempt_id: Mapped[UUID | None] = mapped_column(ForeignKey("execution_attempts.id", ondelete="SET NULL"))

@@ -166,6 +166,14 @@ export interface components {
             ai_catalog_id: string;
             /** Requested Catalog Id */
             requested_catalog_id?: string | null;
+            /** Specrig Snapshot */
+            specrig_snapshot?: {
+                [key: string]: unknown;
+            } | null;
+            /** Specrig Progress */
+            specrig_progress?: {
+                [key: string]: unknown;
+            } | null;
             /** Project Revision */
             project_revision: number;
             /** Pull Number */

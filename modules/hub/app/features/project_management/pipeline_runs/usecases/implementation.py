@@ -40,6 +40,7 @@ class ImplementationInput:
     posted_at: datetime | None
     delivered_head: str
     adapter: ExecutionAdapter
+    native: bool = False
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,7 @@ class ImplementationProgress:
             raise ProjectError(409, "Pipeline run has no active implementation attempt")
         delivery = await self.repo.latest_delivery(session, attempt.id)
         return ImplementationInput(
+            native=bool(run.specrig_snapshot),
             target=target,
             posted_at=as_utc(delivery.posted_at) if delivery is not None and delivery.posted_at is not None else None,
             delivered_head=PullRequestSnapshot.model_validate(attempt.request_snapshot["pull_request"]).head_sha,
@@ -71,7 +73,7 @@ class ImplementationProgress:
         target = prepared.target
         pr = await observer.get_pull_request(target.connector_id, target.repository, target.pull_number)
         if pr.get("state") == "closed" or (
-            prepared.posted_at is not None and pr["head"]["sha"] != prepared.delivered_head
+            not prepared.native and prepared.posted_at is not None and pr["head"]["sha"] != prepared.delivered_head
         ):
             return ImplementationObservation(pr, [])
         replies = await prepared.adapter.collect_replies(observer, target, prepared.posted_at)
@@ -93,7 +95,7 @@ class ImplementationProgress:
         if pr.get("state") == "closed":
             await finish_closed_pull(self.repo, session, run, pr, now)
             return PipelineRunRead.model_validate(run)
-        if observed.posted_at is not None and pr["head"]["sha"] != observed.delivered_head:
+        if not observed.native and observed.posted_at is not None and pr["head"]["sha"] != observed.delivered_head:
             run.state = PipelineRunState.AWAITING_CI
             run.next_action_at = None
             run.revision += 1
@@ -125,7 +127,7 @@ class ImplementationProgress:
                     question=question,
                     actor=f"github:{reply.author}",
                     source="agent",
-                    head_sha=observed.delivered_head,
+                    head_sha=pr["head"]["sha"] if observed.native else observed.delivered_head,
                     attempt_id=attempt.id,
                     # The observing worker still owns this lease and releases it on return.
                     invalidate_lease=False,
@@ -149,6 +151,8 @@ class ImplementationProgress:
             run.next_action_at = None
             run.revision += 1
             await session.flush()
+            return PipelineRunRead.model_validate(run)
+        if observed.native:
             return PipelineRunRead.model_validate(run)
         replied_at = min((reply.replied_at for reply in replies if not reply.is_quota_limit), default=None)
         if (

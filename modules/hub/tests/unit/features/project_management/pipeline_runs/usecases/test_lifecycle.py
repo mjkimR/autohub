@@ -111,6 +111,8 @@ def create_mock_run(
     run.lease_expires_at = utc_now()
     run.next_action_at = None
     run.quota_block_count = 0
+    run.specrig_snapshot = None
+    run.specrig_progress = None
     run.created_at = utc_now()
     run.updated_at = utc_now()
     return run

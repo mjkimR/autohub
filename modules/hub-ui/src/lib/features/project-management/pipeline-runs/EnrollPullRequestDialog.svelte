@@ -36,6 +36,10 @@
 	let enrollPullNumber = $state<number>(1);
 	let enrollImplemented = $state(false);
 	let enrollCatalog = $state('');
+	let specDir = $state('');
+	let native = $derived(
+		projects.find((p) => p.id === acquireProjectId)?.project_type === 'specrig'
+	);
 
 	async function handleAcquireRunSubmit(e: SubmitEvent) {
 		e.preventDefault();
@@ -50,7 +54,8 @@
 				body: {
 					pull_number: Number(enrollPullNumber),
 					implemented: enrollImplemented,
-					catalog: enrollCatalog || null
+					catalog: enrollCatalog || null,
+					...(native ? { spec_dir: specDir } : {})
 				}
 			});
 			if (res.error) {
@@ -123,6 +128,15 @@
 				/>
 			</div>
 
+			{#if native}
+				<label class="block text-sm"
+					>Bound spec directory<Input
+						bind:value={specDir}
+						required
+						placeholder="specs/2026-10/20261010-feature"
+					/></label
+				>
+			{/if}
 			<div class="space-y-1.5">
 				<label for="enrollCatalog" class="text-xs font-semibold text-muted-foreground uppercase">
 					AI Catalog
@@ -148,7 +162,9 @@
 				<span>
 					<span class="font-medium text-foreground">Already implemented</span>
 					<span class="mt-0.5 block text-xs text-muted-foreground"
-						>Skip the implementation request and start at CI observation.</span
+						>{native
+							? 'Inspect existing workflow evidence before continuing.'
+							: 'Skip the implementation request and start at CI observation.'}</span
 					>
 				</span>
 				<input

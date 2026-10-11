@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { SvelteMap } from 'svelte/reactivity';
+	import SpecrigRunPanel from './SpecrigRunPanel.svelte';
 	import { onMount, untrack } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
@@ -148,6 +149,13 @@
 			>
 		</DialogHeader>
 		<p class="text-sm">{current.pull_snapshot.title} · {current.state}</p>
+		{#if current.specrig_snapshot}<SpecrigRunPanel
+				run={current}
+				onchange={async () => {
+					await load();
+					onchange();
+				}}
+			/>{/if}
 		<a class="text-sm underline" href={run.pull_url} target="_blank" rel="noreferrer"
 			>Inspect pull request</a
 		>

@@ -7,6 +7,7 @@
 	import FileTreeTable from './FileTreeTable.svelte';
 	import FileBlobViewer from './FileBlobViewer.svelte';
 	import SpecrigViewer from './specrig/SpecrigViewer.svelte';
+	import SpecrigExecution from './SpecrigExecution.svelte';
 	import { repositoryDataSource } from './data-source';
 	import type { RepoBlob, RepoInfo, RepoItem, RepoTree } from './types';
 
@@ -280,6 +281,7 @@
 				Loading repository…
 			</div>
 		{:else if viewerMode === 'specrig'}
+			{#if isSpecrig}<SpecrigExecution projectId={project.id} />{/if}
 			<!-- Native Specrig Viewer -->
 			<section class="rounded-xl border bg-card p-4 shadow-xs">
 				{#key viewerRevision}

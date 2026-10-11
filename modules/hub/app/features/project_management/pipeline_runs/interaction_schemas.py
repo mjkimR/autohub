@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -44,6 +45,8 @@ class QuestionDismiss(BaseModel):
 
 class ResumeRunRequest(InteractionWrite):
     answer_id: UUID | None = None
+    decision: Literal["approve", "revise", "reject", "revoke"] | None = None
+    feedback: str | None = Field(default=None, max_length=8000)
 
 
 class AnswerRead(BaseModel):

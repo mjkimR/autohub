@@ -163,6 +163,8 @@ export interface components {
         };
         /** EnrollPullRequest */
         EnrollPullRequest: {
+            /** Spec Dir */
+            spec_dir?: string | null;
             /** Pull Number */
             pull_number: number;
             /**

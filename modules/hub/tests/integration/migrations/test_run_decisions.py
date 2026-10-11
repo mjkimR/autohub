@@ -11,10 +11,13 @@ async def test_run_decisions_migration_roundtrip(session):
 
     def roundtrip(sync):
         with Operations.context(MigrationContext.configure(sync)):
+            specrig = scripts().get_revision("a92c095f8798").module
+            specrig.downgrade()
             migration = scripts().get_revision("e14a217d0910").module
             migration.downgrade()
             assert "run_questions" not in inspect(sync).get_table_names()
             migration.upgrade()
+            specrig.upgrade()
         context = MigrationContext.configure(
             sync,
             opts={
