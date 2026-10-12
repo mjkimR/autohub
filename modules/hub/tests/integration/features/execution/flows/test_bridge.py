@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 import subprocess
 from uuid import UUID
@@ -35,8 +36,10 @@ SPEC = "specs/2026-10/20261009-fixture"
 @pytest.fixture
 def checkout(tmp_path):
     if shutil.which("specrig") is None:
+        if os.environ.get("AUTOHUB_REQUIRE_SPECRIG"):
+            pytest.fail("required specrig CLI was not provisioned")
         pytest.skip("native specrig adapter requires installed CLI")
-    root = tmp_path / "checkout"
+    root = (tmp_path / "checkout").resolve()
     root.mkdir()
 
     def run(*args):
@@ -44,8 +47,32 @@ def checkout(tmp_path):
 
     run("git", "init", "-q")
     (root / ".gitignore").write_text(".agents/\n.claude/\n.codex/\n.specrig/.cache/\n")
-    run("specrig", "init", "--skip-agents")
-    workflow = root / ".specrig/workflows/bridge-test.md"
+    runtime = os.environ.get("AUTOHUB_SPECRIG_HOME")
+    if runtime:
+        from pathlib import Path
+
+        pin = json.loads((Path(runtime) / "pin.json").read_text())
+        run(
+            "specrig",
+            "installation",
+            "install",
+            str(root),
+            "--version",
+            pin["version"],
+            "--repository",
+            pin["repository"],
+            "--cache-dir",
+            str(Path(runtime) / "releases"),
+            "--offline",
+            "--skip-agents",
+            "--json",
+        )
+    else:
+        run("specrig", "init", "--skip-agents")
+    receipt = json.loads((root / ".specrig/installation.json").read_text())
+    workflow_dir = ".specrig/local/workflows" if receipt.get("layout") == "layered" else ".specrig/workflows"
+    workflow = root / workflow_dir / "bridge-test.md"
+    workflow.parent.mkdir(parents=True, exist_ok=True)
     base = {"artifacts": [], "skills": [], "role": "developer", "isolation": "none", "returns": []}
     schema = {
         "id": "WF-bridge-test",
@@ -89,7 +116,7 @@ def checkout(tmp_path):
         (spec / f"envelopes/{kind}-01.yaml").write_text(
             f"kind: {kind}\nstatus: completed\nsummary: Fixture verified\nchecks:\n  tests: PASS fixture\n  build: PASS fixture\n  lint: PASS fixture\n"
         )
-    run("specrig", "workflow", "bind", "--spec", SPEC, "--workflow", ".specrig/workflows/bridge-test.md")
+    run("specrig", "workflow", "bind", "--spec", SPEC, "--workflow", str(workflow.relative_to(root)))
     run("git", "add", ".")
     run("git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", "commit", "-qm", "Fixture")
     return root, run("git", "rev-parse", "HEAD")

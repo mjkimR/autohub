@@ -31,7 +31,8 @@
 		initialView = 'files',
 		initialAnchor = '',
 		theme = 'dark',
-		dataSource = undefined
+		dataSource = undefined,
+		onselectpath = undefined
 	} = $props<{
 		repoId?: string;
 		apiBase?: string;
@@ -41,6 +42,7 @@
 		initialAnchor?: string;
 		theme?: string;
 		dataSource?: RepositoryDataSource;
+		onselectpath?: (path: string) => void;
 	}>();
 
 	let currentTheme = $state<'dark' | 'light'>('dark');
@@ -255,6 +257,7 @@
 	}
 
 	function dispatchItemSelected(path: string, frontmatter: Frontmatter | null) {
+		onselectpath?.(path);
 		const event = new CustomEvent('specrig:item-selected', {
 			detail: { path, frontmatter, repoId, branch },
 			bubbles: true,

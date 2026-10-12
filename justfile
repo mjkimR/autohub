@@ -172,6 +172,18 @@ test-ui:
     activate_frontend_node
     uv run --no-active --no-sync app-tools run npm --path "$path" -- test
 
+# Install the reviewed specrig release and offline cache (gh authentication for private assets)
+install-specrig destination=".cache/specrig":
+    @python3 scripts/install-specrig.py "{{ destination }}"
+
+# Build the pinned upcoming CLI as an isolated, test-only release/cache
+prepare-specrig-compat source destination=".cache/specrig-layered":
+    @python3 scripts/prepare-specrig-compat.py "{{ source }}" "{{ destination }}"
+
+# Require the provisioned real CLI; never silently skip the integration contract
+test-specrig runtime=".cache/specrig":
+    @bash scripts/test-specrig.sh "{{ runtime }}"
+
 # Test the standalone pipeline SDK without backend fixtures
 test-sdk:
     @uv run --no-active --no-sync pytest -q -c packages/sdk/pyproject.toml packages/sdk/tests

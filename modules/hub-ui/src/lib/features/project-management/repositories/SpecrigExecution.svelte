@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { api } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
+	import SpecrigRunLinks from './SpecrigRunLinks.svelte';
 	import { Button } from '$lib/components/ui/button';
-	let { projectId }: { projectId: string } = $props();
+	let { projectId, selectedSpec = '' }: { projectId: string; selectedSpec?: string } = $props();
+	$effect(() => {
+		if (selectedSpec) spec = selectedSpec;
+	});
 	let spec = $state('');
 	let pull = $state<number>(1);
 	let busy = $state(false);
@@ -10,8 +14,10 @@
 	let error = $state('');
 	let inspected = $state('');
 	let runId = $state('');
+	let startedKey = $state('');
 	const key = () => JSON.stringify([projectId, spec, pull]);
 	async function inspect() {
+		const requestedKey = key();
 		busy = true;
 		error = '';
 		message = '';
@@ -23,7 +29,8 @@
 			});
 			if (result.error) throw new Error(apiErrorMessage(result.error, 'Unable to inspect spec'));
 			if (!result.data?.ready) throw new Error(result.data?.reason || 'Project needs setup');
-			inspected = key();
+			if (requestedKey !== key()) return;
+			inspected = requestedKey;
 			message = `Ready at commit ${result.data.head_sha?.slice(0, 12)}. ${result.data.cli_version}`;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Inspection failed';
@@ -32,6 +39,7 @@
 		}
 	}
 	async function start() {
+		const requestedKey = key();
 		busy = true;
 		error = '';
 		try {
@@ -42,6 +50,7 @@
 			if (result.error)
 				throw new Error(apiErrorMessage(result.error, 'Unable to start spec execution'));
 			runId = result.data?.id || '';
+			startedKey = requestedKey;
 			message = 'Execution registered. Follow its stages and decisions in Pipeline Runs.';
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Could not start execution';
@@ -55,7 +64,8 @@
 	<h3 class="text-sm font-semibold">Run a specrig spec</h3>
 	<p class="text-sm text-muted-foreground">
 		Select a bound spec on an existing pull request. Execution checks the PR revision; the
-		repository browser may show a different ref.
+		repository browser may show a different ref. For a new idea, prepare its spec and PR first; Work
+		Plans do not create native specrig runs yet.
 	</p>
 	<div class="flex flex-wrap gap-3">
 		<label class="min-w-64 flex-1 text-sm"
@@ -82,10 +92,16 @@
 		<Button variant="outline" disabled={busy || !spec || !pull} onclick={inspect}
 			>Check readiness</Button
 		>
-		<Button disabled={busy || inspected !== key() || !!runId} onclick={start}
-			>Start execution</Button
+		<Button
+			disabled={busy || inspected !== key() || (!!runId && startedKey === key())}
+			onclick={start}>Start execution</Button
 		>
 	</div>
+	{#if runId && startedKey === key()}<Button
+			variant="outline"
+			href={`/projects/runs?run=${runId}&view=decisions`}>Open execution & decisions</Button
+		>{/if}
+	<SpecrigRunLinks {projectId} specDir={spec} refresh={runId} />
 	{#if message}<p role="status" class="text-sm">{message}</p>{/if}
 	{#if error}<p role="alert" class="text-sm text-destructive">{error}</p>{/if}
 </section>

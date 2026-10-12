@@ -13,6 +13,7 @@
 		CirclePause
 	} from '@lucide/svelte';
 	import { tick } from 'svelte';
+	import SpecrigReports from './SpecrigReports.svelte';
 	let {
 		run,
 		onchange,
@@ -161,6 +162,10 @@
 				>
 			</div>
 		</div>
+		<SpecrigReports reports={progress.reports} {evidenceUrl} />
+		{#if progress.lint_diagnostic}<p class="rounded-lg border border-amber-500/30 p-3 text-sm">
+				{String(progress.lint_diagnostic)}
+			</p>{/if}
 		{#if Array.isArray(current.done) && current.done.length}
 			<details class="text-xs">
 				<summary class="cursor-pointer text-muted-foreground"

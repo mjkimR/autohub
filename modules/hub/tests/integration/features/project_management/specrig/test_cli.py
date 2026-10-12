@@ -1,6 +1,7 @@
 """Use real Git and installed specrig, including policy and version pins."""
 
 import json
+import os
 import subprocess
 
 import pytest
@@ -31,7 +32,9 @@ async def test_real_cli_reads_gate_and_rejects_changed_version(checkout, monkeyp
 
 async def test_real_cli_final_lint_and_no_change_integration(checkout, monkeypatch):
     root, _ = checkout
-    workflow = root / ".specrig/workflows/bridge-test.md"
+    receipt = json.loads((root / ".specrig/installation.json").read_text())
+    workflow_dir = ".specrig/local/workflows" if receipt.get("layout") == "layered" else ".specrig/workflows"
+    workflow = root / workflow_dir / "bridge-test.md"
     schema = json.loads(workflow.read_text().split("---")[1])
     common = {
         "artifacts": [],
@@ -58,7 +61,7 @@ async def test_real_cli_final_lint_and_no_change_integration(checkout, monkeypat
     def run(*args):
         return subprocess.check_output(args, cwd=root, text=True, stderr=subprocess.DEVNULL).strip()
 
-    run("specrig", "workflow", "bind", "--spec", SPEC, "--workflow", ".specrig/workflows/bridge-test.md")
+    run("specrig", "workflow", "bind", "--spec", SPEC, "--workflow", str(workflow.relative_to(root)))
     run("git", "add", ".")
     run("git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", "commit", "-qm", "Extend fixture")
     head = run("git", "rev-parse", "HEAD")
@@ -67,3 +70,92 @@ async def test_real_cli_final_lint_and_no_change_integration(checkout, monkeypat
     assert evidence["integrated"]
     assert evidence["current"]["stage"]["id"] == "fixture-merge"
     assert evidence["head_sha"] == evidence["base_sha"] == head
+
+
+async def test_fresh_checkout_restores_recorded_release_without_network(checkout, tmp_path, monkeypatch):
+    from app.features.project_management.specrig.runtime import runtime_home
+
+    root, _ = checkout
+    if not os.environ.get("AUTOHUB_SPECRIG_HOME"):
+        if os.environ.get("AUTOHUB_REQUIRE_SPECRIG"):
+            pytest.fail("required release runtime was not provisioned")
+        pytest.skip("fresh release restore requires just test-specrig")
+    pin = json.loads((runtime_home() / "pin.json").read_text())
+    subprocess.run(
+        [
+            "specrig",
+            "installation",
+            "restore",
+            str(root),
+            "--repository",
+            pin["repository"],
+            "--cache-dir",
+            str(runtime_home() / "releases"),
+            "--offline",
+            "--json",
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    subprocess.run(["git", "add", "."], cwd=root, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.com",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "Record release",
+        ],
+        cwd=root,
+        check=True,
+    )
+    fresh = (tmp_path / "fresh").resolve()
+    subprocess.run(["git", "clone", "--quiet", str(root), str(fresh)], check=True)
+    manifest = fresh / ".specrig/installation.json"
+    original = manifest.read_bytes()
+    receipt = json.loads(original)
+    if receipt.get("layout") == "layered":
+        assert not (fresh / ".specrig/managed").exists()
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=fresh, text=True).strip()
+    monkeypatch.setenv("AUTOHUB_SPECRIG_VERSION", f"specrig version {pin['version']} commit={pin['commit']}")
+    result = await SpecrigService().evaluate(fresh, SPEC, head, head, None, False)
+    assert result["current"]["stage"]["human_gate"]
+    assert result["reports"][0]["kind"] == "final-report"
+    assert result["reports"][0]["summary"] == "Fixture verified"
+    assert manifest.read_bytes() == original
+    if receipt.get("layout") == "layered":
+        assert (fresh / ".specrig/managed/core/workflows/direct-delivery.md").is_file()
+    assert not subprocess.check_output(["git", "diff", "--name-only"], cwd=fresh, text=True).strip()
+
+
+async def test_real_cli_custom_rules_are_setup_failure_not_repair_work(checkout):
+    from app.features.project_management.specrig.checkout import SpecrigCommandError, command
+
+    root, _ = checkout
+    receipt = json.loads((root / ".specrig/installation.json").read_text())
+    rules = ".specrig/local/rules" if receipt.get("layout") == "layered" else ".specrig/governance/rules"
+    custom = root / rules / "custom.go"
+    custom.parent.mkdir(parents=True, exist_ok=True)
+    custom.write_text("package main\n")
+    subprocess.run(["git", "add", "."], cwd=root, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.com",
+            "commit",
+            "-qm",
+            "Custom rule fixture",
+        ],
+        cwd=root,
+        check=True,
+    )
+    with pytest.raises(SpecrigCommandError) as result:
+        await command("specrig", "lint", "--ci", "--base", "HEAD", cwd=root)
+    assert result.value.cli_code == "CUSTOM_RULES_REQUIRE_GO"

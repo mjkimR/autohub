@@ -173,11 +173,17 @@ Node from `.nvmrc`, `just`) and calls the `justfile` recipes, so a check that pa
 | --- | --- |
 | `backend` | `just lint-check hub` (ruff format and lint, architecture checks), `just check hub` (pyright), `just test` (SQLite) |
 | `backend-postgres` | `just test-pg` (testcontainers), then against a PostgreSQL 16 service: `alembic upgrade head`, `alembic check` (the migrations match the models), one step down and up again |
+| `specrig-contract (release)` / `specrig-contract (layered)` | Pinned released CLI and pinned upcoming layered source: `just test-specrig`; missing CLI is a failure |
 | `frontend` | `just lint-check hub-ui`, `just check hub-ui` (`svelte-check` and the production build), `just test-ui`, and `just check-ui-api`: stale or missing tag-based API declarations fail the build |
 
 The job names are stable, so this repository can itself be enrolled in a hub project with `ci.yml` as the workflow
-and these three jobs as the required jobs. Nothing needs a secret: the app imports and exports its OpenAPI schema
-without any environment, the tests set their own, and `app-common` is a public repository pinned by commit.
+and the backend/frontend jobs plus both specrig contract jobs as required checks. The
+specrig jobs require `SPECRIG_READ_TOKEN` with read access to the private specrig
+repository and release assets. They fail when the runtime cannot be provisioned;
+they never silently skip the CLI contract. Fork PRs do not receive this secret;
+run these checks from a trusted branch after review, never via `pull_request_target`
+with untrusted PR code. Other jobs need no repository secret: OpenAPI export works
+without environment configuration and app-common is public and pinned by commit.
 
 ## Test selection
 
@@ -252,7 +258,80 @@ drop model tables, so use a dedicated test database. Run `just gen-ui-api` after
 wire/API changes. The native specrig/PR bridge has an additional domain approval contract; generic
 machine approval alone is not PR approval evidence.
 
-### Native specrig and existing PR bridge
+## Native specrig runtime
+
+Native project mode accepts an existing PR and a bound spec. Select the spec in
+**Repository**, check readiness against the PR head, then start execution. The
+spec's recent executions link directly to **Runs → Decisions**, where the latest
+final-report, review and reverify envelope summaries are tied to the inspected
+commit. Work Plans do not yet create native specrig specs or PRs.
+
+`config/specrig-release.json` pins the production version, commit and platform
+archive checksums. The current pin is **0.1.2** (legacy harness layout). Layered
+support is tested against `compatibility_commit`, an upcoming source commit built
+as a test-only `0.0.0` fixture. It is not shipped as a production release. After a
+layered release is published, review its assets and update the version, commit and
+all checksums together, provision a fresh runtime, and run both contract checks.
+Do not substitute a sibling checkout binary or silently track `latest`.
+
+```sh
+# gh must have read access to the private release assets.
+just install-specrig
+export AUTOHUB_SPECRIG_HOME="$(pwd)/.cache/specrig"
+export PATH="$AUTOHUB_SPECRIG_HOME/bin:$PATH"
+just test-specrig
+```
+
+The installer verifies the reviewed checksum and CLI identity, then lets specrig
+create its official offline release cache. The server reads `pin.json` from
+`AUTOHUB_SPECRIG_HOME` (default `/opt/specrig`). `AUTOHUB_SPECRIG_VERSION` can
+explicitly override the full identity string for tests/managed runtimes; it does
+not install a binary or upgrade an enrolled run.
+
+Each inspection fetches exact head/base commits into a disposable checkout. A
+release installation receipt must match the server's repository, version and
+commit. Hub runs `installation restore --offline` from the provisioned cache
+before inspecting a layered harness. Missing caches, unsupported local layered
+receipts and version mismatches fail readiness; Hub never initializes, upgrades
+or rewrites the project's recorded installation. Legacy tracked harnesses without
+a release receipt remain supported. No additional persistent checkout is needed.
+
+Native evaluation supports bundled rules only. The CLI receives Git and specrig
+on a restricted PATH, a private temporary directory and locale; it does not
+inherit connector/server credentials or Go. Repository runner caches are removed
+from the disposable checkout. Custom Go rules need a separate trusted runner;
+they are reported as runtime/setup errors rather than agent repair work. Only
+`RULE_VIOLATIONS_DETECTED` is a final-lint repair result. Safe CLI diagnostic codes
+and bounded rule identifiers are exposed; raw stderr is not returned to clients.
+
+The Hub Dockerfile includes Git, the pinned CLI and offline cache. For private
+assets, local builds accept `GH_TOKEN` through a BuildKit secret, and Cloud Build
+accepts `SPECRIG_BUILD_SECRET=<Secret Manager secret name>` (same GCP project).
+Grant its build service account secret access before deploying. The secret is
+mounted only during provisioning, never copied to the runtime. A missing private
+release credential fails the image build. The resulting image contains specrig's
+binary and harness assets; distribute it according to that repository's access
+policy. The SDK's optional mounted-checkout bridge below remains separately
+configured.
+
+### Live canary after deployment
+
+Use a designated test repository and PR with the matching release receipt and
+bound workflow. This is an external-write test and must use an approved target.
+
+1. Check readiness, start the native run, and follow its link from the spec view.
+2. Reach a draft human gate; verify the wait releases its execution slot and the
+   Decisions dialog links report evidence to the actual inspected commit.
+3. Exercise a provider question, save an answer, then explicitly resume with it.
+   Verify the next request contains that selected answer without implied approval.
+4. Approve integration, revoke before progression, and confirm no merge. Request
+   changes and verify a changed head requires renewed evidence/approval.
+5. Explicitly approve the final evidence, mark the test PR ready, then confirm the
+   configured CI checks and merge policy complete that same PR exactly once.
+6. Keep run/PR links and the approval history as canary evidence. Local mock tests
+   do not establish provider question behavior, GitHub protection or live delivery.
+
+### SDK flow bridge with an existing PR
 
 Configure server-owned targets before registering the planhub release:
 
@@ -263,8 +342,8 @@ AUTOHUB_FLOW_DELIVERY_TARGETS='{"local":{"provider":"planhub","environment":"loc
 This allows `autohub.specrig:local` and `autohub.pr_delivery:local` only in that
 provider/environment. Provision Git and the specrig CLI on the server PATH and
 mount a clean checkout whose HEAD matches the reviewed PR. Release registration
-does not deploy worker code, CLI binaries or checkout files; the production image
-has not been updated to package this environment. Apply migration `e70a873d6576`
+does not deploy worker code or checkout files. The Hub image packages Git and
+the native pinned CLI/cache above; a bridge checkout still needs explicit provisioning. Apply migration `e70a873d6576`
 for durable PR claims and approval evidence.
 
 The initial flow accepts an existing paused PipelineRun whose latest attempt was

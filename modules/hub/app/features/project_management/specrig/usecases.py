@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
+from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from app.features.project_management.pipelines.deps import get_pipeline_observer
 from app.features.project_management.pipelines.services import PipelineObservationService
 from app.features.project_management.projects.errors import ProjectError
@@ -20,6 +21,12 @@ class SpecrigUseCase:
         observer: Annotated[PipelineObservationService, Depends(get_pipeline_observer)],
     ):
         self.projects, self.observer = projects, observer
+
+    async def runs(self, project_id, spec_dir):
+        async with AsyncTransaction() as session:
+            await self.projects.get(session, project_id)
+            rows = await SpecrigRepository().runs(session, project_id, spec_dir)
+            return [PipelineRunRead.model_validate(row) for row in rows]
 
     async def readiness(self, project_id, request):
         async with AsyncTransaction() as session:

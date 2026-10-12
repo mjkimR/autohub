@@ -146,7 +146,9 @@ class PipelineRunProgress:
                 ):
                     raise ProjectError(409, "Work plan PR branch changed; restore its original target before merging")
                 await reject_test_ancestry(reader, repository, pr["head"]["sha"], heads)
-            # An ancestry read can take time. Recheck lease and project policy after that I/O as well.
+        if native_snapshot or heads or work_binding:
+            # Native PR reads can race with pause/revoke just like ancestry reads.
+            # Fence the last external read before authorizing the merge write.
             async with AsyncTransaction() as session:
                 await self._validate(session, checkpoint)
 

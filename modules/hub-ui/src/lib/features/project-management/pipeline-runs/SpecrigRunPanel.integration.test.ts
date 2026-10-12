@@ -98,3 +98,33 @@ test('history can recover from a read failure without changing the run revision'
 	await user.click(screen.getByRole('button', { name: 'Refresh approval history' }));
 	expect(await screen.findByText(/No integration decisions yet/)).toBeTruthy();
 });
+
+test('shows report evidence at the inspected commit and treats repository text as text', () => {
+	render(SpecrigRunPanel, {
+		run: {
+			...run,
+			specrig_progress: {
+				...run.specrig_progress,
+				reports: [
+					{
+						kind: 'final-report',
+						file: 'envelopes/final-report-01.yaml',
+						status: 'completed',
+						summary: '<script>unsafe()</script> Verified delivery',
+						checks: { tests: 'PASS 42 tests' }
+					}
+				],
+				lint_diagnostic: 'Specrig lint failed (RULE_VIOLATIONS_DETECTED). Fix the reported rules.'
+			}
+		},
+		onchange: vi.fn()
+	});
+	expect(screen.getByText('<script>unsafe()</script> Verified delivery')).toBeTruthy();
+	expect(screen.getByText('PASS 42 tests')).toBeTruthy();
+	expect(
+		screen.getByRole('link', { name: 'Read full evidence at this commit' }).getAttribute('href')
+	).toBe(
+		`https://github.com/owner/app/tree/${'a'.repeat(40)}/specs/2026-10/20261010-feature/envelopes/final-report-01.yaml`
+	);
+	expect(screen.getByText(/Specrig lint failed/)).toBeTruthy();
+});

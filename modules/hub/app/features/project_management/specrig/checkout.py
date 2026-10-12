@@ -4,27 +4,82 @@ import asyncio
 import base64
 import os
 import re
+import shutil
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from app.features.project_management.projects.errors import ProjectError
 
+CLI_FIXES = {
+    "GIT_SNAPSHOT_FAILED": "Verify the exact Git head/base commits and fetch the required history.",
+    "UNEXPECTED_ERROR": "The CLI could not evaluate the repository; inspect the pinned runtime and installation.",
+    "HARNESS_RESTORE_REQUIRED": "Restore the recorded release before inspection.",
+    "WORKFLOW_DRIFT": "Review the workflow change and explicitly rebind the spec.",
+    "WORKFLOW_NOT_FOUND": "Restore the bound workflow or repair the spec binding.",
+    "CUSTOM_RULES_REQUIRE_GO": "This runner supports bundled rules only; custom Go rules need a separate runner.",
+    "RULES_BUILD_FAILED": "The rule runtime could not be prepared; inspect the runner configuration.",
+    "RULES_RUNNER_ERROR": "The rule runtime failed; inspect the runner configuration.",
+    "RULE_VIOLATIONS_DETECTED": "Fix the reported rules in the repository and rerun final lint.",
+    "INSTALLATION_FAILED": "Provision the matching release in the server's offline cache.",
+    "INSTALLATION_INPUT": "Check the installation receipt against the pinned release.",
+    "INSTALLATION_CONFLICT": "Resolve modified managed files before restoring the release.",
+}
+
+
+class SpecrigCommandError(ProjectError):
+    def __init__(self, cli_code: str, detail: str):
+        self.cli_code = cli_code
+        super().__init__(422, detail, code=f"SPECRIG_{cli_code}")
+
 
 async def command(*args: str, cwd: Path, env: dict | None = None, allow_failure: bool = False) -> str:
+    if args[0] == "specrig":
+        # Never expose server secrets, Go, or a repository-provided runner cache to CLI checks.
+        shutil.rmtree(cwd / ".specrig/.cache", ignore_errors=True)
+        with TemporaryDirectory(prefix="autohub-cli-tools-") as directory:
+            for name in ("git", "specrig"):
+                binary = shutil.which(name)
+                if binary is None:
+                    raise ProjectError(422, f"Specrig runner is missing {name}; provision the pinned runtime")
+                (Path(directory) / name).symlink_to(Path(binary).resolve())
+            return await _command(
+                *args,
+                cwd=cwd,
+                env={"PATH": directory, "TMPDIR": str(Path(directory).resolve()), "LANG": "C.UTF-8"},
+                allow_failure=allow_failure,
+            )
+    return await _command(*args, cwd=cwd, env=env, allow_failure=allow_failure)
+
+
+async def _command(*args: str, cwd: Path, env: dict | None, allow_failure: bool) -> str:
     process = await asyncio.create_subprocess_exec(
         *args, cwd=cwd, env=env, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
     )
     try:
         async with asyncio.timeout(25):
-            stdout, _ = await process.communicate()
+            stdout, stderr = await process.communicate()
     except BaseException:
         if process.returncode is None:
             process.kill()
         await process.wait()
         raise
     if process.returncode and not allow_failure:
-        raise ProjectError(422, "Specrig checkout or CLI command failed; check runner configuration and repository")
+        if args[0] == "specrig":
+            diagnostic = stderr.decode(errors="replace")
+            found = re.search(r"\[ERROR\]\s+\(([A-Z_]+)\)", diagnostic)
+            code = found.group(1) if found and found.group(1) in CLI_FIXES else "COMMAND_FAILED"
+            fix = CLI_FIXES.get(code, "Inspect the CLI installation and repository contract.")
+            rules = sorted(set(re.findall(r"\[([A-Z]+-[A-Za-z0-9_-]+)\]", stdout.decode(errors="replace"))))[:10]
+            detail = f"Specrig {args[1]} failed ({code}). {fix}"
+            if code == "RULE_VIOLATIONS_DETECTED" and rules:
+                detail += " Rules: " + ", ".join(rules)
+            raise SpecrigCommandError(code, detail)
+        raise ProjectError(
+            422,
+            "Git checkout failed; check repository access and the requested commits",
+            code="SPECRIG_CHECKOUT_FAILED",
+        )
     return stdout.decode() if not process.returncode else ""
 
 
@@ -35,7 +90,7 @@ async def checkout(repository: str, head: str, base: str, token: str):
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
         raise ProjectError(422, "Invalid repository")
     with TemporaryDirectory(prefix="autohub-specrig-") as directory:
-        root = Path(directory)
+        root = Path(directory).resolve()
         await command("git", "init", "--quiet", cwd=root)
         # Pass credentials only to fetch, never in arguments, files, snapshots or errors.
         credential = base64.b64encode(f"x-access-token:{token}".encode()).decode()

@@ -23,7 +23,8 @@ observation, as does one whose PR head changed after the last delivered request
 that PR. Plan resume never retries an existing Run.
 
 Controls share the Run lock and revision/lease fencing with result observation.
-If pause wins before observation or merge authorization, the stale continuation
+If pause, cancellation or approval revocation wins before the final merge
+authorization check (including during its GitHub read), the stale continuation
 is rejected. Once an external request has been authorized and sent, pause cannot
 recall it. Inspect the provider conversation and current PR before requesting
 another attempt; no provider cancellation acknowledgement is implied.
@@ -160,7 +161,9 @@ approval: an existing ready flag or auto policy cannot undo the decision, even a
 a generic resume. Review the resulting evidence and explicitly approve in Hub.
 Earlier implementation clarifications retain the configured integration policy.
 
-The Decisions dialog displays current evidence, draft/approval requirements and the
+The Repository spec view lists its latest 20 executions and links directly to their
+Decisions dialog. The dialog displays current evidence, the latest final-report,
+review and reverify summaries at the inspected commit, draft/approval requirements and the
 latest 100 approval, rework, revocation and resume records. Questions and selected
 answers remain in the existing question history. These native changes are locally
 tested; deployment and a live provider canary remain separate.

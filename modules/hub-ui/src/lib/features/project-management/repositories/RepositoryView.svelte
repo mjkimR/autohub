@@ -21,6 +21,11 @@
 	let readmeBlob = $state<RepoBlob | null>(null);
 
 	let isSpecrig = $derived(project.project_type === 'specrig');
+	let selectedSpec = $state('');
+	$effect(() => {
+		void project?.id;
+		selectedSpec = '';
+	});
 	let userSelectedMode = $state<'default' | 'specrig' | null>(null);
 	let viewerMode = $derived(userSelectedMode ?? (isSpecrig ? 'specrig' : 'default'));
 	let viewerRevision = $state(0);
@@ -281,7 +286,10 @@
 				Loading repository…
 			</div>
 		{:else if viewerMode === 'specrig'}
-			{#if isSpecrig}<SpecrigExecution projectId={project.id} />{/if}
+			{#if isSpecrig}{#key project.id}<SpecrigExecution
+						projectId={project.id}
+						{selectedSpec}
+					/>{/key}{/if}
 			<!-- Native Specrig Viewer -->
 			<section class="rounded-xl border bg-card p-4 shadow-xs">
 				{#key viewerRevision}
@@ -290,6 +298,9 @@
 						branch={currentRef || 'main'}
 						repoId={project.github?.repository || project.name}
 						initialPath="docs/"
+						onselectpath={(path) => {
+							selectedSpec = path.match(/^(specs\/\d{4}-\d{2}\/[^/]+)/)?.[1] || '';
+						}}
 					/>
 				{/key}
 			</section>

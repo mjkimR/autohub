@@ -37,6 +37,14 @@
 
 ## 로컬 구현, 미발행
 
+- 2026-10-12 specrig 연동 보강: 마지막 GitHub 조회 중 중지·취소·승인 철회가 발생하면
+  머지 요청 전 revision/lease를 재검사한다. 고정 릴리스 CLI·Git·오프라인 복원 캐시를 이미지에
+  포함하고, layered fresh checkout 복원과 릴리스/후속 소스의 실제 CLI 테스트를 연결했다.
+  운영 pin은 0.1.2이며 layered 소스는 테스트 전용이다. spec별 실행 링크와 검토/최종 보고서
+  요약을 추가했다. custom Go 규칙은 공유 서버의 지원 범위 밖이며 설치·실행 오류를
+  규칙 위반 재작업과 구분한다. [운영 절차](development.md#native-specrig-runtime).
+  Docker 이미지 빌드·PostgreSQL·실제 GitHub 카나리는 이번 로컬 검증에 포함하지 않았다.
+
 - 2026-10-12 네이티브 specrig HITL 보완: 적용한 질문·답변과 재작업 요청을 후속 단계에 전달하고,
   변경 없는 답변과 재작업 대기를 구분했다. G3에서 PR ready 관찰 또는 Hub 승인으로 근거를
   기록하며, draft 대기는 실행 슬롯 없이 polling한다. 철회·피드백 뒤에는 명시적 재승인을

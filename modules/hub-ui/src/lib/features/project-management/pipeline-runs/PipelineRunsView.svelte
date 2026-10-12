@@ -224,7 +224,9 @@
 			selectedProjectId = res.data.project_id;
 			if (scopedProject && res.data.project_id !== scopedProject.id) return;
 			await loadRuns(0);
-			openAttempts(res.data);
+			if (new URLSearchParams(window.location.search).get('view') === 'decisions')
+				decisionRun = res.data;
+			else openAttempts(res.data);
 		} catch {
 			toast.error('Failed to load the linked pipeline run. Please refresh to retry.');
 		}

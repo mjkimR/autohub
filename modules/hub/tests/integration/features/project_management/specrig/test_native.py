@@ -305,3 +305,16 @@ async def test_concurrent_duplicate_approval_has_one_receipt(client, run, is_pos
     assert all(result.status_code == 200 for result in results), [result.text for result in results]
     history = (await client.get(root + "/specrig-decisions")).json()
     assert len(history) == 1
+
+
+async def test_spec_runs_are_exact_project_scoped_and_do_not_advance(client, run, project, github):
+    path = f"/api/v1/projects/{project['id']}/specrig/runs"
+    listed = await client.get(path, params={"spec_dir": SPEC})
+    assert listed.status_code == 200, listed.text
+    assert [row["id"] for row in listed.json()] == [run["id"]]
+    assert listed.json()[0]["revision"] == run["revision"]
+    assert (await client.get(path, params={"spec_dir": SPEC + "-other"})).json() == []
+    assert (await client.get(path, params={"spec_dir": "../outside"})).status_code == 422
+    unknown = await client.get(f"/api/v1/projects/{uuid4()}/specrig/runs", params={"spec_dir": SPEC})
+    assert unknown.status_code == 404
+    assert github.merge_requests == 0

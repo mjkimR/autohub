@@ -59,3 +59,6 @@ docs/
 # Repository renderers are downloaded during the image build, never uploaded as source.
 modules/hub-ui/static/plugins/repository-viewers/
 modules/hub-ui/static/plugins/repository-viewers-installing/
+
+# Local CLI packages and private compatibility source stay out of build uploads.
+.cache/

@@ -2,20 +2,13 @@
 
 import asyncio
 import json
-import os
 from pathlib import Path
 
 from app.features.project_management.pipeline_runs.requests import request_digest
 from app.features.project_management.projects.errors import ProjectError
 
-from .checkout import checkout, command
-
-
-def configured_version() -> str:
-    version = os.environ.get("AUTOHUB_SPECRIG_VERSION", "").strip()
-    if not version:
-        raise ProjectError(422, "Set AUTOHUB_SPECRIG_VERSION to the installed specrig --version output")
-    return version
+from .checkout import SpecrigCommandError, checkout, command
+from .runtime import configured_version, restore
 
 
 async def cli(root: Path, *args: str):
@@ -44,6 +37,7 @@ class SpecrigService:
             raise ProjectError(422, "Specrig CLI version differs from the execution pin")
         if not (root / ".specrig").is_dir() or not (root / spec_dir / "spec.md").is_file():
             raise ProjectError(422, "Initialize specrig and bind an existing spec before execution")
+        await restore(root, version)
         policy = await cli(root, "config", "show")
         workflow = await cli(root, "workflow", "show", "--spec", spec_dir)
         checks = await cli(root, "workflow", "checks")
@@ -64,15 +58,33 @@ class SpecrigService:
         current = await cli(root, "workflow", "next", "--spec", spec_dir, *given)
         if not current.get("bound") or current.get("drift") or current.get("envelope_errors"):
             raise ProjectError(422, "Specrig binding drift or invalid envelope; repair the repository evidence")
+        envelopes = await cli(root, "workflow", "envelope", "check", "--spec", spec_dir)
+        reports = []
+        for kind in ("final-report", "review", "reverify"):
+            candidates = [row for row in envelopes.get("envelopes", []) if row.get("kind") == kind]
+            if candidates:
+                latest = max(candidates, key=lambda row: row.get("seq", 0))
+                reports.append(
+                    {
+                        "kind": kind,
+                        "file": latest["file"],
+                        "status": latest["status"],
+                        "summary": str(latest.get("summary", ""))[:4000],
+                        "checks": {str(k): str(v)[:1000] for k, v in list((latest.get("checks") or {}).items())[:20]},
+                    }
+                )
         integrated = False
+        lint_diagnostic = None
         stage = current.get("stage") or {}
         if approved and "lint-ci-clean" in stage.get("exit", []):
             ancestry = await command("git", "merge-base", head, base, cwd=root)
             if ancestry.strip() == base:
                 try:
                     await command("specrig", "lint", "--ci", "--base", base, cwd=root)
-                except ProjectError:
-                    pass
+                except SpecrigCommandError as exc:
+                    if exc.cli_code != "RULE_VIOLATIONS_DETECTED":
+                        raise
+                    lint_diagnostic = exc.detail
                 else:
                     integrated = True
                     current = await cli(
@@ -87,4 +99,6 @@ class SpecrigService:
             "current": current,
             "evidence_digest": evidence,
             "integrated": integrated,
+            "lint_diagnostic": lint_diagnostic,
+            "reports": reports,
         }
