@@ -55,6 +55,8 @@ class PipelineRunControl:
             if run.state in (PipelineRunState.COMPLETED, PipelineRunState.FAILED, PipelineRunState.CANCELED):
                 raise ProjectError(422, f"Cannot pause a run in {run.state} state")
             run.state = PipelineRunState.PAUSED
+            if run.specrig_progress:
+                run.specrig_progress = {**run.specrig_progress, "waiting_for_approval": False}
             run.pause_reason = request.reason if request and request.reason else "Manually paused by user"
             run.lease_owner = None
             run.lease_token = None

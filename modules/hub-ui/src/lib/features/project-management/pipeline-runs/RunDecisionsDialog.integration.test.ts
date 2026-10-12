@@ -61,8 +61,16 @@ test('saves an answer separately and explicitly resumes with the new revision', 
 	});
 	render(RunDecisionsDialog, { run, onclose: vi.fn(), onchange: vi.fn() });
 	await screen.findByText('Keep existing behavior?');
+	await waitFor(() =>
+		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
+	);
 	await user.type(screen.getByLabelText('Your answer'), 'Yes');
+	expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).value).toBe('Yes');
+	expect((screen.getByRole('button', { name: 'Save answer' }) as HTMLButtonElement).disabled).toBe(
+		false
+	);
 	await user.click(screen.getByRole('button', { name: 'Save answer' }));
+	await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(1));
 	await screen.findByText('Answer saved. The run remains stopped until you resume.');
 	expect(api.POST).toHaveBeenCalledTimes(1);
 	await user.click(screen.getByRole('button', { name: 'Resume with this answer' }));
@@ -80,6 +88,9 @@ test('retries a lost answer response with the same request identity', async () =
 	api.POST.mockRejectedValue(new Error('Connection lost'));
 	render(RunDecisionsDialog, { run, onclose: vi.fn(), onchange: vi.fn() });
 	await screen.findByText('Keep existing behavior?');
+	await waitFor(() =>
+		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
+	);
 	await user.type(screen.getByLabelText('Your answer'), 'Yes');
 	await user.click(screen.getByRole('button', { name: 'Save answer' }));
 	await screen.findByRole('alert');
@@ -111,6 +122,9 @@ test('keeps the answer request identity after response loss and a revision refre
 	}).mockResolvedValue({ data: {} });
 	render(RunDecisionsDialog, { run, onclose: vi.fn(), onchange: vi.fn() });
 	await screen.findByText('Keep existing behavior?');
+	await waitFor(() =>
+		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
+	);
 	await user.type(screen.getByLabelText('Your answer'), 'Yes');
 	await user.click(screen.getByRole('button', { name: 'Save answer' }));
 	await screen.findByRole('alert');
@@ -125,6 +139,9 @@ test('keeps the answer request identity after response loss and a revision refre
 		answer: 'Yes'
 	});
 	// A confirmed submission ends the retry identity; a later intentional answer is new.
+	await waitFor(() =>
+		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
+	);
 	await user.type(screen.getByLabelText('Your answer'), 'Yes');
 	await user.click(screen.getByRole('button', { name: 'Save answer' }));
 	expect(api.POST.mock.calls[2][1].body.request_id).not.toBe(original);
@@ -206,4 +223,42 @@ test('disables saved-answer resume buttons when refreshing fails', async () => {
 	expect(button.disabled).toBe(true);
 	await user.click(button);
 	expect(api.POST).not.toHaveBeenCalled();
+});
+
+test('locks other decision controls until a native approval and refresh finish', async () => {
+	const user = userEvent.setup();
+	const nativeRun = {
+		...run,
+		specrig_snapshot: { spec_dir: 'specs/2026-10/feature' },
+		specrig_progress: { current: { stage: { exit: ['approval-given'] } } }
+	} as unknown as components['schemas']['PipelineRunRead'];
+	api.GET.mockImplementation(async (path: string) => ({
+		data: path.endsWith('/questions')
+			? { items: [], total_count: 0, run_revision: 2 }
+			: path.endsWith('/specrig-decisions')
+				? []
+				: nativeRun
+	}));
+	let finish!: () => void;
+	api.POST.mockImplementation(
+		() =>
+			new Promise((resolve) => {
+				finish = () => resolve({ data: nativeRun });
+			})
+	);
+	render(RunDecisionsDialog, { run: nativeRun, onclose: vi.fn(), onchange: vi.fn() });
+	const approval = screen.getByRole('button', { name: 'Approve integration' }) as HTMLButtonElement;
+	await waitFor(() => expect(approval.disabled).toBe(false));
+	await user.click(approval);
+	expect(
+		(screen.getByRole('button', { name: 'Refresh decisions' }) as HTMLButtonElement).disabled
+	).toBe(true);
+	expect(
+		(screen.getByRole('button', { name: 'Request changes' }) as HTMLButtonElement).disabled
+	).toBe(true);
+	finish();
+	await waitFor(() => expect(approval.disabled).toBe(false));
+	expect(
+		(screen.getByRole('button', { name: 'Refresh decisions' }) as HTMLButtonElement).disabled
+	).toBe(false);
 });

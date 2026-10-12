@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { SvelteMap } from 'svelte/reactivity';
 	import SpecrigRunPanel from './SpecrigRunPanel.svelte';
+	import SpecrigDecisionHistory from './SpecrigDecisionHistory.svelte';
+	import DecisionQuestion from './DecisionQuestion.svelte';
+	import { Badge } from '$lib/components/ui/badge';
+	import { getStateBadgeClass } from './presentation';
+	import { RefreshCw, ExternalLink, CircleHelp, CircleCheck, History } from '@lucide/svelte';
 	import { onMount, untrack } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
@@ -25,10 +30,13 @@
 	let reason = $state('');
 	let error = $state('');
 	let busy = $state(false);
+	let decisionBusy = $state(false);
+	let locked = $derived(busy || decisionBusy);
 	let ready = $state(false);
 	let saved = $state('');
 	let pending = $derived(questions.find((q) => q.state === 'open' || q.state === 'answered'));
 	let terminal = $derived(['completed', 'failed', 'canceled'].includes(current.state));
+	let pastQuestions = $derived(questions.filter((q) => q.id !== pending?.id));
 	const requests = new SvelteMap<string, string>();
 	function requestId(key: string) {
 		if (!requests.has(key)) requests.set(key, crypto.randomUUID());
@@ -66,7 +74,7 @@
 		}
 	}
 	async function submit() {
-		if (!ready || offset !== 0) return;
+		if (decisionBusy || !ready || offset !== 0) return;
 		// An uncertain answer keeps its identity across refreshes, even when its save
 		// already advanced the revision. Acknowledgement ends this submission intent.
 		const key = pending
@@ -101,7 +109,7 @@
 		onchange();
 	}
 	async function resume(answerId?: string) {
-		if (!ready || offset !== 0) return;
+		if (decisionBusy || !ready || offset !== 0) return;
 		responseData(
 			await api.POST('/api/v1/pipeline-runs/{run_id}/resume', {
 				params: { path: { run_id: run.id } },
@@ -118,7 +126,7 @@
 		saved = 'Resume recorded. Agent delivery may still be pending.';
 	}
 	async function dismiss() {
-		if (!ready || offset !== 0 || !pending) return;
+		if (decisionBusy || !ready || offset !== 0 || !pending) return;
 		responseData(
 			await api.POST('/api/v1/pipeline-runs/{run_id}/questions/{question_id}/dismiss', {
 				params: { path: { run_id: run.id, question_id: pending.id } },
@@ -141,112 +149,204 @@
 		if (!open) onclose();
 	}}
 >
-	<DialogContent class="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[680px]">
-		<DialogHeader>
-			<DialogTitle>Decisions for PR #{run.pull_number}</DialogTitle>
+	<DialogContent
+		class="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1040px]"
+	>
+		<DialogHeader class="shrink-0 border-b px-5 py-5 sm:px-7">
+			<div class="mb-2 flex items-center gap-2 pr-8">
+				<Badge variant="outline">PR #{run.pull_number}</Badge>
+				<Badge variant="outline" class={getStateBadgeClass(current.state)}
+					>{current.state.replaceAll('_', ' ')}</Badge
+				>
+				{#if current.specrig_snapshot}<span class="text-xs text-muted-foreground">specrig</span
+					>{/if}
+			</div>
+			<DialogTitle class="text-xl leading-snug break-words"
+				>{current.pull_snapshot.title}</DialogTitle
+			>
 			<DialogDescription
-				>Read the question, save your response, then choose whether to resume.</DialogDescription
+				>Review the evidence and choose the next step for this run.</DialogDescription
 			>
-		</DialogHeader>
-		<p class="text-sm">{current.pull_snapshot.title} · {current.state}</p>
-		{#if current.specrig_snapshot}<SpecrigRunPanel
-				run={current}
-				onchange={async () => {
-					await load();
-					onchange();
-				}}
-			/>{/if}
-		<a class="text-sm underline" href={run.pull_url} target="_blank" rel="noreferrer"
-			>Inspect pull request</a
-		>
-		{#if current.pause_reason}<p class="text-sm whitespace-pre-wrap">{current.pause_reason}</p>{/if}
-		<p class="text-sm text-muted-foreground">
-			Pausing Hub does not stop an agent already running. Check its progress before resuming.
-		</p>
-		{#if terminal}
-			<p class="rounded border p-3 text-sm">
-				This run has ended. For failed or canceled work, register a replacement plan after checking
-				the PR. Keep the original result and rebuild any unstarted dependents explicitly; a
-				replacement does not release them automatically.
-			</p>
-		{/if}
-		{#if error}<p role="alert" class="text-sm text-destructive">{error}</p>{/if}
-		{#if saved}<p role="status" class="text-sm">{saved}</p>{/if}
-		<Button variant="outline" disabled={busy} onclick={() => perform(load)}
-			>Refresh decisions</Button
-		>
-		{#each questions as question (question.id)}
-			<section class="space-y-3 rounded border p-3">
-				<p class="font-medium whitespace-pre-wrap">{question.question}</p>
-				<p class="text-xs text-muted-foreground">
-					{question.state} · {new Date(question.created_at).toLocaleString()} · {question.actor}
-				</p>
-				{#each question.answers as answer (answer.id)}
-					<div class="space-y-2 border-l-2 pl-3">
-						<p class="text-sm whitespace-pre-wrap">{answer.answer}</p>
-						<p class="text-xs text-muted-foreground">
-							{answer.actor} · {new Date(answer.created_at).toLocaleString()}
-						</p>
-						{#if answer.applied_attempt_id}<p class="text-xs">Applied to an execution attempt</p>
-						{:else if !terminal && pending?.id === question.id}
-							<Button
-								disabled={busy || !ready || offset !== 0}
-								onclick={() => perform(() => resume(answer.id))}>Resume with this answer</Button
-							>
-						{/if}
-					</div>
-				{/each}
-				{#if question.resolution}<p class="text-sm">{question.resolution}</p>{/if}
-			</section>
-		{/each}
-		{#if ready && !terminal && offset === 0}
-			<label class="space-y-2 text-sm"
-				>{pending ? 'Your answer' : 'Question requiring a decision'}
-				<textarea
-					class="min-h-24 w-full rounded border bg-background p-2"
-					maxlength="8000"
-					bind:value={text}></textarea>
-			</label>
-			<Button disabled={busy || !text.trim()} onclick={() => perform(submit)}
-				>{pending ? 'Save answer' : 'Ask and pause'}</Button
-			>
-			{#if pending}
-				<label class="space-y-2 text-sm"
-					>Reason to dismiss
-					<input
-						class="w-full rounded border bg-background p-2"
-						maxlength="2000"
-						bind:value={reason}
-					/>
-				</label>
-				<Button variant="outline" disabled={busy || !reason.trim()} onclick={() => perform(dismiss)}
-					>Dismiss without resuming</Button
+			<div class="mt-3 flex flex-wrap items-center gap-2">
+				<Button variant="outline" size="sm" href={run.pull_url} target="_blank" rel="noreferrer"
+					><ExternalLink class="size-3.5" />Inspect pull request</Button
 				>
-			{:else if current.state === 'paused' || current.state === 'blocked'}
-				<Button disabled={busy} onclick={() => perform(() => resume())}
-					>Resume after inspection</Button
-				>
-			{/if}
-		{/if}
-		{#if total > 20}
-			<div class="flex gap-2">
-				<Button
-					variant="outline"
-					disabled={busy || offset === 0}
-					onclick={() => {
-						offset -= 20;
-						void perform(load);
-					}}>Previous</Button
-				>
-				<Button
-					variant="outline"
-					disabled={busy || offset + 20 >= total}
-					onclick={() => {
-						offset += 20;
-						void perform(load);
-					}}>Next</Button
+				<Button variant="ghost" size="sm" disabled={locked} onclick={() => perform(load)}
+					><RefreshCw class={busy ? 'size-3.5 animate-spin' : 'size-3.5'} />Refresh decisions</Button
 				>
 			</div>
-		{/if}
+		</DialogHeader>
+		<div class="min-h-0 overflow-y-auto px-5 py-5 sm:px-7">
+			{#if error}<div
+					role="alert"
+					class="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+				>
+					{error}
+				</div>{/if}
+			{#if saved}<div
+					role="status"
+					class="mb-5 flex items-start gap-2 rounded-lg border bg-muted/50 p-3 text-sm"
+				>
+					<CircleCheck class="mt-0.5 size-4 shrink-0" />{saved}
+				</div>{/if}
+			{#if !ready && !error}<p
+					role="status"
+					class="mb-5 animate-pulse text-sm text-muted-foreground"
+				>
+					Loading the latest decisions…
+				</p>{/if}
+			<div class="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_280px]">
+				<div class="min-w-0 space-y-5">
+					{#if current.pause_reason}
+						<div class="rounded-xl border bg-muted/40 p-4">
+							<p
+								class="mb-2 flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+							>
+								<CircleHelp class="size-4" />Current wait
+							</p>
+							<p class="text-sm leading-relaxed break-words whitespace-pre-wrap">
+								{current.pause_reason}
+							</p>
+						</div>
+					{/if}
+					{#if terminal}<div class="rounded-xl border bg-muted/40 p-4 text-sm leading-relaxed">
+							This run has ended. For failed or canceled work, inspect the PR and register
+							replacement work. The original result is preserved.
+						</div>{/if}
+					{#if pending}
+						<DecisionQuestion
+							question={pending}
+							actionable={!terminal && offset === 0}
+							disabled={locked || !ready}
+							onresume={(id) => void perform(() => resume(id))}
+						/>
+					{/if}
+					{#if ready && !terminal && offset === 0 && pending}
+						<section class="space-y-3" aria-label="Answer the pending question">
+							<label class="block space-y-2 text-sm font-medium"
+								>Your answer<textarea
+									class="min-h-28 w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm leading-relaxed font-normal focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+									maxlength="8000"
+									placeholder="Describe the decision and any constraints to keep."
+									disabled={locked}
+									bind:value={text}></textarea></label
+							>
+							<div class="flex flex-wrap items-center justify-between gap-3">
+								<p class="text-xs text-muted-foreground">
+									Saving keeps the run paused. Resume with a saved answer when ready.
+								</p>
+								<Button disabled={locked || !text.trim()} onclick={() => perform(submit)}
+									>Save answer</Button
+								>
+							</div>
+							<details class="rounded-lg border p-3 text-sm">
+								<summary class="cursor-pointer font-medium">Dismiss this question</summary>
+								<div class="mt-3 space-y-3">
+									<label class="block space-y-2"
+										>Reason to dismiss<input
+											class="w-full rounded-md border bg-background p-2"
+											maxlength="2000"
+											bind:value={reason}
+											disabled={locked}
+										/></label
+									><Button
+										variant="outline"
+										disabled={locked || !reason.trim()}
+										onclick={() => perform(dismiss)}>Dismiss without resuming</Button
+									>
+								</div>
+							</details>
+						</section>
+					{/if}
+					{#if current.specrig_snapshot}
+						<SpecrigRunPanel
+							run={current}
+							disabled={locked || !ready || offset !== 0}
+							questionPending={!!pending}
+							onbusychange={(value) => {
+								decisionBusy = value;
+							}}
+							onchange={async () => {
+								await load();
+								onchange();
+							}}
+						/>
+					{/if}
+					{#if ready && !terminal && offset === 0 && !pending}
+						{#if current.state === 'paused' || current.state === 'blocked'}
+							<details open={!current.specrig_snapshot} class="rounded-xl border p-4 text-sm">
+								<summary class="cursor-pointer font-medium">Recovery & inspection</summary>
+								<p class="my-3 text-muted-foreground">
+									Recheck this run after resolving its wait. This action does not grant integration
+									approval.
+								</p>
+								<Button variant="outline" disabled={locked} onclick={() => perform(() => resume())}
+									>Resume after inspection</Button
+								>
+							</details>
+						{/if}
+						<details class="rounded-xl border p-4 text-sm">
+							<summary class="cursor-pointer font-medium">Ask a new question</summary>
+							<div class="mt-4 space-y-3">
+								<label class="block space-y-2"
+									>Question requiring a decision<textarea
+										class="min-h-24 w-full rounded-lg border bg-background p-3"
+										maxlength="8000"
+										bind:value={text}
+										disabled={locked}></textarea></label
+								><Button
+									variant="outline"
+									disabled={locked || !text.trim()}
+									onclick={() => perform(submit)}>Ask and pause</Button
+								>
+							</div>
+						</details>
+					{/if}
+				</div>
+				<aside class="min-w-0 space-y-5 md:border-l md:pl-5" aria-label="Decision history">
+					{#if current.specrig_snapshot}<SpecrigDecisionHistory runId={run.id} {revision} />{/if}
+					<section class="space-y-3">
+						<h3 class="flex items-center gap-2 text-sm font-semibold">
+							<History class="size-4 text-muted-foreground" />Question history
+						</h3>
+						{#if ready && pastQuestions.length === 0}<p
+								class="text-xs leading-relaxed text-muted-foreground"
+							>
+								No earlier questions on this page.
+							</p>{/if}
+						{#each pastQuestions as question (question.id)}<details class="rounded-lg border p-3">
+								<summary class="cursor-pointer text-sm leading-relaxed break-words"
+									>{question.question}</summary
+								>
+								<div class="mt-3"><DecisionQuestion {question} onresume={() => {}} /></div>
+							</details>{/each}
+						{#if total > 20}<div class="flex items-center justify-between gap-2">
+								<Button
+									size="sm"
+									variant="outline"
+									disabled={locked || offset === 0}
+									onclick={() => {
+										offset -= 20;
+										void perform(load);
+									}}>Previous</Button
+								><span class="text-xs text-muted-foreground"
+									>{Math.floor(offset / 20) + 1} / {Math.ceil(total / 20)}</span
+								><Button
+									size="sm"
+									variant="outline"
+									disabled={locked || offset + 20 >= total}
+									onclick={() => {
+										offset += 20;
+										void perform(load);
+									}}>Next</Button
+								>
+							</div>{/if}
+					</section>
+					<p class="border-t pt-4 text-xs leading-relaxed text-muted-foreground">
+						Pausing Hub does not stop an agent already running. Check its progress before resuming.
+					</p>
+				</aside>
+			</div>
+		</div>
 	</DialogContent>
 </Dialog>

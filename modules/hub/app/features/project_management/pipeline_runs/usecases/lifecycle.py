@@ -275,7 +275,9 @@ class PipelineRunUseCase:
         now = get_current_utc_time()
         async with AsyncTransaction() as session:
             run = await self.repo.get(session, run_id, lock=True)
-            if run is None or run.state not in IN_FLIGHT_RUN_STATES:
+            if run is None or (
+                run.state not in IN_FLIGHT_RUN_STATES and not (run.specrig_progress or {}).get("waiting_for_approval")
+            ):
                 return
             if kind == GITHUB_FAILURE_AUTH:
                 wait_on_github(run, GITHUB_AUTH_WAIT_REASON, now, GITHUB_AUTH_RECHECK_DELAY)

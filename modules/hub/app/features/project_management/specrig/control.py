@@ -8,7 +8,7 @@ from app.features.project_management.projects.errors import ProjectError
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 
-from .progress import SpecrigProgress, approval_gate
+from .progress import SpecrigProgress, approval_gate, carry_decisions
 from .services import SpecrigService
 
 
@@ -53,6 +53,8 @@ class SpecrigControl:
                 raise ProjectError(409, "Pull request is no longer open")
             token = await self.observer.get_token(connector, "github")
             evidence = await SpecrigService().inspect(repository, snapshot["spec_dir"], pull, token, snapshot=snapshot)
+            carry_decisions(previous, evidence)
+            evidence["pr_draft"] = bool(pull.get("draft"))
             if request.decision == "approve" and (
                 previous.get("rework_head") == evidence["head_sha"]
                 or not approval_gate(evidence)
@@ -73,8 +75,10 @@ class SpecrigControl:
             now = get_current_utc_time()
             attempt = None
             if request.decision == "approve":
+                evidence.pop("approval_withheld", None)
                 evidence["approval"] = {
                     "actor": actor,
+                    "source": "hub",
                     "head_sha": evidence["head_sha"],
                     "evidence_digest": evidence["evidence_digest"],
                     "saw_ready": not (pull or {}).get("draft", False),
@@ -84,14 +88,22 @@ class SpecrigControl:
             elif request.decision in ("reject", "revoke"):
                 evidence.pop("approval", None)
                 evidence["integrated"] = False
+                evidence["approval_withheld"] = True
                 run.state = "canceled" if request.decision == "reject" else "blocked"
                 run.pause_reason = f"Integration {request.decision} by {actor}: {request.feedback or ''}"
             elif request.decision == "revise" or response:
-                feedback = (request.feedback or "") if not response else response[1].answer
+                feedback = (
+                    (request.feedback or "")
+                    if not response
+                    else (f"Question: {response[0].question}\nAnswer by {response[1].actor}: {response[1].answer}")
+                )
                 if not feedback.strip():
                     raise ProjectError(422, "Describe the requested change")
                 evidence.pop("approval", None)
-                evidence["rework_head"] = evidence["head_sha"]
+                if request.decision == "revise" or previous.get("approval") or approval_gate(evidence):
+                    evidence["approval_withheld"] = True
+                if request.decision == "revise":
+                    evidence["rework_head"] = evidence["head_sha"]
                 run.specrig_progress = evidence
                 run.epoch += 1
                 attempt = await SpecrigProgress(self.repo).dispatch(session, run, evidence, now, feedback)
@@ -101,11 +113,17 @@ class SpecrigControl:
                 # Generic resume only re-inspects; it never grants approval.
                 run.state, run.pause_reason = "implementing", None
                 run.epoch += 1
+                if evidence.get("rework_head") == evidence["head_sha"] or not (
+                    evidence.get("current", {}).get("stage") or {}
+                ).get("human_gate"):
+                    run.specrig_progress = evidence
+                    attempt = await SpecrigProgress(self.repo).dispatch(session, run, evidence, now)
             if request.decision == "reject":
                 active = await self.repo.active_attempt(session, run.id)
                 if active:
                     active.state, active.finished_at = "failed", now
                     active.failure_code = "INTEGRATION_REJECTED"
+            evidence.pop("waiting_for_approval", None)
             run.specrig_progress = evidence
             run.project_revision = project_revision
             run.lease_owner = run.lease_token = run.lease_expires_at = None

@@ -173,7 +173,12 @@ class PipelineRunProgress:
                 or project.github_connector_id is None
             ):
                 return await block_for_project_change(self.repo, session, run, now)
-            if run.state not in (PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI):
+            approval_wait = (
+                run.state == PipelineRunState.PAUSED
+                and bool(getattr(run, "specrig_snapshot", None))
+                and (run.specrig_progress or {}).get("waiting_for_approval")
+            )
+            if run.state not in (PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI) and not approval_wait:
                 return PipelineRunRead.model_validate(run)
             snapshot_data = getattr(run, "specrig_snapshot", None)
             if snapshot_data:
@@ -214,7 +219,7 @@ class PipelineRunProgress:
                 owner,
                 token,
                 run.revision,
-                run.state,
+                PipelineRunState(run.state),
                 project.revision,
                 await self._attempt_version(session, run.id),
             )
@@ -241,13 +246,17 @@ class PipelineRunProgress:
                     native_result = await SpecrigProgress(self.repo).observe(
                         native_snapshot, native_previous, native_target, native_pull, observer
                     )
-                if implementation_input is None and (
-                    native_result is None
-                    or (
-                        merge_ready(native_result.get("evidence", {}))
-                        and native_result.get("evidence", {}).get("approval")
-                        and native_result["evidence"]["head_sha"] == (native_previous or {}).get("head_sha")
-                        and native_result["evidence"]["base_sha"] == (native_previous or {}).get("base_sha")
+                if (
+                    checkpoint.state == PipelineRunState.AWAITING_CI
+                    and implementation_input is None
+                    and (
+                        native_result is None
+                        or (
+                            merge_ready(native_result.get("evidence", {}))
+                            and native_result.get("evidence", {}).get("approval")
+                            and native_result["evidence"]["head_sha"] == (native_previous or {}).get("head_sha")
+                            and native_result["evidence"]["base_sha"] == (native_previous or {}).get("base_sha")
+                        )
                     )
                 ):
                     assert project_read is not None

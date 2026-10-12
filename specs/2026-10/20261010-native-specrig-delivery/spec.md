@@ -17,7 +17,7 @@ Existing SDK consumers and their paused-PR bridge remain separate.
 4. Use existing attempts for stage work, existing questions for direction, and
    revision-checked durable resume receipts for approve/revise/reject. Approval
    includes actor, inspected evidence and commit. Repeated commands are idempotent.
-5. Integration approval defaults to explicit user action; policy auto may delegate
+5. Integration approval accepts a ready PR observation or explicit Hub action; policy auto may delegate
    the gate but does not enable merging when auto_merge is disabled. A draft after
    approval revokes it. Integration within approved intent may change the head;
    final validation, base ancestry and CLI lint must pass before CI/merge.
@@ -34,3 +34,15 @@ Start from an existing PR with a bound spec. Use the configured GitHub connector
 to fetch an isolated checkout; only Git and the pinned specrig CLI run locally.
 Agent editing uses existing adapters. Remote scope coordination and old renderer
 removal follow actual multi-run/consumer evidence and are outside this delivery.
+
+## HITL follow-up (2026-10-12)
+
+- Preserve applied question/answer context and rework instructions across stage handoffs.
+- Clarifications do not require a new commit or authorize integration. Rework waits
+  retain their requirement across resume and block at the existing 45-minute limit.
+- G3 draft waits poll without consuming an execution slot; manual pauses do not poll.
+- Record ready-state authorization with observation provenance, never a fabricated user.
+- Revocation and feedback require a fresh explicit Hub approval; ready state or auto
+  policy cannot silently restore it. Hub approval leaves draft status unchanged.
+- Show decision history and the distinction between integration authorization and
+  GitHub readiness in the existing Decisions dialog.

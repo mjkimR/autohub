@@ -3,6 +3,7 @@
 from datetime import timedelta
 from uuid import NAMESPACE_URL, uuid5
 
+from app.features.project_management.pipeline_runs.interaction_service import RunInteractionService
 from app.features.project_management.pipeline_runs.models import ExecutionAttempt, RunResumeReceipt
 from app.features.project_management.pipeline_runs.requests import build_implementation_request, request_digest
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
@@ -20,6 +21,14 @@ def approval_gate(evidence):
 def merge_ready(evidence):
     stage = evidence.get("current", {}).get("stage") or {}
     return evidence.get("integrated") and "merged" in stage.get("exit", [])
+
+
+def carry_decisions(previous, evidence):
+    # CLI output cannot erase an operator's request or restore revoked authorization.
+    for key in ("rework_head", "approval_withheld"):
+        if key in previous:
+            evidence[key] = previous[key]
+    return evidence
 
 
 class SpecrigProgress:
@@ -43,8 +52,8 @@ class SpecrigProgress:
             evidence = await SpecrigService().inspect(
                 target.repository, snapshot["spec_dir"], pull, token, snapshot=snapshot, approved=bool(approval)
             )
-            if previous.get("rework_head"):
-                evidence["rework_head"] = previous["rework_head"]
+            carry_decisions(previous, evidence)
+            evidence["pr_draft"] = bool(pull.get("draft"))
             if approval:
                 evidence["approval"] = {
                     **approval,
@@ -75,6 +84,7 @@ class SpecrigProgress:
         if active:
             active.state, active.finished_at = "completed", now
         request, _, key = build_implementation_request(run, run.github_repository or "")
+        request.instructions += await RunInteractionService().applied_context(session, run.id)
         request.pull_request.head_sha = evidence["head_sha"]
         request.instructions += (
             f"\nRequested stage: {stage_id}. Skills: {', '.join(stage.get('skills') or [])}. "
@@ -109,6 +119,7 @@ class SpecrigProgress:
         return attempt
 
     async def apply(self, session, run, now, observed):
+        original_state = run.state
         pull = observed["pull"]
         if pull.get("state") == "closed":
             await finish_closed_pull(self.repo, session, run, pull, now)
@@ -118,6 +129,8 @@ class SpecrigProgress:
             if observed.get("revoke"):
                 progress.pop("approval", None)
                 progress["integrated"] = False
+                progress["approval_withheld"] = True
+            progress.pop("waiting_for_approval", None)
             run.specrig_progress = progress
             run.state, run.pause_reason = "blocked", observed["error"]
             run.revision += 1
@@ -126,14 +139,25 @@ class SpecrigProgress:
             previous = run.specrig_progress or {}
             run.specrig_progress = evidence
             if evidence.get("rework_head") == evidence["head_sha"]:
-                run.state, run.pause_reason = (
-                    "implementing",
-                    "Waiting for requested changes and renewed review evidence",
+                active = await self.repo.active_attempt(session, run.id)
+                expired = active and active.started_at and now - as_utc(active.started_at) > timedelta(minutes=45)
+                run.state = "blocked" if expired else "implementing"
+                run.pause_reason = (
+                    "Requested changes have not completed within 45 minutes; inspect and resume"
+                    if expired
+                    else "Waiting for requested changes and renewed review evidence"
                 )
+                if expired:
+                    run.revision += 1
             elif approval_gate(evidence):
-                if run.specrig_snapshot["policy"].get("workflow.approvals.integration") == "auto":
+                policy_auto = run.specrig_snapshot["policy"].get("workflow.approvals.integration") == "auto"
+                ready = pull.get("draft") is False
+                if not evidence.get("approval_withheld") and (policy_auto or ready):
+                    actor = "github:pr-ready" if ready else "policy:workflow.approvals.integration=auto"
                     evidence["approval"] = {
-                        "actor": "policy:workflow.approvals.integration=auto",
+                        "actor": actor,
+                        "source": "pr-ready" if ready else "policy",
+                        "observed_at": now.isoformat(),
                         "head_sha": evidence["head_sha"],
                         "evidence_digest": evidence["evidence_digest"],
                         "saw_ready": not pull.get("draft", False),
@@ -141,7 +165,7 @@ class SpecrigProgress:
                     session.add(
                         RunResumeReceipt(
                             id=uuid5(
-                                NAMESPACE_URL, f"specrig-policy:{run.id}:{run.revision}:{evidence['evidence_digest']}"
+                                NAMESPACE_URL, f"specrig-approval:{run.id}:{run.revision}:{evidence['evidence_digest']}"
                             ),
                             pipeline_run_id=run.id,
                             request_digest=request_digest(evidence["approval"]),
@@ -156,11 +180,13 @@ class SpecrigProgress:
                     run.specrig_progress = dict(evidence)
                     run.state, run.pause_reason = "implementing", None
                 else:
+                    evidence["waiting_for_approval"] = not evidence.get("approval_withheld", False)
                     run.state, run.pause_reason = (
                         "paused",
                         "G3: inspect the final report and approve, request changes, or reject",
                     )
-                run.revision += 1
+                if previous != evidence or run.state != original_state:
+                    run.revision += 1
             elif merge_ready(evidence) and evidence.get("approval"):
                 run.state, run.pause_reason = "awaiting_ci", None
                 if previous != evidence:
@@ -189,6 +215,8 @@ class SpecrigProgress:
                         "Specrig stage has not completed within 45 minutes; inspect and resume",
                     )
                     run.revision += 1
-        run.next_action_at = None
+        run.next_action_at = (
+            now + timedelta(minutes=5) if (run.specrig_progress or {}).get("waiting_for_approval") else None
+        )
         await session.flush()
         return PipelineRunRead.model_validate(run)

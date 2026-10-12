@@ -132,6 +132,7 @@ async def dispatch_project_task(payload: ProjectDispatchPayload) -> None:
                 PipelineRunState.DISPATCHING,
                 PipelineRunState.IMPLEMENTING,
                 PipelineRunState.AWAITING_CI,
+                PipelineRunState.PAUSED,
             ):
                 lease = await run_use_case.acquire_lease(run.id, LeaseRequest(owner=owner, ttl_seconds=120))
                 try:
@@ -146,7 +147,7 @@ async def dispatch_project_task(payload: ProjectDispatchPayload) -> None:
     # commits, so a full observation batch cannot starve it or hide newly ready runs.
     results = []
     for states in (
-        (PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI),
+        (PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI, PipelineRunState.PAUSED),
         (PipelineRunState.QUEUED, PipelineRunState.DISPATCHING),
     ):
         async with AsyncTransaction() as session:

@@ -78,7 +78,13 @@ class PipelineRunRepository:
             )
             .exists()
         )
-        observing = PipelineRun.state.in_((PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI))
+        approval_wait = and_(
+            PipelineRun.state == PipelineRunState.PAUSED,
+            PipelineRun.specrig_progress["waiting_for_approval"].as_boolean().is_(True),
+        )
+        observing = or_(
+            PipelineRun.state.in_((PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI)), approval_wait
+        )
         filters = [
             PipelineRun.project_id == project_id,
             PipelineRun.state.in_(ACTIVE_RUN_STATES),
@@ -94,13 +100,16 @@ class PipelineRunRepository:
         if ready_at is not None:
             filters.extend(
                 [
-                    PipelineRun.state.in_(
-                        (
-                            PipelineRunState.QUEUED,
-                            PipelineRunState.DISPATCHING,
-                            PipelineRunState.IMPLEMENTING,
-                            PipelineRunState.AWAITING_CI,
-                        )
+                    or_(
+                        approval_wait,
+                        PipelineRun.state.in_(
+                            (
+                                PipelineRunState.QUEUED,
+                                PipelineRunState.DISPATCHING,
+                                PipelineRunState.IMPLEMENTING,
+                                PipelineRunState.AWAITING_CI,
+                            )
+                        ),
                     ),
                     or_(PipelineRun.next_action_at.is_(None), PipelineRun.next_action_at <= ready_at),
                     or_(PipelineRun.lease_token.is_(None), PipelineRun.lease_expires_at <= ready_at),

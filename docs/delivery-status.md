@@ -37,6 +37,14 @@
 
 ## 로컬 구현, 미발행
 
+- 2026-10-12 네이티브 specrig HITL 보완: 적용한 질문·답변과 재작업 요청을 후속 단계에 전달하고,
+  변경 없는 답변과 재작업 대기를 구분했다. G3에서 PR ready 관찰 또는 Hub 승인으로 근거를
+  기록하며, draft 대기는 실행 슬롯 없이 polling한다. 철회·피드백 뒤에는 명시적 재승인을
+  요구한다. 결정 이력과 draft 머지 조건을 UI에 표시한다. [계약](run-decisions.md#native-specrig-decisions).
+  Decisions 화면은 현재 질문·승인 근거·다음 액션을 중심으로 재구성하고, 결정 이력은 보조
+  영역으로 분리했다. 변경 요청·중단 사유는 선택 시 입력하며 모바일에서는 한 열로 표시한다.
+  운영 배포·실제 GitHub 카나리는 수행하지 않았다.
+
 - [저장소 문서 뷰어](repository-viewer.md): 저장소별 렌더러 ID 선택, 인증 클라이언트를 통한 조회·갱신, branch 전달 및 Git에서 무시되는 배포 설정 기반 다중 렌더러 설치를 연결했다. 로컬 자동화 검증과 운영 배포 검증은 구분한다.
 
 - [autohub-sdk](../packages/sdk/README.md): `@pipeline` 선언, 입출력 검증, `Registry`, JSON manifest export,

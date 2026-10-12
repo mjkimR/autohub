@@ -62,6 +62,7 @@ def inspector(monkeypatch):
 
 @pytest.fixture
 async def run(client, project, github, inspector):
+    github.draft = True
     changed = await client.patch(
         f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "specrig"}
     )
@@ -90,6 +91,7 @@ async def test_single_owner_approval_to_ci_merge_and_idempotent_receipt(client, 
     replay = await client.post(f"/api/v1/pipeline-runs/{run['id']}/resume", json=body)
     assert replay.status_code == 200
     assert replay.json()["revision"] == approved.json()["revision"]
+    github.draft = False
     integrated = await merge.advance(client, run)
     assert integrated["state"] == "awaiting_ci"
     done = await merge.advance(client, run)
@@ -135,6 +137,7 @@ async def test_mode_change_preserves_active_contract(client, run, project):
 
 async def test_draft_reentry_revokes_approval_and_prevents_merge(client, run, github):
     waiting = await merge.advance(client, run)
+    github.draft = False
     approved, _ = await decide(client, waiting, "approve")
     assert approved.status_code == 200
     github.draft = True

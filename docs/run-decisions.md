@@ -37,7 +37,13 @@ to inspect delivery state, provider replies and failures. An applied answer mean
 the attempt was prepared, not that delivery or implementation succeeded.
 
 The dialog also records operator questions, displays past questions and responses,
-and dismisses stale questions with a reason. Use the existing blocked/paused Run
+and dismisses stale questions with a reason. The main column shows the current
+wait, pending question and next action; the history column moves below it on small
+screens. Approval activity initially shows five entries, with up to 100 available
+on expansion. Change requests, dismissal, recovery and stop/revoke controls reveal
+their inputs when selected. A pending question disables integration decisions;
+mutations share a busy state while saving and refreshing the inspected evidence.
+Use the existing blocked/paused Run
 filters for the waiting list. The first release permits one pending question per
 Run. It does not provide cross-project grouping, a conversation inbox, or batch
 controls. Existing operator notices report state changes; there is no separate
@@ -110,9 +116,11 @@ authors, mismatched attempts/heads, malformed or oversized markers, nested HTML
 comments and executable mention text are not turned into questions. Collected
 stale replies remain in attempt history but cannot stop a new attempt. This is
 currently the Codex PR reply path only; Jules session questions are not supported.
-If the agent pushes before asking, the existing head-change path enters CI
-observation and the marker is not collected as a decision. An operator can still
-record a question through the UI/MCP.
+For general runs, if the agent pushes before asking, the head-change path enters
+CI observation and the marker is not collected as a decision. Native specrig runs
+continue collecting replies after a push, validate the marker against the delivered
+attempt/head, and bind the question to the currently observed head. An operator
+can also record a question through the UI/MCP.
 
 Question text is limited to 8,000 decoded characters. The reply scan is bounded at
 112,000 characters to allow JSON Unicode escapes (up to 12 characters per code
@@ -121,6 +129,41 @@ point), marker metadata and surrounding prose without reducing the text limit.
 Live verification must confirm that the provider actually emits this marker as a
 trusted PR reply, stops before pushing, and uses the selected answer in its next
 implementation. Passing parser and mocked GitHub tests does not establish this.
+
+## Native specrig decisions
+
+Native runs use the same questions, answers, Run lock and resume receipts. Applied
+questions and their selected answers, plus explicit change requests, are included
+in subsequent stage requests in chronological order. Unapplied answers are not
+execution instructions. CI/conflict fixes inherit the stage request snapshot.
+
+Answering a question is a clarification, not an approval or an assertion that code
+must change. A no-change answer can return to the existing G3 gate without a new
+commit. Request changes explicitly requires a changed head and renewed workflow
+evidence. If changes do not arrive within 45 minutes, the run blocks; resume retries
+the work with its recorded context and does not erase the outstanding requirement.
+
+At G3, after CLI evidence is ready, either an observed ready PR or **Approve
+integration** records authorization. Policy `integration=auto` can also authorize
+integration. Ready observations are attributed to `github:pr-ready`, not a guessed
+human actor; the receipt stores the observation time, head, base and evidence digest.
+Draft G3 waits are paused and hold no execution slot. The scheduler checks them
+every five minutes, subject to its tick; manual pause and pending questions are
+never auto-resumed. Older paused native runs without the wait marker need one
+explicit resume to refresh their inspection and enable this polling.
+
+Hub approval does not change GitHub draft status: integration can proceed while
+draft, but the operator must mark the PR ready before merging. `auto_merge=false`
+still disables automatic merging. Returning an observed ready PR to draft revokes
+its authorization. Explicit revocation, rework and answers at/after G3 withhold automatic
+approval: an existing ready flag or auto policy cannot undo the decision, even after
+a generic resume. Review the resulting evidence and explicitly approve in Hub.
+Earlier implementation clarifications retain the configured integration policy.
+
+The Decisions dialog displays current evidence, draft/approval requirements and the
+latest 100 approval, rework, revocation and resume records. Questions and selected
+answers remain in the existing question history. These native changes are locally
+tested; deployment and a live provider canary remain separate.
 
 ## Replacing failed work
 

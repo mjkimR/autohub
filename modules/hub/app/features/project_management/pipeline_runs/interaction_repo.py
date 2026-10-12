@@ -1,11 +1,30 @@
 from uuid import UUID
 
-from app.features.project_management.pipeline_runs.models import RunAnswer, RunQuestion
+from app.features.project_management.pipeline_runs.models import (
+    ExecutionAttempt,
+    RunAnswer,
+    RunQuestion,
+    RunResumeReceipt,
+)
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class RunInteractionRepository:
+    async def applied_decisions(self, session: AsyncSession, run_id: UUID):
+        answers = (
+            await session.execute(
+                select(RunQuestion, RunAnswer, ExecutionAttempt.created_at)
+                .join(RunAnswer, RunAnswer.question_id == RunQuestion.id)
+                .join(ExecutionAttempt, ExecutionAttempt.id == RunAnswer.applied_attempt_id)
+                .where(RunQuestion.pipeline_run_id == run_id, RunQuestion.state == "applied")
+            )
+        ).all()
+        receipts = list(
+            await session.scalars(select(RunResumeReceipt).where(RunResumeReceipt.pipeline_run_id == run_id))
+        )
+        return answers, receipts
+
     async def pending(self, session: AsyncSession, run_id: UUID) -> RunQuestion | None:
         return await session.scalar(
             select(RunQuestion).where(
