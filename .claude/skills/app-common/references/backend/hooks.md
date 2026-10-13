@@ -40,7 +40,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app_layer_base.base.services.base import BaseService
 from app_layer_base.base.services.hooks import CreateHook
-from app_error import AppError, Actor, Retry
+from devkit.advisory import Actor, AdvisoryError, Retry
 
 
 class UniqueIsbnHook(CreateHook[Book, BookCreate]):
@@ -48,7 +48,7 @@ class UniqueIsbnHook(CreateHook[Book, BookCreate]):
         stmt = select(Book.id).where(Book.isbn == data.isbn).limit(1)
         exists = await session.scalar(stmt)
         if exists:
-            raise AppError(
+            raise AdvisoryError(
                 f"ISBN {data.isbn} is already registered",
                 code="ISBN_ALREADY_EXISTS",
                 actor=Actor.USER,

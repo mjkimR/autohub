@@ -55,5 +55,5 @@ export default [
 
 Paths are relative to the web-root ESLint config. Exception paths are literal,
 including SvelteKit `[id]` and `(group)` segments. Normal `npm run lint` must run
-ESLint; `app-tools run lint` uses that script. If adding a separate structure check,
+ESLint; app-common's `just check-ui` and consumer recipes call that script. If adding a separate structure check,
 share its config with normal lint rather than duplicating exceptions.

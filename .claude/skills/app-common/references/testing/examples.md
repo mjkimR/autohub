@@ -42,9 +42,7 @@ from app.features.items.usecases.create_item import CreateItemUseCase
 
 class TestCreateItem(IntegrationTest):
     async def test_create_item(self):
-        result = await self.resolve(CreateItemUseCase).execute(
-            ItemCreate(name="New Item", category="electronics")
-        )
+        result = await self.resolve(CreateItemUseCase).execute(ItemCreate(name="New Item", category="electronics"))
         saved = await self.refresh(Item, result.id)
         assert saved is not None
         assert saved.name == "New Item"
@@ -78,9 +76,7 @@ class TestItemsAPI(E2ETest):
         assert_json_contains(response, {"id": str(item.id), "name": "Specific Item"})
 
     async def test_create_item(self):
-        response = await self.client.post(
-            self.url(), json={"name": "Created Item", "category": "books"}
-        )
+        response = await self.client.post(self.url(), json={"name": "Created Item", "category": "books"})
         assert_status_code(response, 201)
         saved = await self.refresh(Item, response.json()["id"])
         assert saved is not None

@@ -29,7 +29,7 @@ Follow the consumer's existing layout, dependency versions, and commands.
 | Verify a UI change | [Checklist](checklist.md) |
 | Change app-common from a consumer | [Local development](../local-dev/index.md) |
 
-For a new feature, use `app-tools create-code web-feature --name Project`.
+For a new feature, use `uv run devkit app create-code web-feature --name Project`.
 It generates a feature state class, view, dialog, and index under `src/lib/features/`.
 Keep reusable UI in `src/lib/components/`, cross-feature state in `src/lib/stores/`,
 and API bindings in `src/lib/api/`; follow existing consumer paths when they differ.

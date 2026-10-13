@@ -1,6 +1,6 @@
 # app-backend-core
 
-FastAPI layered architecture framework based on `app-layer-base`, `app-tools`, and `app-error`.
+FastAPI layered architecture framework based on `app-layer-base`, with `devkit app` scaffolding and `devkit.advisory` errors.
 
 > **References**:
 > - Package Installation & Database Configuration: [setup.md](./setup.md)
@@ -11,13 +11,16 @@ FastAPI layered architecture framework based on `app-layer-base`, `app-tools`, a
 
 ## Architecture checks
 
-Run `app-tools check-arch <source-directory> --json` for actionable architecture
-violations with rule codes, locations, and fixes. To include it in `app-tools run lint`,
-set `[tool.app-tools] check-arch = true` in pyproject.toml. The checks below cover
-router repository imports (`ARCH_ROUTER_REPO_IMPORT`), service transactions
-(`ARCH_SERVICE_COMMIT`), and hook chaining (`ARCH_HOOK_SUPER_CALL`). A justified
-exception uses `# arch: ignore[ARCH_SERVICE_COMMIT] -- reason` on the reported line.
-Checks use source conventions; the explanations below still guide design decisions.
+The app-common devkit bundle ships the architecture checks as devkit rules, so
+`uv run devkit rules check [paths]` reports them with rule IDs, locations and
+remediations (`--format json` for agents), and the commit and CI gates run them with the
+other linter-phase rules. They cover router repository imports
+(`RULE-app-router-repo-import`), service transactions (`RULE-app-service-commit`), and
+hook chaining (`RULE-app-hook-super-call`), among others; `devkit rules explain
+<rule-id>` shows each rule's guide. A justified exception uses
+`# arch: ignore[RULE-app-service-commit] -- reason` on the reported line; a project turns a
+rule off or changes its severity in `[rules]` of `.devkit/config.toml`. Checks use source
+conventions; the explanations below still guide design decisions.
 
 ## Non-CRUD consumers
 
@@ -50,10 +53,9 @@ it is not inherited across a Git boundary. These are static import checks, inclu
 imports inside functions and type-checking branches, not runtime dependency tracing.
 Tests and migrations retain the existing scanner exclusions.
 
-`ARCH_FORBIDDEN_IMPORT` is an error; a deliberate exception uses the existing
-inline `# arch: ignore[ARCH_FORBIDDEN_IMPORT] -- reason` syntax. Invalid configuration
-fails with `ARCH_CONFIG_ERROR`. Existing CRUD checks continue to run unchanged.
-Run `app-tools check-arch src --json` and wire it into the consumer's normal checks.
+`RULE-app-forbidden-import` is an error; a deliberate exception uses the inline
+`# arch: ignore[RULE-app-forbidden-import] -- reason` syntax. Invalid configuration
+fails with `RULE-app-architecture-config`. Existing CRUD checks continue to run unchanged.
 
 ## Critical Invariants (CRUD service stack)
 
@@ -68,14 +70,14 @@ Run `app-tools check-arch src --json` and wire it into the consumer's normal che
 
 ## Quick Scaffolding
 
-**Never hand-write boilerplate from scratch.** Use `app-tools` to scaffold a complete feature:
+**Never hand-write boilerplate from scratch.** Use `devkit app create-code` to scaffold a complete feature:
 
 ```bash
-uv run app-tools create-code feature --name Book
+uv run devkit app create-code feature --name Book
 # Preview without touching disk:
-uv run app-tools create-code feature --name Book --dry-run --json
+uv run devkit app create-code feature --name Book --dry-run --format json
 # With explicit plural:
-uv run app-tools create-code feature --name Category --plural categories
+uv run devkit app create-code feature --name Category --plural categories
 ```
 
 Generated structure in `app/features/books/`:
@@ -209,13 +211,21 @@ BookUseCaseDep = Annotated[BookUseCase, Depends(get_book_usecase)]
 
 ---
 
-## 6. Structured Error Handling (`app-error`)
+## 6. Structured Error Handling (`devkit.advisory`)
 
-Raise structured `AppError` subclasses with `Actor` and `Retry` advisories rather than generic `ValueError` or raw `HTTPException`.
+Raise `AdvisoryError` subclasses (or `CustomException` for HTTP errors) with `Actor` and `Retry` advisories rather than generic `ValueError` or raw `HTTPException`.
 For advisory fields (`Actor`, `Retry`, `ActionMode`), remediation properties (`fix`, `what_to_report`), and MCP/CLI renderers, see **[errors.md](./errors.md)**.
 
 ---
 
+## Blocking work and cancellation
+
+`app_layer_base.utils.async_util.run_blocking(function, *args, **kwargs)` executes
+synchronous work in a thread. Cancellation drains that worker, including repeated
+cancellation, before propagating to the caller. Use it inside async resource/lock
+scopes that must outlive file writes or model inference. It cannot stop a worker;
+configure bounded I/O timeouts in the underlying operation.
+
 ## 7. Modifying `app-common` Packages Locally (`app-local-dev`)
 
-To modify `app-common` packages while working in a consumer project without modifying `pyproject.toml` or `package.json`, see the **[local development](../local-dev/index.md)** skill (`uv run app-tools dev link / unlink / status`).
+To modify `app-common` packages while working in a consumer project without modifying `pyproject.toml` or `package.json`, see the **[local development](../local-dev/index.md)** skill (`uv run devkit app dev link / unlink / status`).

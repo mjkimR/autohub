@@ -40,8 +40,7 @@ off the rule or automatically raise ceilings. See the installed app-common
 `ui/structure` guide after `just skills`. CI enforces the same policy through
 `just lint-check hub-ui`.
 
-Checks use `app-tools run` for compact output; complete diagnostics are saved at
-its printed `log:` path. Initialize the backend with `just init hub` before running
+검사 명령은 `devkit run`으로 출력량을 제한하며 전체 진단은 결과에 표시된 로그 경로에 저장한다. Initialize the backend with `just init hub` before running
 these commands, including frontend-only checks. Use `just lint-check` for read-only
 format/lint verification.
 
@@ -52,27 +51,23 @@ the same recipes and locked Python dependencies; Ruff has no separate hook versi
 ## Agent skills
 
 
-Microsoft APM 0.30.0 installs the `app-common` skill with `just skills` (also run
-by backend initialization). `just link-skills` remains a compatibility entry point.
-`apm.yml` pins the Git dependency to the same pushed commit as the Python
-app-common packages. The frontend ESLint policy has its own pin; no sibling
-app-common checkout is required. Install APM with
-`uv tool install apm-cli==0.30.0`. Private repositories require Git credentials in
-local and cloud agent environments.
+app-common 개발 자산은 Python 의존성에 포함된 devkit bundle에서 설치한다.
+`just skills`와 `just link-skills`는 설치된 패키지에서 `devkit sync`로 자산을 생성하고
+Python advisory guide를 선택한다. `.devkit/`과 투영 스킬 디렉터리는 Git에서 무시한다.
+새 환경마다 Python lock에서 설치한 패키지로 다시 생성하므로 receipt나 스킬을 커밋하지 않는다.
+자체 Python SDK에는 backend 런타임 의존성을 추가하지 않는다.
+프런트엔드 ESLint 정책은 독립 pin을 유지한다. sibling checkout이나 APM은 필요하지 않다.
 
-Normal setup runs `apm install --frozen`. To adopt a newer skill version, change
-`ref` in `apm.yml` to the intended pushed commit, then run:
+의존성 갱신은 공개 커밋으로 수행한다:
 
 ```sh
-apm install --refresh
-apm audit --ci
+uv run devkit app update --ref <pushed-commit>
+uv run devkit sync --check
 ```
 
-From workbench, `just skills-refresh autohub` performs both steps. Refresh honors
-the declared ref; it does not advance a pinned commit to main automatically.
-Track `apm.yml`, `apm.lock.yaml`, and the deployed skill files together. Ignore
-`apm_modules/`; never edit installed copies. This setup does not use a project
-`.apm/` directory. Keep the skill ref aligned when updating app-common packages.
+manifest와 uv.lock 변경을 함께 검토한다. 새 체크아웃과 CI는
+`uv sync --locked --all-packages` 다음 `uv run --no-sync devkit sync`를 실행한다.
+관리 파일이나 투영 파일을 직접 편집하지 않는다. devkit 개발 도구는 Linux/macOS를 지원한다.
 
 ## Existing Scheduler Foundation
 
@@ -162,7 +157,7 @@ Align timeouts across the application, Cloud Run, and Cloud Scheduler; pipeline 
 
 External GitHub calls are isolated by swapping the HTTP transport, while DB persistence is verified against real test databases.
 Complex pure CI evaluation logic is verified through unit tests, while API/schedule/report integration is verified through integration and E2E tests.
-For fixtures and conventions, consult the app-common testing guide: `.agents/skills/app-common/references/testing/index.md` after `just skills`, or `uv run app-tools guide show testing`.
+For fixtures and conventions, consult the app-common testing guide: `.agents/skills/app-common/references/testing/index.md` after `just skills`, or `uv run devkit app guide show testing`.
 
 ## Continuous Integration
 

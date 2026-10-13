@@ -16,17 +16,11 @@ wheels/
 !.vscode
 !.github
 
-# Common agent tools for development
-!.agents
-.agents/*
-!.agents/skills/
-.agents/skills/*
-!.agents/skills/app-common/
-!.claude/
-.claude/*
-!.claude/skills/
-.claude/skills/*
-!.claude/skills/app-common/
+# Generated agent assets are installed by devkit.
+.agents/
+.claude/
+.codex/
+.devkit/
 apm_modules/
 
 # Credentials. Keep keys outside the repo (e.g. ~/.config/scheduler-mgr/sa-key.json).

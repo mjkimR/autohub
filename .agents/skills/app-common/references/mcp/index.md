@@ -8,7 +8,7 @@ of business logic.
    Mounted ASGI apps do not inherit FastAPI router dependencies.
 2. Register `ToolDefinition` with `input_model`, optional `output_model`, and the
    smallest required scope set. See the package README for a complete example.
-3. Return `ToolResult.success(...)` or raise `AppError`. The transport preserves
+3. Return `ToolResult.success(...)` or raise an `AdvisoryError` (`devkit.advisory`). The transport preserves
    structured advisories and sets MCP `isError` on failure. Never execute a `fix`.
 4. Set mutation risk explicitly. Scope checks run before handlers, but listing is
    not filtered. Resource-level access checks belong to the application.

@@ -52,13 +52,14 @@ just test
 ```
 
 Initialize the Python environment even for frontend-only checks. Commands print
-compact results and a `log:` path for full output. Backend initialization also
-installs locked app-common skills through APM.
+bounded results and a log path for full output through `devkit run`. Backend
+initialization deploys app-common devkit bundles from the installed packages.
+`.devkit/` and projected skills are generated locally and ignored by Git.
 
 ## Documentation
 
 - [Documentation guide](docs/README.md): architecture, protocols, AI catalogs, and operator notices.
-- [Development and operations](docs/development.md): checks, migrations, authentication, CI, and APM updates.
+- [Development and operations](docs/development.md): checks, migrations, authentication, CI, and devkit updates.
 - [Connector encryption](modules/hub/README.md#connector-credential-encryption): key configuration and rotation constraints.
 - [Frontend](modules/hub-ui/README.md): UI tooling and API generation.
 - [Agent guide](AGENTS.md): code boundaries and required checks.

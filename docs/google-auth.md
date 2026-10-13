@@ -1,6 +1,6 @@
 # Google login and account approval
 
-Implementation consumes published app-common commit `ca4e6a4fdca035314c4e032ca9397e633830ecf5` through pinned Git dependencies. Python and APM locks are updated; no sibling checkout links are required. Google login is deployed and enabled on the managed Cloud Run service; the live validation below was completed with a real account in both callback modes.
+Implementation consumes published app-common commit `fd9b6a954cebb8e550f57018ffd705834a3564dd` through pinned Git dependencies. The Python lock pins packages and devkit installs development guides; no sibling checkout links are required. Google login is deployed and enabled on the managed Cloud Run service; the live validation below was completed with a real account in both callback modes.
 
 ## Behavior
 
@@ -18,9 +18,9 @@ Implementation consumes published app-common commit `ca4e6a4fdca035314c4e032ca93
 
 AutoHub mounts `create_auth_router()` in its existing `/api/v1` router and retains its approval-required policy, bootstrap lifespan, human machine-key administrator dependency and scheduler scopes. The package registers all six auth tables by default. Existing migration `b6f7a8b9c0d1` supplies the complete schema; consolidation changes no table or column definitions and needs no additional migration.
 
-The unified auth package and supporting Python app-common sources use the published commit above. `apm.yml`, its lock and deployed guide copies use the same commit. Old auth distributions and import namespaces are removed from this consumer. The unchanged frontend ESLint package retains its existing pin.
+The unified auth package and supporting Python app-common sources use the published commit above. The devkit receipt and deployed guides are generated from the Python-pinned bundle. Old auth distributions and import namespaces are removed from this consumer. The unchanged frontend ESLint package retains its existing pin.
 
-Reproduce with `uv sync --no-active --frozen` and `just skills`. Future updates must migrate the host schema as needed and update the related Python/APM pins together.
+Reproduce with `uv sync --no-active --frozen` and `just skills`. Future updates must migrate the host schema as needed and update the related Python manifest and lock pins together.
 
 ## Configure and deploy
 
@@ -55,7 +55,7 @@ AutoHub removes the Google callback query string from its Uvicorn access log whi
 
 - app-common: full SQLite suite passed (1,074 tests); unified auth PostgreSQL suite passed (69 tests), including concurrent callback consumption and competing administrator changes.
 - AutoHub: full backend suite passed (717 tests); frontend suite passed (124 tests). Auth/migration PostgreSQL coverage passed (22 tests). All suites were rerun after adopting the published unified auth package.
-- Repeated verification against published Git dependencies passed: lint, Python/Svelte checks, frontend build, generated API types, full backend/UI tests and PostgreSQL auth/migration tests. The unified auth dependency and shared HTTP client are declared. The architecture checker reports three advisory warnings for existing isolated HTTP clients in Telegram, GitHub and Jules; these are outside the Google login implementation. APM audit passed all 10 checks.
+- Repeated verification against published Git dependencies passed: lint, Python/Svelte checks, frontend build, generated API types, full backend/UI tests and PostgreSQL auth/migration tests. The unified auth dependency and shared HTTP client are declared. The architecture checker reports three advisory warnings for existing isolated HTTP clients in Telegram, GitHub and Jules; these are outside the Google login implementation. `devkit sync --check` verifies locally deployed development assets.
 - Temporary links were removed before installing the published dependencies. The checked-in locks now reproduce the implementation without local source links.
 
 ## Live validation

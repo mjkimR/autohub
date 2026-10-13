@@ -12,7 +12,7 @@ init module="all":
 
     if should_run "$target" "hub" || should_run "$target" "sdk"; then
         echo "Initializing Python workspace..."
-        uv sync --no-active --all-packages
+        uv sync --no-active --locked --all-packages
     fi
     if should_run "$target" "hub"; then
         just skills
@@ -35,7 +35,7 @@ lint module="all":
     if should_run "$target" "hub"; then
         path=$(resolve_module_path "hub")
         echo "Linting Python backend ($path)..."
-        uv run --no-active --no-sync app-tools run lint --fix --path "$path"
+        bash scripts/check-backend.sh --fix "$path"
     fi
 
     if should_run "$target" "sdk"; then
@@ -47,7 +47,7 @@ lint module="all":
         path=$(resolve_module_path "hub-ui")
         echo "Linting Svelte frontend ($path)..."
         activate_frontend_node
-        uv run --no-active --no-sync app-tools run npm --path "$path" -- run lint
+        uv run --no-active --no-sync devkit run -- npm --prefix "$path" run lint
     fi
 
 # Check formatting, lint, and architecture without modifying files
@@ -57,7 +57,7 @@ lint-check module="all":
     source ./scripts/_lib.sh
     target=$(resolve_module "{{ module }}")
     if should_run "$target" "hub"; then
-        uv run --no-active --no-sync app-tools run lint --path "$(resolve_module_path hub)"
+        bash scripts/check-backend.sh "$(resolve_module_path hub)"
     fi
     if should_run "$target" "sdk"; then
         uv run --no-active --no-sync ruff check packages/sdk
@@ -65,7 +65,7 @@ lint-check module="all":
     fi
     if should_run "$target" "hub-ui"; then
         activate_frontend_node
-        uv run --no-active --no-sync app-tools run npm --path "$(resolve_module_path hub-ui)" -- run lint
+        uv run --no-active --no-sync devkit run -- npm --prefix "$(resolve_module_path hub-ui)" run lint
     fi
 
 # Run static type checks for a specific module (all, hub, hub-ui, or sdk)
@@ -78,7 +78,7 @@ check module="all":
     if should_run "$target" "hub"; then
         path=$(resolve_module_path "hub")
         echo "Type checking Python backend ($path)..."
-        uv run --no-active --no-sync app-tools run pyright -- --project "$path"
+        uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync pyright --project "$path"
     fi
 
     if should_run "$target" "sdk"; then
@@ -89,8 +89,8 @@ check module="all":
         path=$(resolve_module_path "hub-ui")
         echo "Checking and compiling Svelte frontend ($path)..."
         activate_frontend_node
-        uv run --no-active --no-sync app-tools run npm --path "$path" -- run check
-        uv run --no-active --no-sync app-tools run npm --path "$path" -- run build
+        uv run --no-active --no-sync devkit run -- npm --prefix "$path" run check
+        uv run --no-active --no-sync devkit run -- npm --prefix "$path" run build
     fi
 
 # Run server for a specific module in development mode (hub or hub-ui)
@@ -118,7 +118,7 @@ build-ui:
     source ./scripts/_lib.sh
     path=$(resolve_module_path "hub-ui")
     activate_frontend_node
-    uv run --no-active --no-sync app-tools run npm --path "$path" -- run build
+    uv run --no-active --no-sync devkit run -- npm --prefix "$path" run build
 
 # Build docker image for a specific module or all modules
 docker-build module="all" tag="latest":
@@ -170,7 +170,7 @@ test-ui:
     source ./scripts/_lib.sh
     path=$(resolve_module_path "hub-ui")
     activate_frontend_node
-    uv run --no-active --no-sync app-tools run npm --path "$path" -- test
+    uv run --no-active --no-sync devkit run -- npm --prefix "$path" test
 
 # Install the reviewed specrig release and offline cache (gh authentication for private assets)
 install-specrig destination=".cache/specrig":
@@ -208,11 +208,11 @@ login-token +args="":
 sync-codex-quota:
     @uv run --no-active python ./scripts/sync-codex-quota.py
 
-# Install locked agent skills through Microsoft APM
+# Deploy devkit bundles from the installed packages
 skills:
     @bash ./scripts/install-skills.sh
 
-# Compatibility entry point; arguments are passed to apm install
+# Compatibility entry point; arguments are passed to devkit sync
 link-skills +args="":
     @bash ./scripts/install-skills.sh {{ args }}
 

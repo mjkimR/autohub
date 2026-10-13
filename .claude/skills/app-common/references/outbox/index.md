@@ -17,7 +17,9 @@ from app_prebuilt_outbox.repos import OutboxRepository
 from app_prebuilt_outbox.schemas import OutboxIdentityDict
 
 BOOK_EVENTS: OutboxHookEventTypeDict = {
-    "CREATE": "BOOK_CREATED", "UPDATE": "BOOK_UPDATED", "DELETE": "BOOK_DELETED",
+    "CREATE": "BOOK_CREATED",
+    "UPDATE": "BOOK_UPDATED",
+    "DELETE": "BOOK_DELETED",
 }
 
 

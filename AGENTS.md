@@ -40,6 +40,7 @@ See [README](README.md) and [documentation guide](docs/README.md) for scope.
 ## Repository hygiene
 
 - Never commit `.env` files or log credentials/PII.
+- `.devkit/` and projected agent directories are generated and Git-ignored. Deploy them with `devkit sync`; do not add tracking exceptions or commit generated assets.
 - Do not commit automatically; wait for explicit user instruction or approval.
 - Commit messages are concise, imperative, and emoji-free.
 
@@ -49,3 +50,17 @@ Use English for README/AGENTS files and technical, operational, or agent instruc
 Korean is for documents under `docs/` intended for the user's review, including
 analysis, research, and their review indexes. Preserve localized examples, literal
 UI labels, and the configured language of planning artifacts.
+
+<!-- DEVKIT:START -->
+## devkit
+
+This repository installs agent assets with `devkit`. `.devkit/config.toml` selects
+bundles; `.devkit/installation.json` records what is deployed.
+
+- Before work that touches a bundle's assets, run `uv run devkit get-context <bundle>` once per bundle in the current agent context. Installed bundles: `advisory`, `app-common`, `devkit`.
+- Entry skill `devkit-playbook`: find and run an operational playbook (explicit user invocation only).
+- Never edit `.devkit/managed/` or projected agent files; change the source bundle or use `devkit override`.
+- app-common packages: read the `app-common` skill before changing code that uses them; its architecture rules run in `devkit rules check`, and `devkit app guide list` lists the topics for this project.
+
+This block is managed by `devkit sync`; edit outside the markers only.
+<!-- DEVKIT:END -->

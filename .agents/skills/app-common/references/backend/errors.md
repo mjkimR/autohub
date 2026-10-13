@@ -1,79 +1,67 @@
-# Structured Error Protocol & Agent Advisory (`app-error`)
+# Structured Errors and Agent Advisories (`devkit.advisory`)
 
-`app-error` provides structured exception classes and advisory metadata indicating who should act, whether retrying is safe, and how to fix the issue.
+app-common errors are `devkit.advisory.AdvisoryError` subclasses: each carries a stable
+code and advisory fields saying who acts next, whether a retry is safe, and how to fix
+it. `devkit` is a dependency of every app-common package that raises errors, so the
+module is always installed with them. The protocol itself (fields, modes, the
+`[ACTION]` texts) is specified by devkit's `advisory` guide; this page covers its use
+in applications.
 
-## Raising `AppError`
+## Raising errors
 
-Raise structured exceptions inheriting from `AppError` rather than generic `ValueError` or raw `HTTPException`:
+Raise a subclass with a stable `UPPER_SNAKE` code rather than a generic `ValueError` or a
+raw `HTTPException`:
 
 ```python
-from app_error import AppError, Actor, Retry
+from devkit.advisory import Actor, AdvisoryError, Retry
 
 
-class ResourceNotFoundError(AppError):
-    code = "RESOURCE_NOT_FOUND"
+class BookNotFoundError(AdvisoryError):
+    code = "BOOK_NOT_FOUND"
     actor = Actor.USER
-    retry = Retry.UNSAFE
+    retry = Retry.AFTER_FIX
 
 
-raise ResourceNotFoundError(
-    "Book with id 42 does not exist",
-    code="BOOK_NOT_FOUND",
-    actor=Actor.USER,
-    retry=Retry.UNSAFE,
+raise BookNotFoundError(
+    "Book with id 42 does not exist.",
+    "Listed books: GET /api/v1/books",  # positional arguments after the message are [DETAIL] lines
     fix="Verify the book ID from the listing endpoint.",
-    what_to_report="The requested book ID does not exist in the database.",
+    what_to_report="The requested book ID does not exist.",
 )
 ```
 
----
+In an app-layer-base application, HTTP errors subclass `CustomException`
+(`app_layer_base.base.exceptions.base`), an `AdvisoryError` that adds `status_code`,
+`title` and `log_message`; its `details=` keyword becomes the detail lines.
 
-## Advisory Fields & Types
+## Advisory fields
 
-### 1. `Actor` (Who should take action?)
-- `Actor.TOOL`: The calling agent/tool can correct its input or apply the supplied fix.
-- `Actor.USER`: A person must decide or provide missing configuration.
-- `Actor.DEVELOPER`: The application's code needs repair.
-- `Actor.NONE`: Nobody can act now.
+- `actor`: `TOOL` (the calling agent can run the fix), `USER` (a person decides),
+  `DEVELOPER` (the code needs repair), `NONE` (nobody can act now).
+- `retry`: `SAFE`, `AFTER_FIX` or `UNSAFE` (duplicate or half-done work).
+- `guardrail=True`: a deliberate refusal (`BLOCKED`).
+- `input_error=True`: malformed input the caller corrects before retrying (`INPUT_ERROR`).
+- `fix`, `what_to_report`, `target_files`, `retry_after`: the remediation shown to the agent.
 
-### 2. `Retry` (Is it safe to retry?)
-- `Retry.SAFE`: Retrying the unchanged operation is safe.
-- `Retry.AFTER_FIX`: Apply the fix before retrying.
-- `Retry.UNSAFE`: Retrying risks duplicate or partially completed work.
+`error.mode` derives the directive (`AUTO`, `INTERACTION`, `DEFER`, `BLOCKED`, `HALT`,
+`MAINTENANCE`, `INPUT_ERROR`). An `AUTO` error (actor `TOOL`, retry not `UNSAFE`) must
+carry a `fix`; constructing one without it raises `ValueError`. The factories
+`AdvisoryError.invalid_input`, `.blocked`, `.auto_fix` and `.interaction` set every field
+that decides the mode.
 
-### 3. `ActionMode` (Directive for agents)
-`Advisory.mode` derives the directive in priority order: a guardrail yields
-`BLOCKED`; a developer-owned failure yields `MAINTENANCE`; an unsafe retry yields
-`HALT`; tool/user ownership yields `AUTO`/`INTERACTION`; remaining cases yield
-`DEFER` for safe retries and `HALT` otherwise. These are the enum member names.
-
-### 4. Remediation Properties
-- `fix`: Direct, actionable string instruction for how to fix the issue.
-- `what_to_report`: Summarized explanation suitable for user-facing output.
-- `target_files`: List of file paths related to the error.
-- `retry_after`: Suggested wait time before retrying.
-
----
-
-## Rendering & Serialization
+## Rendering and serialization
 
 ```python
-error = BookNotFoundError(...)
-
-# Formatted lines for CLI stderr
-lines: list[str] = error.lines()
-
-# Formatted block for Model Context Protocol (MCP) tool results
-mcp_text: str = error.render_mcp()
-
-# Dictionary serialization for API JSON responses
-payload: dict = error.to_dict(include_advisory=True)
+error.render()  # the [ERROR]/[ACTION]/... block, for CLI stderr or an MCP tool result
+error.to_dict(include_advisory=True)  # {code, level, message, exit_code, advisory}
+error.to_problem_details(status=404)  # RFC 7807 body; the caller chooses the HTTP status
 ```
 
-## Domain-specific contracts
+`format_mcp_error(error)` in app-layer-base returns `error.render()`. HTTP responses
+expose the advisory only as `ERROR_ADVISORY_MODE` allows (see the backend guide);
+request headers never enable it.
 
-Subclass `AppError` to retain application error codes and class defaults. Its
-initializer, advisory fields, mode derivation, and serialization are shared.
-An application may subclass `Advisory` for an existing CLI presentation and return
-that subtype from its error's `advisory` property; keep its wording at the application
-boundary instead of copying the enums or retry/actor decision logic.
+## Warnings and notices
+
+An operation that succeeds but must report something returns an `AdvisoryError` with
+`level=Level.WARNING` or `Level.NOTICE` alongside its result; it is never raised.

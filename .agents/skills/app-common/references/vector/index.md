@@ -6,14 +6,17 @@ Async Qdrant storage for externally computed dense vectors. No AI catalog or Lan
 from app_vector_store import QdrantSettings, QdrantVectorStore, VectorPoint, open_qdrant
 from qdrant_client import models
 
+
 async def example(vector: list[float], query_vector: list[float]):
     async with open_qdrant(QdrantSettings(mode="local", path="./data/vectors")) as client:
         store = QdrantVectorStore(client, "docs", dimension=384, embedding_id="model@revision:prep-v1")
         await store.ensure_payload_indexes({"project": models.PayloadSchemaType.KEYWORD})
         await store.upsert([VectorPoint(1, vector, {"project": "alpha"})])
-        scope = models.Filter(must=[
-            models.FieldCondition(key="project", match=models.MatchValue(value="alpha")),
-        ])
+        scope = models.Filter(
+            must=[
+                models.FieldCondition(key="project", match=models.MatchValue(value="alpha")),
+            ]
+        )
         return await store.search(query_vector, query_filter=scope)
 ```
 

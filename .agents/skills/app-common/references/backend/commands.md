@@ -104,19 +104,19 @@ source = "my_app.features"
 forbidden_imports = ["my_app.server", "my_app.application", "fastapi", "sqlalchemy", "app_layer_base.core.database", "app_layer_base.base"]
 ```
 
-Run `app-tools check-arch src` in normal lint/CI. Command rules are opt-in and apply only
+`devkit rules check` enforces it with the app-common rules. Command rules are opt-in and apply only
 to `commands.py` below the configured module prefix, in src or flat layouts:
 
-- `ARCH_COMMAND_SIGNATURE`: public entry points must be undecorated async functions with
+- `RULE-app-command-signature`: public entry points must be undecorated async functions with
   exactly two required positional, annotated arguments and a concrete return annotation.
-- `ARCH_COMMAND_TRANSACTION`: calls named `.commit()`, `.rollback()`, `.begin()`,
+- `RULE-app-command-transaction`: calls named `.commit()`, `.rollback()`, `.begin()`,
   `.begin_nested()`, `.transaction()` or `.tx()` are forbidden in command modules,
   including private helpers. Move deliberate short-transaction work into a usecase.
 
 These are AST conventions, not a type checker or interprocedural proof. Aliases, dynamic
 code and behavior in called usecases require type checks, tests and review. Reuse the
 existing explicit suppression syntax with a reason for a justified naming collision;
-prefer fixing misplaced work. Invalid configuration fails with `ARCH_CONFIG_ERROR`.
+prefer fixing misplaced work. Invalid configuration fails with `RULE-app-architecture-config`.
 
 Registry tests complement lint without invoking handlers:
 

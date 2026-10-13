@@ -46,17 +46,13 @@ fi
 
 do_init() {
     echo "==> [init] Syncing Python dependencies..."
-    uv sync --no-active
+    uv sync --no-active --locked --all-packages
 
     echo "==> [init] Installing frontend SvelteKit dependencies..."
     npm --prefix modules/hub-ui install
 
-    echo "==> [init] Syncing agent skills via APM..."
-    if [ -f "$REPO_ROOT/scripts/install-skills.sh" ]; then
-        bash "$REPO_ROOT/scripts/install-skills.sh"
-    elif command -v apm >/dev/null 2>&1; then
-        apm install --frozen
-    fi
+    echo "==> [init] Deploying devkit bundles..."
+    bash "$REPO_ROOT/scripts/install-skills.sh"
 
     # Link skills for Codex if target is codex or all
     if [ "$TARGET" = "codex" ] || [ "$TARGET" = "all" ]; then
@@ -102,14 +98,6 @@ do_setup() {
         ln -sfn /usr/local/bin/just "$HOME/.local/bin/just" 2>/dev/null || true
     elif [ -x "$HOME/.local/bin/just" ] && [ -w /usr/local/bin ] && [ ! -e /usr/local/bin/just ]; then
         ln -sfn "$HOME/.local/bin/just" /usr/local/bin/just 2>/dev/null || true
-    fi
-
-    # 3. apm-cli (for agent skills)
-    if ! command -v apm >/dev/null 2>&1; then
-        echo "==> [setup] Installing apm-cli..."
-        uv tool install apm-cli==0.30.0
-    else
-        echo "==> [setup] apm already installed: $(apm --version 2>/dev/null || true)"
     fi
 
     # 4. Node.js (modules/hub-ui requires Node >= 24.18.0)

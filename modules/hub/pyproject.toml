@@ -31,13 +31,12 @@ dependencies = [
 
 [tool.uv.sources]
 autohub-sdk = { workspace = true }
-app-mcp = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/transports/app-mcp", rev = "a36b829190a162971a6963351d65fee6a3c69b1e" }
-app-prebuilt-auth = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-auth", rev = "a36b829190a162971a6963351d65fee6a3c69b1e" }
-app-http-client = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/adapters/app-http-client", rev = "a36b829190a162971a6963351d65fee6a3c69b1e" }
-app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "a36b829190a162971a6963351d65fee6a3c69b1e" }
-app-error = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-error", rev = "a36b829190a162971a6963351d65fee6a3c69b1e" }
-app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "a36b829190a162971a6963351d65fee6a3c69b1e" }
-app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "a36b829190a162971a6963351d65fee6a3c69b1e" }
+app-mcp = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/transports/app-mcp", rev = "fd9b6a954cebb8e550f57018ffd705834a3564dd" }
+app-prebuilt-auth = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-auth", rev = "fd9b6a954cebb8e550f57018ffd705834a3564dd" }
+app-http-client = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/adapters/app-http-client", rev = "fd9b6a954cebb8e550f57018ffd705834a3564dd" }
+app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "fd9b6a954cebb8e550f57018ffd705834a3564dd" }
+app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "fd9b6a954cebb8e550f57018ffd705834a3564dd" }
+app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "fd9b6a954cebb8e550f57018ffd705834a3564dd" }
 
 [dependency-groups]
 dev = [

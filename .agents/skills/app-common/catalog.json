@@ -4,7 +4,6 @@
     "backend/errors": {
       "path": "references/backend/errors.md",
       "packages": [
-        "app-error",
         "app-layer-base"
       ]
     },

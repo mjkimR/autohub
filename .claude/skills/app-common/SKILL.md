@@ -1,6 +1,6 @@
 ---
 name: app-common
-description: Use or integrate app-common packages and app-tools. Routes to task-specific backend, testing, adapter, and UI guidance; does not apply to unrelated Python, HTTP, or datetime work.
+description: Use or integrate app-common packages and the `devkit app` commands. Routes to task-specific backend, testing, adapter, and UI guidance; does not apply to unrelated Python, HTTP, or datetime work.
 ---
 
 # app-common
@@ -11,18 +11,20 @@ package is installed. HTTP calls → `http`; DB session/transaction work →
 none of these. The backend guide distinguishes CRUD conventions from non-CRUD import boundaries.
 The testing guide offers an HTTP-only plugin for application-owned stores.
 Apply backend architecture guidance when working with app-layer-base,
-not when using standalone app-error or adapters. Read before editing; lint is a safety
+not when using adapters or `devkit.advisory` errors alone. Read before editing; lint is a safety
 net for omissions and cannot decide design intent.
 
-If the topic is known, open its reference below or run `app-tools guide show <topic>`
-directly. Otherwise use `app-tools guide` to discover candidates; do not read every
+If the topic is known, open its reference below or run `devkit app guide show <topic>`
+directly. Otherwise use `devkit app guide list` to discover candidates; do not read every
 recommendation. The target package's declared dependencies indicate applicability;
 lock entries and installed packages alone do not establish task relevance.
 
-Use the existing executable (`.venv/bin/app-tools` or `uv run --no-sync --offline
-app-tools`); do not install tools or fetch guides just to read instructions. For another
-project use `guide --project <path>`. Match guide versions to dependency refs; for local
-development use `guide --source <checkout>`. The relative references work without CLI.
+Use the project's existing executable (`uv run --no-sync --offline devkit app guide ...`);
+do not install tools or fetch guides just to read instructions. For another project use
+`guide list --project <path>`. Match guide versions to dependency refs; for local
+development use `guide list --source <checkout>`. The relative references work without the CLI.
+Architecture rules for these conventions run in `devkit rules check`; `devkit rules explain
+<rule-id>` prints the reference a finding points to.
 
 | Task | Reference / CLI topic |
 |---|---|
