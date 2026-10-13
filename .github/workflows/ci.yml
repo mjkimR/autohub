@@ -15,6 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  UV_PYTHON: '3.13'
   # The recipes activate Node through nvm when it is installed and otherwise use the node on PATH. The runner's
   # nvm does not have the pinned version, so point it nowhere and let setup-node provide the version from .nvmrc.
   NVM_DIR: /nonexistent
