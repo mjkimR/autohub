@@ -14,8 +14,8 @@ members = [
 
 [manifest.dependency-groups]
 dev = [
-    { name = "devkit", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=0a39c3dcfdc2735bdb3677366d62d50fdaf7a1e6" },
-    { name = "devkit-advisory", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=0a39c3dcfdc2735bdb3677366d62d50fdaf7a1e6" },
+    { name = "devkit-agt", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=0c82c55c21f0768941a9d7656f310d7b52c9c69f" },
+    { name = "devkit-advisory", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=0c82c55c21f0768941a9d7656f310d7b52c9c69f" },
     { name = "pyright", specifier = ">=1.1.409" },
 ]
 
@@ -161,7 +161,7 @@ version = "0.1.0"
 source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=fd9b6a954cebb8e550f57018ffd705834a3564dd#fd9b6a954cebb8e550f57018ffd705834a3564dd" }
 dependencies = [
     { name = "click" },
-    { name = "devkit" },
+    { name = "devkit-agt" },
     { name = "tomlkit" },
 ]
 
@@ -667,9 +667,9 @@ wheels = [
 ]
 
 [[package]]
-name = "devkit"
+name = "devkit-agt"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=0a39c3dcfdc2735bdb3677366d62d50fdaf7a1e6#0a39c3dcfdc2735bdb3677366d62d50fdaf7a1e6" }
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=0c82c55c21f0768941a9d7656f310d7b52c9c69f#0c82c55c21f0768941a9d7656f310d7b52c9c69f" }
 dependencies = [
     { name = "click" },
     { name = "devkit-advisory" },
@@ -680,7 +680,7 @@ dependencies = [
 [[package]]
 name = "devkit-advisory"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=0a39c3dcfdc2735bdb3677366d62d50fdaf7a1e6#0a39c3dcfdc2735bdb3677366d62d50fdaf7a1e6" }
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=0c82c55c21f0768941a9d7656f310d7b52c9c69f#0c82c55c21f0768941a9d7656f310d7b52c9c69f" }
 
 [[package]]
 name = "dnspython"
