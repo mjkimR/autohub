@@ -1,107 +1,134 @@
-# 구현·검증 현황
+# Implementation and verification status
 
-2026-10-02 기준이다. 운영 revision은 `autohub-00015-4l4`이며 DB 스키마는 `autohub`다.
-아래 "운영 완료" 범위는 Cloud Run에 배포됐고 실서비스 카나리로 확인했다.
+As of 2026-10-02. The production revision is `autohub-00015-4l4`, and the DB schema is `autohub`.
+The "In production" scope below is deployed to Cloud Run and confirmed with live service canaries.
 
-## 운영 완료
+## In production
 
-| 영역 | 확인한 내용 | 상세 |
+| Area | Verified | Details |
 | --- | --- | --- |
-| PR 자동화 | 등록, Codex 구현, CI 실패 수정, 충돌 해결, 현재 head CI 확인, 자동 머지, 동시 실행 제한 | [카나리 09-22](canary-results-2026-09-22.md) |
-| 승인·복구 | Draft 승인/철회, 웹훅 누락 시 polling 복구 | [실행 구조](architecture.md) |
-| AI Catalog·Jules | 기본 catalog 설치·추가 생성, 명시적 선택, quota/동시 실행 제한, task PR 자동 등록·머지, report 저장 | [Catalog 가이드](ai-catalogs.md) |
-| 프로젝트 연결 | dispatcher 자동 생성·복구, 소유 스케줄 수정 차단, Codex/Jules 연결 테스트와 정리 | [연결 테스트](project-detail-and-connection-tests.md), [카나리 10-01](canary-results-2026-10-01.md) |
-| 공용 유지보수·보관 | 설치당 `System maintenance` 1개, 이력 보관 정책, 첫 운영 정리 성공 | [운영 절차](development.md#system-maintenance) |
-| 인증·배포 | 계정 로그인·토큰 갱신, managed machine key와 scope 격리, workbench 배포 경로 | [배포 가이드](cloud-run-deployment.md) |
-| Google 로그인·가입 승인 | 실계정 가입→승인→정지/재활성→권한 확인, `query`·`form_post` callback | [Google 인증](google-auth.md) |
-| MCP | 작업용 `/mcp/` 25개(조회 13, 변경 12, `autohub:mcp:read/write`), 운영용 `/ops/mcp/` 4개(`autohub:mcp:ops`). 인자 오류는 문제별 `details`로 반환 | [연결 안내](mcp.md), [카나리 10-01](canary-results-2026-10-01.md) |
-| WorkPlan·WorkItem | Plans 탭, Plan/Item 의존성, pause/resume/revoke, 등록·머지 직후 후속 실행, webhook 직후 Issue 동기화 | [카나리 09-23](canary-results-2026-09-23.md), [카나리 09-28](canary-results-2026-09-28.md) |
-| Plan MCP 등록 | 프로젝트+요청 키 멱등 등록과 내용 digest, `group_key` 분류와 Plan/Run 그룹 필터 | [카나리 10-01](canary-results-2026-10-01.md) |
-| 질문·답변·재개 | Codex PR 질문 마커 감지→`blocked`, 답변 저장과 재개 분리, 답변을 새 attempt에 고정, 요청 키 멱등 | [카나리 10-01](canary-results-2026-10-01.md) |
-| Codex 답글 처리 | 연결 테스트 슬롯 반납, 푸시 없는 답글의 5분 감지, `[bot]` 작성자 인식 | [카나리 10-01](canary-results-2026-10-01.md) |
-| 중단·복구 | Run pause 중 외부 푸시 보류, 푸시 뒤 resume의 CI 관찰 복귀, Plan pause/resume, Run cancel, Plan revoke, 원본 링크를 둔 대체 Plan | [카나리 10-02](canary-results-2026-10-02.md) |
+| PR automation | Registration, Codex implementation, CI failure fixes, conflict resolution, current-head CI check, automatic merge, concurrency limit | [Canary 09-22](canary-results-2026-09-22.md) |
+| Approval and recovery | Draft approval/withdrawal, polling recovery for missed webhooks | [Execution architecture](architecture.md) |
+| AI Catalog and Jules | Default catalog installation and additional creation, explicit selection, quota/concurrency limits, automatic task PR registration and merge, report storage | [Catalog guide](ai-catalogs.md) |
+| Project connection | Automatic dispatcher creation and recovery, blocking edits to owned schedules, Codex/Jules connection tests and cleanup | [Connection tests](project-detail-and-connection-tests.md), [Canary 10-01](canary-results-2026-10-01.md) |
+| Shared maintenance and retention | One `System maintenance` per installation, history retention policy, first successful production cleanup | [Operating procedure](development.md#system-maintenance) |
+| Authentication and deployment | Account login and token refresh, managed machine keys and scope isolation, workbench deployment path | [Deployment guide](cloud-run-deployment.md) |
+| Google login and signup approval | Real-account signup→approval→suspension/reactivation→permission check, `query` and `form_post` callbacks | [Google authentication](google-auth.md) |
+| MCP | 25 tools at work `/mcp/` (13 read, 12 write, `autohub:mcp:read/write`), 4 at operations `/ops/mcp/` (`autohub:mcp:ops`). Argument errors return per-problem `details` | [Connection guide](mcp.md), [Canary 10-01](canary-results-2026-10-01.md) |
+| WorkPlan and WorkItem | Plans tab, Plan/Item dependencies, pause/resume/revoke, follow-up runs right after registration and merge, Issue sync right after webhooks | [Canary 09-23](canary-results-2026-09-23.md), [Canary 09-28](canary-results-2026-09-28.md) |
+| Plan MCP registration | Idempotent registration by project + request key with a content digest, `group_key` classification and Plan/Run group filters | [Canary 10-01](canary-results-2026-10-01.md) |
+| Questions, answers, and resume | Codex PR question marker detection→`blocked`, separate answer storage and resume, answers pinned to a new attempt, request-key idempotency | [Canary 10-01](canary-results-2026-10-01.md) |
+| Codex reply handling | Connection test slot release, 5-minute detection of replies without pushes, `[bot]` author recognition | [Canary 10-01](canary-results-2026-10-01.md) |
+| Stop and recovery | Holding external pushes while a Run is paused, return to CI observation on resume after a push, Plan pause/resume, Run cancel, Plan revoke, replacement Plan with a link to the original | [Canary 10-02](canary-results-2026-10-02.md) |
 
-계약은 [Run decisions](run-decisions.md), [Work plans](work-plans.md), [MCP](mcp.md)에 있다.
-2026-10-01–02 카나리에서 찾은 결함은 `dc8fc8b`, `74f8f53`, `fa9bea7`, `746959d`와 app-common
-`a36b829`(MCP 인자 오류 원인 표시)로 보정했다.
+Contracts are in [Run decisions](run-decisions.md), [Work plans](work-plans.md), and
+[MCP](mcp.md). Defects found in the 2026-10-01–02 canaries were corrected in `dc8fc8b`,
+`74f8f53`, `fa9bea7`, `746959d`, and app-common `a36b829` (showing the cause of MCP
+argument errors).
 
-## 배포됐지만 실서비스 미검증
+## Deployed but not verified in production
 
-자동화 테스트로만 확인했다.
+Confirmed only by automated tests.
 
-- [Work Plan backlog·활동](work-plan-backlog.md): `draft`·`proposed` 상태(PR·Run·Issue 미생성), 등록 시
-  `paused` 선택, Draft·Proposed의 Item 추가·삭제, 댓글과 수정 전후 이력, MCP `work_plans_activity`·
-  `work_plans_comment`. 댓글 편집·삭제·스레드·알림·GitHub 댓글 동기화는 없다.
-- [분류 변경](work-plans.md#group-classification): REST `PATCH /{plan_id}/group`, MCP
-  `work_plans_set_group`. revision 검사와 이력을 남기고 실행·상태·명세는 바꾸지 않는다.
+- [Work Plan backlog and activity](work-plan-backlog.md): `draft` and `proposed` states
+  (no PR, Run, or Issue created), `paused` option at registration, adding and removing
+  Items in Draft and Proposed, comments and before/after edit history, MCP
+  `work_plans_activity` and `work_plans_comment`. Comment editing, deletion, threads,
+  notifications, and GitHub comment sync are not supported.
+- [Classification change](work-plans.md#group-classification): REST
+  `PATCH /{plan_id}/group`, MCP `work_plans_set_group`. It checks the revision and records
+  history, and does not change execution, state, or specs.
 
-## 로컬 구현, 미발행
+## Implemented locally, unreleased
 
-- 2026-10-14 SDD 전환: 프로젝트 유형·API·화면을 `sdd`로 정리하고 `devkit-spec`
-  provider와 Python runtime lock을 실행에 고정했다. devkit의 requests/answer/return,
-  같은 spec 내 명시적 handoff와 기존 승인·머지 보호를 연결했다. 옛 실행 evidence는
-  보존하고 진행 중 실행은 migration에서 종료한다. 실제 CLI와 macOS 격리·응답·화면·
-  DB 회귀 테스트를 추가했다. 컨테이너·PostgreSQL·GitHub 실연결은 이 항목의 완료
-  근거에 포함하지 않는다. Linux namespace 지원과 추가 번들 profile은 배포 전 조건이다.
-  현재 계약과 명령은 [개발 가이드](development.md#native-sdd-runtime)를 따른다.
-  최종 로컬 검증: 백엔드 SQLite 972 passed / 31 skipped, 별도 실제 CLI 연동
-  44 passed / 1 skipped, UI 187 passed, SDK 27 passed. lint·타입 검사·UI/SDK 빌드와
-  생성 API 일치 검사도 통과했다. 테스트 묶음은 일부 중복되므로 합산하지 않는다.
+- 2026-10-14 SDD transition: project types, APIs, and screens were consolidated as `sdd`,
+  and the `devkit-spec` provider and Python runtime lock are pinned for execution. devkit
+  requests/answer/return, explicit handoff within the same spec, and the existing approval
+  and merge protections are connected. Old execution evidence is preserved, and
+  in-progress runs are terminated by the migration. Real CLI and macOS isolation,
+  response, screen, and DB regression tests were added. Real container, PostgreSQL, and
+  GitHub connections are not part of the completion evidence for this item. Linux
+  namespace support and additional bundle profiles are prerequisites for deployment. The
+  current contract and commands follow the
+  [development guide](development.md#native-sdd-runtime). Final local verification:
+  backend SQLite 972 passed / 31 skipped, separate real CLI integration 44 passed /
+  1 skipped, UI 187 passed, SDK 27 passed. Lint, type checks, UI/SDK builds, and the
+  generated API consistency check also passed. The test suites partly overlap, so the counts are not summed.
 
-- 2026-10-12 specrig 연동 보강(아래 내용은 이력이며 현재 구현은 위 SDD 전환으로 대체): 마지막 GitHub 조회 중 중지·취소·승인 철회가 발생하면
-  머지 요청 전 revision/lease를 재검사한다. 고정 릴리스 CLI·Git·오프라인 복원 캐시를 이미지에
-  포함하고, layered fresh checkout 복원과 릴리스/후속 소스의 실제 CLI 테스트를 연결했다.
-  운영 pin은 0.1.2이며 layered 소스는 테스트 전용이다. spec별 실행 링크와 검토/최종 보고서
-  요약을 추가했다. custom Go 규칙은 공유 서버의 지원 범위 밖이며 설치·실행 오류를
-  규칙 위반 재작업과 구분한다. [운영 절차](development.md#native-sdd-runtime).
-  Docker 이미지 빌드·PostgreSQL·실제 GitHub 카나리는 이번 로컬 검증에 포함하지 않았다.
+- 2026-10-12 specrig integration hardening (history below; the current implementation is
+  replaced by the SDD transition above): if a stop, cancel, or approval withdrawal occurs
+  during the last GitHub lookup, the revision/lease is rechecked before the merge request.
+  The pinned release CLI, Git, and offline restore cache are included in the image, and
+  layered fresh checkout restore and real CLI tests of release/follow-up sources are
+  connected. The production pin is 0.1.2, and layered sources are test-only. Per-spec run
+  links and review/final report summaries were added. Custom Go rules are outside the
+  shared server's support scope, and installation and execution errors are distinguished
+  from rework for rule violations.
+  [Operating procedure](development.md#native-sdd-runtime). Docker image build,
+  PostgreSQL, and real GitHub canaries were not part of this local verification.
 
-- 2026-10-12 네이티브 specrig HITL 보완: 적용한 질문·답변과 재작업 요청을 후속 단계에 전달하고,
-  변경 없는 답변과 재작업 대기를 구분했다. G3에서 PR ready 관찰 또는 Hub 승인으로 근거를
-  기록하며, draft 대기는 실행 슬롯 없이 polling한다. 철회·피드백 뒤에는 명시적 재승인을
-  요구한다. 결정 이력과 draft 머지 조건을 UI에 표시한다. [계약](run-decisions.md#native-sdd-decisions).
-  Decisions 화면은 현재 질문·승인 근거·다음 액션을 중심으로 재구성하고, 결정 이력은 보조
-  영역으로 분리했다. 변경 요청·중단 사유는 선택 시 입력하며 모바일에서는 한 열로 표시한다.
-  운영 배포·실제 GitHub 카나리는 수행하지 않았다.
+- 2026-10-12 native specrig HITL improvements: applied questions, answers, and rework
+  requests are passed to later steps, and unchanged answers are distinguished from rework
+  waits. At G3, evidence is recorded by PR ready observation or Hub approval, and draft
+  waits are polled without an execution slot. Explicit reapproval is required after
+  withdrawal or feedback. Decision history and draft merge conditions are shown in the UI.
+  [Contract](run-decisions.md#native-sdd-decisions). The Decisions screen was restructured
+  around the current question, approval evidence, and next action, and decision history
+  was moved to a secondary area. Change request and stop reasons are entered on selection
+  and shown in one column on mobile. Production deployment and real GitHub canaries were
+  not performed.
 
-- [저장소 문서 뷰어](repository-viewer.md): 저장소별 렌더러 ID 선택, 인증 클라이언트를 통한 조회·갱신, branch 전달 및 Git에서 무시되는 배포 설정 기반 다중 렌더러 설치를 연결했다. 로컬 자동화 검증과 운영 배포 검증은 구분한다.
+- [Repository document viewer](repository-viewer.md): connected per-repository renderer ID selection, reads and refreshes through the authenticated client, branch passing, and multi-renderer installation based on Git-ignored deployment configuration. Local automated verification is kept separate from production deployment verification.
 
-- [autohub-sdk](../packages/sdk/README.md): `@pipeline` 선언, 입출력 검증, `Registry`, JSON manifest export,
-  로컬 실행 예제. 0.2.0은 task/approval 순차 FlowSpec·release/run/command wire 모델과 HTTP client를
-  제공한다. planhub의 독립 환경 mock에서 실제 HTTP 등록·실행·대기·재개·오류 시나리오를 검증한다.
-  [SDK 계약](sdk-task-flow.md)에 현재 범위가 있다. 실제 backend의 catalog·run·command API, DB 원장·lease·revision fencing과 native/HTTP worker adapter도 로컬 구현했다. 실제 SDK HTTP 호출·DB 재시작·PostgreSQL 경합을 검증했다. planhub application·specrig/PR adapter·worker 코드 배포와 운영 반영은 후속 범위다.
+- [autohub-sdk](../packages/sdk/README.md): `@pipeline` declarations, input/output
+  validation, `Registry`, JSON manifest export, local execution examples. 0.2.0 provides
+  task/approval sequential FlowSpec, release/run/command wire models, and an HTTP client.
+  Real HTTP registration, execution, waiting, resume, and error scenarios are verified
+  against the mock in planhub's independent environment. The current scope is in the
+  [SDK contract](sdk-task-flow.md). The real backend's catalog, run, and command APIs, DB
+  ledger, lease, revision fencing, and native/HTTP worker adapters are also implemented
+  locally. Real SDK HTTP calls, DB restarts, and PostgreSQL contention were verified. The
+  planhub application, specrig/PR adapter, worker code deployment, and production rollout
+  are follow-up scope.
 
-## 운영 상수와 호환성
+## Operating constants and compatibility
 
-- 스케줄 tick은 5분(`*/5 * * * *`). 프로젝트/유지보수의 60초는 내부 최소 간격이다. Plan resume과 등록은
-  같은 요청에서 준비된 Item을 시작하지만, Run resume·cancel의 후속 반영은 다음 tick에 일어난다.
-- 인증은 `X-API-Key`. `APP_API_KEY_ROOT_KEY`는 machine 관리 전용이며 MCP 자격 증명이 아니다.
-- REST resume은 `request_id`, `expected_revision`이 필수다. Plan 등록 키는 MCP 필수, REST 선택이다.
-- 공용 유지보수 항목은 API/UI에서 수정·중지·삭제할 수 없고 시작 시점과 tick에서 복구된다.
-- 실패·취소된 연결 테스트의 브랜치는 종료 후 24시간 뒤 삭제한다.
+- The schedule tick is 5 minutes (`*/5 * * * *`). The 60 seconds for projects/maintenance
+  is an internal minimum interval. Plan resume and registration start ready Items in the
+  same request, but follow-up effects of Run resume and cancel happen at the next tick.
+- Authentication uses `X-API-Key`. `APP_API_KEY_ROOT_KEY` is for machine management only and is not an MCP credential.
+- REST resume requires `request_id` and `expected_revision`. The Plan registration key is required in MCP and optional in REST.
+- Shared maintenance entries cannot be edited, stopped, or deleted through the API/UI and are recovered at startup and on each tick.
+- Branches of failed or canceled connection tests are deleted 24 hours after they end.
 
-| 이력 | 보관 기준 |
+| History | Retention |
 | --- | --- |
-| 성공 schedule job | 종료 후 3일 |
-| 실패 schedule job | 종료 후 7일 |
-| 종료된 pipeline run | 마지막 변경 후 30일, 하위 attempt/delivery/reply·질문·답변 포함 |
-| Webhook delivery | 90일 |
+| Successful schedule job | 3 days after completion |
+| Failed schedule job | 7 days after completion |
+| Finished pipeline run | 30 days after last change, including child attempts/deliveries/replies, questions, and answers |
+| Webhook delivery | 90 days |
 
-시간당 한 번 최대 job 1,000개·run 200개를 정리한다. 대기·재시도 가능한 job, 활성/일시 중지/차단된
-run, 유효한 lease, 미해결 WorkItem이 참조하는 run은 보존한다. run 만료는 PR 재등록으로 이어지지 않는다.
+Up to 1,000 jobs and 200 runs are cleaned up once per hour. Waiting or retryable jobs,
+active/paused/blocked runs, valid leases, and runs referenced by unresolved WorkItems are
+preserved. Run expiry does not lead to PR re-registration.
 
-마이그레이션: `f4d5e6f7a8b9`(공용 스케줄), `a5e6f7a8b9c0`(run 만료 표시), `b6f7a8b9c0d1`(인증),
-`c7d8e9f0a1b2`(work plan), `e14a217d0910`·`f25b328e1021`(질문·답변·등록 키),
-`b47d540a3243`(backlog·활동), `c58e651b4354`(group key). `b47d540a3243` downgrade는 Draft·Proposed가
-남아 있으면 거부하고 활동 테이블을 삭제한다. `c58e651b4354` downgrade는 분류 값만 제거한다.
+Migrations: `f4d5e6f7a8b9` (shared schedule), `a5e6f7a8b9c0` (run expiry marker),
+`b6f7a8b9c0d1` (authentication), `c7d8e9f0a1b2` (work plan), `e14a217d0910` and
+`f25b328e1021` (questions, answers, registration key), `b47d540a3243` (backlog and
+activity), `c58e651b4354` (group key). The `b47d540a3243` downgrade is refused while Draft
+or Proposed plans remain, and it drops the activity tables. The `c58e651b4354` downgrade
+removes only the classification values.
 
-## 제외·보류
+## Excluded and deferred
 
-- live로 유발하지 않은 것: Telegram, Jules quota 소진/429, required review·branch protection,
-  연결 테스트의 timeout·응답 유실·인증 장애, 실제 만료 행 삭제, Plan 수정 revision 충돌, CI 실패가
-  섞인 Plan, 위의 미검증 기능. 모두 자동화 테스트 범위다.
-- 범위 밖: 분류별 일괄 제어·정책·quota·경로 잠금, Plan 간 Item 의존성, 실패 Item 재시도 API와 자동
-  successor 치환, Jules 질문 수집, 자동 계획/WBS, 동적 catalog 선택, 병합 전 LLM 리뷰.
-  추가 저장소의 branching 정책은 온보딩 때 정한다. provider 불확실성은
-  [Catalog 미해결 항목](ai-catalog-implementation-notes.md#known-limitations-and-remaining-work)에 있다.
-- 알려진 정리 대상: Plan 등록 요청의 쿼리 수가 많다(query counter 경고). 동작에는 영향 없다.
+- Not triggered live: Telegram, Jules quota exhaustion/429, required review and branch
+  protection, connection test timeouts, lost responses, and authentication failures,
+  actual deletion of expired rows, Plan edit revision conflicts, Plans mixed with CI
+  failures, and the unverified features above. All are covered by automated tests.
+- Out of scope: bulk control, policy, quota, and path locks per classification, cross-Plan
+  Item dependencies, a failed Item retry API and automatic successor substitution, Jules
+  question collection, automatic planning/WBS, dynamic catalog selection, pre-merge LLM
+  review. Branching policy for additional repositories is decided at onboarding. Provider
+  uncertainty is in
+  [Catalog open items](ai-catalog-implementation-notes.md#known-limitations-and-remaining-work).
+- Known cleanup item: Plan registration requests issue many queries (query counter warning). Behavior is not affected.

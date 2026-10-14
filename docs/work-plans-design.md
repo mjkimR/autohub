@@ -1,40 +1,48 @@
-# 작업 묶음과 의존성 실행 설계
+# Work plan and dependency execution design
 
-> 2026-10-01 확장: 실행 전 Draft·Proposed·보관 상태와 댓글·변경이력은
-> [후속 계약](work-plan-backlog.md)을 따른다. 아래 원 설계의 등록 즉시 실행·고정 Item
-> 계약은 실행용 active/paused Plan에 적용한다.
+> 2026-10-01 extension: the pre-execution Draft, Proposed, and archived states and
+> comments and activity history follow the [follow-up contract](work-plan-backlog.md).
+> The original design's register-to-run and fixed-item contract below applies to
+> executable active/paused plans.
 
-2026-09-22 논의 정리. **합의와 초기 제안을 기록한 설계 문서다.**
-초기 로컬 구현과 확정한 세부 동작·제한은 [구현 가이드](work-plans.md)를 참고한다. 운영 배포는 아직 하지 않았다.
-대화에서 합의한 동작과 구현 시 구체화할 제안을 구분한다.
-현재 구현은 [실행 구조](architecture.md), [보관 정책](operator-notices.md#history-retention),
-[구현·검증 현황](delivery-status.md)을 기준으로 한다.
+Summary of the 2026-09-22 discussion. **This design document records agreements and
+initial proposals.** See the [implementation guide](work-plans.md) for the initial
+local implementation and the finalized detailed behavior and limits. It is not yet
+deployed to production.
+It separates behavior agreed in the discussion from proposals to be refined during
+implementation.
+For the current implementation, refer to [architecture](architecture.md),
+[retention policy](operator-notices.md#history-retention), and
+[delivery status](delivery-status.md).
 
-## 목적과 합의한 사용 흐름
+## Purpose and agreed usage flow
 
-사용자는 여러 작업과 원하는 의존 관계를 한 번에 등록한다. AutoHub는 의존성이
-충족된 작업을 실행 용량 안에서 병렬 처리하고, 선행 작업의 머지 후 후속 작업을
-자동으로 시작한다. 여러 묶음을 연결하면 마일스톤 순서도 표현할 수 있다.
+Users register several tasks and their desired dependencies at once. AutoHub runs
+tasks whose dependencies are satisfied in parallel within execution capacity, and
+starts dependent tasks automatically after their predecessors merge. Chaining several
+plans can also express milestone order.
 
-- 묶음 등록 자체가 실행 요청이다. 별도 묶음 승인 단계는 두지 않는다.
-- 구현·검증은 실행 조건이 충족되는 대로 진행한다.
-- 머지는 프로젝트 정책을 따른다. 원하는 기본 동작은 자동 머지다.
-- 선행 작업의 완료 기준은 지정한 대상 브랜치에 PR이 머지된 것이다.
-  에이전트 응답, 구현 종료, CI 통과만으로 후속 작업을 해제하지 않는다.
-- 의존성이 없는 묶음과 작업은 프로젝트·AI Catalog의 동시 실행 제한 안에서
-  병렬 진행할 수 있다. 의존성 대기는 실행 슬롯을 차지하지 않는다.
-- Plan의 pause/revoke는 아직 시작하지 않은 Item을 제어한다.
-  이미 시작한 실행을 외부 시스템에서 중단할 필요는 없다.
+- Registering a plan is itself the execution request. There is no separate plan
+  approval step.
+- Implementation and verification proceed as soon as execution conditions are met.
+- Merging follows the project policy. The desired default behavior is auto-merge.
+- A predecessor task is complete when its PR is merged into the specified target branch.
+  An agent reply, finished implementation, or passing CI alone does not release
+  dependent tasks.
+- Plans and tasks without dependencies can proceed in parallel within the project's
+  and AI Catalog's concurrency limits. Waiting on dependencies holds no execution slot.
+- Plan pause/revoke controls items that have not started yet.
+  Execution that has already started does not need to be stopped in external systems.
 
-## 현재 구조와 추가할 책임
+## Current structure and added responsibilities
 
-| 단위 | 현재 또는 제안하는 책임 |
+| Unit | Current or proposed responsibility |
 | --- | --- |
-| `ScheduleJob` — 현재 | 스케줄러 한 번 실행의 상태·결과·재시도. 성공해도 개발 작업이 끝났다는 뜻은 아니다. |
-| `PipelineRun` — 현재 | PR 하나의 등록부터 구현·CI·수정·머지까지 지속적인 lifecycle. pause/resume, 실패·취소, lease와 복구를 관리한다. |
-| `ExecutionAttempt` — 현재 | Run 안의 개별 구현·CI 수정·충돌 수정 요청과 실행 상태. |
-| `WorkPlan` — 제안 | 작업 묶음의 명세, Plan 간 의존성, 새 작업 시작 제어, 묶음 결과. |
-| `WorkItem` — 제안 | PR 생성 전부터 존재하는 작업 명세·완료 조건, 동일 Plan 내부 의존성, 실행 연결과 영속적인 결과. |
+| `ScheduleJob` — current | State, result, and retries of one scheduler run. Success does not mean the development work is finished. |
+| `PipelineRun` — current | Ongoing lifecycle of one PR from registration through implementation, CI, fixes, and merge. Manages pause/resume, failure and cancellation, leases, and recovery. |
+| `ExecutionAttempt` — current | An individual implementation, CI fix, or conflict fix request within a run, and its execution state. |
+| `WorkPlan` — proposed | Plan specification, plan-to-plan dependencies, control over starting new work, and plan result. |
+| `WorkItem` — proposed | Task specification and completion criteria that exist before a PR is created, dependencies within the same plan, execution link, and persistent result. |
 
 ```text
 WorkPlan
@@ -42,211 +50,273 @@ WorkPlan
        └─ PipelineRun
             └─ ExecutionAttempt
 
-Scheduler / ScheduleJob: 위 상태를 주기적으로 관찰하고 필요한 처리를 진행
+Scheduler / ScheduleJob: periodically observes the state above and performs required processing
 ```
 
-현재 `PipelineRun`은 PR 번호와 브랜치가 필수다. Plan·Item은 그 앞단에서
-실행 순서와 대기를 관리하고, 실행 가능한 Item의 브랜치·PR을 준비한 뒤
-기존 Run 파이프라인으로 넘긴다. Item에 CI 수정이나 에이전트 응답 처리 로직을
-중복 구현하지 않는다. 재실행이나 PR 교체가 필요해도 의존 관계는 안정적인
-Item ID를 참조한다. 한 Item의 중복 활성 실행은 막는다.
+`PipelineRun` currently requires a PR number and a branch. Plans and items manage
+execution order and waiting ahead of that, prepare the branch and PR for an executable
+item, and then hand it to the existing run pipeline. Items do not reimplement CI
+fixes or agent reply handling. Even when a rerun or PR replacement is needed,
+dependencies reference stable item IDs. Duplicate active executions of one item are
+prevented.
 
-Run을 관찰한 Job이 정상 종료해도 Run은 계속 구현 중일 수 있다.
-다음 Job이 같은 Run을 다시 관찰한다. Plan·Item을 추가해도 이 실행 방식은 유지한다.
+Even when a job that observed a run finishes normally, the run may still be in
+implementation. The next job observes the same run again. Adding plans and items
+keeps this execution model.
 
-## 의존 관계: 영구적인 도메인 제약
+## Dependencies: permanent domain constraints
 
-다음 제한은 초기 버전의 타협이 아니라 앞으로도 유지할 규칙이다.
+The following restrictions are not compromises of the initial version but rules
+that will remain.
 
-| 관계 | 지원 여부 |
+| Relationship | Support |
 | --- | --- |
-| Plan → Plan | 지원. 모든 선행 Plan이 성공 완료되면 후속 Plan을 해제한다. |
-| 동일 Plan 내부 Item → Item | 지원. 모든 선행 Item이 머지되면 후속 Item을 해제한다. |
-| 서로 다른 Plan의 Item → Item | 영구적으로 지원하지 않는다. |
-| Plan → Item 또는 Item → Plan 직접 참조 | 지원하지 않는다. |
+| Plan → Plan | Supported. The dependent plan is released when all predecessor plans complete successfully. |
+| Item → Item within the same plan | Supported. The dependent item is released when all predecessor items are merged. |
+| Item → Item across different plans | Permanently unsupported. |
+| Direct Plan → Item or Item → Plan reference | Unsupported. |
 
-Plan 그래프와 각 Plan의 Item 그래프는 각각 순환 없는 방향 그래프다.
-자기 참조, 순환, 존재하지 않는 대상, 다른 Plan의 Item 참조는 등록·수정 시 거부한다.
-UI 선택 범위뿐 아니라 API와 저장 무결성에서도 같은 규칙을 적용한다.
-다른 Plan의 일부 결과만 먼저 필요하면 해당 부분을 별도 Plan으로 분리한다.
+The plan graph and each plan's item graph are each directed acyclic graphs.
+Self references, cycles, missing targets, and references to another plan's items
+are rejected on registration and edit. The same rules apply not only to UI selection
+scope but also to the API and storage integrity.
+If only part of another plan's result is needed first, split that part into a
+separate plan.
 
 ```mermaid
 flowchart LR
-    A["Plan A: 기반 구축"] --> C["Plan C: 기능 구현"]
-    B["Plan B: 디자인 정리"] --> C
-    C --> D["Plan D: 출시 준비"]
-    E["Plan E: 운영 도구"]
+    A["Plan A: Foundation"] --> C["Plan C: Feature implementation"]
+    B["Plan B: Design cleanup"] --> C
+    C --> D["Plan D: Release preparation"]
+    E["Plan E: Operations tooling"]
 ```
 
-A·B·E는 용량 안에서 병렬 진행한다. A와 B가 모두 완료되면 C, C가 완료되면
-D를 해제한다. C 내부에서도 Item별 의존 관계에 따라 실행한다.
+A, B, and E proceed in parallel within capacity. C is released when both A and B
+complete, and D when C completes. Within C, items also run according to their
+dependencies.
 
-Item의 시작 조건은 다음을 모두 만족하는 것이다.
+An item can start when all of the following hold.
 
-1. 소속 Plan이 새 실행을 허용한다. pause/revoke 상태가 아니다.
-2. 소속 Plan의 모든 선행 Plan이 성공 완료됐다.
-3. 동일 Plan 내부의 모든 선행 Item이 성공 완료됐다.
-4. Item이 미착수 상태이고, 기존 실행이나 시작 예약과 중복되지 않는다.
-5. 프로젝트·Catalog 정책과 실행 용량이 시작을 허용한다.
+1. Its plan allows new execution. It is not in a pause/revoke state.
+2. All predecessor plans of its plan completed successfully.
+3. All predecessor items within the same plan completed successfully.
+4. The item is unstarted and does not duplicate an existing execution or start
+   reservation.
+5. Project and catalog policy and execution capacity allow the start.
 
-의존성 해제와 실제 시작은 구분한다. 실행 가능해도 quota나 concurrency 때문에
-대기할 수 있다. 특정 선행 작업의 실패는 그 후속 작업만 막으며 독립적인 작업은
-계속 진행한다. 실패·취소·revoke는 성공으로 간주하지 않는다.
+Dependency release and actual start are distinct. Work can be executable yet still
+wait because of quota or concurrency. A failure of a given predecessor blocks only its
+dependents, and independent work continues. Failure, cancellation, and revoke are not
+treated as success.
 
-## PR 준비와 머지 정책
+## PR preparation and merge policy
 
-작업 명세는 모두 미리 등록하되, 브랜치와 PR은 Item을 실제 실행할 때 준비한다.
-선행 변경이 반영된 대상 브랜치에서 시작해야 한다. 선행 PR이 머지됐다는 확인과
-후속 실행의 기준 커밋을 기록해, 오래된 브랜치에서 잘못 출발하지 않도록 한다.
+All task specifications are registered up front, but the branch and PR are prepared
+when the item actually runs. Work must start from a target branch that includes the
+predecessor changes. Record the confirmation that the predecessor PR merged and the
+base commit of the dependent execution, so work does not start from a stale branch.
 
-현재 Codex 실행 경로에는 PR이 필요하므로 일반 작업용 브랜치·PR 준비 기능이
-추가로 필요하다. PR 생성 및 실행 요청은 의도를 먼저 저장하고, 재시작이나
-외부 응답 유실 시 기존 결과를 찾아 복구해 중복 생성을 막는다.
+The current Codex execution path requires a PR, so a branch and PR preparation
+feature for general tasks is also needed. PR creation and execution requests store
+the intent first; after a restart or a lost external response, they find and recover
+the existing result to prevent duplicate creation.
 
-현재 구현은 `auto_merge=true`여도 Draft PR을 사용자가 Ready로 바꾸기 전까지
-머지하지 않는다. Plan 등록 후 별도 승인을 요구하지 않으려면 자동 생성 PR의
-Draft 처리와 프로젝트 머지 정책의 연결을 구현 시 조정해야 한다.
-자동 머지 정책에서는 별도 Ready 조작 없이 CI 검증 후 머지까지 진행할 수 있어야 한다.
-수동 머지 정책에서는 PR 머지를 기다리고, 후속 Item·Plan도 함께 대기한다.
-사람이 다시 Draft로 전환한 경우 같은 명시적 보류 신호를 무시해서는 안 된다.
+The current implementation does not merge a Draft PR until the user marks it Ready,
+even with `auto_merge=true`. To avoid requiring separate approval after plan
+registration, the link between Draft handling of auto-created PRs and the project
+merge policy must be adjusted during implementation.
+Under an auto-merge policy, work must be able to proceed through CI verification to
+merge without a separate Ready action.
+Under a manual merge policy, work waits for the PR merge, and dependent items and
+plans wait as well.
+If a person switches the PR back to Draft, that same explicit hold signal must not
+be ignored.
 
-의존성이 없는 작업도 같은 파일을 수정할 수 있다. 병렬 구현이 충돌 없는 머지를
-보장하지 않으므로 기존 충돌 수정과 머지 직전 최신 head/base·CI 확인을 유지한다.
+Tasks without dependencies can still modify the same files. Parallel implementation
+does not guarantee conflict-free merges, so keep the existing conflict fixes and the
+latest head/base and CI checks right before merge.
 
 ## Plan pause / resume / revoke
 
-합의한 범위는 **대기 중인 Item의 새 실행 제어**다. 이미 시작한 Run을 멈추거나
-외부 에이전트 실행을 취소하는 기능으로 해석하지 않는다.
+The agreed scope is **control over new execution of waiting items**. It is not to be
+read as stopping runs that have already started or canceling external agent
+executions.
 
-다음 표는 이 범위를 구체화한 동작 제안이다. 특히 revoke의 비가역성과
-시작 경계는 구현 전에 API·UI 용어와 함께 확정한다.
+The following table is a behavior proposal that refines this scope. In particular,
+the irreversibility of revoke and the start boundary are to be finalized together
+with API and UI terminology before implementation.
 
-| 조작 | 미착수 Item | 이미 시작한 Item / Run |
+| Action | Unstarted item | Already started item / run |
 | --- | --- | --- |
-| Pause | 새 시작을 보류한다. 의존성이 해제돼도 시작하지 않는다. | 관찰·구현·CI 수정·충돌 수정·프로젝트 정책에 따른 머지를 계속한다. |
-| Resume | 현재 의존성과 용량을 다시 평가해 시작한다. | 기존 Run을 재시작하거나 요청을 중복 전송하지 않는다. |
-| Revoke | 남은 실행 요청을 철회한다. 미착수 Item을 철회 상태로 남기고 자동 실행하지 않는다. | 기존 Run을 계속 처리하고 실제 결과를 기록한다. 이미 한 머지를 되돌리지 않는다. |
+| Pause | Holds new starts. Does not start even if dependencies are released. | Continues observation, implementation, CI fixes, conflict fixes, and merge according to the project policy. |
+| Resume | Re-evaluates current dependencies and capacity, then starts. | Does not restart existing runs or resend requests. |
+| Revoke | Withdraws remaining execution requests. Leaves unstarted items in a withdrawn state and does not run them automatically. | Continues processing existing runs and records their actual results. Does not undo merges already made. |
 
-제안하는 추가 규칙:
+Proposed additional rules:
 
-- Pause는 일시 보류이며 Resume으로 해제한다. Revoke는 남은 작업의 최종 철회이며
-  일반 Resume으로 되살리지 않는다. 다시 수행할 작업은 새 Plan으로 등록한다.
-- Plan의 실행 허용 상태와 진행 중/성공/실패/철회 Item 수를 구분해 보여준다.
-  `revoked`여도 이미 시작한 Item은 여전히 실행 중일 수 있다.
-- Pause 중 모든 Item이 성공 완료됐다면 완료를 반영할 수 있다. Pause는 신규
-  시작만 막는다. 완료된 선행 Plan은 후속 Plan의 조건을 충족한다.
-- Revoke한 Plan은 성공한 Plan으로 취급하지 않는다. 이미 시작한 Item들의 결과는
-  보존하되 후속 Plan은 자동 해제하지 않는 것을 기본 제안으로 한다.
-- 후속 Plan을 자동으로 pause/revoke하지는 않는다. 선행 조건 미충족 사유를
-  표시하며 기다린다. 이미 시작한 후속 실행을 소급 중단하지 않는다.
-- 완료된 Plan에는 pause/revoke를 적용하지 않는다.
+- Pause is a temporary hold released by Resume. Revoke is the final withdrawal of
+  remaining work and is not revived by a normal Resume. Work to be done again is
+  registered as a new plan.
+- Show the plan's execution-allowed state separately from the counts of in-progress,
+  successful, failed, and withdrawn items. Even when `revoked`, already started items
+  can still be running.
+- If all items complete successfully during a pause, the completion can be recorded.
+  Pause only blocks new starts. A completed predecessor plan satisfies the condition
+  of its dependent plans.
+- A revoked plan is not treated as successful. The default proposal is to preserve
+  the results of already started items but not release dependent plans automatically.
+- Dependent plans are not paused or revoked automatically. They wait while showing
+  the unmet predecessor condition. Dependent executions that already started are not
+  stopped retroactively.
+- Pause/revoke does not apply to completed plans.
 
-### 시작 경계와 동시 요청
+### Start boundary and concurrent requests
 
-제안하는 시작 경계는 **Item의 실행 시작을 DB에 원자적으로 확정하는 시점**이다.
-그 뒤 브랜치·PR 준비와 Run 연결을 진행한다. 단순 큐 조회나 후보 선택은 시작이 아니다.
+The proposed start boundary is **the moment the item's execution start is atomically
+committed in the DB**. Branch and PR preparation and run linking follow. A simple queue
+query or candidate selection is not a start.
 
-Pause/revoke와 시작 확정은 같은 Plan의 제어 상태·revision을 기준으로 직렬화한다.
-제어 요청이 먼저 확정됐다면 기존 큐 후보도 시작할 수 없다. 시작 확정이 먼저라면
-이미 시작한 Item으로 처리하고 계속 진행할 수 있다. 진행 중 숫자에는 이 준비 단계도
-포함해 사용자가 경계를 알 수 있게 한다.
-외부 요청이 전송됐는지 불확실한 시작은 미착수로 되돌려 새 요청을 보내지 말고
-기존 실행을 조회·복구한다.
+Pause/revoke and start commits are serialized on the same plan's control state and
+revision. If the control request commits first, even existing queue candidates cannot
+start. If the start commits first, the item is treated as already started and can
+proceed. The in-progress count includes this preparation stage so users can see the
+boundary.
+A start for which it is uncertain whether the external request was sent is not reset
+to unstarted with a new request sent; instead, the existing execution is looked up
+and recovered.
 
-## 완료 결과와 이력 보관
+## Completion results and history retention
 
-### 현재 정책
+### Current policy
 
-| 대상 | 현재 보관 정책 |
+| Target | Current retention policy |
 | --- | --- |
-| 성공 ScheduleJob | 종료 후 3일 |
-| 실패 ScheduleJob | 종료 후 7일. 재시도 가능한 Job은 보존 |
-| `completed`·`failed`·`canceled` PipelineRun | 마지막 변경 후 30일 |
-| 진행 중·`paused`·`blocked` PipelineRun | 자동 삭제하지 않음 |
-| 유효한 lease가 있는 Run | 삭제에서 제외 |
+| Successful ScheduleJob | 3 days after finishing |
+| Failed ScheduleJob | 7 days after finishing. Retryable jobs are preserved |
+| `completed`, `failed`, `canceled` PipelineRun | 30 days after the last change |
+| In-progress, `paused`, `blocked` PipelineRun | Not deleted automatically |
+| Run with a valid lease | Excluded from deletion |
 
-최대 시간당 한 번, Run 200개·Job 1,000개까지 정리한다. Run의 Attempt·Delivery·Reply도
-함께 삭제된다. GitHub PR·브랜치는 이 정책으로 삭제하지 않는다.
-Jules session은 Run 만료 표시와 PR URL·보고서를 남겨 동일 PR 재등록을 막는다.
+Cleanup runs at most once per hour, up to 200 runs and 1,000 jobs. A run's attempts,
+deliveries, and replies are deleted with it. This policy does not delete GitHub PRs
+or branches.
+Jules sessions keep a run-expiry marker and the PR URL and report to prevent
+re-registering the same PR.
 
-### Plan·Item을 위한 제안
+### Proposals for plans and items
 
-**Run이 없다는 이유로 성공 처리하지 않는다.** 현재도 실패·취소 Run이 삭제되므로
-부재는 성공 증거가 될 수 없다. 의존성 판단에는 Run의 존재가 아니라 Item·Plan에
-보존한 명시적인 성공 결과를 사용한다.
+**Do not treat a missing run as success.** Failed and canceled runs are already
+deleted today, so absence cannot be evidence of success. Dependency decisions use the
+explicit success results preserved on items and plans, not the existence of a run.
 
-Item에는 최소한 결과, 완료 시각, 저장소·PR 식별자와 URL, 대상 브랜치,
-머지 커밋, 실행 식별자를 남긴다. Run 상세가 만료돼도 결과를 읽을 수 있어야 한다.
-Plan은 모든 Item의 성공 결과를 확인해 묶음 완료를 기록한다.
+Items record at least the result, completion time, repository and PR identifiers and
+URL, target branch, merge commit, and execution identifier. The result must stay
+readable after the run details expire.
+A plan records its completion after confirming the success results of all its items.
 
-- 성공 Run은 Item 결과가 안전하게 반영된 후 기존 30일 보관 정책을 적용할 수 있다.
-- 미해결 Item의 복구·조사에 필요한 실패 Run은 자동 삭제에서 제외한다.
-  재시도로 해결하거나 명시적으로 작업을 종료한 뒤 보관 기간을 적용하는 방안을 쓴다.
-  해결 전에 이미 오래됐다는 이유로 즉시 지워지지 않도록 보관 기산점도 정해야 한다.
-- 진행 중·paused·blocked·유효 lease 보호는 유지한다.
-- 취소·철회 결과도 명시적으로 남긴다. 정리 과정에서 성공으로 바꾸지 않는다.
-- 첫 버전에서는 Plan·Item 명세, 의존 관계와 최종 결과를 자동 삭제하지 않는다.
-  Run 이력이 만료돼도 선행 Plan·Item의 성공 여부는 계속 판단할 수 있다.
-- Run 결과 반영과 삭제가 경쟁하지 않게 한다. 같은 트랜잭션에서 결과를 기록하거나,
-  결과 반영 완료를 확인한 Run만 정리 대상으로 선택한다.
-- 정상 만료는 별도 표시하고, 성공 결과 없이 연결된 Run이 사라진 경우는 확인 필요
-  상태로 둔다. 후속 실행을 보류하고 GitHub의 실제 머지 증거로 복구한다.
+- Successful runs can follow the existing 30-day retention policy after the item
+  result is safely recorded.
+- Failed runs needed to recover or investigate unresolved items are excluded from
+  automatic deletion. The approach is to apply the retention period after the item is
+  resolved by retry or the work is explicitly closed. The retention start point must
+  also be defined so runs are not deleted immediately just because they are already
+  old before resolution.
+- Protection for in-progress, paused, and blocked runs and valid leases is kept.
+- Canceled and withdrawn results are also recorded explicitly. Cleanup does not turn
+  them into success.
+- The first version does not automatically delete plan and item specifications,
+  dependencies, or final results. Even after run history expires, whether predecessor
+  plans and items succeeded can still be determined.
+- Recording run results and deletion must not race. Either record the result in the
+  same transaction, or select for cleanup only runs whose result recording is
+  confirmed.
+- Normal expiry is marked separately, and a linked run that disappeared without a
+  success result is put into a needs-review state. Dependent execution is held and
+  recovered from actual merge evidence on GitHub.
 
-보관 여부는 단순 경과 기간뿐 아니라 **의존성 판단 결과가 보존됐는지,
-미해결 작업의 복구에 실행 상세가 필요한지**를 함께 확인한다.
-독립 실행 Run과 기존 Jules 만료 처리도 호환되도록 유지한다.
+Retention decisions check not only elapsed time but also **whether the result used for
+dependency decisions is preserved, and whether execution details are needed to recover
+unresolved work**.
+Standalone runs and existing Jules expiry handling remain compatible.
 
-## GitHub Issue: 실행과 분리된 기록 동기화
+## GitHub Issue: record sync separate from execution
 
-추가 합의: GitHub Issue는 저장소에서 명세와 작업 처리 이력을 확인하는 사본이다.
-실행 상태·의존성·성공 여부의 기준은 AutoHub다. PR의 실제 코드·CI·머지 상태는
-기존처럼 실행 판단에 사용하지만 Issue의 본문·댓글·닫힘·재개·관계는 사용하지 않는다.
+Additional agreement: GitHub Issues are a copy for viewing specifications and task
+processing history in the repository. AutoHub is the source of truth for execution
+state, dependencies, and success. The PR's actual code, CI, and merge state are used
+for execution decisions as before, but issue bodies, comments, closing, reopening,
+and relationships are not.
 
-- Plan은 부모 Issue, Item은 sub-issue로 기록하고 PR 링크와 주요 상태 이력을 남긴다.
-- 의존 관계는 표시용이다. GitHub에서 관계를 수정해도 AutoHub 실행은 바뀌지 않는다.
-- AutoHub → GitHub 단방향이며 GitHub 편집을 명세로 가져오거나 실행 트리거로 쓰지 않는다.
-- Issue 생성·갱신 실패와 API 제한은 동기화 큐에서 재시도한다. 작업 실행을 막지 않는다.
-- 자동 생성 의도와 식별자를 보존해 응답 유실 후 중복 Issue 생성을 막는다.
-- 매 polling 기록 대신 주요 상태 변화를 남긴다. Issue에는 기록용 안내를 표시한다.
-- 무료 private 저장소에서도 사용 가능하다. REST 요청/콘텐츠 생성 속도 제한과
-  부모당 sub-issue 100개 제한은 구현 시 반영한다.
+- A plan is recorded as a parent issue and an item as a sub-issue, with PR links and
+  key state history.
+- Dependencies are for display. Editing relationships on GitHub does not change
+  AutoHub execution.
+- Sync is one-way from AutoHub to GitHub; GitHub edits are not imported as
+  specifications or used as execution triggers.
+- Issue create/update failures and API limits are retried from a sync queue. They do
+  not block task execution.
+- The automatic creation intent and identifiers are preserved to prevent duplicate
+  issues after a lost response.
+- Key state changes are recorded instead of every polling pass. Issues show a notice
+  that they are for record keeping.
+- Usable on free private repositories as well. REST request and content-creation rate
+  limits and the limit of 100 sub-issues per parent are accounted for in the
+  implementation.
 
-## 입력·변경·화면 제안
+## Input, change, and UI proposals
 
-- Plan과 Item 목록·의존 관계를 일괄 검증한 뒤 원자적으로 등록한다.
-  잘못된 묶음 일부만 먼저 실행하지 않는다.
-- Item 의존 대상은 같은 Plan 내부에서만 고를 수 있게 한다.
-- 선행 Plan 대기, 선행 Item 대기, 용량 대기, Plan pause, 승인/수동 머지 대기,
-  실패 확인 필요, 철회를 서로 구분해 보여준다.
-- Plan 상세에서 Item 관계·진행 상황을 보고, 실행 상세는 Run·Attempt로 이동한다.
-  Run 만료 후에도 완료 결과와 PR 링크는 표시한다.
-- 아직 시작하지 않은 작업의 명세·관계 변경은 재검증한다. 이미 시작한 작업에
-  새 선행 조건을 붙여 실행 조건을 소급 변경하지 않는다.
-- 완료된 Plan은 고정한다. 추가 작업은 새 Plan으로 등록해 이미 해제된 후속 Plan의
-  전제를 뒤집지 않는다.
+- Plans and item lists and dependencies are validated together and then registered
+  atomically. No part of an invalid plan runs first.
+- Item dependency targets can only be selected within the same plan.
+- Show predecessor plan wait, predecessor item wait, capacity wait, plan pause,
+  approval/manual merge wait, failure needing review, and withdrawal as distinct states.
+- Plan details show item relationships and progress, and execution details navigate
+  to runs and attempts. Completion results and PR links remain visible after the run
+  expires.
+- Specification and relationship changes to work that has not started are revalidated.
+  Work that has already started does not get new predecessor conditions that would
+  retroactively change its execution conditions.
+- Completed plans are frozen. Additional work is registered as a new plan so the
+  premises of already released dependent plans are not overturned.
 
-## 구현 전에 남은 결정
+## Decisions remaining before implementation
 
-- 첫 범위는 한 프로젝트/저장소의 Plan으로 제한하는 안을 제안한다.
-  서로 다른 프로젝트의 Plan 간 의존 여부는 아직 합의하지 않았다.
-  허용하더라도 서로 다른 Plan의 Item 간 의존 금지는 바뀌지 않는다.
-- 기본 대상 브랜치, PR 준비 방법, 프로젝트 머지 정책과 Draft 처리의 구체적인 연결.
-- Pause/revoke의 시작 경계, revoke 후 재요청 방식과 완료 판정의 세부 UX.
-- 실패 Run의 보호 해제 조건·보관 기산점, Run 만료 표시와 Item 실행 이력 연결 방식.
-- 빈 Plan 허용 여부, 진행 중 Plan의 Item 추가·삭제 범위, 재시도·PR 교체 API.
+- The proposal is to limit the first scope to plans in one project/repository.
+  Whether plans in different projects can depend on each other is not yet agreed.
+  Even if allowed, the ban on item dependencies across different plans does not change.
+- The default target branch, the PR preparation method, and the concrete link between
+  the project merge policy and Draft handling.
+- The pause/revoke start boundary, how to re-request after revoke, and detailed UX for
+  completion decisions.
+- Conditions for lifting protection of failed runs and the retention start point, and
+  how run-expiry markers link to item execution history.
+- Whether empty plans are allowed, the scope of adding and removing items in an
+  in-progress plan, and retry and PR replacement APIs.
 
-자동 작업 분해/WBS 생성, 임의의 파이프라인 언어, 미머지 부모 브랜치 위의 선행 실행은
-이번 설계에 포함하지 않는다. 먼저 명시적인 Plan·Item과 의존 관계를 실행하는 구조를 만든다.
+Automatic task decomposition/WBS generation, an arbitrary pipeline language, and
+running predecessors on top of unmerged parent branches are out of scope for this
+design. The first step is a structure that executes explicit plans, items, and
+dependencies.
 
-## 구현 검증 기준
+## Implementation verification criteria
 
-1. 의존성 없는 Plan·Item은 용량 안에서 병렬 실행하고, 여러 부모는 모두 성공해야 해제된다.
-2. 다른 Plan의 Item 참조, 자기 참조와 순환을 등록·수정 모두에서 거부한다.
-3. 선행 CI 통과만으로 해제하지 않고, 머지 결과가 포함된 기준에서 후속 작업을 시작한다.
-4. 한 작업의 실패가 독립적인 작업을 막지 않으며 실패·취소·철회가 후속 성공 조건을 충족하지 않는다.
-5. Pause/revoke와 시작 확정의 경쟁, Resume, 준비 도중 재시작에도 중복 PR·실행이 생기지 않는다.
-6. Pause/revoke 후 기존 Run은 관찰·수정·머지를 계속하고 대기 Item의 새 실행만 제어한다.
-7. 성공 Run 삭제 후에도 의존성 판단이 같고, 미해결 실패·paused·blocked Run은 보호된다.
-8. 결과 반영과 정리가 동시에 실행돼도 성공 증거가 유실되지 않고, 원인 불명의 Run 부재는 성공이 아니다.
-9. 수동 머지 정책은 머지를 기다리고, 자동 머지 정책은 별도 묶음 승인 없이 진행한다.
-10. 기존 독립 PR 실행, Catalog 용량 관리, Jules session의 만료 후 재등록 방지가 유지된다.
+1. Plans and items without dependencies run in parallel within capacity, and work
+   with several parents is released only when all of them succeed.
+2. References to another plan's items, self references, and cycles are rejected on
+   both registration and edit.
+3. Passing predecessor CI alone does not release dependents; dependent work starts from
+   a base that includes the merge result.
+4. A failure of one task does not block independent tasks, and failure, cancellation,
+   and withdrawal do not satisfy a dependent's success condition.
+5. Races between pause/revoke and start commits, Resume, and restarts during preparation
+   produce no duplicate PRs or executions.
+6. After pause/revoke, existing runs continue observation, fixes, and merge, and only
+   new execution of waiting items is controlled.
+7. Dependency decisions stay the same after successful runs are deleted, and unresolved
+   failed, paused, and blocked runs are protected.
+8. Concurrent result recording and cleanup do not lose success evidence, and a run
+   missing for an unknown reason is not success.
+9. A manual merge policy waits for the merge, and an auto-merge policy proceeds without
+   separate plan approval.
+10. Existing standalone PR execution, catalog capacity management, and prevention of
+    re-registration after Jules session expiry are preserved.

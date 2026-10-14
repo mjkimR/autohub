@@ -1,134 +1,169 @@
-# 프로젝트 상세와 AI catalog 연결 테스트
+# Project detail and AI catalog connection tests
 
-프로젝트 이름이나 **Open**을 누르면 `/projects/{id}` 상세 화면으로 이동한다.
-개요·실행·연결·자동화·설정 탭은 `?tab=...` URL로 구분되므로 북마크와
-뒤로 가기를 지원한다. 전체 프로젝트 실행 화면도 유지한다.
+Clicking a project name or **Open** navigates to the `/projects/{id}` detail page.
+The Overview, Runs, Connections, Automation, and Settings tabs are distinguished by
+the `?tab=...` URL, so bookmarks and the back button work. The all-projects runs
+page is also kept.
 
-| 탭 | 역할 |
+| Tab | Role |
 | --- | --- |
-| Overview | 최근 개발 실행, catalog별 검증 결과, GitHub 검사, 자동 머지 요약 |
-| Runs | 해당 프로젝트의 실행 등록·관찰·중단과 시도 이력 |
-| Connections | GitHub 설정, 읽기 전용 접근 검사, Codex·Jules 설정 안내, catalog 선택과 실제 PR 테스트 |
-| Automation | 자동 등록·수정·머지 정책과 스케줄 진입점 |
-| Settings | 이름·활성 상태 변경, 프로젝트 삭제 |
+| Overview | Recent development runs, verification results per catalog, GitHub checks, auto-merge summary |
+| Runs | Enroll, observe, and stop runs for the project, plus attempt history |
+| Connections | GitHub settings, read-only access check, Codex/Jules setup guidance, catalog selection and real PR test |
+| Automation | Auto-enroll, auto-fix, and auto-merge policies and the schedule entry point |
+| Settings | Change name and active state, delete the project |
 
-## 연결 테스트
+## Connection tests
 
-GitHub 접근 검사와 Codex PR 테스트는 별개다. 접근 검사는 댓글을 게시하지
-않으며, Codex의 OAuth 연결이나 Cloud 환경을 확인하지 못한다. Cloud 설정은
-Codex 웹에서 최초 1회 수행한다. 데스크톱 앱이나 로컬 helper는 필요하지 않다.
+The GitHub access check and the Codex PR test are separate. The access check posts
+no comments and cannot verify Codex's OAuth connection or Cloud environment. Cloud
+setup is done once in Codex web. No desktop app or local helper is required.
 
-**Test AI catalog**에서 Codex 또는 Jules catalog를 선택하고 **Start PR test**를 실행한다.
-결과는 프로젝트 × catalog별이며, 생성 당시 catalog ID·이름·종류·커넥터를 저장한다.
-연결 성공이 다른 저장소나 catalog의 준비 상태를 보장하지 않는다. 기존 Codex 전용
-이력은 Legacy Codex로 표시하며 새 catalog의 검증으로 간주하지 않는다.
+In **Test AI catalog**, select a Codex or Jules catalog and run **Start PR test**.
+Results are per project × catalog and store the catalog ID, name, kind, and connector
+at creation time. A successful connection does not guarantee readiness of other
+repositories or catalogs. Existing Codex-only history is shown as Legacy Codex and
+is not treated as verification of a new catalog.
 
-Codex는 대상 저장소에 전용 브랜치와 Draft PR을 생성하고, Hub의 GitHub 커넥터
-계정으로 멘션을 게시한다. catalog를 바꿔도 Codex 계정이 바뀌지는 않는다.
-실제 계정은 프로젝트의 GitHub 커넥터와 해당 계정의 Codex 연결로 결정된다.
-테스트 파일 `.autohub/connection-tests/{id}.txt`를 고유한 검증 문자열로 바꾸고
-같은 브랜치에 push하도록 요청한다. 해당 파일의 내용과 새 head SHA를 확인한 뒤,
-그 head의 설정된 CI 워크플로와 필수 job이 모두 성공해야 검증 성공이다.
-댓글이나 단순 head 변경만으로는 성공하지 않는다. 수동 push의 작성자를 Codex로
-확정할 수 없으므로 테스트 브랜치에 직접 push하지 않는다.
+Codex creates a dedicated branch and a Draft PR in the target repository and posts
+a mention as the Hub's GitHub connector account. Changing the catalog does not change
+the Codex account. The actual account is determined by the project's GitHub connector
+and that account's Codex connection.
+It asks Codex to replace the test file `.autohub/connection-tests/{id}.txt` with a
+unique verification string and push to the same branch. After the file contents and
+the new head SHA are confirmed, verification succeeds only when the configured CI
+workflows and all required jobs on that head pass.
+A comment or a mere head change alone does not count as success. Do not push to the
+test branch directly, because the author of a manual push cannot be confirmed as Codex.
 
-Jules는 catalog에 지정된 API 커넥터로 Sources API에서 저장소 연결을 확인한다.
-전용 브랜치를 세션의 startingBranch로 지정하고 `AUTO_CREATE_PR`로 실행한다.
-Jules가 만든 PR이 테스트 브랜치에서 파생됐는지 확인한 뒤, 완료된 세션의 변경과
-CI를 검증한다. PR base도 전용 테스트 브랜치여야 하며 기본 브랜치를 대상으로
-생성됐다면 실패 처리하고 소유권이 확인된 PR을 닫는다. CI의 branch filter가
-`autohub-connection-test/**` 대상 PR을 허용해야 한다. Draft 생성을 요청하지만
-provider가 일반 PR을 생성해도 AutoHub의 머지 제외는 유지된다.
+Jules checks the repository connection in the Sources API with the API connector
+specified in the catalog. It sets the dedicated branch as the session's startingBranch
+and runs with `AUTO_CREATE_PR`. After confirming that the PR created by Jules derives
+from the test branch, it verifies the completed session's changes and CI. The PR base
+must also be the dedicated test branch; if the PR targets the default branch, the test
+fails and the ownership-confirmed PR is closed. The CI branch filter must allow PRs
+targeting `autohub-connection-test/**`. A Draft is requested, but AutoHub's merge
+exclusion still holds if the provider creates a regular PR.
 
-테스트는 별도 `connection_tests` 이력으로 보관한다. 개발 파이프라인의 자동 수정과
-자동 머지 정책을 적용하지 않는다. 테스트 브랜치와 기록된 PR은 일반 실행 등록에서
-거부하며 병합 직전에도 검사한다. Jules의 출력 PR 번호를 아직 발견하지 못한
-시점에도 head/base 이름, 테스트 마커·라벨, 사전에 저장한 테스트 커밋의 조상 관계로
-차단한다. 조상 관계 조회는 원격 작업의 종료·출력을 아직 확인하지 못한 테스트에
-한정하며, 확인되지 않은 상태에서는 24시간이 지나도 차단을 유지한다. 소유권이 확인된 PR 번호는 별도로 보존하여 정리가 끝나거나 base가
-바뀌어도 차단하고, 완료된 과거 이력이 일반 PR마다 GitHub 조회를 늘리지 않는다. Jules 테스트 세션은 일반 task 세션의 자동 PR 등록에 포함하지 않는다. Draft를 해제해도 AutoHub는 이 PR을 병합하지 않는다.
-외부 GitHub 자동화나 사람이 직접 수행하는 머지까지 차단하는 기능은 아니다.
+Tests are kept in a separate `connection_tests` history. The development pipeline's
+auto-fix and auto-merge policies do not apply. Test branches and recorded PRs are
+rejected by regular run enrollment and are checked again right before merge. Even
+before Jules's output PR number is discovered, they are blocked by head/base names,
+test markers and labels, and ancestry from the test commit saved in advance. Ancestry
+lookups are limited to tests whose remote work termination and output are not yet
+confirmed, and while unconfirmed, the block stays even after 24 hours.
+Ownership-confirmed PR numbers are preserved separately so they stay blocked after
+cleanup finishes or the base changes, and completed past history does not add GitHub
+lookups for every regular PR. Jules test sessions are not included in automatic PR
+enrollment of regular task sessions. AutoHub does not merge these PRs even if the
+Draft is lifted.
+This does not block merges by external GitHub automation or people.
 
-## 결과와 정리
+## Results and cleanup
 
-| 결과 | 정리 |
+| Result | Cleanup |
 | --- | --- |
-| 성공 | 다음 처리에서 PR을 닫고 전용 브랜치 삭제 |
-| 실패·시간 초과·취소 | PR을 닫고 종료 후 최소 24시간 보존. Jules 원격 작업·출력이 미확인 상태면 정리와 머지 차단을 계속 유지 |
-| 정리 오류 | 원래 검증 결과를 유지하고 정리만 재시도 |
+| Success | Close the PR and delete the dedicated branch on the next pass |
+| Failure, timeout, cancellation | Close the PR and keep for at least 24 hours after termination. If Jules remote work or output is unconfirmed, keep cleanup and the merge block in place |
+| Cleanup error | Keep the original verification result and retry cleanup only |
 
-테스트 제한 시간은 생성부터 1시간이다. Draft PR이나 테스트 파일 경로를 CI가
-건너뛰면 push는 확인돼도 검증은 성공하지 않으며, 제한 시간이 지나면 확인 불가로
-종료한다. Hub 취소는 이미 실행 중인 Codex 또는 Jules 작업의 중단을 보장하지 않는다.
-Jules는 취소 후에도 세션 출력을 조회해 늦게 생성된 PR을 닫는다.
-Jules 인증이 끊겨도 이미 확인한 PR은 GitHub에서 닫고, 대상 브랜치와 무관하게 최근 PR을
-검색한다. Jules 세션이 반환한 PR 또는 해당 테스트 ID의 마커가 있는 PR에 대해
-저장소와 조상 관계까지 검증한 경우에만 소유권을 인정한다. 확인된 PR에는
-`<!-- autohub-connection-test:<테스트 ID> -->` 본문 마커와
-`autohub-connection-test` 라벨을 붙인다. 권한 문제로 표시에 실패하면 경고를 남기며,
-저장된 PR ID에 의한 보호와 정리는 유지한다.
+The test time limit is 1 hour from creation. If CI skips Draft PRs or the test file
+path, the push may be confirmed but verification does not succeed, and the test ends
+as unverifiable when the time limit passes. Hub cancellation does not guarantee that
+Codex or Jules work already running stops.
+For Jules, session output is still queried after cancellation to close late PRs.
+Even if Jules authentication breaks, already confirmed PRs are closed on GitHub, and
+recent PRs are searched regardless of target branch. Ownership is accepted only for a
+PR returned by the Jules session or a PR with that test ID's marker, and only after
+repository and ancestry are verified. Confirmed PRs get the
+`<!-- autohub-connection-test:<test ID> -->` body marker and the
+`autohub-connection-test` label. If labeling fails due to permissions, a warning is
+logged, and protection and cleanup by the stored PR ID remain.
 
-조상 관계만 일치하는 PR은 확인 대기 목록에 넣고 머지만 차단한다. 본문·라벨 수정,
-닫기, 브랜치 삭제는 하지 않는다. 테스트 커밋이 외부에서 main에 병합된 후
-분기한 일반 PR도 이 기준을 적용한다. 기존 이력에 소유권 증거가 없으면 다시 확인한다.
-조회 실패나 원격 작업 미확인 상태를 정리 완료로 처리하지 않는다. 인증 복구와 원격 작업
-종료·출력 확인 후 자동으로 정리를 이어간다. GitHub 인증과 접근 권한은 정리에 계속 필요하다.
-정리 완료 후에 외부 작업이 브랜치를 다시 생성하는 경우까지 보장하지 않는다.
+PRs that match only by ancestry go on a pending-confirmation list and are blocked from
+merge only. Their body and labels are not edited, and they are not closed and their
+branches are not deleted. This rule also applies to regular PRs branched after the test
+commit was merged into main externally. Existing history without ownership evidence is
+re-checked. Lookup failures or unconfirmed remote work are not treated as completed
+cleanup. Cleanup resumes automatically after authentication is restored and remote work
+termination and output are confirmed. GitHub authentication and access remain required
+for cleanup. It is not guaranteed if external work recreates the branch after cleanup
+completes.
 
-생성 의도만 저장되고 실제 요청이 전송되지 않은 경우처럼 자동 확인이 불가능하면
-종료된 Jules 테스트의 **Review cleanup**에서 복구할 수 있다. provider 이력을 확인한 뒤
-원격 작업이 없거나 완전히 종료되어 재개될 수 없고, 표시된 모든 미확인 PR이
-관계없는 작업임을 확인하고 사유를 입력한다. 검토 기록과 PR head SHA를 보존하며,
-처리 중인 작업이나 검토 이후 바뀐 PR 정보가 있으면 요청을 거절한다.
-검토 후 GitHub를 다시 조회하고 기존 24시간 보존 규칙에 따라 정리를 이어간다.
-세션 생성은 재시도하지 않고 원래 테스트 결과도 바꾸지 않는다. 확인된 테스트 PR은
-검토로 보호를 해제할 수 없으며, 새로운 미확인 PR이나 변경된 head는 다시 검토해야 한다.
+When automatic confirmation is impossible, such as when only the creation intent was
+saved and the actual request was never sent, a finished Jules test can be recovered
+from **Review cleanup**. After checking the provider history, confirm that no remote
+work exists or that it has fully ended and cannot resume, and that all listed
+unconfirmed PRs are unrelated work, then enter a reason. The review record and PR head
+SHAs are preserved, and the request is rejected if work is in progress or PR
+information changed after the review.
+After the review, GitHub is queried again and cleanup continues under the existing
+24-hour retention rule. Session creation is not retried and the original test result
+does not change. Review cannot lift protection from confirmed test PRs, and new
+unconfirmed PRs or changed heads must be reviewed again.
 
-설치당 하나인 `System maintenance` 스케줄이 화면을 닫아도 미완료 테스트와 정리를 이어간다. 테스트별 스케줄은 생성하지 않는다. 내부 최소 간격은 60초이며 배포 환경의 외부 5분 tick은 유지한다. 배포 환경의
-dispatcher trigger가 실행되어야 하며 **Check / continue now**로 수동 진행도 가능하다.
-이 공용 스케줄은 `System Managed`로 표시하고 일반 화면/API에서 생성·변경·삭제·일시정지할 수 없으며, 개별 테스트 중단은
-Connections의 **Cancel test**를 사용한다. 프로젝트나 catalog에서 커넥터를 교체해도
-진행 중 테스트나 미완료 정리가 참조하는 이전 커넥터는 삭제할 수 없다. 정리가 완료되면
-다른 참조가 없는 커넥터를 삭제할 수 있다.
-조회나 화면 재진입은 PR·댓글을 생성하지 않는다. 프로젝트당 동시 테스트는 하나이며,
-시작 요청 ID, 전용 브랜치, 댓글 마커와 DB lease로 재시작·중복 호출을 처리한다.
-테스트도 선택된 catalog의 사용량·동시 실행 제한을 따른다. 진단 실행은 개발 run과
-분리되지만 quota ledger에는 한 번만 기록된다. 취소한 원격 작업의 종료를 확인할 수
-없으면 종료 후 최대 24시간 동안 용량을 보수적으로 유지한다. 원격 실행 완료가
-확인되면 CI 대기나 정리 오류와 관계없이 실행 용량을 반환한다. Codex는 테스트 멘션
-뒤의 첫 `chatgpt-codex-connector` 답글을 cloud 작업 종료로 보며, 취소·실패 후 정리
-중에 늦게 확인한 답글도 같다. 답글 후 5분 안에 검증 push가 보이지 않으면 테스트를
-실패로 끝낸다(예: 환경의 `GH_TOKEN` 거부). Jules 세션 생성 의도를
-외부 요청 전에 저장하므로 응답 유실이나 재시작 시 고유 제목으로 기존 세션을 찾고
-생성 요청을 재전송하지 않는다. 요청 직전 프로세스가 종료된 경우에도 중복 방지를
-우선해 시간 초과로 끝날 수 있다. 사용량 제한이나 무응답에 추가 멘션을 보내지 않는다.
+A single `System maintenance` schedule per installation continues unfinished tests and
+cleanup even after the page is closed. No per-test schedules are created. The internal
+minimum interval is 60 seconds, and the deployment's external 5-minute tick remains.
+The deployment's dispatcher trigger must run, and **Check / continue now** also advances
+progress manually.
+This shared schedule is shown as `System Managed` and cannot be created, changed,
+deleted, or paused from the regular UI/API; to stop an individual test, use **Cancel
+test** in Connections. Even if a connector is replaced on the project or catalog, the
+previous connector cannot be deleted while an in-progress test or unfinished cleanup
+references it. Once cleanup completes, a connector with no other references can be
+deleted.
+Queries and re-entering the page do not create PRs or comments. Each project allows one
+concurrent test, and restarts and duplicate calls are handled with the start request ID,
+dedicated branch, comment marker, and DB lease.
+Tests also follow the selected catalog's usage and concurrency limits. Diagnostic runs
+are separate from development runs but are recorded only once in the quota ledger. If
+termination of canceled remote work cannot be confirmed, capacity is conservatively
+held for up to 24 hours after termination. Once remote execution completion is
+confirmed, execution capacity is returned regardless of CI waits or cleanup errors.
+Codex treats the first `chatgpt-codex-connector` reply after the test mention as the end
+of the cloud task, including replies confirmed late during cleanup after cancellation or
+failure. If no verification push appears within 5 minutes of the reply, the test ends as
+failed (for example, `GH_TOKEN` rejected by the environment). The Jules session creation
+intent is saved before the external request, so on a lost response or restart the
+existing session is found by its unique title and the creation request is not resent.
+Even if the process exits right before the request, duplicate prevention takes priority
+and the test may end in a timeout. No additional mentions are sent on usage limits or no
+response.
 
-프로젝트 설정이 변경되거나 비활성화되면 진행 중 테스트를 종료하고, 생성 당시의
-저장소·커넥터를 사용해 정리한다. catalog의 connector 교체·인증 정보 갱신·활성 상태,
-저장소와 CI 계약 변경도 감지한다. 이전 결과는 보존하고 재검증을 권장한다.
-이름이나 사용량·quota 갱신만으로 검증 결과가 오래된 것으로 표시되지는 않는다.
-Cloud 설정 자체의 변경은 Hub가 감지할 수 없다. 테스트 이력이 있는 프로젝트는
-증거 보존을 위해 삭제할 수 없다.
+When project settings change or the project is deactivated, in-progress tests end and
+are cleaned up using the repository and connector from creation time. Catalog connector
+replacement, credential refresh, and active state, as well as repository and CI contract
+changes, are also detected. Previous results are kept and re-verification is recommended.
+Name or usage/quota updates alone do not mark verification results as stale.
+Hub cannot detect changes to Cloud setup itself. Projects with test history cannot be
+deleted, to preserve evidence.
 
-## 적용
+## Rollout
 
-DB migration `c1a2b3d4e5f6`, `d2b3c4d5e6f7`, `f4d5e6f7a8b9`를 적용해야 한다 (`just db-upgrade`). 기존 데이터나 프로젝트의 기본 자동
-머지 설정은 바꾸지 않는다. 마지막 마이그레이션은 기존 테스트별 스케줄과 자동 생성한 Jules sync를 공용 스케줄로 전환하며 테스트·세션·작업 이력은 보존한다. 테스트용 GitHub 커넥터에는 PR 작성·닫기와 전용 브랜치
-생성·삭제를 위한 Contents 및 Pull requests 읽기/쓰기 권한이 필요하다.
+Apply DB migrations `c1a2b3d4e5f6`, `d2b3c4d5e6f7`, and `f4d5e6f7a8b9`
+(`just db-upgrade`). Existing data and projects' default auto-merge settings are not
+changed. The last migration converts existing per-test schedules and auto-created Jules
+syncs into the shared schedule and preserves test, session, and job history. The GitHub
+connector used for tests needs Contents and Pull requests read/write permissions to open
+and close PRs and to create and delete the dedicated branch.
 
-Jules API 계약은 공식 [Sessions](https://jules.google/docs/api/reference/sessions)와
-[Sources](https://jules.google/docs/api/reference/sources)를 따른다. 자동화 검증은 HTTP
-경계를 모의 처리하며, 실제 계정의 연결과 Jules가 선택하는 PR base·CI 동작은 배포 후
-Connections에서 첫 PR 테스트로 확인해야 한다.
+The Jules API contract follows the official [Sessions](https://jules.google/docs/api/reference/sessions)
+and [Sources](https://jules.google/docs/api/reference/sources) references. Automated
+verification mocks the HTTP boundary; real account connections and the PR base and CI
+behavior Jules chooses must be confirmed after deployment with a first PR test in
+Connections.
 
-## provider별 확장 구조
+## Per-provider extension structure
 
-각 adapter가 필수 설정, 확인 방법, 단계별 표시, 결과 링크를 정의한다. 화면은
-`connection-tests/options`의 정의를 읽어서 안내와 시작 가능 여부를 표시한다.
-Codex Cloud처럼 외부에서 직접 설정해야 하는 항목과 Hub가 확인 가능한 connector
-항목은 구분된다. 새 테스트 방식은 adapter 등록과 해당 정의 추가로 확장하며,
-공통 실행 엔진이나 화면에 provider 조건문을 추가하지 않는다. 새 catalog 종류의
-quota 정책과 실제 작업 실행 지원은 기존 catalog 확장 절차를 따른다.
+Each adapter defines required settings, verification method, per-step display, and result
+links. The UI reads the definitions from `connection-tests/options` to show guidance and
+whether a test can start. Items that must be set up externally, such as Codex Cloud, are
+distinguished from connector items the Hub can verify. New test methods are added by
+registering an adapter and adding its definition, without adding provider conditionals
+to the shared execution engine or UI. Quota policy and real work execution support for
+a new catalog kind follow the existing catalog extension procedure.
 
-Jules Source 조회와 API client는 진단과 일반 작업이 공유한다. Codex의 사용량
-제한 응답도 실제 개발 멘션과 동일하게 분류해 catalog의 quota 상태에 반영한다.
+Jules Source lookup and the API client are shared by diagnostics and regular work. Codex
+usage-limit responses are classified the same way as real development mentions and are
+reflected in the catalog's quota state.

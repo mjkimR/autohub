@@ -52,24 +52,26 @@ the same recipes and locked Python dependencies; Ruff has no separate hook versi
 
 ## Agent skills
 
+app-common development assets are installed from the devkit bundles shipped in the
+Python dependencies. `just skills` and `just link-skills` generate them from the
+installed packages with `devkit sync` and select the Python advisory guide.
+`.devkit/` and the projected skill directories are ignored by Git. Every new
+environment regenerates them from the packages installed from the Python lock, so
+never commit the receipt or the skills. Do not add backend runtime dependencies to
+the standalone Python SDK. The frontend ESLint policy keeps its own pin. No sibling
+checkout or APM is required.
 
-app-common 개발 자산은 Python 의존성에 포함된 devkit bundle에서 설치한다.
-`just skills`와 `just link-skills`는 설치된 패키지에서 `devkit sync`로 자산을 생성하고
-Python advisory guide를 선택한다. `.devkit/`과 투영 스킬 디렉터리는 Git에서 무시한다.
-새 환경마다 Python lock에서 설치한 패키지로 다시 생성하므로 receipt나 스킬을 커밋하지 않는다.
-자체 Python SDK에는 backend 런타임 의존성을 추가하지 않는다.
-프런트엔드 ESLint 정책은 독립 pin을 유지한다. sibling checkout이나 APM은 필요하지 않다.
-
-의존성 갱신은 공개 커밋으로 수행한다:
+Update dependencies to a pushed commit:
 
 ```sh
 uv run devkit app update --ref <pushed-commit>
 uv run devkit sync --check
 ```
 
-manifest와 uv.lock 변경을 함께 검토한다. 새 체크아웃과 CI는
-`uv sync --locked --all-packages` 다음 `uv run --no-sync devkit sync`를 실행한다.
-관리 파일이나 투영 파일을 직접 편집하지 않는다. devkit 개발 도구는 Linux/macOS를 지원한다.
+Review the manifest and `uv.lock` changes together. Fresh checkouts and CI run
+`uv sync --locked --all-packages`, then `uv run --no-sync devkit sync`.
+Never edit managed or projected files directly. devkit development tooling supports
+Linux and macOS.
 
 ## Existing Scheduler Foundation
 

@@ -1,22 +1,33 @@
-# 저장소 뷰어 및 Specrig 지원
+# Repository Viewer and SDD Projects
 
-프로젝트의 성격에 따라 `project_type`을 설정한다 (`general` / `specrig`).
-내장된 저장소 뷰어가 프로젝트 타입에 맞추어 최적화된 화면을 제공한다.
+Set `project_type` according to the kind of project (`general` / `sdd`).
+The built-in repository viewer adapts its screen to the project type.
 
-## 프로젝트 모드
+## Project modes
 
-| 모드 (`project_type`) | 설명 |
+| Mode (`project_type`) | Description |
 | --- | --- |
-| `general` | 기본 Git 브라우저 (디렉터리 트리, 파일 내용, README 미리보기) |
-| `specrig` | Spec-Driven Engineering 프로젝트 전용 뷰어 (Living Spec, C4 아키텍처 다이어그램, Proposals/Specs 인덱스, 태그/TOC 탐색) 및 Git 브라우저 |
+| `general` | Default Git browser (directory tree, file contents, README preview) |
+| `sdd` | Spec-driven project viewer for `devkit-spec` repositories (Living Spec reading, Proposals and Specs indexes, file explorer), the native SDD run panel, and the Git browser |
 
-프로젝트 설정(Settings) 또는 신규 프로젝트 등록 시 `Project Type`을 선택할 수 있다.
+Choose `Project Type` in the project settings or when registering a new project.
+See [Native SDD runtime](development.md#native-sdd-runtime) for the runtime the
+`sdd` mode executes with.
 
-## 네이티브 뷰어 통합
+## Native viewer
 
-과거 배포 시점 외부 번들 다운로드 및 Custom Element 동적 로더 기반 플랫폼에서, autohub 내부 네이티브 Svelte 컴포넌트(`SpecrigViewer`)로 이관·통합되었다.
-별도의 외부 번들 발행이나 `repository-viewers.local.json` 설정 파일 없이 네이티브로 동작한다.
+The viewer is a native Svelte component (`SddViewer`) inside autohub. It needs no
+external bundle, deployment-time plugin installation, or
+`repository-viewers.local.json` configuration file.
 
-- `project_type === 'specrig'` 프로젝트에서는 기본 화면으로 **Specrig View**가 열리며, 필요 시 **Git Browser**로 전환할 수 있다.
-- Markdown 파싱, YAML 프론트매터 분석, Mermaid 다이어그램 렌더링, 문서 링크 정규화가 내장 지원된다.
-- 데이터 조회는 autohub의 저장소 API (`/api/v1/projects/{project_id}/repository/*`)를 직접 사용한다.
+- `sdd` projects open **Sdd View** by default and can switch to **Git Browser**.
+- **Sdd View** has the tabs `문서 읽기` (the `docs/` Living Spec grouped by chapter),
+  `Proposals` (`docs/proposals/PROP-*/` bundles), `Specs` (`specs/` task bundles)
+  and `파일 탐색` (file explorer), with search and status filters.
+- Markdown parsing, YAML frontmatter, Mermaid diagram rendering, and document link
+  normalization are built in.
+- Above the viewer, the SDD execution panel checks readiness for a spec and pull
+  request and starts a native run. Selecting a document under
+  `specs/<YYYY-MM>/<bundle>/` fills in that spec.
+- Data comes directly from the autohub repository API
+  (`/api/v1/projects/{project_id}/repository/*`).

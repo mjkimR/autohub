@@ -1,54 +1,54 @@
-# SDK task·flow 원격 계약
+# SDK task and flow remote contract
 
-## 현재 범위
+## Current scope
 
-`packages/sdk`의 autohub-sdk 0.2.0은 기존 로컬 pipeline·manifest v1에 더해 순차 flow 선언과 HTTP client를 제공한다. 실제 autohub backend에 release catalog·task-runs API와 DB 기반 flow 실행기를 구현했다. SDK 계약은 planhub의 별도 환경 `mock/autohub` HTTP stub과 실제 backend의 loopback HTTP·DB 통합 테스트에서 검증한다. 운영 배포는 별도다. Python 3.13+가 필요하며 runtime dependency는 Pydantic뿐이다.
+autohub-sdk 0.2.0 in `packages/sdk` provides sequential flow declarations and an HTTP client in addition to the existing local pipeline and manifest v1. The real autohub backend implements the release catalog and task-runs APIs and a DB-backed flow executor. The SDK contract is verified against the `mock/autohub` HTTP stub in planhub's separate environment and against loopback HTTP and DB integration tests on the real backend. Production deployment is separate. Python 3.13+ is required, and Pydantic is the only runtime dependency.
 
-## 정의와 배포
+## Definition and deployment
 
-FlowManifest v2는 TaskSpec 역할의 기존 PipelineSpec과 FlowSpec을 포함한다. TaskStep의 입력은 literal 또는 run·이전 task 출력의 경로 참조이며 다음 step으로 순서대로 이동한다. ApprovalStep은 deadline과 선택적 revise_to·max_revisions를 선언한다. FlowSpec은 result_step을 지정한다. SDK는 중복·미지원 task 참조·미래 출력 참조·잘못된 반환을 거부한다. 개별 필드와 schema assignability의 정적 판정은 없으며 host가 참조 해석과 실제 입출력 schema를 검증한다.
+FlowManifest v2 contains the existing PipelineSpec in the TaskSpec role and FlowSpec. TaskStep inputs are literals or path references to run or earlier task outputs, and execution moves to the next step in order. ApprovalStep declares a deadline and optional revise_to and max_revisions. FlowSpec specifies result_step. The SDK rejects duplicates, unsupported task references, references to future outputs, and invalid returns. There is no static check of individual fields or schema assignability; the host resolves references and validates the actual input and output schemas.
 
-ReleaseSpec은 manifest와 task별 정확히 하나의 binding을 묶는다. binding은 http/native executor와 target 참조이며 Python 코드를 포함하지 않는다. 정의 등록과 worker 배포를 구분한다. host는 관리된 machine key와 provider/environment 소유권을 검사하며 서버에 설정된 binding만 허용한다. mock은 native mock.echo만 지원한다.
+ReleaseSpec bundles a manifest with exactly one binding per task. A binding is an http/native executor and a target reference and contains no Python code. Definition registration is separate from worker deployment. The host checks the managed machine key and provider/environment ownership and allows only bindings configured on the server. The mock supports only native mock.echo.
 
-## HTTP 계약
+## HTTP contract
 
-| 연산 | SDK 메서드 | 경로 |
+| Operation | SDK method | Path |
 | --- | --- | --- |
-| release 등록 | register_release | PUT /api/v1/task-providers/{provider}/environments/{env}/releases/{release_id} |
-| 활성화 | activate_release | POST 위 release 경로/activate |
-| 실행 | start_run | POST /api/v1/task-runs |
-| 조회 | get_run | GET /api/v1/task-runs/{run_id} |
-| 제어 | command | POST /api/v1/task-runs/{run_id}/commands |
+| Register release | register_release | PUT /api/v1/task-providers/{provider}/environments/{env}/releases/{release_id} |
+| Activate | activate_release | POST release path above/activate |
+| Run | start_run | POST /api/v1/task-runs |
+| Get | get_run | GET /api/v1/task-runs/{run_id} |
+| Control | command | POST /api/v1/task-runs/{run_id}/commands |
 
-동일 release ID·digest는 멱등이며 다른 내용은 충돌한다. 활성화는 expected_revision을 검사한다. RunRequest는 provider·environment·task 계약·inputs·idempotency_key를 사용한다. 동일 key·내용은 같은 run을 반환하고 변경된 내용은 충돌한다. 진행 중 run은 접수 당시 release ID·digest·정의·binding snapshot을 유지한다.
+The same release ID and digest is idempotent; different content conflicts. Activation checks expected_revision. RunRequest uses provider, environment, task contract, inputs, and idempotency_key. The same key and content return the same run; changed content conflicts. An in-progress run keeps the release ID, digest, definition, and binding snapshot taken at admission.
 
-RunCommand는 command_id·expected_revision과 approve/revise/cancel/resume을 전달한다. 명령 재전송은 최초 receipt를 반환하고 같은 ID의 내용 변경은 충돌한다. run revision은 상태 전이마다 증가한다. AttemptView는 step·number·status·input·output·error를, RunView는 release snapshot 식별자·status·현재 step·대기 이유·attempt·결과를 제공한다. 재시도와 보완 방문은 누적 task step 시도 상한을 소비한다.
+RunCommand carries command_id, expected_revision, and approve/revise/cancel/resume. Resending a command returns the original receipt; changing content under the same ID conflicts. The run revision increments on every state transition. AttemptView provides step, number, status, input, output, and error; RunView provides release snapshot identifiers, status, current step, wait reason, attempts, and result. Retries and revise visits consume the cumulative task step attempt limit.
 
-client는 기존 host 방식에 맞춰 X-API-Key를 전송하고 redirect·자동 재시도는 수행하지 않는다. AutoHubError는 HTTP status·error code를 제공하며 network timeout은 전달된다. 일반 승인과 별도로 PR bridge는 승인 actor·revision·evidence digest와 head를 검사한다.
+Following the existing host convention, the client sends X-API-Key and performs no redirects or automatic retries. AutoHubError exposes the HTTP status and error code, and network timeouts propagate. Separately from general approval, the PR bridge checks the approving actor, revision, evidence digest, and head.
 
-## 실행 원장과 복구
+## Execution ledger and recovery
 
-SDK는 DB와 scheduler를 소유하지 않는다. 기존 내부 scheduler @task, Work Plan/Item, PR PipelineRun은 외부 SDK task·flow와 별개다. 별도 `sdk_flow_*` 테이블에 환경·release·run·step·attempt·command receipt를 저장한다. dispatch intent를 먼저 커밋하고 DB transaction 밖에서 worker를 호출한다. 60초 lease와 revision 조건부 쓰기로 늦은 결과를 차단한다. 응답이 불확실하면 기존 attempt를 조회하며, worker가 같은 ID의 부재를 명시적으로 확인한 뒤에만 그 ID로 다시 접수한다. 같은 PR을 기존 PR 실행기와 flow 실행기가 동시에 제어하지 않는다.
+The SDK does not own a DB or scheduler. The existing internal scheduler @task, Work Plan/Item, and PR PipelineRun are separate from external SDK tasks and flows. Separate `sdk_flow_*` tables store environments, releases, runs, steps, attempts, and command receipts. The dispatch intent is committed first, and the worker is called outside the DB transaction. A 60-second lease and revision-conditional writes block late results. When a response is uncertain, the host looks up the existing attempt and resubmits under the same ID only after the worker explicitly confirms that the ID is absent. The existing PR executor and the flow executor do not control the same PR concurrently.
 
-SDK 계약·planhub mock은 specs/2026-10/20261009-sdk-task-flow-contract에서 추적한다. durable host는 [구현 spec](../specs/2026-10/20261009-durable-sdk-host/spec.md)에서 추적한다. planhub application·specrig/PR bridge는 로컬 구현했고 운영 검증·범위 연결은 workbench의 `docs/planhub-autohub-task-flow-design.md` F3~F4와 planhub PROP-autohub-delivery-host에 연결된다. 기존 단일 pipeline 소비자는 manifest v1과 로컬 실행을 계속 사용할 수 있다.
+The SDK contract and planhub mock are tracked in specs/2026-10/20261009-sdk-task-flow-contract. The durable host is tracked in the [implementation spec](../specs/2026-10/20261009-durable-sdk-host/spec.md). The planhub application and specrig/PR bridge are implemented locally; production verification and scope linkage connect to F3~F4 of workbench's `docs/planhub-autohub-task-flow-design.md` and planhub PROP-autohub-delivery-host. Existing single-pipeline consumers can keep using manifest v1 and local execution.
 
 
-## 인증과 실행 대상
+## Authentication and execution targets
 
-관리 API에서 발급한 `X-API-Key`를 사용한다. `autohub:task:write`는 등록·활성화·실행·제어, `autohub:task:read`는 조회에 필요하다. approve/revise는 write와 `autohub:task:approve`가 모두 필요하다. provider/environment는 최초 등록 machine이 소유하며 같은 machine의 key 교체는 소유권을 유지한다. command 원장에는 machine/key actor와 receipt를 남긴다. 일반 승인 명령은 PR head·review evidence의 검증을 대신하지 않는다.
+Use the `X-API-Key` issued by the management API. `autohub:task:write` is required for registration, activation, runs, and control, and `autohub:task:read` for reads. approve/revise require both write and `autohub:task:approve`. A provider/environment is owned by the machine that first registered it, and key rotation on the same machine preserves ownership. The command ledger records the machine/key actor and the receipt. A general approval command does not replace verification of the PR head and review evidence.
 
-native executor는 `autohub.identity`와 서버 allowlist의 `autohub.sdd:<name>`·`autohub.pr_delivery:<name>`를 지원한다. HTTP worker 설정과 프로토콜은 [개발 가이드](development.md#sdk-flow-host)를 따른다. 등록은 worker 코드 배포를 수행하지 않는다. host 한도는 provider/environment 64자, task key 256자, step ID 128자, 계약 버전 32비트 양의 정수, approval deadline 1년이다. JSON Schema는 draft 2020-12를 사용하고 외부 `$ref`는 거절한다.
+The native executor supports `autohub.identity` and the server-allowlisted `autohub.sdd:<name>` and `autohub.pr_delivery:<name>`. HTTP worker configuration and protocol follow the [development guide](development.md#sdk-flow-host). Registration does not deploy worker code. Host limits are 64 characters for provider/environment, 256 characters for task key, 128 characters for step ID, a positive 32-bit integer for contract version, and 1 year for approval deadline. JSON Schema uses draft 2020-12, and external `$ref` is rejected.
 
-`System maintenance`가 최대 32개 run을 한 단계씩 진행한다. GET·실행 접수는 worker를 실행하지 않는다. 승인 deadline은 명령 수신 때도 검사하고 기한 만료 전이는 다음 maintenance에서 기록한다. 외부 polling의 다음 시점은 5초 이후지만 실제 진행 간격은 dispatcher tick에 따른다. 취소는 외부 worker의 terminal 결과 확인까지 `canceling`이며, transport 오류·일반 404는 종료 증거로 사용하지 않는다.
+`System maintenance` advances up to 32 runs by one step each. GET and run admission do not execute workers. The approval deadline is also checked when a command is received, and the expiry transition is recorded by the next maintenance. The next external polling time is at least 5 seconds later, but the actual progress interval follows the dispatcher tick. Cancellation stays `canceling` until the external worker's terminal result is confirmed; transport errors and generic 404s are not used as evidence of termination.
 
 ## planhub PR bridge
 
-[구현 spec](../specs/2026-10/20261009-planhub-pr-bridge/spec.md)의 첫 도메인 flow는 실제 checkout의 devkit-spec 증거를 확인하고 명시적 승인 뒤 이미 외부에서 구현된 paused PipelineRun을 재개·관찰한다. 새 PR이나 실행기를 만들지 않는다. 서버 allowlist는 provider/environment·project·절대 checkout 경로를 release binding에 고정한다.
+The first domain flow in the [implementation spec](../specs/2026-10/20261009-planhub-pr-bridge/spec.md) verifies devkit-spec evidence in the actual checkout and, after explicit approval, resumes and observes a paused PipelineRun already implemented externally. It does not create a new PR or executor. The server allowlist pins the provider/environment, project, and absolute checkout path to the release binding.
 
-실행 wire extension `expected_release_id`·`expected_release_digest`는 현재 활성 release를 확인하여 잘못된 정의 실행을 접수 전에 409로 거절한다. 필드를 생략한 SDK 0.2.0 요청은 기존 계약을 유지한다. planhub는 Pydantic RunRequest subclass로 필드를 전달하며 SDK dependency는 기존 pushed commit에 고정한다.
+The run wire extension `expected_release_id` and `expected_release_digest` checks the currently active release and rejects a run of the wrong definition with 409 before admission. SDK 0.2.0 requests that omit the fields keep the existing contract. planhub passes the fields through a Pydantic RunRequest subclass and pins the SDK dependency to an existing pushed commit.
 
-깨끗한 Git HEAD와 실제 `devkit workflow show/next --unit <spec> --format json`의 review·resolved reconcile·completed spec·final-report 및 human gate를 확인한다. PR claim은 DB에 유일하고 approve scope로 발급한 명령의 actor·revision·evidence digest를 저장한다. delivery 단계만 정의해서 승인을 우회할 수 없다. 재개 전 증거·GitHub head·PR revision을 재검사하고 기존 Resume receipt의 attempt ID를 사용한다. worker 재시작은 같은 receipt를 회수한다.
+It checks a clean Git HEAD and, through the real `devkit workflow show/next --unit <spec> --format json`, review, resolved reconcile, completed spec, final-report, and the human gate. The PR claim is unique in the DB and stores the actor, revision, and evidence digest of the command issued with the approve scope. Defining only the delivery step cannot bypass approval. Before resuming, it rechecks the evidence, GitHub head, and PR revision and uses the attempt ID from the existing Resume receipt. A worker restart recovers the same receipt.
 
-PR ready·CI·merge는 기존 PipelineRun owner가 소유한다. flow는 pending·paused/blocked 오류·terminal 결과를 투영한다. 취소는 claim tombstone과 기존 run cancel로 제어를 중단하며 이미 게시한 외부 agent 요청이나 효과는 롤백하지 않는다. CLI/git·checkout 배치는 별도이며 live GitHub CI/merge와 전체 개발 workflow 연결을 이번 fixture 검증으로 완료 처리하지 않는다.
+PR ready, CI, and merge are owned by the existing PipelineRun owner. The flow projects pending, paused/blocked errors, and terminal results. Cancellation stops control through a claim tombstone and cancellation of the existing run, and does not roll back external agent requests or effects already posted. CLI/git and checkout placement are separate, and this fixture verification does not mark live GitHub CI/merge or the full development workflow integration as complete.
 
-기존 `autohub.specrig:<name>` binding은 이력으로 보존한다. 새 런타임에서는 `autohub.sdd:<name>`를 사용하는 새 immutable release를 등록한다. 이전 release나 실행 증거를 제자리에서 고쳐 호환되는 것으로 취급하지 않는다.
+Existing `autohub.specrig:<name>` bindings are preserved as history. The new runtime registers a new immutable release that uses `autohub.sdd:<name>`. Earlier releases or execution evidence are not fixed in place and treated as compatible.

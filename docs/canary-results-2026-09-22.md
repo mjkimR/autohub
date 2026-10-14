@@ -70,7 +70,7 @@ catalog/연결 테스트는 `autohub-00010-x9c`다. #4~#6은 2026-09-21 선행 �
   프로젝트나 스케줄에 지정하지 않았다.
 - 후속 배포 `autohub-00011-xpl`에서 중지된 연결 테스트 스케줄 2개가 제거되고 공용
   유지보수 1개로 전환됐다. 13:55 KST 정기 실행과 이력 정리 체크포인트 기록이 성공했다.
-  만료 대상은 없었으며 상세 범위는 [배포 확인](delivery-status.md#운영-확인과-제외-범위)에 있다.
+  만료 대상은 없었으며 상세 범위는 [배포 확인](delivery-status.md#excluded-and-deferred)에 있다.
 - Telegram과 최근 화면 확인은 제외했다. Jules 실제 quota 소진/429, required review/
   branch protection, 연결 테스트 취소·timeout·응답 유실·인증 장애·수동 정리 복구와
   이미 등록된 테스트 run의 최종 merge 방어를 별도로 live 유발하지 않았다.
