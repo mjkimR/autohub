@@ -110,13 +110,13 @@ cd "$ROOT_DIR"
 BUILD_SECRET_ENV=""
 BUILD_SECRET_ARG=""
 BUILD_SECRET_CONFIG=""
-if [[ -n "${SPECRIG_BUILD_SECRET:-}" ]]; then
-  [[ "$SPECRIG_BUILD_SECRET" =~ ^[A-Za-z0-9_-]+$ ]] || { echo 'Invalid SPECRIG_BUILD_SECRET name' >&2; exit 1; }
+if [[ -n "${SDD_BUILD_SECRET:-}" ]]; then
+  [[ "$SDD_BUILD_SECRET" =~ ^[A-Za-z0-9_-]+$ ]] || { echo 'Invalid SDD_BUILD_SECRET name' >&2; exit 1; }
   BUILD_SECRET_ENV="  secretEnv: ['GH_TOKEN']"
-  BUILD_SECRET_ARG=", '--secret', 'id=specrig_token,env=GH_TOKEN'"
+  BUILD_SECRET_ARG=", '--secret', 'id=sdd_token,env=GH_TOKEN'"
   BUILD_SECRET_CONFIG="availableSecrets:
   secretManager:
-  - versionName: projects/${PROJECT_ID}/secrets/${SPECRIG_BUILD_SECRET}/versions/latest
+  - versionName: projects/${PROJECT_ID}/secrets/${SDD_BUILD_SECRET}/versions/latest
     env: GH_TOKEN"
 fi
 

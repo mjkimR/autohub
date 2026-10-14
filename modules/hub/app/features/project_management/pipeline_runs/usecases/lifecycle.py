@@ -104,11 +104,11 @@ class PipelineRunUseCase:
             if await ConnectionTestRepository().owns_pull(session, repository, request.pull_number):
                 raise ProjectError(422, "Connection test pull requests cannot be enrolled as development runs")
             test_heads = await ConnectionTestRepository().protected_heads(session, repository)
-            native = project.project_type == "specrig"
+            native = project.project_type == "sdd"
             if native and not request.spec_dir:
-                raise ProjectError(422, "Select a bound specrig spec before enrolling this project")
+                raise ProjectError(422, "Select a bound sdd spec before enrolling this project")
             if not native and request.spec_dir:
-                raise ProjectError(422, "Spec execution requires a specrig project")
+                raise ProjectError(422, "Spec execution requires a sdd project")
 
         # Keep GitHub reads outside database transactions.
         try:
@@ -125,12 +125,12 @@ class PipelineRunUseCase:
 
         evidence = None
         if native:
-            from app.features.project_management.specrig.services import SpecrigService
+            from app.features.project_management.sdd.services import SddService
 
             pull = await self.observer.get_pull_request(connector_id, repository, request.pull_number)
             if pull["head"]["sha"] != snapshot.head_sha:
                 raise ProjectError(409, "PR changed during enrollment; retry")
-            evidence = await SpecrigService().inspect(repository, request.spec_dir, pull, token)
+            evidence = await SddService().inspect(repository, request.spec_dir, pull, token)
 
         inspect_only = request.implemented or bool(
             evidence and (evidence["current"].get("stage") or {}).get("human_gate")
@@ -157,8 +157,8 @@ class PipelineRunUseCase:
                         pull_number=snapshot.number,
                         pull_url=snapshot.url,
                         pull_snapshot=snapshot.model_dump(mode="json"),
-                        specrig_snapshot=evidence["snapshot"] if evidence else None,
-                        specrig_progress=evidence,
+                        sdd_snapshot=evidence["snapshot"] if evidence else None,
+                        sdd_progress=evidence,
                         state=(PipelineRunState.IMPLEMENTING if native else PipelineRunState.AWAITING_CI)
                         if inspect_only
                         else PipelineRunState.QUEUED,
@@ -276,7 +276,7 @@ class PipelineRunUseCase:
         async with AsyncTransaction() as session:
             run = await self.repo.get(session, run_id, lock=True)
             if run is None or (
-                run.state not in IN_FLIGHT_RUN_STATES and not (run.specrig_progress or {}).get("waiting_for_approval")
+                run.state not in IN_FLIGHT_RUN_STATES and not (run.sdd_progress or {}).get("waiting_for_approval")
             ):
                 return
             if kind == GITHUB_FAILURE_AUTH:

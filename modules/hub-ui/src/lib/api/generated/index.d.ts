@@ -19,8 +19,8 @@ import type { paths as Paths15, components as Components15, operations as Operat
 import type { paths as Paths16, components as Components16, operations as Operations16 } from './run-decisions';
 import type { paths as Paths17, components as Components17, operations as Operations17 } from './scheduleconfig';
 import type { paths as Paths18, components as Components18, operations as Operations18 } from './schedulejob';
-import type { paths as Paths19, components as Components19, operations as Operations19 } from './sdk-flows';
-import type { paths as Paths20, components as Components20, operations as Operations20 } from './specrig';
+import type { paths as Paths19, components as Components19, operations as Operations19 } from './sdd';
+import type { paths as Paths20, components as Components20, operations as Operations20 } from './sdk-flows';
 import type { paths as Paths21, components as Components21, operations as Operations21 } from './systemconfig';
 import type { paths as Paths22, components as Components22, operations as Operations22 } from './task';
 import type { paths as Paths23, components as Components23, operations as Operations23 } from './users';

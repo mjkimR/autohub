@@ -24,7 +24,7 @@ from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.models import Project
 from app.features.project_management.projects.schemas import ProjectRead
 from app.features.project_management.projects.services import ProjectService
-from app.features.project_management.specrig.progress import SpecrigProgress, merge_ready
+from app.features.project_management.sdd.progress import SddProgress, merge_ready
 from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
@@ -112,9 +112,9 @@ class PipelineRunProgress:
             reject_test_refs(run.pull_snapshot)
             repository, connector_id, number = project.github_repository, project.github_connector_id, run.pull_number
             heads = await ConnectionTestRepository().protected_heads(session, repository or "")
-            snapshot_data = getattr(run, "specrig_snapshot", None)
+            snapshot_data = getattr(run, "sdd_snapshot", None)
             native_snapshot = dict(snapshot_data) if snapshot_data else None
-            progress_data = getattr(run, "specrig_progress", None)
+            progress_data = getattr(run, "sdd_progress", None)
             native_previous = dict(progress_data) if progress_data else {}
             work_binding = (
                 await session.execute(
@@ -177,14 +177,14 @@ class PipelineRunProgress:
                 return await block_for_project_change(self.repo, session, run, now)
             approval_wait = (
                 run.state == PipelineRunState.PAUSED
-                and bool(getattr(run, "specrig_snapshot", None))
-                and (run.specrig_progress or {}).get("waiting_for_approval")
+                and bool(getattr(run, "sdd_snapshot", None))
+                and (run.sdd_progress or {}).get("waiting_for_approval")
             )
             if run.state not in (PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI) and not approval_wait:
                 return PipelineRunRead.model_validate(run)
-            snapshot_data = getattr(run, "specrig_snapshot", None)
+            snapshot_data = getattr(run, "sdd_snapshot", None)
             if snapshot_data:
-                progress_data = getattr(run, "specrig_progress", None)
+                progress_data = getattr(run, "sdd_progress", None)
                 native_snapshot, native_previous = (
                     dict(snapshot_data),
                     dict(progress_data) if progress_data else {},
@@ -201,7 +201,7 @@ class PipelineRunProgress:
                     and (
                         native_attempt.kind in ("ci-fix", "conflict-fix")
                         or (
-                            native_attempt.request_snapshot.get("specrig_stage") == native_stage.get("id")
+                            native_attempt.request_snapshot.get("sdd_stage") == native_stage.get("id")
                             and "lint-ci-clean" in native_stage.get("exit", [])
                         )
                     )
@@ -245,7 +245,7 @@ class PipelineRunProgress:
                             native_target.connector_id, native_target.repository, pull_number
                         )
                     )
-                    native_result = await SpecrigProgress(self.repo).observe(
+                    native_result = await SddProgress(self.repo).observe(
                         native_snapshot, native_previous, native_target, native_pull, observer
                     )
                 if (
@@ -278,8 +278,8 @@ class PipelineRunProgress:
                 if native_result is None or run.state != PipelineRunState.IMPLEMENTING:
                     return result
             if native_result is not None and ci_result is None:
-                return await SpecrigProgress(self.repo).apply(session, run, now, native_result)
+                return await SddProgress(self.repo).apply(session, run, now, native_result)
             assert project_read is not None and ci_result is not None
             if native_result is not None:
-                run.specrig_progress = native_result["evidence"]
+                run.sdd_progress = native_result["evidence"]
             return await ci.apply(session, run, project_read, now, ci_result)

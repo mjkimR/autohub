@@ -1,0 +1,13 @@
+[project]
+name = "autohub-sdd-runtime"
+version = "0.1.0"
+requires-python = ">=3.13,<3.14"
+dependencies = ["devkit-spec", "devkit-agt", "devkit-advisory"]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+devkit-spec = { git = "https://github.com/mjkimR/devkit-spec", rev = "87f19d5b170ee154845abddf57c9ae6e1ea74e4f" }
+devkit-agt = { git = "https://github.com/mjkimR/devkit.git", subdirectory = "packages/devkit", rev = "5c0d2276f1aeb4c24e3f24f648a2c85368da7cb1" }
+devkit-advisory = { git = "https://github.com/mjkimR/devkit.git", subdirectory = "packages/devkit-advisory", rev = "5c0d2276f1aeb4c24e3f24f648a2c85368da7cb1" }

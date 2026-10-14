@@ -1,6 +1,5 @@
 import json
 import os
-import shutil
 import subprocess
 from uuid import UUID
 
@@ -35,71 +34,59 @@ SPEC = "specs/2026-10/20261009-fixture"
 
 @pytest.fixture
 def checkout(tmp_path):
-    if shutil.which("specrig") is None:
-        if os.environ.get("AUTOHUB_REQUIRE_SPECRIG"):
-            pytest.fail("required specrig CLI was not provisioned")
-        pytest.skip("native specrig adapter requires installed CLI")
+    from pathlib import Path
+
+    runtime = os.environ.get("AUTOHUB_SDD_HOME")
+    if not runtime:
+        if os.environ.get("AUTOHUB_REQUIRE_SDD"):
+            pytest.fail("required devkit-spec runtime was not provisioned")
+        pytest.skip("requires just test-sdd")
+    binary = str(Path(runtime) / ".venv/bin/devkit")
     root = (tmp_path / "checkout").resolve()
     root.mkdir()
 
     def run(*args):
-        return subprocess.check_output(args, cwd=root, text=True, stderr=subprocess.DEVNULL).strip()
+        return subprocess.check_output(args, cwd=root, text=True, stderr=subprocess.PIPE).strip()
 
     run("git", "init", "-q")
-    (root / ".gitignore").write_text(".agents/\n.claude/\n.codex/\n.specrig/.cache/\n")
-    runtime = os.environ.get("AUTOHUB_SPECRIG_HOME")
-    if runtime:
-        from pathlib import Path
-
-        pin = json.loads((Path(runtime) / "pin.json").read_text())
-        run(
-            "specrig",
-            "installation",
-            "install",
-            str(root),
-            "--version",
-            pin["version"],
-            "--repository",
-            pin["repository"],
-            "--cache-dir",
-            str(Path(runtime) / "releases"),
-            "--offline",
-            "--skip-agents",
-            "--json",
-        )
-    else:
-        run("specrig", "init", "--skip-agents")
-    receipt = json.loads((root / ".specrig/installation.json").read_text())
-    workflow_dir = ".specrig/local/workflows" if receipt.get("layout") == "layered" else ".specrig/workflows"
-    workflow = root / workflow_dir / "bridge-test.md"
+    (root / ".gitignore").write_text(".agents/\n.claude/\n.codex/\n")
+    (root / ".devkit").mkdir()
+    (root / ".devkit/config.toml").write_text("agents = []\nguidance_block = false\n")
+    run(binary, "sync")
+    workflow = root / ".devkit/workflows/bridge-test.md"
     workflow.parent.mkdir(parents=True, exist_ok=True)
     base = {"artifacts": [], "skills": [], "role": "developer", "isolation": "none", "returns": []}
     schema = {
-        "id": "WF-bridge-test",
+        "id": "bridge-test",
         "title": "Fixture evidence gate",
         "status": "active",
         "schema_version": 1,
+        "layout": {"work_dir": "specs", "unit_path": "{date:%Y-%m}/{date:%Y%m%d}-{slug}", "anchor": "spec.md"},
+        "checks": [
+            {"name": "lint-ci-clean", "class": "runner", "description": "Final CI"},
+            {"name": "merged", "class": "runner", "description": "Merged"},
+        ],
         "stages": [
             {
                 **base,
                 "id": "bridge-check",
                 "name": "Evidence",
                 "human_gate": False,
-                "entry": ["spec-dir-exists"],
+                "entry": ["anchor-exists"],
                 "exit": [
                     "envelope-review-passed",
-                    "reconcile-resolved",
-                    "spec-status-completed",
-                    "envelope-final-report-present",
+                    "frontmatter(reconcile.md status resolved)",
+                    "anchor-status-completed",
+                    "envelope-check-pass(final-report tests)",
                 ],
             },
             {
                 **base,
                 "id": "bridge-approval",
                 "name": "Approval",
-                "human_gate": True,
-                "entry": ["envelope-final-report-present"],
-                "exit": ["approval-given"],
+                "human_gate": "integration",
+                "entry": ["envelope-check-pass(final-report tests)"],
+                "exit": [],
             },
         ],
     }
@@ -110,13 +97,13 @@ def checkout(tmp_path):
         "---\nid: SPEC-fixture\ntitle: Fixture\nstatus: completed\ncreated: 2026-10-09\n---\n# Fixture\n"
     )
     (spec / "reconcile.md").write_text(
-        "---\nreconcile_id: REC-fixture\nstatus: resolved\ntargets: []\n---\n# No living changes\n"
+        "---\nid: REC-fixture\nstatus: resolved\ntargets: []\n---\n# No living changes\n"
     )
     for kind in ("review", "final-report"):
         (spec / f"envelopes/{kind}-01.yaml").write_text(
             f"kind: {kind}\nstatus: completed\nsummary: Fixture verified\nchecks:\n  tests: PASS fixture\n  build: PASS fixture\n  lint: PASS fixture\n"
         )
-    run("specrig", "workflow", "bind", "--spec", SPEC, "--workflow", str(workflow.relative_to(root)))
+    run(binary, "workflow", "bind", "--unit", SPEC, "--workflow", str(workflow.relative_to(root)))
     run("git", "add", ".")
     run("git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", "commit", "-qm", "Fixture")
     return root, run("git", "rev-parse", "HEAD")
@@ -183,7 +170,7 @@ def release(with_approval=True):
     return ReleaseSpec(
         manifest=FlowManifest(tasks=(check, deliver), flows=(flow,)),
         bindings=(
-            TaskBinding(task=TaskRef(key=check.key), executor="native", target="autohub.specrig:local"),
+            TaskBinding(task=TaskRef(key=check.key), executor="native", target="autohub.sdd:local"),
             TaskBinding(task=TaskRef(key=deliver.key), executor="native", target="autohub.pr_delivery:local"),
         ),
     )

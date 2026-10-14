@@ -168,13 +168,13 @@ Node from `.nvmrc`, `just`) and calls the `justfile` recipes, so a check that pa
 | --- | --- |
 | `backend` | `just lint-check hub` (ruff format and lint, architecture checks), `just check hub` (pyright), `just test` (SQLite) |
 | `backend-postgres` | `just test-pg` (testcontainers), then against a PostgreSQL 16 service: `alembic upgrade head`, `alembic check` (the migrations match the models), one step down and up again |
-| `specrig-contract (release)` / `specrig-contract (layered)` | Pinned released CLI and pinned upcoming layered source: `just test-specrig`; missing CLI is a failure |
+| `sdd-contract` | Locked devkit-spec runtime, OS isolation, native delivery and SDK bridge: `just test-sdd`; missing runtime is a failure |
 | `frontend` | `just lint-check hub-ui`, `just check hub-ui` (`svelte-check` and the production build), `just test-ui`, and `just check-ui-api`: stale or missing tag-based API declarations fail the build |
 
 The job names are stable, so this repository can itself be enrolled in a hub project with `ci.yml` as the workflow
-and the backend/frontend jobs plus both specrig contract jobs as required checks. The
-specrig jobs require `SPECRIG_READ_TOKEN` with read access to the private specrig
-repository and release assets. They fail when the runtime cannot be provisioned;
+and the backend/frontend jobs plus `sdd-contract` as required checks. The
+SDD job requires `SDD_READ_TOKEN` with read access to the private devkit-spec
+repository. They fail when the runtime cannot be provisioned;
 they never silently skip the CLI contract. Fork PRs do not receive this secret;
 run these checks from a trusted branch after review, never via `pull_request_target`
 with untrusted PR code. Other jobs need no repository secret: OpenAPI export works
@@ -250,68 +250,73 @@ PostgreSQL contention. For a disposable local PostgreSQL without Docker, set
 `AUTOHUB_FLOW_TEST_POSTGRES_URL` to a `postgresql+psycopg` URL whose host is
 `127.0.0.1` and database name starts with `autohub_test_`. Test fixtures create and
 drop model tables, so use a dedicated test database. Run `just gen-ui-api` after
-wire/API changes. The native specrig/PR bridge has an additional domain approval contract; generic
+wire/API changes. The native SDD/PR bridge has an additional domain approval contract; generic
 machine approval alone is not PR approval evidence.
 
-## Native specrig runtime
+## Native SDD runtime
 
-Native project mode accepts an existing PR and a bound spec. Select the spec in
-**Repository**, check readiness against the PR head, then start execution. The
-spec's recent executions link directly to **Runs → Decisions**, where the latest
-final-report, review and reverify envelope summaries are tied to the inspected
-commit. Work Plans do not yet create native specrig specs or PRs.
+`project_type: sdd` enables the built-in document viewer and execution of an
+existing PR with a bound spec. The current provider is `devkit-spec`. Work Plans
+do not create native specs or PRs. Select a spec, check readiness, then follow
+its execution link to Runs → Decisions for workflow requests and report evidence.
 
-`config/specrig-release.json` pins the production version, commit and platform
-archive checksums. The current pin is **0.1.2** (legacy harness layout). Layered
-support is tested against `compatibility_commit`, an upcoming source commit built
-as a test-only `0.0.0` fixture. It is not shipped as a production release. After a
-layered release is published, review its assets and update the version, commit and
-all checksums together, provision a fresh runtime, and run both contract checks.
-Do not substitute a sibling checkout binary or silently track `latest`.
+`config/sdd-runtime/pyproject.toml` and `uv.lock` pin the Python runtime separately
+from Hub's dependencies. The lock includes immutable devkit/devkit-spec commits
+and dependency hashes. Provision it once, never from a PR's dependency manifest:
 
 ```sh
-# gh must have read access to the private release assets.
-just install-specrig
-export AUTOHUB_SPECRIG_HOME="$(pwd)/.cache/specrig"
-export PATH="$AUTOHUB_SPECRIG_HOME/bin:$PATH"
-just test-specrig
+just install-sdd
+export AUTOHUB_SDD_HOME="$(pwd)/.cache/sdd"
+just test-sdd
 ```
 
-The installer verifies the reviewed checksum and CLI identity, then lets specrig
-create its official offline release cache. The server reads `pin.json` from
-`AUTOHUB_SPECRIG_HOME` (default `/opt/specrig`). `AUTOHUB_SPECRIG_VERSION` can
-explicitly override the full identity string for tests/managed runtimes; it does
-not install a binary or upgrade an enrolled run.
+Git credentials or build-only `GH_TOKEN` must permit access to devkit-spec. The
+installer stores no token in its manifest or pin. The runtime defaults to
+`/opt/sdd`; Hub snapshots its lock digest, provider, workflow hash, policy and
+configuration/receipt digest. Updates require a reviewed lock and a new run.
+The initial profile contains the `spec`, devkit and advisory bundles. Projects
+selecting additional packages (for example app-common) must provision a reviewed
+profile containing those exact packages; missing bundles fail readiness. Do not
+silently omit a project's rules or install its unreviewed dependencies at request time.
 
-Each inspection fetches exact head/base commits into a disposable checkout. A
-release installation receipt must match the server's repository, version and
-commit. Hub runs `installation restore --offline` from the provisioned cache
-before inspecting a layered harness. Missing caches, unsupported local layered
-receipts and version mismatches fail readiness; Hub never initializes, upgrades
-or rewrites the project's recorded installation. Legacy tracked harnesses without
-a release receipt remain supported. No additional persistent checkout is needed.
+Each evaluation fetches exact PR head/base commits into a disposable checkout.
+The project must commit `.devkit/config.toml` and `.devkit/installation.json`;
+managed copies and projections stay ignored. `devkit sync --locked` restores
+missing generated assets using installed packages, without changing the receipt,
+guidance or seed documents. No ordinary sync/initialization/upgrade fallback runs.
+A repository that ignores the entire `.devkit/` directory must explicitly adopt
+this consumer contract before it can be enrolled; Hub does not change its policy.
 
-Native evaluation supports bundled rules only. The CLI receives Git and specrig
-on a restricted PATH, a private temporary directory and locale; it does not
-inherit connector/server credentials or Go. Repository runner caches are removed
-from the disposable checkout. Custom Go rules need a separate trusted runner;
-they are reported as runtime/setup errors rather than agent repair work. Only
-`RULE_VIOLATIONS_DETECTED` is a final-lint repair result. Safe CLI diagnostic codes
-and bounded rule identifiers are exposed; raw stderr is not returned to clients.
+Python rules and workflow-check packages are executable code. All devkit commands
+run through OS isolation, with a writable disposable checkout, read-only runtime
+and system tools, no server credentials and no network. Linux needs bubblewrap
+and permission to create unprivileged namespaces; macOS uses sandbox-exec. There
+is no unsandboxed fallback. Validate namespace support on the actual container
+host: installing bubblewrap alone does not establish support, including on
+managed Cloud Run deployments. Unsupported hosts fail readiness and need a
+compatible execution host before native SDD can run.
 
-The Hub Dockerfile includes Git, the pinned CLI and offline cache. For private
-assets, local builds accept `GH_TOKEN` through a BuildKit secret, and Cloud Build
-accepts `SPECRIG_BUILD_SECRET=<Secret Manager secret name>` (same GCP project).
-Grant its build service account secret access before deploying. The secret is
-mounted only during provisioning, never copied to the runtime. A missing private
-release credential fails the image build. The resulting image contains specrig's
-binary and harness assets; distribute it according to that repository's access
-policy. The SDK's optional mounted-checkout bridge below remains separately
-configured.
+Only completed checks with rule violations become repair work; setup, receipt,
+loading and execution failures block. The JSON `error`/`errors` contract and exit
+status drive this distinction. Repository stderr and free-form error messages
+are never returned to users. The old Go runner/cache and release installer are removed.
+
+The Dockerfile packages the locked environment as read-only runtime files and
+installs Git and bubblewrap. Local builds pass `GH_TOKEN` using a BuildKit secret;
+Cloud Build uses `SDD_BUILD_SECRET=<Secret Manager secret name>` in the same GCP
+project. Grant its build identity secret access. The final image contains private
+devkit-spec assets, so distribute it according to that repository's access policy.
+
+Apply migration `ba3d1a6089a9` with this backend and frontend together. It renames
+project mode and run columns, preserves snapshot/decision history verbatim, and
+cancels nonterminal legacy runs and their open attempts. It does not stop agent
+work already posted to GitHub: settle it before enrolling replacement work.
+Legacy snapshots are read-only; they cannot be resumed with the new provider.
+The downgrade also settles active SDD work before exposing it to the old backend.
 
 ### Live canary after deployment
 
-Use a designated test repository and PR with the matching release receipt and
+Use a designated test repository and PR with the matching runtime receipt and
 bound workflow. This is an external-write test and must use an approved target.
 
 1. Check readiness, start the native run, and follow its link from the spec view.
@@ -334,11 +339,11 @@ Configure server-owned targets before registering the planhub release:
 AUTOHUB_FLOW_DELIVERY_TARGETS='{"local":{"provider":"planhub","environment":"local","project_id":"<existing-project-uuid>","checkout":"/absolute/clean/checkout"}}'
 ```
 
-This allows `autohub.specrig:local` and `autohub.pr_delivery:local` only in that
-provider/environment. Provision Git and the specrig CLI on the server PATH and
+This allows `autohub.sdd:local` and `autohub.pr_delivery:local` only in that
+provider/environment. Provision Git and the isolated SDD runtime above and
 mount a clean checkout whose HEAD matches the reviewed PR. Release registration
 does not deploy worker code or checkout files. The Hub image packages Git and
-the native pinned CLI/cache above; a bridge checkout still needs explicit provisioning. Apply migration `e70a873d6576`
+the locked Python runtime above; a bridge checkout still needs explicit provisioning. Apply migration `e70a873d6576`
 for durable PR claims and approval evidence.
 
 The initial flow accepts an existing paused PipelineRun whose latest attempt was
@@ -355,5 +360,5 @@ For the optional two-application HTTP test, set
 `PLANHUB_APPLICATION_TEST_ROOT` to the planhub checkout and
 `PLANHUB_APPLICATION_TEST_PYTHON` to its installed Python 3.13+ interpreter, then
 run the flow test path. The test launches loopback applications with isolated
-state and uses planhub's installed SDK. Git/specrig are real; GitHub and PR owner
+state and uses planhub's installed SDK. Git/devkit are real; GitHub and PR owner
 completion are fixtures. Live CI/merge and production rollout remain separate.

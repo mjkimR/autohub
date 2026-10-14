@@ -229,13 +229,13 @@ test('locks other decision controls until a native approval and refresh finish',
 	const user = userEvent.setup();
 	const nativeRun = {
 		...run,
-		specrig_snapshot: { spec_dir: 'specs/2026-10/feature' },
-		specrig_progress: { current: { stage: { exit: ['approval-given'] } } }
+		sdd_snapshot: { spec_dir: 'specs/2026-10/feature' },
+		sdd_progress: { current: { stage: { human_gate: 'integration', exit: [] } } }
 	} as unknown as components['schemas']['PipelineRunRead'];
 	api.GET.mockImplementation(async (path: string) => ({
 		data: path.endsWith('/questions')
 			? { items: [], total_count: 0, run_revision: 2 }
-			: path.endsWith('/specrig-decisions')
+			: path.endsWith('/sdd-decisions')
 				? []
 				: nativeRun
 	}));

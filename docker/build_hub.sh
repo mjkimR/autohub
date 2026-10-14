@@ -17,7 +17,7 @@ done
 
 BUILD_SECRETS=()
 if [ "${GH_TOKEN:+set}" = set ]; then
-  BUILD_SECRETS+=(--secret id=specrig_token,env=GH_TOKEN)
+  BUILD_SECRETS+=(--secret id=sdd_token,env=GH_TOKEN)
 fi
 docker build "${BUILD_SECRETS[@]}" \
   -f "$SCRIPT_DIR/hub.Dockerfile" \

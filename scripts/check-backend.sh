@@ -14,8 +14,8 @@ if "$fix"; then
     format_args=()
     lint_args=(--fix)
 fi
-uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync ruff format "${format_args[@]}" "$backend_path"
-uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync ruff check "${lint_args[@]}" "$backend_path"
+uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync ruff format ${format_args[@]+"${format_args[@]}"} "$backend_path"
+uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync ruff check ${lint_args[@]+"${lint_args[@]}"} "$backend_path"
 uv run --no-active --no-sync devkit sync
 uv run --no-active --no-sync devkit sync --check
 uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync devkit rules check "$backend_path"

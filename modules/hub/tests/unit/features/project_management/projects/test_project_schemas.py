@@ -59,9 +59,9 @@ class TestProjectWrite:
         project = ProjectWrite.model_validate(make_write())
         assert project.project_type == "general"
 
-    def test_project_type_accepts_specrig(self):
-        project = ProjectWrite.model_validate(make_write(project_type="specrig"))
-        assert project.project_type == "specrig"
+    def test_project_type_accepts_sdd(self):
+        project = ProjectWrite.model_validate(make_write(project_type="sdd"))
+        assert project.project_type == "sdd"
 
     def test_invalid_project_type_is_rejected(self):
         with pytest.raises(ValidationError):
@@ -191,7 +191,7 @@ class TestTemplates:
                 assert f"{job}:" in template.content
 
 
-@pytest.mark.parametrize("viewer", ["default", "specrig", "custom-architecture"])
+@pytest.mark.parametrize("viewer", ["default", "sdd", "custom-architecture"])
 def test_repository_viewer_patch_round_trips_without_changing_automation(viewer):
     current = ProjectWrite.model_validate(make_write())
     assert current.github is not None

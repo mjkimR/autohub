@@ -47,46 +47,25 @@ jobs:
           just test-sdk
           just build-sdk
 
-  specrig-contract:
-    name: specrig-contract (${{ matrix.runtime }})
-    strategy:
-      matrix:
-        runtime: [release, layered]
+  sdd-contract:
+    name: sdd-contract
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: extractions/setup-just@v3
       - uses: astral-sh/setup-uv@v5
+      - run: sudo apt-get update && sudo apt-get install -y bubblewrap
+      # Ubuntu runners can restrict unprivileged user namespaces through AppArmor.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - run: uv sync --locked --all-packages
       - run: uv run --no-sync devkit sync
-      - name: Install pinned specrig release
-        if: matrix.runtime == 'release'
+      - name: Install the reviewed devkit-spec runtime
         env:
-          GH_TOKEN: ${{ secrets.SPECRIG_READ_TOKEN }}
-        run: just install-specrig
-      - name: Read pinned compatibility source
-        if: matrix.runtime == 'layered'
-        id: compatibility
-        run: echo "ref=$(python3 -c 'import json; print(json.load(open("config/specrig-release.json"))["compatibility_commit"])')" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
-        if: matrix.runtime == 'layered'
-        with:
-          repository: mjkimR/specrig
-          ref: ${{ steps.compatibility.outputs.ref }}
-          token: ${{ secrets.SPECRIG_READ_TOKEN }}
-          persist-credentials: false
-          path: .cache/specrig-source
-      - uses: actions/setup-go@v5
-        if: matrix.runtime == 'layered'
-        with:
-          go-version-file: .cache/specrig-source/cli/go.mod
-          cache-dependency-path: .cache/specrig-source/cli/go.sum
-      - name: Prepare test-only layered runtime
-        if: matrix.runtime == 'layered'
-        run: just prepare-specrig-compat .cache/specrig-source .cache/specrig
-      - name: Native delivery and real CLI contract
-        run: just test-specrig
+          GH_TOKEN: ${{ secrets.SDD_READ_TOKEN }}
+        run: just install-sdd
+      - name: Native delivery, human decisions and isolated CLI contract
+        run: just test-sdd
 
   backend-postgres:
     name: backend-postgres

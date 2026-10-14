@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { SvelteMap } from 'svelte/reactivity';
-	import SpecrigRunPanel from './SpecrigRunPanel.svelte';
-	import SpecrigDecisionHistory from './SpecrigDecisionHistory.svelte';
+	import SddRunPanel from './SddRunPanel.svelte';
+	import SddDecisionHistory from './SddDecisionHistory.svelte';
 	import DecisionQuestion from './DecisionQuestion.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { getStateBadgeClass } from './presentation';
@@ -158,8 +158,7 @@
 				<Badge variant="outline" class={getStateBadgeClass(current.state)}
 					>{current.state.replaceAll('_', ' ')}</Badge
 				>
-				{#if current.specrig_snapshot}<span class="text-xs text-muted-foreground">specrig</span
-					>{/if}
+				{#if current.sdd_snapshot}<span class="text-xs text-muted-foreground">sdd</span>{/if}
 			</div>
 			<DialogTitle class="text-xl leading-snug break-words"
 				>{current.pull_snapshot.title}</DialogTitle
@@ -258,8 +257,8 @@
 							</details>
 						</section>
 					{/if}
-					{#if current.specrig_snapshot}
-						<SpecrigRunPanel
+					{#if current.sdd_snapshot}
+						<SddRunPanel
 							run={current}
 							disabled={locked || !ready || offset !== 0}
 							questionPending={!!pending}
@@ -274,7 +273,7 @@
 					{/if}
 					{#if ready && !terminal && offset === 0 && !pending}
 						{#if current.state === 'paused' || current.state === 'blocked'}
-							<details open={!current.specrig_snapshot} class="rounded-xl border p-4 text-sm">
+							<details open={!current.sdd_snapshot} class="rounded-xl border p-4 text-sm">
 								<summary class="cursor-pointer font-medium">Recovery & inspection</summary>
 								<p class="my-3 text-muted-foreground">
 									Recheck this run after resolving its wait. This action does not grant integration
@@ -304,7 +303,7 @@
 					{/if}
 				</div>
 				<aside class="min-w-0 space-y-5 md:border-l md:pl-5" aria-label="Decision history">
-					{#if current.specrig_snapshot}<SpecrigDecisionHistory runId={run.id} {revision} />{/if}
+					{#if current.sdd_snapshot}<SddDecisionHistory runId={run.id} {revision} />{/if}
 					<section class="space-y-3">
 						<h3 class="flex items-center gap-2 text-sm font-semibold">
 							<History class="size-4 text-muted-foreground" />Question history

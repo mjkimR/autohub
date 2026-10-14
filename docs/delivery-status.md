@@ -37,18 +37,29 @@
 
 ## 로컬 구현, 미발행
 
-- 2026-10-12 specrig 연동 보강: 마지막 GitHub 조회 중 중지·취소·승인 철회가 발생하면
+- 2026-10-14 SDD 전환: 프로젝트 유형·API·화면을 `sdd`로 정리하고 `devkit-spec`
+  provider와 Python runtime lock을 실행에 고정했다. devkit의 requests/answer/return,
+  같은 spec 내 명시적 handoff와 기존 승인·머지 보호를 연결했다. 옛 실행 evidence는
+  보존하고 진행 중 실행은 migration에서 종료한다. 실제 CLI와 macOS 격리·응답·화면·
+  DB 회귀 테스트를 추가했다. 컨테이너·PostgreSQL·GitHub 실연결은 이 항목의 완료
+  근거에 포함하지 않는다. Linux namespace 지원과 추가 번들 profile은 배포 전 조건이다.
+  현재 계약과 명령은 [개발 가이드](development.md#native-sdd-runtime)를 따른다.
+  최종 로컬 검증: 백엔드 SQLite 972 passed / 31 skipped, 별도 실제 CLI 연동
+  44 passed / 1 skipped, UI 187 passed, SDK 27 passed. lint·타입 검사·UI/SDK 빌드와
+  생성 API 일치 검사도 통과했다. 테스트 묶음은 일부 중복되므로 합산하지 않는다.
+
+- 2026-10-12 specrig 연동 보강(아래 내용은 이력이며 현재 구현은 위 SDD 전환으로 대체): 마지막 GitHub 조회 중 중지·취소·승인 철회가 발생하면
   머지 요청 전 revision/lease를 재검사한다. 고정 릴리스 CLI·Git·오프라인 복원 캐시를 이미지에
   포함하고, layered fresh checkout 복원과 릴리스/후속 소스의 실제 CLI 테스트를 연결했다.
   운영 pin은 0.1.2이며 layered 소스는 테스트 전용이다. spec별 실행 링크와 검토/최종 보고서
   요약을 추가했다. custom Go 규칙은 공유 서버의 지원 범위 밖이며 설치·실행 오류를
-  규칙 위반 재작업과 구분한다. [운영 절차](development.md#native-specrig-runtime).
+  규칙 위반 재작업과 구분한다. [운영 절차](development.md#native-sdd-runtime).
   Docker 이미지 빌드·PostgreSQL·실제 GitHub 카나리는 이번 로컬 검증에 포함하지 않았다.
 
 - 2026-10-12 네이티브 specrig HITL 보완: 적용한 질문·답변과 재작업 요청을 후속 단계에 전달하고,
   변경 없는 답변과 재작업 대기를 구분했다. G3에서 PR ready 관찰 또는 Hub 승인으로 근거를
   기록하며, draft 대기는 실행 슬롯 없이 polling한다. 철회·피드백 뒤에는 명시적 재승인을
-  요구한다. 결정 이력과 draft 머지 조건을 UI에 표시한다. [계약](run-decisions.md#native-specrig-decisions).
+  요구한다. 결정 이력과 draft 머지 조건을 UI에 표시한다. [계약](run-decisions.md#native-sdd-decisions).
   Decisions 화면은 현재 질문·승인 근거·다음 액션을 중심으로 재구성하고, 결정 이력은 보조
   영역으로 분리했다. 변경 요청·중단 사유는 선택 시 입력하며 모바일에서는 한 열로 표시한다.
   운영 배포·실제 GitHub 카나리는 수행하지 않았다.

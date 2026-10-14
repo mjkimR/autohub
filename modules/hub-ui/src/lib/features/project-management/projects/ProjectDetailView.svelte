@@ -78,12 +78,12 @@
 			<div>
 				<div class="flex items-center gap-2">
 					<h1 class="text-3xl font-semibold tracking-tight">{project.name}</h1>
-					{#if project.project_type === 'specrig'}
+					{#if project.project_type === 'sdd'}
 						<Badge
 							variant="outline"
 							class="border-amber-500/30 bg-amber-500/10 text-xs text-amber-500"
 						>
-							specrig
+							sdd
 						</Badge>
 					{/if}
 				</div>

@@ -1,8 +1,7 @@
-"""Read actual Git and specrig state from an operator-configured checkout."""
+"""Read actual Git and sdd state from an operator-configured checkout."""
 
 import asyncio
 import hashlib
-import json
 import re
 from pathlib import Path
 
@@ -14,20 +13,13 @@ class BridgeRejected(Exception):
 
 
 async def process(*args: str, cwd: Path):
-    child = await asyncio.create_subprocess_exec(
-        *args, cwd=cwd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-    )
+    from app.features.project_management.projects.errors import ProjectError
+    from app.features.project_management.sdd.checkout import command
+
     try:
-        async with asyncio.timeout(30):
-            stdout, _ = await child.communicate()
-    except BaseException:
-        if child.returncode is None:
-            child.kill()
-        await child.wait()
-        raise
-    if child.returncode != 0:
-        raise BridgeRejected("checkout-check-failed")
-    return stdout.decode()
+        return await command("git-safe", *args[1:], cwd=cwd)
+    except ProjectError as exc:
+        raise BridgeRejected("checkout-check-failed") from exc
 
 
 async def read_evidence(checkout: str, spec_dir: str, head_sha: str) -> str:
@@ -47,32 +39,17 @@ async def _read_evidence(checkout: str, spec_dir: str, head_sha: str) -> str:
         raise BridgeRejected("checkout-head-changed")
     if (await process("git", "status", "--porcelain", "--untracked-files=normal", cwd=root)).strip():
         raise BridgeRejected("checkout-dirty")
-    show = json.loads(await process("specrig", "workflow", "show", "--spec", spec_dir, "--format", "json", cwd=root))
-    current = json.loads(await process("specrig", "workflow", "next", "--spec", spec_dir, "--format", "json", cwd=root))
-    stage = current.get("stage") or {}
-    if (
-        not current.get("bound")
-        or current.get("envelope_errors")
-        or not stage.get("human_gate")
-        or "envelope-final-report-present" not in stage.get("entry", [])
-        or "approval-given" not in stage.get("exit", [])
-    ):
+    from app.features.project_management.projects.errors import ProjectError
+    from app.features.project_management.sdd.progress import approval_gate
+    from app.features.project_management.sdd.services import SddService
+
+    try:
+        evidence = await SddService().evaluate(root, spec_dir, head_sha, head_sha, None, False)
+    except ProjectError as exc:
+        raise BridgeRejected("workflow-evaluation-failed") from exc
+    if not approval_gate(evidence):
         raise BridgeRejected("workflow-not-ready-for-integration")
-    verified = {
-        check
-        for item in show.get("stages", [])
-        if item["id"] in current.get("done", [])
-        for check in item.get("exit", [])
-    }
-    if not {
-        "envelope-review-passed",
-        "reconcile-resolved",
-        "spec-status-completed",
-        "envelope-final-report-present",
-    }.issubset(verified):
-        raise BridgeRejected("workflow-evidence-checks-missing")
-    if show.get("id") != current.get("workflow"):
-        raise BridgeRejected("workflow-binding-invalid")
+    show = evidence["workflow"]
     files = {}
     for path in sorted(spec.rglob("*")):
         if path.is_file():

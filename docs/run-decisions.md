@@ -118,7 +118,7 @@ comments and executable mention text are not turned into questions. Collected
 stale replies remain in attempt history but cannot stop a new attempt. This is
 currently the Codex PR reply path only; Jules session questions are not supported.
 For general runs, if the agent pushes before asking, the head-change path enters
-CI observation and the marker is not collected as a decision. Native specrig runs
+CI observation and the marker is not collected as a decision. Native SDD runs
 continue collecting replies after a push, validate the marker against the delivered
 attempt/head, and bind the question to the currently observed head. An operator
 can also record a question through the UI/MCP.
@@ -131,7 +131,7 @@ Live verification must confirm that the provider actually emits this marker as a
 trusted PR reply, stops before pushing, and uses the selected answer in its next
 implementation. Passing parser and mocked GitHub tests does not establish this.
 
-## Native specrig decisions
+## Native SDD decisions
 
 Native runs use the same questions, answers, Run lock and resume receipts. Applied
 questions and their selected answers, plus explicit change requests, are included
@@ -217,3 +217,28 @@ Before marking this operational, deploy to an isolated canary target and record:
 version, Plan/Run/PR links, provider question, saved answer, applied attempt,
 delivery result, actual implementation/merge and replacement-work recovery.
 No g-sandbox migration or Linear removal is required for this verification.
+
+### devkit workflow requests
+
+The engine's `current.requests` feeds the existing Decisions screen. A revision-
+checked resume accepts `workflow_answer: {request, action, value?}` with actions
+`accept`, `decline` and `cancel`. Integration approval still uses Hub's separate
+approve/revise/revoke/reject controls. `decline` keeps a request open; `cancel`
+records deferral and never revokes an approval or cancels the run.
+
+Hub validates the current head/base and evidence digest, lets the pinned CLI
+prepare the decision YAML in an isolated disposable checkout, then stores the
+operator response and exact record with the resume receipt before dispatching.
+The agent publishes it to the bound unit. The `autohub-decision:<UUID>` note is
+its publication key: retries must not append it twice or overwrite another record.
+Until the agent commits evidence, workflow evaluation does not advance on a saved
+answer alone. The UI records acceptance before publication; agent failure remains
+visible through the ordinary execution attempt and retry controls.
+
+An accepted handoff may authorize a new workflow hash for the same spec anchor;
+this is recorded in the run snapshot under `authorized_workflows`. It never
+permits arbitrary rebinding or a different policy/runtime. A handoff requiring a
+different anchor needs a separately enrolled unit. An explicit change request
+uses `devkit workflow return` to void later approvals and reports; a stale-approval
+notice alone does not void them. Repository decisions never grant Hub merge
+permission or override its withheld approval, head/base checks or final merge fence.

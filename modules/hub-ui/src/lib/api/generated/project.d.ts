@@ -328,7 +328,7 @@ export interface components {
             /** Name */
             name?: string | null;
             /** Project Type */
-            project_type?: ("general" | "specrig") | null;
+            project_type?: ("general" | "sdd") | null;
             /** Enabled */
             enabled?: boolean | null;
             /** @description null disconnects GitHub */
@@ -343,7 +343,7 @@ export interface components {
              * @default general
              * @enum {string}
              */
-            project_type: "general" | "specrig";
+            project_type: "general" | "sdd";
             github?: components["schemas"]["GitHubProjectConnection"] | null;
             /**
              * Enabled
@@ -388,7 +388,7 @@ export interface components {
              * @default general
              * @enum {string}
              */
-            project_type: "general" | "specrig";
+            project_type: "general" | "sdd";
             github?: components["schemas"]["GitHubProjectConnection"] | null;
             /**
              * Enabled

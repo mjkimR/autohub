@@ -82,8 +82,8 @@ class PipelineRun(Base, UUIDMixin, TimestampMixin):
     requested_catalog_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("ai_catalogs.id", ondelete="SET NULL"), nullable=True
     )
-    specrig_snapshot: Mapped[dict | None] = mapped_column(JSON_VARIANT, nullable=True)
-    specrig_progress: Mapped[dict | None] = mapped_column(JSON_VARIANT, nullable=True)
+    sdd_snapshot: Mapped[dict | None] = mapped_column(JSON_VARIANT, nullable=True)
+    sdd_progress: Mapped[dict | None] = mapped_column(JSON_VARIANT, nullable=True)
     project_revision: Mapped[int] = mapped_column(Integer, nullable=False)
     # The GitHub binding captured at enrollment; a resume may adopt newer project settings only while it still holds.
     github_repository: Mapped[str | None] = mapped_column(String(255), nullable=True)

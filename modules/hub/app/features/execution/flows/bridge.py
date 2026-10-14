@@ -60,7 +60,7 @@ class PRBridgeWorker:
     async def execute(self, action: WorkerAction):
         try:
             data = BridgeInputs.model_validate(action.inputs)
-            check = action.binding["target"].startswith("autohub.specrig:")
+            check = action.binding["target"].startswith("autohub.sdd:")
             if action.operation == "cancel":
                 return await self.cancel(action, data)
             if check:
@@ -108,8 +108,8 @@ class PRBridgeWorker:
         return WorkerResult(attempt_id=action.attempt_id, status="completed", output=output)
 
     async def check_pipeline(self, session, pipeline, action, data):
-        if pipeline is not None and pipeline.specrig_snapshot:
-            raise BridgeRejected("pr-owned-by-native-specrig")
+        if pipeline is not None and pipeline.sdd_snapshot:
+            raise BridgeRejected("pr-owned-by-native-sdd")
         if pipeline is None or str(pipeline.project_id) != action.binding["project_id"]:
             raise BridgeRejected("pr-project-mismatch")
         if pipeline.state != PipelineRunState.PAUSED or pipeline.revision != data.pipeline_revision:

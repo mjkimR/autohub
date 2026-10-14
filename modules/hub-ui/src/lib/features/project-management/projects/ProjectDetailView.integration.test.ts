@@ -322,13 +322,13 @@ test('general settings save project_type successfully', async () => {
 		section: 'general',
 		onsaved: vi.fn()
 	});
-	await user.selectOptions(screen.getByRole('combobox', { name: 'Project Type' }), 'specrig');
+	await user.selectOptions(screen.getByRole('combobox', { name: 'Project Type' }), 'sdd');
 	await user.click(screen.getByRole('button', { name: 'Save Changes' }));
 	expect(api.PATCH).toHaveBeenCalledWith(
 		'/api/v1/projects/{project_id}',
 		expect.objectContaining({
 			body: expect.objectContaining({
-				project_type: 'specrig'
+				project_type: 'sdd'
 			})
 		})
 	);

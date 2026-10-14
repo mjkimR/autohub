@@ -83,8 +83,8 @@ class RunInteractionService:
         )
         session.add(row)
         run.state = "blocked"
-        if run.specrig_progress:
-            run.specrig_progress = {**run.specrig_progress, "waiting_for_approval": False}
+        if run.sdd_progress:
+            run.sdd_progress = {**run.sdd_progress, "waiting_for_approval": False}
         run.pause_reason = "Operator decision required: " + question[:500]
         run.next_action_at = None
         if invalidate_lease:

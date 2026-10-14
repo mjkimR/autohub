@@ -44,9 +44,7 @@ class WorkerBindings:
             key = f"{binding.task.key}@{binding.task.contract_version}"
             if binding.executor == "native" and binding.target == "autohub.identity":
                 resolved[key] = {"executor": "native", "target": binding.target}
-            elif binding.executor == "native" and binding.target.startswith(
-                ("autohub.specrig:", "autohub.pr_delivery:")
-            ):
+            elif binding.executor == "native" and binding.target.startswith(("autohub.sdd:", "autohub.pr_delivery:")):
                 name = binding.target.split(":", 1)[1]
                 target = self.deliveries.get(name)
                 if target is None or (target.provider, target.environment) != (provider, environment):

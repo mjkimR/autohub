@@ -55,8 +55,8 @@ class PipelineRunControl:
             if run.state in (PipelineRunState.COMPLETED, PipelineRunState.FAILED, PipelineRunState.CANCELED):
                 raise ProjectError(422, f"Cannot pause a run in {run.state} state")
             run.state = PipelineRunState.PAUSED
-            if run.specrig_progress:
-                run.specrig_progress = {**run.specrig_progress, "waiting_for_approval": False}
+            if run.sdd_progress:
+                run.sdd_progress = {**run.sdd_progress, "waiting_for_approval": False}
             run.pause_reason = request.reason if request and request.reason else "Manually paused by user"
             run.lease_owner = None
             run.lease_token = None
@@ -77,15 +77,15 @@ class PipelineRunControl:
     ) -> PipelineRunRead:
         async with AsyncTransaction() as session:
             native_run = await self.repo.get(session, run_id)
-            native = native_run is not None and bool(native_run.specrig_snapshot)
+            native = native_run is not None and bool(native_run.sdd_snapshot)
         if native:
-            from app.features.project_management.specrig.control import SpecrigControl
+            from app.features.project_management.sdd.control import SddControl
 
             if request is None:
-                raise ProjectError(422, "Native specrig resume requires a revision-checked request")
-            return await SpecrigControl(self.repo, self.projects, self.observer).resume(run_id, request, actor)
-        if request and request.decision:
-            raise ProjectError(422, "Specrig decisions require a native specrig run")
+                raise ProjectError(422, "Native sdd resume requires a revision-checked request")
+            return await SddControl(self.repo, self.projects, self.observer).resume(run_id, request, actor)
+        if request and (request.decision or request.workflow_answer):
+            raise ProjectError(422, "Sdd decisions require a native sdd run")
         interactions = RunInteractionService()
         digest = (
             request_digest({"run_id": str(run_id), "actor": actor, "request": request.model_dump(mode="json")})
@@ -310,7 +310,7 @@ class PipelineRunControl:
             repo_name = project.github_repository or "repo"
             run.pull_number = request.pull_number
             run.pull_url = request.pull_url or f"https://github.com/{repo_name}/pull/{request.pull_number}"
-            run.state = PipelineRunState.IMPLEMENTING if run.specrig_snapshot else PipelineRunState.AWAITING_CI
+            run.state = PipelineRunState.IMPLEMENTING if run.sdd_snapshot else PipelineRunState.AWAITING_CI
             run.revision += 1
             active_attempt = await self.repo.active_attempt(session, run.id)
             if active_attempt is not None and active_attempt.state in (

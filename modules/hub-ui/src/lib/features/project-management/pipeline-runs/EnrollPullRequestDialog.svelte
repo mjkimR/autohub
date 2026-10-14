@@ -37,9 +37,7 @@
 	let enrollImplemented = $state(false);
 	let enrollCatalog = $state('');
 	let specDir = $state('');
-	let native = $derived(
-		projects.find((p) => p.id === acquireProjectId)?.project_type === 'specrig'
-	);
+	let native = $derived(projects.find((p) => p.id === acquireProjectId)?.project_type === 'sdd');
 
 	async function handleAcquireRunSubmit(e: SubmitEvent) {
 		e.preventDefault();

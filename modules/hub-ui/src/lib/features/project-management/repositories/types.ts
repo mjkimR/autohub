@@ -5,7 +5,7 @@ export type RepoTree = components['schemas']['RepoTreeRead'];
 export type RepoBlob = components['schemas']['RepoBlobRead'];
 export type RepoInfo = components['schemas']['RepoInfoRead'];
 
-export type ViewerMode = 'default' | 'specrig';
+export type ViewerMode = 'default' | 'sdd';
 
 export interface InstalledViewer {
 	id: string;

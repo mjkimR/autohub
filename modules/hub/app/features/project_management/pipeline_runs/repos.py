@@ -80,7 +80,7 @@ class PipelineRunRepository:
         )
         approval_wait = and_(
             PipelineRun.state == PipelineRunState.PAUSED,
-            PipelineRun.specrig_progress["waiting_for_approval"].as_boolean().is_(True),
+            PipelineRun.sdd_progress["waiting_for_approval"].as_boolean().is_(True),
         )
         observing = or_(
             PipelineRun.state.in_((PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI)), approval_wait

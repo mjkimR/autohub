@@ -6,8 +6,8 @@
 	import { Button } from '$lib/components/ui/button';
 	import FileTreeTable from './FileTreeTable.svelte';
 	import FileBlobViewer from './FileBlobViewer.svelte';
-	import SpecrigViewer from './specrig/SpecrigViewer.svelte';
-	import SpecrigExecution from './SpecrigExecution.svelte';
+	import SddViewer from './sdd/SddViewer.svelte';
+	import SddExecution from './SddExecution.svelte';
 	import { repositoryDataSource } from './data-source';
 	import type { RepoBlob, RepoInfo, RepoItem, RepoTree } from './types';
 
@@ -20,14 +20,14 @@
 	let activeBlob = $state<RepoBlob | null>(null);
 	let readmeBlob = $state<RepoBlob | null>(null);
 
-	let isSpecrig = $derived(project.project_type === 'specrig');
+	let isSdd = $derived(project.project_type === 'sdd');
 	let selectedSpec = $state('');
 	$effect(() => {
 		void project?.id;
 		selectedSpec = '';
 	});
-	let userSelectedMode = $state<'default' | 'specrig' | null>(null);
-	let viewerMode = $derived(userSelectedMode ?? (isSpecrig ? 'specrig' : 'default'));
+	let userSelectedMode = $state<'default' | 'sdd' | null>(null);
+	let viewerMode = $derived(userSelectedMode ?? (isSdd ? 'sdd' : 'default'));
 	let viewerRevision = $state(0);
 	let loading = $state(true);
 	let error = $state('');
@@ -221,15 +221,15 @@
 
 			<!-- View Mode & Action Controls -->
 			<div class="flex items-center gap-2">
-				{#if isSpecrig}
+				{#if isSdd}
 					<div class="flex rounded-lg border bg-muted/40 p-0.5 text-xs">
 						<button
 							type="button"
-							onclick={() => (userSelectedMode = 'specrig')}
-							class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'specrig' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+							onclick={() => (userSelectedMode = 'sdd')}
+							class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'sdd' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
 						>
 							<Sparkles class="h-3.5 w-3.5 text-amber-300 dark:text-amber-400" />
-							Specrig View
+							Sdd View
 						</button>
 						<button
 							type="button"
@@ -247,7 +247,7 @@
 					size="sm"
 					class="h-8 gap-1.5 text-xs"
 					onclick={() =>
-						viewerMode === 'specrig'
+						viewerMode === 'sdd'
 							? viewerRevision++
 							: activeBlob
 								? openFile({
@@ -281,19 +281,16 @@
 			</div>
 		{/if}
 
-		{#if loading && !tree && !activeBlob && viewerMode !== 'specrig'}
+		{#if loading && !tree && !activeBlob && viewerMode !== 'sdd'}
 			<div class="flex items-center justify-center py-20 text-sm text-muted-foreground">
 				Loading repository…
 			</div>
-		{:else if viewerMode === 'specrig'}
-			{#if isSpecrig}{#key project.id}<SpecrigExecution
-						projectId={project.id}
-						{selectedSpec}
-					/>{/key}{/if}
-			<!-- Native Specrig Viewer -->
+		{:else if viewerMode === 'sdd'}
+			{#if isSdd}{#key project.id}<SddExecution projectId={project.id} {selectedSpec} />{/key}{/if}
+			<!-- Native Sdd Viewer -->
 			<section class="rounded-xl border bg-card p-4 shadow-xs">
 				{#key viewerRevision}
-					<SpecrigViewer
+					<SddViewer
 						dataSource={repositoryDataSource(project.id)}
 						branch={currentRef || 'main'}
 						repoId={project.github?.repository || project.name}

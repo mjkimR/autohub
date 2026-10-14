@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 TemplateId = Literal["python-uv", "node-npm"]
 MergeMethod = Literal["squash", "merge", "rebase"]
-ProjectType = Literal["general", "specrig"]
+ProjectType = Literal["general", "sdd"]
 
 
 class GitHubAutomationConfig(BaseModel):

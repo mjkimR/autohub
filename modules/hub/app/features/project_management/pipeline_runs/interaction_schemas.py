@@ -43,7 +43,15 @@ class QuestionDismiss(BaseModel):
     reason: str = Field(min_length=1, max_length=2000)
 
 
+class WorkflowAnswer(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    request: str = Field(min_length=1, max_length=200)
+    action: Literal["accept", "decline", "cancel"]
+    value: str | None = Field(default=None, max_length=200)
+
+
 class ResumeRunRequest(InteractionWrite):
+    workflow_answer: WorkflowAnswer | None = None
     answer_id: UUID | None = None
     decision: Literal["approve", "revise", "reject", "revoke"] | None = None
     feedback: str | None = Field(default=None, max_length=8000)

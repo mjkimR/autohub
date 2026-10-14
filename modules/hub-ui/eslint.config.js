@@ -19,10 +19,7 @@ export default defineConfig(
 	svelte.configs.prettier,
 	...structure({
 		// shadcn-svelte primitives are generated; authored views and shared components stay checked.
-		ignores: [
-			'src/lib/components/ui/**',
-			'src/lib/features/project-management/repositories/specrig/**'
-		]
+		ignores: ['src/lib/components/ui/**', 'src/lib/features/project-management/repositories/sdd/**']
 	}),
 	{
 		languageOptions: { globals: { ...globals.browser, ...globals.node } },
@@ -51,7 +48,7 @@ export default defineConfig(
 		}
 	},
 	{
-		files: ['src/lib/features/project-management/repositories/specrig/**'],
+		files: ['src/lib/features/project-management/repositories/sdd/**'],
 		rules: {
 			'@typescript-eslint/no-explicit-any': 'off',
 			'@typescript-eslint/no-unused-expressions': 'off',

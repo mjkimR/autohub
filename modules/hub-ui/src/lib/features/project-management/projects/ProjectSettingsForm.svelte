@@ -25,7 +25,7 @@
 	// Edit / Settings dialog
 	let isUpdating = $state(false);
 	let editName = $state('');
-	let editProjectType = $state<'general' | 'specrig'>('general');
+	let editProjectType = $state<'general' | 'sdd'>('general');
 	let editEnabled = $state(true);
 	let hasGithub = $state(false);
 	let githubRepo = $state('');
@@ -166,7 +166,7 @@
 					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs"
 				>
 					<option value="general">General (Standard Git repository)</option>
-					<option value="specrig">Specrig (Spec-Driven Development with Living Spec)</option>
+					<option value="sdd">SDD (devkit-spec · Living Spec)</option>
 				</select>
 			</div>
 			<div class="flex items-center gap-2">

@@ -62,7 +62,7 @@
 	let isCreateOpen = $state(false);
 	let isCreating = $state(false);
 	let newName = $state('');
-	let newProjectType = $state<'general' | 'specrig'>('general');
+	let newProjectType = $state<'general' | 'sdd'>('general');
 
 	let editingProject = $state<Project | null>(null);
 
@@ -255,12 +255,12 @@
 										<a class="hover:text-primary hover:underline" href={`/projects/${project.id}`}
 											>{project.name}</a
 										>
-										{#if project.project_type === 'specrig'}
+										{#if project.project_type === 'sdd'}
 											<Badge
 												variant="outline"
 												class="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-500"
 											>
-												specrig
+												sdd
 											</Badge>
 										{/if}
 									</div>
@@ -444,7 +444,7 @@
 						class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs"
 					>
 						<option value="general">General (Standard Git Repository)</option>
-						<option value="specrig">Specrig (Spec-Driven Engineering)</option>
+						<option value="sdd">Sdd (Spec-Driven Engineering)</option>
 					</select>
 				</div>
 				<DialogFooter class="pt-4">
