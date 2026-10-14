@@ -15,12 +15,13 @@ wheels/
 !.python-version
 !.vscode
 !.github
+# devkit keeps its own .devkit/.gitignore for the generated parts.
+!.devkit
 
 # Generated agent assets are installed by devkit.
 .agents/
 .claude/
 .codex/
-.devkit/
 apm_modules/
 
 # Credentials. Keep keys outside the repo (e.g. ~/.config/scheduler-mgr/sa-key.json).

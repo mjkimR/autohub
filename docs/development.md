@@ -55,9 +55,7 @@ the same recipes and locked Python dependencies; Ruff has no separate hook versi
 app-common development assets are installed from the devkit bundles shipped in the
 Python dependencies. `just skills` and `just link-skills` generate them from the
 installed packages with `devkit sync` and select the Python advisory guide.
-`.devkit/` and the projected skill directories are ignored by Git. Every new
-environment regenerates them from the packages installed from the Python lock, so
-never commit the receipt or the skills. Do not add backend runtime dependencies to
+Do not add backend runtime dependencies to
 the standalone Python SDK. The frontend ESLint policy keeps its own pin. No sibling
 checkout or APM is required.
 

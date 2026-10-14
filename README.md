@@ -54,7 +54,6 @@ just test
 Initialize the Python environment even for frontend-only checks. Commands print
 bounded results and a log path for full output through `devkit run`. Backend
 initialization deploys app-common devkit bundles from the installed packages.
-`.devkit/` and projected skills are generated locally and ignored by Git.
 
 ## Documentation
 
