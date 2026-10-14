@@ -39,8 +39,8 @@ lint module="all":
     fi
 
     if should_run "$target" "sdk"; then
-        uv run --no-active --no-sync ruff check --fix packages/sdk
-        uv run --no-active --no-sync ruff format packages/sdk
+        uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync ruff check --fix --output-format=concise packages/sdk
+        uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync ruff format packages/sdk
     fi
 
     if should_run "$target" "hub-ui"; then
@@ -60,8 +60,8 @@ lint-check module="all":
         bash scripts/check-backend.sh "$(resolve_module_path hub)"
     fi
     if should_run "$target" "sdk"; then
-        uv run --no-active --no-sync ruff check packages/sdk
-        uv run --no-active --no-sync ruff format --check packages/sdk
+        uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync ruff check --output-format=concise packages/sdk
+        uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync ruff format --check packages/sdk
     fi
     if should_run "$target" "hub-ui"; then
         activate_frontend_node
@@ -82,7 +82,7 @@ check module="all":
     fi
 
     if should_run "$target" "sdk"; then
-        uv run --no-active --no-sync pyright --project packages/sdk
+        uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync pyright --project packages/sdk
     fi
 
     if should_run "$target" "hub-ui"; then
@@ -182,7 +182,7 @@ test-sdd runtime=".cache/sdd":
 
 # Test the standalone pipeline SDK without backend fixtures
 test-sdk:
-    @uv run --no-active --no-sync pytest -q -c packages/sdk/pyproject.toml packages/sdk/tests
+    @uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync pytest -q --tb=short -c packages/sdk/pyproject.toml packages/sdk/tests
 
 # Build the standalone SDK wheel and source distribution
 build-sdk:

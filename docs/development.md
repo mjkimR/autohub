@@ -40,8 +40,10 @@ off the rule or automatically raise ceilings. See the installed app-common
 `ui/structure` guide after `just skills`. CI enforces the same policy through
 `just lint-check hub-ui`.
 
-검사 명령은 `devkit run`으로 출력량을 제한하며 전체 진단은 결과에 표시된 로그 경로에 저장한다. Initialize the backend with `just init hub` before running
-these commands, including frontend-only checks. Use `just lint-check` for read-only
+The check recipes run their tools through `devkit run`: they print a bounded view and
+the path of a log with the complete output, so run them as they are, without wrapping
+them again. Initialize the backend with `just init hub` before running these commands,
+including frontend-only checks. Use `just lint-check` for read-only
 format/lint verification.
 
 This repository does not install Git hooks. Run `just lint`, `just check`, and
