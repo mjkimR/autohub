@@ -40,7 +40,6 @@ See [README](README.md) and [documentation guide](docs/README.md) for scope.
 ## Repository hygiene
 
 - Never commit `.env` files or log credentials/PII.
-- Do not commit automatically; wait for explicit user instruction or approval.
 - Commit messages are concise, imperative, and emoji-free.
 
 ## Documentation language
