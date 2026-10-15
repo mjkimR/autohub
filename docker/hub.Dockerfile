@@ -1,8 +1,9 @@
 # ---- Frontend Builder Stage ----
-FROM node:22-slim AS frontend-builder
+FROM node:24-slim AS frontend-builder
 WORKDIR /app/modules/hub-ui
 
 COPY modules/hub-ui/package*.json ./
+COPY modules/hub-ui/vendor ./vendor
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
