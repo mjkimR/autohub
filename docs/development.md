@@ -264,7 +264,10 @@ its execution link to Runs → Decisions for workflow requests and report eviden
 
 `config/sdd-runtime/pyproject.toml` and `uv.lock` pin the Python runtime separately
 from Hub's dependencies. The lock includes immutable devkit/devkit-spec commits
-and dependency hashes. Provision it once, never from a PR's dependency manifest:
+and dependency hashes. devkit-spec sources devkit from its `main` branch, so the
+manifest overrides that transitive URL with the reviewed devkit commit; change the
+devkit `rev` and the override together. Provision it once, never from a PR's
+dependency manifest:
 
 ```sh
 just install-sdd
