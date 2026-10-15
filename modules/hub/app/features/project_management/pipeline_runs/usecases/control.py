@@ -26,6 +26,7 @@ from app.features.project_management.pipeline_runs.schemas import (
 )
 from app.features.project_management.pipeline_runs.usecases.catalogs import run_catalog
 from app.features.project_management.pipeline_runs.usecases.delivery import DISPATCH_IO_SECONDS
+from app.features.project_management.pipeline_runs.usecases.resume_evidence import project_change_push
 from app.features.project_management.pipeline_runs.usecases.transitions import (
     EXTERNAL_IMPLEMENTATION_STATUS,
     GITHUB_BINDING_CHANGED_CONFLICT,
@@ -217,14 +218,39 @@ class PipelineRunControl:
                 and delivery.posted_at is not None
                 and ImplementationRequest.model_validate(active.request_snapshot).pull_request.head_sha != pull.head_sha
             )
+            if not pushed and response is None:
+                pushed = await project_change_push(self.repo, session, attempts, pull.head_sha)
             if (external or pushed) and response is None:
+                if active is None:
+                    # Keep settled attempts as history. Adopt their implementation with a running
+                    # CI owner, so CI failure/conflict handling can still create a fix attempt.
+                    key = uuid4()
+                    snapshot = prior.model_copy(
+                        update={"correlation_marker": f"hub-attempt:{key}", "pull_request": pull}
+                    ).model_dump(mode="json")
+                    active = await self.repo.create_attempt(
+                        session,
+                        ExecutionAttempt(
+                            pipeline_run_id=run.id,
+                            attempt_number=await self.repo.next_attempt_number(session, run.id),
+                            epoch=run.epoch,
+                            kind=kind,
+                            state=ExecutionAttemptState.RUNNING,
+                            request_snapshot=snapshot,
+                            request_digest=request_digest(snapshot),
+                            idempotency_key=key,
+                            external_status=EXTERNAL_IMPLEMENTATION_STATUS,
+                            started_at=now,
+                        ),
+                    )
+                active.state = ExecutionAttemptState.RUNNING
                 run.state = PipelineRunState.AWAITING_CI
                 run.next_action_at = None
                 run.pause_reason = None
                 run.project_revision = project_revision
                 run.ai_catalog_id = (await run_catalog(session, project, run)).id
                 run.revision += 1
-                await remember(session)
+                await remember(session, active.id)
                 await session.flush()
                 return PipelineRunRead.model_validate(run)
             if active is not None:
