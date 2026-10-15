@@ -95,6 +95,12 @@ class SetEnabledRequest(BaseModel):
     enabled: bool
 
 
+class SetConcurrencyRequest(BaseModel):
+    """The catalog's normal parallel cap; work already admitted keeps running when it is lowered."""
+
+    configured_concurrency: int = Field(ge=1, le=1000)
+
+
 class UpdatePolicyConfigRequest(BaseModel):
     """Kind-specific quota settings; the catalog's quota policy validates and normalizes them."""
 

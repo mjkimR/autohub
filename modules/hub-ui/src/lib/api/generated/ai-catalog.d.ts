@@ -71,6 +71,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ai-catalogs/{catalog_key}/concurrency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Ai Catalog Concurrency */
+        put: operations["set_ai_catalog_concurrency_api_v1_ai_catalogs__catalog_key__concurrency_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ai-catalogs/{catalog_key}/policy-config": {
         parameters: {
             query?: never;
@@ -264,6 +281,14 @@ export interface components {
              * @default manual
              */
             source: string;
+        };
+        /**
+         * SetConcurrencyRequest
+         * @description The catalog's normal parallel cap; work already admitted keeps running when it is lowered.
+         */
+        SetConcurrencyRequest: {
+            /** Configured Concurrency */
+            configured_concurrency: number;
         };
         /** SetConnectorRequest */
         SetConnectorRequest: {
@@ -461,6 +486,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SetEnabledRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AICatalogRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_ai_catalog_concurrency_api_v1_ai_catalogs__catalog_key__concurrency_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalog_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetConcurrencyRequest"];
             };
         };
         responses: {

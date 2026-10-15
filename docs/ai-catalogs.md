@@ -121,7 +121,7 @@ other's state; the pipeline lifecycle owns run state and persistence.
 | `kind`, `adapter` | Quota policy and execution adapter |
 | `connector_id` | Credentials for a provider the hub calls directly (a `jules` connector); Codex uses each project's GitHub connection |
 | `enabled` | Operator switch; a disabled catalog admits nothing |
-| `configured_concurrency` | Normal maximum concurrent work |
+| `configured_concurrency` | Normal maximum concurrent work; set at creation, changed under Operator controls |
 | `effective_concurrency` (read-only) | Current maximum from the policy (Codex: `1` in probe; a kind without a policy: `0`) |
 | `availability_state` | `normal`, `quota_blocked`, `probe`, `disabled`, or `unknown` |
 | `available_at` | Earliest UTC admission time of the current hold; kept while disabled |
@@ -370,6 +370,10 @@ to choose.
 **Settings → AI Catalogs** is the authoritative UI:
 
 - set a local reset time, clear a hold, and enable or disable a catalog;
+- change the concurrent work limit (`PUT /api/v1/ai-catalogs/{key}/concurrency`
+  with `configured_concurrency`, 1–1000). Raise it only to what the account
+  allows; lowering it admits no new work until open work drops below the limit
+  and never stops work already admitted. A Codex probe still admits one;
 - edit the Codex refresh policy or the Jules quota policy (both saved through
   `PUT /api/v1/ai-catalogs/{key}/policy-config`);
 - assign a Jules connector (`PUT /api/v1/ai-catalogs/{key}/connector`);

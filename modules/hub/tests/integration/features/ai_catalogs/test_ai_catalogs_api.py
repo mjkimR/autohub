@@ -103,6 +103,39 @@ class TestAICatalogsAPI:
         assert response.json()["enabled"] is True
         assert response.json()["availability_state"] == "normal"
 
+    async def test_set_concurrency(self, client: AsyncClient, session: AsyncSession):
+        session.add(catalog("test-catalog-concurrency"))
+        probe = catalog("test-catalog-probe")
+        probe.availability_state = AICatalogState.PROBE
+        session.add(probe)
+        await session.commit()
+
+        response = await client.put(
+            f"{self._base_url}/test-catalog-concurrency/concurrency", json={"configured_concurrency": 3}
+        )
+        assert_status_code(response, 200)
+        data = response.json()
+        assert data["configured_concurrency"] == 3
+        assert data["effective_concurrency"] == 3
+        assert data["revision"] == 2
+
+        # A Codex probe still admits one piece of work; the new cap applies once it returns to normal.
+        response = await client.put(
+            f"{self._base_url}/test-catalog-probe/concurrency", json={"configured_concurrency": 2}
+        )
+        assert_status_code(response, 200)
+        assert response.json()["configured_concurrency"] == 2
+        assert response.json()["effective_concurrency"] == 1
+
+        for value in (0, 1001):
+            response = await client.put(
+                f"{self._base_url}/test-catalog-concurrency/concurrency", json={"configured_concurrency": value}
+            )
+            assert_status_code(response, 422)
+
+        response = await client.put(f"{self._base_url}/non-existent/concurrency", json={"configured_concurrency": 2})
+        assert_status_code(response, 404)
+
     async def test_update_codex_refresh_policy_through_policy_config(self, client: AsyncClient, session: AsyncSession):
         session.add(catalog("test-catalog-policy"))
         await session.commit()

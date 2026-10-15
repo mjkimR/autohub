@@ -219,6 +219,28 @@ export class AICatalogsState {
 		}
 	}
 
+	async setConcurrency(key: string, configuredConcurrency: number) {
+		this.saving = true;
+		try {
+			const res = await api.PUT('/api/v1/ai-catalogs/{catalog_key}/concurrency', {
+				params: { path: { catalog_key: key } },
+				body: { configured_concurrency: configuredConcurrency }
+			});
+			if (res.error) {
+				toast.error(apiErrorMessage(res.error, 'Failed to update concurrent work limit'));
+				return false;
+			}
+			toast.success('AI catalog concurrent work limit updated');
+			await this.load();
+			return true;
+		} catch {
+			toast.error('Request failed. Check your connection and retry.');
+			return false;
+		} finally {
+			this.saving = false;
+		}
+	}
+
 	async updatePolicyConfig(key: string, policyConfig: CodexWindowConfig | DailyQuotaConfig) {
 		this.saving = true;
 		try {

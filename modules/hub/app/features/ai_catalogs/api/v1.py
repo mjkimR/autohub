@@ -8,6 +8,7 @@ from app.features.ai_catalogs.schemas import (
     CreateAICatalogRequest,
     SessionStatusFilter,
     SetAvailabilityRequest,
+    SetConcurrencyRequest,
     SetConnectorRequest,
     SetEnabledRequest,
     UpdatePolicyConfigRequest,
@@ -69,6 +70,15 @@ async def set_ai_catalog_enabled(
     usecase: Annotated[AICatalogUseCase, Depends()],
 ):
     return await usecase.set_enabled(catalog_key, request.enabled)
+
+
+@router.put("/{catalog_key}/concurrency", response_model=AICatalogRead)
+async def set_ai_catalog_concurrency(
+    catalog_key: str,
+    request: SetConcurrencyRequest,
+    usecase: Annotated[AICatalogUseCase, Depends()],
+):
+    return await usecase.set_concurrency(catalog_key, request.configured_concurrency)
 
 
 @router.put("/{catalog_key}/policy-config", response_model=AICatalogRead)

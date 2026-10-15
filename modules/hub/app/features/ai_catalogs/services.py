@@ -176,6 +176,14 @@ class AICatalogService:
         await self.agent_schedules.resync_catalog(session, catalog)
         return catalog
 
+    async def set_concurrency(self, session: AsyncSession, key: str, configured_concurrency: int) -> AICatalog:
+        catalog = await self._get_for_update(session, key)
+        # Admission compares open work with the new cap; lowering it never stops admitted work.
+        catalog.configured_concurrency = configured_concurrency
+        catalog.revision += 1
+        await session.flush()
+        return catalog
+
     async def update_policy_config(
         self, session: AsyncSession, key: str, request: UpdatePolicyConfigRequest
     ) -> AICatalog:

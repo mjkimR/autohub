@@ -92,6 +92,11 @@ class AICatalogUseCase:
             catalog = await self.service.set_enabled(session, key, enabled, get_current_utc_time())
             return await self._read(catalog, session)
 
+    async def set_concurrency(self, key: str, configured_concurrency: int) -> AICatalogRead:
+        async with AsyncTransaction() as session:
+            catalog = await self.service.set_concurrency(session, key, configured_concurrency)
+            return await self._read(catalog, session)
+
     async def update_policy_config(self, key: str, request: UpdatePolicyConfigRequest) -> AICatalogRead:
         async with AsyncTransaction() as session:
             catalog = await self.service.update_policy_config(session, key, request)

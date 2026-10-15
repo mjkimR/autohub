@@ -9,10 +9,11 @@
 	import { catalogKinds } from './catalog-kinds';
 	import CatalogAvailabilityDialog from './CatalogAvailabilityDialog.svelte';
 	import CreateCatalogDialog from './CreateCatalogDialog.svelte';
+	import CatalogConcurrencyDialog from './CatalogConcurrencyDialog.svelte';
 	import CatalogConnectorDialog from './CatalogConnectorDialog.svelte';
 	import CatalogSessionsDialog from './CatalogSessionsDialog.svelte';
 
-	type CatalogDialog = 'policy' | 'connector' | 'sessions';
+	type CatalogDialog = 'policy' | 'concurrency' | 'connector' | 'sessions';
 
 	const catalogs = new AICatalogsState();
 	let creating = $state(false);
@@ -139,6 +140,12 @@
 								onclick={() => (availabilityCatalog = catalog)}
 								disabled={catalogs.saving}>Set refresh time</Button
 							>
+							<Button
+								size="sm"
+								variant="outline"
+								onclick={() => openDialog('concurrency', catalog)}
+								disabled={catalogs.saving}>Concurrency</Button
+							>
 							{#if kindUi}
 								<Button
 									size="sm"
@@ -191,6 +198,8 @@
 
 {#if active && PolicyDialog}
 	<PolicyDialog catalog={active.catalog} {catalogs} onclose={closeDialog} />
+{:else if active?.dialog === 'concurrency'}
+	<CatalogConcurrencyDialog catalog={active.catalog} {catalogs} onclose={closeDialog} />
 {:else if active?.dialog === 'connector'}
 	<CatalogConnectorDialog catalog={active.catalog} {catalogs} onclose={closeDialog} />
 {:else if active?.dialog === 'sessions'}
