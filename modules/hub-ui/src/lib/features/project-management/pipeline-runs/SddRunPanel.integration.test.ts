@@ -128,3 +128,20 @@ test('shows report evidence at the inspected commit and treats repository text a
 	);
 	expect(screen.getByText(/Sdd lint failed/)).toBeTruthy();
 });
+
+test('shows best-effort runtime warnings from the inspected evidence as text', () => {
+	render(SddRunPanel, {
+		run: {
+			...run,
+			sdd_progress: {
+				...run.sdd_progress,
+				warnings: [
+					{ code: 'RECEIPT_STALE', detail: '<b>Receipt</b> differs from the reviewed runtime' }
+				]
+			}
+		},
+		onchange: vi.fn()
+	});
+	expect(screen.getByText('<b>Receipt</b> differs from the reviewed runtime')).toBeTruthy();
+	expect(screen.getByRole('button', { name: 'Approve integration' })).toBeTruthy();
+});

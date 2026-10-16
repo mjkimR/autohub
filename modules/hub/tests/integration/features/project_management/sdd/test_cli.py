@@ -3,10 +3,12 @@
 import json
 import os
 import subprocess
+from pathlib import Path
 
 import pytest
+from app.features.project_management.pipeline_runs.requests import request_digest
 from app.features.project_management.projects.errors import ProjectError
-from app.features.project_management.sdd.services import SddService
+from app.features.project_management.sdd.services import STALE_LINT, SddService
 from tests.integration.features.execution.flows import test_bridge
 
 SPEC = test_bridge.SPEC
@@ -15,25 +17,22 @@ checkout = test_bridge.checkout
 pytestmark = pytest.mark.integration
 
 
-async def test_real_cli_reads_gate_and_rejects_changed_version(checkout, monkeypatch):
-    root, head = checkout
-    version = __import__(
-        "app.features.project_management.sdd.runtime", fromlist=["configured_version"]
-    ).configured_version()
-    monkeypatch.setenv("AUTOHUB_SDD_VERSION", version)
-    service = SddService()
-    evidence = await service.evaluate(root, SPEC, head, head, None, False)
-    assert evidence["current"]["stage"]["human_gate"]
-    assert not evidence["integrated"]
-    assert evidence["snapshot"]["policy"]["approvals"]["integration"]["policy"] == "ask"
-    with pytest.raises(ProjectError, match="version"):
-        await service.evaluate(root, SPEC, head, head, {**evidence["snapshot"], "cli_version": "unsupported"}, False)
-    with pytest.raises(ProjectError, match="workflow or policy"):
-        await service.evaluate(root, SPEC, head, head, {**evidence["snapshot"], "workflow_hash": "changed"}, False)
+def devkit_binary() -> str:
+    return str(Path(os.environ["AUTOHUB_SDD_HOME"]) / ".venv/bin/devkit")
 
 
-async def test_real_cli_final_lint_and_no_change_integration(checkout, monkeypatch):
-    root, _ = checkout
+def run(root, *args):
+    return subprocess.check_output(args, cwd=root, text=True, stderr=subprocess.DEVNULL).strip()
+
+
+def commit(root, message):
+    run(root, "git", "add", ".")
+    run(root, "git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", "commit", "-qm", message)
+    return run(root, "git", "rev-parse", "HEAD")
+
+
+def extend_with_integration(root):
+    """Append integrate and merge stages to the fixture workflow, rebind the spec and commit."""
     workflow = root / ".devkit/workflows/bridge-test.md"
     schema = json.loads(workflow.read_text().split("---")[1])
     common = {
@@ -57,52 +56,101 @@ async def test_real_cli_final_lint_and_no_change_integration(checkout, monkeypat
         ]
     )
     workflow.write_text("---\n" + json.dumps(schema) + "\n---\n")
+    run(root, devkit_binary(), "workflow", "bind", "--unit", SPEC, "--workflow", str(workflow.relative_to(root)))
+    return commit(root, "Extend fixture")
 
-    def run(*args):
-        return subprocess.check_output(args, cwd=root, text=True, stderr=subprocess.DEVNULL).strip()
 
-    run(
-        str(__import__("pathlib").Path(os.environ["AUTOHUB_SDD_HOME"]) / ".venv/bin/devkit"),
-        "workflow",
-        "bind",
-        "--unit",
-        SPEC,
-        "--workflow",
-        str(workflow.relative_to(root)),
-    )
-    run("git", "add", ".")
-    run("git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", "commit", "-qm", "Extend fixture")
-    head = run("git", "rev-parse", "HEAD")
-    monkeypatch.setenv(
-        "AUTOHUB_SDD_VERSION",
-        run(str(__import__("pathlib").Path(os.environ["AUTOHUB_SDD_HOME"]) / ".venv/bin/devkit"), "--version"),
-    )
+def fresh_clone(root, tmp_path):
+    fresh = (tmp_path / "fresh").resolve()
+    subprocess.run(["git", "clone", "--quiet", str(root), str(fresh)], check=True)
+    return fresh
+
+
+def commit_stale_receipt(root, asset_id, suffix):
+    """Commit a receipt whose record of one ``asset_id`` file no longer matches what the runtime deploys."""
+    manifest = root / ".devkit/installation.json"
+    receipt = json.loads(manifest.read_text())
+    asset = next(item for item in receipt["assets"] if item["bundle"] == "spec" and item["id"] == asset_id)
+    path = next(item for item in asset["paths"] if item.endswith(suffix))
+    receipt["files"][path]["sha256"] = "0" * 64
+    manifest.write_text(json.dumps(receipt, indent=2) + "\n")
+    return commit(root, f"Stale receipt for {asset_id}"), manifest.read_text()
+
+
+async def test_real_cli_reads_gate_and_rejects_changed_version(checkout):
+    root, head = checkout
+    service = SddService()
+    evidence = await service.evaluate(root, SPEC, head, head, None, False)
+    assert evidence["current"]["stage"]["human_gate"]
+    assert not evidence["integrated"]
+    assert evidence["warnings"] == []
+    assert evidence["snapshot"]["policy"]["approvals"]["integration"]["policy"] == "ask"
+    with pytest.raises(ProjectError, match="version"):
+        await service.evaluate(root, SPEC, head, head, {**evidence["snapshot"], "cli_version": "unsupported"}, False)
+    with pytest.raises(ProjectError, match="workflow or policy"):
+        await service.evaluate(root, SPEC, head, head, {**evidence["snapshot"], "workflow_hash": "changed"}, False)
+
+
+async def test_real_cli_final_lint_and_no_change_integration(checkout):
+    root, _ = checkout
+    head = extend_with_integration(root)
     evidence = await SddService().evaluate(root, SPEC, head, head, None, True)
     assert evidence["integrated"]
     assert evidence["current"]["stage"]["id"] == "fixture-merge"
     assert evidence["head_sha"] == evidence["base_sha"] == head
 
 
-async def test_fresh_checkout_restores_recorded_release_without_network(checkout, tmp_path, monkeypatch):
-
+async def test_fresh_checkout_restores_recorded_release_without_network(checkout, tmp_path):
     root, _ = checkout
-    if not os.environ.get("AUTOHUB_SDD_HOME"):
-        if os.environ.get("AUTOHUB_REQUIRE_SDD"):
-            pytest.fail("required release runtime was not provisioned")
-        pytest.skip("fresh release restore requires just test-sdd")
-    fresh = (tmp_path / "fresh").resolve()
-    subprocess.run(["git", "clone", "--quiet", str(root), str(fresh)], check=True)
+    fresh = fresh_clone(root, tmp_path)
     manifest = fresh / ".devkit/installation.json"
     original = manifest.read_bytes()
     assert not (fresh / ".devkit/managed").exists()
-    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=fresh, text=True).strip()
+    head = run(fresh, "git", "rev-parse", "HEAD")
     result = await SddService().evaluate(fresh, SPEC, head, head, None, False)
     assert result["current"]["stage"]["human_gate"]
     assert result["reports"][0]["kind"] == "final-report"
     assert result["reports"][0]["summary"] == "Fixture verified"
     assert manifest.read_bytes() == original
     assert (fresh / ".devkit/managed/spec/workflows/direct-delivery.md").is_file()
-    assert not subprocess.check_output(["git", "diff", "--name-only"], cwd=fresh, text=True).strip()
+    assert not run(fresh, "git", "diff", "--name-only")
+
+
+async def test_stale_receipt_is_evaluated_best_effort_and_reported(checkout, tmp_path):
+    root, _ = checkout
+    fresh = fresh_clone(root, tmp_path)
+    head, committed = commit_stale_receipt(fresh, "direct-delivery", ".md")
+    result = await SddService().evaluate(fresh, SPEC, head, head, None, False)
+    assert [item["code"] for item in result["warnings"]] == ["RECEIPT_STALE"]
+    assert result["current"]["stage"]["human_gate"]
+    assert result["reports"][0]["summary"] == "Fixture verified"
+    assert (fresh / ".devkit/managed/spec/workflows/direct-delivery.md").is_file()
+    # The snapshot digests the committed receipt, not the one regenerated inside the disposable checkout.
+    config = (fresh / ".devkit/config.toml").read_text()
+    assert result["snapshot"]["configuration_digest"] == request_digest({"config": config, "receipt": committed})
+    assert (fresh / ".devkit/installation.json").read_text() != committed
+    assert run(fresh, "git", "rev-parse", "HEAD") == head
+
+
+@pytest.mark.parametrize(
+    ("asset_id", "suffix", "integrated"), [("direct-delivery", ".md", True), ("spec-format", "rule.py", False)]
+)
+async def test_stale_receipt_integration_depends_on_recorded_rules(checkout, tmp_path, asset_id, suffix, integrated):
+    root, _ = checkout
+    extend_with_integration(root)
+    fresh = fresh_clone(root, tmp_path)
+    base = run(fresh, "git", "rev-parse", "HEAD")
+    head, _ = commit_stale_receipt(fresh, asset_id, suffix)  # the PR change the final lint evaluates
+    evidence = await SddService().evaluate(fresh, SPEC, head, base, None, True)
+    assert [item["code"] for item in evidence["warnings"]] == ["RECEIPT_STALE"]
+    assert evidence["integrated"] is integrated
+    if integrated:
+        assert evidence["lint_diagnostic"] is None
+        assert evidence["current"]["stage"]["id"] == "fixture-merge"
+    else:
+        # The committed tree still records the rule, and its regenerated copy no longer matches: no silent pass.
+        assert evidence["lint_diagnostic"] == STALE_LINT
+        assert evidence["current"]["stage"]["id"] == "fixture-integrate"
 
 
 async def test_devkit_authors_answer_and_return_and_invalidates_approval(checkout):

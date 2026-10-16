@@ -13,6 +13,7 @@
 	let message = $state('');
 	let error = $state('');
 	let inspected = $state('');
+	let warnings = $state<string[]>([]);
 	let runId = $state('');
 	let startedKey = $state('');
 	const key = () => JSON.stringify([projectId, spec, pull]);
@@ -22,6 +23,7 @@
 		error = '';
 		message = '';
 		inspected = '';
+		warnings = [];
 		try {
 			const result = await api.POST('/api/v1/projects/{project_id}/sdd/readiness', {
 				params: { path: { project_id: projectId } },
@@ -32,6 +34,7 @@
 			if (requestedKey !== key()) return;
 			inspected = requestedKey;
 			message = `Ready at commit ${result.data.head_sha?.slice(0, 12)}. ${result.data.cli_version}`;
+			warnings = (result.data.warnings ?? []).map((item) => item.detail);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Inspection failed';
 		} finally {
@@ -103,5 +106,11 @@
 		>{/if}
 	<SddRunLinks {projectId} specDir={spec} refresh={runId} />
 	{#if message}<p role="status" class="text-sm">{message}</p>{/if}
+	{#each warnings as warning, index (index)}<p
+			role="status"
+			class="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
+		>
+			{warning}
+		</p>{/each}
 	{#if error}<p role="alert" class="text-sm text-destructive">{error}</p>{/if}
 </section>

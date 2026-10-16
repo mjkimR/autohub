@@ -12,6 +12,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.real_commit]
 github = merge.github
 project = scenarios.project
 SPEC = "specs/2026-10/20261010-native"
+WARNING = {"code": "RECEIPT_STALE", "detail": "Receipt differs from the reviewed runtime"}
 
 
 def evidence(head=merge.HEAD, base=merge.BASE, approved=False):
@@ -49,7 +50,9 @@ def inspector(monkeypatch):
 
     async def inspect(self, repository, spec_dir, pull, token, **kwargs):
         calls.append(kwargs)
-        return evidence(pull["head"]["sha"], pull["base"]["sha"], kwargs.get("approved", False))
+        value = evidence(pull["head"]["sha"], pull["base"]["sha"], kwargs.get("approved", False))
+        value["warnings"] = [dict(WARNING)]  # best-effort findings travel with the evidence, never block it
+        return value
 
     monkeypatch.setattr(native.SddService, "inspect", inspect)
     # Native runs keep receiving agent replies even after a push. No external comments in this fixture.
@@ -158,6 +161,11 @@ async def test_rework_is_a_new_attempt_without_approval(client, run, github):
     assert not state["sdd_progress"].get("approval")
     attempts = (await client.get(f"/api/v1/pipeline-runs/{run['id']}/attempts")).json()["items"]
     assert "Retain the existing API response" in attempts[-1]["request_snapshot"]["instructions"]
+    instructions = attempts[-1]["request_snapshot"]["instructions"]
+    # Agents hear about the stale receipt but are not told to replace it: that would end this run's contract.
+    assert "Hub warning (RECEIPT_STALE): Hub evaluates this pull request" in instructions
+    assert "Do not change .devkit/ in this run" in instructions
+    assert "Receipt differs" not in instructions
     assert github.merge_requests == 0
 
 
@@ -172,6 +180,7 @@ async def test_native_enrollment_requires_spec_and_readiness_is_read_only(client
         f"/api/v1/projects/{project['id']}/sdd/readiness", json={"pull_number": 7, "spec_dir": SPEC}
     )
     assert ready.status_code == 200 and ready.json()["ready"]
+    assert ready.json()["warnings"] == [WARNING]
     runs = (await client.get("/api/v1/pipeline-runs", params={"project_id": project["id"]})).json()
     assert runs["total_count"] == 0
 
@@ -208,6 +217,7 @@ async def test_stage_dispatch_and_post_push_question_are_not_skipped(client, pro
             "exit": ["tasks-all-checked"],
             "skills": ["sr-review"],
         }
+        value["warnings"] = [dict(WARNING)]
         return value
 
     async def deliver(self, observer, target, request, delivery_number, authorize):
@@ -227,6 +237,7 @@ async def test_stage_dispatch_and_post_push_question_are_not_skipped(client, pro
     assert running["state"] == "implementing"
     root = f"/api/v1/pipeline-runs/{run['id']}"
     attempt = (await client.get(root + "/attempts")).json()["items"][0]
+    assert running["sdd_progress"]["warnings"] == [WARNING]
     state.update(head="f" * 40, stage="review")
     question = {
         "attempt": attempt["request_snapshot"]["correlation_marker"],
@@ -292,6 +303,31 @@ async def test_base_change_returns_to_integration_without_merging(client, run, g
     changed = await merge.advance(client, run)
     assert changed["state"] == "dispatching"
     assert changed["sdd_progress"]["approval"]["head_sha"] == merge.HEAD
+    assert github.merge_requests == 0
+
+
+async def test_stale_receipt_lint_failure_pauses_without_dispatching(client, run, github, monkeypatch):
+    waiting = await merge.advance(client, run)
+    approved, _ = await decide(client, waiting, "approve")
+    assert approved.status_code == 200
+    attempts_path = f"/api/v1/pipeline-runs/{run['id']}/attempts"
+    before = len((await client.get(attempts_path)).json()["items"])
+
+    async def stale_lint(self, repository, spec_dir, pull, token, **kwargs):
+        value = evidence(approved=True)
+        value["current"]["stage"] = {"id": "integrate", "name": "Integrate", "skills": [], "exit": ["lint-ci-clean"]}
+        value.update(integrated=False, lint_blocked=True, lint_diagnostic="Final lint did not run against the receipt")
+        value["warnings"] = [dict(WARNING)]
+        return value
+
+    monkeypatch.setattr(native.SddService, "inspect", stale_lint)
+    blocked = await merge.advance(client, run)
+    assert blocked["state"] == "blocked"
+    assert blocked["pause_reason"] == "Final lint did not run against the receipt"
+    assert len((await client.get(attempts_path)).json()["items"]) == before
+    resumed, _ = await decide(client, blocked)
+    assert resumed.status_code == 200, resumed.text
+    assert len((await client.get(attempts_path)).json()["items"]) == before  # resume re-inspects, never dispatches
     assert github.merge_requests == 0
 
 

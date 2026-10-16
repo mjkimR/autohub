@@ -49,6 +49,7 @@ class SddUseCase:
                 cli_version=evidence["snapshot"]["cli_version"],
                 workflow=evidence["workflow"],
                 current=evidence["current"],
+                warnings=evidence.get("warnings", []),
             )
         except ProjectError as exc:
             return SddReadiness(ready=False, reason=str(exc))

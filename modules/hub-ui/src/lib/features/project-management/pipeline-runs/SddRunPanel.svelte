@@ -46,6 +46,7 @@
 	let current = $derived(record(progress.current));
 	let stage = $derived(record(current.stage));
 	let approval = $derived(record(progress.approval));
+	let warnings = $derived(Array.isArray(progress.warnings) ? progress.warnings.map(record) : []);
 	let spec = $derived(String(run.sdd_snapshot?.spec_dir || ''));
 	let waiting = $derived(['paused', 'blocked'].includes(run.state));
 	let terminal = $derived(['completed', 'failed', 'canceled'].includes(run.state));
@@ -187,6 +188,11 @@
 		{#if progress.lint_diagnostic}<p class="rounded-lg border border-amber-500/30 p-3 text-sm">
 				{String(progress.lint_diagnostic)}
 			</p>{/if}
+		{#each warnings as warning, index (index)}<p
+				class="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
+			>
+				{String(warning.detail || warning.code)}
+			</p>{/each}
 		{#if Array.isArray(current.done) && current.done.length}
 			<details class="text-xs">
 				<summary class="cursor-pointer text-muted-foreground"

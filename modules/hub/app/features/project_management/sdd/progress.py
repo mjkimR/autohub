@@ -13,6 +13,16 @@ from app.features.project_management.projects.errors import ProjectError
 from .decisions import publication_instructions
 from .services import SddService
 
+# What an agent is told about a warning. The human remediation of RECEIPT_STALE (commit a new receipt) would end
+# this run's contract mid-flight, so the agent is told to leave it to the operator instead.
+AGENT_NOTES = {
+    "RECEIPT_STALE": (
+        "Hub evaluates this pull request with its reviewed runtime because the committed devkit receipt differs "
+        "from it. Do not change .devkit/ in this run; that ends the run's contract. The operator re-enrolls after "
+        "aligning the receipt."
+    )
+}
+
 
 def approval_gate(evidence):
     stage = evidence.get("current", {}).get("stage") or {}
@@ -96,6 +106,9 @@ class SddProgress:
             f"\nRequested stage: {stage_id}. Skills: {', '.join(stage.get('skills') or [])}. "
             f"Inspected base commit: {evidence['base_sha']}."
         )
+        for warning in evidence.get("warnings") or []:
+            note = AGENT_NOTES.get(str(warning.get("code")), warning.get("detail"))
+            request.instructions += f"\nHub warning ({warning.get('code')}): {note}"
         if evidence.get("approval"):
             request.instructions += (
                 f"\nHub integration authorization: {evidence['approval']['actor']}; "
@@ -206,7 +219,12 @@ class SddProgress:
                 active = await self.repo.active_attempt(session, run.id)
                 stage = evidence["current"].get("stage") or {}
                 requested_stage = active.request_snapshot.get("sdd_stage") if active else None
-                if evidence["current"].get("requests") or stage.get("human_gate"):
+                if evidence.get("lint_blocked"):
+                    # The final lint cannot run against the committed receipt; no agent attempt can repair that.
+                    run.state, run.pause_reason = "blocked", str(evidence.get("lint_diagnostic"))
+                    if previous != evidence or run.state != original_state:
+                        run.revision += 1
+                elif evidence["current"].get("requests") or stage.get("human_gate"):
                     run.state, run.pause_reason = (
                         "blocked",
                         f"Direction decision required: {stage.get('name', 'workflow gate')}",

@@ -277,8 +277,11 @@ just test-sdd
 
 Git credentials or build-only `GH_TOKEN` must permit access to devkit-spec. The
 installer stores no token in its manifest or pin. The runtime defaults to
-`/opt/sdd`; Hub snapshots its lock digest, provider, workflow hash, policy and
-configuration/receipt digest. Updates require a reviewed lock and a new run.
+`/opt/sdd`; its `pin.json` records the lock digest, the package versions and the
+Git revisions the lock resolves (a runtime provisioned before revisions were
+recorded only loses the parity warning below). Hub snapshots the lock digest, provider, workflow
+hash, policy and configuration/receipt digest. Updates require a reviewed lock and
+a new run.
 The initial profile contains the `spec`, devkit and advisory bundles. Projects
 selecting additional packages (for example app-common) must provision a reviewed
 profile containing those exact packages; missing bundles fail readiness. Do not
@@ -288,7 +291,26 @@ Each evaluation fetches exact PR head/base commits into a disposable checkout.
 The project must commit `.devkit/config.toml` and `.devkit/installation.json`;
 managed copies and projections stay ignored. `devkit sync --locked` restores
 missing generated assets using installed packages, without changing the receipt,
-guidance or seed documents. No ordinary sync/initialization/upgrade fallback runs.
+guidance or seed documents. When the committed receipt no longer matches the
+runtime's packages (`RECEIPT_STALE`), Hub regenerates the assets with a plain
+`devkit sync` in the same disposable checkout and continues: the snapshot still
+digests the committed receipt, and a `RECEIPT_STALE` warning appears in a
+successful readiness result, in the run evidence and in the agent instructions;
+when a later step refuses after such a restore, its reason names the stale receipt.
+A plain sync that itself fails (`SYNC_CONFLICT`, `OVERRIDE_DRIFT`,
+`SELECTION_INVALID`) still blocks. The final `lint-ci-clean` check reads the
+committed tree and enforces exactly the rule set the committed receipt records, so
+a stale receipt integrates under that older rule set; a recorded rule whose
+regenerated copy no longer loads pauses the run with the lint diagnostic instead of
+dispatching repair work, because no agent attempt can fix it within the run. Commit
+the receipt the reviewed runtime produces, then enroll the pull request again: a
+receipt commit changes the configuration digest, as any devkit configuration
+change does, and agents are told not to change `.devkit/` mid-run for that reason.
+No initialization or upgrade fallback runs, and no repository dependency is ever
+installed. Agents work from
+the repository's own devkit installation, which Hub cannot inspect: when the
+repository's root `uv.lock` pins `devkit-spec` or `devkit-agt` at another revision
+than the runtime, a `RUNTIME_REVISION_MISMATCH` warning is the only parity signal.
 A repository that ignores the entire `.devkit/` directory must explicitly adopt
 this consumer contract before it can be enrolled; Hub does not change its policy.
 
@@ -301,8 +323,10 @@ host: installing bubblewrap alone does not establish support, including on
 managed Cloud Run deployments. Unsupported hosts fail readiness and need a
 compatible execution host before native SDD can run.
 
-Only completed checks with rule violations become repair work; setup, receipt,
-loading and execution failures block. The JSON `error`/`errors` contract and exit
+Only completed checks with rule violations become repair work; setup, loading
+and execution failures block, except that a recorded rule which no longer loads
+under a stale receipt pauses the run as described above.
+The JSON `error`/`errors` contract and exit
 status drive this distinction. Repository stderr and free-form error messages
 are never returned to users. The old Go runner/cache and release installer are removed.
 

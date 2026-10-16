@@ -76,6 +76,18 @@ export interface components {
             current?: {
                 [key: string]: unknown;
             };
+            /** Warnings */
+            warnings?: components["schemas"]["SddWarning"][];
+        };
+        /**
+         * SddWarning
+         * @description A best-effort finding that did not stop the evaluation (a stale receipt, a runtime revision mismatch).
+         */
+        SddWarning: {
+            /** Code */
+            code: string;
+            /** Detail */
+            detail: string;
         };
         ValidationError: CommonComponents["schemas"]["ValidationError"];
     };

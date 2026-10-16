@@ -4,12 +4,27 @@
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 source = Path(__file__).resolve().parents[1] / "config/sdd-runtime"
+PACKAGES = ["devkit-agt", "devkit-advisory", "devkit-spec"]
+
+
+def lock_revisions(lock: Path) -> dict[str, str]:
+    """The exact Git revision the lock resolves for each devkit package (the fragment of its git source)."""
+    revisions = {}
+    for package in tomllib.loads(lock.read_text()).get("package", []):
+        revision = (package.get("source") or {}).get("git", "").rsplit("#", 1)[-1]
+        if package.get("name") in PACKAGES and re.fullmatch(r"[0-9a-f]{40}", revision):
+            revisions[package["name"]] = revision
+    return revisions
+
+
 destination = Path(sys.argv[1]).resolve()
 destination.mkdir(parents=True, exist_ok=True)
 lock_digest = hashlib.sha256((source / "uv.lock").read_bytes()).hexdigest()
@@ -36,11 +51,13 @@ versions = subprocess.check_output(
         "-I",
         "-c",
         "import json,sys; from importlib.metadata import version; "
-        "print(json.dumps({'packages': {n: version(n) for n in ['devkit-agt','devkit-advisory','devkit-spec']}, 'python_prefix': sys.base_prefix}))",
+        "print(json.dumps({'packages': {n: version(n) for n in sys.argv[1:]}, 'python_prefix': sys.base_prefix}))",
+        *PACKAGES,
     ],
     text=True,
 )
 pin = json.loads(versions)
-pin.update(provider="devkit-spec", lock_sha256=lock_digest)
+# Hub compares these revisions with a repository's own uv.lock to warn when agents may run another devkit-spec.
+pin.update(provider="devkit-spec", lock_sha256=lock_digest, revisions=lock_revisions(source / "uv.lock"))
 (destination / "pin.json").write_text(json.dumps(pin, indent=2) + "\n")
 print(f"SDD runtime installed: {destination}")

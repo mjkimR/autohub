@@ -8,6 +8,13 @@ class SddInspectionRequest(BaseModel):
     spec_dir: str = Field(pattern=SPEC_PATTERN, max_length=255)
 
 
+class SddWarning(BaseModel):
+    """A best-effort finding that did not stop the evaluation (a stale receipt, a runtime revision mismatch)."""
+
+    code: str
+    detail: str
+
+
 class SddReadiness(BaseModel):
     ready: bool
     reason: str | None = None
@@ -16,3 +23,4 @@ class SddReadiness(BaseModel):
     cli_version: str | None = None
     workflow: dict = Field(default_factory=dict)
     current: dict = Field(default_factory=dict)
+    warnings: list[SddWarning] = Field(default_factory=list)

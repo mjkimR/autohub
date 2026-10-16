@@ -8,7 +8,16 @@ from app.features.project_management.pipeline_runs.requests import request_diges
 from app.features.project_management.projects.errors import ProjectError
 
 from .checkout import SddCommandError, checkout, command
-from .runtime import configured_version, restore
+from .runtime import configured_version, restore, revision_warnings
+
+STALE_LINT = (
+    "Final lint did not run against the committed devkit receipt; run devkit sync with the reviewed runtime, "
+    "commit the receipt and enroll the pull request again before integration."
+)
+STALE_HINT = (
+    " This evaluation ran with a stale devkit receipt (RECEIPT_STALE); update the receipt with the reviewed "
+    "runtime before repairing anything else."
+)
 
 
 async def cli(root: Path, *args: str):
@@ -16,6 +25,21 @@ async def cli(root: Path, *args: str):
         return json.loads(await command("devkit", *args, "--format", "json", cwd=root))
     except (ValueError, TypeError):
         raise ProjectError(422, "Unsupported sdd JSON output") from None
+
+
+def committed_configuration(root: Path) -> dict[str, str]:
+    """The committed devkit configuration and receipt, read before a sync could rewrite them in the checkout."""
+    if not (root / ".devkit/installation.json").is_file():
+        raise ProjectError(
+            422, "Commit the devkit configuration and installation receipt before enrolling", code="SDD_RECEIPT_MISSING"
+        )
+    texts = {}
+    for name in ("config.toml", "installation.json"):
+        path = root / ".devkit" / name
+        if path.resolve() != path.absolute() or not path.is_file():
+            raise ProjectError(422, "Commit regular devkit configuration and receipt files before enrolling")
+        texts[name] = path.read_text()
+    return texts
 
 
 class SddService:
@@ -44,26 +68,38 @@ class SddService:
             raise ProjectError(422, "SDD CLI version differs from the execution pin")
         if not (root / ".devkit").is_dir() or not (root / spec_dir / "spec.md").is_file():
             raise ProjectError(422, "Initialize devkit-spec and bind an existing spec before execution")
-        await restore(root, version)
+        committed = committed_configuration(root)
+        # The repository's lock is parsed in this process (never executed); keep that work off the event loop.
+        warnings = [*await restore(root), *await asyncio.to_thread(revision_warnings, root)]
+        stale = any(item["code"] == "RECEIPT_STALE" for item in warnings)
+        try:
+            return await self.evaluate_workflow(
+                root, spec_dir, head, base, snapshot, approved, version, committed, warnings
+            )
+        except SddCommandError as exc:
+            if not stale:
+                raise
+            # A later refusal (workflow drift, invalid evidence) must not hide its likely cause.
+            raise SddCommandError(exc.cli_code, exc.detail + STALE_HINT) from exc
+        except ProjectError as exc:
+            if not stale:
+                raise
+            raise ProjectError(exc.status, exc.detail + STALE_HINT, code=getattr(exc, "code", None)) from exc
+
+    async def evaluate_workflow(self, root, spec_dir, head, base, snapshot, approved, version, committed, warnings):
+        stale = any(item["code"] == "RECEIPT_STALE" for item in warnings)
         policy = await cli(root, "spec", "policy")
         workflow = await cli(root, "workflow", "show", "--unit", spec_dir)
         checks = await cli(root, "workflow", "checks")
         if not isinstance(policy.get("approvals"), dict) or not isinstance(checks.get("checks"), list):
             raise ProjectError(422, "Unsupported sdd policy or check schema")
-        for name in ("config.toml", "installation.json"):
-            path = root / ".devkit" / name
-            if path.resolve() != path.absolute() or not path.is_file():
-                raise ProjectError(422, "Commit regular devkit configuration and receipt files before enrolling")
         keys = policy
         contract = {
             "mode": "sdd",
             "provider": "devkit-spec",
             "contract_version": 1,
             "configuration_digest": request_digest(
-                {
-                    "config": (root / ".devkit/config.toml").read_text(),
-                    "receipt": (root / ".devkit/installation.json").read_text(),
-                }
+                {"config": committed["config.toml"], "receipt": committed["installation.json"]}
             ),
             "spec_dir": spec_dir,
             "cli_version": version,
@@ -100,6 +136,7 @@ class SddService:
                 )
         integrated = False
         lint_diagnostic = None
+        lint_blocked = False
         stage = current.get("stage") or {}
         if approved and "lint-ci-clean" in stage.get("exit", []):
             ancestry = await command("git-safe", "merge-base", head, base, cwd=root)
@@ -107,9 +144,14 @@ class SddService:
                 try:
                     await command("devkit", "rules", "check", "--ci", "--base", base, "--format", "json", cwd=root)
                 except SddCommandError as exc:
-                    if exc.cli_code != "RULES_VIOLATIONS":
+                    if exc.cli_code == "RULES_VIOLATIONS":
+                        lint_diagnostic = exc.detail
+                    elif stale and exc.cli_code == "RULES_LOAD_FAILED":
+                        # The gate reads the committed tree; a rule its stale receipt records no longer loads.
+                        # Agents cannot repair that within this run, so the run pauses instead of dispatching.
+                        lint_diagnostic, lint_blocked = STALE_LINT, True
+                    else:
                         raise
-                    lint_diagnostic = exc.detail
                 else:
                     integrated = True
                     current = await cli(
@@ -125,5 +167,7 @@ class SddService:
             "evidence_digest": evidence,
             "integrated": integrated,
             "lint_diagnostic": lint_diagnostic,
+            "lint_blocked": lint_blocked,
             "reports": reports,
+            "warnings": warnings,
         }

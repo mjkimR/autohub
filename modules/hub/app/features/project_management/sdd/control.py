@@ -165,9 +165,10 @@ class SddControl:
                 # Generic resume only re-inspects; it never grants approval.
                 run.state, run.pause_reason = "implementing", None
                 run.epoch += 1
-                if evidence.get("rework_head") == evidence["head_sha"] or not (
-                    evidence.get("current", {}).get("stage") or {}
-                ).get("human_gate"):
+                if not evidence.get("lint_blocked") and (
+                    evidence.get("rework_head") == evidence["head_sha"]
+                    or not (evidence.get("current", {}).get("stage") or {}).get("human_gate")
+                ):
                     run.sdd_progress = evidence
                     attempt = await SddProgress(self.repo).dispatch(session, run, evidence, now)
             if request.decision == "reject":
