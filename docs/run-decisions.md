@@ -187,6 +187,24 @@ latest 100 approval, rework, revocation and resume records. Questions and select
 answers remain in the existing question history. These native changes are locally
 tested; deployment and a live provider canary remain separate.
 
+## Starting Planning and Development
+
+`POST /projects/{id}/sdd/proposals/{slug}/planning` (MCP `sdd_start_planning`)
+starts Planning of a draft proposal that has `plan-intent` recorded and does not
+need decomposition: Hub creates `plan-<slug>` from `base_branch` with one start
+commit that sets `status: reviewing`, opens a ready pull request and enrolls the run.
+Its first attempt is the Planning worker, which leaves one worker envelope per run;
+the run asks for `plan-accept` only after a completed worker envelope.
+`POST /projects/{id}/sdd/proposals/{slug}/development` (MCP `sdd_start_development`)
+starts Development of an accepted proposal: `dev-<slug>` with an empty start commit,
+a draft pull request and a handoff-first run. Its first step is
+`devkit spec proposal handoff <slug>`; once the proposal unit is gone, the run follows
+the new spec bundle and its workflow from the next stage, keeping the activity effort.
+Both refuse an existing remote branch of that name unless it carries Hub's own open
+pull request (a start whose response was lost, enrolled again). Branches that were
+never pushed are the local Host's to check before it calls. Both take
+`activity_effort` and `catalog`.
+
 ## Proposal decisions
 
 A proposal run (unit `docs/proposals/PROP-<slug>` on branch `plan-<slug>`) stops at

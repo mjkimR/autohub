@@ -53,6 +53,11 @@ class EnrollPullRequest(BaseModel):
         description="The pull request already holds its implementation (for example, an agent session opened it); "
         "skip the implementation request and start by observing CI",
     )
+    handoff: bool = Field(
+        default=False,
+        description="sdd projects: Development of an accepted proposal on dev-<slug>; the run's first step is "
+        "devkit spec proposal handoff, after which the run follows the new spec",
+    )
     activity_effort: Literal["low", "medium", "high"] | None = Field(
         default=None,
         description="sdd runs only: how thoroughly the agent reviews above the gates and exit checks (strategy layer "

@@ -465,6 +465,8 @@ def proposal_evidence(head=merge.HEAD, status="reviewing"):
         "requests": [{"id": "gate:plan-accept", "kind": "approve", "answer": "record", "options": []}],
     }
     value["hold"] = {"blocked": False, "problems": [], "pending_questions": [], "malformed_workers": []}
+    # The Planning worker has reviewed it: a completed worker envelope makes the proposal ready for plan-accept.
+    value["reports"] = [{"kind": "worker", "file": "worker-01.yaml", "status": "completed", "summary": "Ready"}]
     value["unit_status"] = status
     value["integrated"] = False
     value["evidence_digest"] = request_digest({"head": head, "proposal": status})

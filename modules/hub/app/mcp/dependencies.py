@@ -40,6 +40,8 @@ class Dependencies:
         catalogs = AICatalogService(catalog_repo)
         observer = PipelineObservationService(read_token)
         self.projects = ProjectUseCase(projects)
+        self.project_service = projects
+        self.observer = observer
         self.runs = PipelineRunUseCase(runs, projects, observer, catalogs)
         self.queries = PipelineRunQueries(runs)
         self.catalogs = AICatalogUseCase(catalogs, catalog_repo)

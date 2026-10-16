@@ -31,6 +31,22 @@ async def cli(root: Path, *args: str):
         raise ProjectError(422, "Unsupported sdd JSON output") from None
 
 
+def handoff_target(root: Path, proposal: str) -> str:
+    """The spec bundle a proposal was handed off to: ``specs/<YYYY-MM>/<YYYYMMDD>-<slug>``, exactly one."""
+    slug = proposal.rsplit("PROP-", 1)[-1]
+    found = sorted(
+        path.parent.relative_to(root).as_posix()
+        for path in (root / "specs").glob(f"*/*-{slug}/spec.md")
+        if path.is_file() and not path.is_symlink()
+    )
+    if len(found) != 1:
+        raise ProjectError(
+            422,
+            f"Handoff of PROP-{slug} not found: expected one specs/<YYYY-MM>/<YYYYMMDD>-{slug}/spec.md, found {len(found)}",
+        )
+    return found[0]
+
+
 def committed_configuration(root: Path) -> dict[str, str]:
     """The committed devkit configuration and receipt, read before a sync could rewrite them in the checkout."""
     if not (root / ".devkit/installation.json").is_file():
@@ -116,12 +132,22 @@ class SddService:
             raise ProjectError(422, "SDD runner unavailable or timed out; provision Git and the pinned CLI") from None
 
     async def evaluate(self, root, spec_dir, head, base, snapshot, approved):
+        handoff = bool(snapshot and snapshot.get("handoff_pending"))
+        if snapshot and "cli_version" not in snapshot:
+            snapshot = None  # enrollment of a handoff-first run: no contract to compare yet
         if snapshot and snapshot.get("provider") != "devkit-spec":
             raise ProjectError(409, "Legacy execution is read-only; enroll a new SDD run")
         expected = snapshot["cli_version"] if snapshot else configured_version()
         version = configured_version()
         if version != expected:
             raise ProjectError(422, "SDD CLI version differs from the execution pin")
+        if handoff and not (root / spec_dir / "proposal.md").is_file():
+            # The handoff moved the proposal into its spec: the run follows that unit from now on (01 section 6.3).
+            target = handoff_target(root, spec_dir)
+            result = await self.evaluate(root, target, head, base, None, approved)
+            result["rebound"] = True
+            result["snapshot"]["handoff_from"] = spec_dir
+            return result
         anchor = unit_anchor(spec_dir)
         if not (root / ".devkit").is_dir() or anchor is None or not (root / spec_dir / anchor).is_file():
             raise ProjectError(422, "Initialize devkit-spec and bind an existing spec or proposal before execution")
@@ -180,7 +206,7 @@ class SddService:
         held = hold["blocked"] or bool(hold["pending_questions"])
         envelopes = await cli(root, "workflow", "envelope", "check", "--unit", spec_dir)
         reports = []
-        for kind in ("final-report", "review", "reverify"):
+        for kind in ("final-report", "review", "reverify", "worker"):
             candidates = [row for row in envelopes.get("envelopes", []) if row.get("kind") == kind]
             if candidates:
                 latest = max(candidates, key=lambda row: row.get("seq", 0))

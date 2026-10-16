@@ -222,6 +222,9 @@ The `pending` entries describe missing/manual checks. It is not a per-run prereq
   `request_id` and `expected_revision`. Select `answer_id` if a pending question
   has a saved response. Saving an answer alone does not resume. Revision and PR
   checks run before/after GitHub I/O; a changed question head rejects the answer.
+  `sdd_start_planning` and `sdd_start_development` start a proposal's Planning or
+  Development in the cloud: Hub creates `plan-<slug>` or `dev-<slug>` and its pull
+  request, then enrolls the run ([run decisions](run-decisions.md#starting-planning-and-development)).
   A proposal run waiting at `gate:plan-accept` takes `decision: accept_plan` or
   `reject_plan` with `head_sha` (the head you inspected) and, for a rejection,
   `feedback` (the reason): Hub commits the decision itself and the pull request

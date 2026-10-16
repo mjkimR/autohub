@@ -27,21 +27,29 @@ def item_branch(key: str) -> str:
     return name
 
 
-def unit_branch(unit_dir: str) -> str | None:
+def unit_branch(unit_dir: str, activity: str | None = None) -> str | None:
     """The activity branch a unit is worked on: ``dev-<slug>`` for a spec, ``plan-<slug>`` for a proposal.
 
-    ``None`` when the path names no unit with a slug the branch grammar accepts.
+    ``activity`` ``"dev"`` names the Development branch of an accepted proposal, where the handoff that turns it into
+    a spec is the first step. ``None`` when the path names no unit with a slug the branch grammar accepts.
     """
     if spec := _SPEC_UNIT.fullmatch(unit_dir):
         return f"dev-{spec.group(1)}"
     if proposal := _PROPOSAL_UNIT.fullmatch(unit_dir):
-        return f"plan-{proposal.group(1)}"
+        return f"{activity or 'plan'}-{proposal.group(1)}"
     return None
 
 
-def unit_branch_mismatch(unit_dir: str, head_ref: str) -> str | None:
+def activity_branch(activity: str, slug: str) -> str:
+    name = f"{activity}-{slug}"
+    if activity not in ("plan", "dev") or not is_activity_branch(name):
+        raise ValueError(f"{name!r} is not an activity branch ({ACTIVITY_BRANCH_RULE})")
+    return name
+
+
+def unit_branch_mismatch(unit_dir: str, head_ref: str, activity: str | None = None) -> str | None:
     """Why a pull request cannot be attached to ``unit_dir``, or ``None`` when its head is the unit's branch."""
-    expected = unit_branch(unit_dir)
+    expected = unit_branch(unit_dir, activity)
     if expected is None:
         return f"{unit_dir} does not name a unit slug the activity branch rule accepts ({ACTIVITY_BRANCH_RULE})"
     if head_ref != expected:

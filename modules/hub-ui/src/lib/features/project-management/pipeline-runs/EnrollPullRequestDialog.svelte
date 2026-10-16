@@ -53,6 +53,7 @@
 					pull_number: Number(enrollPullNumber),
 					implemented: enrollImplemented,
 					catalog: enrollCatalog || null,
+					handoff: false,
 					...(native ? { spec_dir: specDir } : {})
 				}
 			});

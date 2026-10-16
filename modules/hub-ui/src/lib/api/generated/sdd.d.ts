@@ -21,6 +21,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/sdd/proposals/{slug}/planning": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Planning
+         * @description Start Planning of a draft proposal: Hub creates plan-<slug> and its pull request, then enrolls the run.
+         */
+        post: operations["start_planning_api_v1_projects__project_id__sdd_proposals__slug__planning_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/sdd/proposals/{slug}/development": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Development
+         * @description Start Development of an accepted proposal: dev-<slug>, a draft pull request, a handoff-first run.
+         */
+        post: operations["start_development_api_v1_projects__project_id__sdd_proposals__slug__development_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/sdd/runtime": {
         parameters: {
             query?: never;
@@ -129,6 +169,32 @@ export interface components {
             /** Detail */
             detail: string;
         };
+        /**
+         * StartActivityRequest
+         * @description Start Planning or Development of a proposal in the cloud: Hub makes the branch and pull request.
+         */
+        StartActivityRequest: {
+            /**
+             * Request Id
+             * Format: uuid
+             * @description Client UUID; retries after a lost response enroll the same start
+             */
+            request_id: string;
+            /**
+             * Base Branch
+             * @default main
+             */
+            base_branch: string;
+            /** Activity Effort */
+            activity_effort?: ("low" | "medium" | "high") | null;
+            /** Catalog */
+            catalog?: string | null;
+            /**
+             * Actor
+             * @default
+             */
+            actor: string;
+        };
         ValidationError: CommonComponents["schemas"]["ValidationError"];
     };
     responses: never;
@@ -158,6 +224,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PipelineRunRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_planning_api_v1_projects__project_id__sdd_proposals__slug__planning_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartActivityRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineRunRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_development_api_v1_projects__project_id__sdd_proposals__slug__development_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartActivityRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineRunRead"];
                 };
             };
             /** @description Validation Error */

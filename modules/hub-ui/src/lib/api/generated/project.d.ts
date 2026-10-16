@@ -182,6 +182,12 @@ export interface components {
              */
             implemented: boolean;
             /**
+             * Handoff
+             * @description sdd projects: Development of an accepted proposal on dev-<slug>; the run's first step is devkit spec proposal handoff, after which the run follows the new spec
+             * @default false
+             */
+            handoff: boolean;
+            /**
              * Activity Effort
              * @description sdd runs only: how thoroughly the agent reviews above the gates and exit checks (strategy layer activity-effort); passed to the agent as a run option and recorded by the worker envelope. Default medium.
              */

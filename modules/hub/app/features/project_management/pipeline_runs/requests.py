@@ -37,6 +37,22 @@ def build_implementation_request(
             "Do not mark the PR ready or merge. Ask for direction through the existing question channel. "
             "Follow devkit gate and the repository commit policy. Final verification is devkit rules check --ci --base <base>."
         )
+        unit = str(run.sdd_snapshot.get("spec_dir") or "")
+        if run.sdd_snapshot.get("handoff_pending"):
+            slug = unit.rsplit("PROP-", 1)[-1]
+            instructions += (
+                f"\nFirst step: devkit spec proposal handoff {slug} on this branch, then commit and push; the run follows "
+                "the new spec bundle from its next stage. Before implementing, confirm the accepted proposal's premises "
+                "still hold on the current base; a premise that no longer holds is a problem, never a change of the proposal."
+            )
+        elif unit.startswith("docs/proposals/"):
+            instructions += (
+                "\nPlanning worker: review the proposal as the planning-worker contract describes, set status reviewing "
+                "if it is still draft, and leave exactly one worker envelope for this run (devkit workflow envelope "
+                "worker --stage direction-handoff): needs_input with its questions when a person must decide, "
+                "completed when the proposal is ready for plan-accept. Never set accepted or rejected: Hub records "
+                "that decision. Stop after pushing."
+            )
         if effort := run.sdd_snapshot.get("activity_effort"):
             instructions += (
                 f"\nActivity effort: {effort}. It sets the review depth above the gates, exit checks and required "

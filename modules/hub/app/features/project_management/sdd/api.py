@@ -1,10 +1,11 @@
 from typing import Annotated
 from uuid import UUID
 
+from app.auth import CurrentUser
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Path, Query
 
-from .schemas import SPEC_PATTERN, SddInspectionRequest, SddReadiness, SddRuntimeStatus
+from .schemas import SPEC_PATTERN, SddInspectionRequest, SddReadiness, SddRuntimeStatus, StartActivityRequest
 from .usecases import SddUseCase
 
 router = APIRouter(prefix="/projects/{project_id}/sdd", tags=["Sdd"])
@@ -18,6 +19,34 @@ async def spec_runs(
 ):
     """The latest 20 runs bound to this project/spec, including finished executions."""
     return await use_case.runs(project_id, spec_dir)
+
+
+@router.post("/proposals/{slug}/planning", response_model=PipelineRunRead, status_code=201)
+async def start_planning(
+    project_id: UUID,
+    slug: Annotated[str, Path(pattern=r"^[a-z0-9][a-z0-9_-]*$", max_length=59)],
+    request: StartActivityRequest,
+    user: CurrentUser,
+    use_case: Annotated[SddUseCase, Depends()],
+):
+    """Start Planning of a draft proposal: Hub creates plan-<slug> and its pull request, then enrolls the run."""
+    return await use_case.start_activity(
+        project_id, "plan", slug, request.model_copy(update={"actor": f"user:{user.id}"})
+    )
+
+
+@router.post("/proposals/{slug}/development", response_model=PipelineRunRead, status_code=201)
+async def start_development(
+    project_id: UUID,
+    slug: Annotated[str, Path(pattern=r"^[a-z0-9][a-z0-9_-]*$", max_length=59)],
+    request: StartActivityRequest,
+    user: CurrentUser,
+    use_case: Annotated[SddUseCase, Depends()],
+):
+    """Start Development of an accepted proposal: dev-<slug>, a draft pull request, a handoff-first run."""
+    return await use_case.start_activity(
+        project_id, "dev", slug, request.model_copy(update={"actor": f"user:{user.id}"})
+    )
 
 
 @router.get("/runtime", response_model=SddRuntimeStatus)

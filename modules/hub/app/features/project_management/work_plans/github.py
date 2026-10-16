@@ -53,6 +53,15 @@ class WorkGitHub:
                 return None
             raise
 
+    async def optional_list(self, path: str, params=None) -> list[dict] | None:
+        """A listing (a Contents API directory), or None when it does not exist."""
+        try:
+            return await self.reader._get_list(path, params)
+        except GitHubObservationError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+
     async def base_sha(self, plan: WorkPlan) -> str:
         root = f"/repos/{plan.repository}/git"
         branch = quote(plan.base_branch, safe="")

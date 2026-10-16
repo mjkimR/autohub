@@ -72,7 +72,13 @@
 		try {
 			const result = await api.POST('/api/v1/projects/{project_id}/runs', {
 				params: { path: { project_id: projectId } },
-				body: { spec_dir: spec, pull_number: pull, implemented: false, activity_effort: effort }
+				body: {
+					spec_dir: spec,
+					pull_number: pull,
+					implemented: false,
+					handoff: false,
+					activity_effort: effort
+				}
 			});
 			if (result.error)
 				throw new Error(apiErrorMessage(result.error, 'Unable to start spec execution'));

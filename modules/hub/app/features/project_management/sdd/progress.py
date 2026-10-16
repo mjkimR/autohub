@@ -11,8 +11,9 @@ from app.features.project_management.pipeline_runs.usecases.transitions import a
 from app.features.project_management.projects.errors import ProjectError
 
 from .decisions import publication_instructions
-from .gates import INTEGRATION_GATE
+from .gates import INTEGRATION_GATE, PLAN_ACCEPT_REQUEST
 from .services import SddService
+from .units import is_proposal
 
 # What an agent is told about a warning. The human remediation of RECEIPT_STALE (commit a new receipt) would end
 # this run's contract mid-flight, so the agent is told to leave it to the operator instead.
@@ -27,6 +28,18 @@ AGENT_NOTES = {
 
 def hold_of(evidence):
     return evidence.get("hold") or {}
+
+
+def reviewed(evidence):
+    """The Planning worker left a completed worker envelope: the proposal is ready for plan-accept."""
+    return any(r.get("kind") == "worker" and r.get("status") == "completed" for r in evidence.get("reports") or [])
+
+
+def awaiting_review(evidence):
+    """A proposal asked for plan-accept before any Planning worker ran: dispatch the worker, do not ask yet."""
+    unit = str((evidence.get("snapshot") or {}).get("spec_dir") or "")
+    requests = (evidence.get("current") or {}).get("requests") or []
+    return is_proposal(unit) and any(r.get("id") == PLAN_ACCEPT_REQUEST for r in requests) and not reviewed(evidence)
 
 
 def plan_approval(plan):
@@ -210,6 +223,16 @@ class SddProgress:
         else:
             evidence = observed["evidence"]
             previous = run.sdd_progress or {}
+            if evidence.get("rebound"):
+                # The handoff happened: the run's contract is the spec's from here (activity effort carries over).
+                run.sdd_snapshot = {
+                    **evidence["snapshot"],
+                    **(
+                        {"activity_effort": run.sdd_snapshot["activity_effort"]}
+                        if run.sdd_snapshot.get("activity_effort")
+                        else {}
+                    ),
+                }
             run.sdd_progress = evidence
             plan = evidence.get("plan_decision")
             if plan and evidence["head_sha"] == plan.get("commit_sha"):
@@ -294,7 +317,7 @@ class SddProgress:
                     run.state, run.pause_reason = "blocked", str(evidence.get("lint_diagnostic"))
                     if previous != evidence or run.state != original_state:
                         run.revision += 1
-                elif evidence["current"].get("requests") or stage.get("human_gate"):
+                elif (evidence["current"].get("requests") or stage.get("human_gate")) and not awaiting_review(evidence):
                     run.state, run.pause_reason = "blocked", request_reason(evidence, stage)
                     run.revision += 1
                 elif (

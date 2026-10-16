@@ -1,3 +1,6 @@
+from typing import Literal
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 from .units import UNIT_PATTERN
@@ -8,6 +11,16 @@ SPEC_PATTERN = UNIT_PATTERN  # a spec bundle or a proposal bundle; the name stay
 class SddInspectionRequest(BaseModel):
     pull_number: int = Field(gt=0)
     spec_dir: str = Field(pattern=SPEC_PATTERN, max_length=255)
+
+
+class StartActivityRequest(BaseModel):
+    """Start Planning or Development of a proposal in the cloud: Hub makes the branch and pull request."""
+
+    request_id: UUID = Field(description="Client UUID; retries after a lost response enroll the same start")
+    base_branch: str = Field(default="main", min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_][A-Za-z0-9_./-]*$")
+    activity_effort: Literal["low", "medium", "high"] | None = None
+    catalog: str | None = Field(default=None, max_length=100, pattern=r"^[A-Za-z0-9_.-]+$")
+    actor: str = Field(default="", exclude=True)
 
 
 class SddWarning(BaseModel):

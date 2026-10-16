@@ -131,17 +131,32 @@ class PipelineRunUseCase:
             from app.features.project_management.sdd.services import SddService
 
             # Enrolling a pull request is the explicit attach of the cloud path: its head must be the unit's branch.
-            if mismatch := unit_branch_mismatch(str(request.spec_dir), snapshot.head_ref):
+            activity = "dev" if request.handoff else None
+            if request.handoff and not str(request.spec_dir).startswith("docs/proposals/"):
+                raise ProjectError(422, "A handoff-first run starts from a proposal unit")
+            if mismatch := unit_branch_mismatch(str(request.spec_dir), snapshot.head_ref, activity):
                 raise ProjectError(422, mismatch, code="SDD_BRANCH_MISMATCH")
             pull = await self.observer.get_pull_request(connector_id, repository, request.pull_number)
             if pull["head"]["sha"] != snapshot.head_sha:
                 raise ProjectError(409, "PR changed during enrollment; retry")
-            evidence = await SddService().inspect(repository, request.spec_dir, pull, token)
+            evidence = await SddService().inspect(
+                repository,
+                request.spec_dir,
+                pull,
+                token,
+                snapshot={"handoff_pending": True} if request.handoff else None,
+            )
             if evidence.get("unit_status") == "rejected":
                 raise ProjectError(422, "Rejected proposal: its Planning has ended and hygiene removes it")
+            if request.handoff and evidence.get("unit_status") not in ("accepted", None):
+                raise ProjectError(422, "Development starts from an accepted proposal")
+
+        from app.features.project_management.sdd.progress import awaiting_review
 
         inspect_only = request.implemented or bool(
-            evidence and (evidence["current"].get("stage") or {}).get("human_gate")
+            evidence
+            and (evidence["current"].get("stage") or {}).get("human_gate")
+            and not awaiting_review(evidence)  # a fresh Planning run dispatches its worker before the gate
         )
         try:
             async with AsyncTransaction() as session:
@@ -166,9 +181,11 @@ class PipelineRunUseCase:
                         pull_url=snapshot.url,
                         pull_snapshot=snapshot.model_dump(mode="json"),
                         sdd_snapshot=(
-                            {**evidence["snapshot"], "activity_effort": request.activity_effort}
-                            if evidence and request.activity_effort
-                            else evidence["snapshot"]
+                            {
+                                **evidence["snapshot"],
+                                **({"activity_effort": request.activity_effort} if request.activity_effort else {}),
+                                **({"handoff_pending": True} if request.handoff else {}),
+                            }
                             if evidence
                             else None
                         ),

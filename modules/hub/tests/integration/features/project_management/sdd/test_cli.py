@@ -481,3 +481,62 @@ async def test_rejection_changes_status_only_and_closes_open_questions(checkout,
     assert after["unit_status"] == "rejected"
     assert after["hold"]["pending_questions"] == [] and not after["hold"]["blocked"]
     assert not after["current"]["requests"]  # a rejected proposal is never asked for acceptance again
+
+
+async def test_activity_branch_is_started_once_from_the_base(checkout, tmp_path, monkeypatch):
+    from app.features.project_management.sdd import units
+    from app.features.project_management.sdd.activities import start_branch
+
+    root, _ = checkout
+    run(root, devkit_binary(), "spec", "proposal", "new", "demo", "--title", "Demo", "--task-kind", "feature")
+    base = commit(root, "Draft proposal")
+    bare = (tmp_path / "remote.git").resolve()
+    subprocess.run(["git", "clone", "--quiet", "--bare", str(root), str(bare)], check=True)
+    from app.features.project_management.sdd import checkout as checkout_module
+
+    monkeypatch.setattr(checkout_module, "remote_url", lambda repository: str(bare))
+
+    def reviewing(checkout_root):
+        units.set_status(checkout_root, PROPOSAL, "draft", "reviewing")
+
+    sha = await start_branch("owner/app", base, "plan-demo", "token", ("Start Planning of PROP-demo", "x"), reviewing)
+    assert run(bare, "git", "rev-parse", "refs/heads/plan-demo") == sha
+    assert run(bare, "git", "log", "-1", "--format=%P", sha) == base
+    assert run(bare, "git", "diff", "--name-only", base, sha) == f"{PROPOSAL}/proposal.md"
+    with pytest.raises(ProjectError, match="already exists"):
+        await start_branch("owner/app", base, "plan-demo", "token", ("again", "x"), None)
+
+
+async def test_handoff_first_run_follows_the_new_spec_after_the_handoff(checkout):
+    from app.features.project_management.sdd import units
+
+    root, _ = checkout
+    reviewing_proposal(root)
+    run(
+        root,
+        devkit_binary(),
+        "workflow",
+        "answer",
+        "--unit",
+        PROPOSAL,
+        "--request",
+        "gate:plan-accept",
+        "--action",
+        "accept",
+        "--by",
+        "user:fixture",
+    )
+    units.set_status(root, PROPOSAL, "reviewing", "accepted")
+    head = commit(root, "Accepted")
+    before = await SddService().evaluate(root, PROPOSAL, head, head, {"handoff_pending": True}, False)
+    assert before["unit_status"] == "accepted" and before["current"]["complete"]
+    assert "rebound" not in before
+    run(root, "git", "checkout", "-q", "-b", "dev-demo")
+    run(root, devkit_binary(), "spec", "proposal", "handoff", "demo")
+    head = commit(root, "Handoff")
+    pinned = {**before["snapshot"], "handoff_pending": True}
+    after = await SddService().evaluate(root, PROPOSAL, head, head, pinned, False)
+    assert after["rebound"] and after["snapshot"]["handoff_from"] == PROPOSAL
+    assert after["snapshot"]["spec_dir"].startswith("specs/") and after["snapshot"]["spec_dir"].endswith("-demo")
+    assert after["snapshot"]["workflow_id"] == "sdd-spec-feature"
+    assert after["current"]["stage"]["id"] == "specify"  # plan-intent carried over from the proposal

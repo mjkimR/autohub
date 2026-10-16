@@ -52,14 +52,17 @@ def credential_env(token: str) -> dict:
     }
 
 
-async def push_head(root: Path, repository: str, branch: str, expected_head: str, token: str) -> None:
+async def push_head(root: Path, repository: str, branch: str, expected_head: str | None, token: str) -> None:
     """Publish the checkout's HEAD to ``branch`` only while the remote branch still is ``expected_head``.
 
     The lease is the head guard of the strategy layer (01 section 3): a decision commit is written on the head the
-    person confirmed, and a remote that moved meanwhile refuses it. Runs outside the sandbox, like the fetch.
+    person confirmed, and a remote that moved meanwhile refuses it. ``None`` requires the branch to be absent: a
+    new activity branch is never started over an existing one (01 section 4.7). Runs outside the sandbox.
     """
-    if not re.fullmatch(r"[0-9a-f]{40}", expected_head) or not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_./-]*", branch):
-        raise ProjectError(422, "Invalid branch or head for publishing a decision")
+    if expected_head is not None and not re.fullmatch(r"[0-9a-f]{40}", expected_head):
+        raise ProjectError(422, "Invalid head for publishing a decision")
+    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_./-]*", branch):
+        raise ProjectError(422, "Invalid branch for publishing a decision")
     try:
         await command(
             "git",
@@ -67,11 +70,17 @@ async def push_head(root: Path, repository: str, branch: str, expected_head: str
             "--quiet",
             remote_url(repository),
             f"HEAD:refs/heads/{branch}",
-            f"--force-with-lease=refs/heads/{branch}:{expected_head}",
+            f"--force-with-lease=refs/heads/{branch}:{expected_head or ''}",
             cwd=root,
             env=credential_env(token),
         )
     except ProjectError:
+        if expected_head is None:
+            raise ProjectError(
+                409,
+                f"Branch {branch} already exists on the remote; enroll its pull request to attach it instead",
+                code="SDD_BRANCH_EXISTS",
+            ) from None
         raise ProjectError(
             409,
             "The pull request head changed while recording the decision; inspect the latest result and decide again",

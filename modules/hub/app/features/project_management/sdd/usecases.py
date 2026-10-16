@@ -3,6 +3,7 @@ from typing import Annotated
 from app.features.project_management.branches import unit_branch_mismatch
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
+from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.pipelines.deps import get_pipeline_observer
 from app.features.project_management.pipelines.services import PipelineObservationService
 from app.features.project_management.projects.errors import ProjectError
@@ -20,8 +21,20 @@ class SddUseCase:
         self,
         projects: Annotated[ProjectService, Depends()],
         observer: Annotated[PipelineObservationService, Depends(get_pipeline_observer)],
+        runs: Annotated[PipelineRunUseCase, Depends()],
     ):
-        self.projects, self.observer = projects, observer
+        self.projects, self.observer, self.run_use_case = projects, observer, runs
+
+    async def start_activity(self, project_id, activity, slug, request) -> PipelineRunRead:
+        from .activities import ActivityStarter
+
+        async with AsyncTransaction() as session:
+            project = await self.projects.get(session, project_id)
+            if project.project_type != "sdd":
+                raise ProjectError(422, "Select sdd project mode first")
+            if not project.enabled or not project.github_repository or not project.github_connector_id:
+                raise ProjectError(422, "Enable the project and connect its GitHub repository")
+        return await ActivityStarter(self.observer, self.run_use_case).start(project, activity, slug, request)
 
     async def runs(self, project_id, spec_dir):
         async with AsyncTransaction() as session:
