@@ -16,7 +16,10 @@ const run = {
 	sdd_progress: {
 		head_sha: 'a'.repeat(40),
 		base_sha: 'b'.repeat(40),
-		current: { stage: { name: 'G3', human_gate: 'integration', exit: [] }, done: ['review'] }
+		current: {
+			stage: { name: 'Integration approval', human_gate: 'dev-integration', exit: [] },
+			done: ['review']
+		}
 	}
 } as unknown as components['schemas']['PipelineRunRead'];
 beforeEach(() => {

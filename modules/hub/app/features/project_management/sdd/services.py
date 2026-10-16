@@ -8,6 +8,7 @@ from app.features.project_management.pipeline_runs.requests import request_diges
 from app.features.project_management.projects.errors import ProjectError
 
 from .checkout import SddCommandError, checkout, command
+from .gates import INTEGRATION_GATE
 from .runtime import configured_version, restore, revision_warnings
 
 STALE_LINT = (
@@ -115,7 +116,7 @@ class SddService:
             pinned.update(workflow_id=contract["workflow_id"], workflow_hash=contract["workflow_hash"])
         if snapshot and any(pinned.get(key) != value for key, value in contract.items()):
             raise ProjectError(409, "SDD workflow or policy changed; inspect and enroll a new execution")
-        given = ["--given", "integration"] if approved else []
+        given = ["--given", INTEGRATION_GATE] if approved else []
         current = await cli(root, "workflow", "next", "--unit", spec_dir, *given)
         if not current.get("bound") or current.get("drift") or current.get("errors"):
             raise ProjectError(422, "SDD binding drift or invalid envelope; repair the repository evidence")

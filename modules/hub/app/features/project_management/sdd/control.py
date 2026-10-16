@@ -9,6 +9,7 @@ from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 
 from .decisions import validate_answer
+from .gates import INTEGRATION_REQUEST
 from .progress import SddProgress, approval_gate, carry_decisions
 from .services import SddService
 
@@ -71,9 +72,12 @@ class SddControl:
                 validate_answer(evidence, request.workflow_answer.model_dump())
                 operation = request.workflow_answer.model_dump()
             elif request.decision == "approve" and any(
-                r["id"] == "gate:integration" for r in evidence["current"].get("requests", [])
+                r["id"] == INTEGRATION_REQUEST and r.get("answer", "record") == "record"
+                for r in evidence["current"].get("requests", [])
             ):
-                operation = {"request": "gate:integration", "action": "accept"}
+                # A record-channel integration gate gets a decision record; the given channel (the devkit-spec
+                # workflows) is satisfied by --given on the approved basis and never recorded.
+                operation = {"request": INTEGRATION_REQUEST, "action": "accept"}
             elif request.decision == "revise":
                 stages = [s["id"] for s in evidence["workflow"].get("stages", [])]
                 current_id = (evidence["current"].get("stage") or {}).get("id")

@@ -11,6 +11,7 @@ from app.features.project_management.pipeline_runs.usecases.transitions import a
 from app.features.project_management.projects.errors import ProjectError
 
 from .decisions import publication_instructions
+from .gates import INTEGRATION_GATE
 from .services import SddService
 
 # What an agent is told about a warning. The human remediation of RECEIPT_STALE (commit a new receipt) would end
@@ -27,10 +28,10 @@ AGENT_NOTES = {
 def approval_gate(evidence):
     stage = evidence.get("current", {}).get("stage") or {}
     passed_integration = any(
-        item.get("human_gate") == "integration" and item["id"] in evidence.get("current", {}).get("done", [])
+        item.get("human_gate") == INTEGRATION_GATE and item["id"] in evidence.get("current", {}).get("done", [])
         for item in evidence.get("workflow", {}).get("stages", [])
     )
-    return stage.get("human_gate") == "integration" or (not evidence.get("approval") and passed_integration)
+    return stage.get("human_gate") == INTEGRATION_GATE or (not evidence.get("approval") and passed_integration)
 
 
 def merge_ready(evidence):
@@ -114,7 +115,7 @@ class SddProgress:
                 f"\nHub integration authorization: {evidence['approval']['actor']}; "
                 f"approved head {evidence['approval']['head_sha']}. "
                 "Use spec-integrate within the approved intent; reverify changed parts and reconcile. "
-                "You may supply --given integration on that recorded basis. Stop before merge."
+                f"You may supply --given {INTEGRATION_GATE} on that recorded basis. Stop before merge."
             )
         if feedback:
             request.instructions += f"\nOperator feedback: {feedback}\nRevisit affected implementation and review before requesting approval."
@@ -173,11 +174,11 @@ class SddProgress:
                     run.revision += 1
             elif approval_gate(evidence):
                 policy_auto = (
-                    run.sdd_snapshot["policy"].get("approvals", {}).get("integration", {}).get("policy") == "auto"
+                    run.sdd_snapshot["policy"].get("approvals", {}).get(INTEGRATION_GATE, {}).get("policy") == "auto"
                 )
                 ready = pull.get("draft") is False
                 if not evidence.get("approval_withheld") and (policy_auto or ready):
-                    actor = "github:pr-ready" if ready else "policy:workflow.approvals.integration=auto"
+                    actor = "github:pr-ready" if ready else f"policy:workflow.approvals.{INTEGRATION_GATE}=auto"
                     evidence["approval"] = {
                         "actor": actor,
                         "source": "pr-ready" if ready else "policy",
@@ -207,7 +208,7 @@ class SddProgress:
                     evidence["waiting_for_approval"] = not evidence.get("approval_withheld", False)
                     run.state, run.pause_reason = (
                         "paused",
-                        "G3: inspect the final report and approve, request changes, or reject",
+                        f"{INTEGRATION_GATE}: inspect the final report and approve, request changes, or reject",
                     )
                 if previous != evidence or run.state != original_state:
                     run.revision += 1

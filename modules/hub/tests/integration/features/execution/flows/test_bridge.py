@@ -62,6 +62,8 @@ def checkout(tmp_path):
         "status": "active",
         "schema_version": 1,
         "layout": {"work_dir": "specs", "unit_path": "{date:%Y-%m}/{date:%Y%m%d}-{slug}", "anchor": "spec.md"},
+        # The integration approval is given by the executor (--given dev-integration), never recorded.
+        "gates": {"dev-integration": {"answer": "given", "policies": ["ask", "auto"]}},
         "checks": [
             {"name": "lint-ci-clean", "class": "runner", "description": "Final CI"},
             {"name": "merged", "class": "runner", "description": "Merged"},
@@ -84,7 +86,7 @@ def checkout(tmp_path):
                 **base,
                 "id": "bridge-approval",
                 "name": "Approval",
-                "human_gate": "integration",
+                "human_gate": "dev-integration",
                 "entry": ["envelope-check-pass(final-report tests)"],
                 "exit": [],
             },
@@ -105,7 +107,19 @@ def checkout(tmp_path):
         )
     run(binary, "workflow", "bind", "--unit", SPEC, "--workflow", str(workflow.relative_to(root)))
     run("git", "add", ".")
-    run("git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", "commit", "-qm", "Fixture")
+    # devkit sync installs the commit gate; fixture commits bypass it as Hub's own Git calls do.
+    run(
+        "git",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "-c",
+        "user.name=Fixture",
+        "-c",
+        "user.email=fixture@example.com",
+        "commit",
+        "-qm",
+        "Fixture",
+    )
     return root, run("git", "rev-parse", "HEAD")
 
 

@@ -5,13 +5,19 @@ from pathlib import Path
 
 from app.features.project_management.projects.errors import ProjectError
 
+from .gates import INTEGRATION_REQUEST
+
 
 def validate_answer(evidence: dict, answer: dict) -> dict:
     request = next((r for r in evidence["current"].get("requests", []) if r["id"] == answer["request"]), None)
     if request is None:
         raise ProjectError(409, "Workflow request is no longer open; reload the run")
-    if request["id"] == "gate:integration":
+    if request["id"] == INTEGRATION_REQUEST:
         raise ProjectError(422, "Use the integration approval controls for this request")
+    if request.get("answer") == "envelope" or request["id"].startswith("question:"):
+        raise ProjectError(
+            422, "Worker questions are answered with an answer envelope on the pull request, not by a Hub decision"
+        )
     value = answer.get("value")
     if answer["action"] == "accept" and request["kind"] == "choose":
         if not any(o["id"] == value and o["eligible"] for o in request["options"]):

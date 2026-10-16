@@ -8,10 +8,10 @@ dependencies = ["devkit-spec", "devkit-agt", "devkit-advisory"]
 package = false
 # devkit-spec sources devkit-agt from devkit main; pin that transitive URL to the reviewed commit.
 override-dependencies = [
-    "devkit-agt @ git+https://github.com/mjkimR/devkit.git@ecff1223284a37c8c00174f92ccf06d68291dcf2#subdirectory=packages/devkit",
+    "devkit-agt @ git+https://github.com/mjkimR/devkit.git@fb4d6c0c5e2efe5aa28146fa7337054671bd0434#subdirectory=packages/devkit",
 ]
 
 [tool.uv.sources]
-devkit-spec = { git = "https://github.com/mjkimR/devkit-spec", rev = "f7b8b9ca844c9dcc260d303f0b1032701479d4fa" }
-devkit-agt = { git = "https://github.com/mjkimR/devkit.git", subdirectory = "packages/devkit", rev = "ecff1223284a37c8c00174f92ccf06d68291dcf2" }
-devkit-advisory = { git = "https://github.com/mjkimR/devkit.git", subdirectory = "packages/devkit-advisory", rev = "ecff1223284a37c8c00174f92ccf06d68291dcf2" }
+devkit-spec = { git = "https://github.com/mjkimR/devkit-spec", rev = "c3ad0356be3ebe6f444cba3a4c65bacc60121888" }
+devkit-agt = { git = "https://github.com/mjkimR/devkit.git", subdirectory = "packages/devkit", rev = "fb4d6c0c5e2efe5aa28146fa7337054671bd0434" }
+devkit-advisory = { git = "https://github.com/mjkimR/devkit.git", subdirectory = "packages/devkit-advisory", rev = "fb4d6c0c5e2efe5aa28146fa7337054671bd0434" }

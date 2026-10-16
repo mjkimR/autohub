@@ -28,6 +28,8 @@
 		questionPending?: boolean;
 		onbusychange?: (busy: boolean) => void;
 	} = $props();
+	// The devkit-spec integration gate Hub decides; its label replaces the former G3 badge.
+	const INTEGRATION_GATE = 'dev-integration';
 	let busy = $state(false);
 	let error = $state('');
 	let feedback = $state('');
@@ -54,13 +56,13 @@
 		Array.isArray(record(progress.workflow).stages) &&
 			(record(progress.workflow).stages as { id: string; human_gate?: string }[]).some(
 				(item: { id: string; human_gate?: string }) =>
-					item.human_gate === 'integration' &&
+					item.human_gate === INTEGRATION_GATE &&
 					Array.isArray(current.done) &&
 					current.done.includes(item.id)
 			)
 	);
 	let canApprove = $derived(
-		waiting && (stage.human_gate === 'integration' || (!approval.actor && passedIntegration))
+		waiting && (stage.human_gate === INTEGRATION_GATE || (!approval.actor && passedIntegration))
 	);
 
 	let evidenceUrl = $derived(
@@ -130,7 +132,7 @@
 					: approval.actor
 						? 'Approved'
 						: canApprove
-							? 'G3'
+							? INTEGRATION_GATE
 							: 'In progress'}</Badge
 			>
 		</div>

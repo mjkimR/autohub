@@ -22,7 +22,7 @@
 	};
 	let engine = $derived((run.sdd_progress?.current || {}) as { requests?: Request[] });
 	let requests = $derived(
-		(engine.requests || []).filter((r: Request) => r.id !== 'gate:integration') as Request[]
+		(engine.requests || []).filter((r: Request) => r.id !== 'gate:dev-integration') as Request[]
 	);
 	let selected = $state('');
 	let note = $state('');

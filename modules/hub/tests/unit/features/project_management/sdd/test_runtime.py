@@ -192,6 +192,10 @@ def test_handoff_requires_eligible_choice_and_integration_uses_own_authority():
     with pytest.raises(ProjectError, match="eligible"):
         validate_answer(evidence, {"request": "handoff", "action": "accept", "value": "bad"})
     assert validate_answer(evidence, {"request": "handoff", "action": "cancel"})
-    evidence["current"]["requests"] = [{"id": "gate:integration", "kind": "approve"}]
+    evidence["current"]["requests"] = [{"id": "gate:dev-integration", "kind": "approve", "answer": "given"}]
     with pytest.raises(ProjectError, match="integration approval"):
-        validate_answer(evidence, {"request": "gate:integration", "action": "accept"})
+        validate_answer(evidence, {"request": "gate:dev-integration", "action": "accept"})
+    question = {"id": "question:worker-01.q1", "kind": "choose", "answer": "envelope", "options": []}
+    evidence["current"]["requests"] = [question]
+    with pytest.raises(ProjectError, match="answer envelope"):
+        validate_answer(evidence, {"request": "question:worker-01.q1", "action": "accept", "value": "a"})

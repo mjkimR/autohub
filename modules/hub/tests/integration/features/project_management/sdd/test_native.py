@@ -18,8 +18,8 @@ WARNING = {"code": "RECEIPT_STALE", "detail": "Receipt differs from the reviewed
 def evidence(head=merge.HEAD, base=merge.BASE, approved=False):
     stage = {
         "id": "merge" if approved else "approval",
-        "name": "Merge" if approved else "G3",
-        "human_gate": None if approved else "integration",
+        "name": "Merge" if approved else "Integration approval",
+        "human_gate": None if approved else "dev-integration",
         "exit": ["merged"] if approved else [],
         "skills": [],
     }
@@ -31,7 +31,7 @@ def evidence(head=merge.HEAD, base=merge.BASE, approved=False):
         "cli_version": "fixture",
         "workflow_hash": "hash",
         "workflow_id": "WF-fixture",
-        "policy": {"approvals": {"integration": {"policy": "ask"}}},
+        "policy": {"approvals": {"dev-integration": {"policy": "ask"}}},
     }
     return {
         "snapshot": snapshot,
@@ -304,6 +304,26 @@ async def test_base_change_returns_to_integration_without_merging(client, run, g
     assert changed["state"] == "dispatching"
     assert changed["sdd_progress"]["approval"]["head_sha"] == merge.HEAD
     assert github.merge_requests == 0
+
+
+async def test_given_integration_gate_is_approved_without_a_decision_record(client, run, inspector, monkeypatch):
+    original = native.SddService.inspect
+
+    async def with_request(self, repository, spec_dir, pull, token, **kwargs):
+        value = await original(self, repository, spec_dir, pull, token, **kwargs)
+        value["current"]["requests"] = [{"id": "gate:dev-integration", "kind": "approve", "answer": "given"}]
+        return value
+
+    monkeypatch.setattr(native.SddService, "inspect", with_request)
+    waiting = await merge.advance(client, run)
+    assert waiting["state"] == "paused"
+    assert waiting["pause_reason"].startswith("dev-integration:")
+    approved, _ = await decide(client, waiting, "approve")
+    assert approved.status_code == 200, approved.text
+    # The gate's answer channel is given: Hub passes --given dev-integration and authors no decision record.
+    assert all("operation" not in call for call in inspector)
+    assert not approved.json()["sdd_progress"].get("decision_records")
+    assert approved.json()["sdd_progress"]["approval"]["source"] == "hub"
 
 
 async def test_stale_receipt_lint_failure_pauses_without_dispatching(client, run, github, monkeypatch):

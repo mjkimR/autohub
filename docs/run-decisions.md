@@ -139,16 +139,17 @@ in subsequent stage requests in chronological order. Unapplied answers are not
 execution instructions. CI/conflict fixes inherit the stage request snapshot.
 
 Answering a question is a clarification, not an approval or an assertion that code
-must change. A no-change answer can return to the existing G3 gate without a new
-commit. Request changes explicitly requires a changed head and renewed workflow
+must change. A no-change answer can return to the existing `dev-integration` gate
+without a new commit. Request changes explicitly requires a changed head and renewed workflow
 evidence. If changes do not arrive within 45 minutes, the run blocks; resume retries
 the work with its recorded context and does not erase the outstanding requirement.
 
-At G3, after CLI evidence is ready, either an observed ready PR or **Approve
-integration** records authorization. Policy `integration=auto` can also authorize
-integration. Ready observations are attributed to `github:pr-ready`, not a guessed
+At the `dev-integration` gate, after CLI evidence is ready, either an observed ready
+PR or **Approve integration** records authorization in Hub and passes it to devkit as
+`--given dev-integration`; the gate's answer channel is `given`, so no decision record
+is written for it. Policy `dev-integration=auto` can also authorize integration. Ready observations are attributed to `github:pr-ready`, not a guessed
 human actor; the receipt stores the observation time, head, base and evidence digest.
-Draft G3 waits are paused and hold no execution slot. The scheduler checks them
+Draft `dev-integration` waits are paused and hold no execution slot. The scheduler checks them
 every five minutes, subject to its tick; manual pause and pending questions are
 never auto-resumed. Older paused native runs without the wait marker need one
 explicit resume to refresh their inspection and enable this polling.
@@ -156,9 +157,10 @@ explicit resume to refresh their inspection and enable this polling.
 Hub approval does not change GitHub draft status: integration can proceed while
 draft, but the operator must mark the PR ready before merging. `auto_merge=false`
 still disables automatic merging. Returning an observed ready PR to draft revokes
-its authorization. Explicit revocation, rework and answers at/after G3 withhold automatic
+its authorization. Explicit revocation, rework and answers at/after `dev-integration` withhold automatic
 approval: an existing ready flag or auto policy cannot undo the decision, even after
-a generic resume. Review the resulting evidence and explicitly approve in Hub.
+a generic resume. Worker questions (`question:*` requests) are not Hub decisions:
+they are answered with an answer envelope on the pull request. Review the resulting evidence and explicitly approve in Hub.
 Earlier implementation clarifications retain the configured integration policy.
 
 The Repository spec view lists its latest 20 executions and links directly to their

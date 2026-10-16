@@ -27,7 +27,8 @@ def run(root, *args):
 
 def commit(root, message):
     run(root, "git", "add", ".")
-    run(root, "git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", "commit", "-qm", message)
+    identity = ("-c", "user.name=Fixture", "-c", "user.email=fixture@example.com")
+    run(root, "git", "-c", "core.hooksPath=/dev/null", *identity, "commit", "-qm", message)
     return run(root, "git", "rev-parse", "HEAD")
 
 
@@ -84,7 +85,7 @@ async def test_real_cli_reads_gate_and_rejects_changed_version(checkout):
     assert evidence["current"]["stage"]["human_gate"]
     assert not evidence["integrated"]
     assert evidence["warnings"] == []
-    assert evidence["snapshot"]["policy"]["approvals"]["integration"]["policy"] == "ask"
+    assert evidence["snapshot"]["policy"]["approvals"]["dev-integration"]["policy"] == "ask"
     with pytest.raises(ProjectError, match="version"):
         await service.evaluate(root, SPEC, head, head, {**evidence["snapshot"], "cli_version": "unsupported"}, False)
     with pytest.raises(ProjectError, match="workflow or policy"):
@@ -112,19 +113,19 @@ async def test_fresh_checkout_restores_recorded_release_without_network(checkout
     assert result["reports"][0]["kind"] == "final-report"
     assert result["reports"][0]["summary"] == "Fixture verified"
     assert manifest.read_bytes() == original
-    assert (fresh / ".devkit/managed/spec/workflows/direct-delivery.md").is_file()
+    assert (fresh / ".devkit/managed/spec/workflows/sdd-spec-feature.md").is_file()
     assert not run(fresh, "git", "diff", "--name-only")
 
 
 async def test_stale_receipt_is_evaluated_best_effort_and_reported(checkout, tmp_path):
     root, _ = checkout
     fresh = fresh_clone(root, tmp_path)
-    head, committed = commit_stale_receipt(fresh, "direct-delivery", ".md")
+    head, committed = commit_stale_receipt(fresh, "sdd-spec-feature", ".md")
     result = await SddService().evaluate(fresh, SPEC, head, head, None, False)
     assert [item["code"] for item in result["warnings"]] == ["RECEIPT_STALE"]
     assert result["current"]["stage"]["human_gate"]
     assert result["reports"][0]["summary"] == "Fixture verified"
-    assert (fresh / ".devkit/managed/spec/workflows/direct-delivery.md").is_file()
+    assert (fresh / ".devkit/managed/spec/workflows/sdd-spec-feature.md").is_file()
     # The snapshot digests the committed receipt, not the one regenerated inside the disposable checkout.
     config = (fresh / ".devkit/config.toml").read_text()
     assert result["snapshot"]["configuration_digest"] == request_digest({"config": config, "receipt": committed})
@@ -133,7 +134,7 @@ async def test_stale_receipt_is_evaluated_best_effort_and_reported(checkout, tmp
 
 
 @pytest.mark.parametrize(
-    ("asset_id", "suffix", "integrated"), [("direct-delivery", ".md", True), ("spec-format", "rule.py", False)]
+    ("asset_id", "suffix", "integrated"), [("sdd-spec-feature", ".md", True), ("spec-format", "rule.py", False)]
 )
 async def test_stale_receipt_integration_depends_on_recorded_rules(checkout, tmp_path, asset_id, suffix, integrated):
     root, _ = checkout
@@ -158,7 +159,12 @@ async def test_devkit_authors_answer_and_return_and_invalidates_approval(checkou
     from app.features.project_management.sdd.services import cli
 
     root, _ = checkout
-    operation = {"id": "a-fixed-receipt", "request": "gate:integration", "action": "accept", "actor": "user:fixture"}
+    operation = {
+        "id": "a-fixed-receipt",
+        "request": "gate:dev-integration",
+        "action": "accept",
+        "actor": "user:fixture",
+    }
     record = await prepare_record(root, SPEC, operation, cli)
     assert record["file"].startswith("decisions/")
     assert "autohub-decision:a-fixed-receipt" in record["content"]
@@ -168,28 +174,34 @@ async def test_devkit_authors_answer_and_return_and_invalidates_approval(checkou
         root, SPEC, {"id": "return-receipt", "return_to": "bridge-approval", "actor": "user:fixture"}, cli
     )
     current = await cli(root, "workflow", "next", "--unit", SPEC)
-    assert current["requests"][0]["id"] == "gate:integration"
+    assert current["requests"][0]["id"] == "gate:dev-integration"
+    assert current["requests"][0]["answer"] == "given"  # Hub passes it as --given, never as a record
     assert not current["complete"]
 
 
-async def test_python_check_cannot_read_host_secret_or_use_network(checkout, tmp_path, monkeypatch):
-    from app.features.project_management.sdd.services import cli
+async def test_repository_python_rule_cannot_read_host_secret_or_use_network(checkout, tmp_path, monkeypatch):
+    """Repository Python reaches devkit through a project override of a rule; it runs only inside the sandbox."""
+    from app.features.project_management.sdd.checkout import command
 
-    root, _ = checkout
+    root, base = checkout
     secret = tmp_path / "server-secret.txt"
     secret.write_text("must-not-leak")
     monkeypatch.setenv("SDD_TEST_SECRET", "must-not-leak")
-    plugin = root / ".devkit/workflow-checks/probe"
-    plugin.mkdir(parents=True)
-    plugin.joinpath("__init__.py").write_text(
+    run(root, devkit_binary(), "override", "create", "spec:spec-format")
+    rule = root / ".devkit/overrides/spec/rules/spec_format/rule.py"
+    report = root / "probe.json"
+    rule.write_text(
         "import json, os, socket\nfrom pathlib import Path\n"
         f"try:\n data = Path({str(secret)!r}).read_text()\nexcept OSError:\n data = 'denied'\n"
         "try:\n socket.create_connection(('127.0.0.1', 9), timeout=1)\n network = 'allowed'\n"
         "except OSError as exc:\n network = exc.errno\n"
-        "Path('probe.json').write_text(json.dumps({'file': data, 'env': os.environ.get('SDD_TEST_SECRET'), 'network': network}))\n"
+        f"Path({str(report)!r}).write_text(json.dumps("
+        "{'file': data, 'env': os.environ.get('SDD_TEST_SECRET'), 'network': network}))\n" + rule.read_text()
     )
-    await cli(root, "workflow", "checks")
-    probe = json.loads((root / "probe.json").read_text())
+    run(root, devkit_binary(), "sync")  # the receipt records the edited override
+    commit(root, "Probe override")
+    await command("devkit", "rules", "check", "--ci", "--base", base, "--format", "json", cwd=root, allow_failure=True)
+    probe = json.loads(report.read_text())
     assert probe["file"] == "denied"
     assert probe["env"] is None
     assert probe["network"] in (1, 13, 101)  # EPERM/EACCES, or ENETUNREACH in a fresh Linux network namespace
@@ -216,7 +228,7 @@ async def test_accepted_handoff_authorizes_only_the_selected_definition(checkout
 
     await command("devkit", "workflow", "bind", "--unit", SPEC, "--workflow", "bridge-test", cwd=root)
     await prepare_record(
-        root, SPEC, {"id": "g3", "request": "gate:integration", "action": "accept", "actor": "user:fixture"}, cli
+        root, SPEC, {"id": "g3", "request": "gate:dev-integration", "action": "accept", "actor": "user:fixture"}, cli
     )
     before = await SddService().evaluate(root, SPEC, "head", "base", None, False)
     assert before["current"]["requests"][0]["id"] == "handoff"
@@ -237,5 +249,5 @@ async def test_accepted_handoff_authorizes_only_the_selected_definition(checkout
         await SddService().evaluate(root, SPEC, "head", "base", before["snapshot"], False)
     snapshot = {**before["snapshot"], "authorized_workflows": [record["authorized_workflow"]]}
     after = await SddService().evaluate(root, SPEC, "head", "base", snapshot, False)
-    assert after["current"]["requests"][0]["id"] == "gate:integration"
+    assert after["current"]["requests"][0]["id"] == "gate:dev-integration"
     assert after["current"]["stage"]["id"] == "successor-approval"

@@ -32,7 +32,7 @@ def evaluation(monkeypatch, *, stale, lint_error=None, show_error=None):
 
     async def cli(root, *args):
         if args[:2] == ("spec", "policy"):
-            return {"approvals": {"integration": {"policy": "ask"}}}
+            return {"approvals": {"dev-integration": {"policy": "ask"}}}
         if args[:2] == ("workflow", "show"):
             if show_error:
                 raise show_error
