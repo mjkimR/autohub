@@ -48,6 +48,11 @@ class EnrollPullRequest(BaseModel):
         description="The pull request already holds its implementation (for example, an agent session opened it); "
         "skip the implementation request and start by observing CI",
     )
+    activity_effort: Literal["low", "medium", "high"] | None = Field(
+        default=None,
+        description="sdd runs only: how thoroughly the agent reviews above the gates and exit checks (strategy layer "
+        "activity-effort); passed to the agent as a run option and recorded by the worker envelope. Default medium.",
+    )
 
 
 class PipelineRunRead(UUIDSchemaMixin, TimestampSchemaMixin):

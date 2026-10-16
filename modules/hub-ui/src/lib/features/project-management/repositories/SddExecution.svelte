@@ -14,6 +14,30 @@
 	let error = $state('');
 	let inspected = $state('');
 	let warnings = $state<string[]>([]);
+	let effort = $state<'low' | 'medium' | 'high'>('medium');
+	let runtime = $state('');
+	let runtimeError = $state('');
+	async function checkRuntime() {
+		busy = true;
+		runtime = '';
+		runtimeError = '';
+		try {
+			const result = await api.GET('/api/v1/projects/{project_id}/sdd/runtime', {
+				params: { path: { project_id: projectId } }
+			});
+			if (result.error)
+				throw new Error(apiErrorMessage(result.error, 'Unable to check the runtime'));
+			const status = result.data;
+			const spec = status.revisions?.['devkit-spec']?.slice(0, 12);
+			const summary = `Runtime ${status.isolation ?? 'without a sandbox'}: ${status.ok ? 'ok' : 'unavailable'}${spec ? ` · devkit-spec ${spec}` : ''}`;
+			if (status.ok) runtime = summary;
+			else runtimeError = `${summary}. ${status.detail ?? ''}`.trim();
+		} catch (e) {
+			runtimeError = e instanceof Error ? e.message : 'Runtime check failed';
+		} finally {
+			busy = false;
+		}
+	}
 	let runId = $state('');
 	let startedKey = $state('');
 	const key = () => JSON.stringify([projectId, spec, pull]);
@@ -48,7 +72,7 @@
 		try {
 			const result = await api.POST('/api/v1/projects/{project_id}/runs', {
 				params: { path: { project_id: projectId } },
-				body: { spec_dir: spec, pull_number: pull, implemented: false }
+				body: { spec_dir: spec, pull_number: pull, implemented: false, activity_effort: effort }
 			});
 			if (result.error)
 				throw new Error(apiErrorMessage(result.error, 'Unable to start spec execution'));
@@ -90,8 +114,22 @@
 				disabled={busy}
 			/>
 		</label>
+		<label class="text-sm"
+			>Activity effort
+			<select
+				class="mt-1 block rounded border bg-background p-2"
+				bind:value={effort}
+				disabled={busy}
+				aria-label="Activity effort"
+			>
+				<option value="low">low</option>
+				<option value="medium">medium</option>
+				<option value="high">high</option>
+			</select>
+		</label>
 	</div>
-	<div class="flex gap-2">
+	<div class="flex flex-wrap gap-2">
+		<Button variant="outline" disabled={busy} onclick={checkRuntime}>Check runtime</Button>
 		<Button variant="outline" disabled={busy || !spec || !pull} onclick={inspect}
 			>Check readiness</Button
 		>
@@ -105,6 +143,8 @@
 			href={`/projects/runs?run=${runId}&view=decisions`}>Open execution & decisions</Button
 		>{/if}
 	<SddRunLinks {projectId} specDir={spec} refresh={runId} />
+	{#if runtime}<p role="status" class="text-sm">{runtime}</p>{/if}
+	{#if runtimeError}<p role="alert" class="text-sm text-destructive">{runtimeError}</p>{/if}
 	{#if message}<p role="status" class="text-sm">{message}</p>{/if}
 	{#each warnings as warning, index (index)}<p
 			role="status"

@@ -65,3 +65,61 @@ async def test_workflow_answer_is_revision_fenced_durable_and_replayed_once(
     publishing = await merge.advance(client, publishing)
     assert publishing["state"] == "implementing"
     assert publishing["sdd_progress"]["decision_head"] == publishing["sdd_progress"]["head_sha"]
+
+
+QUESTION = {
+    "id": "question:worker-01.q1",
+    "kind": "choose",
+    "title": "Storage format",
+    "prompt": "Which format should settings use?",
+    "target": {"type": "question", "name": "worker-01.yaml#q1", "stage": "build-verify"},
+    "options": [
+        {"id": "a", "eligible": True, "description": "Keep TOML", "recommended": True},
+        {"id": "b", "eligible": True, "description": "Switch to JSON", "recommended": False},
+    ],
+    "allow_note": True,
+    "answer": "envelope",
+    "context": "proposal.md section 3",
+}
+
+
+async def test_worker_question_is_answered_for_an_answer_envelope_not_a_record(client, run, monkeypatch, delivery):
+    calls = []
+
+    async def inspect(self, repository, spec_dir, pull, token, **kwargs):
+        calls.append(kwargs)
+        result = evidence(pull["head"]["sha"], pull["base"]["sha"])
+        result["current"]["stage"] = {"id": "build-verify", "name": "Build", "human_gate": False, "exit": []}
+        result["current"]["requests"] = [dict(QUESTION)]
+        result["hold"] = {
+            "blocked": False,
+            "problems": [],
+            "pending_questions": [{"file": "worker-01.yaml", "id": "q1", "title": "Storage format"}],
+            "malformed_workers": [],
+        }
+        return result
+
+    monkeypatch.setattr(services.SddService, "inspect", inspect)
+    waiting = await merge.advance(client, run)
+    assert waiting["state"] == "blocked"
+    assert waiting["pause_reason"] == "Worker question pending: Storage format"
+    declined, _ = await decide(client, waiting, workflow_answer={"request": QUESTION["id"], "action": "decline"})
+    assert declined.status_code == 422
+    answer = {"request": QUESTION["id"], "action": "accept", "value": "a"}
+    result, body = await decide(client, waiting, workflow_answer=answer, feedback="Keep TOML; tidy key names only")
+    assert result.status_code == 200, result.text
+    assert result.json()["state"] == "dispatching"
+    record = result.json()["sdd_progress"]["decision_records"][0]
+    assert record["kind"] == "answer-envelope"
+    assert (record["answers_to"], record["question"], record["choice"]) == ("worker-01.yaml", "q1", "a")
+    assert record["decision"] == "Keep TOML; tidy key names only"
+    assert all("operation" not in call for call in calls)  # no devkit record is authored for a question
+    attempts = (await client.get(f"/api/v1/pipeline-runs/{run['id']}/attempts")).json()["items"]
+    instructions = attempts[-1]["request_snapshot"]["instructions"]
+    assert (
+        "devkit workflow envelope answer --unit specs/2026-10/20261010-native --answers-to <worker file>"
+        in instructions
+    )
+    assert '"answers_to": "worker-01.yaml"' in instructions and '"choice": "a"' in instructions
+    replay = await client.post(f"/api/v1/pipeline-runs/{run['id']}/resume", json=body)
+    assert replay.json()["revision"] == result.json()["revision"]

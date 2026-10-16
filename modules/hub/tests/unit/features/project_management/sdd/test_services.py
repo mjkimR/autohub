@@ -24,7 +24,7 @@ def repo(tmp_path, monkeypatch):
     return root
 
 
-def evaluation(monkeypatch, *, stale, lint_error=None, show_error=None):
+def evaluation(monkeypatch, *, stale, lint_error=None, show_error=None, hold=None):
     """A devkit CLI double: the integration stage exits on lint-ci-clean and merge follows it."""
 
     async def restore(root):
@@ -41,10 +41,8 @@ def evaluation(monkeypatch, *, stale, lint_error=None, show_error=None):
             return {"checks": []}
         if args[:2] == ("workflow", "next"):
             linted = "lint-ci-clean" in args
-            return {
-                "bound": True,
-                "stage": {"id": "merge" if linted else "integrate", "exit": ["merged" if linted else "lint-ci-clean"]},
-            }
+            stage = {"id": "merge" if linted else "integrate", "exit": ["merged" if linted else "lint-ci-clean"]}
+            return {"bound": True, "stage": stage, **(hold or {})}
         if args[:3] == ("workflow", "envelope", "check"):
             return {"envelopes": []}
         raise AssertionError(args)
@@ -125,3 +123,72 @@ async def test_configuration_digest_uses_the_committed_receipt(repo, monkeypatch
 
     assert result["snapshot"]["configuration_digest"] == request_digest(committed)
     assert Path(repo / ".devkit/installation.json").read_text() != "{}"
+
+
+async def test_unresolved_problem_holds_integration_and_is_reported(repo, monkeypatch):
+    problem = {"file": "worker-02.yaml", "cause": "Build broke", "recovery": "Repair the fixture", "attempts": ["x"]}
+    evaluation(monkeypatch, stale=False, hold={"blocked": True, "problems": [problem], "pending_questions": []})
+    result = await evaluate(repo)
+    assert result["hold"]["blocked"] and result["hold"]["problems"] == [problem]
+    assert result["integrated"] is False and result["lint_diagnostic"] is None
+    assert result["current"]["stage"]["id"] == "integrate"  # devkit itself passes no gate while held
+
+
+async def test_pending_question_holds_integration_without_blocking(repo, monkeypatch):
+    pending = [{"file": "worker-01.yaml", "id": "q1", "title": "Storage format"}]
+    evaluation(monkeypatch, stale=False, hold={"blocked": False, "pending_questions": pending})
+    result = await evaluate(repo)
+    assert result["hold"] == {
+        "blocked": False,
+        "problems": [],
+        "pending_questions": pending,
+        "malformed_workers": [],
+    }
+    assert result["integrated"] is False
+
+
+def test_read_hold_bounds_repository_text():
+    current = {
+        "blocked": True,
+        "problems": [{"file": "w.yaml", "cause": "x" * 5000, "recovery": None, "attempts": list(range(20))}] * 30,
+        "pending_questions": [{"file": "w.yaml", "id": "q1", "title": "t"}],
+        "malformed_workers": [{"file": "bad.yaml", "reason": "no kind"}, "not-a-row"],
+    }
+    hold = services.read_hold(current)
+    assert len(hold["problems"]) == 10 and len(hold["problems"][0]["cause"]) == 1000
+    assert hold["problems"][0]["attempts"] == ["0", "1", "2", "3", "4"] and hold["problems"][0]["recovery"] == ""
+    assert hold["malformed_workers"] == [{"file": "bad.yaml", "reason": "no kind"}]
+
+
+async def test_runtime_status_reports_the_pin_and_an_isolated_start(monkeypatch, tmp_path):
+    from app.features.project_management.sdd import runtime
+
+    pin = {"provider": "devkit-spec", "lock_sha256": "abc", "revisions": {"devkit-spec": "f" * 40}}
+    monkeypatch.setattr(services, "runtime_pin", lambda: pin)
+    monkeypatch.setattr(services, "isolation_runner", lambda: "sandbox-exec")
+
+    async def command(*args, cwd, **kwargs):
+        assert args == ("devkit", "--version") and not str(cwd).startswith(str(tmp_path))
+        return "devkit, version 0.1.1\n"
+
+    monkeypatch.setattr(services, "command", command)
+    status = await services.SddService().runtime_status()
+    assert status == {
+        "ok": True,
+        "provider": "devkit-spec",
+        "lock_sha256": "abc",
+        "revisions": {"devkit-spec": "f" * 40},
+        "isolation": "sandbox-exec",
+        "detail": "devkit, version 0.1.1",
+    }
+
+    async def failing(*args, cwd, **kwargs):
+        raise SddCommandError("COMMAND_FAILED", "SDD evaluation failed (COMMAND_FAILED).")
+
+    monkeypatch.setattr(services, "command", failing)
+    status = await services.SddService().runtime_status()
+    assert status["ok"] is False and "COMMAND_FAILED" in status["detail"] and status["isolation"] == "sandbox-exec"
+    monkeypatch.setattr(services, "runtime_pin", runtime.runtime_pin)
+    monkeypatch.setenv("AUTOHUB_SDD_HOME", str(tmp_path / "absent"))
+    status = await services.SddService().runtime_status()
+    assert status["ok"] is False and "install-sdd" in status["detail"]

@@ -320,8 +320,13 @@ and system tools, no server credentials and no network. Linux needs bubblewrap
 and permission to create unprivileged namespaces; macOS uses sandbox-exec. There
 is no unsandboxed fallback. Validate namespace support on the actual container
 host: installing bubblewrap alone does not establish support, including on
-managed Cloud Run deployments. Unsupported hosts fail readiness and need a
-compatible execution host before native SDD can run.
+managed Cloud Run deployments (bubblewrap needs unprivileged user namespaces, which
+the first-generation execution environment does not provide; deploy with
+`--execution-environment=gen2`). `GET /api/v1/projects/{id}/sdd/runtime` (the
+**Check runtime** button of the repository's SDD panel) starts devkit inside the
+sandbox on the serving host and reports the runtime pin, so a new host is checked
+without a pull request. Unsupported hosts fail readiness and need a compatible
+execution host before native SDD can run.
 
 Only completed checks with rule violations become repair work; setup, loading
 and execution failures block, except that a recorded rule which no longer loads

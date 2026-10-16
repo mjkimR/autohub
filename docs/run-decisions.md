@@ -163,6 +163,19 @@ a generic resume. Worker questions (`question:*` requests) are not Hub decisions
 they are answered with an answer envelope on the pull request. Review the resulting evidence and explicitly approve in Hub.
 Earlier implementation clarifications retain the configured integration policy.
 
+Worker envelopes hold a run (devkit's envelope contract, section 4). An unresolved
+`problem` or a malformed worker envelope blocks the run with the problem's cause and
+recovery in the pause reason and in the next agent request; only a `resolution`
+envelope written by whoever fixed it clears the hold, so resume re-inspects and does
+not grant anything. An unanswered worker question appears as a `question:*` request:
+the operator chooses an option, or writes a decision outside them, and Hub records
+the answer as an `answer-envelope` decision record that the agent writes with
+`devkit workflow envelope answer` on the pull request. Questions are never declined
+or deferred. While a problem or question stands, no gate passes, approval is refused
+and nothing is merged. `activity_effort` (`low`, `medium`, `high`) is a run option of
+sdd enrollment: it is recorded in the run's snapshot, passed to the agent with every
+request and reported back by the worker envelope.
+
 The Repository spec view lists its latest 20 executions and links directly to their
 Decisions dialog. The dialog displays current evidence, the latest final-report,
 review and reverify summaries at the inspected commit, draft/approval requirements and the

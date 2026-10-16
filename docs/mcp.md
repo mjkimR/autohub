@@ -213,6 +213,8 @@ The `pending` entries describe missing/manual checks. It is not a per-run prereq
 - `runs_enroll`: `implemented` is required to distinguish CI observation from requesting
   implementation. After a lost response, use `runs_list` with both `project_id` and
   `pull_number` before retrying. Existing duplicate-enrollment conflict rules remain.
+  sdd projects also take `activity_effort` (`low`, `medium`, `high`; default medium):
+  the review depth the agent applies above the gates and exit checks.
 - `runs_resume`: inspect the paused/blocked run and its cause, then send a stable
   `request_id` and `expected_revision`. Select `answer_id` if a pending question
   has a saved response. Saving an answer alone does not resume. Revision and PR

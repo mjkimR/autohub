@@ -69,3 +69,59 @@ test('deferral records cancel without integration revocation or a selected optio
 	});
 	expect(api.POST.mock.calls[0][1].body.decision).toBeUndefined();
 });
+
+const questionRun = {
+	...run,
+	sdd_progress: {
+		current: {
+			requests: [
+				{
+					id: 'question:worker-01.q1',
+					kind: 'choose',
+					title: 'Storage format',
+					prompt: 'Which format should settings use?',
+					answer: 'envelope',
+					context: 'proposal.md section 3',
+					options: [
+						{ id: 'a', description: 'Keep TOML', eligible: true, recommended: true },
+						{ id: 'b', description: 'Switch to JSON', eligible: true, recommended: false }
+					]
+				}
+			]
+		}
+	}
+} as unknown as components['schemas']['PipelineRunRead'];
+
+test('a worker question is recorded with an option and a decision, never declined', async () => {
+	const user = userEvent.setup();
+	api.POST.mockResolvedValue({ data: { ...run, state: 'dispatching' } });
+	render(SddWorkflowRequests, { run: questionRun, onchange: vi.fn() });
+	expect(screen.getByText(/Worker question/)).toBeTruthy();
+	expect(screen.getByText(/Context: proposal.md section 3/)).toBeTruthy();
+	expect(screen.queryByRole('button', { name: 'Decline' })).toBeNull();
+	expect(screen.queryByRole('button', { name: 'Defer decision' })).toBeNull();
+	const record = screen.getByRole('button', { name: 'Record answer' }) as HTMLButtonElement;
+	expect(record.disabled).toBe(true);
+	await user.click(screen.getByLabelText(/Keep TOML/));
+	expect(record.disabled).toBe(false);
+	await user.type(screen.getByLabelText(/Decision/), 'Keep TOML; tidy key names only');
+	await user.click(record);
+	expect(api.POST.mock.calls[0][1].body).toMatchObject({
+		workflow_answer: { request: 'question:worker-01.q1', action: 'accept', value: 'a' },
+		feedback: 'Keep TOML; tidy key names only'
+	});
+});
+
+test('a question answered outside its options needs a written decision', async () => {
+	const user = userEvent.setup();
+	api.POST.mockResolvedValue({ data: { ...run, state: 'dispatching' } });
+	render(SddWorkflowRequests, { run: questionRun, onchange: vi.fn() });
+	const record = screen.getByRole('button', { name: 'Record answer' }) as HTMLButtonElement;
+	await user.type(screen.getByLabelText(/Decision/), 'Neither: keep both readers');
+	expect(record.disabled).toBe(false);
+	await user.click(record);
+	expect(api.POST.mock.calls[0][1].body).toMatchObject({
+		workflow_answer: { request: 'question:worker-01.q1', action: 'accept', value: null },
+		feedback: 'Neither: keep both readers'
+	});
+});

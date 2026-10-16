@@ -10,7 +10,7 @@ from app_layer_base.core.database.transaction import AsyncTransaction
 from fastapi import Depends
 
 from .repos import SddRepository
-from .schemas import SddReadiness
+from .schemas import SddReadiness, SddRuntimeStatus
 from .services import SddService
 
 
@@ -27,6 +27,11 @@ class SddUseCase:
             await self.projects.get(session, project_id)
             rows = await SddRepository().runs(session, project_id, spec_dir)
             return [PipelineRunRead.model_validate(row) for row in rows]
+
+    async def runtime(self, project_id):
+        async with AsyncTransaction() as session:
+            await self.projects.get(session, project_id)
+        return SddRuntimeStatus(**await SddService().runtime_status())
 
     async def readiness(self, project_id, request):
         async with AsyncTransaction() as session:

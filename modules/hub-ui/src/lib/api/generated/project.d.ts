@@ -178,6 +178,11 @@ export interface components {
              * @default false
              */
             implemented: boolean;
+            /**
+             * Activity Effort
+             * @description sdd runs only: how thoroughly the agent reviews above the gates and exit checks (strategy layer activity-effort); passed to the agent as a run option and recorded by the worker envelope. Default medium.
+             */
+            activity_effort?: ("low" | "medium" | "high") | null;
         };
         /**
          * GitHubAutomationConfig

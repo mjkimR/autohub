@@ -8,7 +8,7 @@ from app.features.project_management.projects.errors import ProjectError
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 
-from .decisions import validate_answer
+from .decisions import answer_envelope_record, is_question, validate_answer
 from .gates import INTEGRATION_REQUEST
 from .progress import SddProgress, approval_gate, carry_decisions
 from .services import SddService
@@ -66,10 +66,13 @@ class SddControl:
             ):
                 raise ProjectError(409, "Approval evidence changed; resume inspection before approving")
             operation = None
+            question = None
             if request.workflow_answer:
                 if evidence["evidence_digest"] != previous.get("evidence_digest"):
                     raise ProjectError(409, "Workflow evidence changed; inspect again before answering")
-                validate_answer(evidence, request.workflow_answer.model_dump())
+                answer = {**request.workflow_answer.model_dump(), "note": request.feedback}
+                open_request = validate_answer(evidence, answer)
+                question = open_request if is_question(open_request) else None
                 operation = request.workflow_answer.model_dump()
             elif request.decision == "approve" and any(
                 r["id"] == INTEGRATION_REQUEST and r.get("answer", "record") == "record"
@@ -92,11 +95,19 @@ class SddControl:
                     note=request.feedback,
                     expected_digest=evidence["evidence_digest"],
                 )
-                prepared = await SddService().inspect(
-                    repository, snapshot["spec_dir"], pull, token, snapshot=snapshot, operation=operation
-                )
-                if prepared.get("prepared_record"):
-                    evidence["decision_records"] = [*evidence.get("decision_records", []), prepared["prepared_record"]]
+                if question is not None:
+                    # No checkout work: the agent writes the answer envelope from this record.
+                    record = answer_envelope_record(operation, question)
+                    evidence["decision_records"] = [*evidence.get("decision_records", []), record]
+                else:
+                    prepared = await SddService().inspect(
+                        repository, snapshot["spec_dir"], pull, token, snapshot=snapshot, operation=operation
+                    )
+                    if prepared.get("prepared_record"):
+                        evidence["decision_records"] = [
+                            *evidence.get("decision_records", []),
+                            prepared["prepared_record"],
+                        ]
             if response and response[0].head_sha != evidence["head_sha"]:
                 raise ProjectError(409, "PR changed since the question; dismiss the stale question first")
         async with AsyncTransaction() as session:
@@ -128,7 +139,9 @@ class SddControl:
                     run,
                     evidence,
                     now,
-                    "Publish the recorded workflow answer. Continue only if devkit reports no human request.",
+                    "Record the operator's answer as an answer envelope, then continue the stage."
+                    if question is not None
+                    else "Publish the recorded workflow answer. Continue only if devkit reports no human request.",
                 )
             elif request.decision == "approve":
                 evidence.pop("approval_withheld", None)

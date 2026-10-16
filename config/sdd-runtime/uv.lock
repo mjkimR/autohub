@@ -3,7 +3,7 @@ revision = 3
 requires-python = "==3.13.*"
 
 [manifest]
-overrides = [{ name = "devkit-agt", git = "https://github.com/mjkimR/devkit.git?subdirectory=packages%2Fdevkit&rev=fb4d6c0c5e2efe5aa28146fa7337054671bd0434" }]
+overrides = [{ name = "devkit-agt", git = "https://github.com/mjkimR/devkit.git?subdirectory=packages%2Fdevkit&rev=d592cb30acae9dc2913ce39e005602fb2a4e0c6a" }]
 
 [[package]]
 name = "autohub-sdd-runtime"
@@ -17,9 +17,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "devkit-advisory", git = "https://github.com/mjkimR/devkit.git?subdirectory=packages%2Fdevkit-advisory&rev=fb4d6c0c5e2efe5aa28146fa7337054671bd0434" },
-    { name = "devkit-agt", git = "https://github.com/mjkimR/devkit.git?subdirectory=packages%2Fdevkit&rev=fb4d6c0c5e2efe5aa28146fa7337054671bd0434" },
-    { name = "devkit-spec", git = "https://github.com/mjkimR/devkit-spec?rev=c3ad0356be3ebe6f444cba3a4c65bacc60121888" },
+    { name = "devkit-advisory", git = "https://github.com/mjkimR/devkit.git?subdirectory=packages%2Fdevkit-advisory&rev=d592cb30acae9dc2913ce39e005602fb2a4e0c6a" },
+    { name = "devkit-agt", git = "https://github.com/mjkimR/devkit.git?subdirectory=packages%2Fdevkit&rev=d592cb30acae9dc2913ce39e005602fb2a4e0c6a" },
+    { name = "devkit-spec", git = "https://github.com/mjkimR/devkit-spec?rev=77923e2402a065be2dd7abd30a46fd677b426d29" },
 ]
 
 [[package]]
@@ -34,12 +34,12 @@ wheels = [
 [[package]]
 name = "devkit-advisory"
 version = "0.1.1"
-source = { git = "https://github.com/mjkimR/devkit.git?subdirectory=packages%2Fdevkit-advisory&rev=fb4d6c0c5e2efe5aa28146fa7337054671bd0434#fb4d6c0c5e2efe5aa28146fa7337054671bd0434" }
+source = { git = "https://github.com/mjkimR/devkit.git?subdirectory=packages%2Fdevkit-advisory&rev=d592cb30acae9dc2913ce39e005602fb2a4e0c6a#d592cb30acae9dc2913ce39e005602fb2a4e0c6a" }
 
 [[package]]
 name = "devkit-agt"
 version = "0.1.1"
-source = { git = "https://github.com/mjkimR/devkit.git?subdirectory=packages%2Fdevkit&rev=fb4d6c0c5e2efe5aa28146fa7337054671bd0434#fb4d6c0c5e2efe5aa28146fa7337054671bd0434" }
+source = { git = "https://github.com/mjkimR/devkit.git?subdirectory=packages%2Fdevkit&rev=d592cb30acae9dc2913ce39e005602fb2a4e0c6a#d592cb30acae9dc2913ce39e005602fb2a4e0c6a" }
 dependencies = [
     { name = "click" },
     { name = "devkit-advisory" },
@@ -50,7 +50,7 @@ dependencies = [
 [[package]]
 name = "devkit-spec"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/devkit-spec?rev=c3ad0356be3ebe6f444cba3a4c65bacc60121888#c3ad0356be3ebe6f444cba3a4c65bacc60121888" }
+source = { git = "https://github.com/mjkimR/devkit-spec?rev=77923e2402a065be2dd7abd30a46fd677b426d29#77923e2402a065be2dd7abd30a46fd677b426d29" }
 dependencies = [
     { name = "click" },
     { name = "devkit-agt" },

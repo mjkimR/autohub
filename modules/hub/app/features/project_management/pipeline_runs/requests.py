@@ -37,6 +37,11 @@ def build_implementation_request(
             "Do not mark the PR ready or merge. Ask for direction through the existing question channel. "
             "Follow devkit gate and the repository commit policy. Final verification is devkit rules check --ci --base <base>."
         )
+        if effort := run.sdd_snapshot.get("activity_effort"):
+            instructions += (
+                f"\nActivity effort: {effort}. It sets the review depth above the gates, exit checks and required "
+                "policies, never below them; record it as activity_effort in the worker envelope."
+            )
     snapshot = ImplementationRequest(
         sdd_stage=((run.sdd_progress or {}).get("current", {}).get("stage") or {}).get("id")
         if run.sdd_snapshot

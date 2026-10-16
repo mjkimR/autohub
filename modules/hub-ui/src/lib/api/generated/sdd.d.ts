@@ -21,6 +21,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/sdd/runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sdd Runtime
+         * @description Whether this host can evaluate SDD runs: the runtime pin and an isolated devkit start, without a PR.
+         */
+        get: operations["sdd_runtime_api_v1_projects__project_id__sdd_runtime_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/sdd/readiness": {
         parameters: {
             query?: never;
@@ -80,6 +100,26 @@ export interface components {
             warnings?: components["schemas"]["SddWarning"][];
         };
         /**
+         * SddRuntimeStatus
+         * @description The host's SDD runtime: its pin and whether devkit starts inside the sandbox (the new-host canary).
+         */
+        SddRuntimeStatus: {
+            /** Ok */
+            ok: boolean;
+            /** Provider */
+            provider?: string | null;
+            /** Lock Sha256 */
+            lock_sha256?: string | null;
+            /** Revisions */
+            revisions?: {
+                [key: string]: string;
+            };
+            /** Isolation */
+            isolation?: string | null;
+            /** Detail */
+            detail?: string | null;
+        };
+        /**
          * SddWarning
          * @description A best-effort finding that did not stop the evaluation (a stale receipt, a runtime revision mismatch).
          */
@@ -118,6 +158,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PipelineRunRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sdd_runtime_api_v1_projects__project_id__sdd_runtime_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SddRuntimeStatus"];
                 };
             };
             /** @description Validation Error */

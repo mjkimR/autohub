@@ -19,6 +19,10 @@
 		title: string;
 		prompt: string;
 		options: { id: string; description: string; eligible: boolean; recommended: boolean }[];
+		// devkit: record (a decision record), given (--given) or envelope (a worker question, answered by an
+		// answer envelope the agent writes). Questions are never declined or deferred.
+		answer?: string;
+		context?: string | null;
 	};
 	let engine = $derived((run.sdd_progress?.current || {}) as { requests?: Request[] });
 	let requests = $derived(
@@ -30,6 +34,10 @@
 	let error = $state('');
 	let retry = $state<{ intent: string; id: string } | null>(null);
 	let current = $derived(requests[0]);
+	let question = $derived(current?.answer === 'envelope' || current?.id.startsWith('question:'));
+	let answerable = $derived(
+		!!current && (current.kind !== 'choose' || !!selected || (question && note.trim().length > 0))
+	);
 	$effect(() => {
 		const key = `${run.id}:${run.revision}:${current?.id}`;
 		if (key) {
@@ -43,7 +51,7 @@
 		const workflow_answer = {
 			request: current.id,
 			action,
-			value: action === 'accept' && current.kind === 'choose' ? selected : null
+			value: action === 'accept' && current.kind === 'choose' && selected ? selected : null
 		};
 		const intent = JSON.stringify([run.id, run.revision, workflow_answer, note]);
 		if (retry?.intent !== intent) retry = { intent, id: crypto.randomUUID() };
@@ -75,13 +83,20 @@
 {#if current && ['paused', 'blocked'].includes(run.state)}
 	<section class="space-y-4 rounded-xl border bg-card p-4 sm:p-5" aria-label="SDD workflow request">
 		<div>
-			<p class="text-xs text-muted-foreground">Workflow decision · {current.id}</p>
+			<p class="text-xs text-muted-foreground">
+				{question ? 'Worker question' : 'Workflow decision'} · {current.id}
+			</p>
 			<h3 class="mt-1 font-semibold">{current.title}</h3>
 			<p class="mt-2 text-sm">{current.prompt}</p>
+			{#if current.context}<p class="mt-1 text-xs text-muted-foreground">
+					Context: {current.context}
+				</p>{/if}
 		</div>
 		{#if current.kind === 'choose'}
 			<fieldset class="space-y-2" disabled={busy || disabled}>
-				<legend class="mb-2 text-sm font-medium">Choose the next workflow</legend>
+				<legend class="mb-2 text-sm font-medium"
+					>{question ? 'Choose an option' : 'Choose the next workflow'}</legend
+				>
 				{#each current.options as option (option.id)}
 					<label
 						class="flex gap-3 rounded-lg border p-3 text-sm"
@@ -103,7 +118,7 @@
 			</fieldset>
 		{/if}
 		<label class="block space-y-2 text-sm"
-			>Note (optional)
+			>{question ? 'Decision (one sentence; required without an option)' : 'Note (optional)'}
 			<textarea
 				class="min-h-20 w-full rounded-lg border bg-background p-3"
 				maxlength="8000"
@@ -111,21 +126,32 @@
 				disabled={busy || disabled}></textarea>
 		</label>
 		<div class="flex flex-wrap gap-2">
-			<Button
-				disabled={busy || disabled || (current.kind === 'choose' && !selected)}
-				onclick={() => void answer('accept')}
-				>{busy ? 'Recording…' : current.kind === 'choose' ? 'Confirm choice' : 'Approve'}</Button
+			<Button disabled={busy || disabled || !answerable} onclick={() => void answer('accept')}
+				>{busy
+					? 'Recording…'
+					: question
+						? 'Record answer'
+						: current.kind === 'choose'
+							? 'Confirm choice'
+							: 'Approve'}</Button
 			>
-			<Button variant="outline" disabled={busy || disabled} onclick={() => void answer('decline')}
-				>Decline</Button
-			>
-			<Button variant="ghost" disabled={busy || disabled} onclick={() => void answer('cancel')}
-				>Defer decision</Button
-			>
+			{#if !question}
+				<Button variant="outline" disabled={busy || disabled} onclick={() => void answer('decline')}
+					>Decline</Button
+				>
+				<Button variant="ghost" disabled={busy || disabled} onclick={() => void answer('cancel')}
+					>Defer decision</Button
+				>
+			{/if}
 		</div>
 		<p class="text-xs text-muted-foreground">
-			Declining or deferring leaves this request open. Neither action stops the run or withdraws
-			integration approval.
+			{#if question}
+				The agent records this answer as an answer envelope on the pull request; the question stays
+				open until that envelope exists.
+			{:else}
+				Declining or deferring leaves this request open. Neither action stops the run or withdraws
+				integration approval.
+			{/if}
 		</p>
 		{#if error}<p role="alert" class="text-sm text-destructive">{error}</p>{/if}
 	</section>

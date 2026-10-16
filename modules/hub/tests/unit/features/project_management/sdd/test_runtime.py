@@ -195,7 +195,14 @@ def test_handoff_requires_eligible_choice_and_integration_uses_own_authority():
     evidence["current"]["requests"] = [{"id": "gate:dev-integration", "kind": "approve", "answer": "given"}]
     with pytest.raises(ProjectError, match="integration approval"):
         validate_answer(evidence, {"request": "gate:dev-integration", "action": "accept"})
-    question = {"id": "question:worker-01.q1", "kind": "choose", "answer": "envelope", "options": []}
+    options = [{"id": "a", "description": "", "eligible": True, "recommended": True}]
+    question = {"id": "question:worker-01.q1", "kind": "choose", "answer": "envelope", "options": options}
     evidence["current"]["requests"] = [question]
-    with pytest.raises(ProjectError, match="answer envelope"):
-        validate_answer(evidence, {"request": "question:worker-01.q1", "action": "accept", "value": "a"})
+    assert validate_answer(evidence, {"request": "question:worker-01.q1", "action": "accept", "value": "a"})
+    assert validate_answer(evidence, {"request": "question:worker-01.q1", "action": "accept", "note": "Outside"})
+    with pytest.raises(ProjectError, match="never declined"):
+        validate_answer(evidence, {"request": "question:worker-01.q1", "action": "decline"})
+    with pytest.raises(ProjectError, match="one of the question's options"):
+        validate_answer(evidence, {"request": "question:worker-01.q1", "action": "accept", "value": "zzz"})
+    with pytest.raises(ProjectError, match="Write the decision"):
+        validate_answer(evidence, {"request": "question:worker-01.q1", "action": "accept", "note": "  "})

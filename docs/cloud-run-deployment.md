@@ -192,6 +192,13 @@ gcloud run deploy "$SERVICE_NAME" \
   --set-secrets="APP_SECRETS_JSON=autohub-secrets:latest"
 ```
 
+Native SDD evaluation runs devkit inside bubblewrap, which needs unprivileged user
+namespaces: add `--execution-environment=gen2` to the deploy command for a service
+that evaluates SDD runs, then confirm on the deployed host with
+`GET /api/v1/projects/{id}/sdd/runtime` (or the SDD panel's **Check runtime**), which
+must report `ok: true` with `isolation: bubblewrap`. See
+[development](development.md) for the runtime contract.
+
 Record the deployed Service URL output (e.g. `https://autohub-xxxx-du.a.run.app`):
 
 ```bash

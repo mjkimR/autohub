@@ -109,6 +109,8 @@ class PipelineRunUseCase:
                 raise ProjectError(422, "Select a bound sdd spec before enrolling this project")
             if not native and request.spec_dir:
                 raise ProjectError(422, "Spec execution requires a sdd project")
+            if not native and request.activity_effort:
+                raise ProjectError(422, "Activity effort is a run option of sdd projects")
 
         # Keep GitHub reads outside database transactions.
         try:
@@ -157,7 +159,13 @@ class PipelineRunUseCase:
                         pull_number=snapshot.number,
                         pull_url=snapshot.url,
                         pull_snapshot=snapshot.model_dump(mode="json"),
-                        sdd_snapshot=evidence["snapshot"] if evidence else None,
+                        sdd_snapshot=(
+                            {**evidence["snapshot"], "activity_effort": request.activity_effort}
+                            if evidence and request.activity_effort
+                            else evidence["snapshot"]
+                            if evidence
+                            else None
+                        ),
                         sdd_progress=evidence,
                         state=(PipelineRunState.IMPLEMENTING if native else PipelineRunState.AWAITING_CI)
                         if inspect_only

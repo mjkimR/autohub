@@ -15,6 +15,17 @@ class SddWarning(BaseModel):
     detail: str
 
 
+class SddRuntimeStatus(BaseModel):
+    """The host's SDD runtime: its pin and whether devkit starts inside the sandbox (the new-host canary)."""
+
+    ok: bool
+    provider: str | None = None
+    lock_sha256: str | None = None
+    revisions: dict[str, str] = Field(default_factory=dict)
+    isolation: str | None = None
+    detail: str | None = None
+
+
 class SddReadiness(BaseModel):
     ready: bool
     reason: str | None = None

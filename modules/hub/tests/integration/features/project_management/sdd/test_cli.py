@@ -251,3 +251,86 @@ async def test_accepted_handoff_authorizes_only_the_selected_definition(checkout
     after = await SddService().evaluate(root, SPEC, "head", "base", snapshot, False)
     assert after["current"]["requests"][0]["id"] == "gate:dev-integration"
     assert after["current"]["stage"]["id"] == "successor-approval"
+
+
+def worker_envelope(root, *args):
+    return run(
+        root, devkit_binary(), "workflow", "envelope", "worker", "--unit", SPEC, "--stage", "bridge-check", *args
+    )
+
+
+async def test_worker_question_waits_until_an_answer_envelope_exists(checkout, tmp_path):
+    root, _ = checkout
+    questions = tmp_path / "questions.yaml"
+    questions.write_text(
+        "- id: q1\n  title: Storage format\n  prompt: Which format should settings use?\n"
+        "  options:\n    - { id: a, description: Keep TOML, recommended: true }\n"
+        "    - { id: b, description: Switch to JSON }\n"
+    )
+    worker_envelope(root, "--summary", "Needs a decision", "--questions-file", str(questions))
+    head = commit(root, "Worker asks")
+    waiting = await SddService().evaluate(root, SPEC, head, head, None, True)
+    assert waiting["hold"]["pending_questions"] == [
+        {"file": "envelopes/worker-01.yaml", "id": "q1", "title": "Storage format"}
+    ]
+    assert not waiting["hold"]["blocked"] and not waiting["integrated"]
+    request = waiting["current"]["requests"][0]
+    assert (request["id"], request["answer"], request["kind"]) == ("question:worker-01.q1", "envelope", "choose")
+    assert request["target"]["name"] == "worker-01.yaml#q1"
+    assert waiting["current"]["gate"]["held"]  # --given dev-integration passes nothing while a question waits
+    answers = tmp_path / "answers.yaml"
+    answers.write_text("- question: q1\n  choice: a\n  decision: Keep TOML\n")
+    run(
+        root,
+        devkit_binary(),
+        "workflow",
+        "envelope",
+        "answer",
+        "--unit",
+        SPEC,
+        "--answers-to",
+        "worker-01.yaml",
+        "--answers-file",
+        str(answers),
+        "--summary",
+        "q1 decided",
+    )
+    head = commit(root, "Operator answered")
+    answered = await SddService().evaluate(root, SPEC, head, head, None, False)
+    assert answered["hold"]["pending_questions"] == [] and not answered["hold"]["blocked"]
+    assert answered["current"]["requests"][0]["id"] == "gate:dev-integration"
+
+
+async def test_unresolved_problem_blocks_until_a_resolution_envelope(checkout, tmp_path):
+    root, _ = checkout
+    worker_envelope(root, "--summary", "Build stopped", "--problem", "Fixture broke", "--recovery", "Repair it")
+    head = commit(root, "Worker failed")
+    blocked = await SddService().evaluate(root, SPEC, head, head, None, True)
+    assert blocked["hold"]["blocked"] and not blocked["integrated"]
+    assert blocked["hold"]["problems"][0]["file"] == "envelopes/worker-01.yaml"
+    assert blocked["hold"]["problems"][0]["cause"] == "Fixture broke"
+    assert blocked["hold"]["problems"][0]["recovery"] == "Repair it"
+    run(
+        root,
+        devkit_binary(),
+        "workflow",
+        "envelope",
+        "resolution",
+        "--unit",
+        SPEC,
+        "--resolves",
+        "worker-01.yaml",
+        "--summary",
+        "Fixture repaired",
+    )
+    head = commit(root, "Resolved")
+    resolved = await SddService().evaluate(root, SPEC, head, head, None, False)
+    assert not resolved["hold"]["blocked"] and resolved["hold"]["problems"] == []
+
+
+async def test_runtime_status_starts_devkit_inside_the_sandbox(checkout):
+    status = await SddService().runtime_status()
+    assert status["ok"], status
+    assert status["isolation"] in ("sandbox-exec", "bubblewrap")
+    assert "devkit" in status["detail"]
+    assert set(status["revisions"]) >= {"devkit-spec", "devkit-agt"}

@@ -3,13 +3,15 @@
 import asyncio
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from app.features.project_management.pipeline_runs.requests import request_digest
 from app.features.project_management.projects.errors import ProjectError
 
 from .checkout import SddCommandError, checkout, command
 from .gates import INTEGRATION_GATE
-from .runtime import configured_version, restore, revision_warnings
+from .isolation import isolation_runner
+from .runtime import configured_version, restore, revision_warnings, runtime_pin
 
 STALE_LINT = (
     "Final lint did not run against the committed devkit receipt; run devkit sync with the reviewed runtime, "
@@ -43,7 +45,59 @@ def committed_configuration(root: Path) -> dict[str, str]:
     return texts
 
 
+def read_hold(current: dict) -> dict:
+    """The hold of the unit's envelopes as ``workflow next`` reports it (section 4 of devkit's envelope contract).
+
+    An unresolved problem or a malformed worker envelope blocks; an unanswered question waits. Bounded for storage
+    and display; repository text is shown to operators only through these fields.
+    """
+
+    def rows(key: str, fields: tuple[str, ...]) -> list[dict]:
+        out = []
+        for row in (current.get(key) or [])[:10]:
+            if not isinstance(row, dict):
+                continue
+            entry = {}
+            for field in fields:
+                value = row.get(field)
+                entry[field] = [str(v)[:300] for v in value[:5]] if isinstance(value, list) else str(value or "")[:1000]
+            out.append(entry)
+        return out
+
+    return {
+        "blocked": bool(current.get("blocked")),
+        "problems": rows("problems", ("file", "cause", "recovery", "attempts")),
+        "pending_questions": rows("pending_questions", ("file", "id", "title")),
+        "malformed_workers": rows("malformed_workers", ("file", "reason")),
+    }
+
+
 class SddService:
+    async def runtime_status(self) -> dict:
+        """Whether this host can evaluate: the runtime pin is consistent and devkit starts inside the sandbox.
+
+        The canary for a new host (Cloud Run needs user namespaces for bubblewrap): no repository is involved.
+        """
+        try:
+            pin = runtime_pin()
+        except ProjectError as exc:
+            return {"ok": False, "isolation": isolation_runner(), "detail": str(exc)}
+        status = {
+            "provider": pin.get("provider"),
+            "lock_sha256": pin.get("lock_sha256"),
+            "revisions": {k: str(v) for k, v in (pin.get("revisions") or {}).items()},
+            "isolation": isolation_runner(),
+        }
+        with TemporaryDirectory(prefix="autohub-sdd-probe-") as directory:
+            try:
+                async with asyncio.timeout(30):
+                    version = await command("devkit", "--version", cwd=Path(directory).resolve())
+            except ProjectError as exc:
+                return {**status, "ok": False, "detail": str(exc)}
+            except (OSError, TimeoutError):
+                return {**status, "ok": False, "detail": "Isolated devkit did not start within 30 seconds"}
+        return {**status, "ok": True, "detail": version.strip()[:200]}
+
     async def inspect(self, repository, spec_dir, pull, token, *, snapshot=None, approved=False, operation=None):
         head, base = pull["head"]["sha"], pull["base"]["sha"]
         try:
@@ -120,6 +174,8 @@ class SddService:
         current = await cli(root, "workflow", "next", "--unit", spec_dir, *given)
         if not current.get("bound") or current.get("drift") or current.get("errors"):
             raise ProjectError(422, "SDD binding drift or invalid envelope; repair the repository evidence")
+        hold = read_hold(current)
+        held = hold["blocked"] or bool(hold["pending_questions"])
         envelopes = await cli(root, "workflow", "envelope", "check", "--unit", spec_dir)
         reports = []
         for kind in ("final-report", "review", "reverify"):
@@ -139,7 +195,8 @@ class SddService:
         lint_diagnostic = None
         lint_blocked = False
         stage = current.get("stage") or {}
-        if approved and "lint-ci-clean" in stage.get("exit", []):
+        # devkit passes no gate while the unit is held, and its integration guard refuses the merge; so does Hub.
+        if approved and not held and "lint-ci-clean" in stage.get("exit", []):
             ancestry = await command("git-safe", "merge-base", head, base, cwd=root)
             if ancestry.strip() == base:
                 try:
@@ -171,4 +228,5 @@ class SddService:
             "lint_blocked": lint_blocked,
             "reports": reports,
             "warnings": warnings,
+            "hold": hold,
         }

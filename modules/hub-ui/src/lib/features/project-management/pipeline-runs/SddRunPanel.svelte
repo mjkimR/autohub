@@ -49,6 +49,11 @@
 	let stage = $derived(record(current.stage));
 	let approval = $derived(record(progress.approval));
 	let warnings = $derived(Array.isArray(progress.warnings) ? progress.warnings.map(record) : []);
+	let hold = $derived(record(progress.hold));
+	let problems = $derived(Array.isArray(hold.problems) ? hold.problems.map(record) : []);
+	let pendingQuestions = $derived(
+		Array.isArray(hold.pending_questions) ? hold.pending_questions.map(record) : []
+	);
 	let spec = $derived(String(run.sdd_snapshot?.spec_dir || ''));
 	let waiting = $derived(['paused', 'blocked'].includes(run.state));
 	let terminal = $derived(['completed', 'failed', 'canceled'].includes(run.state));
@@ -190,6 +195,25 @@
 		{#if progress.lint_diagnostic}<p class="rounded-lg border border-amber-500/30 p-3 text-sm">
 				{String(progress.lint_diagnostic)}
 			</p>{/if}
+		{#if hold.blocked || pendingQuestions.length}
+			<div class="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+				<p class="font-medium">
+					{hold.blocked ? 'Held by a worker problem' : 'Waiting for answers to worker questions'}
+				</p>
+				{#each problems as problem, index (index)}<p class="text-xs">
+						<code>{String(problem.file)}</code>: {String(problem.cause)}
+						{#if problem.recovery}<span class="text-muted-foreground">
+								· Recovery: {String(problem.recovery)}</span
+							>{/if}
+					</p>{/each}
+				{#each pendingQuestions as item, index (index)}<p class="text-xs">
+						<code>{String(item.file)}</code> · {String(item.id)}: {String(item.title)}
+					</p>{/each}
+				<p class="text-xs text-muted-foreground">
+					No gate passes and nothing is merged while the hold stands.
+				</p>
+			</div>
+		{/if}
 		{#each warnings as warning, index (index)}<p
 				class="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
 			>

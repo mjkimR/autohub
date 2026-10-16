@@ -25,7 +25,34 @@ AGENT_NOTES = {
 }
 
 
+def hold_of(evidence):
+    return evidence.get("hold") or {}
+
+
+def held(evidence):
+    """An unresolved worker problem or an unanswered question: no gate passes and nothing is merged."""
+    hold = hold_of(evidence)
+    return bool(hold.get("blocked") or hold.get("pending_questions"))
+
+
+def hold_reason(hold):
+    problems = [f"{p.get('file')}: {p.get('cause')}" for p in hold.get("problems") or []]
+    malformed = [f"{m.get('file')}: malformed worker envelope" for m in hold.get("malformed_workers") or []]
+    return (
+        "Worker problem unresolved: " + "; ".join([*problems, *malformed])[:900]
+    ) + ". A resolution envelope written by whoever fixed it clears the hold."
+
+
+def request_reason(evidence, stage):
+    questions = [r for r in evidence.get("current", {}).get("requests", []) if r.get("answer") == "envelope"]
+    if questions:
+        return "Worker question pending: " + "; ".join(str(q.get("title") or q.get("id")) for q in questions)[:900]
+    return f"Direction decision required: {stage.get('name', 'workflow gate')}"
+
+
 def approval_gate(evidence):
+    if held(evidence):
+        return False
     stage = evidence.get("current", {}).get("stage") or {}
     passed_integration = any(
         item.get("human_gate") == INTEGRATION_GATE and item["id"] in evidence.get("current", {}).get("done", [])
@@ -36,7 +63,7 @@ def approval_gate(evidence):
 
 def merge_ready(evidence):
     stage = evidence.get("current", {}).get("stage") or {}
-    return evidence.get("integrated") and "merged" in stage.get("exit", [])
+    return not held(evidence) and evidence.get("integrated") and "merged" in stage.get("exit", [])
 
 
 def carry_decisions(previous, evidence):
@@ -110,6 +137,14 @@ class SddProgress:
         for warning in evidence.get("warnings") or []:
             note = AGENT_NOTES.get(str(warning.get("code")), warning.get("detail"))
             request.instructions += f"\nHub warning ({warning.get('code')}): {note}"
+        unit = (run.sdd_snapshot or {}).get("spec_dir", "<unit>")
+        for problem in hold_of(evidence).get("problems") or []:
+            request.instructions += (
+                f"\nUnresolved worker problem in {problem.get('file')}: {problem.get('cause')} "
+                f"Recovery: {problem.get('recovery')} Once it is actually fixed, record it with "
+                f"devkit workflow envelope resolution --unit {unit} --resolves {problem.get('file')} --summary <fix>; "
+                "no gate passes until then."
+            )
         if evidence.get("approval"):
             request.instructions += (
                 f"\nHub integration authorization: {evidence['approval']['actor']}; "
@@ -220,16 +255,18 @@ class SddProgress:
                 active = await self.repo.active_attempt(session, run.id)
                 stage = evidence["current"].get("stage") or {}
                 requested_stage = active.request_snapshot.get("sdd_stage") if active else None
-                if evidence.get("lint_blocked"):
+                if hold_of(evidence).get("blocked"):
+                    # Only a resolution envelope by whoever fixed the problem clears this; retries do not.
+                    run.state, run.pause_reason = "blocked", hold_reason(hold_of(evidence))
+                    if previous != evidence or run.state != original_state:
+                        run.revision += 1
+                elif evidence.get("lint_blocked"):
                     # The final lint cannot run against the committed receipt; no agent attempt can repair that.
                     run.state, run.pause_reason = "blocked", str(evidence.get("lint_diagnostic"))
                     if previous != evidence or run.state != original_state:
                         run.revision += 1
                 elif evidence["current"].get("requests") or stage.get("human_gate"):
-                    run.state, run.pause_reason = (
-                        "blocked",
-                        f"Direction decision required: {stage.get('name', 'workflow gate')}",
-                    )
+                    run.state, run.pause_reason = "blocked", request_reason(evidence, stage)
                     run.revision += 1
                 elif (
                     not active

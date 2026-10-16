@@ -176,6 +176,10 @@ async def test_native_enrollment_requires_spec_and_readiness_is_read_only(client
     assert changed.status_code == 200
     missing = await client.post(f"/api/v1/projects/{project['id']}/runs", json={"pull_number": 7})
     assert missing.status_code == 422
+    runtime = await client.get(f"/api/v1/projects/{project['id']}/sdd/runtime")
+    assert runtime.status_code == 200, runtime.text
+    status = runtime.json()  # ok on a provisioned host; otherwise the detail names the installer
+    assert status["ok"] or "install-sdd" in status["detail"]
     ready = await client.post(
         f"/api/v1/projects/{project['id']}/sdd/readiness", json={"pull_number": 7, "spec_dir": SPEC}
     )
@@ -349,6 +353,45 @@ async def test_stale_receipt_lint_failure_pauses_without_dispatching(client, run
     assert resumed.status_code == 200, resumed.text
     assert len((await client.get(attempts_path)).json()["items"]) == before  # resume re-inspects, never dispatches
     assert github.merge_requests == 0
+
+
+async def test_unresolved_worker_problem_blocks_the_run_and_its_approval(client, run, github, monkeypatch):
+    problem = {"file": "worker-02.yaml", "cause": "Build broke", "recovery": "Repair the fixture", "attempts": []}
+
+    async def held(self, repository, spec_dir, pull, token, **kwargs):
+        value = evidence(pull["head"]["sha"], pull["base"]["sha"], kwargs.get("approved", False))
+        value["hold"] = {"blocked": True, "problems": [problem], "pending_questions": [], "malformed_workers": []}
+        value["current"]["gate"] = {"name": "dev-integration", "satisfied": False, "held": True}
+        return value
+
+    monkeypatch.setattr(native.SddService, "inspect", held)
+    blocked = await merge.advance(client, run)
+    assert blocked["state"] == "blocked"
+    assert blocked["pause_reason"].startswith("Worker problem unresolved: worker-02.yaml: Build broke")
+    approved, _ = await decide(client, blocked, "approve")
+    assert approved.status_code == 409  # no gate passes while the unit is held
+    assert github.merge_requests == 0
+
+
+async def test_activity_effort_is_recorded_and_passed_to_the_agent(client, project, github, inspector):
+    general = await client.post(
+        f"/api/v1/projects/{project['id']}/runs", json={"pull_number": 7, "activity_effort": "high"}
+    )
+    assert general.status_code == 422
+    changed = await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    assert changed.status_code == 200
+    github.draft = True
+    created = await client.post(
+        f"/api/v1/projects/{project['id']}/runs",
+        json={"pull_number": 7, "spec_dir": SPEC, "activity_effort": "high"},
+    )
+    assert created.status_code == 201, created.text
+    run = created.json()
+    assert run["sdd_snapshot"]["activity_effort"] == "high"
+    attempts = (await client.get(f"/api/v1/pipeline-runs/{run['id']}/attempts")).json()["items"]
+    assert "Activity effort: high." in attempts[0]["request_snapshot"]["instructions"]
 
 
 async def test_concurrent_duplicate_approval_has_one_receipt(client, run, is_postgres):

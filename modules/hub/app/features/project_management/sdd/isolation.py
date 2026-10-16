@@ -8,6 +8,15 @@ from pathlib import Path
 from app.features.project_management.projects.errors import ProjectError
 
 
+def isolation_runner() -> str | None:
+    """The sandbox this host would use, or None when it has none (then every evaluation is refused)."""
+    if sys.platform == "darwin" and shutil.which("sandbox-exec"):
+        return "sandbox-exec"
+    if sys.platform == "linux" and shutil.which("bwrap"):
+        return "bubblewrap"
+    return None
+
+
 def isolated_command(
     home: Path, root: Path, args: tuple[str, ...], python_prefix: str, *, git: bool = False
 ) -> list[str]:
