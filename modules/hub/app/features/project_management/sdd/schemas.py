@@ -20,7 +20,41 @@ class StartActivityRequest(BaseModel):
     base_branch: str = Field(default="main", min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_][A-Za-z0-9_./-]*$")
     activity_effort: Literal["low", "medium", "high"] | None = None
     catalog: str | None = Field(default=None, max_length=100, pattern=r"^[A-Za-z0-9_.-]+$")
-    actor: str = Field(default="", exclude=True)
+
+
+class ProposalRun(BaseModel):
+    id: str
+    state: str
+    revision: int
+    pause_reason: str | None = None
+    pull_number: int
+    head_sha: str | None = None
+    plan_accept_open: bool
+    decided: bool
+
+
+class ProposalState(BaseModel):
+    slug: str
+    id: str
+    path: str
+    title: str
+    status: str = Field(description="The proposal's status on the base branch")
+    display_status: str = Field(description="reviewing while plan-<slug> exists for a draft (no base commit)")
+    task_kind: str | None = None
+    plan_branch: bool
+    dev_branch: bool
+    plan_pull: int | None = None
+    dev_pull: int | None = None
+    run: ProposalRun | None = None
+    actions: list[Literal["start_planning", "accept", "reject", "start_development"]]
+    note: str | None = None
+
+
+class ProposalList(BaseModel):
+    base_branch: str
+    base_sha: str
+    items: list[ProposalState]
+    truncated: bool
 
 
 class SddWarning(BaseModel):

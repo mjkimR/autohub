@@ -23,6 +23,8 @@ external bundle, deployment-time plugin installation, or
 - `sdd` projects open **Sdd View** by default and can switch to **Git Browser**.
 - **Sdd View** has the tabs `문서 읽기` (the `docs/` Living Spec grouped by chapter),
   `Proposals` (`docs/proposals/PROP-*/` bundles), `Specs` (`specs/` task bundles)
+  (the Proposals panel above the viewer starts and decides proposals; see
+  [run decisions](run-decisions.md#proposals-panel))
   and `파일 탐색` (file explorer), with search and status filters.
 - Markdown parsing, YAML frontmatter, Mermaid diagram rendering, and document link
   normalization are built in.

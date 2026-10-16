@@ -12,7 +12,7 @@ from app_layer_base.core.database.transaction import AsyncTransaction
 from fastapi import Depends
 
 from .repos import SddRepository
-from .schemas import SddReadiness, SddRuntimeStatus
+from .schemas import ProposalList, SddReadiness, SddRuntimeStatus
 from .services import SddService
 
 
@@ -25,7 +25,7 @@ class SddUseCase:
     ):
         self.projects, self.observer, self.run_use_case = projects, observer, runs
 
-    async def start_activity(self, project_id, activity, slug, request) -> PipelineRunRead:
+    async def start_activity(self, project_id, activity, slug, request, actor: str) -> PipelineRunRead:
         from .activities import ActivityStarter
 
         async with AsyncTransaction() as session:
@@ -34,7 +34,23 @@ class SddUseCase:
                 raise ProjectError(422, "Select sdd project mode first")
             if not project.enabled or not project.github_repository or not project.github_connector_id:
                 raise ProjectError(422, "Enable the project and connect its GitHub repository")
-        return await ActivityStarter(self.observer, self.run_use_case).start(project, activity, slug, request)
+        return await ActivityStarter(self.observer, self.run_use_case).start(project, activity, slug, request, actor)
+
+    async def proposals(self, project_id, base_branch) -> ProposalList:
+        from .proposals import list_proposals
+
+        async with AsyncTransaction() as session:
+            project = await self.projects.get(session, project_id)
+            if project.project_type != "sdd":
+                raise ProjectError(422, "Select sdd project mode first")
+            if not project.github_repository or not project.github_connector_id:
+                raise ProjectError(422, "Connect the project's GitHub repository")
+
+        async def runs_for(unit):
+            async with AsyncTransaction() as session:
+                return await SddRepository().runs(session, project_id, unit)
+
+        return ProposalList(**await list_proposals(self.observer, project, base_branch, runs_for))
 
     async def runs(self, project_id, spec_dir):
         async with AsyncTransaction() as session:

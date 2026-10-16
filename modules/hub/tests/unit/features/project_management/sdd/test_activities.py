@@ -77,12 +77,12 @@ def started(monkeypatch):
 
 
 def request(**overrides):
-    return StartActivityRequest(request_id=uuid4(), actor="user:mj", **overrides)
+    return StartActivityRequest(request_id=uuid4(), **overrides)
 
 
 async def test_planning_starts_plan_branch_with_reviewing_and_a_ready_pull_request(started):
     github, branches, enrolled, project, starter = started
-    await starter.start(project, "plan", "demo", request(activity_effort="high"))
+    await starter.start(project, "plan", "demo", request(activity_effort="high"), "user:mj")
     branch, base, message, write = branches[0]
     assert (branch, base, message[0]) == ("plan-demo", BASE, "Start Planning of PROP-demo")
     assert write is not None  # sets status reviewing in the start commit
@@ -95,7 +95,7 @@ async def test_planning_starts_plan_branch_with_reviewing_and_a_ready_pull_reque
 async def test_development_starts_dev_branch_with_a_handoff_first_run(started):
     github, branches, enrolled, project, starter = started
     github.proposal = DRAFT.replace("status: draft", "status: accepted")
-    await starter.start(project, "dev", "demo", request())
+    await starter.start(project, "dev", "demo", request(), "user:mj")
     assert branches[0][0] == "dev-demo" and branches[0][3] is None
     assert github.created[0]["draft"] is True and enrolled[0].handoff is True
 
@@ -120,7 +120,7 @@ async def test_start_refuses_a_proposal_in_the_wrong_state(started, activity, pr
     github, branches, _, project, starter = started
     github.proposal, github.records = proposal, list(records)
     with pytest.raises(ProjectError, match=match):
-        await starter.start(project, activity, "demo", request())
+        await starter.start(project, activity, "demo", request(), "user:mj")
     assert not branches and not github.created
 
 
@@ -128,13 +128,13 @@ async def test_existing_branch_refuses_unless_it_carries_hubs_own_pull_request(s
     github, branches, enrolled, project, starter = started
     github.refs["plan-demo"] = "c" * 40
     with pytest.raises(ProjectError, match="already exists"):
-        await starter.start(project, "plan", "demo", request())
+        await starter.start(project, "plan", "demo", request(), "user:mj")
     github.pulls = [{"number": 9, "head": {"ref": "plan-demo"}, "body": activities.marker("plan", "demo")}]
-    await starter.start(project, "plan", "demo", request())
+    await starter.start(project, "plan", "demo", request(), "user:mj")
     assert not branches and not github.created and enrolled[0].pull_number == 9
 
 
 async def test_slug_must_make_an_activity_branch(started):
     *_, project, starter = started
     with pytest.raises(ProjectError, match="activity branch"):
-        await starter.start(project, "plan", "Demo", request())
+        await starter.start(project, "plan", "Demo", request(), "user:mj")

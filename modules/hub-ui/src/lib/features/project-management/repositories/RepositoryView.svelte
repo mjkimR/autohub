@@ -8,6 +8,7 @@
 	import FileBlobViewer from './FileBlobViewer.svelte';
 	import SddViewer from './sdd/SddViewer.svelte';
 	import SddExecution from './SddExecution.svelte';
+	import SddProposals from './SddProposals.svelte';
 	import { repositoryDataSource } from './data-source';
 	import type { RepoBlob, RepoInfo, RepoItem, RepoTree } from './types';
 
@@ -286,7 +287,13 @@
 				Loading repository…
 			</div>
 		{:else if viewerMode === 'sdd'}
-			{#if isSdd}{#key project.id}<SddExecution projectId={project.id} {selectedSpec} />{/key}{/if}
+			{#if isSdd}{#key project.id}<SddExecution
+						projectId={project.id}
+						{selectedSpec}
+					/><SddProposals
+						projectId={project.id}
+						repository={project.github?.repository ?? ''}
+					/>{/key}{/if}
 			<!-- Native Sdd Viewer -->
 			<section class="rounded-xl border bg-card p-4 shadow-xs">
 				{#key viewerRevision}

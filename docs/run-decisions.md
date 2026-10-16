@@ -205,6 +205,20 @@ pull request (a start whose response was lost, enrolled again). Branches that we
 never pushed are the local Host's to check before it calls. Both take
 `activity_effort` and `catalog`.
 
+## Proposals panel
+
+The repository view of an sdd project lists the proposals of a base branch
+(`GET /projects/{id}/sdd/proposals?base_branch=main`, at most 50). Each row shows the
+base status and a display status: a draft with a remote `plan-<slug>` shows as
+`reviewing` without any base commit. It links the open `plan-` and `dev-` pull
+requests and the proposal's unfinished run, and offers only the actions its state
+allows: **Start review** for a draft that needs no decomposition and has no Planning
+branch, **Accept** and **Reject…** (reason required) while its run waits at
+`gate:plan-accept`, unheld, and **Start development** for an accepted proposal
+without a Development branch. A rejected proposal offers nothing and reads as
+waiting for the hygiene cleanup of a local Host. The start buttons send the chosen
+base branch and activity effort.
+
 ## Proposal decisions
 
 A proposal run (unit `docs/proposals/PROP-<slug>` on branch `plan-<slug>`) stops at

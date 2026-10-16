@@ -5,7 +5,14 @@ from app.auth import CurrentUser
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from fastapi import APIRouter, Depends, Path, Query
 
-from .schemas import SPEC_PATTERN, SddInspectionRequest, SddReadiness, SddRuntimeStatus, StartActivityRequest
+from .schemas import (
+    SPEC_PATTERN,
+    ProposalList,
+    SddInspectionRequest,
+    SddReadiness,
+    SddRuntimeStatus,
+    StartActivityRequest,
+)
 from .usecases import SddUseCase
 
 router = APIRouter(prefix="/projects/{project_id}/sdd", tags=["Sdd"])
@@ -21,6 +28,18 @@ async def spec_runs(
     return await use_case.runs(project_id, spec_dir)
 
 
+@router.get("/proposals", response_model=ProposalList)
+async def list_proposals(
+    project_id: UUID,
+    use_case: Annotated[SddUseCase, Depends()],
+    base_branch: Annotated[
+        str, Query(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_][A-Za-z0-9_./-]*$")
+    ] = "main",
+):
+    """Proposals on the base with their activity branches, waiting run and the actions they can take."""
+    return await use_case.proposals(project_id, base_branch)
+
+
 @router.post("/proposals/{slug}/planning", response_model=PipelineRunRead, status_code=201)
 async def start_planning(
     project_id: UUID,
@@ -30,9 +49,7 @@ async def start_planning(
     use_case: Annotated[SddUseCase, Depends()],
 ):
     """Start Planning of a draft proposal: Hub creates plan-<slug> and its pull request, then enrolls the run."""
-    return await use_case.start_activity(
-        project_id, "plan", slug, request.model_copy(update={"actor": f"user:{user.id}"})
-    )
+    return await use_case.start_activity(project_id, "plan", slug, request, f"user:{user.id}")
 
 
 @router.post("/proposals/{slug}/development", response_model=PipelineRunRead, status_code=201)
@@ -44,9 +61,7 @@ async def start_development(
     use_case: Annotated[SddUseCase, Depends()],
 ):
     """Start Development of an accepted proposal: dev-<slug>, a draft pull request, a handoff-first run."""
-    return await use_case.start_activity(
-        project_id, "dev", slug, request.model_copy(update={"actor": f"user:{user.id}"})
-    )
+    return await use_case.start_activity(project_id, "dev", slug, request, f"user:{user.id}")
 
 
 @router.get("/runtime", response_model=SddRuntimeStatus)

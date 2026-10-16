@@ -21,6 +21,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/sdd/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Proposals
+         * @description Proposals on the base with their activity branches, waiting run and the actions they can take.
+         */
+        get: operations["list_proposals_api_v1_projects__project_id__sdd_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/sdd/proposals/{slug}/planning": {
         parameters: {
             query?: never;
@@ -108,6 +128,72 @@ export interface components {
         LinkedIssue: CommonComponents["schemas"]["LinkedIssue"];
         PipelineRunRead: CommonComponents["schemas"]["PipelineRunRead"];
         PipelineRunState: CommonComponents["schemas"]["PipelineRunState"];
+        /** ProposalList */
+        ProposalList: {
+            /** Base Branch */
+            base_branch: string;
+            /** Base Sha */
+            base_sha: string;
+            /** Items */
+            items: components["schemas"]["ProposalState"][];
+            /** Truncated */
+            truncated: boolean;
+        };
+        /** ProposalRun */
+        ProposalRun: {
+            /** Id */
+            id: string;
+            /** State */
+            state: string;
+            /** Revision */
+            revision: number;
+            /** Pause Reason */
+            pause_reason?: string | null;
+            /** Pull Number */
+            pull_number: number;
+            /** Head Sha */
+            head_sha?: string | null;
+            /** Plan Accept Open */
+            plan_accept_open: boolean;
+            /** Decided */
+            decided: boolean;
+        };
+        /** ProposalState */
+        ProposalState: {
+            /** Slug */
+            slug: string;
+            /** Id */
+            id: string;
+            /** Path */
+            path: string;
+            /** Title */
+            title: string;
+            /**
+             * Status
+             * @description The proposal's status on the base branch
+             */
+            status: string;
+            /**
+             * Display Status
+             * @description reviewing while plan-<slug> exists for a draft (no base commit)
+             */
+            display_status: string;
+            /** Task Kind */
+            task_kind?: string | null;
+            /** Plan Branch */
+            plan_branch: boolean;
+            /** Dev Branch */
+            dev_branch: boolean;
+            /** Plan Pull */
+            plan_pull?: number | null;
+            /** Dev Pull */
+            dev_pull?: number | null;
+            run?: components["schemas"]["ProposalRun"] | null;
+            /** Actions */
+            actions: ("start_planning" | "accept" | "reject" | "start_development")[];
+            /** Note */
+            note?: string | null;
+        };
         PullRequestSnapshot: CommonComponents["schemas"]["PullRequestSnapshot"];
         /** SddInspectionRequest */
         SddInspectionRequest: {
@@ -189,11 +275,6 @@ export interface components {
             activity_effort?: ("low" | "medium" | "high") | null;
             /** Catalog */
             catalog?: string | null;
-            /**
-             * Actor
-             * @default
-             */
-            actor: string;
         };
         ValidationError: CommonComponents["schemas"]["ValidationError"];
     };
@@ -224,6 +305,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PipelineRunRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_proposals_api_v1_projects__project_id__sdd_proposals_get: {
+        parameters: {
+            query?: {
+                base_branch?: string;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalList"];
                 };
             };
             /** @description Validation Error */

@@ -32,9 +32,8 @@ def register_sdd(registry: ToolRegistry, deps: Dependencies) -> None:
             base_branch=args.base_branch,
             activity_effort=args.activity_effort,
             catalog=args.catalog,
-            actor=actor,
         )
-        row = await use_case.start_activity(args.project_id, activity, args.slug, request)
+        row = await use_case.start_activity(args.project_id, activity, args.slug, request, actor)
         keys = await catalog_keys(deps)
         return RunView.model_validate(row).model_copy(update={"catalog_key": keys.get(row.ai_catalog_id)})
 

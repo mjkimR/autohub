@@ -91,7 +91,7 @@ class ActivityStarter:
     def __init__(self, observer, runs):
         self.observer, self.runs = observer, runs
 
-    async def start(self, project, activity: str, slug: str, request) -> PipelineRunRead:
+    async def start(self, project, activity: str, slug: str, request, actor: str) -> PipelineRunRead:
         if activity not in ACTIVITIES:
             raise ProjectError(422, "Activity must be plan or dev")
         try:
@@ -137,7 +137,7 @@ class ActivityStarter:
                     names = [str(r.get("name", "")) for r in records or []]
                     if not any("gate-plan-intent" in name for name in names):
                         raise ProjectError(409, f"Record plan-intent for PROP-{slug} in Backlog before Planning")
-                    message = (f"Start Planning of PROP-{slug}", f"Started-by: {request.actor}")
+                    message = (f"Start Planning of PROP-{slug}", f"Started-by: {actor}")
 
                     def write(checkout_root: Path) -> None:
                         set_status(checkout_root, unit, "draft", "reviewing")
@@ -151,7 +151,7 @@ class ActivityStarter:
                 else:
                     message = (
                         f"Start Development of PROP-{slug}",
-                        f"Handoff follows as the first step.\nStarted-by: {request.actor}",
+                        f"Handoff follows as the first step.\nStarted-by: {actor}",
                     )
                     sha = await start_branch(repository, base_sha, branch, token, message, None)
                 body = (
