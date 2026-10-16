@@ -589,9 +589,14 @@ export interface components {
             /** Answer Id */
             answer_id?: string | null;
             /** Decision */
-            decision?: ("approve" | "revise" | "reject" | "revoke") | null;
+            decision?: ("approve" | "revise" | "reject" | "revoke" | "accept_plan" | "reject_plan") | null;
             /** Feedback */
             feedback?: string | null;
+            /**
+             * Head Sha
+             * @description accept_plan and reject_plan: the pull request head the person confirmed; another head refuses
+             */
+            head_sha?: string | null;
         };
         ValidationError: CommonComponents["schemas"]["ValidationError"];
         /** WorkflowAnswer */

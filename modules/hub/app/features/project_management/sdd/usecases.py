@@ -50,6 +50,10 @@ class SddUseCase:
                 return SddReadiness(ready=False, reason=mismatch)
             token = await self.observer.get_token(connector, "github")
             evidence = await SddService().inspect(repository, request.spec_dir, pull, token)
+            if evidence.get("unit_status") == "rejected":
+                return SddReadiness(
+                    ready=False, reason="Rejected proposal: its Planning has ended and hygiene removes it"
+                )
             return SddReadiness(
                 ready=True,
                 head_sha=evidence["head_sha"],

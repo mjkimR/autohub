@@ -34,6 +34,51 @@ class SddCommandError(ProjectError):
         super().__init__(422, detail, code=f"SDD_{cli_code}")
 
 
+def remote_url(repository: str) -> str:
+    return f"https://github.com/{repository}.git"
+
+
+def credential_env(token: str) -> dict:
+    """Git credentials for one unsandboxed fetch or push: never in arguments, files, snapshots or errors."""
+    credential = base64.b64encode(f"x-access-token:{token}".encode()).decode()
+    return {
+        **os.environ,
+        "GIT_TERMINAL_PROMPT": "0",
+        "GIT_CONFIG_COUNT": "2",
+        "GIT_CONFIG_KEY_0": "http.https://github.com/.extraheader",
+        "GIT_CONFIG_VALUE_0": f"AUTHORIZATION: basic {credential}",
+        "GIT_CONFIG_KEY_1": "credential.helper",
+        "GIT_CONFIG_VALUE_1": "",
+    }
+
+
+async def push_head(root: Path, repository: str, branch: str, expected_head: str, token: str) -> None:
+    """Publish the checkout's HEAD to ``branch`` only while the remote branch still is ``expected_head``.
+
+    The lease is the head guard of the strategy layer (01 section 3): a decision commit is written on the head the
+    person confirmed, and a remote that moved meanwhile refuses it. Runs outside the sandbox, like the fetch.
+    """
+    if not re.fullmatch(r"[0-9a-f]{40}", expected_head) or not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_./-]*", branch):
+        raise ProjectError(422, "Invalid branch or head for publishing a decision")
+    try:
+        await command(
+            "git",
+            "push",
+            "--quiet",
+            remote_url(repository),
+            f"HEAD:refs/heads/{branch}",
+            f"--force-with-lease=refs/heads/{branch}:{expected_head}",
+            cwd=root,
+            env=credential_env(token),
+        )
+    except ProjectError:
+        raise ProjectError(
+            409,
+            "The pull request head changed while recording the decision; inspect the latest result and decide again",
+            code="SDD_HEAD_CHANGED",
+        ) from None
+
+
 async def command(*args: str, cwd: Path, env: dict | None = None, allow_failure: bool = False) -> str:
     if args[0] in ("devkit", "git-safe"):
         from .isolation import isolated_command
@@ -114,28 +159,17 @@ async def checkout(repository: str, head: str, base: str, token: str):
     with TemporaryDirectory(prefix="autohub-sdd-") as directory:
         root = Path(directory).resolve()
         await command("git", "init", "--quiet", cwd=root)
-        # Pass credentials only to fetch, never in arguments, files, snapshots or errors.
-        credential = base64.b64encode(f"x-access-token:{token}".encode()).decode()
-        env = {
-            **os.environ,
-            "GIT_TERMINAL_PROMPT": "0",
-            "GIT_CONFIG_COUNT": "2",
-            "GIT_CONFIG_KEY_0": "http.https://github.com/.extraheader",
-            "GIT_CONFIG_VALUE_0": f"AUTHORIZATION: basic {credential}",
-            "GIT_CONFIG_KEY_1": "credential.helper",
-            "GIT_CONFIG_VALUE_1": "",
-        }
         await command(
             "git",
             "fetch",
             "--quiet",
             "--no-tags",
             "--no-recurse-submodules",
-            f"https://github.com/{repository}.git",
+            remote_url(repository),
             head,
             base,
             cwd=root,
-            env=env,
+            env=credential_env(token),
         )
         await command("git", "-c", "core.hooksPath=/dev/null", "checkout", "--quiet", "--detach", head, cwd=root)
         # Harness/spec symlinks must not escape the disposable checkout into host files.

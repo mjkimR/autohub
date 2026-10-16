@@ -137,6 +137,8 @@ class PipelineRunUseCase:
             if pull["head"]["sha"] != snapshot.head_sha:
                 raise ProjectError(409, "PR changed during enrollment; retry")
             evidence = await SddService().inspect(repository, request.spec_dir, pull, token)
+            if evidence.get("unit_status") == "rejected":
+                raise ProjectError(422, "Rejected proposal: its Planning has ended and hygiene removes it")
 
         inspect_only = request.implemented or bool(
             evidence and (evidence["current"].get("stage") or {}).get("human_gate")

@@ -9,9 +9,11 @@ from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 
 from .decisions import answer_envelope_record, is_question, validate_answer
-from .gates import INTEGRATION_REQUEST
-from .progress import SddProgress, approval_gate, carry_decisions
+from .gates import INTEGRATION_REQUEST, PLAN_ACCEPT_REQUEST
+from .plan_decisions import PLAN_DECISIONS, plan_approval, record_plan_decision
+from .progress import SddProgress, approval_gate, carry_decisions, held
 from .services import SddService
+from .units import is_proposal
 
 
 class SddControl:
@@ -51,6 +53,7 @@ class SddControl:
             connector, repository, number = project.github_connector_id, project.github_repository, run.pull_number
         evidence = dict(previous)
         pull = None
+        plan = None
         if request.decision not in ("revoke", "reject"):
             pull = await self.observer.get_pull_request(connector, repository, number)
             if pull.get("state") != "open":
@@ -67,6 +70,8 @@ class SddControl:
                 raise ProjectError(409, "Approval evidence changed; resume inspection before approving")
             operation = None
             question = None
+            if request.decision in PLAN_DECISIONS:
+                plan = await self.decide_plan(request, actor, repository, snapshot, pull, token, evidence, previous)
             if request.workflow_answer:
                 if evidence["evidence_digest"] != previous.get("evidence_digest"):
                     raise ProjectError(409, "Workflow evidence changed; inspect again before answering")
@@ -143,6 +148,13 @@ class SddControl:
                     if question is not None
                     else "Publish the recorded workflow answer. Continue only if devkit reports no human request.",
                 )
+            elif plan is not None:
+                # The decision commit is pushed; the run merges it by the project's policy (01 section 6.2).
+                evidence.pop("approval_withheld", None)
+                evidence["plan_decision"] = plan
+                evidence["approval"] = plan_approval(plan)
+                evidence["allow_head_change"] = True
+                run.state, run.pause_reason = "awaiting_ci", None
             elif request.decision == "approve":
                 evidence.pop("approval_withheld", None)
                 evidence["approval"] = {
@@ -210,6 +222,7 @@ class SddControl:
                         or (request.workflow_answer.action if request.workflow_answer else "resume"),
                         "workflow_answer": request.workflow_answer.model_dump() if request.workflow_answer else None,
                         "decision_records": evidence.get("decision_records", []),
+                        "plan_decision": plan,
                         "revision": request.expected_revision,
                         "head_sha": evidence.get("head_sha"),
                         "base_sha": evidence.get("base_sha"),
@@ -222,3 +235,38 @@ class SddControl:
             )
             await session.flush()
             return PipelineRunRead.model_validate(run)
+
+    async def decide_plan(self, request, actor, repository, snapshot, pull, token, evidence, previous):
+        """Accept or reject a reviewing proposal on the head the person confirmed; Hub writes the commit."""
+        unit = snapshot["spec_dir"]
+        if not is_proposal(unit):
+            raise ProjectError(422, "Proposal decisions apply to proposal runs")
+        if not request.head_sha:
+            raise ProjectError(422, "Confirm the pull request head: head_sha is required for a proposal decision")
+        if request.head_sha != evidence["head_sha"]:
+            raise ProjectError(409, "Pull request head changed; inspect the latest result and decide again")
+        if evidence["evidence_digest"] != previous.get("evidence_digest"):
+            raise ProjectError(409, "Workflow evidence changed; inspect again before deciding")
+        status = evidence.get("unit_status")
+        if status != "reviewing":
+            raise ProjectError(409, f"Proposal is {status or 'without a status'}; only a reviewing proposal is decided")
+        if request.decision == "accept_plan":
+            if held(evidence):
+                raise ProjectError(409, "Resolve the worker problem or answer its questions before accepting")
+            if not any(r["id"] == PLAN_ACCEPT_REQUEST for r in evidence["current"].get("requests", [])):
+                raise ProjectError(409, "Proposal is not waiting for acceptance")
+        elif not (request.feedback or "").strip():
+            raise ProjectError(422, "Give the rejection reason; it is kept in the commit message")
+        return await record_plan_decision(
+            SddService(),
+            repository,
+            unit,
+            pull,
+            token,
+            decision=request.decision,
+            actor=actor,
+            note=request.feedback or "",
+            snapshot=snapshot,
+            expected_digest=evidence["evidence_digest"],
+            request_id=str(request.request_id),
+        )

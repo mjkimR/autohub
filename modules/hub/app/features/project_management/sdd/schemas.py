@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field
 
-SPEC_PATTERN = r"^specs/[0-9]{4}-[0-9]{2}/[a-zA-Z0-9_-]+$"
+from .units import UNIT_PATTERN
+
+SPEC_PATTERN = UNIT_PATTERN  # a spec bundle or a proposal bundle; the name stays for the API fields that use it
 
 
 class SddInspectionRequest(BaseModel):

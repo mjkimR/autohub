@@ -204,17 +204,24 @@ class GitHubActionsReader:
         return value
 
     async def merge_pull_request(
-        self, repository: str, pull_number: int, head_sha: str, merge_method: str = "squash"
+        self,
+        repository: str,
+        pull_number: int,
+        head_sha: str,
+        merge_method: str = "squash",
+        message: tuple[str, str] | None = None,
     ) -> dict[str, Any]:
         """Ask GitHub to merge the exact head verified by Hub.
 
         GitHub remains the authority for branch protection and the actual merge
-        result; callers must not treat a local CI observation as a merge.
+        result; callers must not treat a local CI observation as a merge. ``message``
+        (title, body) names the merge commit, so a squash keeps a decision's reason.
         """
+        payload: dict[str, Any] = {"sha": head_sha, "merge_method": merge_method}
+        if message is not None:
+            payload.update(commit_title=message[0], commit_message=message[1])
         try:
-            response = await self.client.put(
-                f"/repos/{repository}/pulls/{pull_number}/merge", json={"sha": head_sha, "merge_method": merge_method}
-            )
+            response = await self.client.put(f"/repos/{repository}/pulls/{pull_number}/merge", json=payload)
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             raise github_http_error("merge", exc.response) from None

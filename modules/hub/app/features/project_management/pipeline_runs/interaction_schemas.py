@@ -53,8 +53,13 @@ class WorkflowAnswer(BaseModel):
 class ResumeRunRequest(InteractionWrite):
     workflow_answer: WorkflowAnswer | None = None
     answer_id: UUID | None = None
-    decision: Literal["approve", "revise", "reject", "revoke"] | None = None
+    decision: Literal["approve", "revise", "reject", "revoke", "accept_plan", "reject_plan"] | None = None
     feedback: str | None = Field(default=None, max_length=8000)
+    head_sha: str | None = Field(
+        default=None,
+        pattern=r"^[0-9a-f]{40}$",
+        description="accept_plan and reject_plan: the pull request head the person confirmed; another head refuses",
+    )
 
 
 class AnswerRead(BaseModel):

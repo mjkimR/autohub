@@ -163,7 +163,10 @@ export interface components {
         };
         /** EnrollPullRequest */
         EnrollPullRequest: {
-            /** Spec Dir */
+            /**
+             * Spec Dir
+             * @description sdd projects: the unit the pull request works on, a spec bundle or a proposal bundle
+             */
             spec_dir?: string | null;
             /** Pull Number */
             pull_number: number;

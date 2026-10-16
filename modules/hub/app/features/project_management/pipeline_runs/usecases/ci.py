@@ -81,6 +81,7 @@ class CIProgress:
         pull_number: int,
         observer: PipelineObservationService,
         authorize_merge: Callable[[], Awaitable[None]],
+        merge_message: tuple[str, str] | None = None,
     ) -> CIObservation:
         if project_read.github is None:
             raise ProjectError(422, "Project missing GitHub connection for pipeline run")
@@ -127,6 +128,7 @@ class CIProgress:
                             pull_number,
                             current.head_sha,
                             project_read.github.automation.merge_method,
+                            merge_message,
                         )
                     except GitHubObservationError as exc:
                         if exc.status_code not in (405, 409):

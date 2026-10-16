@@ -29,6 +29,12 @@ def hold_of(evidence):
     return evidence.get("hold") or {}
 
 
+def plan_approval(plan):
+    from .plan_decisions import plan_approval as build
+
+    return build(plan)
+
+
 def held(evidence):
     """An unresolved worker problem or an unanswered question: no gate passes and nothing is merged."""
     hold = hold_of(evidence)
@@ -62,13 +68,25 @@ def approval_gate(evidence):
 
 
 def merge_ready(evidence):
+    if held(evidence):
+        return False
+    if plan := evidence.get("plan_decision"):
+        # A decided proposal merges on the commit that carries the decision; its workflow has no merge check.
+        return evidence.get("head_sha") == plan.get("commit_sha")
     stage = evidence.get("current", {}).get("stage") or {}
-    return not held(evidence) and evidence.get("integrated") and "merged" in stage.get("exit", [])
+    return bool(evidence.get("integrated")) and "merged" in stage.get("exit", [])
 
 
 def carry_decisions(previous, evidence):
     # CLI output cannot erase an operator's request or restore revoked authorization.
-    for key in ("rework_head", "approval_withheld", "decision_records", "decision_head"):
+    for key in (
+        "rework_head",
+        "approval_withheld",
+        "decision_records",
+        "decision_head",
+        "plan_decision",
+        "allow_head_change",
+    ):
         if key in previous:
             evidence[key] = previous[key]
     return evidence
@@ -193,7 +211,18 @@ class SddProgress:
             evidence = observed["evidence"]
             previous = run.sdd_progress or {}
             run.sdd_progress = evidence
-            if (
+            plan = evidence.get("plan_decision")
+            if plan and evidence["head_sha"] == plan.get("commit_sha"):
+                # Hub's own decision commit is the head now: merge it by policy, unless a worker problem holds.
+                evidence["allow_head_change"] = False
+                if hold_of(evidence).get("blocked"):
+                    run.state, run.pause_reason = "blocked", hold_reason(hold_of(evidence))
+                else:
+                    evidence.setdefault("approval", plan_approval(plan))
+                    run.state, run.pause_reason = "awaiting_ci", None
+                if previous != evidence or run.state != original_state:
+                    run.revision += 1
+            elif (
                 evidence.get("rework_head") == evidence["head_sha"]
                 or evidence.get("decision_head") == evidence["head_sha"]
             ):

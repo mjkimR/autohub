@@ -334,3 +334,150 @@ async def test_runtime_status_starts_devkit_inside_the_sandbox(checkout):
     assert status["isolation"] in ("sandbox-exec", "bubblewrap")
     assert "devkit" in status["detail"]
     assert set(status["revisions"]) >= {"devkit-spec", "devkit-agt"}
+
+
+PROPOSAL = "docs/proposals/PROP-demo"
+
+
+def reviewing_proposal(root):
+    """A proposal past plan-intent and in review, committed on the fixture's branch."""
+    from app.features.project_management.sdd import units
+
+    run(root, devkit_binary(), "spec", "proposal", "new", "demo", "--title", "Demo", "--task-kind", "feature")
+    run(
+        root,
+        devkit_binary(),
+        "workflow",
+        "answer",
+        "--unit",
+        PROPOSAL,
+        "--request",
+        "gate:plan-intent",
+        "--action",
+        "accept",
+        "--by",
+        "user:fixture",
+    )
+    units.set_status(root, PROPOSAL, "draft", "reviewing")
+    return commit(root, "Proposal in review")
+
+
+def bare_remote(root, tmp_path, head, monkeypatch):
+    """A bare clone standing in for GitHub: plan-demo at ``head``; pushes go there instead of github.com."""
+    from app.features.project_management.sdd import checkout as checkout_module
+
+    bare = (tmp_path / "remote.git").resolve()
+    subprocess.run(["git", "clone", "--quiet", "--bare", str(root), str(bare)], check=True)
+    run(bare, "git", "update-ref", "refs/heads/plan-demo", head)
+    monkeypatch.setattr(checkout_module, "remote_url", lambda repository: str(bare))
+    return bare
+
+
+def pull_at(head):
+    return {"head": {"sha": head, "ref": "plan-demo"}, "base": {"sha": head, "ref": "main"}}
+
+
+async def test_acceptance_is_one_commit_on_the_confirmed_head_pushed_under_a_lease(checkout, tmp_path, monkeypatch):
+    from app.features.project_management.sdd.plan_decisions import record_plan_decision
+
+    root, _ = checkout
+    head = reviewing_proposal(root)
+    bare = bare_remote(root, tmp_path, head, monkeypatch)
+    before = await SddService().evaluate(root, PROPOSAL, head, head, None, False)
+    assert before["unit_status"] == "reviewing"
+    assert before["current"]["requests"][0]["id"] == "gate:plan-accept"
+    plan = await record_plan_decision(
+        SddService(),
+        "owner/app",
+        PROPOSAL,
+        pull_at(head),
+        "token",
+        decision="accept_plan",
+        actor="user:fixture",
+        note="Go ahead",
+        snapshot=before["snapshot"],
+        expected_digest=before["evidence_digest"],
+        request_id="r1",
+    )
+    assert run(bare, "git", "rev-parse", "refs/heads/plan-demo") == plan["commit_sha"]
+    assert run(bare, "git", "log", "-1", "--format=%P", plan["commit_sha"]) == head  # parent: the confirmed head
+    assert run(bare, "git", "log", "-1", "--format=%an <%ae>", plan["commit_sha"]) == (
+        "AutoHub <autohub@users.noreply.github.com>"
+    )
+    message = run(bare, "git", "log", "-1", "--format=%B", plan["commit_sha"])
+    assert message.startswith("Accept proposal PROP-demo") and "Decided-by: user:fixture" in message
+    changed = run(bare, "git", "diff", "--name-only", head, plan["commit_sha"]).splitlines()
+    assert sorted(changed) == [f"{PROPOSAL}/decisions/02-gate-plan-accept.yaml", f"{PROPOSAL}/proposal.md"]
+    # The fixture checkout did not move; evaluate the pushed commit from a fresh clone of the remote.
+    verify = (tmp_path / "verify").resolve()
+    subprocess.run(["git", "clone", "--quiet", "--branch", "plan-demo", str(bare), str(verify)], check=True)
+    after = await SddService().evaluate(verify, PROPOSAL, plan["commit_sha"], plan["commit_sha"], None, False)
+    assert after["unit_status"] == "accepted" and after["current"]["complete"] and not after["current"]["requests"]
+    # The remote moved on: the same confirmed head no longer holds, so a second decision is refused.
+    with pytest.raises(ProjectError, match="head changed"):
+        await record_plan_decision(
+            SddService(),
+            "owner/app",
+            PROPOSAL,
+            pull_at(head),
+            "token",
+            decision="accept_plan",
+            actor="user:fixture",
+            note="",
+            snapshot=before["snapshot"],
+            expected_digest=before["evidence_digest"],
+            request_id="r2",
+        )
+
+
+async def test_rejection_changes_status_only_and_closes_open_questions(checkout, tmp_path, monkeypatch):
+    from app.features.project_management.sdd.plan_decisions import record_plan_decision
+
+    root, _ = checkout
+    reviewing_proposal(root)
+    questions = tmp_path / "questions.yaml"
+    questions.write_text(
+        "- id: q1\n  title: Storage format\n  prompt: Which format?\n  options:\n    - { id: a, description: TOML }\n"
+    )
+    run(
+        root,
+        devkit_binary(),
+        "workflow",
+        "envelope",
+        "worker",
+        "--unit",
+        PROPOSAL,
+        "--stage",
+        "direction-handoff",
+        "--summary",
+        "Needs a decision",
+        "--questions-file",
+        str(questions),
+    )
+    head = commit(root, "Worker asks")
+    bare = bare_remote(root, tmp_path, head, monkeypatch)
+    before = await SddService().evaluate(root, PROPOSAL, head, head, None, False)
+    assert before["hold"]["pending_questions"] and before["current"]["gate"]["held"]
+    plan = await record_plan_decision(
+        SddService(),
+        "owner/app",
+        PROPOSAL,
+        pull_at(head),
+        "token",
+        decision="reject_plan",
+        actor="user:fixture",
+        note="Too broad; split it",
+        snapshot=before["snapshot"],
+        expected_digest=before["evidence_digest"],
+        request_id="r3",
+    )
+    message = run(bare, "git", "log", "-1", "--format=%B", plan["commit_sha"])
+    assert message.startswith("Reject proposal PROP-demo: Too broad; split it")
+    changed = run(bare, "git", "diff", "--name-only", head, plan["commit_sha"]).splitlines()
+    assert sorted(changed) == [f"{PROPOSAL}/envelopes/answer-01.yaml", f"{PROPOSAL}/proposal.md"]
+    verify = (tmp_path / "verify").resolve()
+    subprocess.run(["git", "clone", "--quiet", "--branch", "plan-demo", str(bare), str(verify)], check=True)
+    after = await SddService().evaluate(verify, PROPOSAL, plan["commit_sha"], plan["commit_sha"], None, False)
+    assert after["unit_status"] == "rejected"
+    assert after["hold"]["pending_questions"] == [] and not after["hold"]["blocked"]
+    assert not after["current"]["requests"]  # a rejected proposal is never asked for acceptance again

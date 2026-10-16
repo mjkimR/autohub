@@ -12,6 +12,7 @@ from .checkout import SddCommandError, checkout, command
 from .gates import INTEGRATION_GATE
 from .isolation import isolation_runner
 from .runtime import configured_version, restore, revision_warnings, runtime_pin
+from .units import is_proposal, read_status, unit_anchor
 
 STALE_LINT = (
     "Final lint did not run against the committed devkit receipt; run devkit sync with the reviewed runtime, "
@@ -121,8 +122,9 @@ class SddService:
         version = configured_version()
         if version != expected:
             raise ProjectError(422, "SDD CLI version differs from the execution pin")
-        if not (root / ".devkit").is_dir() or not (root / spec_dir / "spec.md").is_file():
-            raise ProjectError(422, "Initialize devkit-spec and bind an existing spec before execution")
+        anchor = unit_anchor(spec_dir)
+        if not (root / ".devkit").is_dir() or anchor is None or not (root / spec_dir / anchor).is_file():
+            raise ProjectError(422, "Initialize devkit-spec and bind an existing spec or proposal before execution")
         committed = committed_configuration(root)
         # The repository's lock is parsed in this process (never executed); keep that work off the event loop.
         warnings = [*await restore(root), *await asyncio.to_thread(revision_warnings, root)]
@@ -229,4 +231,5 @@ class SddService:
             "reports": reports,
             "warnings": warnings,
             "hold": hold,
+            "unit_status": read_status(root, spec_dir) if is_proposal(spec_dir) else None,
         }

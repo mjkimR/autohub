@@ -187,6 +187,29 @@ latest 100 approval, rework, revocation and resume records. Questions and select
 answers remain in the existing question history. These native changes are locally
 tested; deployment and a live provider canary remain separate.
 
+## Proposal decisions
+
+A proposal run (unit `docs/proposals/PROP-<slug>` on branch `plan-<slug>`) stops at
+`gate:plan-accept` while the proposal is `reviewing`. The person decides with
+`decision: accept_plan` or `reject_plan` on `POST /pipeline-runs/{id}/resume` (MCP
+`runs_resume`), always with `head_sha`, the pull request head they inspected; a
+rejection needs `feedback`, the reason. Hub refuses another head, changed evidence,
+a run that is not waiting, a held unit (acceptance) and a proposal that is not
+`reviewing`. It then writes the decision itself, without an agent: in a disposable
+checkout of that head devkit records `gate:plan-accept` and Hub sets
+`status: accepted` (acceptance), or Hub sets `status: rejected` only and devkit
+closes every open worker question with an answer envelope whose choice is null and
+whose decision names the rejection (rejection). Git commits inside the sandbox as the
+Hub identity (`AUTOHUB_SDD_COMMIT_IDENTITY`, default
+`AutoHub <autohub@users.noreply.github.com>`) with a `Decided-by` trailer, and the
+push, outside the sandbox with the connector token, holds a lease on the confirmed
+head, so a branch that moved meanwhile refuses the commit. The run records the
+commit and moves to `awaiting_ci`; the project's CI and merge policy merge the
+Planning branch, and the merge commit reuses the decision's message so a squash
+keeps the rejection reason where hygiene looks for it. A proposal with an unresolved
+worker problem is not accepted; a rejected one is never enrolled or asked again. The
+`gate:plan-accept` request cannot be answered as a workflow answer.
+
 ## Replacing failed work
 
 1. Read the failed/canceled Run, PR and provider conversation. Ensure remote work

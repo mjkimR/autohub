@@ -5,7 +5,7 @@ from pathlib import Path
 
 from app.features.project_management.projects.errors import ProjectError
 
-from .gates import INTEGRATION_REQUEST
+from .gates import INTEGRATION_REQUEST, PLAN_ACCEPT_REQUEST
 
 
 def is_question(request: dict) -> bool:
@@ -19,6 +19,8 @@ def validate_answer(evidence: dict, answer: dict) -> dict:
         raise ProjectError(409, "Workflow request is no longer open; reload the run")
     if request["id"] == INTEGRATION_REQUEST:
         raise ProjectError(422, "Use the integration approval controls for this request")
+    if request["id"] == PLAN_ACCEPT_REQUEST:
+        raise ProjectError(422, "Use the proposal decision controls (accept_plan or reject_plan) for this request")
     value = answer.get("value")
     if is_question(request):
         if answer["action"] != "accept":

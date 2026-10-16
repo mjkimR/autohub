@@ -11,3 +11,6 @@ configuration template and docs. Hub builds on devkit-spec, so it follows devkit
 
 INTEGRATION_GATE = "dev-integration"
 INTEGRATION_REQUEST = f"gate:{INTEGRATION_GATE}"
+# Accepting a proposal: a record-channel gate Hub writes itself as a deterministic commit (01 section 4.2).
+PLAN_ACCEPT_GATE = "plan-accept"
+PLAN_ACCEPT_REQUEST = f"gate:{PLAN_ACCEPT_GATE}"

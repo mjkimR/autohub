@@ -446,3 +446,141 @@ async def test_spec_runs_are_exact_project_scoped_and_do_not_advance(client, run
     unknown = await client.get(f"/api/v1/projects/{uuid4()}/sdd/runs", params={"spec_dir": SPEC})
     assert unknown.status_code == 404
     assert github.merge_requests == 0
+
+
+PROPOSAL = "docs/proposals/PROP-demo"
+COMMIT = merge.HEAD  # the mocked decision commit lands on the same head the fixture CI already passed
+
+
+def proposal_evidence(head=merge.HEAD, status="reviewing"):
+    value = evidence(head, merge.BASE)
+    value["snapshot"]["spec_dir"] = PROPOSAL
+    value["snapshot"]["workflow_id"] = "sdd-proposal"
+    stage = {"id": "direction-handoff", "name": "Plan accept", "human_gate": "plan-accept", "exit": [], "skills": []}
+    value["workflow"] = {"id": "sdd-proposal", "stages": [stage]}
+    value["current"] = {
+        "bound": True,
+        "stage": stage,
+        "done": ["intent-proposal"],
+        "requests": [{"id": "gate:plan-accept", "kind": "approve", "answer": "record", "options": []}],
+    }
+    value["hold"] = {"blocked": False, "problems": [], "pending_questions": [], "malformed_workers": []}
+    value["unit_status"] = status
+    value["integrated"] = False
+    value["evidence_digest"] = request_digest({"head": head, "proposal": status})
+    return value
+
+
+@pytest.fixture
+def proposal_run(client, project, github, monkeypatch):
+    """A proposal pull request on plan-demo, blocked at gate:plan-accept; the decision commit is mocked."""
+    from app.features.project_management.sdd import control as control_module
+
+    state = {"status": "reviewing", "decisions": []}
+    original = github.pull
+    monkeypatch.setattr(github, "pull", lambda: {**original(), "head": {**original()["head"], "ref": "plan-demo"}})
+
+    async def inspect(self, repository, spec_dir, pull, token, **kwargs):
+        assert spec_dir == PROPOSAL
+        return proposal_evidence(pull["head"]["sha"], state["status"])
+
+    async def record(service, repository, unit, pull, token, **kwargs):
+        state["decisions"].append(kwargs)
+        state["status"] = "accepted" if kwargs["decision"] == "accept_plan" else "rejected"
+        slug = unit.rsplit("PROP-", 1)[-1]
+        title = (
+            f"Accept proposal PROP-{slug}"
+            if kwargs["decision"] == "accept_plan"
+            else f"Reject proposal PROP-{slug}: {kwargs['note']}"
+        )
+        return {
+            "action": kwargs["decision"],
+            "actor": kwargs["actor"],
+            "head_sha": pull["head"]["sha"],
+            "commit_sha": COMMIT,
+            "branch": "plan-demo",
+            "note": kwargs["note"],
+            "commit_title": title,
+            "commit_body": f"Decided-by: {kwargs['actor']}",
+            "decided_at": "2026-10-16T00:00:00+00:00",
+        }
+
+    monkeypatch.setattr(native.SddService, "inspect", inspect)
+    monkeypatch.setattr(control_module, "record_plan_decision", record)
+    from app.features.project_management.pipeline_runs.adapters.codex_github_mention import CodexGithubMentionAdapter
+
+    async def replies(*args, **kwargs):
+        return []
+
+    monkeypatch.setattr(CodexGithubMentionAdapter, "collect_replies", replies)
+
+    async def enroll():
+        changed = await client.patch(
+            f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+        )
+        assert changed.status_code == 200, changed.text
+        created = await client.post(
+            f"/api/v1/projects/{project['id']}/runs", json={"pull_number": 7, "spec_dir": PROPOSAL}
+        )
+        assert created.status_code == 201, created.text
+        return created.json()
+
+    return state, enroll
+
+
+async def test_proposal_acceptance_is_committed_by_hub_and_merged_by_policy(client, github, proposal_run):
+    state, enroll = proposal_run
+    run = await enroll()
+    waiting = await merge.advance(client, run)
+    assert waiting["state"] == "blocked"
+    assert waiting["pause_reason"] == "Direction decision required: Plan accept"
+    via_answer, _ = await decide(client, waiting, workflow_answer={"request": "gate:plan-accept", "action": "accept"})
+    assert via_answer.status_code == 422  # the gate is decided through the proposal controls, never relayed
+    no_head, _ = await decide(client, waiting, "accept_plan")
+    assert no_head.status_code == 422
+    wrong_head, _ = await decide(client, waiting, "accept_plan", head_sha="f" * 40)
+    assert wrong_head.status_code == 409
+    accepted, body = await decide(client, waiting, "accept_plan", head_sha=merge.HEAD, feedback="Go")
+    assert accepted.status_code == 200, accepted.text
+    assert accepted.json()["state"] == "awaiting_ci"
+    progress = accepted.json()["sdd_progress"]
+    assert progress["plan_decision"]["commit_sha"] == COMMIT and progress["approval"]["source"] == "plan-decision"
+    assert state["decisions"][0]["decision"] == "accept_plan" and state["decisions"][0]["note"] == "Go"
+    replay = await client.post(f"/api/v1/pipeline-runs/{run['id']}/resume", json=body)
+    assert replay.status_code == 200 and len(state["decisions"]) == 1
+    github.draft = False
+    done = await merge.advance(client, run)
+    assert done["state"] == "completed", done
+    assert github.merge_requests == 1
+    history = (await client.get(f"/api/v1/pipeline-runs/{run['id']}/sdd-decisions")).json()
+    assert history[0]["action"] == "accept_plan" and history[0]["plan_decision"]["commit_sha"] == COMMIT
+
+
+async def test_proposal_rejection_needs_a_reason_and_merges_the_status_change(client, github, proposal_run):
+    state, enroll = proposal_run
+    run = await enroll()
+    waiting = await merge.advance(client, run)
+    unexplained, _ = await decide(client, waiting, "reject_plan", head_sha=merge.HEAD)
+    assert unexplained.status_code == 422
+    rejected, _ = await decide(client, waiting, "reject_plan", head_sha=merge.HEAD, feedback="Too broad")
+    assert rejected.status_code == 200, rejected.text
+    assert rejected.json()["state"] == "awaiting_ci"
+    assert state["decisions"][0]["note"] == "Too broad"
+    github.draft = False
+    done = await merge.advance(client, run)
+    assert done["state"] == "completed" and github.merge_requests == 1
+
+
+async def test_a_rejected_proposal_is_not_enrolled(client, project, github, proposal_run):
+    state, _ = proposal_run
+    state["status"] = "rejected"
+    changed = await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    assert changed.status_code == 200
+    refused = await client.post(f"/api/v1/projects/{project['id']}/runs", json={"pull_number": 7, "spec_dir": PROPOSAL})
+    assert refused.status_code == 422 and "Rejected proposal" in refused.text
+    ready = await client.post(
+        f"/api/v1/projects/{project['id']}/sdd/readiness", json={"pull_number": 7, "spec_dir": PROPOSAL}
+    )
+    assert ready.status_code == 200 and not ready.json()["ready"] and "Rejected" in ready.json()["reason"]

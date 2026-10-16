@@ -214,13 +214,18 @@ The `pending` entries describe missing/manual checks. It is not a per-run prereq
   implementation. After a lost response, use `runs_list` with both `project_id` and
   `pull_number` before retrying. Existing duplicate-enrollment conflict rules remain.
   sdd projects also take `activity_effort` (`low`, `medium`, `high`; default medium):
-  the review depth the agent applies above the gates and exit checks. Their pull
-  request's head must be the spec's activity branch (`dev-<slug>` of
-  `specs/YYYY-MM/YYYYMMDD-<slug>`); another head is refused.
+  the review depth the agent applies above the gates and exit checks. `spec_dir`
+  names the unit: a spec (`specs/YYYY-MM/YYYYMMDD-<slug>`, on branch `dev-<slug>`)
+  or a proposal (`docs/proposals/PROP-<slug>`, on `plan-<slug>`); another head is
+  refused, and so is a rejected proposal.
 - `runs_resume`: inspect the paused/blocked run and its cause, then send a stable
   `request_id` and `expected_revision`. Select `answer_id` if a pending question
   has a saved response. Saving an answer alone does not resume. Revision and PR
   checks run before/after GitHub I/O; a changed question head rejects the answer.
+  A proposal run waiting at `gate:plan-accept` takes `decision: accept_plan` or
+  `reject_plan` with `head_sha` (the head you inspected) and, for a rejection,
+  `feedback` (the reason): Hub commits the decision itself and the pull request
+  merges by policy. See [Run decisions](run-decisions.md#proposal-decisions).
   Retry identical input with the same request ID after response loss. Its receipt
   returns current state without preparing another attempt or undoing a later pause.
   See [Run decisions and recovery](run-decisions.md) for question tools and limits.

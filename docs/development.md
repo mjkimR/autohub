@@ -298,7 +298,11 @@ digests the committed receipt, and a `RECEIPT_STALE` warning appears in a
 successful readiness result, in the run evidence and in the agent instructions;
 when a later step refuses after such a restore, its reason names the stale receipt.
 A plain sync that itself fails (`SYNC_CONFLICT`, `OVERRIDE_DRIFT`,
-`SELECTION_INVALID`) still blocks. The final `lint-ci-clean` check reads the
+`SELECTION_INVALID`) still blocks. Proposal decisions are the one write path: Hub
+commits inside the sandbox as `AUTOHUB_SDD_COMMIT_IDENTITY` (`Name <email>`, default
+`AutoHub <autohub@users.noreply.github.com>`) and pushes outside it with the connector
+token under a lease on the confirmed head ([run decisions](run-decisions.md#proposal-decisions)).
+The final `lint-ci-clean` check reads the
 committed tree and enforces exactly the rule set the committed receipt records, so
 a stale receipt integrates under that older rule set; a recorded rule whose
 regenerated copy no longer loads pauses the run with the lint diagnostic instead of

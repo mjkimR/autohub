@@ -125,3 +125,45 @@ test('a question answered outside its options needs a written decision', async (
 		feedback: 'Neither: keep both readers'
 	});
 });
+
+test('a proposal decision is sent with the confirmed head and never relayed as a workflow answer', async () => {
+	const user = userEvent.setup();
+	api.POST.mockResolvedValue({ data: { ...run, state: 'awaiting_ci' } });
+	const planRun = {
+		...run,
+		sdd_progress: {
+			head_sha: 'a'.repeat(40),
+			current: {
+				requests: [
+					{
+						id: 'gate:plan-accept',
+						kind: 'approve',
+						title: 'Approve plan-accept',
+						prompt: 'Accept the proposal?',
+						answer: 'record',
+						options: []
+					}
+				]
+			}
+		}
+	} as unknown as components['schemas']['PipelineRunRead'];
+	render(SddWorkflowRequests, { run: planRun, onchange: vi.fn() });
+	expect(screen.getByText(/Proposal decision/)).toBeTruthy();
+	expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
+	const reject = screen.getByRole('button', { name: 'Reject proposal' }) as HTMLButtonElement;
+	expect(reject.disabled).toBe(true);
+	await user.click(screen.getByRole('button', { name: 'Accept proposal' }));
+	expect(api.POST.mock.calls[0][1].body).toMatchObject({
+		decision: 'accept_plan',
+		head_sha: 'a'.repeat(40),
+		expected_revision: 5
+	});
+	await user.type(screen.getByLabelText(/Note/), 'Too broad');
+	expect(reject.disabled).toBe(false);
+	await user.click(reject);
+	expect(api.POST.mock.calls[1][1].body).toMatchObject({
+		decision: 'reject_plan',
+		head_sha: 'a'.repeat(40),
+		feedback: 'Too broad'
+	});
+});

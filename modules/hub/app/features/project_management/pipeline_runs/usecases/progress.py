@@ -262,8 +262,10 @@ class PipelineRunProgress:
                     )
                 ):
                     assert project_read is not None
+                    plan = ((native_result or {}).get("evidence") or {}).get("plan_decision") or {}
+                    merge_message = (plan["commit_title"], plan["commit_body"]) if plan.get("commit_title") else None
                     ci_result = await ci.observe(
-                        project_read, pull_number, observer, lambda: self._authorize_merge(checkpoint)
+                        project_read, pull_number, observer, lambda: self._authorize_merge(checkpoint), merge_message
                     )
         except TimeoutError:
             raise ProjectError(

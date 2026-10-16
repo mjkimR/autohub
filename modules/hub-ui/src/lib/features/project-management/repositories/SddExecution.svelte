@@ -97,11 +97,11 @@
 	</p>
 	<div class="flex flex-wrap gap-3">
 		<label class="min-w-64 flex-1 text-sm"
-			>Spec directory
+			>Unit directory (spec or proposal)
 			<input
 				class="mt-1 w-full rounded border bg-background p-2"
 				bind:value={spec}
-				placeholder="specs/2026-10/20261010-feature"
+				placeholder="specs/2026-10/20261010-feature or docs/proposals/PROP-feature"
 				disabled={busy}
 			/>
 		</label>

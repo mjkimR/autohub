@@ -34,7 +34,12 @@ class PullRequestSnapshot(BaseModel):
 
 
 class EnrollPullRequest(BaseModel):
-    spec_dir: str | None = Field(default=None, pattern=r"^specs/[0-9]{4}-[0-9]{2}/[a-zA-Z0-9_-]+$", max_length=255)
+    spec_dir: str | None = Field(
+        default=None,
+        pattern=r"^(specs/[0-9]{4}-[0-9]{2}/[a-zA-Z0-9_-]+|docs/proposals/PROP-[a-z0-9][a-z0-9_-]*)$",
+        max_length=255,
+        description="sdd projects: the unit the pull request works on, a spec bundle or a proposal bundle",
+    )
     pull_number: int = Field(gt=0)
     catalog: str | None = Field(
         default=None,
