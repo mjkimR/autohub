@@ -12,8 +12,23 @@ from app.features.project_management.pipelines.github import (
 from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 
 
-class MissingWorkBaseBranch(GitHubObservationError):
+class PreparationRefused(GitHubObservationError):
+    """Preparation stops for good before any write; the item needs a different start, not a retry."""
+
+    def __init__(self, message: str):
+        super().__init__(message, 422)
+
+
+class MissingWorkBaseBranch(PreparationRefused):
     """The readable repository has no exact target ref; no preparation writes have begun."""
+
+
+class ActivityBranchTaken(PreparationRefused):
+    """The item's activity branch already exists on the remote and carries work that is not this item's."""
+
+
+class AttachedBranchMissing(PreparationRefused):
+    """An explicitly attached branch is not on the remote; nothing to attach to."""
 
 
 class WorkGitHub:
@@ -56,13 +71,19 @@ class WorkGitHub:
         return ref["object"]["sha"]
 
     async def prepare(self, plan: WorkPlan, item: WorkItem) -> dict:
+        """Start the item's activity branch, or attach to the one the operator named; then its PR.
+
+        A new start refuses an existing remote branch unless it is this item's own earlier attempt (the seed file,
+        the marked PR, or an untouched tip at the item's base). An explicit attach never creates the branch and
+        adopts an open PR of it whatever its body says.
+        """
         root = f"/repos/{plan.repository}"
         branch = item.branch
+        attached = item.attach_branch is not None
+        seed = f".autohub/work-items/{item.id}.md"
+        marker = f"<!-- autohub-work-pr:{item.id} -->"
         ref_path = f"{root}/git/ref/heads/{quote(str(branch), safe='')}"
         ref = await self.optional(ref_path)
-        if ref is None:
-            await self.write("POST", f"{root}/git/refs", {"ref": f"refs/heads/{branch}", "sha": item.base_sha})
-        seed = f".autohub/work-items/{item.id}.md"
         pulls = await self.reader._get_list(
             f"{root}/pulls",
             {
@@ -71,10 +92,29 @@ class WorkGitHub:
                 "per_page": 100,
             },
         )
-        marker = f"<!-- autohub-work-pr:{item.id} -->"
         pull = next((p for p in pulls if p.get("head", {}).get("ref") == branch), None)
+        if attached:
+            if ref is None:
+                raise AttachedBranchMissing(f"Attached branch {branch} does not exist on the remote; push it first")
+            # Attaching adopts the branch's open pull request; a closed one is history, so a new one is opened.
+            pull = next((p for p in pulls if p.get("head", {}).get("ref") == branch and p.get("state") == "open"), None)
+        elif ref is None:
+            await self.write("POST", f"{root}/git/refs", {"ref": f"refs/heads/{branch}", "sha": item.base_sha})
+        else:
+            ours = (
+                (pull is not None and marker in (pull.get("body") or ""))
+                or (ref.get("object") or {}).get("sha") == item.base_sha
+                or await self.optional(f"{root}/contents/{seed}", {"ref": branch}) is not None
+            )
+            if not ours:
+                raise ActivityBranchTaken(
+                    f"Branch {branch} already exists on the remote and is not this item's; attach it explicitly "
+                    "with attach_branch, or use another item key"
+                )
         if pull:
-            if marker not in (pull.get("body") or "") or pull.get("base", {}).get("ref") != plan.base_branch:
+            if pull.get("base", {}).get("ref") != plan.base_branch:
+                raise GitHubObservationError("Reserved work PR identity or target branch changed", 422)
+            if not attached and marker not in (pull.get("body") or ""):
                 raise GitHubObservationError("Reserved work PR identity or target branch changed", 422)
             return pull
         if await self.optional(f"{root}/contents/{seed}", {"ref": branch}) is None:

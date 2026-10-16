@@ -127,8 +127,12 @@ class PipelineRunUseCase:
 
         evidence = None
         if native:
+            from app.features.project_management.branches import unit_branch_mismatch
             from app.features.project_management.sdd.services import SddService
 
+            # Enrolling a pull request is the explicit attach of the cloud path: its head must be the unit's branch.
+            if mismatch := unit_branch_mismatch(str(request.spec_dir), snapshot.head_ref):
+                raise ProjectError(422, mismatch, code="SDD_BRANCH_MISMATCH")
             pull = await self.observer.get_pull_request(connector_id, repository, request.pull_number)
             if pull["head"]["sha"] != snapshot.head_sha:
                 raise ProjectError(409, "PR changed during enrollment; retry")

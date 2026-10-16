@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from app.features.ai_catalogs.repos import AICatalogRepository
 from app.features.ai_catalogs.services import AICatalogService
+from app.features.project_management.branches import item_branch
 from app.features.project_management.pipeline_runs.models import PipelineRun
 from app.features.project_management.pipeline_runs.usecases.catalogs import project_catalog
 from app.features.project_management.projects.repos import ProjectRepository
@@ -151,7 +152,7 @@ class WorkExecutionRepository:
                 return None
             candidate.state, candidate.started_at = "preparing", now
             candidate.ai_catalog_id = catalog.id
-            candidate.branch = f"autohub/work/{candidate.id}"
+            candidate.branch = candidate.attach_branch or item_branch(candidate.key)
             candidate.detail = None
         await session.flush()
         token = uuid4()

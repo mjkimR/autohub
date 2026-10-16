@@ -58,6 +58,8 @@ class WorkItem(Base, UUIDMixin, TimestampMixin):
     execution_id: Mapped[UUID | None] = mapped_column()
     pipeline_run_retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     branch: Mapped[str | None] = mapped_column(String(255))
+    # An existing activity branch the operator attached explicitly; otherwise the item starts dev-<key>.
+    attach_branch: Mapped[str | None] = mapped_column(String(64))
     base_sha: Mapped[str | None] = mapped_column(String(64))
     pull_number: Mapped[int | None] = mapped_column()
     pull_url: Mapped[str | None] = mapped_column(String(2048))

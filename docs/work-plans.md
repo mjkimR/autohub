@@ -58,12 +58,25 @@ without waiting for the tick. This follow-up has a 25-second budget and at most 
 admissions; anything unfinished, refused, or failed stays due for the scheduler tick,
 which remains the recovery path. Pause and revoke never start work.
 
-A deterministic `autohub/work/<item-id>` branch is created from the target head
-recorded at admission/preparation. A temporary `.autohub/work-items/<item-id>.md`
-file provides the initial PR diff. The implementation request tells the agent to
-remove it. PRs are created ready for review, so the project's existing automatic
-merge policy can apply without a separate Draft approval. Human Draft changes
-remain effective. Manual-merge projects wait for the actual merge.
+Each item is Development on the cloud `session` path, so it works on the activity
+branch `dev-<key>` (the key lowercased; the shared rule is `(plan|dev)-[a-z0-9][a-z0-9_-]*`,
+at most 64 characters, the same the local Host uses). The branch is created from the
+target head recorded at admission/preparation. A branch of that name that already
+exists on the remote means the slug's Development is in progress elsewhere: the
+start is refused and the item ends in `preparation_failed` with that detail, unless
+the branch is this item's own earlier attempt (its seed file, its marked PR, or an
+untouched tip at the recorded base). To hand existing work to Hub, register the item
+with `attach_branch` naming that remote activity branch: Hub never creates it, adopts
+an open PR of it whatever its body says, and refuses with `preparation_failed` when
+it is not on the remote. Branches that were never pushed are the Host's to check
+before it registers. Keys are therefore slugs: unique across the repository's
+in-progress work, not only within the plan, and a merged item's branch keeps its
+slug taken until the repository deletes merged head branches or an operator removes
+it. A temporary `.autohub/work-items/<item-id>.md` file provides the
+initial PR diff. The implementation request tells the agent to remove it. PRs are
+created ready for review, so the project's existing automatic merge policy can apply
+without a separate Draft approval. Human Draft changes remain effective.
+Manual-merge projects wait for the actual merge.
 
 Local Item specifications become the immutable Run request. GitHub Issue bodies
 are not loaded into these requests, including on retries. Work PR target/head
@@ -256,7 +269,8 @@ Base path: `/api/v1/projects/{project_id}/work-plans`.
 
 Creation fields: optional `state` (`active` default, `draft`, `proposed`, `paused`), optional `request_id` (required for reliable retries), `title`, optional `group_key`, `description`, `base_branch`, `depends_on`
 (existing Plan UUIDs), optional `scheduled_at` (timezone-aware earliest start), and `items`. Draft items require a stable `key`; title, description and acceptance
-can be filled later. All other initial states require 1–100 complete items.
+can be filled later. An item may name `attach_branch`, an existing remote activity
+branch to attach instead of starting `dev-<key>`. All other initial states require 1–100 complete items.
 `depends_on` contains local Item keys and is validated even in drafts.
 The generated OpenAPI client is the definitive request/response contract.
 
@@ -265,7 +279,8 @@ The generated OpenAPI client is the definitive request/response contract.
 The original migration `c7d8e9f0a1b2` added five work tables. Current deployment
 must apply the full migration head, including `e14a217d0910` (Run decisions),
 `f25b328e1021` (Plan registration identity), `a36c439f2132` (Plan start reservation),
-`b47d540a3243` (Plan activity), and `c58e651b4354` (Plan group classification), with the matching application/UI. Keep the project dispatcher and
+`b47d540a3243` (Plan activity), `c58e651b4354` (Plan group classification) and
+`9d0e1f2a3b4c` (attached activity branches), with the matching application/UI. Keep the project dispatcher and
 shared maintenance worker enabled. No per-Plan schedules are created.
 
 Automated coverage includes graph validation, controls, capacity, PR response-loss

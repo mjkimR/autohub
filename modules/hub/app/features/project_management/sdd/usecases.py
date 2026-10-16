@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from app.features.project_management.branches import unit_branch_mismatch
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from app.features.project_management.pipelines.deps import get_pipeline_observer
@@ -45,6 +46,8 @@ class SddUseCase:
             pull = await self.observer.get_pull_request(connector, repository, request.pull_number)
             if pull.get("state") != "open":
                 return SddReadiness(ready=False, reason="Select an open pull request")
+            if mismatch := unit_branch_mismatch(request.spec_dir, str((pull.get("head") or {}).get("ref", ""))):
+                return SddReadiness(ready=False, reason=mismatch)
             token = await self.observer.get_token(connector, "github")
             evidence = await SddService().inspect(repository, request.spec_dir, pull, token)
             return SddReadiness(

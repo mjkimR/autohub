@@ -88,7 +88,9 @@ async def test_runs_inherit_current_group_and_cross_group_dependencies_still_exe
     project, github, worker, _ = setup_work
     first = await create(client, project, spec(group_key="platform", items=spec()["items"][:1]))
     second = await create(
-        client, project, spec(group_key="game-a", depends_on=[first["id"]], items=spec()["items"][:1])
+        client,
+        project,
+        spec(group_key="game-a", depends_on=[first["id"]], items=[{**spec()["items"][0], "key": "b"}]),
     )
     project_id = UUID(project["id"])
     await worker.advance_project(project_id)

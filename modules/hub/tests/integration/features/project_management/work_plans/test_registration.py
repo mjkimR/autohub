@@ -82,10 +82,13 @@ async def test_replacement_keeps_canceled_evidence_and_does_not_release_old_depe
         root + f"/{original['id']}/control", json={"action": "revoke", "expected_revision": original["revision"]}
     )
     assert revoked.status_code == 200, revoked.text
+    # The canceled item's branch dev-base still exists: the replacement attaches it explicitly.
+    replaced = payload()
+    replaced["items"][0]["attach_branch"] = "dev-base"
     replacement = (
         await client.post(
             root,
-            json=payload()
+            json=replaced
             | {
                 "description": f"Replaces plan {original['id']}; canceled run /projects/runs?run={run_id}; original PR https://github.com/owner/app/pull/100"
             },

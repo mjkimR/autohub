@@ -119,6 +119,7 @@ class WorkPlanService:
         for write in data.items:
             row = by_key[write.key]
             row.title, row.description, row.acceptance = write.title, write.description, write.acceptance
+            row.attach_branch = write.attach_branch
         await self.repo.replace_edges(session, plan, data.depends_on, items, data.items)
         plan.revision += 1
         await record_change(session, plan, before, "updated", actor, data.reason)

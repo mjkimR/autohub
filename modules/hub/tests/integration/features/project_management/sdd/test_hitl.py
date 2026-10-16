@@ -18,6 +18,7 @@ github = scenarios.github
 project = scenarios.project
 inspector = scenarios.inspector
 run = scenarios.run
+unit_branch = scenarios.unit_branch
 pytestmark = [pytest.mark.integration, pytest.mark.real_commit]
 
 

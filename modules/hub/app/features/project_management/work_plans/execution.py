@@ -14,7 +14,7 @@ from app.features.project_management.pipelines.services import PipelineObservati
 from app.features.project_management.projects.models import Project
 from app.features.project_management.work_plans.activity import record_change, snapshot
 from app.features.project_management.work_plans.execution_repo import WorkExecutionRepository
-from app.features.project_management.work_plans.github import MissingWorkBaseBranch, WorkGitHub
+from app.features.project_management.work_plans.github import PreparationRefused, WorkGitHub
 from app.features.project_management.work_plans.mirror_records import refresh_mirrors
 from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 from app.features.project_management.work_plans.repos import WorkPlanRepository
@@ -73,9 +73,9 @@ class WorkPlanExecution:
                 if current:
                     current.detail = detail
                     current.next_action_at = get_current_utc_time() + timedelta(seconds=delay or 300)
-                    if current.state == "preparing" and isinstance(exc, MissingWorkBaseBranch):
-                        # Only a confirmed missing base before writes is terminal.
-                        # Raw HTTP errors, including reconciliation reads, remain retryable.
+                    if current.state == "preparing" and isinstance(exc, PreparationRefused):
+                        # Only a refusal confirmed before writes is terminal: a missing base, a taken activity
+                        # branch, an attached branch that is not there. Raw HTTP errors remain retryable.
                         current.state = "preparation_failed"
                         current.next_action_at = None
             logger.warning(f"Work item {item.id}: {detail}")

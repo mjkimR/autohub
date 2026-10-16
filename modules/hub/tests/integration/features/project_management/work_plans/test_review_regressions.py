@@ -124,14 +124,14 @@ async def test_each_run_reserves_one_slot(client, setup_work, session, run_state
                 idempotency_key=uuid4(),
             )
         )
-    good = await create(client, project)
+    good = await create(client, project, spec(items=[{**spec()["items"][0], "key": "a-good"}]))
     await due(session)
     await worker.advance_project(UUID(project["id"]))
     actual = await get(client, project, good)
     assert actual["items"][0]["pipeline_run_id"] is not None, actual["items"][0]
 
     # Both slots are now occupied; admitting a third would overrun the limit.
-    third = await create(client, project)
+    third = await create(client, project, spec(items=[{**spec()["items"][0], "key": "a-third"}]))
     await due(session)
     await worker.advance_project(UUID(project["id"]))
     assert (await get(client, project, third))["items"][0]["pipeline_run_id"] is None

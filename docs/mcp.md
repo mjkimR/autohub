@@ -214,7 +214,9 @@ The `pending` entries describe missing/manual checks. It is not a per-run prereq
   implementation. After a lost response, use `runs_list` with both `project_id` and
   `pull_number` before retrying. Existing duplicate-enrollment conflict rules remain.
   sdd projects also take `activity_effort` (`low`, `medium`, `high`; default medium):
-  the review depth the agent applies above the gates and exit checks.
+  the review depth the agent applies above the gates and exit checks. Their pull
+  request's head must be the spec's activity branch (`dev-<slug>` of
+  `specs/YYYY-MM/YYYYMMDD-<slug>`); another head is refused.
 - `runs_resume`: inspect the paused/blocked run and its cause, then send a stable
   `request_id` and `expected_revision`. Select `answer_id` if a pending question
   has a saved response. Saving an answer alone does not resume. Revision and PR
@@ -232,7 +234,9 @@ The `pending` entries describe missing/manual checks. It is not a per-run prereq
   using project ID and request ID (or Plan ID, not both). `work_plans_update` and
   `work_plans_control` require the observed Plan revision in their nested `plan`
   and `control` inputs. Plan controls only affect unstarted items; use Run controls
-  for started work. See [Work plans](work-plans.md).
+  for started work. Items start `dev-<key>`; an existing remote branch of that name
+  refuses the start, and `attach_branch` names an existing activity branch to reuse
+  instead. See [Work plans](work-plans.md).
 - `connection_tests_start`: its `request_id` is also the resulting test ID. After a
   lost response, call `connection_tests_get` with that ID or replay the original
   request. Optional `expected_project_revision` rejects a new test if the project

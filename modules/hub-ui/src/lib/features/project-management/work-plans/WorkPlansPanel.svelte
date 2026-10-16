@@ -274,9 +274,11 @@
 				{#each plan.items as item (item.id)}
 					<details class="p-4">
 						<summary class="cursor-pointer text-sm"
-							><span class="font-medium">{item.key}: {item.title}</span><span
-								class="ml-3 text-muted-foreground">{item.state}</span
-							></summary
+							><span class="font-medium"
+								>{item.key}: {item.title}{#if item.branch}
+									<code class="ml-1 text-xs font-normal text-muted-foreground">{item.branch}</code
+									>{/if}</span
+							><span class="ml-3 text-muted-foreground">{item.state}</span></summary
 						>
 						<div class="mt-3 space-y-3 text-sm">
 							{#if waitingReason(plan, item)}<p class="text-muted-foreground">

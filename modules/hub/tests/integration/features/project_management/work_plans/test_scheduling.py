@@ -81,7 +81,7 @@ async def test_scheduled_plan_does_not_hold_capacity_and_webhook_cannot_start_it
     project, github, worker, _ = setup_work
     scheduled = utc_now() + timedelta(days=1)
     reserved = await create(client, project, SINGLE | {"scheduled_at": scheduled.isoformat()})
-    immediate = await create(client, project, SINGLE)
+    immediate = await create(client, project, SINGLE | {"items": [{**SINGLE["items"][0], "key": "now"}]})
     assert len(github.pulls) == 1
     github.merge(100)
     await WorkPlanKick(lifecycle(worker)).run(
@@ -99,7 +99,14 @@ async def test_elapsed_schedule_still_waits_for_dependencies(client, setup_work,
     project, github, worker, _ = setup_work
     parent = await create(client, project, SINGLE)
     child = await create(
-        client, project, SINGLE | {"scheduled_at": "2020-01-01T00:00:00Z", "depends_on": [parent["id"]]}
+        client,
+        project,
+        SINGLE
+        | {
+            "scheduled_at": "2020-01-01T00:00:00Z",
+            "depends_on": [parent["id"]],
+            "items": [{**SINGLE["items"][0], "key": "child"}],
+        },
     )
     assert child["items"][0]["started_at"] is None and len(github.pulls) == 1
     github.merge(100)

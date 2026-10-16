@@ -133,7 +133,11 @@ implementation. Passing parser and mocked GitHub tests does not establish this.
 
 ## Native SDD decisions
 
-Native runs use the same questions, answers, Run lock and resume receipts. Applied
+Enrolling a pull request with a spec is the explicit attach of the cloud path: the
+pull request's head must be the unit's activity branch, `dev-<slug>` for
+`specs/YYYY-MM/YYYYMMDD-<slug>`, the same rule the local Host applies; readiness
+and enrollment refuse another head. Native runs use the same questions, answers,
+Run lock and resume receipts. Applied
 questions and their selected answers, plus explicit change requests, are included
 in subsequent stage requests in chronological order. Unapplied answers are not
 execution instructions. CI/conflict fixes inherit the stage request snapshot.
@@ -196,6 +200,9 @@ tested; deployment and a live provider canary remain separate.
    Run and PR URLs in its description and explain what replaces what. List only
    the failed work and remaining required work; do not recreate successful or
    unrelated running items. This relationship is descriptive, not a successor API.
+   A failed item's activity branch (`dev-<key>`) usually still exists: give the
+   replacement item `attach_branch` naming it, or a new key; a new start on an
+   existing branch is refused.
 5. Rebuild dependencies in the replacement Plan, and recreate affected unstarted
    downstream Plans if necessary. Do not depend on the old failed/revoked Plan
    expecting it to become successful. Record old→new Plan/Item mappings in the

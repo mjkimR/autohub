@@ -17,6 +17,8 @@ const item = {
 	state: 'waiting',
 	detail: null,
 	depends_on: [],
+	branch: null,
+	attach_branch: null,
 	pipeline_run_id: null,
 	pipeline_run_retired_at: null,
 	pull_url: null,

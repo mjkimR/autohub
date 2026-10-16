@@ -226,6 +226,10 @@ export interface components {
             detail: string | null;
             /** Depends On */
             depends_on: string[];
+            /** Branch */
+            branch: string | null;
+            /** Attach Branch */
+            attach_branch: string | null;
             /** Pipeline Run Id */
             pipeline_run_id: string | null;
             /** Pipeline Run Retired At */
@@ -261,6 +265,11 @@ export interface components {
             acceptance: string;
             /** Depends On */
             depends_on?: string[];
+            /**
+             * Attach Branch
+             * @description Explicit attach: an activity branch (plan-<slug> or dev-<slug>) that already exists on the remote and carries this work. Without it the item starts dev-<key>, and an existing branch of that name refuses the start.
+             */
+            attach_branch?: string | null;
         };
         /** WorkPlanCreate */
         WorkPlanCreate: {

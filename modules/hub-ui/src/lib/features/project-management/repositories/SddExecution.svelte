@@ -90,9 +90,10 @@
 <section class="mb-4 space-y-3 rounded-lg border bg-card p-4">
 	<h3 class="text-sm font-semibold">Run an SDD spec</h3>
 	<p class="text-sm text-muted-foreground">
-		Select a bound spec on an existing pull request. Execution checks the PR revision; the
-		repository browser may show a different ref. For a new idea, prepare its spec and PR first; Work
-		Plans do not create native SDD runs yet.
+		Select a bound spec on an existing pull request whose head is the spec's activity branch (<code
+			>dev-&lt;slug&gt;</code
+		>). Execution checks the PR revision; the repository browser may show a different ref. For a new
+		idea, prepare its spec and PR first; Work Plans do not create native SDD runs yet.
 	</p>
 	<div class="flex flex-wrap gap-3">
 		<label class="min-w-64 flex-1 text-sm"

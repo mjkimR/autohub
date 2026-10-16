@@ -111,7 +111,7 @@ async def test_pause_revoke_and_resume_only_control_unstarted_items(client, setu
 async def test_merge_releases_items_then_plans_from_latest_base(client, setup_work, session):
     project, github, worker, _ = setup_work
     first = await create(client, project)
-    second = await create(client, project, spec(depends_on=[first["id"]], items=[spec()["items"][0]]))
+    second = await create(client, project, spec(depends_on=[first["id"]], items=[{**spec()["items"][0], "key": "c"}]))
     await worker.advance_project(UUID(project["id"]))
     assert len(github.pulls) == 1
     # A paused pipeline run may have been manually merged; no resume/agent request is required.
@@ -367,8 +367,8 @@ async def test_observing_a_full_batch_does_not_starve_new_independent_plans(clie
         assert saved is not None
         catalog = await project_catalog(tx, saved)
         catalog.configured_concurrency = 6
-    for _ in range(3):
-        await create(client, project, spec(items=[spec()["items"][0]]))
+    for n in range(3):
+        await create(client, project, spec(items=[{**spec()["items"][0], "key": f"a{n}"}]))
     await worker.advance_project(UUID(project["id"]), limit=1)
     await worker.advance_project(UUID(project["id"]), limit=1)
     await worker.advance_project(UUID(project["id"]), limit=1)
@@ -415,3 +415,71 @@ async def test_postgres_rejects_cross_plan_item_edge_in_database(client, setup_w
                 )
             )
             await session.flush()
+
+
+async def test_items_start_dev_branches_named_after_their_keys(client, setup_work):
+    project, github, worker, _ = setup_work
+    plan = await create(
+        client, project, spec(items=[{"key": "Schema", "title": "S", "description": "d", "acceptance": "a"}])
+    )
+    await worker.advance_project(UUID(project["id"]))
+    item = (await get(client, project, plan))["items"][0]
+    assert item["state"] == "running" and item["branch"] == "dev-schema" and item["attach_branch"] is None
+    assert github.refs["dev-schema"] and github.pulls[100]["head"]["ref"] == "dev-schema"
+    assert ("dev-schema", f"/contents/.autohub/work-items/{item['id']}.md") in github.files
+
+
+async def test_new_start_is_refused_when_the_activity_branch_already_exists(client, setup_work):
+    project, github, worker, _ = setup_work
+    github.refs["dev-a"] = "f" * 40  # someone else's Development of the same slug
+    plan = await create(client, project)
+    await worker.advance_project(UUID(project["id"]))
+    item = (await get(client, project, plan))["items"][0]
+    assert item["state"] == "preparation_failed", item
+    assert "dev-a already exists" in item["detail"] and "attach_branch" in item["detail"]
+    assert github.refs["dev-a"] == "f" * 40 and not github.pulls
+    assert not any(method == "POST" for method, _ in github.requests)
+
+
+async def test_an_untouched_branch_at_the_base_is_this_items_own_earlier_attempt(client, setup_work):
+    project, github, worker, _ = setup_work
+    github.refs["dev-a"] = github.refs["main"]  # created from the base, then the seed commit was lost
+    plan = await create(client, project)
+    await worker.advance_project(UUID(project["id"]))
+    item = (await get(client, project, plan))["items"][0]
+    assert item["state"] == "running" and item["branch"] == "dev-a"
+
+
+async def test_explicit_attach_reuses_the_branch_and_adopts_its_open_pull_request(client, setup_work):
+    project, github, worker, _ = setup_work
+    github.refs["dev-shared"] = "f" * 40
+    github.pulls[100] = {
+        "number": 100,
+        "state": "open",
+        "merged": False,
+        "title": "Started locally",
+        "body": "",
+        "html_url": "https://github.com/owner/app/pull/100",
+        "head": {"ref": "dev-shared", "sha": "f" * 40, "repo": {"full_name": "owner/app"}},
+        "base": {"ref": "main", "sha": github.refs["main"], "repo": {"full_name": "owner/app"}},
+    }
+    items = [{"key": "x", "title": "X", "description": "d", "acceptance": "a", "attach_branch": "dev-shared"}]
+    plan = await create(client, project, spec(items=items))
+    await worker.advance_project(UUID(project["id"]))
+    item = (await get(client, project, plan))["items"][0]
+    assert item["state"] == "running" and item["branch"] == "dev-shared" and item["attach_branch"] == "dev-shared"
+    assert item["pull_url"].endswith("/pull/100") and len(github.pulls) == 1
+    assert ("POST", "/repos/owner/app/git/refs") not in github.requests
+
+
+async def test_explicit_attach_needs_the_branch_on_the_remote_and_an_activity_name(client, setup_work):
+    project, github, worker, _ = setup_work
+    bad = spec(items=[{"key": "x", "title": "X", "description": "d", "acceptance": "a", "attach_branch": "feature/x"}])
+    refused = await client.post(f"/api/v1/projects/{project['id']}/work-plans", json=bad)
+    assert refused.status_code == 422
+    items = [{"key": "x", "title": "X", "description": "d", "acceptance": "a", "attach_branch": "dev-missing"}]
+    plan = await create(client, project, spec(items=items))
+    await worker.advance_project(UUID(project["id"]))
+    item = (await get(client, project, plan))["items"][0]
+    assert item["state"] == "preparation_failed" and "dev-missing does not exist" in item["detail"]
+    assert "dev-missing" not in github.refs and not github.pulls

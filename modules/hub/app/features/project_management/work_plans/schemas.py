@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
+from app.features.project_management.branches import ACTIVITY_BRANCH_RULE, is_activity_branch
 from app.features.project_management.work_plans.grouping import GroupKey
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -25,9 +26,18 @@ class WorkItemWrite(BaseModel):
     description: str = Field(default="", max_length=16000)
     acceptance: str = Field(default="", max_length=8000)
     depends_on: list[str] = Field(default_factory=list, max_length=100)
+    attach_branch: str | None = Field(
+        default=None,
+        max_length=64,
+        description="Explicit attach: an activity branch (plan-<slug> or dev-<slug>) that already exists on the "
+        "remote and carries this work. Without it the item starts dev-<key>, and an existing branch of that name "
+        "refuses the start.",
+    )
 
     @model_validator(mode="after")
     def reject_agent_triggers(self):
+        if self.attach_branch is not None and not is_activity_branch(self.attach_branch):
+            raise ValueError(f"attach_branch must be an activity branch: {ACTIVITY_BRANCH_RULE}")
         if re.search(r"@(?:codex|auto-run)\b", f"{self.title}\n{self.description}\n{self.acceptance}", re.I):
             raise ValueError("AutoHub sends agent requests; omit agent mentions from the specification")
         if len(self.depends_on) != len(set(self.depends_on)):
@@ -129,6 +139,8 @@ class WorkItemRead(BaseModel):
     state: str
     detail: str | None
     depends_on: list[str] = Field(default_factory=list)
+    branch: str | None
+    attach_branch: str | None
     pipeline_run_id: UUID | None
     pipeline_run_retired_at: datetime | None
     pull_url: str | None

@@ -66,7 +66,14 @@ def inspector(monkeypatch):
 
 
 @pytest.fixture
-async def run(client, project, github, inspector):
+def unit_branch(github, monkeypatch):
+    """The fixture pull request's head is the spec's activity branch, as enrollment requires."""
+    original = github.pull
+    monkeypatch.setattr(github, "pull", lambda: {**original(), "head": {**original()["head"], "ref": "dev-native"}})
+
+
+@pytest.fixture
+async def run(client, project, github, inspector, unit_branch):
     github.draft = True
     changed = await client.patch(
         f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
@@ -169,7 +176,25 @@ async def test_rework_is_a_new_attempt_without_approval(client, run, github):
     assert github.merge_requests == 0
 
 
-async def test_native_enrollment_requires_spec_and_readiness_is_read_only(client, project, inspector):
+async def test_enrollment_attaches_only_the_units_activity_branch(client, project, inspector):
+    changed = await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    assert changed.status_code == 200
+    # The fixture pull request is on feature/7; the spec's branch is dev-native.
+    refused = await client.post(f"/api/v1/projects/{project['id']}/runs", json={"pull_number": 7, "spec_dir": SPEC})
+    assert refused.status_code == 422, refused.text
+    assert "dev-native" in refused.text and "feature/7" in refused.text
+    ready = await client.post(
+        f"/api/v1/projects/{project['id']}/sdd/readiness", json={"pull_number": 7, "spec_dir": SPEC}
+    )
+    assert ready.status_code == 200 and not ready.json()["ready"]
+    assert "dev-native" in ready.json()["reason"]
+    runs = (await client.get("/api/v1/pipeline-runs", params={"project_id": project["id"]})).json()
+    assert runs["total_count"] == 0
+
+
+async def test_native_enrollment_requires_spec_and_readiness_is_read_only(client, project, inspector, unit_branch):
     changed = await client.patch(
         f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
     )
@@ -201,7 +226,9 @@ async def test_unexpected_head_after_approval_is_not_merged(client, run, github,
     assert github.merge_requests == 0
 
 
-async def test_stage_dispatch_and_post_push_question_are_not_skipped(client, project, github, inspector, monkeypatch):
+async def test_stage_dispatch_and_post_push_question_are_not_skipped(
+    client, project, github, inspector, unit_branch, monkeypatch
+):
     import json
 
     from app.features.project_management.pipeline_runs.adapters.base import AgentReply, DeliveryReceipt
@@ -373,7 +400,7 @@ async def test_unresolved_worker_problem_blocks_the_run_and_its_approval(client,
     assert github.merge_requests == 0
 
 
-async def test_activity_effort_is_recorded_and_passed_to_the_agent(client, project, github, inspector):
+async def test_activity_effort_is_recorded_and_passed_to_the_agent(client, project, github, inspector, unit_branch):
     general = await client.post(
         f"/api/v1/projects/{project['id']}/runs", json={"pull_number": 7, "activity_effort": "high"}
     )
