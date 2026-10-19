@@ -62,6 +62,7 @@
 	},
 	"dependencies": {
 		"@types/dompurify": "^3.0.5",
+		"devkit-viewer": "file:vendor/devkit-viewer-0.1.0.tgz",
 		"dompurify": "^3.4.16",
 		"marked": "^18.1.0",
 		"mermaid": "^12.1.0",

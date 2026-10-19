@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { GitBranch, FolderGit2, Sparkles, RefreshCw, Layers } from '@lucide/svelte';
+	import { SddViewer } from 'devkit-viewer';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
 	import FileTreeTable from './FileTreeTable.svelte';
 	import FileBlobViewer from './FileBlobViewer.svelte';
-	import SddViewer from './sdd/SddViewer.svelte';
 	import SddExecution from './SddExecution.svelte';
 	import SddProposals from './SddProposals.svelte';
 	import { repositoryDataSource } from './data-source';

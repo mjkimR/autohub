@@ -19,7 +19,7 @@ export default defineConfig(
 	svelte.configs.prettier,
 	...structure({
 		// shadcn-svelte primitives are generated; authored views and shared components stay checked.
-		ignores: ['src/lib/components/ui/**', 'src/lib/features/project-management/repositories/sdd/**']
+		ignores: ['src/lib/components/ui/**']
 	}),
 	{
 		languageOptions: { globals: { ...globals.browser, ...globals.node } },
@@ -45,18 +45,6 @@ export default defineConfig(
 		rules: {
 			'svelte/button-has-type': 'error',
 			'svelte/no-navigation-without-resolve': 'off'
-		}
-	},
-	{
-		files: ['src/lib/features/project-management/repositories/sdd/**'],
-		rules: {
-			'@typescript-eslint/no-explicit-any': 'off',
-			'@typescript-eslint/no-unused-expressions': 'off',
-			'no-empty': 'off',
-			'svelte/button-has-type': 'off',
-			'svelte/no-at-html-tags': 'off',
-			'svelte/require-each-key': 'off',
-			'svelte/prefer-writable-derived': 'off'
 		}
 	}
 );
