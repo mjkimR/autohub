@@ -5,6 +5,7 @@ from pathlib import Path
 
 from app.features.project_management.projects.errors import ProjectError
 
+from .contracts import workflow_hash
 from .gates import INTEGRATION_REQUEST, PLAN_ACCEPT_REQUEST
 
 
@@ -61,7 +62,7 @@ async def prepare_record(root: Path, unit: str, operation: dict, cli) -> dict:
         definition = await cli(root, "workflow", "show", operation["value"])
         if not definition.get("ok") or definition.get("anchor") != "spec.md":
             raise ProjectError(422, "This handoff needs a different work unit; enroll it separately")
-        transition = {"workflow_id": definition["id"], "workflow_hash": definition["hash"]}
+        transition = {"workflow_id": definition["id"], "workflow_hash": workflow_hash(definition)}
     return {
         "authorized_workflow": transition,
         "id": operation["id"],

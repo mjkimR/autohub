@@ -192,6 +192,12 @@ gcloud run deploy "$SERVICE_NAME" \
   --set-secrets="APP_SECRETS_JSON=autohub-secrets:latest"
 ```
 
+The image includes the default SDD runtime at `/opt/sdd` and the reviewed app-common
+profile at `/opt/sdd-app-common`. Set `AUTOHUB_SDD_PROFILES` to the server-owned
+repository mapping documented in [development](development.md#native-sdd-runtime)
+for projects requiring app-common. The build identity needs read access to both pinned
+source repositories; runtime requests never download project dependencies.
+
 Native SDD evaluation runs devkit inside bubblewrap, which needs unprivileged user
 namespaces: add `--execution-environment=gen2` to the deploy command for a service
 that evaluates SDD runs, then confirm on the deployed host with

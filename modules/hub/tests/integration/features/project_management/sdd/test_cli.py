@@ -359,6 +359,24 @@ def reviewing_proposal(root):
         "user:fixture",
     )
     units.set_status(root, PROPOSAL, "draft", "reviewing")
+    # Current proposal workflows require a feedback sweep before asking plan-accept.
+    run(
+        root,
+        devkit_binary(),
+        "workflow",
+        "envelope",
+        "new",
+        "--kind",
+        "feedback",
+        "--unit",
+        PROPOSAL,
+        "--status",
+        "completed",
+        "--summary",
+        "No feedback remains",
+        "--check",
+        "swept=PASS",
+    )
     return commit(root, "Proposal in review")
 
 

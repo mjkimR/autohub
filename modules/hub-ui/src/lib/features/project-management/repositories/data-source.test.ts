@@ -61,3 +61,24 @@ test('repository refusals propagate to the embedded viewer', async () => {
 		)
 	).rejects.toThrow('Repository access denied');
 });
+
+test('roadmap refs include activity branches and disclose incomplete enumeration', async () => {
+	let complete = true;
+	vi.stubGlobal(
+		'fetch',
+		vi.fn(async () =>
+			json(200, {
+				default_branch: 'trunk',
+				branches: ['trunk', 'plan-feature', 'dev-feature'],
+				branches_complete: complete
+			})
+		)
+	);
+	const source = repositoryDataSource('p1', createApiClient());
+	expect(await source.refs(new AbortController().signal)).toEqual({
+		default_branch: 'trunk',
+		branches: ['trunk', 'plan-feature', 'dev-feature']
+	});
+	complete = false;
+	await expect(source.refs(new AbortController().signal)).rejects.toThrow('incomplete');
+});

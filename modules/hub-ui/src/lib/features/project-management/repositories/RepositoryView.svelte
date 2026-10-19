@@ -130,6 +130,11 @@
 		}
 	}
 
+	async function refreshSdd() {
+		await loadInfo();
+		viewerRevision++;
+	}
+
 	function handleBranchChange(newRef: string) {
 		currentRef = newRef;
 		if (activeBlob) {
@@ -249,7 +254,7 @@
 					class="h-8 gap-1.5 text-xs"
 					onclick={() =>
 						viewerMode === 'sdd'
-							? viewerRevision++
+							? refreshSdd()
 							: activeBlob
 								? openFile({
 										name: '',
@@ -289,6 +294,7 @@
 		{:else if viewerMode === 'sdd'}
 			{#if isSdd}{#key project.id}<SddExecution
 						projectId={project.id}
+						repository={project.github.repository}
 						{selectedSpec}
 					/><SddProposals
 						projectId={project.id}
@@ -303,7 +309,8 @@
 						repoId={project.github?.repository || project.name}
 						initialPath="docs/"
 						onselectpath={(path) => {
-							selectedSpec = path.match(/^(specs\/\d{4}-\d{2}\/[^/]+)/)?.[1] || '';
+							selectedSpec =
+								path.match(/^(specs\/\d{4}-\d{2}\/[^/]+|docs\/proposals\/PROP-[^/]+)/)?.[1] || '';
 						}}
 					/>
 				{/key}

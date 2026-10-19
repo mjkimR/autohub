@@ -31,9 +31,16 @@ stay in autohub.
   [run decisions](run-decisions.md#proposals-panel)),
   `로드맵` (`docs/roadmap/MS-*.md` milestones by status, `depends_on` readiness and
   member proposals and specs) and `파일 탐색` (file explorer), with search and status
-  filters. The roadmap reads the repository's default branch: autohub's data source
-  lists no branches, so members on `plan-` and `dev-` branches are not shown and the
-  tab says so.
+  filters. Milestones come from the default branch; members also come from remote
+  `plan-` and `dev-` branches through the authenticated data source's `refs` method.
+  Repository info paginates up to 1,000 branches. If listing fails or reaches that
+  bound, the roadmap explicitly falls back to the default branch rather than
+  presenting a partial list as complete.
+- A member on the currently selected branch opens its source document. Select the
+  displayed activity branch in the repository selector to open a member from another
+  branch. Selecting a spec or proposal fills the execution unit and shows its recent
+  Run/Decisions links and direct GitHub PR links. Reading never starts a run or grants
+  approval.
 - Markdown parsing, YAML frontmatter, Mermaid diagram rendering, and document link
   normalization are built in.
 - Above the viewer, the SDD execution panel checks readiness for a spec and pull

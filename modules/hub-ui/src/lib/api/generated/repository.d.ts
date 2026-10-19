@@ -113,6 +113,12 @@ export interface components {
              */
             default_branch: string;
             /**
+             * Branches Complete
+             * @description False when branch enumeration failed or exceeded 1000 branches
+             * @default true
+             */
+            branches_complete: boolean;
+            /**
              * Branches
              * @description Available branch names
              */

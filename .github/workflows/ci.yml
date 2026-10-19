@@ -60,8 +60,12 @@ jobs:
       - name: Install the reviewed devkit-spec runtime
         env:
           GH_TOKEN: ${{ secrets.SDD_READ_TOKEN }}
-        run: just install-sdd
+        run: |
+          just install-sdd
+          just install-sdd .cache/sdd-app-common config/sdd-runtime-app-common
       - name: Native delivery, human decisions and isolated CLI contract
+        env:
+          AUTOHUB_TEST_SDD_APP_COMMON: ${{ github.workspace }}/.cache/sdd-app-common
         run: just test-sdd
 
   backend-postgres:

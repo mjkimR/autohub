@@ -9,8 +9,10 @@ from app.features.project_management.pipeline_runs.requests import request_diges
 from app.features.project_management.projects.errors import ProjectError
 
 from .checkout import SddCommandError, checkout, command
+from .contracts import workflow_hash
 from .gates import INTEGRATION_GATE
 from .isolation import isolation_runner
+from .profiles import current
 from .runtime import configured_version, restore, revision_warnings, runtime_pin
 from .units import is_proposal, read_status, unit_anchor
 
@@ -98,8 +100,10 @@ class SddService:
         try:
             pin = runtime_pin()
         except ProjectError as exc:
-            return {"ok": False, "isolation": isolation_runner(), "detail": str(exc)}
+            return {"ok": False, "profile": current()[0], "isolation": isolation_runner(), "detail": str(exc)}
         status = {
+            "profile": current()[0],
+            "bundles": pin.get("bundles", []),
             "provider": pin.get("provider"),
             "lock_sha256": pin.get("lock_sha256"),
             "revisions": {k: str(v) for k, v in (pin.get("revisions") or {}).items()},
@@ -187,7 +191,7 @@ class SddService:
             "spec_dir": spec_dir,
             "cli_version": version,
             "workflow_id": workflow["id"],
-            "workflow_hash": workflow["hash"],
+            "workflow_hash": workflow_hash(workflow),
             "policy": keys,
         }
         pinned = dict(snapshot or contract)

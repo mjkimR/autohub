@@ -49,7 +49,6 @@ async def _read_evidence(checkout: str, spec_dir: str, head_sha: str) -> str:
         raise BridgeRejected("workflow-evaluation-failed") from exc
     if not approval_gate(evidence):
         raise BridgeRejected("workflow-not-ready-for-integration")
-    show = evidence["workflow"]
     files = {}
     for path in sorted(spec.rglob("*")):
         if path.is_file():
@@ -60,4 +59,4 @@ async def _read_evidence(checkout: str, spec_dir: str, head_sha: str) -> str:
         raise BridgeRejected("checkout-head-changed")
     if (await process("git", "status", "--porcelain", "--untracked-files=normal", cwd=root)).strip():
         raise BridgeRejected("checkout-dirty")
-    return content_digest({"head_sha": head_sha, "workflow_hash": show["hash"], "files": files})
+    return content_digest({"head_sha": head_sha, "contract": evidence["snapshot"], "files": files})

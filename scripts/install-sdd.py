@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
 """Provision a separate, locked devkit-spec environment. Never install from a PR's manifest."""
 
+import argparse
 import hashlib
 import json
 import os
 import re
 import shutil
 import subprocess
-import sys
 import tomllib
 from pathlib import Path
 
-source = Path(__file__).resolve().parents[1] / "config/sdd-runtime"
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("destination", type=Path)
+parser.add_argument(
+    "--manifest",
+    type=Path,
+    default=Path(__file__).resolve().parents[1] / "config/sdd-runtime",
+    help="Operator-reviewed directory containing pyproject.toml and uv.lock",
+)
+options = parser.parse_args()
+source = options.manifest.resolve()
 PACKAGES = ["devkit-agt", "devkit-advisory", "devkit-spec"]
 
 
@@ -25,7 +34,7 @@ def lock_revisions(lock: Path) -> dict[str, str]:
     return revisions
 
 
-destination = Path(sys.argv[1]).resolve()
+destination = options.destination.resolve()
 destination.mkdir(parents=True, exist_ok=True)
 lock_digest = hashlib.sha256((source / "uv.lock").read_bytes()).hexdigest()
 if (destination / "pin.json").exists():
@@ -50,8 +59,8 @@ versions = subprocess.check_output(
         str(python),
         "-I",
         "-c",
-        "import json,sys; from importlib.metadata import version; "
-        "print(json.dumps({'packages': {n: version(n) for n in sys.argv[1:]}, 'python_prefix': sys.base_prefix}))",
+        "import json,sys; from importlib.metadata import version, entry_points; "
+        "print(json.dumps({'packages': {n: version(n) for n in sys.argv[1:]}, 'python_prefix': sys.base_prefix, 'bundles': sorted(ep.name for ep in entry_points(group='devkit.bundles'))}))",
         *PACKAGES,
     ],
     text=True,

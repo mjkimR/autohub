@@ -6,8 +6,9 @@
 	let {
 		projectId,
 		specDir,
-		refresh = ''
-	}: { projectId: string; specDir: string; refresh?: string } = $props();
+		refresh = '',
+		repository = ''
+	}: { projectId: string; specDir: string; refresh?: string; repository?: string } = $props();
 	let runs = $state<components['schemas']['PipelineRunRead'][]>([]);
 	let error = $state('');
 	let loading = $state(false);
@@ -19,7 +20,8 @@
 		void retry;
 		runs = [];
 		error = '';
-		const valid = /^specs\/\d{4}-\d{2}\/[a-zA-Z0-9_-]+$/.test(spec);
+		const valid =
+			/^(specs\/\d{4}-\d{2}\/[a-zA-Z0-9_-]+|docs\/proposals\/PROP-[a-zA-Z0-9_-]+)$/.test(spec);
 		loading = valid;
 		if (!valid) return;
 		let active = true;
@@ -47,7 +49,7 @@
 
 {#if specDir}
 	<div class="space-y-2 border-t pt-3">
-		<h4 class="text-xs font-semibold text-muted-foreground">Recent executions for this spec</h4>
+		<h4 class="text-xs font-semibold text-muted-foreground">Recent executions for this unit</h4>
 		{#if loading}<p class="text-xs text-muted-foreground">Loading executions…</p>
 		{:else if error}<p role="status" class="text-xs text-destructive">
 				{error}
@@ -75,6 +77,14 @@
 							>
 							<span class="min-w-0 break-words">{run.pull_snapshot.title}</span>
 						</a>
+						{#if /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)}
+							<a
+								class="text-xs underline"
+								href={`https://github.com/${repository}/pull/${run.pull_number}`}
+								target="_blank"
+								rel="noreferrer">Open GitHub PR #{run.pull_number}</a
+							>
+						{/if}
 					</li>{/each}
 			</ul>
 			<p class="text-xs text-muted-foreground">Latest {runs.length} executions · up to 20 shown</p>

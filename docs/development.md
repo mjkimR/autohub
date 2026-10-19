@@ -199,8 +199,8 @@ Node from `.nvmrc`, `just`) and calls the `justfile` recipes, so a check that pa
 
 The job names are stable, so this repository can itself be enrolled in a hub project with `ci.yml` as the workflow
 and the backend/frontend jobs plus `sdd-contract` as required checks. The
-SDD job requires `SDD_READ_TOKEN` with read access to the private devkit-spec
-repository. They fail when the runtime cannot be provisioned;
+SDD job requires `SDD_READ_TOKEN` with read access to the pinned devkit
+monorepo and app-common sources. They fail when the runtime cannot be provisioned;
 they never silently skip the CLI contract. Fork PRs do not receive this secret;
 run these checks from a trusted branch after review, never via `pull_request_target`
 with untrusted PR code. Other jobs need no repository secret: OpenAPI export works
@@ -287,29 +287,63 @@ do not create native specs or PRs. Select a spec, check readiness, then follow
 its execution link to Runs → Decisions for workflow requests and report evidence.
 
 `config/sdd-runtime/pyproject.toml` and `uv.lock` pin the Python runtime separately
-from Hub's dependencies. The lock includes immutable devkit/devkit-spec commits
-and dependency hashes. devkit-spec sources devkit from its `main` branch, so the
-manifest overrides that transitive URL with the reviewed devkit commit; change the
-devkit `rev` and the override together. Provision it once, never from a PR's
-dependency manifest:
+from Hub's dependencies. The lock includes dependency hashes and one immutable
+devkit monorepo commit for
+`devkit-agt`, `devkit-advisory` and `devkit-spec` (the latter from
+`packages/devkit-spec`). Update all three sources together and regenerate the lock.
+Hub hashes the effective workflow JSON itself: current devkit bindings identify a
+workflow by name, while Hub still refuses definition or policy changes during a run.
+Provision it once, never from a PR's dependency manifest:
 
 ```sh
 just install-sdd
+just install-sdd .cache/sdd-app-common config/sdd-runtime-app-common
 export AUTOHUB_SDD_HOME="$(pwd)/.cache/sdd"
 just test-sdd
 ```
 
-Git credentials or build-only `GH_TOKEN` must permit access to devkit-spec. The
+Git credentials or build-only `GH_TOKEN` must permit access to the pinned devkit repository
+and, for the app-common profile, app-common. The
 installer stores no token in its manifest or pin. The runtime defaults to
 `/opt/sdd`; its `pin.json` records the lock digest, the package versions and the
 Git revisions the lock resolves (a runtime provisioned before revisions were
 recorded only loses the parity warning below). Hub snapshots the lock digest, provider, workflow
 hash, policy and configuration/receipt digest. Updates require a reviewed lock and
 a new run.
-The initial profile contains the `spec`, devkit and advisory bundles. Projects
-selecting additional packages (for example app-common) must provision a reviewed
-profile containing those exact packages; missing bundles fail readiness. Do not
-silently omit a project's rules or install its unreviewed dependencies at request time.
+The default profile contains the spec, devkit and advisory bundles. The additional
+`config/sdd-runtime-app-common` manifest and lock add the reviewed `app-tools` package
+(the app-common bundle); its override pins the transitive devkit toolchain to the
+same monorepo commit. The installer records the available bundle names in `pin.json`.
+Readiness checks both selected bundles and the committed receipt against that inventory,
+then lets devkit validate presets and restore assets. Missing bundles refuse execution
+with `SDD_BUNDLES_MISSING`, naming the selected profile and missing bundle identifiers.
+No project dependency is installed during a request.
+
+Provision profiles separately and assign repositories in server-owned configuration:
+
+```sh
+just install-sdd /opt/sdd
+just install-sdd /opt/sdd-app-common config/sdd-runtime-app-common
+export AUTOHUB_SDD_PROFILES='{"profiles":{"app-common":"/opt/sdd-app-common"},"repositories":{"owner/repository":"app-common"}}'
+```
+
+Unmapped repositories use `AUTOHUB_SDD_HOME` (default `/opt/sdd`). Profile paths must
+be absolute; invalid mappings fail closed. Repository names are matched without case.
+The same repository mapping applies to inspection, decisions, activity creation and
+the SDK bridge. Selection is scoped to each asynchronous operation, so concurrent
+projects cannot inherit each other's runtime. `/sdd/runtime` reports the project's
+profile, bundle inventory and isolation probe; the UI shows them under **Check runtime**.
+The immutable lock remains part of each execution snapshot and bridge approval digest:
+changing a profile's lock requires a newly enrolled run, not an in-place upgrade.
+The installer refuses to replace a destination whose lock differs; use a new
+directory when updating locally. Settle existing runs before changing their runtime.
+
+For another bundle set, commit a reviewed manifest and lock in a separate config
+directory and pass that directory as the second `just install-sdd` argument. Never
+use a target PR's manifest. Package that directory into the deployment image explicitly.
+The standard image contains both `/opt/sdd` and `/opt/sdd-app-common`; setting the
+repository mapping chooses the latter. The contract suite needs both profiles;
+`AUTOHUB_TEST_SDD_APP_COMMON` overrides its default `.cache/sdd-app-common` test path.
 
 Each evaluation fetches exact PR head/base commits into a disposable checkout.
 The project must commit `.devkit/config.toml` and `.devkit/installation.json`;

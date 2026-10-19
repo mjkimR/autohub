@@ -165,7 +165,9 @@ async def checkout(repository: str, head: str, base: str, token: str):
         raise ProjectError(422, "SDD requires exact Git head and base commits")
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
         raise ProjectError(422, "Invalid repository")
-    with TemporaryDirectory(prefix="autohub-sdd-") as directory:
+    from .profiles import runtime_scope
+
+    with runtime_scope(repository), TemporaryDirectory(prefix="autohub-sdd-") as directory:
         root = Path(directory).resolve()
         await command("git", "init", "--quiet", cwd=root)
         await command(

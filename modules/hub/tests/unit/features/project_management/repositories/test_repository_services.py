@@ -55,3 +55,24 @@ def test_repo_info_schema():
     assert info.repository == "owner/repo"
     assert info.default_branch == "main"
     assert len(info.branches) == 2
+
+
+async def test_branch_listing_reads_later_pages_and_reports_incomplete_results(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.features.project_management.pipelines.github import GitHubObservationError
+    from app.features.project_management.repositories.services import RepositoryService
+
+    service = RepositoryService()
+    first = [{"name": f"branch-{i}"} for i in range(100)]
+    get = AsyncMock(side_effect=[{"default_branch": "main"}, first, [{"name": "dev-late"}]])
+    monkeypatch.setattr(service, "_get", get)
+    info = await service.get_info("token", "owner/repo")
+    assert info.branches_complete
+    assert info.branches[-1] == "dev-late"
+    assert get.call_args.kwargs["params"]["page"] == 2
+
+    get.side_effect = [{"default_branch": "main"}, first, GitHubObservationError("rate limit", 429)]
+    info = await service.get_info("token", "owner/repo")
+    assert not info.branches_complete
+    assert info.branches[0] == "main"

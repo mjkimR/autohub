@@ -11,6 +11,7 @@ from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 from fastapi import Depends
 
+from .profiles import runtime_scope
 from .repos import SddRepository
 from .schemas import ProposalList, SddReadiness, SddRuntimeStatus
 from .services import SddService
@@ -60,8 +61,9 @@ class SddUseCase:
 
     async def runtime(self, project_id):
         async with AsyncTransaction() as session:
-            await self.projects.get(session, project_id)
-        return SddRuntimeStatus(**await SddService().runtime_status())
+            project = await self.projects.get(session, project_id)
+        with runtime_scope(project.github_repository):
+            return SddRuntimeStatus(**await SddService().runtime_status())
 
     async def readiness(self, project_id, request):
         async with AsyncTransaction() as session:

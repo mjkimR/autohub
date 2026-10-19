@@ -2,12 +2,13 @@
 
 import hashlib
 import json
-import os
 import re
 import tomllib
 from pathlib import Path
 
 from app.features.project_management.projects.errors import ProjectError
+
+from .profiles import current
 
 # Packages whose Git revision the runtime pin records and a repository's own lock may pin differently.
 PINNED_PACKAGES = ("devkit-spec", "devkit-agt")
@@ -20,7 +21,7 @@ RECEIPT_STALE_DETAIL = (
 
 
 def runtime_home() -> Path:
-    return Path(os.environ.get("AUTOHUB_SDD_HOME", "/opt/sdd")).resolve()
+    return current()[1]
 
 
 def runtime_pin() -> dict:
@@ -57,6 +58,7 @@ async def restore(root: Path) -> list[dict]:
         raise ProjectError(
             422, "Commit the devkit configuration and installation receipt before enrolling", code="SDD_RECEIPT_MISSING"
         )
+    check_bundles(root)
     try:
         await command("devkit", "sync", "--locked", "--format", "json", cwd=root)
     except SddCommandError as exc:
@@ -121,3 +123,30 @@ def revision_warnings(root: Path) -> list[dict]:
         for name in PINNED_PACKAGES
         if name in locked and isinstance(pinned.get(name), str) and locked[name] != pinned[name]
     ]
+
+
+def check_bundles(root: Path) -> None:
+    """Refuse missing installed bundles before sync; never install a repository's dependencies."""
+    config = root / ".devkit/config.toml"
+    if not config.is_file():
+        return  # sync reports malformed/missing configuration
+    try:
+        presets = tomllib.loads(config.read_text()).get("presets", {})
+        receipt = json.loads((root / ".devkit/installation.json").read_text())
+        required = {name for name, value in presets.items() if value is not False}
+        required.update(row["bundle"] for row in receipt.get("assets", []) if isinstance(row.get("bundle"), str))
+    except (ValueError, TypeError, KeyError, AttributeError):
+        return  # the CLI owns full configuration/receipt validation
+    bundles = runtime_pin().get("bundles")
+    if bundles is None:
+        return  # older installations still enforce selection through sync
+    missing = sorted(required - set(bundles))
+    if missing:
+        # Only bundle identifiers, never arbitrary repository text, enter diagnostics.
+        names = [name for name in missing if re.fullmatch(r"[a-z][a-z0-9-]{0,63}", name)]
+        raise ProjectError(
+            422,
+            f"SDD runtime profile {current()[0]} is missing bundles: {', '.join(names) or 'invalid selection'}. "
+            "Provision a reviewed profile containing these bundles and map this repository to it.",
+            code="SDD_BUNDLES_MISSING",
+        )

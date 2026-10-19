@@ -3,7 +3,11 @@
 	import { apiErrorMessage } from '$lib/api/errors';
 	import SddRunLinks from './SddRunLinks.svelte';
 	import { Button } from '$lib/components/ui/button';
-	let { projectId, selectedSpec = '' }: { projectId: string; selectedSpec?: string } = $props();
+	let {
+		projectId,
+		selectedSpec = '',
+		repository = ''
+	}: { projectId: string; selectedSpec?: string; repository?: string } = $props();
 	$effect(() => {
 		if (selectedSpec) spec = selectedSpec;
 	});
@@ -30,7 +34,8 @@
 			const status = result.data;
 			const spec = status.revisions?.['devkit-spec']?.slice(0, 12);
 			const summary = `Runtime ${status.isolation ?? 'without a sandbox'}: ${status.ok ? 'ok' : 'unavailable'}${spec ? ` · devkit-spec ${spec}` : ''}`;
-			if (status.ok) runtime = summary;
+			if (status.ok)
+				runtime = `${summary} · profile ${status.profile ?? 'default'} · bundles: ${(status.bundles ?? []).join(', ') || 'unknown'}`;
 			else runtimeError = `${summary}. ${status.detail ?? ''}`.trim();
 		} catch (e) {
 			runtimeError = e instanceof Error ? e.message : 'Runtime check failed';
@@ -149,7 +154,7 @@
 			variant="outline"
 			href={`/projects/runs?run=${runId}&view=decisions`}>Open execution & decisions</Button
 		>{/if}
-	<SddRunLinks {projectId} specDir={spec} refresh={runId} />
+	<SddRunLinks {projectId} {repository} specDir={spec} refresh={runId} />
 	{#if runtime}<p role="status" class="text-sm">{runtime}</p>{/if}
 	{#if runtimeError}<p role="alert" class="text-sm text-destructive">{runtimeError}</p>{/if}
 	{#if message}<p role="status" class="text-sm">{message}</p>{/if}

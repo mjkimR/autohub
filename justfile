@@ -173,8 +173,8 @@ test-ui:
     uv run --no-active --no-sync devkit run -- npm --prefix "$path" test
 
 # Install the locked devkit-spec Python runtime (private Git access required at provisioning only)
-install-sdd destination=".cache/sdd":
-    @python3 scripts/install-sdd.py "{{ destination }}"
+install-sdd destination=".cache/sdd" manifest="config/sdd-runtime":
+    @uv run --no-active --no-sync python scripts/install-sdd.py "{{ destination }}" --manifest "{{ manifest }}"
 
 # Require the provisioned runtime and OS isolation; never silently skip the CLI contract
 test-sdd runtime=".cache/sdd":

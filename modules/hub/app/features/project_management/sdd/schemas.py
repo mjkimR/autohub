@@ -68,6 +68,8 @@ class SddRuntimeStatus(BaseModel):
     """The host's SDD runtime: its pin and whether devkit starts inside the sandbox (the new-host canary)."""
 
     ok: bool
+    profile: str = "default"
+    bundles: list[str] = Field(default_factory=list)
     provider: str | None = None
     lock_sha256: str | None = None
     revisions: dict[str, str] = Field(default_factory=dict)

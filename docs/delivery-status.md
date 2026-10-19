@@ -41,6 +41,20 @@ Confirmed only by automated tests.
 
 ## Implemented locally, unreleased
 
+- 2026-10-19 devkit consumer alignment: the isolated SDD runtime now uses the devkit
+  monorepo, with a separately locked app-common profile and server-owned repository
+  mappings. Readiness identifies missing bundles, and runtime status shows the selected
+  profile and inventory. Hub retains workflow definition fencing using a semantic
+  digest despite devkit's name-only bindings. The SDK bridge also binds approval to
+  the runtime contract. The shared viewer receives activity branches, with explicit
+  fallback when enumeration is incomplete, and selected proposal/spec units link to
+  their executions and GitHub PRs. This entry describes local implementation;
+  deployment and live cloud-agent verification remain separate. Local verification:
+  focused unit tests 66 passed; real isolated CLI/native/bridge tests 67 passed and
+  1 skipped on SQLite; selected PostgreSQL integration tests 46 passed; frontend
+  tests 204 passed. Lint, type checks, frontend build and generated API consistency
+  also passed. The suites overlap; counts are not additive.
+
 - 2026-10-14 SDD transition: project types, APIs, and screens were consolidated as `sdd`,
   and the `devkit-spec` provider and Python runtime lock are pinned for execution. devkit
   requests/answer/return, explicit handoff within the same spec, and the existing approval

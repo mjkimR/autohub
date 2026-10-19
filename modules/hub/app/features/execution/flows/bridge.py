@@ -14,6 +14,7 @@ from app.features.project_management.pipelines.services import PipelineObservati
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.repos import ProjectRepository
 from app.features.project_management.projects.services import ProjectService
+from app.features.project_management.sdd.profiles import runtime_scope
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 from pydantic import BaseModel, ConfigDict, Field
@@ -76,8 +77,15 @@ class PRBridgeWorker:
         except (OSError, TimeoutError) as exc:
             raise FlowError(503, "bridge-unavailable", "checkout or PR worker is unavailable") from exc
 
+    async def evidence(self, action, data):
+        async with AsyncTransaction() as session:
+            project = await ProjectService(ProjectRepository()).get(session, UUID(action.binding["project_id"]))
+            repository = project.github_repository
+        with runtime_scope(repository):
+            return await read_evidence(action.binding["checkout"], data.spec_dir, data.head_sha)
+
     async def check(self, action, data):
-        digest = await read_evidence(action.binding["checkout"], data.spec_dir, data.head_sha)
+        digest = await self.evidence(action, data)
         output = {**data.model_dump(mode="json", exclude_none=True), "evidence_digest": digest}
         async with AsyncTransaction() as session:
             await self.guard(session, action)
@@ -140,7 +148,7 @@ class PRBridgeWorker:
             resumed = await session.get(RunResumeReceipt, action.attempt_id) is not None
             actor = f"sdk-flow:{action.run_id};approval:{link.approved_actor}"
         if not resumed:
-            digest = await read_evidence(action.binding["checkout"], data.spec_dir, data.head_sha)
+            digest = await self.evidence(action, data)
             if digest != data.evidence_digest:
                 raise BridgeRejected("approved-evidence-changed")
 

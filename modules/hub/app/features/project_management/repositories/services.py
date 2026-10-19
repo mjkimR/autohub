@@ -20,17 +20,28 @@ class RepositoryService:
         async with create_github_client(token) as client:
             repo_data = await self._get(client, f"/repos/{repository}")
             default_branch = repo_data.get("default_branch", "main")
+            branches: list[str] = []
+            complete = False
             try:
-                branches_data = await self._get(client, f"/repos/{repository}/branches", params={"per_page": 100})
-                branches = [b["name"] for b in branches_data if isinstance(b, dict) and "name" in b]
-            except Exception:
-                branches = [default_branch]
+                for page in range(1, 11):
+                    rows = await self._get(
+                        client, f"/repos/{repository}/branches", params={"per_page": 100, "page": page}
+                    )
+                    if not isinstance(rows, list):
+                        raise GitHubObservationError("Invalid GitHub branch list")
+                    branches.extend(b["name"] for b in rows if isinstance(b, dict) and isinstance(b.get("name"), str))
+                    if len(rows) < 100:
+                        complete = True
+                        break
+            except GitHubObservationError:
+                pass  # the Git browser remains usable; roadmap must disclose incomplete branch coverage
             if default_branch not in branches:
                 branches.insert(0, default_branch)
             return RepoInfoRead(
                 repository=repository,
                 default_branch=default_branch,
-                branches=branches,
+                branches=list(dict.fromkeys(branches)),
+                branches_complete=complete,
             )
 
     async def get_tree(self, token: str, repository: str, path: str = "", ref: str = "") -> RepoTreeRead:

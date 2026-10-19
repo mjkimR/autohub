@@ -1,0 +1,19 @@
+[project]
+name = "autohub-sdd-runtime-app-common"
+version = "0.1.0"
+requires-python = ">=3.13,<3.14"
+dependencies = ["devkit-spec", "devkit-agt", "devkit-advisory", "app-tools"]
+
+[tool.uv]
+package = false
+# app-tools pins its development toolchain; this isolated profile reviews the newer runtime together.
+override-dependencies = [
+    "devkit-agt @ git+https://github.com/mjkimR/devkit@9c274b224a2afb6805a5444499493c6a7aabea07#subdirectory=packages/devkit",
+    "devkit-advisory @ git+https://github.com/mjkimR/devkit@9c274b224a2afb6805a5444499493c6a7aabea07#subdirectory=packages/devkit-advisory",
+]
+
+[tool.uv.sources]
+devkit-spec = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-spec", rev = "9c274b224a2afb6805a5444499493c6a7aabea07" }
+devkit-agt = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit", rev = "9c274b224a2afb6805a5444499493c6a7aabea07" }
+devkit-advisory = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-advisory", rev = "9c274b224a2afb6805a5444499493c6a7aabea07" }
+app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "c06dd7b80d1accb013006eb23d02bbea0ccbce8d" }

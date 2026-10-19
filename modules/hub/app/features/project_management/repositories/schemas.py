@@ -29,4 +29,7 @@ class RepoBlobRead(BaseModel):
 class RepoInfoRead(BaseModel):
     repository: str = Field(description="Full repository name: owner/repo")
     default_branch: str = Field(description="Repository default branch name")
+    branches_complete: bool = Field(
+        default=True, description="False when branch enumeration failed or exceeded 1000 branches"
+    )
     branches: list[str] = Field(default_factory=list, description="Available branch names")

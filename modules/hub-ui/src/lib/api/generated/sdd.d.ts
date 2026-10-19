@@ -232,6 +232,13 @@ export interface components {
         SddRuntimeStatus: {
             /** Ok */
             ok: boolean;
+            /**
+             * Profile
+             * @default default
+             */
+            profile: string;
+            /** Bundles */
+            bundles?: string[];
             /** Provider */
             provider?: string | null;
             /** Lock Sha256 */

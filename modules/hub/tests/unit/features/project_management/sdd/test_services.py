@@ -175,6 +175,8 @@ async def test_runtime_status_reports_the_pin_and_an_isolated_start(monkeypatch,
     status = await services.SddService().runtime_status()
     assert status == {
         "ok": True,
+        "profile": "default",
+        "bundles": [],
         "provider": "devkit-spec",
         "lock_sha256": "abc",
         "revisions": {"devkit-spec": "f" * 40},
