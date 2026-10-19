@@ -11,7 +11,7 @@ The built-in repository viewer adapts its screen to the project type.
 | `sdd` | Spec-driven project viewer for `devkit-spec` repositories (Living Spec reading, Proposals and Specs indexes, milestone roadmap, file explorer), the native SDD run panel, and the Git browser |
 
 Choose `Project Type` in the project settings or when registering a new project.
-See [Native SDD runtime](development.md#native-sdd-runtime) for the runtime the
+See [devkit runtime profiles](devkit-integration.md#runtime-profiles) for the runtime the
 `sdd` mode executes with.
 
 ## Native viewer
@@ -43,8 +43,15 @@ stay in autohub.
   approval.
 - Markdown parsing, YAML frontmatter, Mermaid diagram rendering, and document link
   normalization are built in.
-- Above the viewer, the SDD execution panel checks readiness for a spec and pull
-  request and starts a native run. Selecting a document under
-  `specs/<YYYY-MM>/<bundle>/` fills in that spec.
+- Above the viewer, the SDD execution panel checks readiness for a unit and pull
+  request and starts a native run. It accepts specs and proposals; the Proposals
+  panel provides the separate Planning/Development start and decision actions.
 - Data comes directly from the autohub repository API
   (`/api/v1/projects/{project_id}/repository/*`).
+
+## Execution scope
+
+The roadmap is read-only. Starting all members of a milestone, linking them to a
+Work Plan, and multi-proposal dependency/failure policies are
+[deferred](devkit-integration.md#deferred-multiple-proposals-and-milestone-execution).
+Use individual proposal actions and unit execution links with the existing gates.

@@ -1,12 +1,13 @@
 # Work plans
 
-Work plans manage work before a pull request exists. They are available in
-**Project → Plans** and the API below, deployed, and verified by live GitHub
-canaries. The registration identity and MCP additions dated 2026-09-30 are local
-and not yet deployed. One-time start reservations added on 2026-10-01 are also
-local and not yet deployed. Draft/proposed plans and activity history added on
-2026-10-01 are local and not yet deployed. [Design decisions](work-plans-design.md) record the
-agreed domain boundaries and the original proposals.
+Work plans manage work before a pull request exists, through **Project → Plans**
+and the API below. [Delivery status](delivery-status.md) separates recorded live
+canaries, deployed features without a canary, and current local changes.
+[Design decisions](work-plans-design.md) record the domain boundaries and original proposals.
+
+Work Plans and native devkit proposal/spec runs remain separate entry paths.
+Automatic unit linkage and milestone-wide execution are
+[deferred](devkit-integration.md#deferred-multiple-proposals-and-milestone-execution).
 
 ## Registration and dependencies
 

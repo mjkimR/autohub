@@ -22,13 +22,18 @@ approval workflow. Existing GitHub rule-block handling is retained for compatibi
 dependencies and dependencies between items in the same plan. Registration requests
 execution; eligible items create ready PRs and follow the project's merge policy.
 Plan pause/revoke controls unstarted work. GitHub Issues mirror specifications and
-history without controlling execution. This implementation awaits deployment and
-live GitHub validation.
+history without controlling execution. See [delivery status](docs/delivery-status.md)
+for the dated production evidence and later additions.
 
 Saved runs retain task snapshots and delivery history; dispatch reconciles comment
 markers to avoid duplicate requests. See [delivery status](docs/delivery-status.md)
 for implemented behavior and deferred work. [CI templates](templates/github-actions/README.md)
 are manually installed starter files.
+
+[SDD projects](docs/devkit-integration.md) connect devkit proposals/specs to cloud
+Planning and Development runs. The repository viewer includes roadmap members from
+activity branches and links them to their executions. Runtime profiles and rollout
+requirements are documented in the integration guide.
 
 ## Development
 
@@ -58,6 +63,7 @@ initialization deploys app-common devkit bundles from the installed packages.
 ## Documentation
 
 - [Documentation guide](docs/README.md): architecture, protocols, AI catalogs, and operator notices.
+- [devkit integration](docs/devkit-integration.md): SDD execution paths, runtime profiles, evidence and deferred batch execution.
 - [Development and operations](docs/development.md): checks, migrations, authentication, CI, and devkit updates.
 - [Connector encryption](modules/hub/README.md#connector-credential-encryption): key configuration and rotation constraints.
 - [Frontend](modules/hub-ui/README.md): UI tooling and API generation.

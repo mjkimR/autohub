@@ -1,33 +1,58 @@
-# Documentation Guide
+# Documentation guide
 
-Auto Hub is expanding the existing Scheduler Manager into a development automation service.
-These documents explicitly distinguish between design goals and current functionality.
+Start with the current contract for the task you are doing. Deployment claims and
+validation counts belong in [delivery status](delivery-status.md), where the last
+recorded production baseline is separate from newer local implementation.
 
-1. [Architecture](architecture.md): Responsibility boundaries and the scope of the core engine.
-2. [CI Connection Contract](ci-contract.md): Configuration required when connecting a repository and current observation APIs.
-3. [Codex PR Mention Protocol](codex-pr-mention.md): Design contract for dispatching Codex cloud work through PR comments.
-4. [Delivery Status](delivery-status.md): Current delivery state, latest validation, and remaining deployment checks.
-5. [AI Catalog Gateway](ai-catalogs.md): Per-kind quota policies (Codex, Jules), dispatch ledger, execution adapters, Jules session work types, catalog designation, and project agent schedules.
-6. [AI Catalog Implementation Notes](ai-catalog-implementation-notes.md): Module map, admission and session flows, design decisions, extension points, tests, and known limitations.
-7. [Operator Notices](operator-notices.md): Notification channels (Telegram), what the hub announces, the scheduler trigger heartbeat, and webhook delivery replay.
-8. [Development & Operations](development.md): Commands, testing, and constraints of the existing scheduler foundation.
-9. [Code Hygiene Review](code-hygiene-review.md): 2026-09-21 review, applied fixes, structural findings, and test follow-ups.
-10. [Project detail and connection tests](project-detail-and-connection-tests.md): Project tabs, catalog-specific Codex/Jules PR verification, merge exclusion, and cleanup behavior.
-11. [Work plans and dependencies — design](work-plans-design.md): Agreed Plan/Item ownership, dependency boundaries, pause/revoke behavior, and outbound Issue records.
-12. [Work plans](work-plans.md): APIs, controls, retention, outbound GitHub records, and verification boundaries.
-13. [MCP](mcp.md): User-level connection, managed credentials, work/operations tools, and deployment status.
-14. [MCP distribution review](autohub-distribution-review-2026-09-22.md): MCP-first delivery decision, app-mcp reuse assessment, and implementation review.
-15. [Run decisions and recovery](run-decisions.md): Questions, answers, explicit resume, provider markers, idempotency and replacement work.
-16. [MCP tool review](mcp-tool-review-2026-09-29.md): Work/operations split and per-tool retain/improve/reconsider ratings (Korean).
-17. [Work Plan backlog and activity](work-plan-backlog.md): Draft/proposed/ready lifecycle, comments and change history contract.
-18. [Repository viewer](repository-viewer.md): `general`/`sdd` project modes, the native SDD viewer, and the SDD execution panel.
+## Start here
 
-[Google login and approval](google-auth.md) describes the implementation, published dependency pins, configuration, and the completed live validation.
+| Task | Document |
+| --- | --- |
+| Check what is implemented, tested or deployed | [Delivery status](delivery-status.md) |
+| Connect a devkit repository, select its runtime, or understand SDD ownership | [devkit integration](devkit-integration.md) |
+| Browse documents, roadmap members and their executions | [Repository viewer](repository-viewer.md) |
+| Start Planning/Development, answer questions, approve or recover a run | [Run decisions](run-decisions.md) |
+| Run checks, understand tick timing or operate maintenance | [Development and operations](development.md) |
+| Deploy the service and verify its host | [Cloud Run deployment](cloud-run-deployment.md) |
 
-[Live Canary Results](canary-results-2026-09-22.md) consolidates the completed Codex/Jules, recovery, approval, and connection-test evidence from 2026-09-21–22. [Work Plan Canary Results](canary-results-2026-09-23.md) covers live work plan execution, immediate follow-up, and Cloud Tasks webhook processing. [Prompt Issue Sync Canary](canary-results-2026-09-28.md) verifies Issue synchronization right after webhook processing, before and after the plan-first ordering fix. [Fresh Schema Canary](canary-results-2026-10-01.md) verifies the connection test, plan dependencies, and the agent question/answer/resume flow on a new schema, with three Codex reply fixes. [Control and Recovery Canary](canary-results-2026-10-02.md) verifies run and plan pause, cancel, and replacement-plan recovery, with a resume fix for pushes made while paused.
+## Current contracts
 
-[CI Template Usage](../templates/github-actions/README.md) covers CI setup in target repositories.
-The root `justfile` is the single source of truth for commands, and connector credential encryption details are documented in the [Hub module documentation](../modules/hub/README.md#connector-credential-encryption).
+| Area | Documents |
+| --- | --- |
+| Engine and GitHub | [Architecture](architecture.md), [CI connection contract](ci-contract.md), [Codex PR mention protocol](codex-pr-mention.md), [CI templates](../templates/github-actions/README.md) |
+| Agent admission and connections | [AI catalogs](ai-catalogs.md), [implementation notes and limitations](ai-catalog-implementation-notes.md), [project connection tests](project-detail-and-connection-tests.md) |
+| Plans and execution batches | [Work plans](work-plans.md), [backlog and activity](work-plan-backlog.md), [domain design](work-plans-design.md) |
+| SDK and external flows | [SDK contract and PR bridge](sdk-task-flow.md), [standalone SDK](../packages/sdk/README.md) |
+| Access and notifications | [MCP](mcp.md), [Google authentication](google-auth.md), [operator notices](operator-notices.md), [connector encryption](../modules/hub/README.md#connector-credential-encryption) |
 
-When introducing new implementations, update the delivery status alongside the corresponding feature documentation.
-Never document APIs or commands as available features before they actually exist.
+Multiple devkit proposals and milestone-wide execution remain
+[deferred](devkit-integration.md#deferred-multiple-proposals-and-milestone-execution).
+The roadmap currently supports inspection and individual execution actions.
+
+## Dated evidence and reviews
+
+These documents explain a specific verification run or design review. They do not
+establish the currently deployed revision or supersede the current contracts.
+
+| Date | Evidence or review |
+| --- | --- |
+| 2026-09-21 | [Code hygiene review](code-hygiene-review.md) |
+| 2026-09-22 | [PR automation canary](canary-results-2026-09-22.md), [MCP distribution review](autohub-distribution-review-2026-09-22.md) |
+| 2026-09-23 | [Work Plan canary](canary-results-2026-09-23.md) |
+| 2026-09-28 | [Prompt Issue sync canary](canary-results-2026-09-28.md) |
+| 2026-09-29 | [MCP tool review](mcp-tool-review-2026-09-29.md) |
+| 2026-10-01 | [Fresh schema and question/answer canary](canary-results-2026-10-01.md) |
+| 2026-10-02 | [Control and recovery canary](canary-results-2026-10-02.md) |
+
+## Maintaining these documents
+
+- Keep behavior in its owning contract and link to it from overviews. Runtime
+  provisioning belongs in devkit integration; approval semantics in run decisions;
+  viewer behavior in repository viewer; check commands in development.
+- Keep public command names and defaults aligned with the repository
+  [justfile](../justfile). Preserve section anchors used by other documents when
+  moving procedures, or leave a short pointer at the old location.
+- Update delivery status with the date, tested scope, limits and deployment evidence
+  when behavior changes. Do not promote local tests to a production claim.
+- Label proposed and deferred work explicitly. Do not document APIs or commands as
+  available before they exist, or present a candidate design as a settled contract.

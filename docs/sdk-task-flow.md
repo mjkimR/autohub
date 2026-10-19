@@ -30,7 +30,7 @@ Following the existing host convention, the client sends X-API-Key and performs 
 
 The SDK does not own a DB or scheduler. The existing internal scheduler @task, Work Plan/Item, and PR PipelineRun are separate from external SDK tasks and flows. Separate `sdk_flow_*` tables store environments, releases, runs, steps, attempts, and command receipts. The dispatch intent is committed first, and the worker is called outside the DB transaction. A 60-second lease and revision-conditional writes block late results. When a response is uncertain, the host looks up the existing attempt and resubmits under the same ID only after the worker explicitly confirms that the ID is absent. The existing PR executor and the flow executor do not control the same PR concurrently.
 
-The SDK contract and planhub mock are tracked in specs/2026-10/20261009-sdk-task-flow-contract. The durable host is tracked in the [implementation spec](../specs/2026-10/20261009-durable-sdk-host/spec.md). The planhub application and specrig/PR bridge are implemented locally; production verification and scope linkage connect to F3~F4 of workbench's `docs/planhub-autohub-task-flow-design.md` and planhub PROP-autohub-delivery-host. Existing single-pipeline consumers can keep using manifest v1 and local execution.
+The SDK contract and planhub mock are tracked in specs/2026-10/20261009-sdk-task-flow-contract. The durable host is tracked in the [implementation spec](../specs/2026-10/20261009-durable-sdk-host/spec.md). The planhub application and devkit-spec/PR bridge are implemented locally; production verification and scope linkage connect to F3~F4 of workbench's `docs/planhub-autohub-task-flow-design.md` and planhub PROP-autohub-delivery-host. Existing single-pipeline consumers can keep using manifest v1 and local execution.
 
 
 ## Authentication and execution targets
@@ -42,6 +42,10 @@ The native executor supports `autohub.identity` and the server-allowlisted `auto
 `System maintenance` advances up to 32 runs by one step each. GET and run admission do not execute workers. The approval deadline is also checked when a command is received, and the expiry transition is recorded by the next maintenance. The next external polling time is at least 5 seconds later, but the actual progress interval follows the dispatcher tick. Cancellation stays `canceling` until the external worker's terminal result is confirmed; transport errors and generic 404s are not used as evidence of termination.
 
 ## planhub PR bridge
+
+The bridge uses the project's [server-assigned runtime profile](devkit-integration.md#runtime-profiles).
+Its approval digest includes the runtime/workflow contract and repository evidence;
+a profile change cannot silently reuse an earlier approval.
 
 The first domain flow in the [implementation spec](../specs/2026-10/20261009-planhub-pr-bridge/spec.md) verifies devkit-spec evidence in the actual checkout and, after explicit approval, resumes and observes a paused PipelineRun already implemented externally. It does not create a new PR or executor. The server allowlist pins the provider/environment, project, and absolute checkout path to the release binding.
 

@@ -194,7 +194,7 @@ gcloud run deploy "$SERVICE_NAME" \
 
 The image includes the default SDD runtime at `/opt/sdd` and the reviewed app-common
 profile at `/opt/sdd-app-common`. Set `AUTOHUB_SDD_PROFILES` to the server-owned
-repository mapping documented in [development](development.md#native-sdd-runtime)
+repository mapping documented in [runtime profiles](devkit-integration.md#runtime-profiles)
 for projects requiring app-common. The build identity needs read access to both pinned
 source repositories; runtime requests never download project dependencies.
 
@@ -203,7 +203,7 @@ namespaces: add `--execution-environment=gen2` to the deploy command for a servi
 that evaluates SDD runs, then confirm on the deployed host with
 `GET /api/v1/projects/{id}/sdd/runtime` (or the SDD panel's **Check runtime**), which
 must report `ok: true` with `isolation: bubblewrap`. See
-[development](development.md) for the runtime contract.
+[devkit integration](devkit-integration.md#isolation-and-deployment) for the runtime contract.
 
 Record the deployed Service URL output (e.g. `https://autohub-xxxx-du.a.run.app`):
 

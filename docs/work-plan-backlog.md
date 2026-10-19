@@ -1,8 +1,7 @@
 # Work Plan backlog and activity
 
 Implementation contract agreed and documented before development on 2026-10-01.
-Implemented locally, not deployed; verification is tracked in
-[delivery status](delivery-status.md).
+Deployment and verification evidence is tracked in [delivery status](delivery-status.md).
 
 ## Ownership and entry paths
 

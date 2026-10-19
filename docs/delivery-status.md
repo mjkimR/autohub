@@ -1,9 +1,47 @@
 # Implementation and verification status
 
-As of 2026-10-02. The production revision is `autohub-00015-4l4`, and the DB schema is `autohub`.
-The "In production" scope below is deployed to Cloud Run and confirmed with live service canaries.
+Implementation review: **2026-10-19**. Last recorded production baseline:
+**2026-10-02**, Cloud Run revision `autohub-00015-4l4`, DB schema `autohub`.
+This document has not rechecked the currently serving revision. Dated canaries
+below establish their tested scope only; local changes do not establish deployment.
 
-## In production
+## Current local implementation
+
+The [devkit integration guide](devkit-integration.md) is the entry point for SDD
+runtime setup and the devkit/Hub responsibility boundary. Current capabilities:
+
+| Area | Implemented behavior | Contract |
+| --- | --- | --- |
+| SDD activities | Planning/Development starts, proposal panel, accept/reject commits, handoff to a spec, questions and integration approval | [Run decisions](run-decisions.md#native-sdd-decisions) |
+| SDD runtime | Monorepo pin, default/app-common profiles, repository mapping, missing-bundle checks and workflow/approval fencing | [devkit integration](devkit-integration.md) |
+| Repository viewer | Shared devkit-viewer, milestone members from activity branches, unit → Run/Decisions and GitHub PR links | [Viewer](repository-viewer.md) |
+| Pipeline progression | Shared tick/webhook/manual driver; immediate ready transitions, bounded retries and preserved waits | [Advancement](development.md#pipeline-advancement) |
+| SDK flows | Durable host, scoped approval and the existing-PR devkit bridge | [SDK contract](sdk-task-flow.md) |
+
+### Latest verification
+
+Both change sets were verified locally on 2026-10-19. The suites overlap; counts
+are not additive and do not represent a fresh full-application test run.
+
+| Change set | Verification | Scope |
+| --- | --- | --- |
+| devkit consumer alignment | Unit 66 passed; isolated CLI/native/bridge SQLite 67 passed / 1 skipped; PostgreSQL 46 passed; UI 204 passed | Runtime profiles, workflow contract, approvals, handoff, bridge and viewer |
+| Common advancement and follow-up fixes | Targeted SQLite 371 passed / 8 skipped; PostgreSQL 58 passed | Early CI repair after a draft wait, same-tick capacity release, quota/due-time and delivery deduplication |
+
+Lint, type/build checks and whitespace validation passed for both changes.
+Generated API consistency also passed for the devkit integration change.
+The skipped SQLite lock-contention case is exercised by PostgreSQL coverage.
+
+### Remaining rollout evidence
+
+The latest changes have local verification, not a new production canary. Before
+claiming deployment, build the container, apply the matching migrations, configure
+runtime profiles, and verify isolation on the serving host. Then run the
+[live SDD canary](devkit-integration.md#live-canary-after-deployment) and record the
+revision, Run/PR links and approval history. Actual provider replies, GitHub CI and
+merge behavior cannot be inferred from local fixtures.
+
+## Recorded production baseline (2026-10-02)
 
 | Area | Verified | Details |
 | --- | --- | --- |
@@ -26,7 +64,7 @@ Contracts are in [Run decisions](run-decisions.md), [Work plans](work-plans.md),
 `74f8f53`, `fa9bea7`, `746959d`, and app-common `a36b829` (showing the cause of MCP
 argument errors).
 
-## Deployed but not verified in production
+## Recorded deployed scope without a live canary (2026-10-02)
 
 Confirmed only by automated tests.
 
@@ -39,21 +77,10 @@ Confirmed only by automated tests.
   `PATCH /{plan_id}/group`, MCP `work_plans_set_group`. It checks the revision and records
   history, and does not change execution, state, or specs.
 
-## Implemented locally, unreleased
+## Earlier implementation and validation evidence
 
-- 2026-10-19 devkit consumer alignment: the isolated SDD runtime now uses the devkit
-  monorepo, with a separately locked app-common profile and server-owned repository
-  mappings. Readiness identifies missing bundles, and runtime status shows the selected
-  profile and inventory. Hub retains workflow definition fencing using a semantic
-  digest despite devkit's name-only bindings. The SDK bridge also binds approval to
-  the runtime contract. The shared viewer receives activity branches, with explicit
-  fallback when enumeration is incomplete, and selected proposal/spec units link to
-  their executions and GitHub PRs. This entry describes local implementation;
-  deployment and live cloud-agent verification remain separate. Local verification:
-  focused unit tests 66 passed; real isolated CLI/native/bridge tests 67 passed and
-  1 skipped on SQLite; selected PostgreSQL integration tests 46 passed; frontend
-  tests 204 passed. Lint, type checks, frontend build and generated API consistency
-  also passed. The suites overlap; counts are not additive.
+These entries preserve the evidence collected at the time. Current contracts above
+supersede historical specrig and viewer descriptions; these entries are not a rollout checklist.
 
 - 2026-10-14 SDD transition: project types, APIs, and screens were consolidated as `sdd`,
   and the `devkit-spec` provider and Python runtime lock are pinned for execution. devkit
@@ -61,20 +88,21 @@ Confirmed only by automated tests.
   and merge protections are connected. Old execution evidence is preserved, and
   in-progress runs are terminated by the migration. Real CLI and macOS isolation,
   response, screen, and DB regression tests were added. Real container, PostgreSQL, and
-  GitHub connections are not part of the completion evidence for this item. Linux
-  namespace support and additional bundle profiles are prerequisites for deployment. The
-  current contract and commands follow the
-  [development guide](development.md#native-sdd-runtime). Final local verification:
+  GitHub connections are not part of the completion evidence for this item. At that point, Linux
+  namespace support and additional bundle profiles remained deployment work. The
+  2026-10-19 implementation adds profiles and PostgreSQL evidence; live host
+  verification remains separate. Current setup follows the
+  [devkit integration guide](devkit-integration.md). Final local verification:
   backend SQLite 972 passed / 31 skipped, separate real CLI integration 44 passed /
   1 skipped, UI 187 passed, SDK 27 passed. Lint, type checks, UI/SDK builds, and the
   generated API consistency check also passed. The test suites partly overlap, so the counts are not summed.
 
-- 2026-10-12 specrig integration hardening (history below; the current implementation is
+- 2026-10-12 specrig integration hardening (historical; the current implementation is
   replaced by the SDD transition above): if a stop, cancel, or approval withdrawal occurs
   during the last GitHub lookup, the revision/lease is rechecked before the merge request.
   The pinned release CLI, Git, and offline restore cache are included in the image, and
   layered fresh checkout restore and real CLI tests of release/follow-up sources are
-  connected. The production pin is 0.1.2, and layered sources are test-only. Per-spec run
+  connected. The historical release pin was 0.1.2, and layered sources are test-only. Per-spec run
   links and review/final report summaries were added. Custom Go rules are outside the
   shared server's support scope, and installation and execution errors are distinguished
   from rework for rule violations.
@@ -92,8 +120,6 @@ Confirmed only by automated tests.
   and shown in one column on mobile. Production deployment and real GitHub canaries were
   not performed.
 
-- [Repository document viewer](repository-viewer.md): connected per-repository renderer ID selection, reads and refreshes through the authenticated client, branch passing, and multi-renderer installation based on Git-ignored deployment configuration. Local automated verification is kept separate from production deployment verification.
-
 - [autohub-sdk](../packages/sdk/README.md): `@pipeline` declarations, input/output
   validation, `Registry`, JSON manifest export, local execution examples. 0.2.0 provides
   task/approval sequential FlowSpec, release/run/command wire models, and an HTTP client.
@@ -102,14 +128,17 @@ Confirmed only by automated tests.
   [SDK contract](sdk-task-flow.md). The real backend's catalog, run, and command APIs, DB
   ledger, lease, revision fencing, and native/HTTP worker adapters are also implemented
   locally. Real SDK HTTP calls, DB restarts, and PostgreSQL contention were verified. The
-  planhub application, specrig/PR adapter, worker code deployment, and production rollout
-  are follow-up scope.
+  devkit-spec PR bridge is also locally implemented and tested; see
+  [its current contract](sdk-task-flow.md#planhub-pr-bridge). Worker provisioning and
+  production rollout remain deployment work.
 
 ## Operating constants and compatibility
 
 - The schedule tick is 5 minutes (`*/5 * * * *`). The 60 seconds for projects/maintenance
-  is an internal minimum interval. Plan resume and registration start ready Items in the
-  same request, but follow-up effects of Run resume and cancel happen at the next tick.
+  is an internal minimum interval. Current PipelineRun advancement can continue
+  immediately through ready steps; see [pipeline advancement](development.md#pipeline-advancement)
+  and [Work Plan admission](work-plans.md#registration-and-dependencies) for trigger
+  budgets and waits. The external tick remains the recovery path.
 - Authentication uses `X-API-Key`. `APP_API_KEY_ROOT_KEY` is for machine management only and is not an MCP credential.
 - REST resume requires `request_id` and `expected_revision`. The Plan registration key is required in MCP and optional in REST.
 - Shared maintenance entries cannot be edited, stopped, or deleted through the API/UI and are recovered at startup and on each tick.
@@ -145,4 +174,6 @@ removes only the classification values.
   review. Branching policy for additional repositories is decided at onboarding. Provider
   uncertainty is in
   [Catalog open items](ai-catalog-implementation-notes.md#known-limitations-and-remaining-work).
+- Multiple devkit proposals, milestone batch execution and Work Plan linkage are
+  deferred; see the [scope and unresolved decisions](devkit-integration.md#deferred-multiple-proposals-and-milestone-execution).
 - Known cleanup item: Plan registration requests issue many queries (query counter warning). Behavior is not affected.
