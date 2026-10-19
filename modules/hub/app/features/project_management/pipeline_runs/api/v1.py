@@ -104,7 +104,7 @@ async def advance_pipeline_run(
     observer: Annotated[PipelineObservationService, Depends(get_pipeline_observer)],
 ):
     """Trigger manual run progression check (PR detection or CI verification)."""
-    return await use_case.manual_advance(run_id, observer)
+    return await use_case.advance_until_wait(run_id, observer)
 
 
 @router.post("/{run_id}/pause", response_model=PipelineRunRead)

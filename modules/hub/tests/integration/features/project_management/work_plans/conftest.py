@@ -166,5 +166,5 @@ def live_kick(setup_work, monkeypatch):
 
     monkeypatch.setattr(WorkPlanKick, "run", LIVE_KICK)
     dispatch = AsyncMock()
-    monkeypatch.setattr(PipelineRunUseCase, "manual_advance", dispatch)
+    monkeypatch.setattr(PipelineRunUseCase, "advance_until_wait", dispatch)
     return dispatch

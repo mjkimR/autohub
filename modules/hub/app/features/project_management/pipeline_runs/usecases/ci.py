@@ -235,6 +235,8 @@ class CIProgress:
                     ),
                 )
                 run.state = PipelineRunState.DISPATCHING
+                # A new repair supersedes the old observation/merge recheck delay.
+                run.next_action_at = None
             run.revision += 1
             await session.flush()
         elif pull_result.status == VerificationStatus.CLOSED:

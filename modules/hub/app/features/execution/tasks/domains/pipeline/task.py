@@ -10,11 +10,7 @@ from app.features.execution.tasks import task
 from app.features.execution.tasks.core.context import get_task_meta
 from app.features.project_management.pipeline_runs.models import PipelineRunState
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
-from app.features.project_management.pipeline_runs.schemas import (
-    LeaseMutation,
-    LeaseRequest,
-    PrepareImplementationAttempt,
-)
+from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from app.features.project_management.pipeline_runs.usecases.delivery import CATALOG_HOLD_CODE
 from app.features.project_management.pipeline_runs.usecases.lifecycle import (
     GITHUB_AUTH_WAIT_REASON,
@@ -80,7 +76,7 @@ async def observe_project_task(payload: ProjectObservationPayload) -> None:
 
 @task(name=PROJECT_DISPATCH_TASK)
 async def dispatch_project_task(payload: ProjectDispatchPayload) -> None:
-    """Observe ready PR runs, then admit a separate bounded batch of dispatches."""
+    """Advance active runs, then admit a separate bounded batch of new runs."""
     meta = get_task_meta()
     if meta is None:
         raise RuntimeError(f"{PROJECT_DISPATCH_TASK} requires a schedule task context")
@@ -93,17 +89,17 @@ async def dispatch_project_task(payload: ProjectDispatchPayload) -> None:
     batch_limit = get_scheduler_defaults().MAX_CONCURRENT_TASKS
     semaphore = asyncio.Semaphore(batch_limit)
 
-    async def advance_one(run) -> None:
+    async def advance_one(run) -> bool:
         """Advance one run; what GitHub or the catalog asks the run to wait for is not a failure of the tick."""
         try:
-            await advance_leased(run)
+            advanced_run = await advance_leased(run)
         except GitHubObservationError as exc:
             if exc.kind not in WAITABLE_GITHUB_FAILURES:
                 raise
             await run_use_case.wait_for_github(run.id, kind=exc.kind, retry_after=exc.retry_after)
         except ProjectError as exc:
             if exc.code == CATALOG_HOLD_CODE:
-                return
+                return False
             kind = exc.code.removeprefix("GITHUB_").lower()
             if kind not in WAITABLE_GITHUB_FAILURES:
                 raise
@@ -111,45 +107,33 @@ async def dispatch_project_task(payload: ProjectDispatchPayload) -> None:
         else:
             if run.pause_reason == GITHUB_AUTH_WAIT_REASON:
                 await run_use_case.clear_github_auth_wait(run.id)
+            return advanced_run.state == PipelineRunState.DISPATCHING
+        return False
 
-    async def advance_leased(run) -> None:
+    async def advance_leased(run) -> PipelineRunRead:
         async with semaphore:
-            owner = f"job:{meta.run_id}:{run.id.hex[:8]}"
-            if run.state == PipelineRunState.QUEUED:
-                lease = await run_use_case.acquire_lease(run.id, LeaseRequest(owner=owner, ttl_seconds=120))
-                try:
-                    await run_use_case.prepare_implementation(
-                        run.id,
-                        PrepareImplementationAttempt(
-                            owner=owner,
-                            token=lease.token,
-                            expected_run_revision=lease.run_revision,
-                        ),
-                    )
-                finally:
-                    await run_use_case.release_lease(run.id, LeaseMutation(owner=owner, token=lease.token))
-            elif run.state in (
-                PipelineRunState.DISPATCHING,
-                PipelineRunState.IMPLEMENTING,
-                PipelineRunState.AWAITING_CI,
-                PipelineRunState.PAUSED,
-            ):
-                lease = await run_use_case.acquire_lease(run.id, LeaseRequest(owner=owner, ttl_seconds=120))
-                try:
-                    if run.state == PipelineRunState.DISPATCHING:
-                        await run_use_case.dispatch_implementation(run.id, owner=owner, token=lease.token)
-                    else:
-                        await run_use_case.advance_run(run.id, owner=owner, token=lease.token, observer=observer)
-                finally:
-                    await run_use_case.release_lease(run.id, LeaseMutation(owner=owner, token=lease.token))
+            return await run_use_case.advance_until_wait(
+                run.id, observer, owner=f"job:{meta.run_id}:{run.id.hex[:8]}", respect_due=True
+            )
 
-    # Each phase has its own selection budget. Query dispatch only after observation
-    # commits, so a full observation batch cannot starve it or hide newly ready runs.
+    # Active runs and new dispatch candidates have separate selection budgets. Start existing dispatches
+    # before potentially slow work-item preparation, then fill any unused slots.
     results = []
-    for states in (
-        (PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI, PipelineRunState.PAUSED),
-        (PipelineRunState.QUEUED, PipelineRunState.DISPATCHING),
-    ):
+    dispatch_count = 0
+    advanced = set()
+    for phase in ("observe", "dispatch", "follow_up"):
+        if phase == "follow_up":
+            try:
+                await WorkPlanExecution(observer).advance_project(payload.project_id, limit=batch_limit)
+            except Exception as exc:
+                results.append(exc)
+            if dispatch_count >= batch_limit:
+                continue
+        states = (
+            (PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI, PipelineRunState.PAUSED)
+            if phase == "observe"
+            else (PipelineRunState.QUEUED, PipelineRunState.DISPATCHING)
+        )
         async with AsyncTransaction() as session:
             runs = await run_repo.list_active(
                 session,
@@ -157,15 +141,29 @@ async def dispatch_project_task(payload: ProjectDispatchPayload) -> None:
                 limit=batch_limit,
                 ready_at=get_current_utc_time(),
                 states=states,
+                exclude_ids=tuple(advanced),
             )
+            if phase != "observe":
+                runs = [run for run in runs if run.id not in advanced][: batch_limit - dispatch_count]
             if any(run.state == PipelineRunState.QUEUED for run in runs):
                 limit = await _project_run_limit(session, project_service, payload.project_id)
                 if limit is not None:
                     started = await run_repo.count_started(session, payload.project_id)
                     runs = _within_limit(runs, limit - started)
+        advanced.update(run.id for run in runs)
+        if phase != "observe":
+            # Holds and uncertain deliveries must not be retried in the follow-up pass.
+            dispatch_count += len(runs)
         # Finish every worker and its lease cleanup even when another worker fails.
-        results.extend(await asyncio.gather(*(advance_one(run) for run in runs), return_exceptions=True))
-    await WorkPlanExecution(observer).advance_project(payload.project_id, limit=batch_limit)
+        phase_results = await asyncio.gather(*(advance_one(run) for run in runs), return_exceptions=True)
+        results.extend(phase_results)
+        if phase == "observe":
+            # Another observation may have released catalog capacity. Reconsider committed dispatches
+            # once in the bounded dispatch batch; its query still enforces quota holds and due times.
+            # Failed/uncertain deliveries stay excluded, as do all candidates after that dispatch pass.
+            advanced.difference_update(
+                run.id for run, result in zip(runs, phase_results, strict=True) if result is True
+            )
     for result in results:
         if isinstance(result, BaseException):
             raise result

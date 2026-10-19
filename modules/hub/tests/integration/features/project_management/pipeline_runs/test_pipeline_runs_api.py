@@ -863,6 +863,8 @@ def mention_github(github, monkeypatch):
     def respond(request):
         if request.url.path == "/user":
             return httpx.Response(200, json={"login": "connector-user", "type": "User"})
+        if request.url.path.endswith("/actions/workflows/ci.yml/runs"):
+            return httpx.Response(200, json={"total_count": 0, "workflow_runs": []})
         if request.url.path.endswith("/comments"):
             if request.method == "POST":
                 comments.append(

@@ -69,6 +69,7 @@ class PipelineRunRepository:
         limit: int,
         ready_at: datetime | None = None,
         states: tuple[PipelineRunState, ...] | None = None,
+        exclude_ids: tuple[UUID, ...] = (),
     ) -> list[PipelineRun]:
         uncertain_delivery = (
             select(ExecutionAttempt.id)
@@ -95,6 +96,8 @@ class PipelineRunRepository:
                 AICatalogRepository.admits_dispatch(ready_at),
             ),
         ]
+        if exclude_ids:
+            filters.append(PipelineRun.id.not_in(exclude_ids))
         if states is not None:
             filters.append(PipelineRun.state.in_(states))
         if ready_at is not None:

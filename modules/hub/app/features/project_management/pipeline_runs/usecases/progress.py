@@ -152,8 +152,25 @@ class PipelineRunProgress:
             async with AsyncTransaction() as session:
                 await self._validate(session, checkpoint)
 
-    async def advance(
+    async def observe(
         self, run_id: UUID, *, owner: str, token: UUID, observer: PipelineObservationService
+    ) -> PipelineRunRead:
+        # One observation owns its transactions; the caller decides whether to continue.
+        try:
+            async with asyncio.timeout(PROGRESS_IO_SECONDS):
+                return await self._observe_once(run_id, owner=owner, token=token, observer=observer)
+        except TimeoutError:
+            raise ProjectError(
+                504, "Pipeline observation exceeded its time budget; reconcile on the next tick"
+            ) from None
+
+    async def _observe_once(
+        self,
+        run_id: UUID,
+        *,
+        owner: str,
+        token: UUID,
+        observer: PipelineObservationService,
     ) -> PipelineRunRead:
         implementing = ImplementationProgress(self.repo, self.ai_catalogs)
         ci = CIProgress(self.repo, self.observer)
@@ -232,56 +249,51 @@ class PipelineRunProgress:
                 else now + timedelta(seconds=PROGRESS_LEASE_SECONDS)
             )
 
-        try:
-            async with asyncio.timeout(PROGRESS_IO_SECONDS):
-                if implementation_input is not None:
-                    implementation_result = await implementing.observe(implementation_input, observer)
-                if native_snapshot is not None:
-                    assert native_target is not None
-                    native_pull = (
-                        implementation_result.pull
-                        if implementation_input is not None
-                        else await observer.get_pull_request(
-                            native_target.connector_id, native_target.repository, pull_number
-                        )
-                    )
-                    native_result = await SddProgress(self.repo).observe(
-                        native_snapshot, native_previous, native_target, native_pull, observer
-                    )
-                if (
-                    checkpoint.state == PipelineRunState.AWAITING_CI
-                    and implementation_input is None
-                    and (
-                        native_result is None
-                        or (
-                            merge_ready(native_result.get("evidence", {}))
-                            and native_result.get("evidence", {}).get("approval")
-                            and native_result["evidence"]["head_sha"] == (native_previous or {}).get("head_sha")
-                            and native_result["evidence"]["base_sha"] == (native_previous or {}).get("base_sha")
-                        )
-                    )
-                ):
-                    assert project_read is not None
-                    plan = ((native_result or {}).get("evidence") or {}).get("plan_decision") or {}
-                    merge_message = (plan["commit_title"], plan["commit_body"]) if plan.get("commit_title") else None
-                    ci_result = await ci.observe(
-                        project_read, pull_number, observer, lambda: self._authorize_merge(checkpoint), merge_message
-                    )
-        except TimeoutError:
-            raise ProjectError(
-                504, "Pipeline observation exceeded its time budget; reconcile on the next tick"
-            ) from None
+        if implementation_input is not None:
+            implementation_result = await implementing.observe(implementation_input, observer)
+        if native_snapshot is not None:
+            assert native_target is not None
+            native_pull = (
+                implementation_result.pull
+                if implementation_input is not None
+                else await observer.get_pull_request(native_target.connector_id, native_target.repository, pull_number)
+            )
+            native_result = await SddProgress(self.repo).observe(
+                native_snapshot, native_previous, native_target, native_pull, observer
+            )
+        if (
+            checkpoint.state == PipelineRunState.AWAITING_CI
+            and implementation_input is None
+            and (
+                native_result is None
+                or (
+                    merge_ready(native_result.get("evidence", {}))
+                    and native_result.get("evidence", {}).get("approval")
+                    and native_result["evidence"]["head_sha"] == (native_previous or {}).get("head_sha")
+                    and native_result["evidence"]["base_sha"] == (native_previous or {}).get("base_sha")
+                )
+            )
+        ):
+            assert project_read is not None
+            plan = ((native_result or {}).get("evidence") or {}).get("plan_decision") or {}
+            merge_message = (plan["commit_title"], plan["commit_body"]) if plan.get("commit_title") else None
+            ci_result = await ci.observe(
+                project_read, pull_number, observer, lambda: self._authorize_merge(checkpoint), merge_message
+            )
 
         async with AsyncTransaction() as session:
             run, _ = await self._validate(session, checkpoint)
             now = get_current_utc_time()
             if implementation_input is not None:
                 result = await implementing.apply(session, run, now, implementation_input, implementation_result)
-                if native_result is None or run.state != PipelineRunState.IMPLEMENTING:
-                    return result
-            if native_result is not None and ci_result is None:
-                return await SddProgress(self.repo).apply(session, run, now, native_result)
-            assert project_read is not None and ci_result is not None
-            if native_result is not None:
-                run.sdd_progress = native_result["evidence"]
-            return await ci.apply(session, run, project_read, now, ci_result)
+                if native_result is not None and run.state == PipelineRunState.IMPLEMENTING:
+                    result = await SddProgress(self.repo).apply(session, run, now, native_result)
+            elif native_result is not None and ci_result is None:
+                result = await SddProgress(self.repo).apply(session, run, now, native_result)
+            else:
+                assert project_read is not None and ci_result is not None
+                if native_result is not None:
+                    run.sdd_progress = native_result["evidence"]
+                result = await ci.apply(session, run, project_read, now, ci_result)
+
+        return result

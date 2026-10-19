@@ -121,7 +121,7 @@ async def test_resume_recovers_original_push_after_project_change(
     monkeypatch.setattr(github, "respond", scenario.respond)
     advanced = await client.post(f"{root}/advance")
     assert_status_code(advanced, 200)
-    assert advanced.json()["state"] == ("dispatching" if ci == "failure" else "completed")
+    assert advanced.json()["state"] == ("implementing" if ci == "failure" else "completed")
     attempts = (await client.get(f"{root}/attempts")).json()["items"]
     if ci == "failure":
         assert attempts[-1]["kind"] == "ci-fix"

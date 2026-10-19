@@ -26,7 +26,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.real_commit]
 def delivery(monkeypatch):
     async def deliver(self, observer, target, request, delivery_number, authorize):
         await authorize()
-        return DeliveryReceipt("hitl-delivery", utc_now(), None)
+        return DeliveryReceipt(f"hitl:{request.correlation_marker}:{delivery_number}", utc_now(), None)
 
     monkeypatch.setattr(CodexGithubMentionAdapter, "deliver", deliver)
 
@@ -62,7 +62,7 @@ async def test_applied_question_and_answer_reach_next_stage(client, run, github,
 
     monkeypatch.setattr(native.SddService, "inspect", inspect)
     next_state = await scenarios.merge.advance(client, run)
-    assert next_state["state"] == "dispatching"
+    assert next_state["state"] == "implementing"
     attempts = (await client.get(root + "/attempts")).json()["items"]
     instructions = attempts[-1]["request_snapshot"]["instructions"]
     assert "Keep the public API?" in instructions
@@ -109,7 +109,8 @@ async def test_rework_times_out_and_generic_resume_preserves_requirement(client,
 async def test_ready_pr_records_g3_approval_and_audit(client, run, github):
     github.draft = False
     current = await scenarios.merge.advance(client, run)
-    assert current["state"] == "implementing"
+    assert current["state"] == "completed"
+    assert github.merge_requests == 1
     assert current["sdd_progress"]["approval"]["source"] == "pr-ready"
     records = (await client.get(f"/api/v1/pipeline-runs/{run['id']}/sdd-decisions")).json()
     assert records[0]["actor"] == "github:pr-ready"
@@ -133,6 +134,7 @@ async def test_g3_polling_wakes_ready_but_not_manual_pause(client, run, github):
         assert [str(row.id) for row in selected] == [run["id"]]
         assert await PipelineRunRepository().count_started(session, UUID(run["project_id"])) == 0
     github.draft = False
+    github.has_ci = False
     approved = await scenarios.merge.advance(client, run)
     assert approved["sdd_progress"]["approval"]["source"] == "pr-ready"
     await client.post(f"/api/v1/pipeline-runs/{run['id']}/pause")
@@ -163,6 +165,7 @@ async def test_manual_pause_disables_existing_g3_wait(client, run, github):
 
 async def test_revoke_cannot_be_undone_by_ready_or_generic_resume(client, run, github):
     github.draft = False
+    github.has_ci = False
     approved = await scenarios.merge.advance(client, run)
     revoked, _ = await scenarios.decide(client, approved, "revoke", feedback="Recheck scope")
     assert revoked.status_code == 200

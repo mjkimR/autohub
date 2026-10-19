@@ -17,13 +17,19 @@ pytestmark = [pytest.mark.integration, pytest.mark.real_commit]
 
 
 @pytest.mark.parametrize("action", ["pause", "cancel", "revoke"])
-async def test_stop_during_native_merge_authorization_prevents_write(client, run, github, monkeypatch, action):
+@pytest.mark.parametrize("immediate_ci", [False, True])
+async def test_stop_during_native_merge_authorization_prevents_write(
+    client, run, github, monkeypatch, action, immediate_ci
+):
     waiting = await advance(client, run)
     approved, _ = await decide(client, waiting, "approve")
     assert approved.status_code == 200
     github.draft = False
-    integrated = await advance(client, run)
-    assert integrated["state"] == "awaiting_ci"
+    if not immediate_ci:
+        github.has_ci = False
+        integrated = await advance(client, run)
+        assert integrated["state"] == "awaiting_ci"
+        github.has_ci = True
     in_authorization = False
     authorizations = 0
     interrupted = False
@@ -44,7 +50,8 @@ async def test_stop_during_native_merge_authorization_prevents_write(client, run
         if in_authorization and authorizations == 2 and not interrupted:
             interrupted = True
             if action == "revoke":
-                paused, _ = await decide(client, integrated, "revoke")
+                current = (await client.get(f"/api/v1/pipeline-runs/{run['id']}")).json()
+                paused, _ = await decide(client, current, "revoke")
             else:
                 paused = await client.post(f"/api/v1/pipeline-runs/{run['id']}/{action}")
             assert paused.status_code == 200, paused.text

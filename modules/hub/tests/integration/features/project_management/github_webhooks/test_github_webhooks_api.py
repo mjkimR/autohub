@@ -129,7 +129,7 @@ async def test_webhook_pr_opened_with_auto_run_enrolls_and_advances():
 
     new_run = MagicMock(id=uuid4())
     lifecycle.enroll = AsyncMock(return_value=new_run)
-    lifecycle.manual_advance = AsyncMock()
+    lifecycle.advance_until_wait = AsyncMock()
 
     webhook = GitHubWebhookUseCase(repo, runs, lifecycle)
     webhook._finish = AsyncMock()
@@ -142,7 +142,7 @@ async def test_webhook_pr_opened_with_auto_run_enrolls_and_advances():
     await webhook.process("del-1", payload, event="pull_request")
 
     lifecycle.enroll.assert_awaited_once_with(project.id, EnrollPullRequest(pull_number=42))
-    lifecycle.manual_advance.assert_awaited_once_with(new_run.id, lifecycle.observer)
+    lifecycle.advance_until_wait.assert_awaited_once_with(new_run.id, lifecycle.observer)
     webhook._finish.assert_awaited_once_with("del-1", "processed")
 
 
@@ -154,7 +154,7 @@ def make_webhook(*, enroll):
     repo.project_for_repository = AsyncMock(return_value=MagicMock(id=uuid4(), enabled=True))
     runs.get_active_for_pull = AsyncMock(return_value=None)
     lifecycle.enroll = enroll
-    lifecycle.manual_advance = AsyncMock()
+    lifecycle.advance_until_wait = AsyncMock()
     webhook = GitHubWebhookUseCase(repo, runs, lifecycle)
     finish = AsyncMock()
     webhook._finish = finish
@@ -192,7 +192,7 @@ async def test_webhook_records_why_a_trigger_did_not_enroll():
 
     await webhook.process("del-3", payload, event="pull_request")
 
-    lifecycle.manual_advance.assert_not_awaited()
+    lifecycle.advance_until_wait.assert_not_awaited()
     finish.assert_awaited_once_with(
         "del-3", "processed", "Enrollment skipped: AI catalog 'personal-jules' cannot deliver pull request work"
     )
@@ -202,7 +202,7 @@ async def test_webhook_notes_a_deferred_first_dispatch_after_enrolling():
     from app.features.project_management.projects.errors import ProjectError
 
     webhook, lifecycle, finish = make_webhook(enroll=AsyncMock(return_value=MagicMock(id=uuid4())))
-    lifecycle.manual_advance = AsyncMock(side_effect=ProjectError(409, "AI catalog is quota-blocked"))
+    lifecycle.advance_until_wait = AsyncMock(side_effect=ProjectError(409, "AI catalog is quota-blocked"))
     payload = {
         "action": "opened",
         "repository": {"full_name": "owner/app"},
@@ -225,7 +225,7 @@ async def test_webhook_pr_opened_without_auto_run_is_ignored():
     repo.project_for_repository = AsyncMock(return_value=project)
     runs.get_active_for_pull = AsyncMock(return_value=None)
     lifecycle.enroll = AsyncMock()
-    lifecycle.manual_advance = AsyncMock()
+    lifecycle.advance_until_wait = AsyncMock()
 
     webhook = GitHubWebhookUseCase(repo, runs, lifecycle)
     webhook._finish = AsyncMock()
@@ -238,7 +238,7 @@ async def test_webhook_pr_opened_without_auto_run_is_ignored():
     await webhook.process("del-2", payload, event="pull_request")
 
     lifecycle.enroll.assert_not_awaited()
-    lifecycle.manual_advance.assert_not_awaited()
+    lifecycle.advance_until_wait.assert_not_awaited()
     webhook._finish.assert_awaited_once_with("del-2", "processed")
 
 
@@ -254,7 +254,7 @@ async def test_webhook_comment_with_auto_run_enrolls_when_no_active_run():
 
     new_run = MagicMock(id=uuid4())
     lifecycle.enroll = AsyncMock(return_value=new_run)
-    lifecycle.manual_advance = AsyncMock()
+    lifecycle.advance_until_wait = AsyncMock()
 
     webhook = GitHubWebhookUseCase(repo, runs, lifecycle)
     webhook._finish = AsyncMock()
@@ -268,7 +268,7 @@ async def test_webhook_comment_with_auto_run_enrolls_when_no_active_run():
     await webhook.process("del-3", payload, event="issue_comment")
 
     lifecycle.enroll.assert_awaited_once_with(project.id, EnrollPullRequest(pull_number=15))
-    lifecycle.manual_advance.assert_awaited_once_with(new_run.id, lifecycle.observer)
+    lifecycle.advance_until_wait.assert_awaited_once_with(new_run.id, lifecycle.observer)
     webhook._finish.assert_awaited_once_with("del-3", "processed")
 
 
@@ -284,7 +284,7 @@ async def test_webhook_comment_with_auto_run_advances_existing_active_run():
     runs.get_active_for_pull = AsyncMock(return_value=existing_run)
 
     lifecycle.enroll = AsyncMock()
-    lifecycle.manual_advance = AsyncMock()
+    lifecycle.advance_until_wait = AsyncMock()
 
     webhook = GitHubWebhookUseCase(repo, runs, lifecycle)
     webhook._finish = AsyncMock()
@@ -298,7 +298,7 @@ async def test_webhook_comment_with_auto_run_advances_existing_active_run():
     await webhook.process("del-4", payload, event="issue_comment")
 
     lifecycle.enroll.assert_not_awaited()
-    lifecycle.manual_advance.assert_awaited_once_with(existing_run.id, lifecycle.observer)
+    lifecycle.advance_until_wait.assert_awaited_once_with(existing_run.id, lifecycle.observer)
     webhook._finish.assert_awaited_once_with("del-4", "processed")
 
 
@@ -314,7 +314,7 @@ async def test_out_of_order_webhooks_route_each_pull_request_to_its_own_active_r
     runs.get_active_for_pull = AsyncMock(
         side_effect=lambda _session, _project_id, number: {7: first, 8: second}[number]
     )
-    lifecycle.manual_advance = AsyncMock()
+    lifecycle.advance_until_wait = AsyncMock()
 
     webhook = GitHubWebhookUseCase(repo, runs, lifecycle)
     webhook._finish = AsyncMock()
@@ -330,8 +330,8 @@ async def test_out_of_order_webhooks_route_each_pull_request_to_its_own_active_r
         event="pull_request",
     )
 
-    assert lifecycle.manual_advance.await_args_list[0].args == (second.id, lifecycle.observer)
-    assert lifecycle.manual_advance.await_args_list[1].args == (first.id, lifecycle.observer)
+    assert lifecycle.advance_until_wait.await_args_list[0].args == (second.id, lifecycle.observer)
+    assert lifecycle.advance_until_wait.await_args_list[1].args == (first.id, lifecycle.observer)
     assert webhook._finish.await_args_list[0].args == ("workflow-8", "processed")
     assert webhook._finish.await_args_list[1].args == ("push-7", "processed")
 
@@ -349,7 +349,7 @@ async def test_webhook_follows_an_advanced_run_with_its_work_plan(monkeypatch, a
     project, run = MagicMock(id=uuid4(), enabled=True), MagicMock(id=uuid4())
     repo.project_for_repository = AsyncMock(return_value=project)
     runs.get_active_for_pull = AsyncMock(return_value=run)
-    lifecycle.manual_advance = AsyncMock(side_effect=None if advanced else ProjectError(409, "lease"))
+    lifecycle.advance_until_wait = AsyncMock(side_effect=None if advanced else ProjectError(409, "lease"))
 
     webhook = GitHubWebhookUseCase(repo, runs, lifecycle)
     webhook._finish = AsyncMock()
@@ -377,7 +377,7 @@ async def test_webhook_notes_an_advance_deferred_by_a_held_lease():
     run = MagicMock(id=uuid4())
     repo.project_for_repository = AsyncMock(return_value=project)
     runs.get_active_for_pull = AsyncMock(return_value=run)
-    lifecycle.manual_advance = AsyncMock(side_effect=ProjectError(409, "Pipeline run lease acquire was rejected"))
+    lifecycle.advance_until_wait = AsyncMock(side_effect=ProjectError(409, "Pipeline run lease acquire was rejected"))
 
     webhook = GitHubWebhookUseCase(repo, runs, lifecycle)
     webhook._finish = AsyncMock()
@@ -402,7 +402,7 @@ async def test_failed_webhook_processing_is_acknowledged_for_polling_recovery():
     run = MagicMock(id=uuid4())
     repo.project_for_repository = AsyncMock(return_value=project)
     runs.get_active_for_pull = AsyncMock(return_value=run)
-    lifecycle.manual_advance = AsyncMock(side_effect=RuntimeError("temporary GitHub outage"))
+    lifecycle.advance_until_wait = AsyncMock(side_effect=RuntimeError("temporary GitHub outage"))
 
     webhook = GitHubWebhookUseCase(repo, runs, lifecycle)
     webhook._finish = AsyncMock()

@@ -40,7 +40,7 @@ class WorkPlanKick:
                 admitted = await self.execution.advance_phase(project_id, "admit", limit=KICK_ADMIT_LIMIT)
                 for queued in await self._queued_runs(admitted):
                     try:
-                        await self.lifecycle.manual_advance(queued, self.lifecycle.observer)
+                        await self.lifecycle.advance_until_wait(queued, self.lifecycle.observer)
                     except ProjectError as exc:
                         # e.g. a quota hold or a lease held by the tick; the run stays queued for it.
                         logger.info(f"Work run {queued} first dispatch deferred: {exc.detail}")

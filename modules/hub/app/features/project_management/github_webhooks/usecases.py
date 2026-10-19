@@ -151,7 +151,7 @@ class GitHubWebhookUseCase:
 
             if run is not None:
                 try:
-                    await self.lifecycle.manual_advance(run.id, self.lifecycle.observer)
+                    await self.lifecycle.advance_until_wait(run.id, self.lifecycle.observer)
                 except ProjectError as exc:
                     # e.g. a burst of workflow_run events, or the scheduler tick, already holds the run's lease.
                     # That holder advances the run, and polling covers anything it misses.
@@ -178,7 +178,7 @@ class GitHubWebhookUseCase:
                     await self._finish(delivery_id, "processed", f"Enrollment skipped: {exc.detail}")
                     return True
                 try:
-                    await self.lifecycle.manual_advance(new_run.id, self.lifecycle.observer)
+                    await self.lifecycle.advance_until_wait(new_run.id, self.lifecycle.observer)
                 except ProjectError as exc:
                     # The run exists; the scheduler dispatches it once the reason (a quota hold, say) clears.
                     await self._finish(delivery_id, "processed", f"Enrolled; first dispatch deferred: {exc.detail}")

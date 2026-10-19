@@ -1,7 +1,7 @@
 import asyncio
 from datetime import timedelta
 from typing import Annotated
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from app.features.ai_catalogs.models import (
     AICatalog,
@@ -35,6 +35,7 @@ from app.features.project_management.pipeline_runs.schemas import (
     PreparedImplementationAttempt,
     PrepareImplementationAttempt,
 )
+from app.features.project_management.pipeline_runs.usecases.advancement import PipelineRunAdvancement
 from app.features.project_management.pipeline_runs.usecases.catalogs import resolve_catalog
 from app.features.project_management.pipeline_runs.usecases.control import PipelineRunControl
 from app.features.project_management.pipeline_runs.usecases.delivery import PipelineRunDelivery
@@ -286,7 +287,7 @@ class PipelineRunUseCase:
                 created=True,
             )
 
-    async def advance_run(
+    async def observe_run(
         self,
         run_id: UUID,
         *,
@@ -294,7 +295,8 @@ class PipelineRunUseCase:
         token: UUID,
         observer: PipelineObservationService,
     ) -> PipelineRunRead:
-        return await PipelineRunProgress(self.repo, self.projects, self.observer, self.ai_catalogs).advance(
+        """Observe once under an existing lease; entry points use advance_until_wait."""
+        return await PipelineRunProgress(self.repo, self.projects, self.observer, self.ai_catalogs).observe(
             run_id, owner=owner, token=token, observer=observer
         )
 
@@ -322,26 +324,18 @@ class PipelineRunUseCase:
                 run.pause_reason = None
                 run.revision += 1
 
-    async def manual_advance(self, run_id: UUID, observer: PipelineObservationService) -> PipelineRunRead:
-        owner = f"manual:{uuid4().hex[:8]}"
-        grant = await self.acquire_lease(run_id, LeaseRequest(owner=owner, ttl_seconds=60))
-        try:
-            run = await self.get(run_id)
-            if run.state == PipelineRunState.QUEUED:
-                await self.prepare_implementation(
-                    run_id,
-                    PrepareImplementationAttempt(
-                        owner=owner,
-                        token=grant.token,
-                        expected_run_revision=grant.run_revision,
-                    ),
-                )
-                run = await self.get(run_id)
-            if run.state == PipelineRunState.DISPATCHING:
-                return await self.dispatch_implementation(run_id, owner=owner, token=grant.token)
-            return await self.advance_run(run_id, owner=owner, token=grant.token, observer=observer)
-        finally:
-            await self.release_lease(run_id, LeaseMutation(owner=owner, token=grant.token))
+    async def advance_until_wait(
+        self,
+        run_id: UUID,
+        observer: PipelineObservationService,
+        *,
+        owner: str | None = None,
+        respect_due: bool = False,
+    ) -> PipelineRunRead:
+        """Shared entry point for every trigger, with bounded continuation and lease cleanup."""
+        return await PipelineRunAdvancement(self).advance_until_wait(
+            run_id, observer, owner=owner, respect_due=respect_due
+        )
 
     @staticmethod
     def _github_repository(project) -> str:

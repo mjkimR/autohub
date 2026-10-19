@@ -1,5 +1,7 @@
 """The merge stage: what Hub does once CI passed, by GitHub's own verdict on the pull request."""
 
+import json
+
 import httpx
 import pytest
 from app.features.project_management.pipelines import services
@@ -8,6 +10,7 @@ from app.features.project_management.pipelines.github import (
     GitHubObservationError,
     github_http_error,
 )
+from app_testing_base import utc_now
 
 from tests.utils.assertions import assert_status_code
 
@@ -27,6 +30,7 @@ class MergeScenario:
         self.state_after_refusal: str | None = None
         self.merge_response = httpx.Response(200, json={"merged": True, "sha": "e" * 40})
         self.merge_requests = 0
+        self.comments = []
 
     def pull(self) -> dict:
         return {
@@ -43,6 +47,20 @@ class MergeScenario:
 
     def respond(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path.removeprefix(ROOT)
+        if path == "/user":
+            return httpx.Response(200, json={"login": "connector-user", "type": "User"})
+        if path == "/issues/7/comments":
+            if request.method == "POST":
+                self.comments.append(
+                    {
+                        "id": len(self.comments) + 1,
+                        "body": json.loads(request.content)["body"],
+                        "created_at": utc_now().isoformat(),
+                        "user": {"login": "connector-user"},
+                    }
+                )
+                return httpx.Response(201, json=self.comments[-1])
+            return httpx.Response(200, json=self.comments)
         workflow_run = {
             "id": 1,
             "run_number": 1,
@@ -186,7 +204,7 @@ async def test_draft_still_allows_failed_ci_to_be_fixed(client, run, github):
     github.draft = True
     github.ci_conclusion = "failure"
     advanced = await advance(client, run)
-    assert advanced["state"] == "dispatching"
+    assert advanced["state"] == "implementing"
     assert github.merge_requests == 0
     assert await attempt_kinds(client, run) == ["implementation", "ci-fix"]
 
@@ -252,7 +270,7 @@ async def test_a_branch_that_conflicts_with_or_trails_its_base_goes_to_the_agent
 
     advanced = await advance(client, run)
 
-    assert (advanced["state"], advanced["pause_reason"], github.merge_requests) == ("dispatching", None, 0)
+    assert (advanced["state"], advanced["pause_reason"], github.merge_requests) == ("implementing", None, 0)
     assert await attempt_kinds(client, run) == ["implementation", "conflict-fix"]
 
 
@@ -271,7 +289,7 @@ async def test_a_refused_merge_is_a_conflict_only_when_github_says_so(client, ru
     github.state_after_refusal = "dirty"
     github.mergeable_state = None
     conflicted = await advance(client, run)
-    assert conflicted["state"] == "dispatching"
+    assert conflicted["state"] == "implementing"
     assert await attempt_kinds(client, run) == ["implementation", "conflict-fix"]
 
 
@@ -310,8 +328,8 @@ async def test_the_attempt_list_sums_up_what_the_run_has_cost(client, run, githu
 
     summary = attempts["summary"]
     assert summary["attempts_by_kind"] == {"implementation": 1, "conflict-fix": 1}
-    # The pull request was implemented outside the pipeline and the fix is only planned: nothing was posted yet.
-    assert (summary["requests_sent"], summary["quota_limit_replies"]) == (0, 0)
+    # The external implementation costs no request; its conflict fix is delivered immediately.
+    assert (summary["requests_sent"], summary["quota_limit_replies"]) == (1, 0)
     assert summary["finished_at"] is None and summary["elapsed_seconds"] >= 0
 
 

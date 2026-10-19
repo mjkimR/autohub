@@ -88,6 +88,30 @@ Never log credentials or personally identifiable information (PII).
 Even if the pipeline CI fails, if the observation query itself succeeds, the `ScheduleJob` is marked as success.
 CI status and failure rationales are inspected via the observation report.
 
+Scheduler ticks, webhooks, manual advances, and WorkPlan follow-ups all call
+`PipelineRunUseCase.advance_until_wait`. It owns one lease and a 90-second budget
+across at most eight steps. Preparation and observation each commit their result
+before the loop rechecks the next step. A completed delivery stops the loop to
+wait for the agent. Unchanged workflow state also stops it; timestamp or revision
+updates alone never trigger repeated polling. SDD approval and integration changes
+can continue even when the run's top-level state stays the same.
+
+The common loop preserves approval gates, quota admission, and delivery retry
+times. Ticks respect every due time; events and manual advances may refresh the
+first observation early (for example, when a draft becomes ready), but cannot
+bypass a delayed delivery. Cancellation, lease changes, and project changes remain
+fenced at each operation. An exhausted step budget leaves the committed run ready
+for a later trigger; a timeout reports a retryable advancement failure.
+
+Active runs and new dispatch candidates retain separate selection budgets.
+Existing candidates run before WorkPlan reconciliation; newly admitted items use
+the remaining candidate slots afterward. Runs whose observation returns a committed
+`dispatching` state can enter the dispatch batch once, because another observation
+may have released catalog capacity. Selection still enforces quota holds and due
+times. Failed or uncertain deliveries stay excluded, and dispatch candidates are
+never retried again in the follow-up phase. A new CI repair clears the superseded
+observation delay so that an early event can dispatch it immediately.
+
 ## System maintenance
 
 The installation owns exactly one **System maintenance** schedule (`system.maintain`).

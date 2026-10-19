@@ -29,7 +29,7 @@ async def test_ci_fix_uses_failure_context_and_log_access_is_best_effort(client,
 
     monkeypatch.setattr(github, "respond", respond)
     advanced = await advance(client, run)
-    assert advanced["state"] == "dispatching"
+    assert advanced["state"] == "implementing"
     attempts = (await client.get(f"/api/v1/pipeline-runs/{run['id']}/attempts")).json()["items"]
     fix = next(attempt for attempt in attempts if attempt["kind"] == "ci-fix")
     instructions = fix["request_snapshot"]["instructions"]

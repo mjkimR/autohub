@@ -158,7 +158,7 @@ async def test_quota_reply_sets_a_global_catalog_hold_without_a_run_retry_cap(de
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(f"{PROGRESS}.AsyncTransaction", lambda: mock_tx)
         mp.setattr(f"{IMPLEMENTATION}.resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter()))
-        result = await use_case.advance_run(run.id, owner="worker-1", token=run.lease_token, observer=observer)
+        result = await use_case.observe_run(run.id, owner="worker-1", token=run.lease_token, observer=observer)
 
     assert result.state == PipelineRunState.DISPATCHING
     assert run.next_action_at is None
@@ -167,7 +167,7 @@ async def test_quota_reply_sets_a_global_catalog_hold_without_a_run_retry_cap(de
     assert run.quota_block_count == 1
 
 
-async def test_manual_advance_dispatches_a_prepared_implementation():
+async def test_advance_until_wait_dispatches_a_prepared_implementation():
     repo = MagicMock()
     projects = MagicMock()
     observer = MagicMock()
@@ -187,7 +187,7 @@ async def test_manual_advance_dispatches_a_prepared_implementation():
     use_case.dispatch_implementation = AsyncMock(return_value=expected)
     use_case.release_lease = AsyncMock()
 
-    result = await use_case.manual_advance(run.id, observer)
+    result = await use_case.advance_until_wait(run.id, observer)
 
     assert result is expected
     use_case.dispatch_implementation.assert_awaited_once_with(run.id, owner=ANY, token=grant.token)
@@ -198,7 +198,7 @@ async def test_manual_advance_dispatches_a_prepared_implementation():
     assert release_request.owner == use_case.dispatch_implementation.await_args.kwargs["owner"]
 
 
-async def test_manual_advance_prepares_and_dispatches_a_queued_run():
+async def test_advance_until_wait_prepares_and_dispatches_a_queued_run():
     repo = MagicMock()
     projects = MagicMock()
     observer = MagicMock()
@@ -220,7 +220,7 @@ async def test_manual_advance_prepares_and_dispatches_a_queued_run():
     use_case.dispatch_implementation = AsyncMock(return_value=expected)
     use_case.release_lease = AsyncMock()
 
-    result = await use_case.manual_advance(queued_run.id, observer)
+    result = await use_case.advance_until_wait(queued_run.id, observer)
 
     assert result is expected
     assert use_case.prepare_implementation.await_count == 1
@@ -433,7 +433,7 @@ async def test_complete_attempt_records_result():
             assert settled.value.status == 409 and "already failed" in settled.value.detail
 
 
-async def test_manual_advance_leases_and_advances():
+async def test_advance_until_wait_leases_and_advances():
     repo = MagicMock()
     projects = MagicMock()
     selector = MagicMock()
@@ -445,14 +445,15 @@ async def test_manual_advance_leases_and_advances():
     grant = MagicMock(spec=LeaseGrant)
     grant.token = uuid4()
     use_case.acquire_lease = AsyncMock(return_value=grant)
-    use_case.get = AsyncMock(return_value=MagicMock(state=PipelineRunState.AWAITING_CI))
-    use_case.advance_run = AsyncMock(return_value=MagicMock())
+    run = create_mock_run(run_id=run_id, state=PipelineRunState.AWAITING_CI)
+    use_case.get = AsyncMock(return_value=run)
+    use_case.observe_run = AsyncMock(return_value=run)
     use_case.release_lease = AsyncMock()
 
-    await use_case.manual_advance(run_id, observer)
+    await use_case.advance_until_wait(run_id, observer)
 
     use_case.acquire_lease.assert_awaited_once()
-    use_case.advance_run.assert_awaited_once()
+    use_case.observe_run.assert_awaited_once()
     use_case.release_lease.assert_awaited_once()
 
 
@@ -505,14 +506,16 @@ async def test_pushed_head_wins_over_watchdog_and_quota_replies(monkeypatch, ela
     observer.list_pull_comments = AsyncMock(
         return_value=[{"user": {"login": "chatgpt-codex-connector[bot]"}, "body": "Codex usage limit"}]
     )
-    tx = MagicMock()
-    tx.__aenter__ = AsyncMock(return_value=AsyncMock())
-    tx.__aexit__ = AsyncMock(return_value=None)
-    monkeypatch.setattr("app.features.project_management.pipeline_runs.usecases.progress.AsyncTransaction", lambda: tx)
 
-    result = await PipelineRunUseCase(repo, projects, observer).advance_run(
-        run.id, owner="worker-1", token=run.lease_token, observer=observer
-    )
+    from app.features.project_management.pipeline_runs.adapters.base import DeliveryTarget
+    from app.features.project_management.pipeline_runs.usecases.implementation import ImplementationProgress
+
+    progress = ImplementationProgress(repo, None)
+    session = AsyncMock()
+    target = DeliveryTarget(projects.get.return_value.github_connector_id, "owner/repo", run.pull_number)
+    prepared = await progress.prepare(session, run, target)
+    observed = await progress.observe(prepared, observer)
+    result = await progress.apply(session, run, utc_now(), prepared, observed)
 
     assert result.state == PipelineRunState.AWAITING_CI
     repo.create_delivery.assert_not_awaited()
@@ -562,7 +565,7 @@ async def test_silent_watchdog_uses_an_exact_fixed_clock(monkeypatch, elapsed, e
         f"{IMPLEMENTATION}.resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter())
     )
 
-    result = await PipelineRunUseCase(repo, projects, observer).advance_run(
+    result = await PipelineRunUseCase(repo, projects, observer).observe_run(
         run.id, owner="worker-1", token=run.lease_token, observer=observer
     )
 
@@ -622,7 +625,7 @@ async def test_codex_reply_without_push_blocks_after_grace(monkeypatch, since_re
         f"{IMPLEMENTATION}.resolve_execution_adapter", AsyncMock(return_value=CodexGithubMentionAdapter())
     )
 
-    result = await PipelineRunUseCase(repo, projects, observer).advance_run(
+    result = await PipelineRunUseCase(repo, projects, observer).observe_run(
         run.id, owner="worker-1", token=run.lease_token, observer=observer
     )
 

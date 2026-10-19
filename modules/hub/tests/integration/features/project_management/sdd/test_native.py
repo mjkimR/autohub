@@ -105,9 +105,8 @@ async def test_single_owner_approval_to_ci_merge_and_idempotent_receipt(client, 
     assert replay.json()["revision"] == approved.json()["revision"]
     github.draft = False
     integrated = await merge.advance(client, run)
-    assert integrated["state"] == "awaiting_ci"
-    done = await merge.advance(client, run)
-    assert done["state"] == "completed"
+    assert integrated["state"] == "completed"
+    assert (await client.post(f"/api/v1/pipeline-runs/{run['id']}/advance")).status_code == 409
     assert github.merge_requests == 1
     replay = await client.post(f"/api/v1/pipeline-runs/{run['id']}/resume", json=body)
     assert replay.status_code == 200 and replay.json()["state"] == "completed"
@@ -314,8 +313,10 @@ async def test_base_change_returns_to_integration_without_merging(client, run, g
     waiting = await merge.advance(client, run)
     approved, _ = await decide(client, waiting, "approve")
     assert approved.status_code == 200
+    github.has_ci = False
     integrated = await merge.advance(client, run)
     assert integrated["state"] == "awaiting_ci"
+    github.has_ci = True
     original = github.pull
     monkeypatch.setattr(github, "pull", lambda: {**original(), "base": {**original()["base"], "sha": "f" * 40}})
 
@@ -332,7 +333,7 @@ async def test_base_change_returns_to_integration_without_merging(client, run, g
 
     monkeypatch.setattr(native.SddService, "inspect", needs_integration)
     changed = await merge.advance(client, run)
-    assert changed["state"] == "dispatching"
+    assert changed["state"] == "implementing"
     assert changed["sdd_progress"]["approval"]["head_sha"] == merge.HEAD
     assert github.merge_requests == 0
 
