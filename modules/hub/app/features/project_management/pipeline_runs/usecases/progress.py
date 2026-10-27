@@ -175,8 +175,10 @@ class PipelineRunProgress:
         implementing = ImplementationProgress(self.repo, self.ai_catalogs)
         ci = CIProgress(self.repo, self.observer)
         implementation_input = None
+        implementation_applied = False
         project_read = None
         native_snapshot = native_previous = native_target = None
+        native_attempt = None
         native_result = None
         ci_result = None
         async with AsyncTransaction() as session:
@@ -224,7 +226,8 @@ class PipelineRunProgress:
                     )
                 )
                 native_target = DeliveryTarget(project.github_connector_id, project.github_repository, run.pull_number)
-            if run.state == PipelineRunState.IMPLEMENTING:
+            # A native resume may only re-inspect a gate before any implementation was dispatched.
+            if run.state == PipelineRunState.IMPLEMENTING and (native_snapshot is None or native_attempt is not None):
                 implementation_input = await implementing.prepare(
                     session,
                     run,
@@ -251,6 +254,16 @@ class PipelineRunProgress:
 
         if implementation_input is not None:
             implementation_result = await implementing.observe(implementation_input, observer)
+            if native_snapshot is not None:
+                # Persist trusted questions/quota waits before a native policy decision can publish a commit.
+                async with AsyncTransaction() as session:
+                    run, _ = await self._validate(session, checkpoint)
+                    result = await implementing.apply(
+                        session, run, get_current_utc_time(), implementation_input, implementation_result
+                    )
+                    if run.state != PipelineRunState.IMPLEMENTING:
+                        return result
+                implementation_applied = True
         if native_snapshot is not None:
             assert native_target is not None
             native_pull = (
@@ -258,9 +271,18 @@ class PipelineRunProgress:
                 if implementation_input is not None
                 else await observer.get_pull_request(native_target.connector_id, native_target.repository, pull_number)
             )
-            native_result = await SddProgress(self.repo).observe(
-                native_snapshot, native_previous, native_target, native_pull, observer
+            native_result = await SddProgress(self.repo, self.projects).observe(
+                native_snapshot,
+                native_previous,
+                native_target,
+                native_pull,
+                observer,
+                run_id=run_id,
+                revision=checkpoint.revision,
+                lease=(owner, str(token)),
             )
+        if native_result and native_result.get("published_run") is not None:
+            return native_result["published_run"]
         if (
             checkpoint.state == PipelineRunState.AWAITING_CI
             and implementation_input is None
@@ -268,6 +290,7 @@ class PipelineRunProgress:
                 native_result is None
                 or (
                     merge_ready(native_result.get("evidence", {}))
+                    and not native_result["pull"].get("draft")
                     and native_result.get("evidence", {}).get("approval")
                     and native_result["evidence"]["head_sha"] == (native_previous or {}).get("head_sha")
                     and native_result["evidence"]["base_sha"] == (native_previous or {}).get("base_sha")
@@ -285,7 +308,11 @@ class PipelineRunProgress:
             run, _ = await self._validate(session, checkpoint)
             now = get_current_utc_time()
             if implementation_input is not None:
-                result = await implementing.apply(session, run, now, implementation_input, implementation_result)
+                result = (
+                    PipelineRunRead.model_validate(run)
+                    if implementation_applied
+                    else await implementing.apply(session, run, now, implementation_input, implementation_result)
+                )
                 if native_result is not None and run.state == PipelineRunState.IMPLEMENTING:
                     result = await SddProgress(self.repo).apply(session, run, now, native_result)
             elif native_result is not None and ci_result is None:

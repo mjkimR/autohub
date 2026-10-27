@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Implementation review: **2026-10-19**. Last recorded production baseline:
+Implementation review: **2026-10-27**. Last recorded production baseline:
 **2026-10-02**, Cloud Run revision `autohub-00015-4l4`, DB schema `autohub`.
 This document has not rechecked the currently serving revision. Dated canaries
 below establish their tested scope only; local changes do not establish deployment.
@@ -12,13 +12,84 @@ runtime setup and the devkit/Hub responsibility boundary. Current capabilities:
 
 | Area | Implemented behavior | Contract |
 | --- | --- | --- |
-| SDD activities | Planning/Development starts, proposal panel, accept/reject commits, handoff to a spec, questions and integration approval | [Run decisions](run-decisions.md#native-sdd-decisions) |
-| SDD runtime | Monorepo pin, default/app-common profiles, repository mapping, missing-bundle checks and workflow/approval fencing | [devkit integration](devkit-integration.md) |
-| Repository viewer | Shared devkit-viewer, milestone members from activity branches, unit → Run/Decisions and GitHub PR links | [Viewer](repository-viewer.md) |
+| SDD activities | Planning/Development starts, fenced/recoverable proposal decisions, owning-base automatic approval, effort/review evidence, handoff, questions and integration approval | [Run decisions](run-decisions.md#native-sdd-decisions) |
+| SDD runtime | devkit 0.1.4 monorepo pin, default/app-common profiles, repository mapping, missing-bundle checks and workflow/approval fencing | [devkit integration](devkit-integration.md) |
+| Repository viewer | Shared devkit-viewer, selected-branch proposal roadmap, recorded Proposal → Spec → Run/PR lineage and Decisions links | [Viewer](repository-viewer.md) |
 | Pipeline progression | Shared tick/webhook/manual driver; immediate ready transitions, bounded retries and preserved waits | [Advancement](development.md#pipeline-advancement) |
 | SDK flows | Durable host, scoped approval and the existing-PR devkit bridge | [SDK contract](sdk-task-flow.md) |
 
-### Latest verification
+### P2 second-review follow-up (2026-10-27)
+
+The second review's three reproduced defects are fixed. Automatic Planning
+acceptance now excludes Development handoff and requires the proposal's own
+Planning branch. An automatic publication's internal error transition records a
+specific recovery revision; generic resume reconciles the exact published commit
+before dispatching more work. User changes do not extend that authorization, and
+recovery also checks the original PR branch/base. Native gate inspection no longer
+requires an implementation Attempt when approval was withdrawn while still queued.
+
+New regressions exercise a real Git/devkit Development handoff, lost-result
+recovery without another Attempt or publication, resume replay, and queued
+withdrawal through explicit reapproval and merge. Recovery remains fenced after
+revocation, cancellation, pending/dismissed questions, project disable and base
+changes. The full backend suite with both reviewed SDD profiles and required
+OS-isolated devkit execution passed **1,186 tests / 17 skipped**. PostgreSQL
+passed 57 decision/merge cases with the reviewed runtime, including
+publication/cancel contention. Lint, type checks, the production UI build, local
+documentation links and whitespace checks passed. No API or database migration
+is required; changes remain local.
+
+### P1 review follow-up (2026-10-27)
+
+The follow-up fixes three independently reproduced authorization defects: Hub's
+own decision commit was treated as an unauthorized head change; proposal decisions
+bypassed unapplied Hub questions; and automatic acceptance restored withdrawn
+approval on a generic resume. Decision tests now move the PR to a distinct commit
+and observe CI for that head. New regressions cover stale CI, other head changes,
+open/answered questions, a question arriving during preparation or agent polling,
+and explicit reapproval of withdrawn automatic delegation.
+
+The full backend suite, with the reviewed SDD profiles and required OS-isolated
+devkit execution, passed **1,177 tests / 17 skipped**. Targeted SQLite tests passed
+126 cases (2 PostgreSQL-only skips), PostgreSQL passed 48 decision/merge cases,
+and the frontend passed 207 tests. Lint, type checks, the production UI build,
+documentation links and whitespace checks passed. The implementation and tests
+are local; deployment and live GitHub/provider canaries remain outstanding.
+
+### devkit alignment verification (2026-10-26)
+
+The devkit 0.1.4 alignment was verified locally against immutable monorepo commit
+`3609efe87e590c8da5f01a905cb207a13090f943`. Both reviewed runtime profiles were
+provisioned in fresh directories; the previous installations were preserved.
+
+| Verification | Result | Scope |
+| --- | --- | --- |
+| Full backend, SQLite with the reviewed SDD profiles | 1,163 passed / 17 skipped | Existing application behavior plus real Git, OS-isolated devkit, native decisions, handoff and SDK bridge |
+| Required isolated SDD contract suite | 84 passed / 2 skipped | Backend subset; canonical/manual/policy acceptance, owning-base policy, 11-question rejection, runtime isolation and recovery |
+| PostgreSQL decision/lineage/merge regressions | 39 passed | Publication/cancel locking, unknown push recovery, automatic decisions, revoked approval, project boundaries and merge fences |
+| Frontend, normal parallel runner | 206 passed | Viewer, Planning evidence, saved-request recovery, roadmap and execution links |
+| Standalone SDK | 27 passed; wheel and source distribution built | HTTP and remote contracts |
+
+Lint, backend/SDK type checks, frontend type check and production build, generated
+API consistency, receipt synchronization and whitespace validation passed. The
+viewer tarball's SHA-512 matches the npm lock. The new runtime pin records all six
+devkit distributions at 0.1.4.
+
+The verification also corrected two test setup issues: SDD test packages now avoid
+duplicate module names during full collection, and the Work Plan migration
+roundtrip includes the existing `attach_branch` migration. AI Catalog form tests
+wait for initial dialog autofocus before editing, removing their parallel-run race.
+The review follow-up adds durable publication intents in existing resume receipts,
+closes all questions on rejection (including more than the ten display rows),
+supports delegated intent/acceptance, and preserves support-role rounds and effort
+evidence before approval. It also prevents inspection from restoring withdrawn
+proposal approval. No new DB migration is needed. A focused activity-start suite
+passed 14 tests, including four hint/override/retry cases added after full collection.
+There are three non-failing architecture warnings for existing direct HTTP client
+construction sites. A Docker image build and live deployment/provider canaries
+were not run for this update.
+
+### Previous verification (2026-10-19)
 
 Both change sets were verified locally on 2026-10-19. The suites overlap; counts
 are not additive and do not represent a fresh full-application test run.

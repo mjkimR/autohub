@@ -8,7 +8,7 @@ The built-in repository viewer adapts its screen to the project type.
 | Mode (`project_type`) | Description |
 | --- | --- |
 | `general` | Default Git browser (directory tree, file contents, README preview) |
-| `sdd` | Spec-driven project viewer for `devkit-spec` repositories (Living Spec reading, Proposals and Specs indexes, milestone roadmap, file explorer), the native SDD run panel, and the Git browser |
+| `sdd` | Spec-driven project viewer for `devkit-spec` repositories (release handbook and Living Spec reading, Proposals and Specs indexes, milestone roadmap, file explorer), the native SDD run panel, and the Git browser |
 
 Choose `Project Type` in the project settings or when registering a new project.
 See [devkit runtime profiles](devkit-integration.md#runtime-profiles) for the runtime the
@@ -25,22 +25,23 @@ refresh the tarball; the Git browser, the SDD execution panel and the Proposals 
 stay in autohub.
 
 - `sdd` projects open **Sdd View** by default and can switch to **Git Browser**.
-- **Sdd View** has the tabs `문서 읽기` (the `docs/` Living Spec grouped by chapter),
+- **Sdd View** includes a dashboard and a Read tab (the release handbook when
+  `handbook/manifest.json` exists, with Living Spec indexing on request),
   `Proposals` (`docs/proposals/PROP-*/` bundles), `Specs` (`specs/` task bundles)
   (the Proposals panel above the viewer starts and decides proposals; see
   [run decisions](run-decisions.md#proposals-panel)),
-  `로드맵` (`docs/roadmap/MS-*.md` milestones by status, `depends_on` readiness and
-  member proposals and specs) and `파일 탐색` (file explorer), with search and status
-  filters. Milestones come from the default branch; members also come from remote
-  `plan-` and `dev-` branches through the authenticated data source's `refs` method.
-  Repository info paginates up to 1,000 branches. If listing fails or reaches that
-  bound, the roadmap explicitly falls back to the default branch rather than
-  presenting a partial list as complete.
-- A member on the currently selected branch opens its source document. Select the
-  displayed activity branch in the repository selector to open a member from another
-  branch. Selecting a spec or proposal fills the execution unit and shows its recent
-  Run/Decisions links and direct GitHub PR links. Reading never starts a run or grants
-  approval.
+  `Roadmap` (`docs/roadmap/MS-*.md` milestones by status, `depends_on` readiness and
+  direct member proposals) and `Files` (file explorer), with search and status
+  filters. With the viewer from devkit 0.1.4, milestones and their members come from
+  the selected branch. Only `docs/proposals/PROP-*/proposal.md` anchors establish
+  membership; historical `milestone` fields on specs are ignored. Select a `plan-`
+  or `dev-` branch in the repository selector to inspect its saved documents.
+  The viewer no longer aggregates remote activity branches into the roadmap.
+- A member opens its source document on the selected branch. Selecting a spec or
+  proposal fills the execution unit and shows its recent
+  Run/Decisions links and direct GitHub PR links. A recorded `handoff_from` joins
+  related proposal and spec executions within the same project; similar names
+  alone do not join them. Reading never starts a run or grants approval.
 - Markdown parsing, YAML frontmatter, Mermaid diagram rendering, and document link
   normalization are built in.
 - Above the viewer, the SDD execution panel checks readiness for a unit and pull

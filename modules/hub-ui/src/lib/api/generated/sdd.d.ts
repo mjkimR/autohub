@@ -180,6 +180,10 @@ export interface components {
             display_status: string;
             /** Task Kind */
             task_kind?: string | null;
+            /** Planning Effort */
+            planning_effort?: ("low" | "medium" | "high") | null;
+            /** Dev Effort */
+            dev_effort?: ("low" | "medium" | "high") | null;
             /** Plan Branch */
             plan_branch: boolean;
             /** Dev Branch */

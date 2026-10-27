@@ -8,12 +8,13 @@ dependencies = ["devkit-spec", "devkit-agt", "devkit-advisory", "app-tools"]
 package = false
 # app-tools pins its development toolchain; this isolated profile reviews the newer runtime together.
 override-dependencies = [
-    "devkit-agt @ git+https://github.com/mjkimR/devkit@9c274b224a2afb6805a5444499493c6a7aabea07#subdirectory=packages/devkit",
-    "devkit-advisory @ git+https://github.com/mjkimR/devkit@9c274b224a2afb6805a5444499493c6a7aabea07#subdirectory=packages/devkit-advisory",
+    "devkit-dist @ git+https://github.com/mjkimR/devkit@3609efe87e590c8da5f01a905cb207a13090f943#subdirectory=packages/devkit-dist",
+    "devkit-agt @ git+https://github.com/mjkimR/devkit@3609efe87e590c8da5f01a905cb207a13090f943#subdirectory=packages/devkit",
+    "devkit-advisory @ git+https://github.com/mjkimR/devkit@3609efe87e590c8da5f01a905cb207a13090f943#subdirectory=packages/devkit-advisory",
 ]
 
 [tool.uv.sources]
-devkit-spec = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-spec", rev = "9c274b224a2afb6805a5444499493c6a7aabea07" }
-devkit-agt = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit", rev = "9c274b224a2afb6805a5444499493c6a7aabea07" }
-devkit-advisory = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-advisory", rev = "9c274b224a2afb6805a5444499493c6a7aabea07" }
-app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "c06dd7b80d1accb013006eb23d02bbea0ccbce8d" }
+devkit-spec = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-spec", rev = "3609efe87e590c8da5f01a905cb207a13090f943" }
+devkit-agt = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit", rev = "3609efe87e590c8da5f01a905cb207a13090f943" }
+devkit-advisory = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-advisory", rev = "3609efe87e590c8da5f01a905cb207a13090f943" }
+app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "3c3232b17ccc6e231615532e24643afa6b88a78b" }

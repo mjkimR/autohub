@@ -3,18 +3,26 @@
 import json
 import os
 import subprocess
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import pytest
 from app.features.project_management.pipeline_runs.requests import request_digest
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.sdd.services import STALE_LINT, SddService
+
 from tests.integration.features.execution.flows import test_bridge
 
 SPEC = test_bridge.SPEC
 checkout = test_bridge.checkout
 
 pytestmark = pytest.mark.integration
+
+
+@asynccontextmanager
+async def direct_publication(plan):
+    """Git contract tests have no durable run; DB fencing is covered by test_plan_publication."""
+    yield
 
 
 def devkit_binary() -> str:
@@ -339,25 +347,31 @@ async def test_runtime_status_starts_devkit_inside_the_sandbox(checkout):
 PROPOSAL = "docs/proposals/PROP-demo"
 
 
-def reviewing_proposal(root):
+def reviewing_proposal(root, automatic=False):
     """A proposal past plan-intent and in review, committed on the fixture's branch."""
     from app.features.project_management.sdd import units
 
+    run(root, "git", "checkout", "-q", "-b", "plan-demo")
+    if automatic:
+        config = root / ".devkit/config.toml"
+        config.write_text(config.read_text() + '\n[workflow.approvals]\nplan-intent = "auto"\nplan-accept = "auto"\n')
+        run(root, devkit_binary(), "sync")
     run(root, devkit_binary(), "spec", "proposal", "new", "demo", "--title", "Demo", "--task-kind", "feature")
-    run(
-        root,
-        devkit_binary(),
-        "workflow",
-        "answer",
-        "--unit",
-        PROPOSAL,
-        "--request",
-        "gate:plan-intent",
-        "--action",
-        "accept",
-        "--by",
-        "user:fixture",
-    )
+    if not automatic:
+        run(
+            root,
+            devkit_binary(),
+            "workflow",
+            "answer",
+            "--unit",
+            PROPOSAL,
+            "--request",
+            "gate:plan-intent",
+            "--action",
+            "accept",
+            "--by",
+            "user:fixture",
+        )
     units.set_status(root, PROPOSAL, "draft", "reviewing")
     # Current proposal workflows require a feedback sweep before asking plan-accept.
     run(
@@ -378,6 +392,64 @@ def reviewing_proposal(root):
         "swept=PASS",
     )
     return commit(root, "Proposal in review")
+
+
+async def test_owning_base_policy_does_not_inherit_head_delegation(checkout):
+    root, base = checkout
+    head = reviewing_proposal(root, automatic=True)
+    value = await SddService().evaluate(root, PROPOSAL, head, base, None, False)
+    assert value["current"]["complete"] and not value["current"]["requests"]
+    assert value["snapshot"]["policy"]["approvals"]["plan-accept"]["policy"] == "auto"
+    assert value["base_policy"]["approvals"]["plan-accept"]["policy"] == "ask"
+    assert not list((root / ".devkit/transient").glob("hub-base-*"))
+
+
+@pytest.mark.parametrize("agent_accepted", [False, True])
+async def test_policy_acceptance_authors_a_decision_commit_even_after_agent_acceptance(
+    checkout, tmp_path, monkeypatch, agent_accepted
+):
+    from app.features.project_management.sdd.plan_decisions import record_plan_decision
+
+    root, _ = checkout
+    head = reviewing_proposal(root, automatic=True)
+    if agent_accepted:
+        run(root, devkit_binary(), "spec", "proposal", "accept", "demo", "--by", "policy")
+        head = commit(root, "Agent accepted under policy")
+    bare = bare_remote(root, tmp_path, head, monkeypatch)
+    evidence = await SddService().evaluate(root, PROPOSAL, head, head, None, False)
+    plan = await record_plan_decision(
+        SddService(),
+        "owner/app",
+        PROPOSAL,
+        pull_at(head),
+        "token",
+        decision="accept_plan",
+        actor="policy:auto",
+        authority="policy",
+        note="Delegated",
+        snapshot=evidence["snapshot"],
+        expected_digest=evidence["evidence_digest"],
+        request_id="auto-accept",
+        publication=direct_publication,
+    )
+    assert plan["authority"] == "policy" and plan["commit_sha"] != head
+    assert run(bare, "git", "rev-parse", "refs/heads/plan-demo") == plan["commit_sha"]
+    assert "status: accepted" in run(bare, "git", "show", f"{plan['commit_sha']}:{PROPOSAL}/proposal.md")
+    assert "Autohub-Decision: auto-accept" in run(bare, "git", "log", "-1", "--format=%B", plan["commit_sha"])
+
+
+async def test_auto_plan_intent_starts_without_a_decision_filename(checkout, tmp_path, monkeypatch):
+    from app.features.project_management.sdd.policy import planning_intent
+
+    root, _ = checkout
+    reviewing_proposal(root, automatic=True)
+    from app.features.project_management.sdd.units import set_status
+
+    set_status(root, PROPOSAL, "reviewing", "draft")
+    head = commit(root, "Backlog draft with delegated intent")
+    bare_remote(root, tmp_path, head, monkeypatch)
+    assert not list((root / PROPOSAL / "decisions").glob("*gate-plan-intent*"))
+    assert await planning_intent("owner/app", head, "token", PROPOSAL)
 
 
 def bare_remote(root, tmp_path, head, monkeypatch):
@@ -416,6 +488,7 @@ async def test_acceptance_is_one_commit_on_the_confirmed_head_pushed_under_a_lea
         snapshot=before["snapshot"],
         expected_digest=before["evidence_digest"],
         request_id="r1",
+        publication=direct_publication,
     )
     assert run(bare, "git", "rev-parse", "refs/heads/plan-demo") == plan["commit_sha"]
     assert run(bare, "git", "log", "-1", "--format=%P", plan["commit_sha"]) == head  # parent: the confirmed head
@@ -426,6 +499,8 @@ async def test_acceptance_is_one_commit_on_the_confirmed_head_pushed_under_a_lea
     assert message.startswith("Accept proposal PROP-demo") and "Decided-by: user:fixture" in message
     changed = run(bare, "git", "diff", "--name-only", head, plan["commit_sha"]).splitlines()
     assert sorted(changed) == [f"{PROPOSAL}/decisions/02-gate-plan-accept.yaml", f"{PROPOSAL}/proposal.md"]
+    decision = run(bare, "git", "show", f"{plan['commit_sha']}:{PROPOSAL}/decisions/02-gate-plan-accept.yaml")
+    assert "by: user" in decision and "Decided-by: user:fixture" in decision
     # The fixture checkout did not move; evaluate the pushed commit from a fresh clone of the remote.
     verify = (tmp_path / "verify").resolve()
     subprocess.run(["git", "clone", "--quiet", "--branch", "plan-demo", str(bare), str(verify)], check=True)
@@ -445,17 +520,22 @@ async def test_acceptance_is_one_commit_on_the_confirmed_head_pushed_under_a_lea
             snapshot=before["snapshot"],
             expected_digest=before["evidence_digest"],
             request_id="r2",
+            publication=direct_publication,
         )
 
 
-async def test_rejection_changes_status_only_and_closes_open_questions(checkout, tmp_path, monkeypatch):
+@pytest.mark.parametrize("question_count", [1, 11])
+async def test_rejection_changes_status_only_and_closes_open_questions(checkout, tmp_path, monkeypatch, question_count):
     from app.features.project_management.sdd.plan_decisions import record_plan_decision
 
     root, _ = checkout
     reviewing_proposal(root)
     questions = tmp_path / "questions.yaml"
     questions.write_text(
-        "- id: q1\n  title: Storage format\n  prompt: Which format?\n  options:\n    - { id: a, description: TOML }\n"
+        "".join(
+            f"- id: q{i}\n  title: Storage format\n  prompt: Which format?\n  options:\n    - {{ id: a, description: TOML }}\n"
+            for i in range(1, question_count + 1)
+        )
     )
     run(
         root,
@@ -488,6 +568,7 @@ async def test_rejection_changes_status_only_and_closes_open_questions(checkout,
         snapshot=before["snapshot"],
         expected_digest=before["evidence_digest"],
         request_id="r3",
+        publication=direct_publication,
     )
     message = run(bare, "git", "log", "-1", "--format=%B", plan["commit_sha"])
     assert message.startswith("Reject proposal PROP-demo: Too broad; split it")
@@ -499,6 +580,34 @@ async def test_rejection_changes_status_only_and_closes_open_questions(checkout,
     assert after["unit_status"] == "rejected"
     assert after["hold"]["pending_questions"] == [] and not after["hold"]["blocked"]
     assert not after["current"]["requests"]  # a rejected proposal is never asked for acceptance again
+
+
+async def test_acceptance_refuses_another_proposals_branch_without_publishing(checkout, tmp_path, monkeypatch):
+    from app.features.project_management.sdd.plan_decisions import record_plan_decision
+
+    root, _ = checkout
+    head = reviewing_proposal(root)
+    bare = bare_remote(root, tmp_path, head, monkeypatch)
+    pull = pull_at(head)
+    pull["head"]["ref"] = "plan-other"
+    before = await SddService().evaluate(root, PROPOSAL, head, head, None, False)
+    with pytest.raises(ProjectError, match="own Planning branch"):
+        await record_plan_decision(
+            SddService(),
+            "owner/app",
+            PROPOSAL,
+            pull,
+            "token",
+            decision="accept_plan",
+            actor="user:fixture",
+            note="",
+            snapshot=before["snapshot"],
+            expected_digest=before["evidence_digest"],
+            request_id="wrong-branch",
+            publication=direct_publication,
+        )
+    assert run(bare, "git", "rev-parse", "refs/heads/plan-demo") == head
+    assert "status: reviewing" in run(bare, "git", "show", f"{head}:{PROPOSAL}/proposal.md")
 
 
 async def test_activity_branch_is_started_once_from_the_base(checkout, tmp_path, monkeypatch):
@@ -526,25 +635,18 @@ async def test_activity_branch_is_started_once_from_the_base(checkout, tmp_path,
 
 
 async def test_handoff_first_run_follows_the_new_spec_after_the_handoff(checkout):
-    from app.features.project_management.sdd import units
-
     root, _ = checkout
     reviewing_proposal(root)
     run(
         root,
         devkit_binary(),
-        "workflow",
-        "answer",
-        "--unit",
-        PROPOSAL,
-        "--request",
-        "gate:plan-accept",
-        "--action",
+        "spec",
+        "proposal",
         "accept",
+        "demo",
         "--by",
-        "user:fixture",
+        "user",
     )
-    units.set_status(root, PROPOSAL, "reviewing", "accepted")
     head = commit(root, "Accepted")
     before = await SddService().evaluate(root, PROPOSAL, head, head, {"handoff_pending": True}, False)
     assert before["unit_status"] == "accepted" and before["current"]["complete"]

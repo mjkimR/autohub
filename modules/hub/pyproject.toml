@@ -8,6 +8,7 @@ dependencies = [
     "alembic>=1.18.3",
     "autohub-sdk",
     "jsonschema>=4.26,<5",
+    "pyyaml>=6.0.3,<7",
     "app-layer-base",
     "app-mcp",
     "app-http-client",
@@ -36,7 +37,7 @@ app-prebuilt-auth = { git = "https://github.com/mjkimR/app-common.git", subdirec
 app-http-client = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/adapters/app-http-client", rev = "fd9b6a954cebb8e550f57018ffd705834a3564dd" }
 app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "fd9b6a954cebb8e550f57018ffd705834a3564dd" }
 app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "fd9b6a954cebb8e550f57018ffd705834a3564dd" }
-app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "fd9b6a954cebb8e550f57018ffd705834a3564dd" }
+app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "3c3232b17ccc6e231615532e24643afa6b88a78b" }
 
 [dependency-groups]
 dev = [

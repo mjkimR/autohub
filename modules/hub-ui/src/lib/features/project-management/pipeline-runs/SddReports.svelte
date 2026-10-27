@@ -1,9 +1,14 @@
 <script lang="ts">
+	import SddReportDetails from './SddReportDetails.svelte';
 	let { reports, evidenceUrl }: { reports: unknown; evidenceUrl: string | null } = $props();
 	const labels: Record<string, string> = {
 		'final-report': 'Final report',
 		review: 'Code review',
-		reverify: 'Reverification'
+		reverify: 'Reverification',
+		worker: 'Worker report',
+		challenger: 'Challenger review',
+		scout: 'Scout research',
+		'reconcile-check': 'Reconciliation review'
 	};
 	let rows = $derived(
 		Array.isArray(reports)
@@ -20,9 +25,22 @@
 					>{labels[String(report.kind)] || String(report.kind)}
 					<span class="ml-1 text-xs text-muted-foreground">{String(report.status)}</span></summary
 				>
+				<p class="mt-2 text-xs break-words text-muted-foreground">
+					{String(report.file)} · {String(report.workflow || 'All workflows')} · segment {String(
+						report.segment ?? 'any'
+					)}
+					{#if report.stage}
+						· {String(report.stage)}{/if}
+					{#if report.activity_effort}
+						· effort {String(report.activity_effort)}{/if}
+				</p>
+				{#if report.review}<p class="mt-2 text-xs">
+						Closes round: <code>{String(report.review)}</code>
+					</p>{/if}
 				<p class="mt-3 leading-relaxed break-words whitespace-pre-wrap">
 					{String(report.summary || 'No summary recorded.')}
 				</p>
+				<SddReportDetails {report} />
 				{#if report.checks && typeof report.checks === 'object'}<dl class="mt-3 space-y-2 text-xs">
 						{#each Object.entries(report.checks) as [name, result] (name)}<div>
 								<dt class="font-medium">{name}</dt>

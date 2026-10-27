@@ -20,6 +20,7 @@ from app.features.project_management.work_plans.github import WorkGitHub
 
 from .checkout import checkout, command, push_head
 from .plan_decisions import commit_identity
+from .policy import planning_intent
 from .units import _STATUS, _frontmatter_span, set_status
 
 ACTIVITIES = {"plan": "Planning", "dev": "Development"}
@@ -121,6 +122,7 @@ class ActivityStarter:
                         code="SDD_BRANCH_EXISTS",
                     )
                 number = pull["number"]  # Hub's own start whose response was lost: enroll it again
+                anchor = _text(await github.optional(f"{root}/contents/{unit}/proposal.md", {"ref": base_sha}))
             else:
                 anchor = _text(await github.optional(f"{root}/contents/{unit}/proposal.md", {"ref": base_sha}))
                 if anchor is None:
@@ -133,9 +135,7 @@ class ActivityStarter:
                         )
                     if _frontmatter_value(anchor, "needs_decompose") == "true":
                         raise ProjectError(409, f"PROP-{slug} needs decomposition in Backlog before Planning")
-                    records = await github.optional_list(f"{root}/contents/{unit}/decisions", {"ref": base_sha})
-                    names = [str(r.get("name", "")) for r in records or []]
-                    if not any("gate-plan-intent" in name for name in names):
+                    if not await planning_intent(repository, base_sha, token, unit):
                         raise ProjectError(409, f"Record plan-intent for PROP-{slug} in Backlog before Planning")
                     message = (f"Start Planning of PROP-{slug}", f"Started-by: {actor}")
 
@@ -176,6 +176,10 @@ class ActivityStarter:
                 )
                 number = created["number"]
                 assert sha  # the start commit is what the pull request shows
+        if request.activity_effort is None:
+            value = _frontmatter_value(anchor or "", "planning_effort" if activity == "plan" else "dev_effort")
+            if value in ("low", "medium", "high"):
+                request = request.model_copy(update={"activity_effort": value})
         return await self.runs.enroll(
             project.id,
             EnrollPullRequest(

@@ -160,6 +160,10 @@ test('saves the Codex refresh policy as policy config', async () => {
 	await screen.findByText('Personal Codex');
 
 	await user.click(screen.getByRole('button', { name: 'Refresh policy' }));
+	// Dialog autofocus runs on the next frame; finish it before editing form values.
+	await waitFor(() =>
+		expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
+	);
 	await user.clear(screen.getByLabelText('Short cycle (hours)'));
 	await user.type(screen.getByLabelText('Short cycle (hours)'), '4');
 	await user.click(screen.getByRole('button', { name: 'Save policy' }));

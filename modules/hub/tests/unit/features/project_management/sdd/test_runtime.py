@@ -161,7 +161,26 @@ def test_no_unsandboxed_fallback(tmp_path, monkeypatch):
         isolation.isolated_command(tmp_path, tmp_path, (), "/usr")
 
 
-@pytest.mark.parametrize("code", ["RULES_RUN_FAILED", "RECEIPT_STALE", "SELECTION_INVALID", "RULES_LOAD_FAILED"])
+@pytest.mark.parametrize("platform,runner", [("darwin", "/usr/bin/sandbox-exec"), ("linux", "/usr/bin/bwrap")])
+def test_isolated_cli_uses_the_distribution_entrypoint(tmp_path, monkeypatch, platform, runner):
+    monkeypatch.setattr(isolation.sys, "platform", platform)
+    monkeypatch.setattr(isolation.shutil, "which", lambda _: runner)
+    command = isolation.isolated_command(tmp_path, tmp_path, ("--version",), "/usr")
+    assert command[-6:] == [str(tmp_path / ".venv/bin/python"), "-I", "-B", "-m", "devkit_dist", "--version"]
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "RULES_RUN_FAILED",
+        "RECEIPT_STALE",
+        "SELECTION_INVALID",
+        "RULES_LOAD_FAILED",
+        "SPEC_PROPOSAL_ACCEPT_REFUSED",
+        "SPEC_PROPOSAL_GATE_NOT_OPEN",
+        "SPEC_PROPOSAL_WRONG_WORKTREE",
+    ],
+)
 async def test_json_diagnostic_never_leaks_repository_text(tmp_path, monkeypatch, code):
     process = AsyncMock()
     process.returncode = 2

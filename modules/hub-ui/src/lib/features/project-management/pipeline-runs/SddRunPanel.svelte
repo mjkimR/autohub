@@ -15,6 +15,8 @@
 	import { tick } from 'svelte';
 	import SddWorkflowRequests from './SddWorkflowRequests.svelte';
 	import SddReports from './SddReports.svelte';
+	import SddPlanningEvidence from './SddPlanningEvidence.svelte';
+	import SddNextAction from './SddNextAction.svelte';
 	let {
 		run,
 		onchange,
@@ -67,7 +69,12 @@
 			)
 	);
 	let canApprove = $derived(
-		waiting && (stage.human_gate === INTEGRATION_GATE || (!approval.actor && passedIntegration))
+		waiting &&
+			(stage.human_gate === INTEGRATION_GATE ||
+				progress.waiting_for_plan_approval ||
+				(!approval.actor && passedIntegration) ||
+				(progress.approval_withheld &&
+					record(progress.plan_decision).commit_sha === progress.head_sha))
 	);
 
 	let evidenceUrl = $derived(
@@ -111,6 +118,8 @@
 	}
 </script>
 
+<SddNextAction {run} />
+{#if spec.startsWith('docs/proposals/PROP-')}<SddPlanningEvidence {progress} {evidenceUrl} />{/if}
 <SddWorkflowRequests {run} {onchange} disabled={disabled || questionPending} {onbusychange} />
 
 <section class="overflow-hidden rounded-xl border bg-card" aria-label="SDD integration decision">
@@ -127,7 +136,9 @@
 						: approval.actor
 							? 'Integration authorized'
 							: canApprove
-								? 'Review & approve integration'
+								? progress.waiting_for_plan_approval
+									? 'Review & approve proposal'
+									: 'Review & approve integration'
 								: String(stage.name || stage.id || 'Inspecting workflow')}
 				</h3>
 			</div>
@@ -137,7 +148,9 @@
 					: approval.actor
 						? 'Approved'
 						: canApprove
-							? INTEGRATION_GATE
+							? progress.waiting_for_plan_approval
+								? 'plan-accept'
+								: INTEGRATION_GATE
 							: 'In progress'}</Badge
 			>
 		</div>
@@ -191,7 +204,10 @@
 				Earlier approvals still apply in the repository. Request changes to return the work and
 				require fresh approval and reports.
 			</p>{/if}
-		<SddReports reports={progress.reports} {evidenceUrl} />
+		{#if !spec.startsWith('docs/proposals/PROP-')}<SddReports
+				reports={progress.reports}
+				{evidenceUrl}
+			/>{/if}
 		{#if progress.lint_diagnostic}<p class="rounded-lg border border-amber-500/30 p-3 text-sm">
 				{String(progress.lint_diagnostic)}
 			</p>{/if}
@@ -303,7 +319,9 @@
 							onclick={() => void decide('approve')}
 							><ShieldCheck class="size-4" />{busy
 								? 'Approving…'
-								: 'Approve integration'}<ArrowRight class="size-4" /></Button
+								: progress.waiting_for_plan_approval
+									? 'Approve proposal'
+									: 'Approve integration'}<ArrowRight class="size-4" /></Button
 						>{/if}
 					{#if waiting}<Button
 							variant="outline"

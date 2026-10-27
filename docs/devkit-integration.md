@@ -18,12 +18,16 @@ head/base checks and approval evidence; repository decisions alone do not author
 Hub to merge. Tick, webhook and manual advancement use the same bounded progression
 function, continuing until external work, a gate or another real wait is reached.
 See [execution timing](development.md#pipeline-advancement) for the detailed limits.
+Approval report cards use `devkit workflow envelope check --details --format json`:
+the 0.1.4 default inspection omits report summaries and checks.
+Planning cards preserve worker effort, support-role rounds and reverify links;
+their review gaps are guidance, while the CLI remains the source of gate state.
 
 ## Supported paths
 
 | Starting point | Action |
 | --- | --- |
-| Draft proposal with plan-intent, no decomposition needed | Start Planning on `plan-<slug>`, review, accept or reject |
+| Draft proposal with recorded or delegated plan-intent, no decomposition needed | Start Planning on `plan-<slug>`, review, accept or reject |
 | Accepted proposal | Start Development on `dev-<slug>`, hand off to a spec, continue its workflow |
 | Existing PR and bound spec/proposal | Check readiness and enroll the same PR |
 | Externally implemented, paused PR | SDK bridge verifies evidence and requires scoped approval before resuming its owner |
@@ -34,10 +38,13 @@ execution is available in the [SDD repository panel](repository-viewer.md); the
 [SDK bridge](development.md#sdk-flow-bridge-with-an-existing-pr) has a separate
 server allowlist and checkout requirement. Work Plans do not create native SDD specs.
 
-The roadmap reads milestone definitions from the default branch and members from
-`plan-*` and `dev-*` branches. Selecting a member on the displayed branch fills the
-execution unit and shows Run/Decisions and GitHub PR links. For a different branch,
-select that branch first. Reading a milestone or member does not start work.
+The roadmap reads milestone definitions and direct proposal members from the
+selected branch. Spec metadata does not establish milestone membership. Selecting
+a member fills the execution unit and shows Run/Decisions and GitHub PR links.
+Select a `plan-*` or `dev-*` branch first to inspect its documents; the 0.1.4 viewer
+does not aggregate remote branches. Reading a milestone or member does not start work.
+Related executions include the proposal and spec connected by a recorded
+`handoff_from` in the same project. Matching slugs alone do not establish lineage.
 See [viewer behavior and limits](repository-viewer.md).
 
 ## Runtime profiles
@@ -46,7 +53,13 @@ See [viewer behavior and limits](repository-viewer.md).
 [lock](../config/sdd-runtime/uv.lock) pin the Python runtime separately from Hub's
 dependencies. The lock includes dependency hashes and one immutable devkit monorepo
 commit for `devkit-agt`, `devkit-advisory` and `devkit-spec` (the latter from
-`packages/devkit-spec`). Update all three sources together and regenerate the lock.
+`packages/devkit-spec`), plus their `devkit-dist`, `devkit-core` and `devkit-cli`
+dependencies. All six packages use version 0.1.4 from the pushed release-preparation
+commit `3609efe87e590c8da5f01a905cb207a13090f943`. Update the sources together and
+regenerate the lock. The app-common profile and Hub's development environment use
+the compatible `app-tools` commit `3c3232b17ccc6e231615532e24643afa6b88a78b`;
+their UV overrides keep its transitive devkit pins on the reviewed 0.1.4 commit.
+The isolated CLI entrypoint is `python -I -B -m devkit_dist`.
 Hub hashes the effective workflow JSON itself: current devkit bindings identify a
 workflow by name, while Hub still refuses definition or policy changes during a run.
 
@@ -101,6 +114,21 @@ The immutable lock remains part of each execution snapshot and bridge approval d
 changing a profile's lock requires a newly enrolled run, not an in-place upgrade.
 The installer refuses to replace a destination whose lock differs; use a new
 directory when updating locally. Settle existing runs before changing their runtime.
+
+For an existing pre-0.1.4 installation, preserve its directory and provision fresh
+profiles before switching the host configuration:
+
+```sh
+just install-sdd .cache/sdd-0.1.4
+just install-sdd .cache/sdd-app-common-0.1.4 config/sdd-runtime-app-common
+AUTOHUB_TEST_SDD_APP_COMMON="$PWD/.cache/sdd-app-common-0.1.4" just test-sdd .cache/sdd-0.1.4
+```
+
+After settling active runs, set `AUTOHUB_SDD_HOME` and any `AUTOHUB_SDD_PROFILES`
+mapping to these absolute paths (or deploy the image's refreshed `/opt/sdd` and
+`/opt/sdd-app-common`). Sync and commit consumer receipts with matching packages
+before enrolling replacement runs. The installer records versions and revisions
+for all six devkit distributions, including the new CLI owner.
 
 ### Add or update a profile
 

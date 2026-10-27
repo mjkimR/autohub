@@ -73,6 +73,8 @@ async def record_plan_decision(
     snapshot: dict,
     expected_digest: str,
     request_id: str,
+    publication,
+    authority: str = "user",
 ) -> dict:
     """Write the decision into a disposable checkout of the confirmed head, commit it there and publish it.
 
@@ -85,6 +87,7 @@ async def record_plan_decision(
     slug = proposal_slug(unit)
     name, email = commit_identity()
     title, body = commit_message(decision, slug, actor, note, head)
+    body += f"\nAutohub-Decision: {request_id}"
     try:
         async with asyncio.timeout(90):
             async with checkout(repository, head, base, token) as root:
@@ -92,29 +95,32 @@ async def record_plan_decision(
                 if evidence["evidence_digest"] != expected_digest:
                     raise ProjectError(409, "Workflow evidence changed while recording the decision")
                 if decision == "accept_plan":
-                    if held(evidence) or not any(
-                        r["id"] == PLAN_ACCEPT_REQUEST for r in evidence["current"].get("requests", [])
-                    ):
-                        raise ProjectError(409, "Proposal is not waiting for acceptance; inspect the latest result")
-                    await cli(
-                        root,
-                        "workflow",
-                        "answer",
-                        "--unit",
-                        unit,
-                        "--request",
-                        PLAN_ACCEPT_REQUEST,
-                        "--action",
-                        "accept",
-                        "--by",
-                        actor,
-                        "--note",
-                        f"autohub-decision:{request_id} {note}".strip(),
+                    automatic = authority == "policy"
+                    eligible = any(r["id"] == PLAN_ACCEPT_REQUEST for r in evidence["current"].get("requests", [])) or (
+                        automatic and evidence["current"].get("complete")
                     )
-                    set_status(root, unit, "reviewing", "accepted")
+                    if held(evidence) or not eligible:
+                        raise ProjectError(409, "Proposal is not waiting for acceptance; inspect the latest result")
+                    if branch != f"plan-{slug}":
+                        raise ProjectError(409, "Accept the proposal on its own Planning branch")
+                    # The CLI validates Planning ownership. Keep the fetched, confirmed head and give only this
+                    # disposable checkout its PR branch name; publication still requires the original head lease.
+                    await command("git-safe", "checkout", "--quiet", "-b", branch, cwd=root)
+                    if evidence.get("unit_status") != "accepted":
+                        await cli(
+                            root,
+                            "spec",
+                            "proposal",
+                            "accept",
+                            slug,
+                            "--by",
+                            authority,
+                            "--note",
+                            f"autohub-decision:{request_id} Decided-by: {actor}. {note}".strip(),
+                        )
                 else:
                     set_status(root, unit, "reviewing", "rejected")
-                    pending = (evidence.get("hold") or {}).get("pending_questions") or []
+                    pending = evidence["current"].get("pending_questions") or []
                     for worker, text in closure_answers(pending, note).items():
                         answers = root / ".devkit/transient/hub-tmp" / f"answers-{worker}"
                         answers.parent.mkdir(parents=True, exist_ok=True)
@@ -133,6 +139,9 @@ async def record_plan_decision(
                             "--summary",
                             REJECTION_DECISION,
                         )
+                    checked = await cli(root, "workflow", "envelope", "check", "--unit", unit)
+                    if checked.get("pending_questions"):
+                        raise ProjectError(409, "Some worker questions remain open; rejection was not published")
                 await command("git-safe", "add", "-A", "--", unit, cwd=root)
                 await command(
                     "git-safe",
@@ -142,6 +151,7 @@ async def record_plan_decision(
                     f"user.email={email}",
                     "commit",
                     "--quiet",
+                    "--allow-empty",
                     "-m",
                     title,
                     "-m",
@@ -149,20 +159,23 @@ async def record_plan_decision(
                     cwd=root,
                 )
                 commit_sha = (await command("git-safe", "rev-parse", "HEAD", cwd=root)).strip()
-                await push_head(root, repository, branch, head, token)
+                plan = {
+                    "action": decision,
+                    "actor": actor,
+                    "authority": authority,
+                    "head_sha": head,
+                    "commit_sha": commit_sha,
+                    "branch": branch,
+                    "note": note,
+                    "commit_title": title,
+                    "commit_body": body,
+                    "decided_at": get_current_utc_time().isoformat(),
+                }
+                async with publication(plan):
+                    await push_head(root, repository, branch, head, token)
     except (OSError, TimeoutError):
         raise ProjectError(422, "SDD runner unavailable or timed out; provision Git and the pinned CLI") from None
-    return {
-        "action": decision,
-        "actor": actor,
-        "head_sha": head,
-        "commit_sha": commit_sha,
-        "branch": branch,
-        "note": note,
-        "commit_title": title,
-        "commit_body": body,
-        "decided_at": get_current_utc_time().isoformat(),
-    }
+    return plan
 
 
 def plan_approval(plan: dict) -> dict:

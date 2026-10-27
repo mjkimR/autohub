@@ -38,7 +38,18 @@ test('links only the selected spec and ignores a late response for the previous 
 
 test('a selected proposal links its run and GitHub pull request', async () => {
 	api.GET.mockResolvedValue({
-		data: [{ id: 'plan-run', state: 'paused', pull_number: 12, pull_snapshot: { title: 'Plan' } }]
+		data: [
+			{
+				id: 'plan-run',
+				state: 'paused',
+				pull_number: 12,
+				pull_snapshot: { title: 'Plan' },
+				sdd_snapshot: {
+					handoff_from: 'docs/proposals/PROP-feature',
+					spec_dir: 'specs/2026-10/feature'
+				}
+			}
+		]
 	});
 	render(SddRunLinks, {
 		projectId: 'project',
@@ -52,4 +63,7 @@ test('a selected proposal links its run and GitHub pull request', async () => {
 		'/projects/runs?run=plan-run&view=decisions'
 	);
 	expect(api.GET.mock.calls[0][1].params.query.spec_dir).toBe('docs/proposals/PROP-feature');
+	expect(
+		screen.getByText(/docs\/proposals\/PROP-feature\s*→\s*specs\/2026-10\/feature/)
+	).toBeTruthy();
 });

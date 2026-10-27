@@ -41,6 +41,8 @@ class ProposalState(BaseModel):
     status: str = Field(description="The proposal's status on the base branch")
     display_status: str = Field(description="reviewing while plan-<slug> exists for a draft (no base commit)")
     task_kind: str | None = None
+    planning_effort: Literal["low", "medium", "high"] | None = None
+    dev_effort: Literal["low", "medium", "high"] | None = None
     plan_branch: bool
     dev_branch: bool
     plan_pull: int | None = None

@@ -303,7 +303,15 @@
 					{/if}
 				</div>
 				<aside class="min-w-0 space-y-5 md:border-l md:pl-5" aria-label="Decision history">
-					{#if current.sdd_snapshot}<SddDecisionHistory runId={run.id} {revision} />{/if}
+					{#if current.sdd_snapshot}<SddDecisionHistory
+							runId={run.id}
+							{revision}
+							disabled={locked || !ready || offset !== 0}
+							onchange={async () => {
+								await load();
+								onchange();
+							}}
+						/>{/if}
 					<section class="space-y-3">
 						<h3 class="flex items-center gap-2 text-sm font-semibold">
 							<History class="size-4 text-muted-foreground" />Question history

@@ -3,6 +3,7 @@
 import pytest
 from app.features.project_management.pipeline_runs.usecases.progress import PipelineRunProgress
 from app.features.project_management.pipelines.services import PipelineObservationService
+
 from tests.integration.features.project_management.pipeline_runs.test_merge_stage import advance
 from tests.integration.features.project_management.sdd import test_native as scenarios
 

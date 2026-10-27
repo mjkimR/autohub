@@ -62,6 +62,11 @@ def started(monkeypatch):
 
     monkeypatch.setattr(activities, "start_branch", start_branch)
 
+    async def planning_intent(*args):
+        return bool(github.records)
+
+    monkeypatch.setattr(activities, "planning_intent", planning_intent)
+
     class Runs:
         async def enroll(self, project_id, request):
             enrolled.append(request)
@@ -98,6 +103,29 @@ async def test_development_starts_dev_branch_with_a_handoff_first_run(started):
     await starter.start(project, "dev", "demo", request(), "user:mj")
     assert branches[0][0] == "dev-demo" and branches[0][3] is None
     assert github.created[0]["draft"] is True and enrolled[0].handoff is True
+
+
+@pytest.mark.parametrize(
+    "activity,existing,override,expected",
+    [
+        ("plan", False, None, "high"),
+        ("dev", False, None, "low"),
+        ("plan", True, None, "high"),
+        ("dev", False, "medium", "medium"),
+    ],
+)
+async def test_activity_effort_uses_the_proposal_hint_unless_overridden(
+    started, activity, existing, override, expected
+):
+    github, _, enrolled, project, starter = started
+    github.proposal = DRAFT.replace("task_kind:", "planning_effort: high\ndev_effort: low\ntask_kind:")
+    if activity == "dev":
+        github.proposal = github.proposal.replace("status: draft", "status: accepted")
+    if existing:
+        github.refs["plan-demo"] = "c" * 40
+        github.pulls = [{"number": 9, "head": {"ref": "plan-demo"}, "body": activities.marker("plan", "demo")}]
+    await starter.start(project, activity, "demo", request(activity_effort=override), "user:mj")
+    assert enrolled[0].activity_effort == expected
 
 
 @pytest.mark.parametrize(

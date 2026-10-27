@@ -10,8 +10,10 @@ from app.features.project_management.projects.errors import ProjectError
 
 from .checkout import SddCommandError, checkout, command
 from .contracts import workflow_hash
+from .evidence import anchor_metadata, proposal_metadata, reports, review_gaps
 from .gates import INTEGRATION_GATE
 from .isolation import isolation_runner
+from .policy import base_policy
 from .profiles import current
 from .runtime import configured_version, restore, revision_warnings, runtime_pin
 from .units import is_proposal, read_status, unit_anchor
@@ -208,21 +210,11 @@ class SddService:
             raise ProjectError(422, "SDD binding drift or invalid envelope; repair the repository evidence")
         hold = read_hold(current)
         held = hold["blocked"] or bool(hold["pending_questions"])
-        envelopes = await cli(root, "workflow", "envelope", "check", "--unit", spec_dir)
-        reports = []
-        for kind in ("final-report", "review", "reverify", "worker"):
-            candidates = [row for row in envelopes.get("envelopes", []) if row.get("kind") == kind]
-            if candidates:
-                latest = max(candidates, key=lambda row: row.get("seq", 0))
-                reports.append(
-                    {
-                        "kind": kind,
-                        "file": latest["file"],
-                        "status": latest["status"],
-                        "summary": str(latest.get("summary", ""))[:4000],
-                        "checks": {str(k): str(v)[:1000] for k, v in list((latest.get("checks") or {}).items())[:20]},
-                    }
-                )
+        # Default 0.1.4 inspection omits summaries/checks; approval cards need the validated report bodies.
+        envelopes = await cli(root, "workflow", "envelope", "check", "--unit", spec_dir, "--details")
+        report_rows = reports(envelopes)
+        history = anchor_metadata(root, spec_dir).get("workflow_history") or []
+        report_context = {"workflow": workflow["id"], "segment": len(history) if isinstance(history, list) else 0}
         integrated = False
         lint_diagnostic = None
         lint_blocked = False
@@ -258,7 +250,11 @@ class SddService:
             "integrated": integrated,
             "lint_diagnostic": lint_diagnostic,
             "lint_blocked": lint_blocked,
-            "reports": reports,
+            "reports": report_rows,
+            "report_context": report_context,
+            "review_gaps": review_gaps(report_rows, report_context) if is_proposal(spec_dir) else [],
+            "proposal": proposal_metadata(root, spec_dir) if is_proposal(spec_dir) else {},
+            "base_policy": await base_policy(root, base, head, policy) if is_proposal(spec_dir) else {},
             "warnings": warnings,
             "hold": hold,
             "unit_status": read_status(root, spec_dir) if is_proposal(spec_dir) else None,

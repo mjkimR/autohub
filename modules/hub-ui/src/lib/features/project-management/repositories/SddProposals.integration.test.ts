@@ -52,8 +52,9 @@ test('starts review of a draft and development of an accepted proposal on the ch
 	);
 	expect(api.POST.mock.calls[0][1]).toMatchObject({
 		params: { path: { project_id: 'p1', slug: 'demo' } },
-		body: { base_branch: 'main', activity_effort: 'medium' }
+		body: { base_branch: 'main' }
 	});
+	expect(api.POST.mock.calls[0][1].body).not.toHaveProperty('activity_effort');
 	await user.selectOptions(screen.getByLabelText('Proposal activity effort'), 'high');
 	await user.click(screen.getByRole('button', { name: 'Start development' }));
 	expect(api.POST.mock.calls[1][0]).toBe(
@@ -62,7 +63,7 @@ test('starts review of a draft and development of an accepted proposal on the ch
 	expect(api.POST.mock.calls[1][1].body).toMatchObject({ activity_effort: 'high' });
 });
 
-test('accept and reject decide through the waiting run with its head and a required reason', async () => {
+test('accept opens the evidence review while rejection records the head and a required reason', async () => {
 	const user = userEvent.setup();
 	const run = {
 		id: 'r1',
@@ -83,20 +84,19 @@ test('accept and reject decide through the waiting run with its head and a requi
 	expect((await screen.findByRole('link', { name: /plan-demo #7/ })).getAttribute('href')).toBe(
 		'https://github.com/owner/app/pull/7'
 	);
-	await user.click(screen.getByRole('button', { name: 'Accept' }));
-	expect(api.POST.mock.calls[0][0]).toBe('/api/v1/pipeline-runs/{run_id}/resume');
-	expect(api.POST.mock.calls[0][1].body).toMatchObject({
-		decision: 'accept_plan',
-		expected_revision: 4,
-		head_sha: 'a'.repeat(40)
-	});
+	expect(screen.getByRole('link', { name: 'Review & accept' }).getAttribute('href')).toBe(
+		'/projects/runs?run=r1&view=decisions'
+	);
+	expect(api.POST).not.toHaveBeenCalled();
 	await user.click(screen.getByRole('button', { name: 'Reject…' }));
 	const reject = screen.getByRole('button', { name: 'Reject proposal' }) as HTMLButtonElement;
 	expect(reject.disabled).toBe(true);
 	await user.type(screen.getByLabelText(/Rejection reason/), 'Too broad');
 	await user.click(reject);
-	expect(api.POST.mock.calls[1][1].body).toMatchObject({
+	expect(api.POST.mock.calls[0][1].body).toMatchObject({
 		decision: 'reject_plan',
+		expected_revision: 4,
+		head_sha: 'a'.repeat(40),
 		feedback: 'Too broad'
 	});
 });

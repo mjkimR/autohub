@@ -6,6 +6,7 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from app.features.project_management.pipeline_runs.models import ExecutionAttempt, PipelineRun
 from sqlalchemy import select, text
+
 from tests.integration.features.project_management.sdd import test_native as native
 from tests.integration.migrations.test_default_ai_catalogs import scripts
 

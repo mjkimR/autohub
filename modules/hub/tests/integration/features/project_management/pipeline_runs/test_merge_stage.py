@@ -22,6 +22,8 @@ ROOT = "/repos/owner/app"
 
 class MergeScenario:
     def __init__(self) -> None:
+        self.head_sha = HEAD
+        self.ci_head_sha: str | None = None
         self.mergeable_state: str | None = "clean"
         self.draft = False
         self.ci_conclusion = "success"
@@ -40,7 +42,7 @@ class MergeScenario:
             "html_url": "https://github.com/owner/app/pull/7",
             "title": "Add feature",
             "body": "Implement the health endpoint.",
-            "head": {"ref": "feature/7", "sha": HEAD, "repo": {"full_name": "owner/app"}},
+            "head": {"ref": "feature/7", "sha": self.head_sha, "repo": {"full_name": "owner/app"}},
             "base": {"ref": "main", "sha": BASE, "repo": {"full_name": "owner/app"}},
             "mergeable_state": self.mergeable_state,
         }
@@ -61,15 +63,16 @@ class MergeScenario:
                 )
                 return httpx.Response(201, json=self.comments[-1])
             return httpx.Response(200, json=self.comments)
+        ci_head = self.ci_head_sha or self.head_sha
         workflow_run = {
             "id": 1,
             "run_number": 1,
             "run_attempt": 1,
-            "head_sha": HEAD,
+            "head_sha": ci_head,
             "event": "pull_request",
             "path": ".github/workflows/ci.yml",
             "head_repository": {"full_name": "owner/app"},
-            "pull_requests": [{"number": 7, "head": {"sha": HEAD}, "base": {"sha": BASE}}],
+            "pull_requests": [{"number": 7, "head": {"sha": ci_head}, "base": {"sha": BASE}}],
             "status": "completed",
             "conclusion": self.ci_conclusion,
             "html_url": "https://github.com/owner/app/actions/runs/1",

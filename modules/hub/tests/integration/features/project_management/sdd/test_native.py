@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 from app.features.project_management.pipeline_runs.requests import request_digest
 from app.features.project_management.sdd import services as native
+
 from tests.integration.features.project_management.pipeline_runs import test_merge_stage as merge
 from tests.integration.features.project_management.pipeline_runs import test_pipeline_runs_api as scenarios
 
@@ -450,7 +451,7 @@ async def test_spec_runs_are_exact_project_scoped_and_do_not_advance(client, run
 
 
 PROPOSAL = "docs/proposals/PROP-demo"
-COMMIT = merge.HEAD  # the mocked decision commit lands on the same head the fixture CI already passed
+COMMIT = "d" * 40  # A decision is a new commit, with CI observed for that exact head.
 
 
 def proposal_evidence(head=merge.HEAD, status="reviewing"):
@@ -465,6 +466,8 @@ def proposal_evidence(head=merge.HEAD, status="reviewing"):
         "done": ["intent-proposal"],
         "requests": [{"id": "gate:plan-accept", "kind": "approve", "answer": "record", "options": []}],
     }
+    if status in ("accepted", "rejected"):
+        value["current"].update(complete=True, stage=None, requests=[])
     value["hold"] = {"blocked": False, "problems": [], "pending_questions": [], "malformed_workers": []}
     # The Planning worker has reviewed it: a completed worker envelope makes the proposal ready for plan-accept.
     value["reports"] = [{"kind": "worker", "file": "worker-01.yaml", "status": "completed", "summary": "Ready"}]
@@ -477,7 +480,7 @@ def proposal_evidence(head=merge.HEAD, status="reviewing"):
 @pytest.fixture
 def proposal_run(client, project, github, monkeypatch):
     """A proposal pull request on plan-demo, blocked at gate:plan-accept; the decision commit is mocked."""
-    from app.features.project_management.sdd import control as control_module
+    from app.features.project_management.sdd import plan_publication as control_module
 
     state = {"status": "reviewing", "decisions": []}
     original = github.pull
@@ -488,17 +491,16 @@ def proposal_run(client, project, github, monkeypatch):
         return proposal_evidence(pull["head"]["sha"], state["status"])
 
     async def record(service, repository, unit, pull, token, **kwargs):
-        state["decisions"].append(kwargs)
-        state["status"] = "accepted" if kwargs["decision"] == "accept_plan" else "rejected"
         slug = unit.rsplit("PROP-", 1)[-1]
         title = (
             f"Accept proposal PROP-{slug}"
             if kwargs["decision"] == "accept_plan"
             else f"Reject proposal PROP-{slug}: {kwargs['note']}"
         )
-        return {
+        plan = {
             "action": kwargs["decision"],
             "actor": kwargs["actor"],
+            "authority": kwargs.get("authority", "user"),
             "head_sha": pull["head"]["sha"],
             "commit_sha": COMMIT,
             "branch": "plan-demo",
@@ -507,6 +509,11 @@ def proposal_run(client, project, github, monkeypatch):
             "commit_body": f"Decided-by: {kwargs['actor']}",
             "decided_at": "2026-10-16T00:00:00+00:00",
         }
+        async with kwargs["publication"](plan):
+            state["decisions"].append(kwargs)
+            state["status"] = "accepted" if kwargs["decision"] == "accept_plan" else "rejected"
+            github.head_sha = plan["commit_sha"]
+        return plan
 
     monkeypatch.setattr(native.SddService, "inspect", inspect)
     monkeypatch.setattr(control_module, "record_plan_decision", record)

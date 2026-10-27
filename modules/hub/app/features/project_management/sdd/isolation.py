@@ -24,7 +24,7 @@ def isolated_command(
     invocation = (
         ["/usr/bin/git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", *args]
         if git
-        else [python, "-I", "-B", "-m", "devkit", *args]
+        else [python, "-I", "-B", "-m", "devkit_dist", *args]
     )
     if sys.platform == "darwin" and shutil.which("sandbox-exec"):
         readable = [

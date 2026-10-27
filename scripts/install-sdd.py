@@ -21,7 +21,7 @@ parser.add_argument(
 )
 options = parser.parse_args()
 source = options.manifest.resolve()
-PACKAGES = ["devkit-agt", "devkit-advisory", "devkit-spec"]
+PACKAGES = ["devkit-core", "devkit-cli", "devkit-dist", "devkit-agt", "devkit-advisory", "devkit-spec"]
 
 
 def lock_revisions(lock: Path) -> dict[str, str]:

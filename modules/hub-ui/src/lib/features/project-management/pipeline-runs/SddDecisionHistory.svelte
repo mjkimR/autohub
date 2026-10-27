@@ -3,7 +3,18 @@
 	import { Button } from '$lib/components/ui/button';
 	import { History, RefreshCw } from '@lucide/svelte';
 	import { responseData } from '$lib/api/pagination';
-	let { runId, revision }: { runId: string; revision: number } = $props();
+	import SddPublicationStatus from './SddPublicationStatus.svelte';
+	let {
+		runId,
+		revision,
+		disabled = false,
+		onchange = () => {}
+	}: {
+		runId: string;
+		revision: number;
+		disabled?: boolean;
+		onchange?: () => void | Promise<void>;
+	} = $props();
 	let rows = $state<Record<string, unknown>[]>([]);
 	let error = $state('');
 	let loading = $state(true);
@@ -12,6 +23,8 @@
 	let visibleRows = $derived(expanded ? rows : rows.slice(0, 5));
 	const labels: Record<string, string> = {
 		approve: 'Integration approved',
+		accept_plan: 'Proposal acceptance',
+		reject_plan: 'Proposal rejection',
 		accept: 'Workflow decision accepted',
 		decline: 'Workflow decision declined',
 		cancel: 'Workflow decision deferred',
@@ -95,6 +108,15 @@
 							: String(row.actor || 'Actor unavailable')}
 					</p>
 					<time class="block text-xs text-muted-foreground">{date(row.created_at)}</time>
+					<SddPublicationStatus
+						{row}
+						{runId}
+						{disabled}
+						onchange={async () => {
+							refresh += 1;
+							await onchange();
+						}}
+					/>
 					{#if row.feedback}<p
 							class="rounded-md bg-muted/50 p-2 text-xs leading-relaxed break-words whitespace-pre-wrap"
 						>

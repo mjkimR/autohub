@@ -24,6 +24,10 @@ CLI_FIXES = {
     "WORKFLOW_DRIFT": "Review the workflow change and explicitly rebind the spec.",
     "DECISION_RECORD_INVALID": "Repair the invalid decision record before resuming.",
     "ENVELOPE_INVALID": "Repair the invalid report before resuming.",
+    "SPEC_PROPOSAL_ACCEPT_REFUSED": "Inspect the proposal status and binding before requesting acceptance again.",
+    "SPEC_PROPOSAL_NOT_ELIGIBLE": "Complete the proposal's required Planning checks before accepting it.",
+    "SPEC_PROPOSAL_GATE_NOT_OPEN": "Complete Planning and answer pending questions before accepting the proposal.",
+    "SPEC_PROPOSAL_WRONG_WORKTREE": "Accept the proposal on its own plan-<slug> branch.",
     "COMMAND_FAILED": "Inspect the isolated runtime and repository contract.",
 }
 

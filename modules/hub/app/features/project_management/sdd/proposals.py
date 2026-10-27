@@ -73,6 +73,11 @@ def proposal_state(slug: str, anchor: str | None, branches: set[str], pulls: dic
         "status": status,
         "display_status": display,
         "task_kind": _frontmatter_value(anchor, "task_kind") if anchor else None,
+        **{
+            field: value if value in ("low", "medium", "high") else None
+            for field in ("planning_effort", "dev_effort")
+            for value in [_frontmatter_value(anchor or "", field)]
+        },
         "plan_branch": plan,
         "dev_branch": dev,
         "plan_pull": pulls.get(f"plan-{slug}"),

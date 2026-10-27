@@ -54,6 +54,10 @@ test('changes the concurrent work limit of an existing catalog', async () => {
 	await screen.findByText('Personal Codex');
 
 	await user.click(screen.getByRole('button', { name: 'Concurrency' }));
+	// Dialog autofocus runs on the next frame; finish it before editing form values.
+	await waitFor(() =>
+		expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
+	);
 	const input = screen.getByLabelText('Concurrent work limit');
 	expect((input as HTMLInputElement).value).toBe('1');
 	await user.clear(input);
@@ -75,6 +79,10 @@ test('keeps the dialog open when the limit is out of range', async () => {
 	await screen.findByText('Personal Codex');
 
 	await user.click(screen.getByRole('button', { name: 'Concurrency' }));
+	// Dialog autofocus runs on the next frame; finish it before editing form values.
+	await waitFor(() =>
+		expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
+	);
 	const input = screen.getByLabelText('Concurrent work limit');
 	await user.clear(input);
 	await user.type(input, '0');

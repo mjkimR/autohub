@@ -6,7 +6,7 @@
 	type Proposal = components['schemas']['ProposalState'];
 	let { projectId, repository = '' }: { projectId: string; repository?: string } = $props();
 	let base = $state('main');
-	let effort = $state<'low' | 'medium' | 'high'>('medium');
+	let effort = $state<'' | 'low' | 'medium' | 'high'>('');
 	let items = $state<Proposal[]>([]);
 	let truncated = $state(false);
 	let loading = $state(false);
@@ -49,9 +49,9 @@
 				const result = await api.POST(path, {
 					params: { path: { project_id: projectId, slug: item.slug } },
 					body: {
-						request_id: idFor(`${action}:${item.slug}:${base}`),
+						request_id: idFor(`${action}:${item.slug}:${base}:${effort}`),
 						base_branch: base,
-						activity_effort: effort
+						...(effort ? { activity_effort: effort } : {})
 					}
 				});
 				if (result.error) throw new Error(apiErrorMessage(result.error, 'Could not start'));
@@ -102,6 +102,7 @@
 				bind:value={effort}
 				aria-label="Proposal activity effort"
 			>
+				<option value="">Use proposal recommendation</option>
 				<option value="low">low</option><option value="medium">medium</option><option value="high"
 					>high</option
 				>
@@ -126,9 +127,18 @@
 					{#if item.run}<span class="text-xs text-muted-foreground">run {item.run.state}</span>{/if}
 				</div>
 				{#if item.note}<p class="text-xs text-muted-foreground">{item.note}</p>{/if}
+				<p class="text-xs text-muted-foreground">
+					Recommended effort · Planning {item.planning_effort || 'unspecified'} · Development {item.dev_effort ||
+						'unspecified'}
+				</p>
 				<div class="flex flex-wrap gap-2">
 					{#each item.actions as action (action)}
-						{#if action === 'reject'}
+						{#if action === 'accept' && item.run}
+							<a
+								class="rounded-md border px-3 py-2 text-xs font-medium underline"
+								href={`/projects/runs?run=${item.run.id}&view=decisions`}>Review & accept</a
+							>
+						{:else if action === 'reject'}
 							<Button
 								size="sm"
 								variant="outline"

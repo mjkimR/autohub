@@ -11,11 +11,17 @@ members = [
     "autohub-sdk",
     "scheduler-mgr",
 ]
+overrides = [
+    { name = "devkit-advisory", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=3609efe87e590c8da5f01a905cb207a13090f943" },
+    { name = "devkit-agt", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=3609efe87e590c8da5f01a905cb207a13090f943" },
+    { name = "devkit-dist", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-dist&rev=3609efe87e590c8da5f01a905cb207a13090f943" },
+]
 
 [manifest.dependency-groups]
 dev = [
-    { name = "devkit-agt", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=0c82c55c21f0768941a9d7656f310d7b52c9c69f" },
-    { name = "devkit-advisory", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=0c82c55c21f0768941a9d7656f310d7b52c9c69f" },
+    { name = "devkit-advisory", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=3609efe87e590c8da5f01a905cb207a13090f943" },
+    { name = "devkit-agt", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=3609efe87e590c8da5f01a905cb207a13090f943" },
+    { name = "devkit-dist", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-dist&rev=3609efe87e590c8da5f01a905cb207a13090f943" },
     { name = "pyright", specifier = ">=1.1.409" },
 ]
 
@@ -158,10 +164,11 @@ dependencies = [
 [[package]]
 name = "app-tools"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=fd9b6a954cebb8e550f57018ffd705834a3564dd#fd9b6a954cebb8e550f57018ffd705834a3564dd" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=3c3232b17ccc6e231615532e24643afa6b88a78b#3c3232b17ccc6e231615532e24643afa6b88a78b" }
 dependencies = [
     { name = "click" },
     { name = "devkit-agt" },
+    { name = "devkit-dist" },
     { name = "tomlkit" },
 ]
 
@@ -667,20 +674,54 @@ wheels = [
 ]
 
 [[package]]
+name = "devkit-advisory"
+version = "0.1.4"
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=3609efe87e590c8da5f01a905cb207a13090f943#3609efe87e590c8da5f01a905cb207a13090f943" }
+
+[[package]]
 name = "devkit-agt"
-version = "0.1.0"
-source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=0c82c55c21f0768941a9d7656f310d7b52c9c69f#0c82c55c21f0768941a9d7656f310d7b52c9c69f" }
+version = "0.1.4"
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=3609efe87e590c8da5f01a905cb207a13090f943#3609efe87e590c8da5f01a905cb207a13090f943" }
 dependencies = [
     { name = "click" },
     { name = "devkit-advisory" },
+    { name = "devkit-core" },
+    { name = "devkit-dist" },
     { name = "pyyaml" },
     { name = "tomlkit" },
 ]
 
 [[package]]
-name = "devkit-advisory"
-version = "0.1.0"
-source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=0c82c55c21f0768941a9d7656f310d7b52c9c69f#0c82c55c21f0768941a9d7656f310d7b52c9c69f" }
+name = "devkit-cli"
+version = "0.1.4"
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-cli&rev=3609efe87e590c8da5f01a905cb207a13090f943#3609efe87e590c8da5f01a905cb207a13090f943" }
+dependencies = [
+    { name = "click" },
+    { name = "devkit-advisory" },
+]
+
+[[package]]
+name = "devkit-core"
+version = "0.1.4"
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-core&rev=3609efe87e590c8da5f01a905cb207a13090f943#3609efe87e590c8da5f01a905cb207a13090f943" }
+dependencies = [
+    { name = "devkit-advisory" },
+    { name = "pyyaml" },
+]
+
+[[package]]
+name = "devkit-dist"
+version = "0.1.4"
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-dist&rev=3609efe87e590c8da5f01a905cb207a13090f943#3609efe87e590c8da5f01a905cb207a13090f943" }
+dependencies = [
+    { name = "click" },
+    { name = "devkit-advisory" },
+    { name = "devkit-cli" },
+    { name = "devkit-core" },
+    { name = "jinja2" },
+    { name = "pyyaml" },
+    { name = "tomlkit" },
+]
 
 [[package]]
 name = "dnspython"
@@ -1206,6 +1247,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/7b/6f/357efd7602486741aa73ffc0617fb310a29b588ed0fd69c2399acbb85b0c/jeepney-0.9.0.tar.gz", hash = "sha256:cf0e9e845622b81e4a28df94c40345400256ec608d0e55bb8a3feaa9163f5732", size = 106758, upload-time = "2025-02-27T18:51:01.684Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b2/a3/e137168c9c44d18eff0376253da9f1e9234d0239e0ee230d2fee6cea8e55/jeepney-0.9.0-py3-none-any.whl", hash = "sha256:97e5714520c16fc0a45695e5365a2e11b81ea79bba796e26f9f1d178cb182683", size = 49010, upload-time = "2025-02-27T18:51:00.104Z" },
+]
+
+[[package]]
+name = "jinja2"
+version = "3.1.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markupsafe" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
 ]
 
 [[package]]
@@ -2131,6 +2184,7 @@ dependencies = [
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
+    { name = "pyyaml" },
     { name = "sqlalchemy" },
     { name = "uvicorn" },
 ]
@@ -2169,6 +2223,7 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.1" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
+    { name = "pyyaml", specifier = ">=6.0.3,<7" },
     { name = "sqlalchemy", specifier = ">=2.0.46" },
     { name = "uvicorn" },
 ]
@@ -2177,7 +2232,7 @@ requires-dist = [
 dev = [
     { name = "aiosqlite" },
     { name = "app-testing-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=fd9b6a954cebb8e550f57018ffd705834a3564dd" },
-    { name = "app-tools", git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=fd9b6a954cebb8e550f57018ffd705834a3564dd" },
+    { name = "app-tools", git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=3c3232b17ccc6e231615532e24643afa6b88a78b" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
     { name = "pytest-mock", specifier = ">=3.14.0" },

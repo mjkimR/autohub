@@ -31,8 +31,8 @@ for implemented behavior and deferred work. [CI templates](templates/github-acti
 are manually installed starter files.
 
 [SDD projects](docs/devkit-integration.md) connect devkit proposals/specs to cloud
-Planning and Development runs. The repository viewer includes roadmap members from
-activity branches and links them to their executions. Runtime profiles and rollout
+Planning and Development runs. The repository viewer reads milestone proposal members
+from the selected branch and links units to their executions. Runtime profiles and rollout
 requirements are documented in the integration guide.
 
 ## Development

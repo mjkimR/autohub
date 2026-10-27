@@ -11,9 +11,10 @@ from app.features.project_management.pipeline_runs.usecases.transitions import a
 from app.features.project_management.projects.errors import ProjectError
 
 from .decisions import publication_instructions
+from .evidence import in_context
 from .gates import INTEGRATION_GATE, PLAN_ACCEPT_REQUEST
 from .services import SddService
-from .units import is_proposal
+from .units import is_proposal, proposal_slug
 
 # What an agent is told about a warning. The human remediation of RECEIPT_STALE (commit a new receipt) would end
 # this run's contract mid-flight, so the agent is told to leave it to the operator instead.
@@ -32,7 +33,30 @@ def hold_of(evidence):
 
 def reviewed(evidence):
     """The Planning worker left a completed worker envelope: the proposal is ready for plan-accept."""
-    return any(r.get("kind") == "worker" and r.get("status") == "completed" for r in evidence.get("reports") or [])
+    context = evidence.get("report_context")
+    workers = [
+        r
+        for r in evidence.get("reports") or []
+        if r.get("kind") == "worker" and (not context or in_context(r, context))
+    ]
+    return bool(workers) and max(workers, key=lambda r: r.get("seq") or 0).get("status") == "completed"
+
+
+def completed_plan(evidence):
+    return (
+        is_proposal((evidence.get("snapshot") or {}).get("spec_dir", ""))
+        and evidence.get("unit_status") in ("reviewing", "accepted")
+        and evidence.get("current", {}).get("complete")
+        and reviewed(evidence)
+        and not held(evidence)
+    )
+
+
+def delegated_plan(evidence):
+    return all(
+        policy.get("approvals", {}).get("plan-accept", {}).get("policy") == "auto"
+        for policy in ((evidence.get("snapshot") or {}).get("policy") or {}, evidence.get("base_policy") or {})
+    )
 
 
 def awaiting_review(evidence):
@@ -72,6 +96,10 @@ def request_reason(evidence, stage):
 def approval_gate(evidence):
     if held(evidence):
         return False
+    if plan := evidence.get("plan_decision"):
+        return evidence.get("head_sha") == plan.get("commit_sha")
+    if evidence.get("approval_withheld") and completed_plan(evidence) and delegated_plan(evidence):
+        return True  # Explicit Hub reapproval restores a previously withdrawn policy delegation.
     stage = evidence.get("current", {}).get("stage") or {}
     passed_integration = any(
         item.get("human_gate") == INTEGRATION_GATE and item["id"] in evidence.get("current", {}).get("done", [])
@@ -81,7 +109,7 @@ def approval_gate(evidence):
 
 
 def merge_ready(evidence):
-    if held(evidence):
+    if held(evidence) or evidence.get("approval_withheld"):
         return False
     if plan := evidence.get("plan_decision"):
         # A decided proposal merges on the commit that carries the decision; its workflow has no merge check.
@@ -106,26 +134,95 @@ def carry_decisions(previous, evidence):
 
 
 class SddProgress:
-    def __init__(self, repo):
-        self.repo = repo
+    def __init__(self, repo, projects=None):
+        self.repo, self.projects = repo, projects
 
-    async def observe(self, snapshot, previous, target, pull, observer):
+    async def observe(self, snapshot, previous, target, pull, observer, *, run_id=None, revision=None, lease=None):
         if pull.get("state") == "closed":
             return {"pull": pull}
         approval = previous.get("approval")
         if approval and approval.get("saw_ready") and pull.get("draft"):
             return {"pull": pull, "error": "Integration approval revoked: PR returned to draft", "revoke": True}
-        if approval and pull["head"]["sha"] != previous.get("head_sha") and not previous.get("allow_head_change"):
+        plan = previous.get("plan_decision") or {}
+        published_head = (
+            approval
+            and not previous.get("approval_withheld")
+            and approval.get("head_sha") == plan.get("commit_sha") == pull["head"]["sha"]
+            and plan.get("head_sha") == previous.get("head_sha")
+        )
+        if (
+            approval
+            and pull["head"]["sha"] != previous.get("head_sha")
+            and not (published_head or previous.get("allow_head_change"))
+        ):
             return {
                 "pull": pull,
                 "error": "PR head changed outside a delivered integration or fix; inspect and approve again",
                 "revoke": True,
             }
+        publication_request_id = None
         try:
             token = await observer.get_token(target.connector_id, "github")
             evidence = await SddService().inspect(
                 target.repository, snapshot["spec_dir"], pull, token, snapshot=snapshot, approved=bool(approval)
             )
+            if (previous.get("plan_decision") or {}).get("authority") == "policy" and evidence.get(
+                "base_policy", {}
+            ).get("approvals", {}).get("plan-accept", {}).get("policy") != "auto":
+                return {
+                    "pull": pull,
+                    "error": "Owning-base plan-accept delegation changed; enroll again",
+                    "revoke": True,
+                }
+            if run_id is not None:
+                assert revision is not None
+                from app.features.project_management.pipeline_runs.interaction_schemas import ResumeRunRequest
+
+                from .plan_publication import PlanDecisionPublisher
+
+                publisher = PlanDecisionPublisher(self.repo, self.projects, observer)
+                if recovered := await publisher.recover(run_id, pull, preserve_lease=True, lease=lease):
+                    return {"published_run": recovered}
+                candidate = (
+                    completed_plan(evidence)
+                    and not snapshot.get("handoff_pending")
+                    and pull["head"].get("ref") == f"plan-{proposal_slug(evidence['snapshot']['spec_dir'])}"
+                    and not previous.get("plan_decision")
+                    and not any(previous.get(key) == evidence["head_sha"] for key in ("rework_head", "decision_head"))
+                )
+                if candidate:
+                    policy = evidence["snapshot"]["policy"].get("approvals", {}).get("plan-accept", {}).get("policy")
+                    base_policy = (
+                        evidence.get("base_policy", {}).get("approvals", {}).get("plan-accept", {}).get("policy")
+                    )
+                    if policy == "auto" and base_policy == "auto" and previous.get("approval_withheld"):
+                        evidence["waiting_for_plan_approval"] = True
+                    elif policy == "auto" and base_policy == "auto":
+                        request = ResumeRunRequest(
+                            request_id=uuid5(
+                                NAMESPACE_URL,
+                                f"sdd-plan-accept:{run_id}:{revision}:{evidence['head_sha']}:{evidence['base_sha']}",
+                            ),
+                            expected_revision=revision,
+                            decision="accept_plan",
+                            head_sha=evidence["head_sha"],
+                            feedback="Planning completed under owning-base plan-accept=auto",
+                        )
+                        publication_request_id = request.request_id
+                        result = await publisher.decide(
+                            run_id,
+                            request,
+                            "policy:workflow.approvals.plan-accept=auto",
+                            automatic=True,
+                            inspected=evidence,
+                            lease=lease,
+                        )
+                        return {"published_run": result}
+                    elif policy == "auto":
+                        return {
+                            "pull": pull,
+                            "error": "The owning base does not delegate plan-accept; align policy and enroll again",
+                        }
             carry_decisions(previous, evidence)
             evidence["pr_draft"] = bool(pull.get("draft"))
             if approval:
@@ -135,7 +232,7 @@ class SddProgress:
                 }
             return {"pull": pull, "evidence": evidence}
         except ProjectError as exc:
-            return {"pull": pull, "error": str(exc)}
+            return {"pull": pull, "error": str(exc), "publication_request_id": publication_request_id}
 
     async def dispatch(self, session, run, evidence, now, feedback=""):
         stage = evidence.get("current", {}).get("stage") or {}
@@ -219,6 +316,22 @@ class SddProgress:
             progress.pop("waiting_for_approval", None)
             run.sdd_progress = progress
             run.state, run.pause_reason = "blocked", observed["error"]
+            if request_id := observed.get("publication_request_id"):
+                receipt = await session.get(RunResumeReceipt, request_id)
+                data = dict(receipt.decision_evidence or {}) if receipt else {}
+                publication = data.get("publication") or {}
+                if (
+                    receipt
+                    and receipt.pipeline_run_id == run.id
+                    and data.get("revision") == run.revision
+                    and data.get("automatic")
+                    and publication.get("state") == "uncertain"
+                ):
+                    # Only this error transition may extend the original authorization. User actions never do.
+                    receipt.decision_evidence = {
+                        **data,
+                        "publication": {**publication, "recovery_revision": run.revision + 1},
+                    }
             run.revision += 1
         else:
             evidence = observed["evidence"]
@@ -238,8 +351,13 @@ class SddProgress:
             if plan and evidence["head_sha"] == plan.get("commit_sha"):
                 # Hub's own decision commit is the head now: merge it by policy, unless a worker problem holds.
                 evidence["allow_head_change"] = False
-                if hold_of(evidence).get("blocked"):
+                if held(evidence):
                     run.state, run.pause_reason = "blocked", hold_reason(hold_of(evidence))
+                elif evidence.get("approval_withheld"):
+                    run.state, run.pause_reason = (
+                        "blocked",
+                        "Proposal merge approval withdrawn; inspect and approve again",
+                    )
                 else:
                     evidence.setdefault("approval", plan_approval(plan))
                     run.state, run.pause_reason = "awaiting_ci", None
@@ -295,7 +413,9 @@ class SddProgress:
                     evidence["waiting_for_approval"] = not evidence.get("approval_withheld", False)
                     run.state, run.pause_reason = (
                         "paused",
-                        f"{INTEGRATION_GATE}: inspect the final report and approve, request changes, or reject",
+                        "plan-accept: explicit proposal reapproval is required"
+                        if evidence.get("waiting_for_plan_approval")
+                        else f"{INTEGRATION_GATE}: inspect the final report and approve, request changes, or reject",
                     )
                 if previous != evidence or run.state != original_state:
                     run.revision += 1

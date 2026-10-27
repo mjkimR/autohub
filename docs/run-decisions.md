@@ -180,9 +180,10 @@ and nothing is merged. `activity_effort` (`low`, `medium`, `high`) is a run opti
 sdd enrollment: it is recorded in the run's snapshot, passed to the agent with every
 request and reported back by the worker envelope.
 
-The Repository spec view lists its latest 20 executions and links directly to their
-Decisions dialog. The dialog displays current evidence, the latest final-report,
-review and reverify summaries at the inspected commit, draft/approval requirements and the
+The Repository spec view lists its latest 20 related executions, joined through
+recorded handoffs within the project, and links directly to their Decisions dialog.
+The dialog displays current evidence, final-report and support/review rounds at
+the inspected commit, draft/approval requirements and the
 latest 100 approval, rework, revocation and resume records. Questions and selected
 answers remain in the existing question history. These native changes are locally
 tested; deployment and a live provider canary remain separate.
@@ -190,7 +191,7 @@ tested; deployment and a live provider canary remain separate.
 ## Starting Planning and Development
 
 `POST /projects/{id}/sdd/proposals/{slug}/planning` (MCP `sdd_start_planning`)
-starts Planning of a draft proposal that has `plan-intent` recorded and does not
+starts Planning of a draft proposal that has `plan-intent` recorded or delegated and does not
 need decomposition: Hub creates `plan-<slug>` from `base_branch` with one start
 commit that sets `status: reviewing`, opens a ready pull request and enrolls the run.
 Its first attempt is the Planning worker, which leaves one worker envelope per run;
@@ -213,11 +214,11 @@ base status and a display status: a draft with a remote `plan-<slug>` shows as
 `reviewing` without any base commit. It links the open `plan-` and `dev-` pull
 requests and the proposal's unfinished run, and offers only the actions its state
 allows: **Start review** for a draft that needs no decomposition and has no Planning
-branch, **Accept** and **Reject…** (reason required) while its run waits at
+branch, **Review & accept** and **Reject…** (reason required) while its run waits at
 `gate:plan-accept`, unheld, and **Start development** for an accepted proposal
 without a Development branch. A rejected proposal offers nothing and reads as
 waiting for the hygiene cleanup of a local Host. The start buttons send the chosen
-base branch and activity effort.
+base branch and an optional effort override; otherwise the proposal recommendation applies.
 
 ## Proposal decisions
 
@@ -228,8 +229,11 @@ A proposal run (unit `docs/proposals/PROP-<slug>` on branch `plan-<slug>`) stops
 rejection needs `feedback`, the reason. Hub refuses another head, changed evidence,
 a run that is not waiting, a held unit (acceptance) and a proposal that is not
 `reviewing`. It then writes the decision itself, without an agent: in a disposable
-checkout of that head devkit records `gate:plan-accept` and Hub sets
-`status: accepted` (acceptance), or Hub sets `status: rejected` only and devkit
+checkout of that head on `plan-<slug>`, `devkit spec proposal accept <slug> --by user`
+validates Planning ownership and records both `gate:plan-accept` and `status: accepted`
+in one operation. The note retains the Hub request ID and actual user actor; the
+CLI's `user` value identifies decision authority, while the commit and run retain
+the decider's identity. For rejection, Hub sets `status: rejected` only and devkit
 closes every open worker question with an answer envelope whose choice is null and
 whose decision names the rejection (rejection). Git commits inside the sandbox as the
 Hub identity (`AUTOHUB_SDD_COMMIT_IDENTITY`, default
@@ -241,6 +245,67 @@ Planning branch, and the merge commit reuses the decision's message so a squash
 keeps the rejection reason where hygiene looks for it. A proposal with an unresolved
 worker problem is not accepted; a rejected one is never enrolled or asked again. The
 `gate:plan-accept` request cannot be answered as a workflow answer.
+
+Proposal publication first commits a durable intent in the existing resume receipt.
+It records the exact candidate commit and inspected evidence before pushing. The
+bounded push holds the Run and Project row locks and rechecks their revisions,
+binding, enabled state and, for automatic decisions, the advancement lease. A
+cancel or project change that wins this fence prevents publication. A stop after
+publication preserves its audit record. A lost push/DB response leaves an uncertain
+intent; retry the identical saved request with the same actor and request ID.
+**Reconcile decision** in approval history does this for a manual decision. An
+exact match between the remote head and a prepared candidate confirms publication
+without another push. Recovery never renews approval on a canceled or changed run.
+For an automatic decision whose push succeeded but result storage failed, generic
+resume reconciles the prepared commit before dispatching more work. The error
+transition records its own recovery revision atomically; a user action cannot
+extend that revision. Recovery still requires the original PR branch/base, project
+binding and authorization, and never dispatches another agent or republishes the
+decision just to recover its result.
+If the remote has moved beyond that candidate, inspect the repository and settle
+the old run before enrolling again; recovery does not infer success from ancestry.
+No database migration is needed for these receipt fields.
+
+`plan-intent=auto` is recognized through the CLI's completed intent stage rather
+than a decision filename. With `plan-accept=auto`, Hub requires delegation from
+both the owning base commit and the proposal's pinned policy, a completed current
+Planning worker and no worker hold. This applies only on the proposal's Planning
+branch, never to a Development activity waiting for its initial handoff. It records
+policy authority and uses canonical
+`spec proposal accept --by policy`. If the agent already accepted canonically,
+Hub writes an audit commit without duplicating the gate. A new push starts fresh
+CI observation; draft PRs still wait. Withdrawing approval keeps merge blocked
+until explicit reapproval; inspection alone cannot restore it.
+For a completed Planning activity whose automatic delegation was withdrawn,
+Decisions shows **Approve proposal**. That explicit, revision-checked Hub approval
+restores delegation; **Resume after inspection** keeps it withdrawn. Retrying
+unfinished requested changes still dispatches work without granting approval.
+A queued Run can also withdraw approval before its first Attempt. Generic resume
+re-inspects native gates without requiring an implementation Attempt; explicit
+reapproval can then continue automatic Planning acceptance without dispatching
+unnecessary agent work.
+
+Proposal decisions also respect open or answered-but-unapplied Hub questions,
+in addition to the repository's worker-envelope hold. Apply the saved answer or
+dismiss the question before accepting or rejecting. Trusted agent questions are
+persisted before automatic acceptance is considered. The publication fence checks
+questions and withdrawal again immediately before pushing, and recovery cannot
+grant approval while a Hub question awaits application. Policy recovery also
+preserves withdrawn delegation.
+
+The first observation after publication allows only the decision commit recorded
+in the receipt and approval, following its inspected parent. Another head change
+still revokes approval. CI must cover the new decision head; a successful run for
+the pre-decision commit cannot authorize its merge.
+
+The proposal list opens **Review & accept** in Decisions. Planning evidence appears
+before the decision controls: the proposal's effort recommendations, actual worker
+effort, all challenger/scout rounds, their closing reverifies, findings, assumptions
+and unverified areas. Missing support roles are review guidance, scoped to the
+current workflow segment; they do not introduce another workflow engine. Activity
+starts use the proposal's `planning_effort` or `dev_effort` hint unless explicitly
+overridden. **Next action** explains the current wait or CLI next skill, and
+approval history distinguishes publication intent from confirmed approval.
 
 ## Replacing failed work
 

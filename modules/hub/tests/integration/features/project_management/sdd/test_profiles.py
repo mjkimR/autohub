@@ -11,6 +11,7 @@ from app.features.project_management.sdd import checkout as checkout_module
 from app.features.project_management.sdd.profiles import runtime_scope
 from app.features.project_management.sdd.runtime import restore, runtime_pin
 from app.features.project_management.sdd.services import SddService
+
 from tests.integration.features.project_management.sdd import test_cli
 from tests.integration.features.project_management.sdd.test_cli import SPEC, commit, run
 

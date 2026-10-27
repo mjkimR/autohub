@@ -28,6 +28,126 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+test('withheld automatic Planning requires an explicit proposal approval', async () => {
+	const user = userEvent.setup();
+	const onchange = vi.fn();
+	api.POST.mockResolvedValue({ data: run });
+	render(SddRunPanel, {
+		run: {
+			...run,
+			sdd_snapshot: { provider: 'devkit-spec', spec_dir: 'docs/proposals/PROP-demo' },
+			sdd_progress: {
+				...run.sdd_progress,
+				current: { complete: true, stage: null, requests: [] },
+				approval_withheld: true,
+				waiting_for_plan_approval: true
+			}
+		},
+		onchange
+	});
+	expect(screen.getByText('Review & approve proposal')).toBeTruthy();
+	expect(api.POST).not.toHaveBeenCalled();
+	await user.click(screen.getByRole('button', { name: 'Approve proposal' }));
+	expect(api.POST.mock.calls[0][1].body).toMatchObject({
+		decision: 'approve',
+		expected_revision: run.revision
+	});
+	expect(onchange).toHaveBeenCalledOnce();
+});
+
+test('Planning evidence precedes approval and preserves effort, support rounds, findings and gaps', () => {
+	render(SddRunPanel, {
+		run: {
+			...run,
+			sdd_snapshot: { spec_dir: 'docs/proposals/PROP-demo', provider: 'devkit-spec' },
+			sdd_progress: {
+				...run.sdd_progress,
+				proposal: { planning_effort: 'medium', dev_effort: 'high' },
+				current: {
+					requests: [
+						{
+							id: 'gate:plan-accept',
+							kind: 'approve',
+							title: 'Direction',
+							answer: 'record',
+							options: []
+						}
+					]
+				},
+				review_gaps: ['worker-01.yaml: high effort has no scout record in this workflow segment'],
+				reports: [
+					{
+						kind: 'worker',
+						file: 'envelopes/worker-01.yaml',
+						status: 'completed',
+						activity_effort: 'high',
+						workflow: 'sdd-proposal',
+						segment: 0,
+						summary: 'Design settled',
+						assumptions: ['API remains stable']
+					},
+					{
+						kind: 'challenger',
+						file: 'envelopes/challenger-01.yaml',
+						status: 'completed',
+						summary: 'Reviewed alternatives',
+						findings: [
+							{
+								issue: 'Boundary unclear',
+								severity: 'P2',
+								resolution: 'open',
+								evidence: '<script>text</script>'
+							}
+						]
+					},
+					{
+						kind: 'reverify',
+						file: 'envelopes/reverify-01.yaml',
+						status: 'completed',
+						review: 'challenger-01.yaml',
+						summary: 'Boundary resolved'
+					}
+				]
+			}
+		},
+		onchange: vi.fn()
+	});
+	const evidence = screen.getByRole('region', { name: 'Planning decision evidence' });
+	expect(evidence.textContent).toContain('Planning medium');
+	expect(evidence.textContent).toContain('Development high');
+	expect(evidence.textContent).toContain('effort high');
+	expect(evidence.textContent).toContain('Closes round: challenger-01.yaml');
+	expect(screen.getByText(/high effort has no scout/)).toBeTruthy();
+	expect(screen.getByText('evidence: <script>text</script>')).toBeTruthy();
+	expect(evidence.querySelector('script')).toBeNull();
+	expect(
+		evidence.compareDocumentPosition(screen.getByRole('button', { name: 'Accept proposal' })) &
+			Node.DOCUMENT_POSITION_FOLLOWING
+	).toBeTruthy();
+});
+
+test('uncertain publication retries the saved request identity and refreshes the run', async () => {
+	const user = userEvent.setup();
+	const saved = {
+		request_id: 'saved-id',
+		expected_revision: 3,
+		decision: 'accept_plan',
+		head_sha: 'a'.repeat(40),
+		feedback: 'Go'
+	};
+	api.GET.mockResolvedValue({
+		data: [
+			{ id: 'saved-id', action: 'accept_plan', publication: { state: 'uncertain' }, request: saved }
+		]
+	});
+	api.POST.mockResolvedValue({ data: run });
+	const onchange = vi.fn();
+	render(SddDecisionHistory, { runId: run.id, revision: 3, onchange });
+	await user.click(await screen.findByRole('button', { name: 'Reconcile decision' }));
+	expect(api.POST.mock.calls[0][1].body).toEqual(saved);
+	expect(onchange).toHaveBeenCalledOnce();
+});
+
 test('approval binds the inspected run revision and reuses identity after a lost response', async () => {
 	const user = userEvent.setup({ delay: null });
 	api.POST.mockRejectedValueOnce(new Error('Connection lost')).mockResolvedValueOnce({

@@ -10,6 +10,8 @@ from tests.integration.migrations.test_default_ai_catalogs import scripts
 async def test_work_plan_migration_roundtrip_matches_metadata(session):
     def roundtrip(sync_connection):
         with Operations.context(MigrationContext.configure(sync_connection)):
+            branches = scripts().get_revision("9d0e1f2a3b4c").module
+            branches.downgrade()
             groups = scripts().get_revision("c58e651b4354").module
             groups.downgrade()
             activity = scripts().get_revision("b47d540a3243").module
@@ -26,6 +28,7 @@ async def test_work_plan_migration_roundtrip_matches_metadata(session):
             schedule.upgrade()
             activity.upgrade()
             groups.upgrade()
+            branches.upgrade()
         context = MigrationContext.configure(
             sync_connection,
             opts={

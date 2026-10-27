@@ -19,6 +19,11 @@ def repo(tmp_path, monkeypatch):
     (root / ".devkit/installation.json").write_text("{}")
     (root / SPEC).mkdir(parents=True)
     (root / SPEC / "spec.md").write_text("# Unit\n")
+
+    async def base_policy(root, base, head, policy):
+        return policy
+
+    monkeypatch.setattr(services, "base_policy", base_policy)
     monkeypatch.setattr(services, "configured_version", lambda: "devkit-spec:unit")
     monkeypatch.setattr(services, "revision_warnings", lambda root: [])
     return root

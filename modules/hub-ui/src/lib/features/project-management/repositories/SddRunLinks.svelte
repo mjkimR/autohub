@@ -77,6 +77,10 @@
 							>
 							<span class="min-w-0 break-words">{run.pull_snapshot.title}</span>
 						</a>
+						<p class="mt-1 text-xs break-all text-muted-foreground">
+							{#if run.sdd_snapshot?.handoff_from}{String(run.sdd_snapshot.handoff_from)} →
+							{/if}{String(run.sdd_snapshot?.spec_dir || specDir)}
+						</p>
 						{#if /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)}
 							<a
 								class="text-xs underline"
