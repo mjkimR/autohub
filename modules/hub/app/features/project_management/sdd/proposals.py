@@ -3,7 +3,9 @@
 The base holds the proposal's own status; a ``plan-<slug>`` branch shows a draft as ``reviewing`` without a base commit
 (strategy layer 01 section 5.1). The actions follow 01 sections 6.2 and 6.3: start Planning of a draft, accept or
 reject a reviewing proposal through its waiting run, start Development of an accepted one. A rejected proposal takes
-no action; it waits for the hygiene cleanup of a local Host.
+no action; it waits for the hygiene cleanup of a local Host. A draft that devkit-spec's decomposition gate refuses
+(``needs_decompose`` or a size other than S, M or L) offers no Planning start, and a repository whose
+``[development] approach`` is incubation offers neither a start nor an acceptance (devkit-spec refuses them).
 """
 
 import asyncio
@@ -16,6 +18,7 @@ from app.features.project_management.work_plans.github import WorkGitHub
 
 from .activities import _frontmatter_value, _text
 from .gates import PLAN_ACCEPT_REQUEST
+from .policy import INCUBATION, LIFECYCLE_INACTIVE, development_approach, size_blocker
 from .progress import held
 
 PROPOSAL_LIMIT = 50
@@ -24,6 +27,28 @@ PROPOSAL_LIMIT = 50
 def _slug(name: str) -> str | None:
     slug = name.removeprefix("PROP-")
     return slug if name.startswith("PROP-") and slug and slug[0].isalnum() and slug == slug.lower() else None
+
+
+def recorded_approach(runs) -> str | None:
+    """The ``[development] approach`` the latest run evaluation recorded, ``None`` before any evaluation.
+
+    Incubation when either the Planning head (where devkit-spec accepts) or the owning base (where Development
+    hands off) chose it. A hint for which actions to offer; starts and acceptances read the policy again.
+    """
+    for run in runs:
+        progress = run.sdd_progress or {}
+        policies = [
+            policy
+            for policy in (
+                progress.get("base_policy"),
+                (progress.get("snapshot") or {}).get("policy"),
+                (run.sdd_snapshot or {}).get("policy"),
+            )
+            if isinstance(policy, dict) and policy
+        ]
+        if policies:
+            return INCUBATION if any(development_approach(p) == INCUBATION for p in policies) else "sdd"
+    return None
 
 
 def waiting_run(runs) -> dict | None:
@@ -48,23 +73,35 @@ def waiting_run(runs) -> dict | None:
     }
 
 
-def proposal_state(slug: str, anchor: str | None, branches: set[str], pulls: dict[str, int], run: dict | None) -> dict:
+def proposal_state(
+    slug: str,
+    anchor: str | None,
+    branches: set[str],
+    pulls: dict[str, int],
+    run: dict | None,
+    approach: str | None = None,
+) -> dict:
     status = (_frontmatter_value(anchor, "status") if anchor else None) or "unknown"
     plan, dev = f"plan-{slug}" in branches, f"dev-{slug}" in branches
     display = "reviewing" if status == "draft" and plan else status
     actions: list[str] = []
     note = None
+    size = size_blocker(_frontmatter_value(anchor or "", "size"))
     if status == "rejected":
         note = "Planning ended by rejection; a local Host removes it in hygiene after writing its ADR"
+    elif approach == INCUBATION:
+        note = LIFECYCLE_INACTIVE
     elif status == "draft" and not plan:
         if _frontmatter_value(anchor or "", "needs_decompose") == "true":
             note = "Needs decomposition in Backlog before Planning"
+        elif size:
+            note = f"The proposal is {size}; decompose it in Backlog before Planning (S, M or L)"
         else:
             actions.append("start_planning")
     elif status == "accepted" and not dev:
         actions.append("start_development")
     if run and run["plan_accept_open"] and status != "rejected":
-        actions += ["accept", "reject"]
+        actions += ["reject"] if approach == INCUBATION else ["accept", "reject"]
     return {
         "slug": slug,
         "id": f"PROP-{slug}",
@@ -116,8 +153,8 @@ async def list_proposals(observer, project, base_branch: str, runs_for) -> dict:
         )
     items = []
     for slug, entry in zip(slugs, anchors, strict=True):
-        run = waiting_run(await runs_for(f"docs/proposals/PROP-{slug}"))
-        items.append(proposal_state(slug, _text(entry), branches, pulls, run))
+        runs = await runs_for(f"docs/proposals/PROP-{slug}")
+        items.append(proposal_state(slug, _text(entry), branches, pulls, waiting_run(runs), recorded_approach(runs)))
     return {
         "base_branch": base_branch,
         "base_sha": base_sha,

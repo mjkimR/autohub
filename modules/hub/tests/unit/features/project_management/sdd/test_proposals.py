@@ -9,20 +9,29 @@ from app.features.project_management.sdd import proposals
 pytestmark = pytest.mark.unit
 
 
-def anchor(status, extra=""):
+def anchor(status, extra="", size="M"):
     return (
-        f"---\nid: PROP-x\ntitle: Title {status}\nstatus: {status}  # comment\ntask_kind: feature\n{extra}---\n# Body\n"
+        f"---\nid: PROP-x\ntitle: Title {status}\nstatus: {status}  # comment\ntask_kind: feature\n"
+        f"size: {size}  # S | M | L | XL\n{extra}---\n# Body\n"
     )
 
 
-def run(state="blocked", unit_status="reviewing", requests=("gate:plan-accept",), hold=None):
+def policy(approach="sdd"):
+    return {"approvals": {}, "development": {"approach": approach, "source": ".devkit/config.toml"}}
+
+
+def run(state="blocked", unit_status="reviewing", requests=("gate:plan-accept",), hold=None, approach=None):
     progress = {
         "head_sha": "a" * 40,
         "unit_status": unit_status,
         "current": {"requests": [{"id": r} for r in requests]},
         "hold": hold or {},
     }
-    return SimpleNamespace(id=uuid4(), state=state, revision=4, pause_reason="x", pull_number=7, sdd_progress=progress)
+    if approach:
+        progress["snapshot"] = {"policy": policy(approach)}
+    return SimpleNamespace(
+        id=uuid4(), state=state, revision=4, pause_reason="x", pull_number=7, sdd_progress=progress, sdd_snapshot={}
+    )
 
 
 def test_actions_follow_the_proposal_lifecycle():
@@ -42,6 +51,35 @@ def test_actions_follow_the_proposal_lifecycle():
     assert developing["actions"] == []
     rejected = proposals.proposal_state("a", anchor("rejected"), {"plan-a"}, {}, waiting)
     assert rejected["actions"] == [] and "hygiene" in rejected["note"]
+
+
+@pytest.mark.parametrize(("size", "startable"), [("S", True), ("L", True), ("", True), ("XL", False), ("xl", False)])
+def test_planning_is_offered_only_for_sizes_the_decomposition_gate_allows(size, startable):
+    state = proposals.proposal_state("a", anchor("draft", size=size), set(), {}, None)
+    assert (state["actions"] == ["start_planning"]) is startable
+    if not startable:
+        assert state["note"] == f"The proposal is size {size}; decompose it in Backlog before Planning (S, M or L)"
+
+
+def test_recorded_approach_reads_the_latest_evaluated_policy():
+    assert proposals.recorded_approach([]) is None
+    assert proposals.recorded_approach([run()]) is None  # no evaluation recorded a policy yet
+    assert proposals.recorded_approach([run(approach="sdd"), run(approach="incubation")]) == "sdd"
+    base = run(approach="sdd")
+    base.sdd_progress["base_policy"] = policy("incubation")
+    assert proposals.recorded_approach([base]) == "incubation"
+    legacy = run()
+    legacy.sdd_snapshot = {"policy": {"approvals": {}}}  # before devkit reported [development]
+    assert proposals.recorded_approach([legacy]) == "sdd"
+
+
+def test_incubation_offers_no_lifecycle_start_or_acceptance():
+    for status, branches in (("draft", set()), ("accepted", {"plan-a"})):
+        state = proposals.proposal_state("a", anchor(status), branches, {}, None, "incubation")
+        assert state["actions"] == [] and "SPEC_LIFECYCLE_INACTIVE" in state["note"]
+    waiting = proposals.waiting_run([run(approach="incubation")])
+    reviewing = proposals.proposal_state("a", anchor("draft"), {"plan-a"}, {}, waiting, "incubation")
+    assert reviewing["actions"] == ["reject"]  # Hub rejects by itself; devkit-spec refuses the acceptance
 
 
 @pytest.mark.parametrize(

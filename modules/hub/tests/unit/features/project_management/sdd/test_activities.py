@@ -1,12 +1,14 @@
 import base64
 import json
+from contextlib import asynccontextmanager
+from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 
 import httpx
 import pytest
 from app.features.project_management.projects.errors import ProjectError
-from app.features.project_management.sdd import activities
+from app.features.project_management.sdd import activities, policy, services
 from app.features.project_management.sdd.schemas import StartActivityRequest
 
 pytestmark = pytest.mark.unit
@@ -18,6 +20,7 @@ class FakeGitHub:
     def __init__(self, proposal=DRAFT, records=("01-gate-plan-intent.yaml",)):
         self.refs = {"main": BASE}
         self.proposal, self.records, self.pulls, self.created = proposal, list(records), [], []
+        self.approach, self.unmet, self.errors, self.checkouts = "sdd", [], [], []
 
     def respond(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path.removeprefix("/repos/owner/app")
@@ -62,10 +65,24 @@ def started(monkeypatch):
 
     monkeypatch.setattr(activities, "start_branch", start_branch)
 
-    async def planning_intent(*args):
-        return bool(github.records)
+    @asynccontextmanager
+    async def checkout(repository, head, base, token):
+        github.checkouts.append(base)
+        yield Path("/nonexistent")
 
-    monkeypatch.setattr(activities, "planning_intent", planning_intent)
+    async def restore(root):
+        return []
+
+    async def cli(root, *args):
+        if args == ("spec", "policy"):
+            return {"approvals": {}, "development": {"approach": github.approach, "source": "default"}}
+        assert args[:2] == ("workflow", "next")
+        done = ["intent-proposal"] if github.records else []
+        return {"done": done, "unmet": github.unmet, "errors": github.errors}
+
+    monkeypatch.setattr(policy, "checkout", checkout)
+    monkeypatch.setattr(policy, "restore", restore)
+    monkeypatch.setattr(services, "cli", cli)
 
     class Runs:
         async def enroll(self, project_id, request):
@@ -139,6 +156,7 @@ async def test_activity_effort_uses_the_proposal_hint_unless_overridden(
             ("01-gate-plan-intent.yaml",),
             "decomposition",
         ),
+        ("plan", DRAFT.replace("task_kind", "size: XL\ntask_kind"), ("01-gate-plan-intent.yaml",), "size XL"),
         ("plan", None, (), "is not on main"),
         ("dev", DRAFT, (), "accepted proposal"),
         ("dev", DRAFT.replace("draft", "rejected", 1), (), "accepted proposal"),
@@ -166,3 +184,57 @@ async def test_slug_must_make_an_activity_branch(started):
     *_, project, starter = started
     with pytest.raises(ProjectError, match="activity branch"):
         await starter.start(project, "plan", "Demo", request(), "user:mj")
+
+
+@pytest.mark.parametrize("size", ["S", "M", "L", "''"])
+async def test_planning_starts_for_every_size_the_gate_allows(started, size):
+    github, branches, _, project, starter = started
+    github.proposal = DRAFT.replace("task_kind", f"size: {size}\ntask_kind")
+    await starter.start(project, "plan", "demo", request(), "user:mj")
+    assert branches[0][0] == "plan-demo"
+
+
+async def test_xl_draft_is_refused_before_any_checkout_or_branch(started):
+    github, branches, _, project, starter = started
+    github.proposal = DRAFT.replace("task_kind", "size: XL  # decompose\ntask_kind")
+    with pytest.raises(ProjectError, match="decompose it in Backlog") as refused:
+        await starter.start(project, "plan", "demo", request(), "user:mj")
+    assert refused.value.status == 409 and "plan-intent" not in refused.value.detail
+    assert not github.checkouts and not branches and not github.created
+
+
+@pytest.mark.parametrize(
+    ("unmet", "errors", "match"),
+    [
+        (
+            [{"name": "frontmatter(proposal.md size S|M|L|)", "satisfied": False, "detail": "size=XL"}],
+            [],
+            r"size gate \(size=XL\)",
+        ),
+        (
+            [],
+            [{"code": "ENVELOPE_INVALID", "message": "secret"}],
+            r"invalid workflow evidence on the base \(ENVELOPE_INVALID\)",
+        ),
+        ([], [], "Record plan-intent"),
+    ],
+)
+async def test_planning_refusal_reports_what_the_base_evaluation_found(started, unmet, errors, match):
+    github, branches, _, project, starter = started
+    github.records, github.unmet, github.errors = [], unmet, errors
+    with pytest.raises(ProjectError, match=match) as refused:
+        await starter.start(project, "plan", "demo", request(), "user:mj")
+    assert refused.value.status == 409 and "secret" not in refused.value.detail
+    assert not branches and not github.created
+
+
+@pytest.mark.parametrize("activity", ["plan", "dev"])
+async def test_incubation_base_refuses_starts_before_creating_branches(started, activity):
+    github, branches, enrolled, project, starter = started
+    github.approach = "incubation"
+    if activity == "dev":
+        github.proposal = DRAFT.replace("status: draft", "status: accepted")
+    with pytest.raises(ProjectError, match="incubation") as refused:
+        await starter.start(project, activity, "demo", request(), "user:mj")
+    assert refused.value.status == 409 and refused.value.code == "SDD_LIFECYCLE_INACTIVE"
+    assert github.checkouts == [BASE] and not branches and not github.created and not enrolled

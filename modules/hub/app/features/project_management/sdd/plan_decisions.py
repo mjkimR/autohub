@@ -17,6 +17,7 @@ from app_layer_base.utils.time_util import get_current_utc_time
 
 from .checkout import checkout, command, push_head
 from .gates import PLAN_ACCEPT_REQUEST
+from .policy import INCUBATION, LIFECYCLE_INACTIVE, development_approach
 from .progress import held
 from .units import proposal_slug, set_status
 
@@ -95,6 +96,8 @@ async def record_plan_decision(
                 if evidence["evidence_digest"] != expected_digest:
                     raise ProjectError(409, "Workflow evidence changed while recording the decision")
                 if decision == "accept_plan":
+                    if development_approach(evidence["snapshot"].get("policy")) == INCUBATION:
+                        raise ProjectError(409, LIFECYCLE_INACTIVE, code="SDD_LIFECYCLE_INACTIVE")
                     automatic = authority == "policy"
                     eligible = any(r["id"] == PLAN_ACCEPT_REQUEST for r in evidence["current"].get("requests", [])) or (
                         automatic and evidence["current"].get("complete")

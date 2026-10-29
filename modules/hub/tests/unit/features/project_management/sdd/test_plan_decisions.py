@@ -59,3 +59,40 @@ def test_closure_answers_cover_every_open_question_per_worker_file():
     assert set(answers) == {"worker-01.yaml", "worker-02.yaml"}
     assert answers["worker-01.yaml"].count("choice: null") == 2
     assert 'decision: "Planning ended by rejection: Not now: \\"scope\\" too wide"' in answers["worker-01.yaml"]
+
+
+async def test_acceptance_is_refused_up_front_for_an_incubation_head(monkeypatch, tmp_path):
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def checkout(repository, head, base, token):
+        yield tmp_path
+
+    async def command(*args, **kwargs):
+        raise AssertionError(f"nothing is written or published: {args}")
+
+    class Service:
+        async def evaluate(self, root, unit, head, base, snapshot, approved):
+            policy = {"approvals": {}, "development": {"approach": "incubation", "source": ".devkit/config.toml"}}
+            return {"evidence_digest": "d", "snapshot": {"policy": policy}, "current": {"requests": []}}
+
+    monkeypatch.delenv("AUTOHUB_SDD_COMMIT_IDENTITY", raising=False)
+    monkeypatch.setattr(plan_decisions, "checkout", checkout)
+    monkeypatch.setattr(plan_decisions, "command", command)
+    pull = {"head": {"sha": "a" * 40, "ref": "plan-demo"}, "base": {"sha": "b" * 40}}
+    with pytest.raises(ProjectError, match="incubation") as refused:
+        await plan_decisions.record_plan_decision(
+            Service(),
+            "owner/app",
+            UNIT,
+            pull,
+            "token",
+            decision="accept_plan",
+            actor="user:mj",
+            note="",
+            snapshot={},
+            expected_digest="d",
+            request_id="r",
+            publication=None,
+        )
+    assert refused.value.status == 409 and refused.value.code == "SDD_LIFECYCLE_INACTIVE"

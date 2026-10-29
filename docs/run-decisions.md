@@ -192,7 +192,8 @@ tested; deployment and a live provider canary remain separate.
 
 `POST /projects/{id}/sdd/proposals/{slug}/planning` (MCP `sdd_start_planning`)
 starts Planning of a draft proposal that has `plan-intent` recorded or delegated and does not
-need decomposition: Hub creates `plan-<slug>` from `base_branch` with one start
+need decomposition (no `needs_decompose: true`, and a `size` of S, M or L or none; an XL
+draft is refused with the size gate as its reason): Hub creates `plan-<slug>` from `base_branch` with one start
 commit that sets `status: reviewing`, opens a ready pull request and enrolls the run.
 Its first attempt is the Planning worker, which leaves one worker envelope per run;
 the run asks for `plan-accept` only after a completed worker envelope.
@@ -203,8 +204,11 @@ a draft pull request and a handoff-first run. Its first step is
 the new spec bundle and its workflow from the next stage, keeping the activity effort.
 Both refuse an existing remote branch of that name unless it carries Hub's own open
 pull request (a start whose response was lost, enrolled again). Branches that were
-never pushed are the local Host's to check before it calls. Both take
-`activity_effort` and `catalog`.
+never pushed are the local Host's to check before it calls. Both read the base's
+policy through devkit first and refuse an `incubation` development approach
+(`SDD_LIFECYCLE_INACTIVE`) before creating a branch or pull request; an acceptance on
+an incubation Planning head is refused the same way before anything is written. Both
+take `activity_effort` and `catalog`.
 
 ## Proposals panel
 
@@ -213,11 +217,13 @@ The repository view of an sdd project lists the proposals of a base branch
 base status and a display status: a draft with a remote `plan-<slug>` shows as
 `reviewing` without any base commit. It links the open `plan-` and `dev-` pull
 requests and the proposal's unfinished run, and offers only the actions its state
-allows: **Start review** for a draft that needs no decomposition and has no Planning
-branch, **Review & accept** and **Reject…** (reason required) while its run waits at
+allows: **Start review** for a draft that needs no decomposition (neither
+`needs_decompose` nor size XL) and has no Planning branch, **Review & accept** and **Reject…** (reason required) while its run waits at
 `gate:plan-accept`, unheld, and **Start development** for an accepted proposal
 without a Development branch. A rejected proposal offers nothing and reads as
-waiting for the hygiene cleanup of a local Host. The start buttons send the chosen
+waiting for the hygiene cleanup of a local Host. When the proposal's latest run
+recorded an `incubation` development approach, the row offers no start or acceptance
+(only **Reject…** while a run waits) and explains why. The start buttons send the chosen
 base branch and an optional effort override; otherwise the proposal recommendation applies.
 
 ## Proposal decisions

@@ -28,6 +28,21 @@ CLI_FIXES = {
     "SPEC_PROPOSAL_NOT_ELIGIBLE": "Complete the proposal's required Planning checks before accepting it.",
     "SPEC_PROPOSAL_GATE_NOT_OPEN": "Complete Planning and answer pending questions before accepting the proposal.",
     "SPEC_PROPOSAL_WRONG_WORKTREE": "Accept the proposal on its own plan-<slug> branch.",
+    "SPEC_PROPOSAL_POLICY_NOT_AUTO": (
+        "The owning base's plan-accept policy is not auto: accept the proposal as the user, or set "
+        'plan-accept = "auto" in [workflow.approvals] of the base\'s .devkit/config.toml.'
+    ),
+    "SPEC_LIFECYCLE_INACTIVE": (
+        "The repository's [development] approach is incubation, which disables proposal acceptance and handoff; "
+        'set approach = "sdd" in .devkit/config.toml to use the SDD lifecycle.'
+    ),
+    "DEVELOPMENT_CONFIG_INVALID": (
+        'Set [development] to only approach = "sdd" or "incubation" in .devkit/config.toml and commit it.'
+    ),
+    "SPEC_CONFIG_INVALID": (
+        "Correct the devkit-spec configuration in .devkit/config.toml ([tool.spec], or [workflow.approvals] and "
+        "[worktree] for an acceptance) and commit it."
+    ),
     "COMMAND_FAILED": "Inspect the isolated runtime and repository contract.",
 }
 

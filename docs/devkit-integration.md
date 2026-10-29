@@ -27,11 +27,14 @@ their review gaps are guidance, while the CLI remains the source of gate state.
 
 | Starting point | Action |
 | --- | --- |
-| Draft proposal with recorded or delegated plan-intent, no decomposition needed | Start Planning on `plan-<slug>`, review, accept or reject |
+| Draft proposal with recorded or delegated plan-intent, size S, M, L or absent, no decomposition needed | Start Planning on `plan-<slug>`, review, accept or reject |
 | Accepted proposal | Start Development on `dev-<slug>`, hand off to a spec, continue its workflow |
 | Existing PR and bound spec/proposal | Check readiness and enroll the same PR |
 | Externally implemented, paused PR | SDK bridge verifies evidence and requires scoped approval before resuming its owner |
 
+A repository whose `[development] approach` is `incubation` has no SDD lifecycle:
+devkit-spec refuses acceptance and handoff (`SPEC_LIFECYCLE_INACTIVE`), so Hub
+neither offers nor starts Planning or Development there and refuses acceptance.
 Planning and Development start/decision rules are in
 [run decisions](run-decisions.md#starting-planning-and-development). Existing-PR
 execution is available in the [SDD repository panel](repository-viewer.md); the

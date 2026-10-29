@@ -442,7 +442,7 @@ async def test_policy_acceptance_authors_a_decision_commit_even_after_agent_acce
 
 
 async def test_auto_plan_intent_starts_without_a_decision_filename(checkout, tmp_path, monkeypatch):
-    from app.features.project_management.sdd.policy import planning_intent
+    from app.features.project_management.sdd.policy import start_blocker
 
     root, _ = checkout
     reviewing_proposal(root, automatic=True)
@@ -452,7 +452,42 @@ async def test_auto_plan_intent_starts_without_a_decision_filename(checkout, tmp
     head = commit(root, "Backlog draft with delegated intent")
     bare_remote(root, tmp_path, head, monkeypatch)
     assert not list((root / PROPOSAL / "decisions").glob("*gate-plan-intent*"))
-    assert await planning_intent("owner/app", head, "token", PROPOSAL)
+    assert await start_blocker("owner/app", head, "token", PROPOSAL, "plan") is None
+
+
+async def test_incubation_refuses_acceptance_and_development_before_any_write(checkout, tmp_path, monkeypatch):
+    from app.features.project_management.sdd.checkout import SddCommandError
+    from app.features.project_management.sdd.policy import LIFECYCLE_INACTIVE, development_approach, start_blocker
+    from app.features.project_management.sdd.services import cli
+
+    root, _ = checkout
+    reviewing_proposal(root)
+    config = root / ".devkit/config.toml"
+    config.write_text(config.read_text() + '\n[development]\napproach = "incubation"\n')
+    run(root, devkit_binary(), "sync")
+    head = commit(root, "Incubate")
+    evidence = await SddService().evaluate(root, PROPOSAL, head, head, None, False)
+    assert development_approach(evidence["snapshot"]["policy"]) == "incubation"
+    with pytest.raises(SddCommandError) as refused:
+        await cli(root, "spec", "proposal", "accept", "demo", "--by", "user")
+    assert refused.value.cli_code == "SPEC_LIFECYCLE_INACTIVE" and 'approach = "sdd"' in refused.value.detail
+    bare_remote(root, tmp_path, head, monkeypatch)
+    assert await start_blocker("owner/app", head, "token", PROPOSAL, "dev") == LIFECYCLE_INACTIVE
+
+
+async def test_xl_draft_reports_the_size_gate_instead_of_plan_intent(checkout, tmp_path, monkeypatch):
+    from app.features.project_management.sdd.policy import start_blocker
+
+    root, _ = checkout
+    run(root, devkit_binary(), "spec", "proposal", "new", "demo", "--title", "Demo", "--task-kind", "feature")
+    anchor = root / PROPOSAL / "proposal.md"
+    text = anchor.read_text()
+    assert "\nsize: M " in text
+    anchor.write_text(text.replace("\nsize: M ", "\nsize: XL ", 1))
+    head = commit(root, "XL draft")
+    bare_remote(root, tmp_path, head, monkeypatch)
+    reason = await start_blocker("owner/app", head, "token", PROPOSAL, "plan")
+    assert reason is not None and "size gate" in reason and "XL" in reason and "plan-intent" not in reason
 
 
 def bare_remote(root, tmp_path, head, monkeypatch):

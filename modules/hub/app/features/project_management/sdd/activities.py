@@ -4,6 +4,8 @@ Planning: ``plan-<slug>`` from the base, a start commit that sets the draft prop
 request and a run whose first attempt is the Planning worker. Development: ``dev-<slug>`` from the base, an empty
 start commit, a draft pull request and a run whose first step is ``devkit spec proposal handoff``. Both refuse an
 existing remote branch; Hub's own open pull request on it is enrolled again instead (recovery after a lost response).
+Before writing anything, both read the base through devkit: an ``incubation`` development approach refuses them, and
+Planning also needs devkit-spec's size gate (S, M, L or no size) and a recorded plan-intent.
 """
 
 import asyncio
@@ -20,7 +22,7 @@ from app.features.project_management.work_plans.github import WorkGitHub
 
 from .checkout import checkout, command, push_head
 from .plan_decisions import commit_identity
-from .policy import planning_intent
+from .policy import LIFECYCLE_INACTIVE, size_blocker, start_blocker
 from .units import _STATUS, _frontmatter_span, set_status
 
 ACTIVITIES = {"plan": "Planning", "dev": "Development"}
@@ -86,6 +88,10 @@ async def start_branch(
     return sha
 
 
+def _code(reason: str) -> str | None:
+    return "SDD_LIFECYCLE_INACTIVE" if reason == LIFECYCLE_INACTIVE else None
+
+
 class ActivityStarter:
     """Create the branch and pull request of an activity, then enroll its run; GitHub reads and writes only."""
 
@@ -135,8 +141,12 @@ class ActivityStarter:
                         )
                     if _frontmatter_value(anchor, "needs_decompose") == "true":
                         raise ProjectError(409, f"PROP-{slug} needs decomposition in Backlog before Planning")
-                    if not await planning_intent(repository, base_sha, token, unit):
-                        raise ProjectError(409, f"Record plan-intent for PROP-{slug} in Backlog before Planning")
+                    if size := size_blocker(_frontmatter_value(anchor, "size")):
+                        raise ProjectError(
+                            409, f"PROP-{slug} is {size}; decompose it in Backlog before Planning (S, M or L)"
+                        )
+                    if reason := await start_blocker(repository, base_sha, token, unit, activity):
+                        raise ProjectError(409, reason, code=_code(reason))
                     message = (f"Start Planning of PROP-{slug}", f"Started-by: {actor}")
 
                     def write(checkout_root: Path) -> None:
@@ -149,6 +159,8 @@ class ActivityStarter:
                         f"PROP-{slug} is {status or 'without a status'}; Development starts from an accepted proposal",
                     )
                 else:
+                    if reason := await start_blocker(repository, base_sha, token, unit, activity):
+                        raise ProjectError(409, reason, code=_code(reason))
                     message = (
                         f"Start Development of PROP-{slug}",
                         f"Handoff follows as the first step.\nStarted-by: {actor}",

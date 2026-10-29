@@ -179,6 +179,10 @@ def test_isolated_cli_uses_the_distribution_entrypoint(tmp_path, monkeypatch, pl
         "SPEC_PROPOSAL_ACCEPT_REFUSED",
         "SPEC_PROPOSAL_GATE_NOT_OPEN",
         "SPEC_PROPOSAL_WRONG_WORKTREE",
+        "SPEC_PROPOSAL_POLICY_NOT_AUTO",
+        "SPEC_LIFECYCLE_INACTIVE",
+        "DEVELOPMENT_CONFIG_INVALID",
+        "SPEC_CONFIG_INVALID",
     ],
 )
 async def test_json_diagnostic_never_leaks_repository_text(tmp_path, monkeypatch, code):
@@ -193,6 +197,20 @@ async def test_json_diagnostic_never_leaks_repository_text(tmp_path, monkeypatch
         await checkout._command("sandbox", cwd=tmp_path, env={}, allow_failure=False, devkit=True)
     assert result.value.cli_code == code
     assert "secret" not in result.value.detail and "private-path" not in result.value.detail
+    assert checkout.CLI_FIXES[code] in result.value.detail
+
+
+@pytest.mark.parametrize(
+    ("code", "hint"),
+    [
+        ("SPEC_LIFECYCLE_INACTIVE", 'approach = "sdd"'),
+        ("DEVELOPMENT_CONFIG_INVALID", '"sdd" or "incubation"'),
+        ("SPEC_CONFIG_INVALID", "[tool.spec]"),
+        ("SPEC_PROPOSAL_POLICY_NOT_AUTO", 'plan-accept = "auto"'),
+    ],
+)
+def test_configuration_refusals_name_the_setting_to_change(code, hint):
+    assert hint in checkout.CLI_FIXES[code]
 
 
 def test_handoff_requires_eligible_choice_and_integration_uses_own_authority():
