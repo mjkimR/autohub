@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Implementation review: **2026-10-27**. Last recorded production baseline:
+Implementation review: **2026-10-29**. Last recorded production baseline:
 **2026-10-02**, Cloud Run revision `autohub-00015-4l4`, DB schema `autohub`.
 This document has not rechecked the currently serving revision. Dated canaries
 below establish their tested scope only; local changes do not establish deployment.
@@ -17,6 +17,29 @@ runtime setup and the devkit/Hub responsibility boundary. Current capabilities:
 | Repository viewer | Shared devkit-viewer, selected-branch proposal roadmap, recorded Proposal → Spec → Run/PR lineage and Decisions links | [Viewer](repository-viewer.md) |
 | Pipeline progression | Shared tick/webhook/manual driver; immediate ready transitions, bounded retries and preserved waits | [Advancement](development.md#pipeline-advancement) |
 | SDK flows | Durable host, scoped approval and the existing-PR devkit bridge | [SDK contract](sdk-task-flow.md) |
+
+### devkit v0.1.5 verification (2026-10-29)
+
+The devkit v0.1.5 upgrade was verified locally against immutable monorepo commit
+`96f34f89b689bf73a5cf225224d93583249c3bf3`; the reviewed manifests and locks under
+`config/sdd-runtime*` record it. The follow-up aligns Hub with v0.1.5 behavior: an
+XL draft is refused at Hub's Planning start with devkit-spec's size gate as the
+reason, an `incubation` development approach refuses starts and acceptance before
+any write, the new configuration refusals carry fix hints, `ux-review` rounds appear
+in Planning evidence, and the runtime pin records `devkit-docs`.
+
+| Verification | Result | Scope |
+| --- | --- | --- |
+| Full backend, SQLite with the reviewed SDD profiles | 1,215 passed / 17 skipped | Existing application behavior plus size gate, incubation refusals and real Git/OS-isolated devkit |
+| Required isolated SDD contract suite | 105 passed / 2 skipped | Adds real-CLI XL size-gate and `SPEC_LIFECYCLE_INACTIVE` cases |
+| Frontend | 207 passed | Planning evidence now includes a UX review round |
+| Standalone SDK | 27 passed | HTTP and remote contracts |
+
+Lint, backend/SDK type checks, frontend type check and production build, generated
+API consistency and whitespace validation passed. A repository-wide
+`devkit rules check` reports no errors (three existing HTTP client warnings); the
+`spec` CLI citations are unchecked because devkit-spec runs only in the isolated
+runtime. PostgreSQL, a Docker image build and live canaries were not run.
 
 ### P2 second-review follow-up (2026-10-27)
 
