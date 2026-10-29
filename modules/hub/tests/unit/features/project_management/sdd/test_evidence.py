@@ -25,14 +25,24 @@ def test_preserves_every_support_round_its_closing_review_and_actual_effort():
                 row("challenger", findings=[{"issue": "Boundary", "resolution": "open"}]),
                 row("challenger", 2),
                 row("scout"),
+                row("ux-review", stage="spike", findings=[{"issue": "Empty state", "resolution": "open"}]),
                 row("reverify", review="challenger-01.yaml"),
             ]
         }
     )
     assert {r["file"] for r in rows} == {
         f"envelopes/{name}"
-        for name in ("worker-01.yaml", "challenger-01.yaml", "challenger-02.yaml", "scout-01.yaml", "reverify-01.yaml")
+        for name in (
+            "worker-01.yaml",
+            "challenger-01.yaml",
+            "challenger-02.yaml",
+            "scout-01.yaml",
+            "ux-review-01.yaml",
+            "reverify-01.yaml",
+        )
     }
+    ux = next(r for r in rows if r["kind"] == "ux-review")
+    assert ux["stage"] == "spike" and ux["findings"] == [{"issue": "Empty state", "resolution": "open"}]
     assert next(r for r in rows if r["kind"] == "reverify")["review"] == "challenger-01.yaml"
     assert next(r for r in rows if r["kind"] == "worker")["activity_effort"] == "high"
     assert review_gaps(rows, CONTEXT) == []

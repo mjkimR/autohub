@@ -210,7 +210,7 @@ class SddService:
             raise ProjectError(422, "SDD binding drift or invalid envelope; repair the repository evidence")
         hold = read_hold(current)
         held = hold["blocked"] or bool(hold["pending_questions"])
-        # Default 0.1.4 inspection omits summaries/checks; approval cards need the validated report bodies.
+        # The default envelope check omits summaries/checks; approval cards need the validated report bodies.
         envelopes = await cli(root, "workflow", "envelope", "check", "--unit", spec_dir, "--details")
         report_rows = reports(envelopes)
         history = anchor_metadata(root, spec_dir).get("workflow_history") or []

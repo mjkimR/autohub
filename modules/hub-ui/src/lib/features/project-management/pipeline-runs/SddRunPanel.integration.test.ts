@@ -106,6 +106,14 @@ test('Planning evidence precedes approval and preserves effort, support rounds, 
 						status: 'completed',
 						review: 'challenger-01.yaml',
 						summary: 'Boundary resolved'
+					},
+					{
+						kind: 'ux-review',
+						file: 'envelopes/ux-review-01.yaml',
+						status: 'completed',
+						stage: 'spike',
+						summary: 'Screens walked through',
+						findings: [{ issue: 'Empty state unclear', resolution: 'open', evidence: 'Screen 2' }]
 					}
 				]
 			}
@@ -117,6 +125,8 @@ test('Planning evidence precedes approval and preserves effort, support rounds, 
 	expect(evidence.textContent).toContain('Development high');
 	expect(evidence.textContent).toContain('effort high');
 	expect(evidence.textContent).toContain('Closes round: challenger-01.yaml');
+	expect(evidence.textContent).toContain('UX review');
+	expect(evidence.textContent).toContain('Screens walked through');
 	expect(screen.getByText(/high effort has no scout/)).toBeTruthy();
 	expect(screen.getByText('evidence: <script>text</script>')).toBeTruthy();
 	expect(evidence.querySelector('script')).toBeNull();

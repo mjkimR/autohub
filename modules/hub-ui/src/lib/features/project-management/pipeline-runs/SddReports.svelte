@@ -8,6 +8,7 @@
 		worker: 'Worker report',
 		challenger: 'Challenger review',
 		scout: 'Scout research',
+		'ux-review': 'UX review',
 		'reconcile-check': 'Reconciliation review'
 	};
 	let rows = $derived(

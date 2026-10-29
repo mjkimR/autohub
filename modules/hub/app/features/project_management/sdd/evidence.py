@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-KINDS = ("final-report", "review", "reverify", "worker", "challenger", "scout", "reconcile-check")
+KINDS = ("final-report", "review", "reverify", "worker", "challenger", "scout", "ux-review", "reconcile-check")
 
 
 def anchor_metadata(root: Path, unit: str) -> dict:

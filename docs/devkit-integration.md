@@ -87,10 +87,11 @@ recorded only loses the parity warning below). Hub snapshots the lock digest, pr
 hash, policy and configuration/receipt digest. Updates require a reviewed lock and
 a new run.
 
-The default profile contains the spec, devkit and advisory bundles. The additional
+The default profile installs the bundles its packages provide: `advisory`, `authoring`,
+`devkit`, `docs`, `git-commits`, `harness` and `spec` (`pin.json` lists them). The additional
 [app-common manifest](../config/sdd-runtime-app-common/pyproject.toml) and
 [lock](../config/sdd-runtime-app-common/uv.lock) add the reviewed `app-tools` package
-(the app-common bundle); its override pins the transitive devkit toolchain to the
+(adding the `app-common` bundle); its override pins the transitive devkit toolchain to the
 same monorepo commit. The installer records the available bundle names in `pin.json`.
 Readiness checks both selected bundles and the committed receipt against that inventory,
 then lets devkit validate presets and restore assets. Missing bundles refuse execution
@@ -132,7 +133,8 @@ After settling active runs, set `AUTOHUB_SDD_HOME` and any `AUTOHUB_SDD_PROFILES
 mapping to these absolute paths (or deploy the image's refreshed `/opt/sdd` and
 `/opt/sdd-app-common`). Sync and commit consumer receipts with matching packages
 before enrolling replacement runs. The installer records versions and revisions
-for all six devkit distributions, including the new CLI owner.
+for every devkit distribution the lock resolves (`devkit-core`, `devkit-cli`,
+`devkit-dist`, `devkit-agt`, `devkit-advisory`, `devkit-docs` and `devkit-spec`).
 
 ### Add or update a profile
 

@@ -11,7 +11,15 @@ from app.features.project_management.projects.errors import ProjectError
 from .profiles import current
 
 # Packages whose Git revision the runtime pin records and a repository's own lock may pin differently.
-PINNED_PACKAGES = ("devkit-spec", "devkit-agt", "devkit-dist", "devkit-core", "devkit-cli", "devkit-advisory")
+PINNED_PACKAGES = (
+    "devkit-spec",
+    "devkit-agt",
+    "devkit-dist",
+    "devkit-core",
+    "devkit-cli",
+    "devkit-advisory",
+    "devkit-docs",
+)
 LOCK_LIMIT = 8 * 1024 * 1024
 RECEIPT_STALE_DETAIL = (
     "The committed devkit receipt, configuration or seeded files are out of date for the reviewed runtime{revision}; "
