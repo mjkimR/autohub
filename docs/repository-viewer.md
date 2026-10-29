@@ -32,7 +32,7 @@ stay in autohub.
   [run decisions](run-decisions.md#proposals-panel)),
   `Roadmap` (`docs/roadmap/MS-*.md` milestones by status, `depends_on` readiness and
   direct member proposals) and `Files` (file explorer), with search and status
-  filters. With the viewer from devkit 0.1.4, milestones and their members come from
+  filters. With the pinned devkit viewer, milestones and their members come from
   the selected branch. Only `docs/proposals/PROP-*/proposal.md` anchors establish
   membership; historical `milestone` fields on specs are ignored. Select a `plan-`
   or `dev-` branch in the repository selector to inspect its saved documents.

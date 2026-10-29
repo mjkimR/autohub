@@ -8,6 +8,6 @@ dependencies = ["devkit-spec", "devkit-agt", "devkit-advisory"]
 package = false
 
 [tool.uv.sources]
-devkit-spec = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-spec", rev = "3609efe87e590c8da5f01a905cb207a13090f943" }
-devkit-agt = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit", rev = "3609efe87e590c8da5f01a905cb207a13090f943" }
-devkit-advisory = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-advisory", rev = "3609efe87e590c8da5f01a905cb207a13090f943" }
+devkit-spec = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-spec", rev = "96f34f89b689bf73a5cf225224d93583249c3bf3" }
+devkit-agt = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit", rev = "96f34f89b689bf73a5cf225224d93583249c3bf3" }
+devkit-advisory = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-advisory", rev = "96f34f89b689bf73a5cf225224d93583249c3bf3" }

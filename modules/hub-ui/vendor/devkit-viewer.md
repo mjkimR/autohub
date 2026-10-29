@@ -1,12 +1,11 @@
 # Pinned repository viewer artifact
 
 `devkit-viewer-0.1.0.tgz` is the SDD repository viewer library (`SddViewer` and its roadmap view), built without
-source edits from the devkit 0.1.4 release-preparation commit
-`3609efe87e590c8da5f01a905cb207a13090f943` of `mjkimR/devkit`, directory
-`packages/devkit-viewer/frontend`. devkit owns its source; npm Git dependencies install only a repository's root
+source edits from `mjkimR/devkit` directory `packages/devkit-viewer/frontend` at the devkit commit pinned in the
+root [`pyproject.toml`](../../../pyproject.toml) `[tool.uv.sources]`. Rebuild it whenever that pin changes. devkit owns its source; npm Git dependencies install only a repository's root
 package, so this nested package is distributed as a committed artifact. `package-lock.json` pins the artifact's
 npm integrity. The repository view passes its own `repositoryDataSource`; the library adds no autohub API call.
-The frontend library retains its independent npm version `0.1.0`; the source commit identifies this update.
+The frontend library retains its independent npm version `0.1.0`; the root devkit pin identifies its source.
 Roadmap membership follows direct proposal anchors, and the Read tab supports the release handbook.
 Local-only Planning overlays and shared artifacts are optional data-source capabilities and are not enabled here.
 

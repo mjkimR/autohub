@@ -695,7 +695,7 @@
     },
     ".devkit/managed/advisory/bundle.toml": {
       "mode": 420,
-      "sha256": "08138b182369fb847703b93cd6a7f190317fb7a67d264aa5eefa833e2406c06d"
+      "sha256": "01af960b9f6579c8766255be5b5399d07361bd8808ef77be307f1922aecbce73"
     },
     ".devkit/managed/advisory/instructions/agent-advisory-python.md": {
       "mode": 420,
@@ -703,7 +703,7 @@
     },
     ".devkit/managed/advisory/instructions/agent-advisory.md": {
       "mode": 420,
-      "sha256": "e7ac044dec0a502936c99a225c039dbb0698acf8d18fe5e24480c8d595383093"
+      "sha256": "d9918302c36abad56871d7bd426f33fa054204789407d60f4b89af379ae9ba18"
     },
     ".devkit/managed/advisory/rules/unique_code/facts.py": {
       "mode": 420,
@@ -1075,11 +1075,11 @@
     },
     ".devkit/managed/devkit/bundle.toml": {
       "mode": 420,
-      "sha256": "577166e8c05c71769b13985b589adb8da5cd708530e6ee2ff170d9db425e0af4"
+      "sha256": "19c8162b30fe4242bb9a1407ede05d99183827d30be9a9d8c205d0f897fee17a"
     },
     ".devkit/managed/devkit/instructions/consumption.md": {
       "mode": 420,
-      "sha256": "b8b6904252fc4b73d406aad1184285c55b734930b5eb26ef3bb879a8505c8a12"
+      "sha256": "1cd8a83c410e353e32a90c9b01bb6153b8abc48452d8d68f9e8e8ab541479828"
     },
     ".devkit/managed/devkit/instructions/in-repo-bundle.md": {
       "mode": 420,
@@ -1095,7 +1095,7 @@
     },
     ".devkit/managed/harness/bundle.toml": {
       "mode": 420,
-      "sha256": "824f38b1378265aa7f247e5ef1d62be45caa50ea45a16a5deb75f921240a6889"
+      "sha256": "05e901623b1af445b8e95cf4084c52fa0db0568929f6a6294b80327a0af94997"
     },
     ".devkit/managed/harness/instructions/devkit-run.md": {
       "mode": 420,
@@ -1107,16 +1107,16 @@
     },
     ".devkit/managed/harness/instructions/harness-consumption.md": {
       "mode": 420,
-      "sha256": "e7cde687f0cfde87c37c72c93858c3bd1f941fa037a7237b9e23172a403674de"
+      "sha256": "100f6586073b8072ee8b1dab3deda1d26b9e98e38605edbbc30d33002b7b95f8"
     }
   },
   "guidance_block": "19aedad76aae5a20a6834637bb3519e7fa8729933badbfdfe4954b4a74295cec",
   "packages": [
     {
       "bundle": "advisory",
-      "bundle_version": "0.1.4",
+      "bundle_version": "0.1.5",
       "package": "devkit-dist",
-      "package_version": "0.1.4"
+      "package_version": "0.1.5"
     },
     {
       "bundle": "app-common",
@@ -1126,15 +1126,15 @@
     },
     {
       "bundle": "devkit",
-      "bundle_version": "0.1.4",
+      "bundle_version": "0.1.5",
       "package": "devkit-dist",
-      "package_version": "0.1.4"
+      "package_version": "0.1.5"
     },
     {
       "bundle": "harness",
-      "bundle_version": "0.1.4",
+      "bundle_version": "0.1.5",
       "package": "devkit-agt",
-      "package_version": "0.1.4"
+      "package_version": "0.1.5"
     }
   ],
   "schema": 1,
@@ -1162,6 +1162,6 @@
   },
   "tool": {
     "package": "devkit-dist",
-    "version": "0.1.4"
+    "version": "0.1.5"
   }
 }

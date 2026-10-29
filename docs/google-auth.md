@@ -1,6 +1,6 @@
 # Google login and account approval
 
-Implementation consumes published app-common commit `fd9b6a954cebb8e550f57018ffd705834a3564dd` through pinned Git dependencies. The Python lock pins packages and devkit installs development guides; no sibling checkout links are required. Google login is deployed and enabled on the managed Cloud Run service; the live validation below was completed with a real account in both callback modes.
+Implementation consumes published app-common through Git dependencies pinned in [Hub's manifest](../modules/hub/pyproject.toml). The Python lock pins packages and devkit installs development guides; no sibling checkout links are required. Google login is deployed and enabled on the managed Cloud Run service; the live validation below was completed with a real account in both callback modes.
 
 ## Behavior
 

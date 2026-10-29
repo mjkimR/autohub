@@ -68,7 +68,7 @@ uv run devkit sync --check
 
 Review the manifest and `uv.lock` changes together. Fresh checkouts and CI run
 `uv sync --locked --all-packages`, then `uv run --no-sync devkit sync`.
-This repository reviews devkit 0.1.4 separately from app-common's toolchain pin:
+This repository reviews its devkit pin separately from app-common's toolchain pin:
 update its `[tool.uv] override-dependencies` together with the sources, and review
 both [SDD runtime profiles](devkit-integration.md#runtime-profiles) when adopting
 another devkit revision.

@@ -1,15 +1,15 @@
 [tool.uv]
 # Review the app-common toolchain against the same immutable devkit release commit.
 override-dependencies = [
-    "devkit-agt @ git+https://github.com/mjkimR/devkit@3609efe87e590c8da5f01a905cb207a13090f943#subdirectory=packages/devkit",
-    "devkit-dist @ git+https://github.com/mjkimR/devkit@3609efe87e590c8da5f01a905cb207a13090f943#subdirectory=packages/devkit-dist",
-    "devkit-advisory @ git+https://github.com/mjkimR/devkit@3609efe87e590c8da5f01a905cb207a13090f943#subdirectory=packages/devkit-advisory",
+    "devkit-agt @ git+https://github.com/mjkimR/devkit@96f34f89b689bf73a5cf225224d93583249c3bf3#subdirectory=packages/devkit",
+    "devkit-dist @ git+https://github.com/mjkimR/devkit@96f34f89b689bf73a5cf225224d93583249c3bf3#subdirectory=packages/devkit-dist",
+    "devkit-advisory @ git+https://github.com/mjkimR/devkit@96f34f89b689bf73a5cf225224d93583249c3bf3#subdirectory=packages/devkit-advisory",
 ]
 
 [tool.uv.sources]
-devkit-dist = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-dist", rev = "3609efe87e590c8da5f01a905cb207a13090f943" }
-devkit-agt = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit", rev = "3609efe87e590c8da5f01a905cb207a13090f943" }
-devkit-advisory = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-advisory", rev = "3609efe87e590c8da5f01a905cb207a13090f943" }
+devkit-dist = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-dist", rev = "96f34f89b689bf73a5cf225224d93583249c3bf3" }
+devkit-agt = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit", rev = "96f34f89b689bf73a5cf225224d93583249c3bf3" }
+devkit-advisory = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-advisory", rev = "96f34f89b689bf73a5cf225224d93583249c3bf3" }
 
 [tool.uv.workspace]
 members = ["modules/hub", "packages/sdk"]

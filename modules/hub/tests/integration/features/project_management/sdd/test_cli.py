@@ -75,11 +75,11 @@ def fresh_clone(root, tmp_path):
     return fresh
 
 
-def commit_stale_receipt(root, asset_id, suffix):
-    """Commit a receipt whose record of one ``asset_id`` file no longer matches what the runtime deploys."""
+def commit_stale_receipt(root, bundle, asset_id, suffix):
+    """Commit a receipt whose record of one ``bundle`` ``asset_id`` file no longer matches what the runtime deploys."""
     manifest = root / ".devkit/installation.json"
     receipt = json.loads(manifest.read_text())
-    asset = next(item for item in receipt["assets"] if item["bundle"] == "spec" and item["id"] == asset_id)
+    asset = next(item for item in receipt["assets"] if item["bundle"] == bundle and item["id"] == asset_id)
     path = next(item for item in asset["paths"] if item.endswith(suffix))
     receipt["files"][path]["sha256"] = "0" * 64
     manifest.write_text(json.dumps(receipt, indent=2) + "\n")
@@ -128,7 +128,7 @@ async def test_fresh_checkout_restores_recorded_release_without_network(checkout
 async def test_stale_receipt_is_evaluated_best_effort_and_reported(checkout, tmp_path):
     root, _ = checkout
     fresh = fresh_clone(root, tmp_path)
-    head, committed = commit_stale_receipt(fresh, "sdd-spec-feature", ".md")
+    head, committed = commit_stale_receipt(fresh, "spec", "sdd-spec-feature", ".md")
     result = await SddService().evaluate(fresh, SPEC, head, head, None, False)
     assert [item["code"] for item in result["warnings"]] == ["RECEIPT_STALE"]
     assert result["current"]["stage"]["human_gate"]
@@ -142,14 +142,17 @@ async def test_stale_receipt_is_evaluated_best_effort_and_reported(checkout, tmp
 
 
 @pytest.mark.parametrize(
-    ("asset_id", "suffix", "integrated"), [("sdd-spec-feature", ".md", True), ("spec-format", "rule.py", False)]
+    ("bundle", "asset_id", "suffix", "integrated"),
+    [("spec", "sdd-spec-feature", ".md", True), ("docs", "spec-format", "rule.py", False)],
 )
-async def test_stale_receipt_integration_depends_on_recorded_rules(checkout, tmp_path, asset_id, suffix, integrated):
+async def test_stale_receipt_integration_depends_on_recorded_rules(
+    checkout, tmp_path, bundle, asset_id, suffix, integrated
+):
     root, _ = checkout
     extend_with_integration(root)
     fresh = fresh_clone(root, tmp_path)
     base = run(fresh, "git", "rev-parse", "HEAD")
-    head, _ = commit_stale_receipt(fresh, asset_id, suffix)  # the PR change the final lint evaluates
+    head, _ = commit_stale_receipt(fresh, bundle, asset_id, suffix)  # the PR change the final lint evaluates
     evidence = await SddService().evaluate(fresh, SPEC, head, base, None, True)
     assert [item["code"] for item in evidence["warnings"]] == ["RECEIPT_STALE"]
     assert evidence["integrated"] is integrated
@@ -195,8 +198,8 @@ async def test_repository_python_rule_cannot_read_host_secret_or_use_network(che
     secret = tmp_path / "server-secret.txt"
     secret.write_text("must-not-leak")
     monkeypatch.setenv("SDD_TEST_SECRET", "must-not-leak")
-    run(root, devkit_binary(), "override", "create", "spec:spec-format")
-    rule = root / ".devkit/overrides/spec/rules/spec_format/rule.py"
+    run(root, devkit_binary(), "override", "create", "docs:spec-format")
+    rule = root / ".devkit/overrides/docs/rules/spec_format/rule.py"
     report = root / "probe.json"
     rule.write_text(
         "import json, os, socket\nfrom pathlib import Path\n"

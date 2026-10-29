@@ -13,7 +13,7 @@ runtime setup and the devkit/Hub responsibility boundary. Current capabilities:
 | Area | Implemented behavior | Contract |
 | --- | --- | --- |
 | SDD activities | Planning/Development starts, fenced/recoverable proposal decisions, owning-base automatic approval, effort/review evidence, handoff, questions and integration approval | [Run decisions](run-decisions.md#native-sdd-decisions) |
-| SDD runtime | devkit 0.1.4 monorepo pin, default/app-common profiles, repository mapping, missing-bundle checks and workflow/approval fencing | [devkit integration](devkit-integration.md) |
+| SDD runtime | devkit monorepo pin, default/app-common profiles, repository mapping, missing-bundle checks and workflow/approval fencing | [devkit integration](devkit-integration.md) |
 | Repository viewer | Shared devkit-viewer, selected-branch proposal roadmap, recorded Proposal → Spec → Run/PR lineage and Decisions links | [Viewer](repository-viewer.md) |
 | Pipeline progression | Shared tick/webhook/manual driver; immediate ready transitions, bounded retries and preserved waits | [Advancement](development.md#pipeline-advancement) |
 | SDK flows | Durable host, scoped approval and the existing-PR devkit bridge | [SDK contract](sdk-task-flow.md) |
