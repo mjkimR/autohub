@@ -16,3 +16,7 @@ schema = 1
 
 [presets]
 advisory = ["core", "python"]
+
+[rules.settings.RULE-cli-contract]
+# devkit-spec runs only in the isolated SDD runtime (config/sdd-runtime*), not in Hub's dev environment.
+unchecked_commands = ["spec"]
