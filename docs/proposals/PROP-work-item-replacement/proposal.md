@@ -146,8 +146,9 @@ consumption appends an event and removes future eligibility; it does not undo a
 merge. Withdraw an individual unconsumed acceptance through the same operation
 with its acceptance ID, or the entire link with no acceptance ID. A withdrawn
 acceptance can be accepted again on the same still-active link using a fresh
-request/revision. Link withdrawal is permanent for that pair; the original may select a distinct
-previously unlinked replacement after an unconsumed link is withdrawn. Concurrent withdrawal/admission,
+request/revision. Link withdrawal is permanent for that pair; the original may
+select a distinct previously unlinked replacement after an unconsumed link is
+withdrawn. Concurrent withdrawal/admission,
 competing acceptance, recovery and pause/revoke serialize on project ownership;
 exactly the winning committed action determines eligibility. No downstream work
 is canceled or rewound by this feature.
@@ -163,8 +164,10 @@ existing error envelope rather than introducing a global error framework.
 
 Use additive tables, composite project/Item ownership constraints, unique request
 identity/digest, a unique active-original link, unique active replacement owner,
-and unique live acceptance per edge. Retained history prevents endpoint role changes and replacement reuse; an
-original can have historical withdrawn candidates and one live candidate. Existing rows receive no synthetic links/acceptances.
+and unique live acceptance per edge. Retained history prevents endpoint role
+changes and replacement reuse; an original can have historical withdrawn
+candidates and one live candidate. Existing rows receive no synthetic
+links/acceptances.
 Endpoints, acceptance snapshots and consumption events survive detailed Run
 pruning; unresolved original Runs keep existing retention protection. Normal
 Work Plan retention does not delete the evidence. No retention worker expansion
