@@ -1,0 +1,33 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T07:00:27.178025Z'
+status: completed
+summary: round 1; all9 declared targets and12AC inspected; missing owning dispatch reflection and actor input ambiguity require correction.
+findings:
+- issue: The owning dispatch capability omits recovery deliveries and contradicts their consumed watchdog allowance.
+  evidence: docs/capabilities/delivery/CAP-PR-agent-dispatch.md:49,66,94; pipeline_runs/usecases/implementation.py:177; recovery.py:76; reconcile.md:4
+  failure_condition: An attempt with a recovery delivery but no silent delivery is promised another watchdog delivery by the dispatch contract while implementation blocks because recovery consumed its allowance.
+  suggested_action: Update CAP-PR-agent-dispatch delivery causes, rule11 and watchdog table to include recovery consuming the attempt retry allowance while preserving ordinary subsequent attempts; add modified reconcile target.
+  resolution: open
+  severity: P1
+- issue: Recovery input wording ambiguously implies a caller-supplied actor.
+  evidence: docs/capabilities/work-plans/CAP-WORK-work-plan-execution.md:158; work_plans/api.py:119; recovery_schemas.py:7
+  failure_condition: A client interprets the actor sentence as an actor payload field, which the schema rejects.
+  suggested_action: 'Replace with: Hub derives the actor from the authenticated identity; recovery accepts no caller-supplied actor field.'
+  resolution: open
+  severity: P2
+assumptions:
+- Independent reconcile reviewer used emulated absolute-path/read-only inspection; no outside reads, network or writes reported; exact tree2f0012aeaa5eb66d16bf6cd1b74166e9ad2f2f16 unchanged.
+unverified_areas:
+- Live provider/deployment and eventual integrated head.
+checks:
+  inspection: PASS all9 declared targets, Screens, reciprocal links, migration/history, admission fences and12AC inspected
+  references: PASS inbound capability/ADR inspection identified owner contract gap
+  tests: PASS supplied lint/check/build/API UI219 PG280 focusedPG37 SQLite127 inspected
+  diff: FAIL exact range tasks.md:30 new blank line at EOF
+diff_scope:
+  base: f1e9693318ebf0181453142e75b98513fdbba4ff
+  head: 898510f03d71060b7494a97d22fb1d87b35f28f0
+activity_effort: high

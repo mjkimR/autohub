@@ -14,7 +14,7 @@ plan: PLAN-work-item-retry
   - **Verification**: `just test modules/hub/tests/integration/features/project_management/work_plans/ modules/hub/tests/integration/migrations/`
 
 - [x] **Task 2**: Fenced tick recovery and guarded terminal PR-owner activation with race tests
-  - **_Boundary**: `modules/hub/app/features/project_management/work_plans/`, `modules/hub/app/features/project_management/pipeline_runs/`, `modules/hub/tests/integration/features/project_management/work_plans/`, `modules/hub/tests/integration/features/project_management/pipeline_runs/`, `modules/hub/tests/unit/features/project_management/`
+  - **_Boundary**: `modules/hub/app/features/project_management/work_plans/`, `modules/hub/app/features/project_management/pipeline_runs/`, `modules/hub/tests/integration/features/project_management/work_plans/`, `modules/hub/tests/integration/features/project_management/pipeline_runs/`, `modules/hub/tests/unit/features/project_management/`, `docs/capabilities/delivery/CAP-PR-agent-dispatch.md` (Host-authorized addition: restate CAP-PR-agent-dispatch recovery delivery causes and retained retry allowance for AC-02 and AC-05)
   - _Requirements: AC-01, AC-02, AC-04, AC-05, AC-06, AC-08, AC-09, AC-10, AC-11_
   - **Verification**: `just test-pg modules/hub/tests/integration/features/project_management/work_plans/ modules/hub/tests/integration/features/project_management/pipeline_runs/`
 
@@ -24,7 +24,6 @@ plan: PLAN-work-item-retry
   - **Verification**: `just test-ui; just check-ui-api`
 
 - [x] **Task 4**: Recovery invariant comparison and retained verification evidence
-  - **_Boundary**: `docs/capabilities/work-plans/`, `docs/capabilities/delivery/CAP-PR-pull-request-delivery.md`, `docs/usecases/work-plans/`, `docs/usecases/delivery/UC-deliver-pull-request.md`, `docs/ux/work-plans/`, `docs/steering/ux-objects.md`, `docs/architecture/ARCH-06-execution.md`, `docs/decisions/2026-11/20261105-work-item-recovery-lineage.md`, `docs/materials/2026-11/20261105-work-item-retry/`
+  - **_Boundary**: `docs/capabilities/work-plans/`, `docs/capabilities/delivery/CAP-PR-pull-request-delivery.md`, `docs/usecases/work-plans/`, `docs/usecases/delivery/UC-deliver-pull-request.md`, `docs/ux/work-plans/`, `docs/steering/ux-objects.md`, `docs/architecture/ARCH-06-execution.md`, `docs/decisions/2026-11/20261105-work-item-recovery-lineage.md`, `docs/materials/2026-11/20261105-work-item-retry/`, `docs/capabilities/delivery/CAP-PR-agent-dispatch.md` (Host-authorized addition: restate CAP-PR-agent-dispatch recovery delivery causes and retained retry allowance for AC-02 and AC-05)
   - _Requirements: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06, AC-07, AC-08, AC-09, AC-10, AC-11, AC-12_
   - **Verification**: `just test modules/hub/tests/integration/features/project_management/work_plans/test_item_recovery.py`; retained baseline comparison in `docs/materials/2026-11/20261105-work-item-retry/development-checks.md`
-

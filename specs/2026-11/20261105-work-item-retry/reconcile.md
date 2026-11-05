@@ -4,6 +4,8 @@ status: pending
 targets:
   - file: docs/capabilities/work-plans/CAP-WORK-work-plan-execution.md
     resolution: modified
+  - file: docs/capabilities/delivery/CAP-PR-agent-dispatch.md
+    resolution: modified
   - file: docs/capabilities/delivery/CAP-PR-pull-request-delivery.md
     resolution: modified
   - file: docs/usecases/work-plans/UC-execute-work-plan.md
@@ -35,3 +37,5 @@ The three-Item disabled/enabled fixture compares one head without checking out b
 Inbound capability/ADR references were inspected. Existing PR dispatch, CI, normal resume and merge contracts retain their original owners. No additional feature dependency edge or SDK/operations change is introduced. Planning UX awaiting-admission feedback is retained; implementation UI regressions include the current hold detail after remount.
 
 Entrypoint derivation was reviewed. The delivery use case adds the actual Work Plan API doorway. Existing capability/Work Plan doorway files remain; broad feature directories, generated API folders, models, migrations and test mirrors were rejected as doorway candidates because they are implementation scope rather than entrypoints.
+
+The Host explicitly admitted `docs/capabilities/delivery/CAP-PR-agent-dispatch.md` for recovery cause, recovery-specific retry allowance and enforcing evidence only, superseding the initial blanket deny for those clauses. Task2/4 boundaries record this authority. Its rule11 and watchdog table retain ordinary subsequent attempts' allowance while reflecting the recovery delivery exception. This is a Host-admitted exact path, not an autonomous scope extension.
