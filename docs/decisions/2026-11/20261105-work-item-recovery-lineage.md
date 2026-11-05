@@ -1,16 +1,15 @@
 ---
-id: PADR-work-item-recovery-lineage
+id: ADR-work-item-recovery-lineage
 title: Preserve Work Item recovery lineage
 summary: "For Work Item recovery, we retain the Item and PR run with append-only recovery records, to preserve request identity and budget history, accepting stricter recovery eligibility."
-proposal: PROP-work-item-retry
-# supersedes: [ADR-<slug>]   # an ADR this decision replaces, wholly or in part; name the replaced clauses in Decision Outcome
-status: draft
+proposal: SPEC-work-item-retry
+status: accepted
 created_at: 2026-11-05
 ---
 
-# [PADR-work-item-recovery-lineage] Preserve Work Item recovery lineage
+# [ADR-work-item-recovery-lineage] Preserve Work Item recovery lineage
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Date**: 2026-11-05
 
 ---

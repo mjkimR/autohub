@@ -11,7 +11,7 @@ planning_effort: high
 dev_effort: high
 milestone: MS-batch-recovery
 depends_on:
-  - PROP-work-item-retry
+  - SPEC-work-item-retry
 boundaries:
   owns:
     - modules/hub-ui/src/lib/api/
@@ -52,7 +52,7 @@ workflow: sdd-proposal
 
 ## 3. Proposed Design & Impact
 
-- Reuse the recovery history and attempt identity established by `PROP-work-item-retry`; replacement resolves work that cannot use ordinary in-place recovery.
+- Reuse the recovery history and attempt identity established by `SPEC-work-item-retry`; replacement resolves work that cannot use ordinary in-place recovery.
 - Record a structured original-to-replacement relationship with actor, reason and reviewed revisions. Keep execution evidence on its actual owner.
 - Separate linking replacement work from accepting its confirmed result for explicitly identified downstream dependencies.
 - Preserve the original failed, canceled or revoked outcome. Prevent silent graph-wide successor substitution and cycles.
@@ -79,7 +79,7 @@ accept the design or authorize implementation. Planning resolves the spike
 questions, evaluates the recommended design and drafts affected interactions
 before code. The milestone frames the theme without binding the final scope.
 
-The direct prerequisite is `PROP-work-item-retry`. It supplies the shared foundation described above. Eligibility requires its exact completed spec anchor after handoff; update the edge through the normal handoff reference process.
+The direct prerequisite is `SPEC-work-item-retry`. It supplies the shared foundation described above. Eligibility requires its exact completed spec anchor after handoff; update the edge through the normal handoff reference process.
 
 Acceptance and Development handoff follow `sdd-proposal`. Rejection retains
 the decision and reason through the proposal lifecycle. This proposal is complete

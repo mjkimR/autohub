@@ -1,0 +1,8 @@
+request: gate:plan-intent
+kind: approve
+action: accept
+workflow: sdd-spec-feature
+stage: intent
+note: 'PROP-work-item-retry: Advance agreed roadmap feature into Planning.'
+by: user
+at: '2026-11-05T06:06:51.143301Z'

@@ -1,7 +1,8 @@
 request: gate:plan-accept
 kind: approve
 action: accept
-workflow: sdd-proposal
+workflow: sdd-spec-feature
 stage: direction-handoff
+note: PROP-work-item-retry
 by: user
-at: '2026-11-05T06:05:13.570856Z'
+at: '2026-11-05T06:06:51.145294Z'

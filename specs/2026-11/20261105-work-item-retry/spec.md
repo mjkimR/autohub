@@ -1,65 +1,64 @@
 ---
-id: PROP-work-item-retry
+id: SPEC-work-item-retry
 title: Retry failed Work Items
-summary: "Recover eligible failed Work Items while preserving successful work, prior execution evidence and external request identities."
-status: accepted
-created_at: 2026-11-05
-target_area: capabilities/work-plans/
-priority: high
-size: L
-planning_effort: high
-dev_effort: high
-milestone: MS-batch-recovery
-boundaries:
-  owns:
-    - modules/hub-ui/src/lib/api/
-    - modules/hub/app/features/project_management/work_plans/
-    - modules/hub/app/features/project_management/pipeline_runs/
-    - modules/hub/migrations/
-    - modules/hub/tests/integration/migrations/
-    - modules/hub/tests/integration/features/project_management/work_plans/
-    - modules/hub/tests/unit/features/project_management/
-    - modules/hub-ui/src/lib/features/project-management/work-plans/
-    - docs/capabilities/delivery/CAP-PR-pull-request-delivery.md
-    - docs/usecases/delivery/UC-deliver-pull-request.md
-    - docs/decisions/
-    - docs/capabilities/work-plans/
-    - docs/usecases/work-plans/
-    - docs/ux/work-plans/
-    - docs/steering/
-    - docs/architecture/
-  excludes:
-    - docs/operations/
-    - .github/
-    - packages/sdk/
-task_kind: feature
-workflow: sdd-proposal
+summary: Recover eligible failed Work Items while preserving successful work, prior execution evidence and external request identities.
+status: planned
+created: 2026-11-05
+related_capabilities: []
+related_usecases: []
+workflow: sdd-spec-feature
 ---
+<!-- devkit:skeleton -->
 
-# [PROP-work-item-retry] Retry failed Work Items
+# [SPEC-work-item-retry] Retry failed Work Items
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-work-item-retry on 2026-11-05.
+- **Preserved Materials**: `docs/materials/2026-11/20261105-work-item-retry`
+- Target Docs Blueprint: `PROP-work-item-retry-target` (Living Spec targets for this plan and reconcile.md)
+
+### 1. Background & Hypothesis
 
 `CAP-WORK-work-plan-execution` retains failed preparation and delivery outcomes but exposes no failed-Item retry API. Operators reconstruct work through another registration even when successful predecessors should remain untouched. A revision-checked recovery operation can let the original Work Plan finish while preserving its failed attempts.
 
-### Source anchors
+#### Source anchors
 
 `modules/hub/app/features/project_management/work_plans/execution.py` records `preparation_failed`; `api.py` exposes Plan controls without an Item recovery command. `test_registration.py` covers replacement registration and preservation of the original outcome. These are inspected anchors, not a new test execution.
 
-## 2. Technical Spike Questions
+## 2. User Stories
+
+- **US-1**: As a developer/agent, I want to implement Retry failed Work Items so that system capabilities are extended.
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: <what this change will not do>
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] <scenario>
+- **Given** <precondition>
+- **When** <action>
+- **Then** <expected result>
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### 2. Technical Spike Questions
 
 - **Q1**: Which preparation, failed, canceled and attention outcomes are eligible for recovery, and when is a new PR run required?
 - **Q2**: How will prior linked runs and recovery attempts remain queryable without resetting attempt budgets or overwriting Item outcome evidence?
 - **Q3**: How will an uncertain PR/comment effect be reconciled before recovery, and which revision, lease and capacity checks fence competing recovery requests?
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
 - Add an explicit Item recovery request with revision checks, authenticated actor, reason and idempotent request identity.
 - Keep completed predecessor Items unchanged. Preserve prior execution links and identify each subsequent recovery attempt.
 - Reconcile an existing owned branch/PR before preparing more work; retain unresolved external outcomes rather than treating them as permission to redispatch.
 - Expose eligible recovery and refusal reasons on the existing Work Item surface. Reuse the PR execution owner for implementation, CI and merging.
 
-### Candidate acceptance examples
+#### Candidate acceptance examples
 
 These examples guide Planning; the accepted spec will settle the requirements.
 
@@ -67,13 +66,13 @@ These examples guide Planning; the accepted spec will settle the requirements.
 - **E2**: Replaying the same recovery request creates no second recovery attempt or external request; conflicting content under that identity is refused.
 - **E3**: A stale revision or an uncertain external effect prevents a fresh dispatch and preserves the evidence needed for reconciliation.
 
-### Non-goals
+#### Non-goals
 
 - **Scope Excluded**: Replacement dependency substitution, automatic retries of every failure, native SDD orchestration, rollback of remote effects and resetting exhausted execution budgets.
 - **Scope Excluded**: pilot operation, deployment, production verification,
   monitoring, incident detection and CI trigger changes.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
 
 Planning recommends the bounded recovery design below for `MS-batch-recovery`.
 The milestone does not expand this feature scope. Direction acceptance and
@@ -83,9 +82,9 @@ Acceptance and Development handoff follow `sdd-proposal`. Rejection retains
 the decision and reason through the proposal lifecycle. This proposal is complete
 only through a verified accepted implementation, not from creating this draft.
 
-## 5. Planning decisions
+### 5. Planning decisions
 
-### Options and recommendation
+#### Options and recommendation
 
 | Option | Benefit | Cost and risk | Decision |
 | --- | --- | --- | --- |
@@ -93,12 +92,12 @@ only through a verified accepted implementation, not from creating this draft.
 | Replace the linked PR run on every retry | Reuses ordinary enrollment | Resets per-run budgets and hides lineage unless another ledger is added; risks duplicate external work | Reject |
 | Re-register a replacement Plan | Existing API requires no changes | Cannot satisfy the original dependencies and repeats successful work | Reject for this goal |
 
-`PADR-work-item-recovery-lineage` records the durable design. Recovery is an
+`ADR-work-item-recovery-lineage` records the durable design. Recovery is an
 explicit operator request for unchanged work; specification, dependency and
 target edits remain outside this command. No new PR run or automatic PR reopening
 is introduced. This keeps the original Run budget and detailed history in place.
 
-### Eligibility and routing
+#### Eligibility and routing
 
 | Observed Item / external condition | Result |
 | --- | --- |
@@ -117,7 +116,7 @@ overwritten. A closed PR can become eligible only after the operator separately
 reopens it and Hub re-observes the original identity. Run failures whose cause
 requires changing the work itself remain ineligible for this unchanged-work API.
 
-### Request, transaction and dispatch contract
+#### Request, transaction and dispatch contract
 
 - Add `POST /{plan_id}/items/{item_id}/recover` and paged `GET /{plan_id}/items/{item_id}/recoveries` under the existing Work Plan API. Read responses include eligibility and a machine-readable refusal reason with human next action. Use existing project application access and authenticated actor; accept no caller-supplied actor.
 - Require UUID `request_id`, `expected_revision` for the Plan, `expected_run_revision` when linked, and trimmed `reason` of 1–500 characters. Scope request uniqueness to the project; digest includes Item, actor and normalized command including observed revisions. Equivalent replay returns the original recovery record and current Item even after revisions advance; changed identity content returns 409. Scope/access checks precede replay, and replay precedes stale-revision rejection.
@@ -129,7 +128,7 @@ requires changing the work itself remain ineligible for this unchanged-work API.
 - The guarded PR-owner entry point accepts only terminal Runs linked to this Item and recovery record. It refuses when another active Run owns the PR, rechecks ownership atomically during activation, and translates the active-owner uniqueness race to HTTP 409 with no dispatch from the losing request. A losing pre-acceptance transaction rolls back its intent; an already accepted reconciliation record closes as refused without activating its Run. It never increments `run.epoch` or resets epoch-scoped repair allowances. It preserves existing attempt numbers, fix/silent/delivery counters and prior request snapshots; it does not broaden ordinary Run resume. No manual budget override is part of Item recovery. A merged observation can finish without spending budget. Reuse the PR owner’s pushed-head/external-implementation reconciliation: when that evidence applies, continue current-head CI observation without another implementation delivery, retaining the epoch and prior attempts. Regression checks cover exhausted-current-epoch refusal with unchanged epoch, recovery racing ordinary enrollment with zero loser deliveries, and terminal recovery after implementation arrived with zero new delivery.
 - Successful predecessor Items and their merge evidence remain untouched. Dependents release only on the recovered Item's confirmed original-target merge. Existing retention protects the linked unresolved Run; successful pruning retains the recovery snapshots and stable execution identity without requiring the detailed Run row.
 
-### Migration and Development verification
+#### Migration and Development verification
 
 Use additive recovery-record/event tables and indexes. Existing Items need no
 invented historical attempts: show current legacy outcome as such. Preserve
@@ -151,7 +150,7 @@ and run repository-required checks during Development.
 No performance improvement is claimed; comparisons are invariant/count checks
 against the same fixture with recovery disabled, not a second checkout.
 
-### Assumptions and review offer
+#### Assumptions and review offer
 
 Conservative eligibility above is the recommended direction, not a separate
 business question. Unsupported recovery remains a visible refusal rather than
@@ -159,3 +158,4 @@ implicit replacement. Development effort stays high because persisted history
 and external request fencing change. Optional UX review is offered for the
 Screens drafts in `PROP-work-item-retry-target` before code; the Host can include
 it in the direction review. This turn neither accepts nor hands off the proposal.
+

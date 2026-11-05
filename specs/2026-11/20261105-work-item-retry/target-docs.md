@@ -3,7 +3,7 @@ id: PROP-work-item-retry-target
 title: Living Spec targets for PROP-work-item-retry
 summary: "Candidate contract and interface updates for retry failed work items."
 status: draft
-proposal: PROP-work-item-retry
+proposal: SPEC-work-item-retry
 created_at: 2026-11-05
 targets:
   - file: docs/capabilities/delivery/CAP-PR-pull-request-delivery.md
@@ -115,7 +115,7 @@ request reconciliation, counter enforcement and merge authority. This does not
 change CI triggers or add a delivery engine.
 
 `ARCH-06-execution` describes the additive record/event tables, shared lock
-protocol and durable transition fencing. Promote `PADR-work-item-recovery-lineage`
+protocol and durable transition fencing. Promote `ADR-work-item-recovery-lineage`
 only during authorized handoff. Preserve its rule traces when final section names
 are chosen. No operational procedure, rollout or monitoring document is a target.
 
