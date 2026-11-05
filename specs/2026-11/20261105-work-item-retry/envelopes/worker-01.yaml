@@ -1,0 +1,27 @@
+kind: worker
+stage: integration-approval
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T07:05:57.128257Z'
+status: completed
+summary: 'Completed Development through verified final change report: guarded retained-lineage recovery, typed history/migration, operator disclosure and reconciled contracts. Host-admitted CAP-PR-agent-dispatch reflection included; sync outputs none. Awaiting Host dev-integration decision.'
+findings: []
+assumptions:
+- 'Codex route emulated: explicit absolute worktree cwd, git -C, scoped commits and separately approved outside-sandbox operations substitute for native path confinement. Every nested reviewer returned unchanged HEAD/index/tree and no outside reads.'
+- Host explicitly admitted docs/capabilities/delivery/CAP-PR-agent-dispatch.md only for recovery delivery cause, recovery-specific watchdog allowance/ordinary per-attempt preservation and enforcing evidence pointer. Task2/4 and reconcile record this payload addition.
+- Source code unchanged since passing code review7030760; later commits contain documentation/status/records only. Retained base advanced to ce10594 for successor Planning only; worker did not merge base.
+unverified_areas:
+- Live GitHub/provider behavior and deployment. Controlled fixtures establish tested invariants, not current production state.
+- Eventual integrated head remains for Host runtime synchronization and final required checks after approved Git effects.
+checks:
+  sync_start: PASS exit=0
+  tests: PASS affected PostgreSQL280 no skips; final focused PostgreSQL37 no skips; SQLite recovery/all PR-owner units127 passed1 PG-only skip; UI219 passed
+  build: PASS just check backend/SDK/Svelte types and production UI build; final backend pyright0 errors; check-ui-api up to date
+  lint: PASS just lint; final focused Ruff; docs35 rules+hygiene36; accepted-base range diff --check
+  review: PASS high code rounds1-2 with5 findings resolved; high reconcile rounds1-2 with2 findings resolved; fresh round2s zero findings
+  baseline: PASS same-head disabled/enabled three-Item fixture preserves predecessor/Item identity and merge-only successor release; terminal fixture preserves Run epoch and delivery counts
+  scope: PASS initial TierA plus exact Host-admitted CAP-PR-agent-dispatch clauses; no autonomous extensions, new dependency edges or sync outputs
+diff_scope:
+  base: f1e9693318ebf0181453142e75b98513fdbba4ff
+  head: da761209f1d7956cf9195c4bbbf28e0f4a631e6d
+activity_effort: high
