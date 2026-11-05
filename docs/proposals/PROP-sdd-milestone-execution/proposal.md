@@ -47,7 +47,7 @@ A project operator needs a durable selection that can advance successive native 
 
 ### Source anchors and prerequisite assumptions
 
-`MAT-sdd-milestone-execution` records source inspection, incoming references and the option comparison. `SPEC-sdd-milestone-readiness` is accepted but unimplemented at the Planning base. The user authorized prerequisite order override for Planning only. Before Development/handoff, compare this design with its landed completed SPEC and replace the prerequisite through the normal canonical reference process. Acceptance of its proposal is not prerequisite completion. Do not invent the SPEC ID.
+`MAT-sdd-milestone-execution` records source inspection, incoming references and the option comparison. The original proposal of `SPEC-sdd-milestone-readiness` was accepted but unimplemented at the Planning base. The user authorized prerequisite order override for Planning only. Before Development/handoff, compare this design with its landed completed SPEC and replace the prerequisite through the normal canonical reference process. Acceptance of its proposal is not prerequisite completion. Do not invent the SPEC ID.
 
 ## 2. Technical Spike Findings
 
