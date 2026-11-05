@@ -1,13 +1,28 @@
+import asyncio
 import json
+from types import SimpleNamespace
 
 import httpx
 import pytest
 from app.features.project_management.pipelines import services
+from app.features.project_management.work_plans import issue_sync
 from app.features.project_management.work_plans.execution import WorkPlanExecution
 from app.features.project_management.work_plans.issue_sync import WorkIssueSync
 from app.features.project_management.work_plans.kick import WorkPlanKick
 
 LIVE_KICK = WorkPlanKick.run
+
+
+def _skip_issue_sync_pacing(monkeypatch):
+    """Yield between mock GitHub publications without the production rate-limit delay."""
+
+    async def yield_without_delay(seconds):
+        assert seconds == 1
+        await asyncio.sleep(0)
+
+    # Replace only this module's asyncio reference. Global sleep and real timeout
+    # cancellation remain intact, including the stalled-publication regression.
+    monkeypatch.setattr(issue_sync, "asyncio", SimpleNamespace(sleep=yield_without_delay, timeout=asyncio.timeout))
 
 
 async def _tick_only(self, project_id, *, run_id=None):
@@ -118,6 +133,7 @@ class GitHubWorkScenario:
 
 @pytest.fixture
 async def setup_work(client, monkeypatch):
+    _skip_issue_sync_pacing(monkeypatch)
     # These scenarios drive the scheduler tick path; immediate follow-up is enabled by `live_kick`.
     monkeypatch.setattr(WorkPlanKick, "run", _tick_only)
     github = GitHubWorkScenario()
