@@ -8,6 +8,7 @@ if [[ "${1:-}" == "--fix" ]]; then
     shift
 fi
 backend_path=${1:-modules/hub}
+just check-devkit
 format_args=(--check)
 lint_args=()
 if "$fix"; then

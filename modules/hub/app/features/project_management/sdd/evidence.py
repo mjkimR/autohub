@@ -56,6 +56,7 @@ def reports(envelopes: dict) -> list[dict]:
                     "findings": row.get("findings", []),
                     "assumptions": row.get("assumptions", []),
                     "unverified_areas": row.get("unverified_areas", []),
+                    "scope_extensions": row.get("scope_extensions", []),
                 }
             )
     return rows

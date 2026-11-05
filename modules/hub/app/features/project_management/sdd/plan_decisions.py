@@ -46,7 +46,7 @@ def commit_message(decision: str, slug: str, actor: str, note: str, head: str) -
     return f"Reject proposal PROP-{slug}: {first}", f"{note.strip()}\n\n{trailer}"
 
 
-def closure_answers(pending_questions: list[dict], reason: str) -> dict[str, str]:
+def closure_answers(pending_questions: list[dict], reason: str, *, by: str = "user") -> dict[str, str]:
     """One answers file per worker envelope: every open question answered outside its options with the reason."""
     first = next((line.strip() for line in reason.splitlines() if line.strip()), "")
     decision = f"{REJECTION_DECISION}: {first}" if first else REJECTION_DECISION
@@ -56,7 +56,9 @@ def closure_answers(pending_questions: list[dict], reason: str) -> dict[str, str
         if re.fullmatch(r"worker-[0-9]+\.yaml", worker) and re.fullmatch(r"[a-z][a-z0-9-]*", str(row.get("id", ""))):
             grouped.setdefault(worker, []).append(str(row["id"]))
     return {
-        worker: "".join(f"- question: {q}\n  choice: null\n  decision: {json.dumps(decision)}\n" for q in ids)
+        worker: "".join(
+            f"- question: {q}\n  choice: null\n  decision: {json.dumps(decision)}\n  by: {by}\n" for q in ids
+        )
         for worker, ids in grouped.items()
     }
 
@@ -124,7 +126,7 @@ async def record_plan_decision(
                 else:
                     set_status(root, unit, "reviewing", "rejected")
                     pending = evidence["current"].get("pending_questions") or []
-                    for worker, text in closure_answers(pending, note).items():
+                    for worker, text in closure_answers(pending, note, by=authority).items():
                         answers = root / ".devkit/transient/hub-tmp" / f"answers-{worker}"
                         answers.parent.mkdir(parents=True, exist_ok=True)
                         answers.write_text(text, encoding="utf-8")

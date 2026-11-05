@@ -4,6 +4,10 @@ default_test_path := "modules/hub"
 default:
     @just --list
 
+# Check all reviewed Python devkit pins and the viewer source receipt/integrity offline
+check-devkit:
+    @uv run --no-active --no-sync python scripts/check-devkit.py
+
 # Initialize project modules (all, hub, hub-ui, or sdk)
 init module="all":
     #!/usr/bin/env bash
@@ -179,6 +183,10 @@ install-sdd destination=".cache/sdd" manifest="config/sdd-runtime":
 # Require the provisioned runtime and OS isolation; never silently skip the CLI contract
 test-sdd runtime=".cache/sdd":
     @bash scripts/test-sdd.sh "{{ runtime }}"
+
+# Run the required isolated SDD contracts with PostgreSQL, including row-lock contention
+test-sdd-pg runtime=".cache/sdd":
+    @bash scripts/test-sdd.sh "{{ runtime }}" postgres
 
 # Test the standalone pipeline SDK without backend fixtures
 test-sdk:

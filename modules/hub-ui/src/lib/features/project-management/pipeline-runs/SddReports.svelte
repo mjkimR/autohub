@@ -21,7 +21,11 @@
 {#if rows.length}
 	<section class="space-y-3" aria-label="Review evidence summaries">
 		{#each rows as report (String(report.file))}
-			<details open={report.kind === 'final-report'} class="rounded-lg border p-3 text-sm">
+			<details
+				open={report.kind === 'final-report' ||
+					(Array.isArray(report.scope_extensions) && report.scope_extensions.length > 0)}
+				class="rounded-lg border p-3 text-sm"
+			>
 				<summary class="cursor-pointer font-medium"
 					>{labels[String(report.kind)] || String(report.kind)}
 					<span class="ml-1 text-xs text-muted-foreground">{String(report.status)}</span></summary

@@ -270,7 +270,28 @@ def worker_envelope(root, *args):
     )
 
 
-async def test_worker_question_waits_until_an_answer_envelope_exists(checkout, tmp_path):
+async def test_real_worker_scope_extensions_reach_hub_evidence(checkout, tmp_path):
+    root, _ = checkout
+    extensions = [
+        {
+            "path": "tests/test_retry.py",
+            "task": 2,
+            "reason": "Cover the adjacent retry contract",
+            "requirements": ["AC-01", "AC-02"],
+        }
+    ]
+    source = tmp_path / "extensions.json"
+    source.write_text(json.dumps(extensions))
+    worker_envelope(root, "--summary", "Added adjacent coverage", "--scope-extensions-file", str(source))
+    head = commit(root, "Worker records additional files")
+    evidence = await SddService().evaluate(root, SPEC, head, head, None, False)
+    worker = next(r for r in evidence["reports"] if r["kind"] == "worker")
+    assert worker["scope_extensions"] == extensions
+    assert not evidence["integrated"]
+
+
+@pytest.mark.parametrize("with_decider", [False, True])
+async def test_worker_question_waits_until_an_answer_envelope_exists(checkout, tmp_path, with_decider):
     root, _ = checkout
     questions = tmp_path / "questions.yaml"
     questions.write_text(
@@ -291,6 +312,14 @@ async def test_worker_question_waits_until_an_answer_envelope_exists(checkout, t
     assert waiting["current"]["gate"]["held"]  # --given dev-integration passes nothing while a question waits
     answers = tmp_path / "answers.yaml"
     answers.write_text("- question: q1\n  choice: a\n  decision: Keep TOML\n")
+    if with_decider:
+        from app.features.project_management.sdd.decisions import answer_envelope_record, publication_instructions
+
+        record = answer_envelope_record(
+            {"id": "d1", "actor": "user:fixture", "value": "a", "note": "Keep TOML"}, request
+        )
+        payload = json.loads(publication_instructions({"decision_records": [record]}).splitlines()[-1])
+        answers.write_text(json.dumps(payload[0]["answers"]))
     run(
         root,
         devkit_binary(),
@@ -310,6 +339,11 @@ async def test_worker_question_waits_until_an_answer_envelope_exists(checkout, t
     answered = await SddService().evaluate(root, SPEC, head, head, None, False)
     assert answered["hold"]["pending_questions"] == [] and not answered["hold"]["blocked"]
     assert answered["current"]["requests"][0]["id"] == "gate:dev-integration"
+    envelopes = json.loads(
+        run(root, devkit_binary(), "workflow", "envelope", "check", "--unit", SPEC, "--details", "--format", "json")
+    )
+    answer = next(e for e in envelopes["envelopes"] if e["kind"] == "answer")
+    assert answer["answers"][0].get("by") == ("user" if with_decider else None)
 
 
 async def test_unresolved_problem_blocks_until_a_resolution_envelope(checkout, tmp_path):
@@ -631,6 +665,22 @@ async def test_rejection_changes_status_only_and_closes_open_questions(checkout,
     assert after["unit_status"] == "rejected"
     assert after["hold"]["pending_questions"] == [] and not after["hold"]["blocked"]
     assert not after["current"]["requests"]  # a rejected proposal is never asked for acceptance again
+    envelopes = json.loads(
+        run(
+            verify,
+            devkit_binary(),
+            "workflow",
+            "envelope",
+            "check",
+            "--unit",
+            PROPOSAL,
+            "--details",
+            "--format",
+            "json",
+        )
+    )
+    answers = next(e["answers"] for e in envelopes["envelopes"] if e["kind"] == "answer")
+    assert len(answers) == question_count and all(a["by"] == "user" for a in answers)
 
 
 async def test_acceptance_refuses_another_proposals_branch_without_publishing(checkout, tmp_path, monkeypatch):

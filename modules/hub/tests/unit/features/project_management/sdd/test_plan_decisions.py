@@ -58,6 +58,7 @@ def test_closure_answers_cover_every_open_question_per_worker_file():
     answers = plan_decisions.closure_answers(pending, 'Not now: "scope" too wide\nmore')
     assert set(answers) == {"worker-01.yaml", "worker-02.yaml"}
     assert answers["worker-01.yaml"].count("choice: null") == 2
+    assert answers["worker-01.yaml"].count("by: user") == 2
     assert 'decision: "Planning ended by rejection: Not now: \\"scope\\" too wide"' in answers["worker-01.yaml"]
 
 

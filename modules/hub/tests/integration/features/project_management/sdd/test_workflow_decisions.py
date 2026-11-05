@@ -115,6 +115,7 @@ async def test_worker_question_is_answered_for_an_answer_envelope_not_a_record(c
     assert record["kind"] == "answer-envelope"
     assert (record["answers_to"], record["question"], record["choice"]) == ("worker-01.yaml", "q1", "a")
     assert record["decision"] == "Keep TOML; tidy key names only"
+    assert record["by"] == "user"
     assert all("operation" not in call for call in calls)  # no devkit record is authored for a question
     attempts = (await client.get(f"/api/v1/pipeline-runs/{run['id']}/attempts")).json()["items"]
     instructions = attempts[-1]["request_snapshot"]["instructions"]
@@ -123,5 +124,6 @@ async def test_worker_question_is_answered_for_an_answer_envelope_not_a_record(c
         in instructions
     )
     assert '"answers_to": "worker-01.yaml"' in instructions and '"choice": "a"' in instructions
+    assert '"by": "user"' in instructions
     replay = await client.post(f"/api/v1/pipeline-runs/{run['id']}/resume", json=body)
     assert replay.json()["revision"] == result.json()["revision"]

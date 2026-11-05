@@ -57,6 +57,22 @@ def test_historical_or_other_workflow_workers_cannot_authorize_current_planning(
     assert reviewed({"reports": [row("worker", workflow=None, segment=None)], "report_context": CONTEXT})
 
 
+def test_scope_extensions_preserve_exact_files_reasons_tasks_and_requirements():
+    extensions = [
+        {
+            "path": "tests/test_retry.py",
+            "task": 2,
+            "reason": "Cover the adjacent retry contract",
+            "requirements": ["AC-01", "AC-02"],
+        },
+        {"path": "src/retry.py", "task": 3, "reason": "Update the adjacent caller", "requirements": ["AC-02"]},
+    ]
+    [worker] = reports({"envelopes": [row("worker", scope_extensions=extensions)]})
+    assert worker["scope_extensions"] == extensions
+    assert reports({"envelopes": [row("worker")]})[0]["scope_extensions"] == []
+    assert not reviewed({"reports": [worker], "report_context": {**CONTEXT, "segment": 2}})
+
+
 def test_required_support_role_gaps_are_scoped_to_the_current_planning_segment():
     rows = [row("worker", activity_effort="high"), row("challenger", segment=0), row("scout", workflow="other")]
     gaps = review_gaps(rows, CONTEXT)

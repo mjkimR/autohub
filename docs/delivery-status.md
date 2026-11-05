@@ -18,6 +18,30 @@ runtime setup and the devkit/Hub responsibility boundary. Current capabilities:
 | Pipeline progression | Shared tick/webhook/manual driver; immediate ready transitions, bounded retries and preserved waits | [Advancement](development.md#pipeline-advancement) |
 | SDK flows | Durable host, scoped approval and the existing-PR devkit bridge | [SDK contract](sdk-task-flow.md) |
 
+### devkit v0.1.6 호환성 후속 작업 (2026-11-05)
+
+버전 갱신 뒤 확인한 네 가지 보완을 순서대로 반영했다.
+
+1. `just test-sdd-pg`를 추가해 필수 런타임 검사를 유지한 채 PostgreSQL SDD 계약을
+   실행한다. 기존 `sdd-contract` CI 작업은 두 런타임을 설치한 뒤 SQLite와 PostgreSQL을
+   모두 검증한다. 게시·취소 행 잠금 경합도 이 경로에 포함된다.
+2. `just check-devkit`이 세 Python 환경의 source·override·lock에 기록된 커밋·버전,
+   뷰어 source receipt의 출처·SHA-256, npm 무결성을 오프라인으로 비교한다. Backend
+   lint와 SDD CI의 런타임 설치 전에 실행하며, 불일치는 `DEVKIT_PINS_INVALID`로 실패한다.
+3. 운영자 질문 답변에 `by: user`를 기록하고 devkit 게시 요청에도 전달한다. 이전에 저장한
+   운영자 답변은 재게시할 때 이 값을 보완한다. 제안 거절로 질문을 닫는 답변에도 결정
+   권한을 기록하며, 실제 사용자 식별자는 기존 Run·operation·commit 기록에 남는다.
+4. 실제 devkit worker의 `scope_extensions`를 Hub 보고서에 보존하고 Planning·Development
+   승인 화면에서 추가 파일·태스크·이유·요구사항을 표시한다. 해당 보고서는 기본으로 펼친다.
+   이전 보고서는 그대로 읽을 수 있으며 기존 승인·head/워크플로 검증을 유지한다.
+
+최종 전체 백엔드 회귀는 **1,237개 통과 / 17개 건너뜀**이다.
+핀 불일치·이전 답변 호환을 포함한 집중 백엔드 검사 62개, 실제 CLI 메타데이터 검사
+5개, PostgreSQL SDD·브리지 계약 110개, 최종 UI 검사 215개가 통과했다.
+`just lint`, `just check`, `just check-ui-api`, 새 검사 스크립트의 Ruff·Pyright,
+셸/YAML 구성 검사와 문서 링크 검증도 통과했다. 저장소 전체 rules 검사는 오류 0건,
+기존 경고 3건이다. GitHub Actions 원격 실행과 운영 배포는 수행하지 않았다.
+
 ### devkit v0.1.6 검증 (2026-11-05)
 
 개발 환경과 기본/app-common SDD 프로필의 manifest·lock을 devkit 0.1.6 커밋

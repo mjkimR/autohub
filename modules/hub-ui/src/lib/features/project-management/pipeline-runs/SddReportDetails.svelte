@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SddScopeExtensions from './SddScopeExtensions.svelte';
 	let { report }: { report: Record<string, unknown> } = $props();
 	let findings = $derived(
 		Array.isArray(report.findings) ? (report.findings as Record<string, unknown>[]) : []
@@ -26,6 +27,7 @@
 		{/each}
 	</ul>
 {/if}
+<SddScopeExtensions extensions={report.scope_extensions} />
 {#each notes as [label, values] (label)}
 	{#if Array.isArray(values) && values.length}
 		<div class="mt-3 text-xs">

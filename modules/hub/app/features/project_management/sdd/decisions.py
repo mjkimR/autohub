@@ -86,6 +86,7 @@ def answer_envelope_record(operation: dict, request: dict) -> dict:
         "question": question,
         "choice": operation.get("value"),
         "decision": str(operation.get("note") or ""),
+        "by": "user",
         "operation": operation,
     }
 
@@ -100,7 +101,12 @@ def publication_instructions(evidence: dict) -> str:
         grouped: dict[str, list[dict]] = {}
         for record in answers:
             grouped.setdefault(record["answers_to"], []).append(
-                {"question": record["question"], "choice": record["choice"], "decision": record["decision"]}
+                {
+                    "question": record["question"],
+                    "choice": record["choice"],
+                    "decision": record["decision"],
+                    "by": record.get("by", "user"),  # saved operator answers from before devkit 0.1.6
+                }
             )
         text += (
             "\nRecord these operator answers to worker questions as answer envelopes in the bound unit before doing "

@@ -213,6 +213,24 @@ def test_configuration_refusals_name_the_setting_to_change(code, hint):
     assert hint in checkout.CLI_FIXES[code]
 
 
+@pytest.mark.parametrize("legacy", [False, True])
+def test_operator_answer_publication_preserves_the_decider_and_legacy_records(legacy):
+    from app.features.project_management.sdd.decisions import answer_envelope_record, publication_instructions
+
+    operation = {"id": "d1", "actor": "user:fixture", "value": "a", "note": "Keep TOML"}
+    record = answer_envelope_record(operation, {"id": "question:worker-01.q1"})
+    assert record["by"] == "user" and record["operation"]["actor"] == "user:fixture"
+    if legacy:
+        record.pop("by")
+    payload = json.loads(publication_instructions({"decision_records": [record]}).splitlines()[-1])
+    assert payload == [
+        {
+            "answers_to": "worker-01.yaml",
+            "answers": [{"question": "q1", "choice": "a", "decision": "Keep TOML", "by": "user"}],
+        }
+    ]
+
+
 def test_handoff_requires_eligible_choice_and_integration_uses_own_authority():
     evidence = {
         "current": {

@@ -12,6 +12,7 @@ just lint
 just check
 just test
 just test-ui
+just check-devkit
 just gen-ui-api
 ```
 
@@ -72,6 +73,11 @@ This repository reviews its devkit pin separately from app-common's toolchain pi
 update its `[tool.uv] override-dependencies` together with the sources, and review
 both [SDD runtime profiles](devkit-integration.md#runtime-profiles) when adopting
 another devkit revision.
+`just check-devkit` checks the three manifests, overrides and locks against one
+immutable devkit commit and release version. It also checks the viewer's source
+receipt, artifact SHA-256 and npm integrity. Backend lint runs this check, and the
+SDD CI job runs it before provisioning. A mismatch fails with `DEVKIT_PINS_INVALID`;
+review the named input and rebuild/reinstall the viewer when its source changed.
 Never edit managed or projected files directly. devkit development tooling supports
 Linux and macOS.
 
@@ -200,7 +206,7 @@ Node from `.nvmrc`, `just`) and calls the `justfile` recipes, so a check that pa
 | --- | --- |
 | `backend` | `just lint-check hub` (ruff format and lint, architecture checks), `just check hub` (pyright), `just test` (SQLite) |
 | `backend-postgres` | `just test-pg` (testcontainers), then against a PostgreSQL 16 service: `alembic upgrade head`, `alembic check` (the migrations match the models), one step down and up again |
-| `sdd-contract` | Locked devkit-spec runtime, OS isolation, native delivery and SDK bridge: `just test-sdd`; missing runtime is a failure |
+| `sdd-contract` | Pin consistency, locked devkit-spec runtime, OS isolation, native delivery and SDK bridge: `just check-devkit`, `just test-sdd` and `just test-sdd-pg`; missing runtime is a failure |
 | `frontend` | `just lint-check hub-ui`, `just check hub-ui` (`svelte-check` and the production build), `just test-ui`, and `just check-ui-api`: stale or missing tag-based API declarations fail the build |
 
 The job names are stable, so this repository can itself be enrolled in a hub project with `ci.yml` as the workflow

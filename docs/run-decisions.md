@@ -175,7 +175,10 @@ not grant anything. An unanswered worker question appears as a `question:*` requ
 the operator chooses an option, or writes a decision outside them, and Hub records
 the answer as an `answer-envelope` decision record that the agent writes with
 `devkit workflow envelope answer` on the pull request. Questions are never declined
-or deferred. While a problem or question stands, no gate passes, approval is refused
+or deferred. Operator answers include `by: user`; the run keeps the actual actor's
+identity separately. Saved operator answers without this field gain it when
+published again. Rejection closure answers record their decision authority too.
+While a problem or question stands, no gate passes, approval is refused
 and nothing is merged. `activity_effort` (`low`, `medium`, `high`) is a run option of
 sdd enrollment: it is recorded in the run's snapshot, passed to the agent with every
 request and reported back by the worker envelope.
@@ -185,7 +188,12 @@ recorded handoffs within the project, and links directly to their Decisions dial
 The dialog displays current evidence, final-report and support/review rounds at
 the inspected commit, draft/approval requirements and the
 latest 100 approval, rework, revocation and resume records. Questions and selected
-answers remain in the existing question history. These native changes are locally
+answers remain in the existing question history. Worker reports preserve
+`scope_extensions`: each additional file, its task ordinal, reason and requirement
+IDs. Reports with extensions open by default before the Planning/Development
+approval controls. They describe the worker's evidence; merge authority still
+comes from the inspected head, workflow and operator/policy approval. Historical
+reports without extensions retain their existing display. These native changes are locally
 tested; deployment and a live provider canary remain separate.
 
 ## Starting Planning and Development

@@ -131,6 +131,7 @@ provision fresh profiles before switching the host configuration. For 0.1.6:
 just install-sdd .cache/sdd-v016
 just install-sdd .cache/sdd-app-common-v016 config/sdd-runtime-app-common
 AUTOHUB_TEST_SDD_APP_COMMON="$PWD/.cache/sdd-app-common-v016" just test-sdd .cache/sdd-v016
+AUTOHUB_TEST_SDD_APP_COMMON="$PWD/.cache/sdd-app-common-v016" just test-sdd-pg .cache/sdd-v016
 ```
 
 After settling active runs, set `AUTOHUB_SDD_HOME` and any `AUTOHUB_SDD_PROFILES`
