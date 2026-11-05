@@ -2,15 +2,24 @@
 id: PLAN-sdd-milestone-readiness
 spec: SPEC-sdd-milestone-readiness
 ---
-<!-- devkit:skeleton -->
 
 # Technical Plan: `SPEC-sdd-milestone-readiness` Preview executable SDD milestone work
 
-## 1. Architecture Overview & Impact
+## 1. Constitution & Invariant Review
+
+No invariant changes. Preserve `ADR-milestone-readiness-boundary`, `CAP-SDD-native-delivery` admission and `CAP-SDD-runtime-isolation`. No database migration or dependency changes.
+
+## 2. Architecture Overview & Impact
 - Target Area: capabilities/sdd/
 - Target Docs Blueprint: `PROP-sdd-milestone-readiness-target` (Living Spec targets for this plan and reconcile.md)
 
-## 2. Component Breakdown & Interface Contracts
+## 3. Component & Interface Design
+
+Router → SddUseCase → preview service → GitHub reader and isolated runtime. Resolve ref once; restore runtime once at that SHA. Use devkit catalog/resolver for global/package/archive anchors. Extract shared read-only admission without changing start effects. Evaluate sequentially within 150 seconds.
+
+`POST /api/v1/projects/{project_id}/sdd/milestone-preview` accepts `ref`, `milestone_id`, optional exact `milestone_path`. Return identity/SHA, milestone, observation/runtime basis, complete flag/reasons, counts/limits, graph and member admission/scheduling/workflow-hold facets. Validate access and enabled SDD project first.
+
+No persisted state. UI selection starts empty, includes eligible direct members only and orders canonical IDs deterministically. Context changes/refresh cancel and invalidate stale requests. Exact graph semantics and limits are retained in `SPEC-sdd-milestone-readiness`. Missing/ambiguous milestones refuse; member/runtime failures disclose incomplete observations.
 
 ### Planned Boundaries:
 - `modules/hub-ui/src/lib/api/`
@@ -32,5 +41,6 @@ spec: SPEC-sdd-milestone-readiness
 - `.github/`
 - `packages/sdk/`
 
-## 3. Verification & Test Plan
-- <commands and checks that verify the acceptance criteria>
+## 6. Verification & Test Plan
+
+AC-01–AC-08: backend tests cover zero mutation, pinned reads, admission parity, workflow holds, exact dependencies, ownership, 50/51 members, 200/201 anchors, 500/501 edges, deadlines and partial failures. UI tests cover eligible-only subset order and stale requests. Retain start and Roadmap regressions. Run `just gen-ui-api`, `just check-ui-api`, `just lint-check`, `just check`, focused backend/UI suites and the required real isolated SDD contracts. No locking semantics change is planned. Compare the absent endpoint/panel baseline with the tested after behavior; claim no numerical speedup.

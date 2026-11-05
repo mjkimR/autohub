@@ -8,7 +8,6 @@ related_capabilities: []
 related_usecases: []
 workflow: sdd-spec-feature
 ---
-<!-- devkit:skeleton -->
 
 # [SPEC-sdd-milestone-readiness] Preview executable SDD milestone work
 
@@ -28,22 +27,57 @@ Handed off from proposal PROP-sdd-milestone-readiness on 2026-11-05.
 
 ## 2. User Stories
 
-- **US-1**: As a developer/agent, I want to implement Preview executable SDD milestone work so that system capabilities are extended.
+- **US-1**: As an operator, I want to inspect exact milestone members and select eligible activities locally to review work without starting execution.
 
 ## 3. Non-Goals
 
-1. **Scope Excluded**: <what this change will not do>
+1. **Scope Excluded**: Activity starts, persisted queues, resumptions, approvals, guessed lineage, vendor changes, new devkit commands, deployments and Work Plan binding.
 
 ## 4. Acceptance Criteria & Behavioral Contracts
 
-### [AC-01] <scenario>
-- **Given** <precondition>
-- **When** <action>
-- **Then** <expected result>
+### [AC-01] MR-01: previewed and a subset selected
+- **Given** an eligible milestone
+- **When** previewed and a subset selected
+- **Then** repository refs/content, activities, PRs, runs, decisions and scheduler state remain unchanged. Assert zero calls to all execution/publication/enrollment collaborators.
 
-## 5. Carried Proposal Notes
+### [AC-02] MR-02: each is previewed
+- **Given** global/package and active/archive milestones on two different branches
+- **When** each is previewed
+- **Then** membership and every document/dependency read use its resolved SHA. A branch moving during reads cannot mix contents. Historical SPEC milestone fields add no members.
 
-Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+### [AC-03] MR-03: previewed
+- **Given** an eligible draft, accepted proposal, reviewing/rejected proposal, inactive lifecycle, malformed worker envelope or unavailable runtime
+- **When** previewed
+- **Then** the row shows the existing admission result or a held/unknown outcome with exact reason. The preview and start path share admission evaluation and parity fixtures. Separate preview hold fixtures cover intent-proposal done with blocked workers, pending questions and malformed workers, including accepted proposals; start behavior stays unchanged.
+
+### [AC-04] MR-04: previewed
+- **Given** missing, ambiguous, cyclic, incomplete or unfinished prerequisites
+- **When** previewed
+- **Then** the graph exposes exact anchors/reasons and no affected member is selectable. Done/dropped milestone prerequisites pass. Exact completed SPEC prerequisites pass without reopening their history; accepted PROP prerequisites do not. Test explicit handed-off resolution separately from a missing PROP with a same-slug spec.
+
+### [AC-05] MR-05: previewed
+- **Given** an existing owned activity or unrelated branch
+- **When** previewed
+- **Then** show inspect-only project-scoped run/PR evidence or branch conflict respectively. Same slugs in another project and absent lineage never create links or readiness.
+
+### [AC-06] MR-06: the milestone preview is requested
+- **Given** 50/51 members, 200/201 anchors, 500/501 edges, truncated repository enumeration, deadline, pagination failure or partial runtime failure
+- **When** the milestone preview is requested
+- **Then** exact boundaries are tested and the response discloses incompleteness. Incomplete previews expose no selectable order. Do not silently slice the existing 50-item Proposals list and call it complete.
+
+### [AC-07] MR-07: an operator selects eligible members
+- **Given** an empty selection and complete preview
+- **When** an operator selects eligible members
+- **Then** only those exact activities appear in deterministic order. Ref/project/milestone change or refresh clears it; a delayed prior response cannot restore it. Empty results offer another milestone or refresh.
+
+### [AC-08] MR-08: preview is requested
+- **Given** a non-SDD or unauthorized project, invalid path or ambiguous milestone
+- **When** preview is requested
+- **Then** existing access/project validation refuses before evaluation or artifact creation. Existing single-activity start and viewer branch navigation retain their regression coverage.
+
+## 5. Approved Design and Constraints
+
+The accepted direction below governs implementation with AC-01 through AC-08.
 
 ### 2. Technical Spike Findings
 
@@ -96,3 +130,58 @@ Planning recommends the separate preview panel and pinned read-only evaluation. 
 
 Acceptance and Development handoff follow `sdd-proposal`. Completion requires a verified accepted implementation, not this Planning result.
 
+
+## 6. Screens
+
+
+#### Candidates and recommendation
+
+- **A — separate Hub panel (recommended)**: Keep the milestone selector, captured basis and readiness table together beside repository/native execution content. Row detail holds exact prerequisite evidence. A selection summary follows the table. This keeps the review goal in one place and does not depend on vendor selection state.
+- **B — dedicated Hub preview screen**: Navigate from the repository surface to a screen with a full-width member table and a separate review step for the selection. This gives more room for large graphs, but adds navigation/state restoration for a bounded 50-member preview. Defer this alternative unless the bounded panel proves insufficient.
+
+The recommendation is a routine design assumption within the authorized read-only scope. Optional independent UX review was requested and is recorded in this bundle's envelopes.
+
+#### UX-sdd-milestone-preview — panel draft
+
+**Purpose**: Review an exact milestone's currently eligible activities and an explicit local subset. The facts needed are repository/ref/SHA, milestone identity, completeness and prerequisite reasons. Runtime diagnostics and related executions are secondary disclosures.
+
+**Content**: The member table is primary. The captured basis and completeness notice sit above it; local selection and suggested order follow it. Row details reveal exact dependency anchors and activity links. Style follows `modules/hub-ui/src/routes/layout.css` and existing repository controls.
+
+- Repository viewer: project/repository, ref, captured SHA and refresh control.
+- Repository viewer: milestone selector and Preview milestone action.
+- SDD unit: member rows with exact proposal IDs/paths.
+- SDD unit: eligibility, proposed Planning or handoff-first Development, exact prerequisite reasons, selection checkbox when eligible.
+- Native SDD activity: timestamped workflow/runtime evidence and existing activity links, when available.
+- PR run: existing project-scoped execution/PR link, when recorded.
+- SDD unit: selected activities and suggested order, only for a complete preview.
+
+**States**:
+
+- `empty`: No milestone selected or no members found; choose a milestone or refresh. A complete zero-member result says no direct proposal members rather than completed delivery.
+- `loading`: Announce preview progress, disable selection, retain the requested ref/milestone visibly and permit cancellation by changing context.
+- `populated`: Show all bounded rows, exact basis and unchecked eligible choices. Inspect rows, select a subset or refresh.
+- `held`: Show nonselectable held rows with dependency or admission reasons; inspect source or choose other eligible rows.
+- `incomplete`: Announce exact missing coverage/limits above the table; disable selection/order and offer refresh or another milestone.
+- `selected`: Show selected IDs/activity kinds and deterministic order with an observation-only notice; allow deselection, clear or end inspection.
+- `stale`: On context change/refresh discard result and selection, then request the current context. Ignore a late obsolete response.
+- `error`: Show access/ref/runtime/request error with applicable retry or corrected selection; no readiness is retained.
+
+**Interactions**:
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
+| Choose ref/milestone | UC-preview-sdd-milestone 1 | empty, loading, populated, selected, held, incomplete, error | stale | | `CAP-SDD-native-delivery` | Prior selection clears and the chosen basis appears. |
+| Preview or refresh | UC-preview-sdd-milestone 2 | empty, populated, selected, held, incomplete, error | loading | | `CAP-SDD-native-delivery` | Prior selection clears; obsolete responses are invalidated. Matching basis, completeness and member rows appear, or the exact refusal appears. |
+| Expand member prerequisites | UC-preview-sdd-milestone 3 | populated, held, incomplete | same | | `CAP-SDD-native-delivery` | Exact prerequisite IDs, anchors, status and hold reasons appear. |
+| Open source anchor | UC-preview-sdd-milestone 3 | populated, held, incomplete | same | `UX-repository` | `CAP-DOC-repository-viewer` | Read the anchor at the captured SHA. |
+| Open existing execution | UC-preview-sdd-milestone 3 | populated, held | same | `UX-run-decisions` | `CAP-SDD-native-delivery` | Open recorded run without resuming or approving it. |
+| Select/deselect eligible member | UC-preview-sdd-milestone 4 | populated, selected | selected | | `CAP-SDD-native-delivery` | Exact subset/order changes; no execution starts. |
+| Clear selection | UC-preview-sdd-milestone 4 | selected | populated | | `CAP-SDD-native-delivery` | Selected count returns to zero. |
+| End inspection | UC-preview-sdd-milestone 5 | populated, selected, held, incomplete, error | end | back | `CAP-SDD-native-delivery` | Return to repository content without saving a queue. |
+
+**Register changes**: Extend the SDD unit row with milestone member/prerequisite representation and select subset, inspect order and clear selection actions. Extend Repository viewer representations with milestone selector and captured preview basis, plus Preview milestone action. Do not add Work Plan/Work Item rows or rename existing terms. These are representations of existing objects, not a new execution domain object.
+
+
+## 7. Assumptions and Baseline
+
+The accepted head is `8f5003e54b8943ef80ca4c63ac92968482c3864e`. Its product source matches main `658042b3d9e3f0423416b6655b4c2d2a6353e166`; handoff documents differ. Existing proposal admission and branch-specific viewer navigation remain valid premises. Candidate A and the retained Planning UX review apply unchanged. The baseline has no milestone preview endpoint or eligible-subset panel. Verify the after behavior through API/UI fixtures; claim no performance improvement.
