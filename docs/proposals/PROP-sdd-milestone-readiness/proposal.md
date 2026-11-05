@@ -2,7 +2,7 @@
 id: PROP-sdd-milestone-readiness
 title: Preview executable SDD milestone work
 summary: "Expose selected milestone members and authoritative readiness so operators can review a sequential execution selection without starting work."
-status: reviewing
+status: accepted
 created_at: 2026-11-05
 target_area: capabilities/sdd/
 priority: high
