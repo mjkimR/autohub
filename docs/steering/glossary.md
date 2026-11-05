@@ -26,7 +26,13 @@ summary: "Read before naming product concepts or distinguishing scheduler, PR, S
 | SDK task/flow run | External manifest execution in the SDK host's durable ledger; excludes PR and scheduler runs. | `CAP-SDK-task-flow-execution` | PR run, schedule job | `RunView`, `sdk_flow_runs` |
 | SDK release | Immutable manifest and executor-binding identity admitted by the task/flow host. | `CAP-SDK-task-flow-execution` | deployment image | `ReleaseSpec` |
 | Existing-PR bridge | Evidence-checked, scoped resumption of a paused PR run by a native SDK execution target. | `CAP-SDK-existing-pr-bridge` | second PR executor | `autohub.sdd`, `autohub.pr_delivery` |
-| Operator notice | A notification about execution state, delivered through configured outbound channels. | `CAP-NOTIFY-operator-notifications` | execution approval | `NotificationChannel` |
+| Operator notice | A notification about execution state, delivered through configured outbound channels; excludes the saved destination. | `CAP-NOTIFY-operator-notifications` | execution approval, Notification channel | `format_notice`, `Delivery` |
+| Notification channel | A saved outbound destination with its sealed bot credential, severity threshold and delivery status; excludes an individual Operator notice. | `CAP-NOTIFY-operator-notifications` | notice event | `NotificationChannel` |
+| Account | A human identity with approval, activation and administrator status; excludes a Browser session or machine identity. | `CAP-ACCESS-authentication-authorization` | Machine, Browser session | `UserReadAdmin`, `auth_version` |
+| Machine | A registered automation identity with scopes and activation state that owns Machine keys; excludes a provider Connector. | `CAP-ACCESS-authentication-authorization` | Account, Connector | `MachineRead`, `MachineCreate` |
+| Task specification | The registered scheduler task name, description and payload schema; excludes a Schedule configuration or Schedule job. | `CAP-EXEC-scheduling-maintenance` | change spec, SDD unit | `TaskSpecResponse` |
+| Webhook delivery | A recorded authenticated GitHub event and its routing/processing outcome; excludes a PR run or its Execution attempt. | `CAP-PR-webhook-advancement` | PR delivery | `GitHubWebhookDelivery` |
+| System configuration | A named JSON configuration record shown by the settings interface; excludes a Project connection's automation policy. | `ARCH-05-2-components` | Project connection settings | `SystemConfig` |
 | Browser session | A signed-in human account's access/refresh session. | `CAP-ACCESS-authentication-authorization` | machine credential | `autohub_refresh` |
 | Machine key | A scoped credential for a registered machine; excludes human account approval. | `CAP-ACCESS-authentication-authorization` | browser token | `X-API-Key` |
 | Work MCP endpoint | The fixed tool surface for ordinary work and its scoped mutations. | `CAP-MCP-tool-access` | operations endpoint | `/mcp/` |

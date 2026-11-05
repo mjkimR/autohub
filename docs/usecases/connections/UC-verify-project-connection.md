@@ -27,27 +27,63 @@ entrypoints:
 ## 2. Main Success Scenario
 
 1. The operator inspects the selected catalog's recipe and prerequisites (`CAP-CONN-connection-verification`).
+   Interface: `UX-connection-tests`.
+
 2. The operator requests a connection test (`CAP-CONN-connection-verification`).
+   Interface: `UX-connection-tests`.
+
 3. Hub records the test against the inspected project and connection configuration (`CAP-CONN-connection-verification`).
+   Interface: `UX-connection-tests`.
+
 4. Hub runs the selected provider's isolated test recipe (`CAP-CONN-connection-verification`).
+   Interface: `UX-connection-tests`.
+
 5. Hub verifies the delivered marker and required CI on the same changed PR head (`CAP-CONN-connection-verification`).
+   Interface: `UX-connection-tests`.
+
 6. Hub closes the owned test PR and removes the isolated resources when cleanup is safe (`CAP-CONN-connection-verification`).
+   Interface: `UX-connection-tests`.
+
 7. The operator reviews the verification evidence, configuration applicability and separate cleanup result (`CAP-CONN-connection-verification`).
+   Interface: `UX-connection-tests`.
 
 ## 3. Extensions
 
 - **\*a.** Unknown project or project-scoped test: Hub refuses with HTTP 404 `NOT_FOUND`; the use case ends.
+  Interface: `UX-connection-tests`.
+
 - **1a.** Connector prerequisites missing: the option is not ready and a start is refused with HTTP 422 `INVALID_REQUEST`; the use case ends without starting a test.
+  Interface: `UX-connection-tests`.
+
 - **3a.** Matching request replay: Hub returns the existing test instead of creating another; resumes at step 4 if it is running, or step 7 if it is terminal.
+  Interface: `UX-connection-tests`.
+
 - **3b.** Request identity conflict or another running test: Hub refuses with HTTP 409 `CONFLICT`; the use case ends.
+  Interface: `UX-connection-tests`.
+
 - **4a.** Catalog admission unavailable: Hub keeps the test waiting at dispatching with the admission reason and retries later; resumes at step 4 when admitted, unless cancellation/deadline ends the test.
+  Interface: `UX-connection-tests`.
+
 - **4b.** Provider creation result uncertain: Hub reconciles the original Jules attempt without issuing another create; resumes at step 4 when the session is found, or retains the uncertainty until terminal handling.
+  Interface: `UX-connection-tests`.
+
 - **4c.** Connection configuration changes: Hub requests cancellation of the old configuration's test; resumes at step 6 with a canceled outcome.
+  Interface: `UX-connection-tests`.
+
 - **4d.** Operator cancels or deadline expires: Hub records `canceled` or `timed_out`; resumes at step 6 without assuming the remote agent stopped.
+  Interface: `UX-connection-tests`.
+
 - **5a.** Marker absent/wrong, head unchanged or CI not yet passing: Hub does not declare success; resumes observation at step 5 until valid evidence or terminal handling.
+  Interface: `UX-connection-tests`.
+
 - **5b.** Definitive provider/configuration rejection or failed CI: Hub records `failed` with evidence/detail; resumes at step 6.
+  Interface: `UX-connection-tests`.
+
 - **6a.** Cleanup request fails: Hub retains the verification outcome with cleanup `failed` and retries later; resumes at step 7 with cleanup still unresolved.
+  Interface: `UX-connection-tests`.
+
 - **6b.** Failed-test delay or ambiguous Jules ownership: Hub leaves cleanup waiting and preserves protection instead of deleting unconfirmed output; resumes at step 7 with the retained terminal result and unresolved cleanup.
+  Interface: `UX-connection-tests`.
 
 ## 4. Postconditions
 

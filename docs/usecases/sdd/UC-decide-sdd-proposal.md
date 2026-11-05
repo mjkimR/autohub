@@ -27,52 +27,86 @@ capabilities:
 
 1. The operator inspects the waiting proposal run and its evidence
    (`CAP-SDD-native-delivery`, rules 9–11).
+   Interface: `UX-run-decisions`, `UX-sdd-run`, `UX-sdd-proposals`.
+
 2. The operator submits acceptance bound to the inspected head and run revision
    (`CAP-SDD-native-delivery`, rules 10–11).
+   Interface: `UX-sdd-workflow-request`.
+
 3. Hub verifies current authority and evidence and saves publication intent
    (`CAP-SDD-native-delivery`, rules 10–13).
+   Interface: `UX-sdd-workflow-request`.
+
 4. Hub authors the proposal decision in the isolated repository checkout
    (`CAP-SDD-native-delivery`, rule 11; `CAP-SDD-runtime-isolation`).
+   Off screen: the isolated authoring command prepares the repository checkout before publication.
+
 5. Hub publishes the exact candidate under the current publication fence
    (`CAP-SDD-native-delivery`, rule 13).
+   Interface: `UX-sdd-decision-history`.
+
 6. Hub records the published decision and returns the run waiting for that
    commit's CI (`CAP-SDD-native-delivery`, rules 14, 16).
+   Interface: `UX-sdd-decision-history`.
 
 ## 3. Extensions
 
 - **2a.** Operator rejects instead: The operator supplies the rejection reason;
   Hub selects rejection publication with closure answers for open worker questions;
   resumes at step 3 (`CAP-SDD-native-delivery`, rules 12, 19).
+   Interface: `UX-sdd-workflow-request`, `UX-sdd-proposals`.
+
 - **3a.** Rejection lacks a reason, confirmed head is absent, or decision is mixed
   with another answer: Hub refuses with HTTP 422 / `INVALID_REQUEST`; no candidate
   is published and the use case ends.
+   Interface: `UX-sdd-workflow-request`.
+
 - **3b.** Head, run/project revision, binding or workflow evidence changed: Hub
   refuses with HTTP 409 / `CONFLICT`; the operator reinspects before a new decision
   and the use case ends.
+   Interface: `UX-sdd-workflow-request`.
+
 - **3c.** Acceptance is held or not waiting on its own Planning branch: Hub refuses
   with HTTP 409 / `CONFLICT`; resolve the hold or inspect the correct activity and
   the use case ends. Unapplied Hub questions also prevent rejection.
+   Interface: `UX-sdd-workflow-request`.
+
 - **3d.** Request ID repeats the identical completed decision: Hub returns its
   existing result without another publication; the use case reaches its goal.
+   Interface: `UX-sdd-workflow-request`.
+
 - **3e.** Request ID was used for different input or actor: Hub refuses with HTTP
   409 / `CONFLICT`; the use case ends without replacing the original receipt.
+   Interface: `UX-sdd-workflow-request`.
+
 - **3f.** Another preparation still owns the request: Hub returns
   `SDD_DECISION_IN_PROGRESS`; retry the same request after preparation settles and
   the use case ends in a pending state.
+   Interface: `UX-sdd-workflow-request`.
+
 - **4a.** Acceptance evaluates an inactive lifecycle: Hub refuses with
   `SDD_LIFECYCLE_INACTIVE`; the use case ends without publication.
+   Interface: `UX-sdd-workflow-request`.
+
 - **5a.** Stop, project change or lease loss wins the publication fence: Hub
   refuses with HTTP 409 / `CONFLICT`; the candidate is not pushed and the use case ends.
+   Interface: `UX-sdd-decision-history`.
+
 - **5b.** Push fails or its outcome is uncertain: Hub keeps the intent/candidate
   evidence; the operator retries the identical request after inspecting the failure;
   resumes at step 3 without assuming rollback or renewed approval.
+   Interface: `UX-sdd-decision-history`.
+
 - **6a.** Push succeeded but result persistence was lost: Hub reconciles the exact
   saved candidate against the remote head under the original applicable authority;
   records the existing publication without another push and reaches the goal.
+   Interface: `UX-sdd-decision-history`.
+
 - **6b.** The saved candidate was published but its authority no longer applies:
   Hub records the remote publication with `applied: false` without changing the
   run state or restoring approval; the use case ends with recorded publication
   evidence, without authorizing continuation (`CAP-SDD-native-delivery`, rule 20).
+   Interface: `UX-sdd-decision-history`.
 
 ## 4. Postconditions
 

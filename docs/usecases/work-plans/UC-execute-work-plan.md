@@ -33,46 +33,82 @@ entrypoints:
 ## 2. Main Success Scenario
 
 1. The operator submits an active batch with specifications, acceptance criteria and dependencies (`CAP-WORK-work-plan-execution`).
+   Interface: `UX-work-plans`, `UX-work-plan-editor`.
+
 2. Hub validates and retains the Plan and Item graphs as one registration (`CAP-WORK-work-plan-execution`).
+   Interface: `UX-work-plan-editor`, `UX-work-plans`.
+
 3. Hub admits due dependency-ready Items within available capacity (`CAP-WORK-work-plan-execution`).
+   Interface: `UX-work-plans`.
+
 4. Hub prepares each admitted Item's branch and PR and delegates its local specification (`CAP-WORK-work-plan-execution`, `CAP-PR-pull-request-delivery`).
+   Interface: `UX-work-plans`.
+
 5. Hub carries out PR delivery and observes confirmed merges into the intended target (`CAP-PR-pull-request-delivery`, `CAP-WORK-work-plan-execution`).
+   Interface: `UX-work-plans`.
+
 6. Hub releases dependent work and records the Plan complete after all Items succeed (`CAP-WORK-work-plan-execution`).
+   Interface: `UX-work-plans`.
+
 7. The operator inspects retained results and any outbound mirror status (`CAP-WORK-work-plan-execution`).
+   Interface: `UX-work-plans`.
 
 ## 3. Extensions
 
 - **2a.** Invalid graph or incomplete executable specification: Hub rejects the
   write without a partial registration; the operator corrects it and returns to step 1.
+  Interface: `UX-work-plan-editor`.
+
 - **2b.** Registration response is lost: the operator recovers the existing Plan
   using the same request identity; resumes at step 3. A changed payload under
   that identity conflicts and the original Plan remains unchanged.
+  Interface: `UX-work-plan-editor`.
+
 - **2c.** The operator saves held work: Hub stores draft/proposed/paused work
   without admission. Explicit validated activation resumes at step 3; incomplete
   work remains held.
+  Interface: `UX-work-plan-editor`, `UX-work-plans`.
+
 - **3a.** Scheduled time, dependency or capacity is not satisfied: the Item stays
   waiting without premature preparation; resumes at step 3 after all conditions hold.
+  Interface: `UX-work-plans`.
+
 - **4a.** An unrelated activity branch exists or the base/attached branch is confirmed absent:
   Hub records `preparation_failed` without overwriting the unrelated branch;
   this Item's execution goal ends and its dependents remain held.
+  Interface: `UX-work-plans`.
+
 - **4b.** Remote preparation is uncertain: Hub retains its preparation identity
   and reconciles on continuation; resumes at step 4 without creating duplicate work.
+  Interface: `UX-work-plans`.
+
 - **5a.** Run delivery waits or stops: Hub preserves the Item's actual
   Run/PR state; dependents remain held until a correct-target merge is confirmed.
   The operator uses Run control for already-started delivery.
+  Interface: `UX-work-plans`.
+
 - **5b.** The PR target/identity changes or its Run disappears: Hub records an
   attention state rather than success; dependent admission remains held and the
   automatic completion path ends pending investigation.
+  Interface: `UX-work-plans`.
+
 - **6a.** The operator pauses the Plan: Hub blocks unstarted work while admitted
   work continues; resumes at step 3 after an explicit resume.
+  Interface: `UX-work-plans`.
+
 - **6b.** The operator revokes the Plan: Hub permanently withdraws unstarted work
   while admitted work continues; the revoked Plan does not satisfy successful
   dependency completion and the new-admission flow ends.
+  Interface: `UX-work-plans`.
+
 - **7a.** Issue mirroring fails or the remote record is edited: Hub retains
   separate mirror/error state without changing execution or dependency outcomes;
   the operator can inspect results while publication reconciles independently.
+  Interface: `UX-work-plans`.
+
 - **\*a.** An edit/control uses an obsolete revision: Hub rejects it without
   replacing current work; the operator re-reads and decides whether to retry.
+  Interface: `UX-work-plans`.
 
 ## 4. Postconditions
 

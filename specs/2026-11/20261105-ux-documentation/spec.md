@@ -2,7 +2,7 @@
 id: SPEC-ux-documentation
 title: Document implemented UX and shared objects
 summary: "Describe implemented Auto Hub interface elements, their shared domain-object representations and their use-case step relationships."
-status: planned
+status: in-progress
 created: 2026-11-05
 related_capabilities: []
 related_usecases: []

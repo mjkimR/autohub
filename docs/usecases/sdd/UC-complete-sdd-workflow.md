@@ -30,68 +30,114 @@ capabilities:
 
 1. The operator selects the spec PR for native execution
    (`CAP-SDD-workflow-control`, rule 1).
+   Interface: `UX-sdd-execution`.
+
 2. Hub checks the binding/runtime and retains the evaluated execution identity
    (`CAP-SDD-workflow-control`, rule 1; `CAP-SDD-runtime-isolation`, rules 1–9).
+   Interface: `UX-sdd-execution`.
+
 3. Hub dispatches stage work and evaluates its reported outcome until integration
    approval is required (`CAP-SDD-workflow-control`, rules 12, 17–18).
+   Interface: `UX-sdd-run`, `UX-sdd-execution`.
+
 4. The operator reviews the inspected evidence and approves integration
    (`CAP-SDD-workflow-control`, rules 3, 6).
+   Interface: `UX-sdd-run`.
+
 5. Hub continues the authorized workflow through integration and its final checks
    (`CAP-SDD-workflow-control`, rules 4–6, 19; `CAP-SDD-runtime-isolation`, rule 13).
+   Interface: `UX-sdd-run`.
+
 6. The operator marks the PR ready for merge (`CAP-SDD-workflow-control`).
+   Off screen: the operator changes the PR draft status in GitHub outside Hub.
+
 7. Hub delegates current-head CI and merge authorization to the existing PR owner
    and records that owner's outcome (`CAP-SDD-workflow-control`, rule 21).
+   Interface: `UX-pipeline-runs`.
 
 ## 3. Extensions
 
 - **2a.** Binding/runtime admission fails: Hub reports failed readiness or refuses
   enrollment with the capability-defined invalid request/runtime error; the use
   case ends without successful native enrollment.
+   Interface: `UX-sdd-execution`.
+
 - **3a.** A worker problem or malformed envelope holds the unit: Hub blocks and
   reports the required recovery; after the problem is fixed and devkit reports
   its resolution, reinspection resumes at step 3 without treating resume as approval.
+   Interface: `UX-sdd-run`.
+
 - **3b.** A worker question is open: the operator chooses an offered option or
   supplies a decision outside them; Hub records an answer-envelope instruction
   and the agent publishes it before evaluation resumes at step 3. Invalid answers
   are refused with HTTP 422 and the question remains pending.
+   Interface: `UX-sdd-workflow-request`.
+
 - **3c.** Another workflow request is open: the operator answers its current options;
   Hub retains the CLI-authored publication artifact and dispatches publication;
   resumes at step 3 only after repository evidence permits it. Unsupported handoff
   anchors are refused instead of arbitrarily rebinding the run.
+   Interface: `UX-sdd-workflow-request`.
+
 - **3d.** The operator applies a stored run clarification: Hub dispatches that selected
   direction and carries it into later stages; resumes at step 3. A no-change answer
   can return to the gate without a fabricated push; answering is not approval.
+   Interface: `UX-run-decisions`.
+
 - **4a.** Ready status or pinned auto policy already authorizes the unheld gate:
   Hub records the observed/policy authority; resumes at step 5 without inventing
   a human actor or bypassing withheld approval.
+   Interface: `UX-sdd-run`.
+
 - **4b.** The operator requests rework: Hub requires nonblank feedback and a changed
   head, withdraws approval and dispatches the work; resumes at step 3. An unchanged
   attempt times out after 45 minutes and remains blocked until inspected continuation.
+   Interface: `UX-sdd-run`.
+
 - **4c.** The operator revokes integration authority: Hub blocks and preserves
   withheld approval through ready observations and generic resume; resumes at step
   4 only after explicit reapproval against applicable evidence.
+   Interface: `UX-sdd-run`.
+
 - **4d.** The operator rejects integration: Hub records cancellation; the use case
   ends without recalling external work already sent.
+   Interface: `UX-sdd-run`.
+
 - **4e.** New decision uses stale evidence/revision, changed request identity or
   mixed direction inputs: Hub refuses with the capability-defined conflict or
   invalid-request response; the invocation ends without that requested transition.
+   Interface: `UX-sdd-run`.
+
 - **5a.** The base moves and workflow integration is no longer complete: Hub
   reintegrates under the applicable recorded intent before resuming at step 7.
+   Interface: `UX-sdd-run`.
+
 - **5b.** Observed readiness is withdrawn or an unexpected head change invalidates
   authority: Hub clears approval and blocks; reinspection returns to step 4.
+   Interface: `UX-sdd-run`.
+
 - **5c.** Runtime/configuration drift or final recorded-rule loading prevents
   evaluation: Hub blocks with the runtime contract's remediation rather than
   dispatching repair for that setup failure; the invocation ends pending recovery.
+   Interface: `UX-sdd-run`.
+
 - **6a.** The PR stays draft: integration may finish under its recorded authority,
   but merging waits; resumes at step 6 when the operator marks it ready.
+   Interface: `UX-sdd-run`.
+
 - **7a.** Required CI or project merge policy prevents merge: the existing PR owner
   retains its wait, permitted repair or policy-controlled stop; the automatic
   completion path remains unfinished until that condition is resolved.
+   Interface: `UX-pipeline-runs`.
+
 - **\*a.** The operator manually pauses the run: Hub removes automatic approval-wait
   polling eligibility; the workflow remains unfinished until inspected continuation.
+   Interface: `UX-pipeline-runs`.
+
 - **\*b.** A matching decision receipt is replayed: Hub returns current run state
   without repeating the earlier transition or undoing a later stop; the invocation
   ends with the recorded outcome.
+   Interface: `UX-sdd-decision-history`.
 
 ## 4. Postconditions
 

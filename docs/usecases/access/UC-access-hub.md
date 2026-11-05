@@ -21,29 +21,32 @@ capabilities:
 
 ## 2. Main Success Scenario
 
-1. The operator submits their credentials (`CAP-ACCESS-authentication-authorization`).
+1. The operator submits their credentials (`CAP-ACCESS-authentication-authorization`,
+   `UX-sign-in`).
 2. Hub validates the account and establishes a browser session
-   (`CAP-ACCESS-authentication-authorization`).
+   (`CAP-ACCESS-authentication-authorization`, `UX-sign-in`, `UX-app-shell`).
 3. The UI keeps the access token in memory and accesses the protected management
-   operation (`CAP-ACCESS-authentication-authorization`).
+   operation (`CAP-ACCESS-authentication-authorization`, `UX-app-shell`).
 4. The browser renews its session using the server-owned refresh cookie when
-   needed (`CAP-ACCESS-authentication-authorization`).
+   needed (`CAP-ACCESS-authentication-authorization`). Off screen: renewal is an
+   automatic API exchange with no separate control or completion message.
 5. The operator signs out and Hub revokes the browser session
-   (`CAP-ACCESS-authentication-authorization`).
+   (`CAP-ACCESS-authentication-authorization`, `UX-app-shell`, `UX-sign-in`).
 
 ## 3. Extensions
 
 - **2a.** Invalid credentials: Hub refuses password sign-in; no authenticated
-  session is established and the use case ends.
+  session is established and the use case ends (`UX-sign-in`).
 - **2b.** Caller lockout: the configured failed-login limit has been reached;
   Hub returns HTTP `429` with `Retry-After`, sends a masked operator notice and
-  the use case ends until the caller may retry.
+  the use case ends until the caller may retry (`UX-sign-in`).
 - **3a.** Account access withdrawn: the account is inactive or no longer approved;
-  Hub refuses protected access with HTTP `401` and the use case ends.
+  Hub refuses protected access with HTTP `401` and the use case ends (`UX-sign-in`).
 - **4a.** Renewal unavailable: the cookie session cannot be renewed; the UI signs
-  out that session generation and the use case ends.
+  out that session generation and the use case ends (`UX-sign-in`).
 - **4b.** Session changed during renewal: a response belongs to an older session
   generation; the UI discards it and resumes at step 3 for the current session.
+  Off screen: generation fencing discards a response without changing the visible interface.
 
 ## 4. Postconditions
 

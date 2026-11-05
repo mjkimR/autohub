@@ -26,26 +26,26 @@ capabilities:
 ## 2. Main Success Scenario
 
 1. The operator submits a destination and minimum notice severity
-   (`CAP-NOTIFY-operator-notifications`).
+   (`CAP-NOTIFY-operator-notifications`). Screen: `UX-notifications`, `UX-notification-editor`.
 2. Hub seals its token and returns the persisted channel without credentials
-   (`CAP-NOTIFY-operator-notifications`).
+   (`CAP-NOTIFY-operator-notifications`). Screen: `UX-notification-editor`, `UX-notifications`.
 3. The operator asks Hub to test the saved destination
-   (`CAP-NOTIFY-operator-notifications`).
+   (`CAP-NOTIFY-operator-notifications`). Screen: `UX-notifications`.
 4. Hub sends the test, records the accepted delivery and returns its result
-   (`CAP-NOTIFY-operator-notifications`).
+   (`CAP-NOTIFY-operator-notifications`). Screen: `UX-notifications`.
 
 ## 3. Extensions
 
 - **1a.** Duplicate name: Hub returns HTTP 409 without creating another channel;
-  the operator chooses another name and resumes at step 1.
+  the operator chooses another name and resumes at step 1. Screen: `UX-notification-editor`.
 - **1b.** Invalid channel settings: Hub returns HTTP 422 without persisting the
-  invalid request; the operator corrects the settings and resumes at step 1.
+  invalid request; the operator corrects the settings and resumes at step 1. Screen: `UX-notification-editor`.
 - **3a.** The saved channel no longer exists: Hub returns HTTP 404; the use case
-  ends without sending a test.
+  ends without sending a test. Screen: `UX-notifications`.
 - **4a.** Telegram refuses delivery or the destination cannot be used: Hub returns
   `delivered=false` with the available failure detail and records the channel
   error. The operator can repair the channel and resume at step 3; successful
-  configuration remains unverified until the test succeeds.
+  configuration remains unverified until the test succeeds. Screen: `UX-notifications`, `UX-notification-editor`.
 
 ## 4. Postconditions
 
