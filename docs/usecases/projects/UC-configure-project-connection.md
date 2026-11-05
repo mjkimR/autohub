@@ -29,33 +29,55 @@ entrypoints:
 
 1. The operator registers or selects the GitHub connector whose credential Hub
    stores without exposing it (`CAP-PROJ-project-connections`).
+   Interface: `UX-connectors`, `UX-connector-create`, `UX-connector-edit`, `UX-project-connections`.
+
 2. The operator supplies the repository and verification/automation policy
    (`CAP-PROJ-project-connections`).
+   Interface: `UX-project-connections`, `UX-project-settings`.
+
 3. Hub validates and saves the project connection with its owned dispatch schedule
    (`CAP-PROJ-project-connections`).
+   Interface: `UX-project-connections`, `UX-project-settings`.
+
 4. The operator inspects the saved configuration and revision without receiving
    credential contents (`CAP-PROJ-project-connections`).
+   Interface: `UX-project-connections`, `UX-projects`.
+
 5. The operator requests a read-only check against a representative PR
    (`CAP-PROJ-project-connections`).
+   Interface: `UX-project-connections`, `UX-connection-test-check`.
+
 6. Hub records the outcome against that configuration revision and reports its
    readiness and GitHub identity (`CAP-PROJ-project-connections`).
+   Interface: `UX-connection-test-check`.
 
 ## 3. Extensions
 
 - **2a.** Existing project: the operator submits only the intended changes with
   the revision they loaded; resume at step 3.
+  Interface: `UX-project-connections`, `UX-project-settings`.
+
 - **3a.** Invalid connector or verification policy: Hub returns HTTP `422`
   without saving the rejected connection; the use case ends for correction.
+  Interface: `UX-project-connections`, `UX-project-settings`.
+
 - **3b.** Repository already connected: Hub returns HTTP `409` instead of creating
   a competing mapping; the use case ends.
+  Interface: `UX-project-connections`, `UX-project-settings`.
+
 - **3c.** Stale project edit: Hub returns HTTP `409`; the operator reloads the
   configuration and resumes at step 2.
+  Interface: `UX-project-connections`, `UX-project-settings`.
+
 - **6a.** External check does not pass: Hub returns check failures and
   `ready: false` without treating the saved connection as verified; the operator
   corrects the configuration or external setup and resumes at step 2 or 5.
+  Interface: `UX-connection-test-check`.
+
 - **6b.** Project changed during checking: Hub returns HTTP `409` rather than
   publishing evidence for the replaced revision; the operator reloads and resumes
   at step 5.
+  Interface: `UX-connection-test-check`.
 
 ## 4. Postconditions
 

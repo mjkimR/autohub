@@ -26,41 +26,67 @@ capabilities:
 
 1. The operator opens the connected project's repository view
    (`CAP-DOC-repository-viewer`, rules 1–2).
+   Interface: `UX-repository`.
+
 2. Hub retrieves repository identity and available branches
    (`CAP-DOC-repository-viewer`, rules 1–4).
+   Interface: `UX-repository`.
+
 3. The operator selects a branch and a proposal or spec document, directly or
    through a milestone member (`CAP-DOC-repository-viewer`, rules 2, 6).
+   Interface: `UX-repository`.
+
 4. Hub displays the selected document from that branch
    (`CAP-DOC-repository-viewer`, rules 2, 5–6).
+   Interface: `UX-repository`.
+
 5. Hub retrieves executions related to the selected proposal or spec
    (`CAP-DOC-repository-viewer`, rules 7–8).
+   Interface: `UX-sdd-execution`.
+
 6. Hub shows project-scoped run/decision and GitHub PR links for inspection
    (`CAP-DOC-repository-viewer`, rules 7–8).
+   Interface: `UX-sdd-execution`.
 
 ## 3. Extensions
 
 - **1a.** Project has no GitHub connection: The view asks the operator to connect a
   repository; the use case ends. A direct repository API request is refused with
   HTTP 422 / `INVALID_REQUEST`.
+   Interface: `UX-repository`.
+
 - **2a.** Branch enumeration is incomplete: Hub retains the available/default
   branch information with incomplete coverage; the embedded `refs` operation
   reports its incomplete-list error instead of certifying all branches. The
   operator can continue inspecting the known selected ref at step 3.
+   Interface: `UX-repository`.
+
 - **3a.** Operator chooses an ordinary file rather than a proposal/spec: Hub shows
   that file without native-unit execution links; the use case reaches its document
   inspection goal at step 4.
+   Interface: `UX-repository`.
+
 - **4a.** File content is not decodable UTF-8: The repository response carries
   base64 encoding rather than fabricated text; the Git browser explains that the
   binary file cannot be displayed inline and the use case ends.
+   Interface: `UX-repository`.
+
 - **4b.** Repository read is refused or fails: The view exposes the read error and
   retry action; it does not supply a successful document result and the use case ends.
+   Interface: `UX-repository`.
+
 - **5a.** No related executions exist: Hub displays the empty execution state;
   the use case reaches its inspection goal without starting a run.
+   Interface: `UX-sdd-execution`.
+
 - **5b.** Selection changes before execution links return: Hub ignores the late
   response for the old selection; resumes at step 5 for the current selection.
+   Interface: `UX-sdd-execution`.
+
 - **5c.** Execution-link lookup fails: Hub displays the lookup error and retry
   action while retaining the selected document; the use case ends with execution
   context unresolved rather than claiming no runs exist.
+   Interface: `UX-sdd-execution`.
 
 ## 4. Postconditions
 

@@ -13,6 +13,8 @@ keeps that evidence separate.
 | Product context and terminology | [Product context](steering/product.md), [glossary](steering/glossary.md) |
 | Feature guarantees, interfaces and code entrypoints | [Capabilities](capabilities/README.md) |
 | Actor goals and acceptance criteria | [Use cases](usecases/README.md) |
+| Shared UX objects, representations and calls to action | [UX object register](steering/ux-objects.md) |
+| Implemented screens, modals, panels and task-flow links | [UX](ux/README.md) |
 | System boundaries, runtime structure and constraints | [Architecture](architecture/README.md) |
 | Development approach decision | `ADR-sdd-development` |
 | Contributor environment, checks and extension work | [Developing Auto Hub](development/README.md) |
@@ -32,6 +34,10 @@ lifecycle are described in [contributor guidance](development/README.md#change-w
   acceptance examples as Given/When/Then scenarios.
 - Put system structure in numbered arc42 documents under `docs/architecture/`.
   Cite the actual check for a structural constraint, or identify it as review-only.
+- Put one operated interface element in each `docs/ux/<area>/UX-<slug>.md`.
+  Link its interactions to use-case steps in both directions. Keep shared object
+  representations and calls to action in `docs/steering/ux-objects.md`; glossary
+  definitions, capability guarantees and task goals retain their existing owners.
 - Keep steering context short, with a title and English summary but no document ID.
   Put behavior in capabilities and verification evidence in materials.
 - Refer to ID-bearing documents by full ID in prose and relationship fields.

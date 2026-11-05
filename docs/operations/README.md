@@ -5,6 +5,12 @@ investigate deployment or execution problems. Product guarantees belong in the
 capabilities and actor flows in the use cases; this directory carries the concrete
 operator steps. Changes to Auto Hub itself follow [development](../development/README.md).
 
+Keep repeatable setup, deployment and recovery procedures here. Put dated check
+results, revision identities and investigation evidence in
+[materials](../materials/index.md); link the report from a procedure when needed.
+The deployment-status guide is an index of recorded evidence and rollout gaps,
+not a fresh check of the serving environment.
+
 | Operator task | Procedure |
 | --- | --- |
 | Provision hosting, secrets, queues and external scheduler | [Cloud Run deployment](cloud-run-deployment.md) |

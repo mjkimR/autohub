@@ -1,0 +1,74 @@
+---
+id: UX-run-decisions
+title: Run Decisions
+summary: "The decision dialog separates saved Run question answers, explicit resumption and native SDD direction while retaining current run context and history."
+area: delivery
+element: modal
+status: active
+usecases:
+  - UC-resolve-run-question
+  - UC-decide-sdd-proposal
+  - UC-complete-sdd-workflow
+capabilities:
+  - CAP-PR-operator-decisions
+  - CAP-PR-pull-request-delivery
+  - CAP-SDD-native-delivery
+  - CAP-SDD-workflow-control
+---
+
+# [UX-run-decisions] Run Decisions
+
+## 1. Purpose
+
+- **Primary task**: Resolve a Run question or inspect a native workflow decision.
+- **Facts to commit**: Current PR run revision, wait reason, pending question, saved answers and native evidence.
+- **Secondary items**: Native controls live in dedicated panels; prior questions and approval activity are secondary history.
+
+## 2. Content
+
+The current wait and Run question form are primary. Native SDD evidence and
+actions occupy linked panels; question/approval histories sit beside them.
+
+- PR run (PR title, state, current revision, wait reason and terminal notice).
+- Run question (pending text, saved answer list, application state).
+  - Run question (Your answer editor and Save answer action).
+  - Run question (reasoned dismissal; inside a disclosure).
+- Run question (earlier-question history with Previous/Next pagination).
+- `UX-sdd-run` (native evidence and integration direction; for SDD runs).
+- `UX-sdd-workflow-request` (current native request; when present).
+- `UX-sdd-decision-history` (native approval/publication activity).
+
+Only the latest history page offers actions. Loading compares question and run
+revisions; mismatched data requires refresh rather than enabling stale controls.
+Saving an answer does not resume; selecting a saved answer is a separate action.
+
+## 3. States
+
+- **populated**: Current decisions are loaded; select the applicable answer or action.
+- **empty**: No pending question; eligible nonterminal runs offer Ask and pause, and stopped runs can offer inspected recovery.
+- **loading**: Latest decisions load; actions stay disabled until the run/question revisions agree.
+- **error**: An inline alert explains the failure; Refresh decisions reloads current evidence.
+- **busy**: A save/resume/native decision locks competing actions until it settles.
+- **terminal**: Ended runs retain evidence and history; inspect the PR and register replacement work when needed.
+
+## 4. Interactions
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
+| Refresh decisions | `UC-resolve-run-question` 1, `UC-decide-sdd-proposal` 1 | populated | loading |  | `CAP-PR-operator-decisions` | Current run/questions replace the inspected basis or show a conflict. |
+| Save answer | `UC-resolve-run-question` 2 | populated | busy |  | `CAP-PR-operator-decisions` | A status confirms that the answer is saved and the run remains stopped. |
+| Resume with saved answer | `UC-resolve-run-question` 4, `UC-complete-sdd-workflow` 3d | populated | busy |  | `CAP-PR-operator-decisions` | The selected answer is applied or a refusal is shown; delivery may remain pending. |
+| Ask and pause | `UC-resolve-run-question` 1a | empty | busy |  | `CAP-PR-operator-decisions` | The question is recorded and progression is blocked. |
+| Dismiss without resuming | `UC-resolve-run-question` 4c | populated | busy |  | `CAP-PR-operator-decisions` | The dismissal is retained; execution remains stopped. |
+| Resume after inspection | global: recover a stopped run without granting native integration authority | empty | busy |  | `CAP-PR-pull-request-delivery` | The current run is reloaded; no integration approval is implied. |
+| Previous / Next questions | global: inspect retained question history without changing execution | populated | loading |  | `CAP-PR-operator-decisions` | The selected history page loads; older-page actions are disabled. |
+| Close | global: leave decision inspection without submitting further direction | populated | populated | close |  | The underlying PR run list remains visible. |
+
+## 5. Evidence
+
+- [RunDecisionsDialog.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunDecisionsDialog.svelte).
+- [DecisionQuestion.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionQuestion.svelte).
+- [RunDecisionsDialog.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunDecisionsDialog.integration.test.ts); test assertions were inspected.
+
+This description is derived from source inspection. It does not claim a browser
+walkthrough, a fresh test execution or a live provider result.

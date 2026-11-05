@@ -27,33 +27,33 @@ entrypoints:
 
 ## 2. Main Success Scenario
 
-1. The operator submits a project schedule for the intended task work (`CAP-AGENT-provider-sessions`).
-2. Hub validates the schedule and derives its owned session scheduler entry (`CAP-AGENT-provider-sessions`).
-3. The operator requests that the enabled schedule run at the next opportunity (`CAP-AGENT-provider-sessions`).
-4. Hub dispatches the due session after provider preflight and catalog admission (`CAP-AGENT-provider-sessions`).
-5. Hub collects the provider's completed task and its PR evidence (`CAP-AGENT-provider-sessions`).
-6. Hub adopts the eligible task PR into the connected project's normal delivery workflow (`CAP-AGENT-provider-sessions`).
-7. The operator reviews the session result and linked delivery run (`CAP-AGENT-provider-sessions`).
+1. The operator submits a project schedule for the intended task work (`CAP-AGENT-provider-sessions`). Screen: `UX-agent-schedules`.
+2. Hub validates the schedule and derives its owned session scheduler entry (`CAP-AGENT-provider-sessions`). Screen: `UX-agent-schedules`.
+3. The operator requests that the enabled schedule run at the next opportunity (`CAP-AGENT-provider-sessions`). Screen: `UX-agent-schedules`.
+4. Hub dispatches the due session after provider preflight and catalog admission (`CAP-AGENT-provider-sessions`). Off screen: the scheduler dispatches provider work asynchronously rather than advancing an operator screen.
+5. Hub collects the provider's completed task and its PR evidence (`CAP-AGENT-provider-sessions`). Screen: `UX-catalog-sessions`.
+6. Hub adopts the eligible task PR into the connected project's normal delivery workflow (`CAP-AGENT-provider-sessions`). Screen: `UX-catalog-sessions`.
+7. The operator reviews the session result and linked delivery run (`CAP-AGENT-provider-sessions`). Screen: `UX-ai-catalogs`, `UX-catalog-sessions`.
 
 ## 3. Extensions
 
-- **1a.** Existing schedule: the operator selects or updates an existing suitable schedule; resumes at step 3.
-- **2a.** Invalid schedule or unsupported catalog: Hub refuses with HTTP 422; domain refusals use `INVALID_REQUEST`, while invalid request fields use schema-validation output; the use case ends without saving the invalid mutation.
-- **3a.** Disabled owned entry: Hub refuses run-now with HTTP 422 `INVALID_REQUEST`; the use case ends without making it due.
-- **3b.** Missing owned entry: Hub refuses run-now with HTTP 409 `CONFLICT` and directs the operator to save the schedule again; the use case ends.
-- **4a.** Credentials or repository Source unavailable: the session task fails preflight without reserving a new dispatch or creating a session; the use case ends without a new deliverable.
-- **4b.** Catalog admission refused: the task reports HTTP 409 `CONFLICT` internally while retaining the catalog's policy state; the use case ends without creating a tracked/provider session for that invocation.
-- **4c.** Provider create result uncertain: the task reports the create failure while retaining its unconfirmed session; collection reconciles the original title without repeating that stored create; resumes at step 5 if found, or ends with a failed presumed-lost session after a qualifying later observation.
-- **4d.** Definitive provider create refusal: Hub records the session as failed, including a catalog hold for HTTP 429; the use case ends without a deliverable.
-- **5a.** Provider waits for human input: Hub records the stalled session as failed and releases its open-session capacity; resumes at step 7 with failure detail instead of a deliverable.
-- **5b.** Provider observation temporarily fails: Hub defers observation to subsequent collection; resumes at step 5 without claiming completion.
-- **6a.** Report work selected: Hub stores the final session message rather than enrolling a PR; resumes at step 7 without a pipeline run.
-- **6b.** Final message unavailable: Hub keeps the completed session with an empty summary rather than a guessed partial result; resumes at step 6 for task adoption or step 7 for a report.
-- **6c.** Task PR missing or ineligible: Hub stores a diagnostic without creating a pipeline run; resumes at step 7 with the completed provider state and incomplete delivery outcome.
-- **6d.** PR already enrolled: Hub links the existing active run for that project/PR; resumes at step 7.
-- **6e.** Adoption interrupted before a verdict: later collection retries the pending adoption; resumes at step 6.
-- **6f.** Adoption error recorded: Hub stores its diagnostic without stopping other session collection or blindly retrying that verdict; resumes at step 7 without a run.
-- **\*a.** Unknown/project-mismatched schedule: Hub refuses with HTTP 404 `NOT_FOUND`; the use case ends.
+- **1a.** Existing schedule: the operator selects or updates an existing suitable schedule; resumes at step 3. Screen: `UX-agent-schedules`.
+- **2a.** Invalid schedule or unsupported catalog: Hub refuses with HTTP 422; domain refusals use `INVALID_REQUEST`, while invalid request fields use schema-validation output; the use case ends without saving the invalid mutation. Screen: `UX-agent-schedules`.
+- **3a.** Disabled owned entry: Hub refuses run-now with HTTP 422 `INVALID_REQUEST`; the use case ends without making it due. Screen: `UX-agent-schedules`.
+- **3b.** Missing owned entry: Hub refuses run-now with HTTP 409 `CONFLICT` and directs the operator to save the schedule again; the use case ends. Screen: `UX-agent-schedules`.
+- **4a.** Credentials or repository Source unavailable: the session task fails preflight without reserving a new dispatch or creating a session; the use case ends without a new deliverable. Off screen: the background task records preflight failure without creating a Provider session.
+- **4b.** Catalog admission refused: the task reports HTTP 409 `CONFLICT` internally while retaining the catalog's policy state; the use case ends without creating a tracked/provider session for that invocation. Off screen: catalog admission stops the background task before a Provider session exists.
+- **4c.** Provider create result uncertain: the task reports the create failure while retaining its unconfirmed session; collection reconciles the original title without repeating that stored create; resumes at step 5 if found, or ends with a failed presumed-lost session after a qualifying later observation. Screen: `UX-catalog-sessions`.
+- **4d.** Definitive provider create refusal: Hub records the session as failed, including a catalog hold for HTTP 429; the use case ends without a deliverable. Screen: `UX-catalog-sessions`.
+- **5a.** Provider waits for human input: Hub records the stalled session as failed and releases its open-session capacity; resumes at step 7 with failure detail instead of a deliverable. Screen: `UX-catalog-sessions`.
+- **5b.** Provider observation temporarily fails: Hub defers observation to subsequent collection; resumes at step 5 without claiming completion. Screen: `UX-catalog-sessions`.
+- **6a.** Report work selected: Hub stores the final session message rather than enrolling a PR; resumes at step 7 without a pipeline run. Screen: `UX-catalog-sessions`.
+- **6b.** Final message unavailable: Hub keeps the completed session with an empty summary rather than a guessed partial result; resumes at step 6 for task adoption or step 7 for a report. Screen: `UX-catalog-sessions`.
+- **6c.** Task PR missing or ineligible: Hub stores a diagnostic without creating a pipeline run; resumes at step 7 with the completed provider state and incomplete delivery outcome. Screen: `UX-catalog-sessions`.
+- **6d.** PR already enrolled: Hub links the existing active run for that project/PR; resumes at step 7. Screen: `UX-catalog-sessions`.
+- **6e.** Adoption interrupted before a verdict: later collection retries the pending adoption; resumes at step 6. Screen: `UX-catalog-sessions`.
+- **6f.** Adoption error recorded: Hub stores its diagnostic without stopping other session collection or blindly retrying that verdict; resumes at step 7 without a run. Screen: `UX-catalog-sessions`.
+- **\*a.** Unknown/project-mismatched schedule: Hub refuses with HTTP 404 `NOT_FOUND`; the use case ends. Screen: `UX-agent-schedules`.
 
 ## 4. Postconditions
 

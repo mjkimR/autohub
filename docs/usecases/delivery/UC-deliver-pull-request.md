@@ -34,45 +34,81 @@ entrypoints:
 ## 2. Main Success Scenario
 
 1. The operator submits the PR for implementation (`CAP-PR-pull-request-delivery`).
+   Interface: `UX-pipeline-runs`, `UX-enroll-pull-request`.
+
 2. Hub records one Run with its immutable task context (`CAP-PR-pull-request-delivery`).
+   Interface: `UX-pipeline-runs`.
+
 3. Hub delivers the implementation request to the selected provider (`CAP-PR-agent-dispatch`).
+   Interface: `UX-pipeline-runs`.
+
 4. Hub observes the provider's push and the repository's verification result through scheduled or webhook advancement (`CAP-PR-agent-dispatch`, `CAP-PR-ci-observation`, `CAP-PR-webhook-advancement`).
+   Interface: `UX-pipeline-runs`, `UX-attempt-history`.
+
 5. The operator marks the PR ready when its work is acceptable (`CAP-PR-pull-request-delivery`).
+   Off screen: the operator changes PR readiness in GitHub outside the Hub interface.
+
 6. Hub rechecks merge authorization and current-head verification, then records the merged outcome (`CAP-PR-pull-request-delivery`).
+   Interface: `UX-pipeline-runs`.
 
 ## 3. Extensions
 
 - **1a.** Invalid PR or project: Hub refuses enrollment without creating a Run;
   the operator corrects the input and restarts at step 1.
+   Interface: `UX-enroll-pull-request`.
+
 - **2a.** Another active Run owns the PR: Hub returns a conflict; the operator
   inspects the existing Run and continues that delivery instead of duplicating it.
+   Interface: `UX-enroll-pull-request`, `UX-pipeline-runs`.
+
 - **3a.** Implementation already exists: Hub skips implementation delivery and
   observes CI; resumes at step 4.
+   Interface: `UX-pipeline-runs`.
+
 - **3b.** Delivery outcome is uncertain: Hub preserves the planned delivery and
   reconciles its existing marker on continuation; resumes at step 4 after delivery
   is confirmed, without a duplicate mention for that delivery.
+   Interface: `UX-pipeline-runs`.
+
 - **4a.** An identified code job fails: where automatic repair is enabled and its
   retry allowance remains, Hub requests a CI fix; resumes at step 4 after the push.
+   Interface: `UX-pipeline-runs`.
+
 - **5a.** The PR remains Draft or returns to Draft: Hub keeps merging on hold;
   resumes at step 5 when the operator authorizes readiness again.
+   Interface: `UX-pipeline-runs`.
+
 - **6a.** Automatic merge is disabled: Hub pauses after passing verification; the
   automatic-merge goal is unfinished and the operator can merge through GitHub.
+   Interface: `UX-pipeline-runs`.
+
 - **6b.** The branch conflicts with or trails its base: where automatic conflict
   repair is enabled and its allowance remains, Hub requests an update; resumes at
   step 4 after the repair push.
+   Interface: `UX-pipeline-runs`.
+
 - **6c.** A repository rule blocks merging: Hub waits without asking the agent for
   a conflict fix; resumes at step 6 when GitHub permits the merge.
+   Interface: `UX-pipeline-runs`.
+
 - **6d.** Authorization changes during observation: Hub refuses the stale
   continuation before merging; the operator inspects the current Run and the
   automatic continuation ends.
+   Interface: `UX-pipeline-runs`.
+
 - **\*a.** The operator pauses the Run: Hub stops progression and clears its
   observation lease; the flow remains unfinished until an inspected resume.
   An already sent provider request can still produce changes.
+   Interface: `UX-pipeline-runs`.
+
 - **\*b.** The operator cancels the Run: Hub ends local progression; the flow ends
   without recalling an already sent request or undoing its effects.
+   Interface: `UX-pipeline-runs`.
+
 - **\*c.** A paused Run receives a push before resume: Hub observes that push
   instead of repeating the delivered request when resuming without an answer;
   resumes at step 4.
+   Interface: `UX-pipeline-runs`.
 
 ## 4. Postconditions
 

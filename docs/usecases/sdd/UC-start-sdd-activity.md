@@ -27,34 +27,58 @@ capabilities:
 
 1. The operator selects the proposal, activity, base and execution preferences
    (`CAP-SDD-native-delivery`, rules 3–7).
+   Interface: `UX-sdd-proposals`.
+
 2. Hub checks the project, base policy and proposal eligibility
    (`CAP-SDD-native-delivery`, rules 1–3, 18; `CAP-SDD-runtime-isolation`).
+   Interface: `UX-sdd-proposals`.
+
 3. Hub creates the activity's branch and PR (`CAP-SDD-native-delivery`, rules 4–5).
+   Interface: `UX-sdd-proposals`.
+
 4. Hub enrolls the PR with its proposal binding and effective activity effort
    (`CAP-SDD-native-delivery`, rules 4–7).
+   Interface: `UX-sdd-proposals`.
+
 5. Hub returns the tracked run for the operator to follow
    (`CAP-SDD-native-delivery`, rules 4–5).
+   Interface: `UX-sdd-proposals`.
 
 ## 3. Extensions
 
 - **2a.** Project is not enabled/configured for native SDD: Hub refuses with HTTP
   422 / `INVALID_REQUEST`; no activity is created and the use case ends.
+   Interface: `UX-sdd-proposals`.
+
 - **2b.** Proposal or base is absent: Hub refuses with HTTP 422 / `INVALID_REQUEST`;
   no activity branch is created and the use case ends.
+   Interface: `UX-sdd-proposals`.
+
 - **2d.** Proposal lifecycle, size or intent is ineligible: Hub refuses with HTTP
   409 / `CONFLICT`; no activity branch is created and the use case ends.
+   Interface: `UX-sdd-proposals`.
+
 - **2c.** Base uses adaptive development: Hub refuses with
   `SDD_LIFECYCLE_INACTIVE`; no activity branch or PR is created and the use case ends.
+   Interface: `UX-sdd-proposals`.
+
 - **3a.** Existing branch is unrelated: Hub refuses with HTTP 409 / `SDD_BRANCH_EXISTS`;
   the existing branch is unchanged and the use case ends.
+   Interface: `UX-sdd-proposals`.
+
 - **3b.** Existing branch has Hub's own open activity PR: Hub reuses the PR instead
   of creating another branch or PR; resumes at step 4.
+   Interface: `UX-sdd-proposals`.
+
 - **3c.** Runner/Git execution cannot finish: Hub reports HTTP 422 /
   `INVALID_REQUEST`; the operator inspects remote artifacts before retrying and
   the use case ends without a claim of rollback.
+   Interface: `UX-sdd-proposals`.
+
 - **4a.** Enrollment fails after PR creation: The start does not return a successful
   tracked run; the operator can retry the owned activity PR path after correcting
   the reported enrollment error; the use case ends with remote artifacts retained.
+   Interface: `UX-sdd-proposals`.
 
 ## 4. Postconditions
 

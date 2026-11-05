@@ -1,0 +1,37 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T04:25:27.549836Z'
+status: completed
+review: review-01.yaml
+summary: Both independent reviewers rechecked the source-backed corrections; no P1 or P2 findings remain.
+findings:
+- issue: The initial Project Connections content and UC citation exposed catalog/automation controls hidden by section=connection.
+  evidence: docs/ux/projects/UX-project-connections.md; ProjectConnections.svelte and ProjectSettingsForm.svelte section conditions; UC-configure-project-connection step 2.
+  failure_condition: A reader uses the connections-only panel to find catalog or automation settings that exist only in the full settings form.
+  suggested_action: Describe hidden values as preserved, and cite the actual settings element for automation edits.
+  resolution: resolved
+  severity: P2
+- issue: The initial Webhook delivery object row advertised Search although the view has no search control.
+  evidence: docs/steering/ux-objects.md; modules/hub-ui/src/lib/features/operations/webhook-deliveries/WebhookDeliveriesView.svelte.
+  failure_condition: A reader looks for a webhook search input rather than the implemented noteworthy/status filters.
+  suggested_action: Replace Search with noteworthy/status filtering and paging.
+  resolution: resolved
+  severity: P2
+- issue: The initial Schedule job object row advertised log disclosure absent from the history view.
+  evidence: docs/steering/ux-objects.md; modules/hub-ui/src/lib/features/scheduling/schedule-jobs/ScheduleJobsView.svelte.
+  failure_condition: A reader expects a log expander on the schedule-job screen.
+  suggested_action: Describe history rows and status/error metadata.
+  resolution: resolved
+  severity: P2
+assumptions:
+- The named head is the base of the reviewed uncommitted documentation changes.
+unverified_areas:
+- Browser rendering, accessibility and live-provider interaction were not exercised.
+checks:
+  documents: PASS native rules and reciprocal UX links; both reviewers compared the final drafts to UI source
+diff_scope:
+  base: 730e07dae1eb23d0d6d91b5a7ef359135446acb6
+  head: c7af646b15081a171305e303bfb0dd0e51f6374e
+activity_effort: medium

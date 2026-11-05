@@ -24,21 +24,21 @@ entrypoints:
 
 ## 2. Main Success Scenario
 
-1. The operator inspects the available catalogs and their admission controls (`CAP-AGENT-catalog-admission`).
-2. The operator submits a new catalog's provider and desired configuration (`CAP-AGENT-catalog-admission`).
-3. Hub validates the definition against the provider's connector and quota requirements (`CAP-AGENT-catalog-admission`).
-4. Hub stores the catalog with its provider adapter and normalized policy (`CAP-AGENT-catalog-admission`).
-5. The operator reviews the saved catalog's availability, effective capacity and supported work types (`CAP-AGENT-catalog-admission`).
+1. The operator inspects the available catalogs and their admission controls (`CAP-AGENT-catalog-admission`). Screen: `UX-ai-catalogs`.
+2. The operator submits a new catalog's provider and desired configuration (`CAP-AGENT-catalog-admission`). Screen: `UX-ai-catalogs`, `UX-catalog-create`.
+3. Hub validates the definition against the provider's connector and quota requirements (`CAP-AGENT-catalog-admission`). Screen: `UX-catalog-create`.
+4. Hub stores the catalog with its provider adapter and normalized policy (`CAP-AGENT-catalog-admission`). Screen: `UX-catalog-create`, `UX-ai-catalogs`.
+5. The operator reviews the saved catalog's availability, effective capacity and supported work types (`CAP-AGENT-catalog-admission`). Screen: `UX-ai-catalogs`.
 
 ## 3. Extensions
 
-- **2a.** Existing catalog: the operator selects an existing catalog and submits supported control updates; Hub validates and saves those updates; resumes at step 5.
-- **3a.** Duplicate creation key: Hub refuses with HTTP 409 `CONFLICT` without replacing the existing catalog; the use case ends.
-- **3b.** Invalid fields or quota configuration: Hub refuses with HTTP 422, using `INVALID_REQUEST` for domain-policy errors or schema-validation output for invalid request fields; the use case ends without saving the invalid mutation.
-- **3c.** Invalid connector assignment: Hub refuses an unsupported or wrong-provider connector with HTTP 422 `INVALID_REQUEST`; the use case ends without saving the invalid assignment.
-- **3d.** Missing catalog on update: Hub refuses with HTTP 404 `NOT_FOUND`; the use case ends.
-- **4a.** Jules credentials not yet registered: Hub stores valid Jules policy settings with no connector; resumes at step 5 with credentials still unverified.
-- **5a.** Intentionally disabled or held catalog: the operator retains the disabled state or future hold; the use case succeeds as configuration, with new dispatches still subject to the saved admission restriction.
+- **2a.** Existing catalog: the operator selects an existing catalog and submits supported control updates; Hub validates and saves those updates; resumes at step 5. Screen: `UX-ai-catalogs`, `UX-catalog-connector`, `UX-catalog-concurrency`, `UX-catalog-availability`, `UX-catalog-daily-quota`, `UX-catalog-codex-refresh`.
+- **3a.** Duplicate creation key: Hub refuses with HTTP 409 `CONFLICT` without replacing the existing catalog; the use case ends. Screen: `UX-catalog-create`.
+- **3b.** Invalid fields or quota configuration: Hub refuses with HTTP 422, using `INVALID_REQUEST` for domain-policy errors or schema-validation output for invalid request fields; the use case ends without saving the invalid mutation. Screen: `UX-catalog-create`, `UX-catalog-connector`, `UX-catalog-concurrency`, `UX-catalog-availability`, `UX-catalog-daily-quota`, `UX-catalog-codex-refresh`.
+- **3c.** Invalid connector assignment: Hub refuses an unsupported or wrong-provider connector with HTTP 422 `INVALID_REQUEST`; the use case ends without saving the invalid assignment. Screen: `UX-catalog-create`, `UX-catalog-connector`.
+- **3d.** Missing catalog on update: Hub refuses with HTTP 404 `NOT_FOUND`; the use case ends. Screen: `UX-catalog-connector`, `UX-catalog-concurrency`, `UX-catalog-availability`, `UX-catalog-daily-quota`, `UX-catalog-codex-refresh`.
+- **4a.** Jules credentials not yet registered: Hub stores valid Jules policy settings with no connector; resumes at step 5 with credentials still unverified. Screen: `UX-catalog-create`, `UX-ai-catalogs`.
+- **5a.** Intentionally disabled or held catalog: the operator retains the disabled state or future hold; the use case succeeds as configuration, with new dispatches still subject to the saved admission restriction. Screen: `UX-ai-catalogs`.
 
 ## 4. Postconditions
 
