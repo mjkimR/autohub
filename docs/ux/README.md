@@ -29,46 +29,20 @@ tokens remain in `modules/hub-ui/src/routes/layout.css` and the UI components.
 These are interface relationships. Exact persistence, execution and authorization
 contracts remain in the CAPs rather than being redefined here.
 
-## Screens and route coverage
+## Find an interface
 
-| Route or entry condition | Element |
-| --- | --- |
-| Unauthenticated layout at the requested route | `UX-sign-in` |
-| `/` | `UX-dashboard` |
-| `/projects` | `UX-projects` |
-| `/projects/[projectId]` | `UX-project-detail` |
-| `/projects/runs` | `UX-pipeline-runs` |
-| `/schedules/configs` | `UX-schedule-configs` |
-| `/schedules/jobs` | `UX-schedule-jobs` |
-| `/settings/connectors` | `UX-connectors` |
-| `/settings/ai-catalogs` | `UX-ai-catalogs` |
-| `/settings/notifications` | `UX-notifications` |
-| `/settings/system` | `UX-system-settings` |
-| `/operations/tasks` | `UX-task-specs` |
-| `/operations/webhooks` | `UX-webhook-deliveries` |
-| `/admin/users` | `UX-users` |
-| `/admin/machines` | `UX-machines` |
+Find screens, modals and panels through the document index:
 
-`UX-app-shell` supplies navigation and session controls around authenticated
-screens. Sign-in is a layout state, not a separate `/login` route. Route coverage
-is checked against `modules/hub-ui/src/routes/`; component filenames alone do not
-determine whether an element is a screen, modal or panel.
+```sh
+uv run devkit docs list ux --limit 0
+uv run devkit docs search "project settings" --kind ux
+```
 
-## Task surfaces within screens
-
-| Area | Related elements |
-| --- | --- |
-| Project setup | `UX-project-create`, `UX-project-settings`, `UX-project-connections`, `UX-project-schedule`, `UX-agent-schedules` |
-| Connection verification | `UX-connection-test-check`, `UX-connection-tests` |
-| Work Plans | `UX-work-plans`, `UX-work-plan-editor` |
-| PR delivery and operator input | `UX-enroll-pull-request`, `UX-attach-pull-request`, `UX-run-decisions`, `UX-attempt-history` |
-| Native SDD | `UX-sdd-run`, `UX-sdd-workflow-request`, `UX-sdd-decision-history` |
-| Repository inspection | `UX-repository`, `UX-sdd-proposals`, `UX-sdd-execution` |
-| Catalog configuration | `UX-catalog-create`, `UX-catalog-connector`, `UX-catalog-concurrency`, `UX-catalog-availability`, `UX-catalog-daily-quota`, `UX-catalog-codex-refresh`, `UX-catalog-sessions` |
-| Connector credentials | `UX-connector-create`, `UX-connector-edit` |
-| Notification destinations | `UX-notification-editor` |
-| Machine credentials | `UX-machine-keys`, `UX-issued-machine-key` |
-| Schedule configuration | `UX-schedule-editor`, `UX-schedule-delete` |
+Each screen document identifies its route. `UX-app-shell` supplies navigation and
+session controls around authenticated screens. `UX-sign-in` describes the
+unauthenticated layout at the requested route, rather than a separate `/login`
+route. Compare screen coverage with `modules/hub-ui/src/routes/`; component
+filenames alone do not determine whether an element is a screen, modal or panel.
 
 ## Task-flow boundaries
 
