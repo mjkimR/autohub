@@ -2,7 +2,7 @@
 id: PROP-work-item-retry
 title: Retry failed Work Items
 summary: "Recover eligible failed Work Items while preserving successful work, prior execution evidence and external request identities."
-status: reviewing
+status: accepted
 created_at: 2026-11-05
 target_area: capabilities/work-plans/
 priority: high
