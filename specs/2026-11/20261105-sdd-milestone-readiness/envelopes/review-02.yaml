@@ -1,0 +1,22 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T08:11:38.435232Z'
+status: completed
+summary: round 2; all six original findings fixed; one new valid historical-flat-anchor compatibility P1 remains
+findings:
+- issue: Supported historical flat proposal anchors are rejected or silently omitted.
+  evidence: modules/hub/app/features/project_management/sdd/milestone_graph.py:36,87,133; .cache/review-probes/review-02/flat_anchor_probe.py
+  failure_condition: The pinned devkit accepts docs/proposals/PROP-before.md but preview rejects its prerequisite and skips its milestone membership.
+  suggested_action: Match pinned devkit unit-anchor semantics including flat proposal anchors, retain them as held prerequisites and inspect-only unsupported native members, and add real-runtime regression coverage.
+  resolution: open
+  severity: P1
+assumptions:
+- Confinement emulated with explicit worktree paths and unchanged tree snapshot; no native guarantee
+checks:
+  tests: PASS supplied backend151 UI229 and required checks; reviewer probe confirms flat anchor defect
+  scope: PASS unchanged HEAD/tree and no outside reads
+diff_scope:
+  base: 6a2885dbbebc4a475a94e75c0e2bb29bb1ed9fa1
+  head: c4f188d6975d0da6a26c23d3febc5ec26dc5a934
