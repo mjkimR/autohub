@@ -33,3 +33,24 @@ Round 1 returned four P1 findings and one P2 disclosure finding. Each P1 receive
 After the batch fixes, all affected PostgreSQL integration/migration tests passed: 280 tests, no skips. Required lint, full type/build checks and API consistency passed. All 219 UI tests passed. Two further focused regressions reproduced definitive missing-base refusal remaining pending and native-mode changes during preparation holds; both were fixed within the same review batch.
 
 Final focused PostgreSQL recovery, enrollment-race and migration tests: 37 passed, no skips. Final focused SQLite recovery and all PR-owner unit tests: 127 passed, one PostgreSQL-only skip. Final backend types: zero errors. These focused checks cover the final edge fixes; unchanged broad checks are retained rather than claimed as another execution.
+
+## Host post-landing verification
+
+Integration landed at `e5ffbf7f233ef9c9d811b9e2b94f6e72d66eb25a`.
+Fresh locked setup and managed-asset checks passed. Generated-artifact verification
+reported no stale artifact. `just lint-check`, `just check`, `just check-ui-api`
+and `just test-ui` passed; the UI suite executed 219 tests. Full SQLite backend
+verification executed 1,238 passing tests with 59 skips.
+
+The PostgreSQL Work Plan, PR-run and migration selection initially reported
+295 passed and one failure. The historical Work Plan migration roundtrip omitted
+the recovery child migration before dropping its parent tables. The Host repaired
+that test's downgrade/upgrade ordering and retained its complete metadata
+comparison; production migration code was unchanged.
+
+After the repair, both the Work Plan and recovery migration tests passed on
+SQLite and PostgreSQL. `just test-pg modules/hub/tests/integration/migrations`
+passed all 15 migration tests without skips. These reruns overlap the original
+selection and are not additive. The remaining 295 PostgreSQL results are retained
+because the repair changes only the historical migration test and import order.
+The repaired test passed focused Ruff format/lint checks.

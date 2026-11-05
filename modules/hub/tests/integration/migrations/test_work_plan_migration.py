@@ -2,7 +2,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from app_layer_base.base.models.mixin import Base
-from sqlalchemy import inspect, UUID
+from sqlalchemy import UUID, inspect
 from sqlalchemy.ext.asyncio import create_async_engine
 from tests.integration.migrations.test_default_ai_catalogs import scripts
 
@@ -10,6 +10,10 @@ from tests.integration.migrations.test_default_ai_catalogs import scripts
 async def test_work_plan_migration_roundtrip_matches_metadata(session):
     def roundtrip(sync_connection):
         with Operations.context(MigrationContext.configure(sync_connection)):
+            recovery = scripts().get_revision("c03d206a98ad").module
+            recovery.downgrade()
+            assert "work_item_recoveries" not in inspect(sync_connection).get_table_names()
+            assert "work_item_recovery_events" not in inspect(sync_connection).get_table_names()
             branches = scripts().get_revision("9d0e1f2a3b4c").module
             branches.downgrade()
             groups = scripts().get_revision("c58e651b4354").module
@@ -29,6 +33,7 @@ async def test_work_plan_migration_roundtrip_matches_metadata(session):
             activity.upgrade()
             groups.upgrade()
             branches.upgrade()
+            recovery.upgrade()
         context = MigrationContext.configure(
             sync_connection,
             opts={
