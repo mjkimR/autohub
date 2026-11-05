@@ -24,9 +24,9 @@ summary: "Read before describing or changing Auto Hub interfaces; maps shared do
 | PR run | Operator | Filtered run row, state/lease context, control/decision dialog | Enroll PR, advance, pause, resume, cancel, attach PR, inspect decisions/attempts |
 | Execution attempt | Operator | Summary row, request/reply timeline, retained evidence | Open history, inspect request/reply, follow provider/PR evidence |
 | Run question | Operator | Pending question, answer editor, decision history | Ask, save answer, select answer for resume, dismiss |
-| SDD unit | Operator | Branch document, proposal/readiness row, effort selection | Browse, check readiness, start Planning, start Development, inspect execution lineage |
+| SDD unit | Operator | Branch document, proposal/readiness row, milestone member/prerequisite row, effort selection | Browse, check readiness, select eligible subset, inspect suggested order, clear selection, start Planning, start Development, inspect execution lineage |
 | Native SDD activity | Operator | Workflow stage/request panel, evidence, approval/publication status, decision history | Answer request, approve integration, request revision, revoke approval, reject, reconcile |
-| Repository viewer | Operator | Branch selector, tree, file content, unit execution links | Switch branch, browse file, refresh, open related run/PR |
+| Repository viewer | Operator | Branch selector, tree, file content, unit execution links, milestone selector and captured preview basis | Switch branch, browse file, refresh, preview milestone, open related run/PR |
 | Webhook delivery | Operator | Event/outcome row, retained delivery identifiers | Filter noteworthy/status, page, refresh, inspect outcome |
 | Notification channel | Operator | Destination card, credential/configuration form, delivery status | Add, edit, enable/disable, send test, delete |
 | Operator notice | Operator | Delivery result, last-error or last-sent indicator | Inspect delivery feedback |

@@ -4,8 +4,11 @@ title: Preview executable SDD milestone work
 summary: Expose selected milestone members and authoritative readiness so operators can review a sequential execution selection without starting work.
 status: in-progress
 created: 2026-11-05
-related_capabilities: []
-related_usecases: []
+related_capabilities:
+  - CAP-DOC-repository-viewer
+  - CAP-SDD-native-delivery
+related_usecases:
+  - UC-preview-sdd-milestone
 workflow: sdd-spec-feature
 ---
 
@@ -173,7 +176,7 @@ The recommendation is a routine design assumption within the authorized read-onl
 | Choose ref/milestone | UC-preview-sdd-milestone 1 | empty, loading, populated, selected, held, incomplete, error | stale | | `CAP-SDD-native-delivery` | Prior selection clears and the chosen basis appears. |
 | Preview or refresh | UC-preview-sdd-milestone 2 | empty, populated, selected, held, incomplete, error | loading | | `CAP-SDD-native-delivery` | Prior selection clears; obsolete responses are invalidated. Matching basis, completeness and member rows appear, or the exact refusal appears. |
 | Expand member prerequisites | UC-preview-sdd-milestone 3 | populated, held, incomplete | same | | `CAP-SDD-native-delivery` | Exact prerequisite IDs, anchors, status and hold reasons appear. |
-| Open source anchor | UC-preview-sdd-milestone 3 | populated, held, incomplete | same | `UX-repository` | `CAP-DOC-repository-viewer` | Read the anchor at the captured SHA. |
+| Open source anchor | UC-preview-sdd-milestone 3 | populated, held, incomplete | same | | `CAP-DOC-repository-viewer` | Open GitHub source at the captured SHA while retaining the panel. |
 | Open existing execution | UC-preview-sdd-milestone 3 | populated, held | same | `UX-run-decisions` | `CAP-SDD-native-delivery` | Open recorded run without resuming or approving it. |
 | Select/deselect eligible member | UC-preview-sdd-milestone 4 | populated, selected | selected | | `CAP-SDD-native-delivery` | Exact subset/order changes; no execution starts. |
 | Clear selection | UC-preview-sdd-milestone 4 | selected | populated | | `CAP-SDD-native-delivery` | Selected count returns to zero. |
