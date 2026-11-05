@@ -2,7 +2,7 @@
 id: PROP-sdd-milestone-execution
 title: Execute selected SDD milestone work sequentially
 summary: "Progress a durable selection of native SDD units sequentially while preserving dependency checks, approval boundaries and recoverable controls."
-status: reviewing
+status: accepted
 created_at: 2026-11-05
 target_area: capabilities/sdd/
 priority: high
