@@ -53,6 +53,16 @@ async def issue(client, scopes):
     return machine.json(), key.json()
 
 
+async def test_machine_key_routes_use_the_test_database(client, monkeypatch):
+    from app_prebuilt_auth.api_key import database
+
+    def outside_test_database():
+        raise AssertionError("Machine-key routes must use the fixture's session maker")
+
+    monkeypatch.setattr(database, "get_session_maker", outside_test_database)
+    await issue(client, [MCP_READ])
+
+
 @pytest.fixture
 async def key(client):
     _, result = await issue(client, [MCP_READ, MCP_WRITE])
