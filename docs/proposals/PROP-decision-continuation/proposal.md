@@ -2,7 +2,7 @@
 id: PROP-decision-continuation
 title: Follow decisions through explicit continuation
 summary: "Connect reviewed decisions to explicit next actions and visible application outcomes without conflating saved answers, approval or resumption."
-status: draft
+status: reviewing
 created_at: 2026-11-05
 target_area: capabilities/delivery/
 priority: medium
@@ -76,8 +76,7 @@ These examples guide Planning; the accepted spec will settle the requirements.
 
 ## 4. Lifecycle & Retirement Criteria
 
-This is queued draft work in `MS-operator-decisions`. Creation does not start Planning,
-accept the design or authorize implementation. Planning resolves the spike
+User plan-intent authorizes this high-effort Planning turn. ORDER OVERRIDE: Planning may precede completion of `PROP-operator-decision-inbox`; this exception authorizes Planning only. The accepted inbox design is a provisional dependency, not implemented evidence. No plan-accept or Development handoff authority is supplied. Planning resolves the spike
 questions, evaluates the recommended design and drafts affected interactions
 before code. The milestone frames the theme without binding the final scope.
 
