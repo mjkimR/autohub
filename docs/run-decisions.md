@@ -205,9 +205,9 @@ the new spec bundle and its workflow from the next stage, keeping the activity e
 Both refuse an existing remote branch of that name unless it carries Hub's own open
 pull request (a start whose response was lost, enrolled again). Branches that were
 never pushed are the local Host's to check before it calls. Both read the base's
-policy through devkit first and refuse an `incubation` development approach
+policy through devkit first and refuse an `adaptive-dev` development approach
 (`SDD_LIFECYCLE_INACTIVE`) before creating a branch or pull request; an acceptance on
-an incubation Planning head is refused the same way before anything is written. Both
+an adaptive-dev Planning head is refused the same way before anything is written. Both
 take `activity_effort` and `catalog`.
 
 ## Proposals panel
@@ -222,7 +222,7 @@ allows: **Start review** for a draft that needs no decomposition (neither
 `gate:plan-accept`, unheld, and **Start development** for an accepted proposal
 without a Development branch. A rejected proposal offers nothing and reads as
 waiting for the hygiene cleanup of a local Host. When the proposal's latest run
-recorded an `incubation` development approach, the row offers no start or acceptance
+recorded an `adaptive-dev` development approach, the row offers no start or acceptance
 (only **Reject…** while a run waits) and explains why. The start buttons send the chosen
 base branch and an optional effort override; otherwise the proposal recommendation applies.
 

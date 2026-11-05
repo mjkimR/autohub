@@ -695,7 +695,7 @@
     },
     ".devkit/managed/advisory/bundle.toml": {
       "mode": 420,
-      "sha256": "01af960b9f6579c8766255be5b5399d07361bd8808ef77be307f1922aecbce73"
+      "sha256": "ee8ae11ec869a0ae623c1d5bd62cb0bafc5c17b79cad09c10f905cdfb829c027"
     },
     ".devkit/managed/advisory/instructions/agent-advisory-python.md": {
       "mode": 420,
@@ -711,7 +711,7 @@
     },
     ".devkit/managed/advisory/rules/unique_code/guide.md": {
       "mode": 420,
-      "sha256": "63251543f1e99f713bfb2a827e907353577a4b35ecd2e008fad7ec28b69263ed"
+      "sha256": "e458e5ee002c0f7e00118d93b6beffc41b0d7231b07aaebc782d2a8b83dadd28"
     },
     ".devkit/managed/advisory/rules/unique_code/index.py": {
       "mode": 420,
@@ -1075,7 +1075,7 @@
     },
     ".devkit/managed/devkit/bundle.toml": {
       "mode": 420,
-      "sha256": "19c8162b30fe4242bb9a1407ede05d99183827d30be9a9d8c205d0f897fee17a"
+      "sha256": "21389d0058d6b1952b346647fb16293c33e0f7a61313f58b2b299970ba256139"
     },
     ".devkit/managed/devkit/instructions/consumption.md": {
       "mode": 420,
@@ -1095,7 +1095,7 @@
     },
     ".devkit/managed/harness/bundle.toml": {
       "mode": 420,
-      "sha256": "05e901623b1af445b8e95cf4084c52fa0db0568929f6a6294b80327a0af94997"
+      "sha256": "8bada5b3b8a032858893f3728e28bf28962a547dbefcc5bee43f24f181ddebab"
     },
     ".devkit/managed/harness/instructions/devkit-run.md": {
       "mode": 420,
@@ -1114,9 +1114,9 @@
   "packages": [
     {
       "bundle": "advisory",
-      "bundle_version": "0.1.5",
+      "bundle_version": "0.1.6",
       "package": "devkit-dist",
-      "package_version": "0.1.5"
+      "package_version": "0.1.6"
     },
     {
       "bundle": "app-common",
@@ -1126,15 +1126,15 @@
     },
     {
       "bundle": "devkit",
-      "bundle_version": "0.1.5",
+      "bundle_version": "0.1.6",
       "package": "devkit-dist",
-      "package_version": "0.1.5"
+      "package_version": "0.1.6"
     },
     {
       "bundle": "harness",
-      "bundle_version": "0.1.5",
+      "bundle_version": "0.1.6",
       "package": "devkit-agt",
-      "package_version": "0.1.5"
+      "package_version": "0.1.6"
     }
   ],
   "schema": 1,
@@ -1162,6 +1162,6 @@
   },
   "tool": {
     "package": "devkit-dist",
-    "version": "0.1.5"
+    "version": "0.1.6"
   }
 }

@@ -6,7 +6,9 @@ root [`pyproject.toml`](../../../pyproject.toml) `[tool.uv.sources]`. Rebuild it
 package, so this nested package is distributed as a committed artifact. `package-lock.json` pins the artifact's
 npm integrity. The repository view passes its own `repositoryDataSource`; the library adds no autohub API call.
 The frontend library retains its independent npm version `0.1.0`; the root devkit pin identifies its source.
-Roadmap membership follows direct proposal anchors, and the Read tab supports the release handbook.
+This artifact was built from devkit 0.1.6, commit `b151a10bb4ab9433c1dbaeb6c316917c959b6ba0`.
+Roadmap membership follows direct proposal anchors; global and package namespace milestones, including archives,
+are discovered on the selected branch. The Read tab supports the release handbook.
 Local-only Planning overlays and shared artifacts are optional data-source capabilities and are not enabled here.
 
 To rebuild, use a clean checkout of that published commit (Node and npm):

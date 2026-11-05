@@ -30,10 +30,11 @@ stay in autohub.
   `Proposals` (`docs/proposals/PROP-*/` bundles), `Specs` (`specs/` task bundles)
   (the Proposals panel above the viewer starts and decides proposals; see
   [run decisions](run-decisions.md#proposals-panel)),
-  `Roadmap` (`docs/roadmap/MS-*.md` milestones by status, `depends_on` readiness and
+  `Roadmap` (`docs/roadmap/MS-*.md` and `docs/packages/<name>/roadmap/MS-*.md`
+  milestones by status, `depends_on` readiness and
   direct member proposals) and `Files` (file explorer), with search and status
   filters. Terminal (`done` and `dropped`) milestones live in the flat
-  `docs/roadmap/_archive/` directory; the dashboard and Roadmap include them.
+  `_archive/` directory of each roadmap root; the dashboard and Roadmap include them.
   With the pinned devkit viewer, milestones and their members come from
   the selected branch. Only `docs/proposals/PROP-*/proposal.md` anchors establish
   membership; historical `milestone` fields on specs are ignored. Select a `plan-`

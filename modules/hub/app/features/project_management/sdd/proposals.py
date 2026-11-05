@@ -5,7 +5,7 @@ The base holds the proposal's own status; a ``plan-<slug>`` branch shows a draft
 reject a reviewing proposal through its waiting run, start Development of an accepted one. A rejected proposal takes
 no action; it waits for the hygiene cleanup of a local Host. A draft that devkit-spec's decomposition gate refuses
 (``needs_decompose`` or a size other than S, M or L) offers no Planning start, and a repository whose
-``[development] approach`` is incubation offers neither a start nor an acceptance (devkit-spec refuses them).
+``[development] approach`` is adaptive-dev offers neither a start nor an acceptance (devkit-spec refuses them).
 """
 
 import asyncio
@@ -18,7 +18,7 @@ from app.features.project_management.work_plans.github import WorkGitHub
 
 from .activities import _frontmatter_value, _text
 from .gates import PLAN_ACCEPT_REQUEST
-from .policy import INCUBATION, LIFECYCLE_INACTIVE, development_approach, size_blocker
+from .policy import ADAPTIVE_DEV, LIFECYCLE_INACTIVE, development_approach, size_blocker
 from .progress import held
 
 PROPOSAL_LIMIT = 50
@@ -32,7 +32,7 @@ def _slug(name: str) -> str | None:
 def recorded_approach(runs) -> str | None:
     """The ``[development] approach`` the latest run evaluation recorded, ``None`` before any evaluation.
 
-    Incubation when either the Planning head (where devkit-spec accepts) or the owning base (where Development
+    Adaptive development when either the Planning head (where devkit-spec accepts) or the owning base (where Development
     hands off) chose it. A hint for which actions to offer; starts and acceptances read the policy again.
     """
     for run in runs:
@@ -47,7 +47,7 @@ def recorded_approach(runs) -> str | None:
             if isinstance(policy, dict) and policy
         ]
         if policies:
-            return INCUBATION if any(development_approach(p) == INCUBATION for p in policies) else "sdd"
+            return ADAPTIVE_DEV if any(development_approach(p) == ADAPTIVE_DEV for p in policies) else "sdd"
     return None
 
 
@@ -89,7 +89,7 @@ def proposal_state(
     size = size_blocker(_frontmatter_value(anchor or "", "size"))
     if status == "rejected":
         note = "Planning ended by rejection; a local Host removes it in hygiene after writing its ADR"
-    elif approach == INCUBATION:
+    elif approach == ADAPTIVE_DEV:
         note = LIFECYCLE_INACTIVE
     elif status == "draft" and not plan:
         if _frontmatter_value(anchor or "", "needs_decompose") == "true":
@@ -101,7 +101,7 @@ def proposal_state(
     elif status == "accepted" and not dev:
         actions.append("start_development")
     if run and run["plan_accept_open"] and status != "rejected":
-        actions += ["reject"] if approach == INCUBATION else ["accept", "reject"]
+        actions += ["reject"] if approach == ADAPTIVE_DEV else ["accept", "reject"]
     return {
         "slug": slug,
         "id": f"PROP-{slug}",

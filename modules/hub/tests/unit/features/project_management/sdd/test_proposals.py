@@ -61,24 +61,26 @@ def test_planning_is_offered_only_for_sizes_the_decomposition_gate_allows(size, 
         assert state["note"] == f"The proposal is size {size}; decompose it in Backlog before Planning (S, M or L)"
 
 
-def test_recorded_approach_reads_the_latest_evaluated_policy():
+@pytest.mark.parametrize("inactive", ["adaptive-dev", "incubation"])
+def test_recorded_approach_reads_the_latest_evaluated_policy(inactive):
     assert proposals.recorded_approach([]) is None
     assert proposals.recorded_approach([run()]) is None  # no evaluation recorded a policy yet
-    assert proposals.recorded_approach([run(approach="sdd"), run(approach="incubation")]) == "sdd"
+    assert proposals.recorded_approach([run(approach="sdd"), run(approach=inactive)]) == "sdd"
+    assert proposals.recorded_approach([run(approach=inactive)]) == "adaptive-dev"
     base = run(approach="sdd")
-    base.sdd_progress["base_policy"] = policy("incubation")
-    assert proposals.recorded_approach([base]) == "incubation"
+    base.sdd_progress["base_policy"] = policy(inactive)
+    assert proposals.recorded_approach([base]) == "adaptive-dev"
     legacy = run()
     legacy.sdd_snapshot = {"policy": {"approvals": {}}}  # before devkit reported [development]
     assert proposals.recorded_approach([legacy]) == "sdd"
 
 
-def test_incubation_offers_no_lifecycle_start_or_acceptance():
+def test_adaptive_dev_offers_no_lifecycle_start_or_acceptance():
     for status, branches in (("draft", set()), ("accepted", {"plan-a"})):
-        state = proposals.proposal_state("a", anchor(status), branches, {}, None, "incubation")
+        state = proposals.proposal_state("a", anchor(status), branches, {}, None, "adaptive-dev")
         assert state["actions"] == [] and "SPEC_LIFECYCLE_INACTIVE" in state["note"]
-    waiting = proposals.waiting_run([run(approach="incubation")])
-    reviewing = proposals.proposal_state("a", anchor("draft"), {"plan-a"}, {}, waiting, "incubation")
+    waiting = proposals.waiting_run([run(approach="adaptive-dev")])
+    reviewing = proposals.proposal_state("a", anchor("draft"), {"plan-a"}, {}, waiting, "adaptive-dev")
     assert reviewing["actions"] == ["reject"]  # Hub rejects by itself; devkit-spec refuses the acceptance
 
 

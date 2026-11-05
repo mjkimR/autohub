@@ -204,7 +204,7 @@ async def test_json_diagnostic_never_leaks_repository_text(tmp_path, monkeypatch
     ("code", "hint"),
     [
         ("SPEC_LIFECYCLE_INACTIVE", 'approach = "sdd"'),
-        ("DEVELOPMENT_CONFIG_INVALID", '"sdd" or "incubation"'),
+        ("DEVELOPMENT_CONFIG_INVALID", '"sdd" or "adaptive-dev"'),
         ("SPEC_CONFIG_INVALID", "[tool.spec]"),
         ("SPEC_PROPOSAL_POLICY_NOT_AUTO", 'plan-accept = "auto"'),
     ],

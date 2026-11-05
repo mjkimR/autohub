@@ -61,7 +61,8 @@ def test_closure_answers_cover_every_open_question_per_worker_file():
     assert 'decision: "Planning ended by rejection: Not now: \\"scope\\" too wide"' in answers["worker-01.yaml"]
 
 
-async def test_acceptance_is_refused_up_front_for_an_incubation_head(monkeypatch, tmp_path):
+@pytest.mark.parametrize("approach", ["adaptive-dev", "incubation"])
+async def test_acceptance_is_refused_up_front_for_an_adaptive_dev_head(monkeypatch, tmp_path, approach):
     from contextlib import asynccontextmanager
 
     @asynccontextmanager
@@ -73,14 +74,14 @@ async def test_acceptance_is_refused_up_front_for_an_incubation_head(monkeypatch
 
     class Service:
         async def evaluate(self, root, unit, head, base, snapshot, approved):
-            policy = {"approvals": {}, "development": {"approach": "incubation", "source": ".devkit/config.toml"}}
+            policy = {"approvals": {}, "development": {"approach": approach, "source": ".devkit/config.toml"}}
             return {"evidence_digest": "d", "snapshot": {"policy": policy}, "current": {"requests": []}}
 
     monkeypatch.delenv("AUTOHUB_SDD_COMMIT_IDENTITY", raising=False)
     monkeypatch.setattr(plan_decisions, "checkout", checkout)
     monkeypatch.setattr(plan_decisions, "command", command)
     pull = {"head": {"sha": "a" * 40, "ref": "plan-demo"}, "base": {"sha": "b" * 40}}
-    with pytest.raises(ProjectError, match="incubation") as refused:
+    with pytest.raises(ProjectError, match="adaptive-dev") as refused:
         await plan_decisions.record_plan_decision(
             Service(),
             "owner/app",

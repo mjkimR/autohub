@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Implementation review: **2026-10-29**. Last recorded production baseline:
+Implementation review: **2026-11-05**. Last recorded production baseline:
 **2026-10-02**, Cloud Run revision `autohub-00015-4l4`, DB schema `autohub`.
 This document has not rechecked the currently serving revision. Dated canaries
 below establish their tested scope only; local changes do not establish deployment.
@@ -18,11 +18,42 @@ runtime setup and the devkit/Hub responsibility boundary. Current capabilities:
 | Pipeline progression | Shared tick/webhook/manual driver; immediate ready transitions, bounded retries and preserved waits | [Advancement](development.md#pipeline-advancement) |
 | SDK flows | Durable host, scoped approval and the existing-PR devkit bridge | [SDK contract](sdk-task-flow.md) |
 
+### devkit v0.1.6 검증 (2026-11-05)
+
+개발 환경과 기본/app-common SDD 프로필의 manifest·lock을 devkit 0.1.6 커밋
+`b151a10bb4ab9433c1dbaeb6c316917c959b6ba0`으로 맞추고, 새 환경에서 자산을
+동기화했다. 두 SDD 프로필은 기존 환경을 덮어쓰지 않고 `.cache/sdd-v016`과
+`.cache/sdd-app-common-v016`에 설치해 검증했다.
+
+`incubation` → `adaptive-dev` 변경에 맞춰 Planning/Development 시작, 제안 승인,
+Proposals 화면의 동작 제한과 오류 안내를 수정했다. 기존 실행 기록의 `incubation`도
+같은 제한으로 해석한다. 실제 CLI에서 이전 설정이 거절될 때 새 설정명을 안내하는
+회귀 테스트를 추가했다. Hub의 승인·게시·handoff 경로는 기존 CLI 계약을 유지하며,
+devkit의 composed acceptance/integration 명령은 호출하지 않는다.
+
+같은 커밋에서 devkit-viewer 아티팩트를 다시 빌드하고 npm 무결성 값을 갱신했다.
+전역/패키지별 roadmap과 각 `_archive`에서 선택한 브랜치의 제안을 열고 실행 단위로
+연결하는 동작을 네 가지 경로로 검증했다.
+
+| 검증 | 결과 | 범위 |
+| --- | --- | --- |
+| 전체 백엔드, SQLite + 새 SDD 프로필 | 1,218 통과 / 17 건너뜀 | 전체 회귀 및 실제 Git·격리 CLI |
+| 필수 격리 SDD 계약, SQLite | 106 통과 / 2 건너뜀 | 승인, 거절, 복구, handoff, 프로필 선택, SDK 브리지; 행 잠금 경합 2건은 PostgreSQL에서 검증 |
+| SDD 계약·SDK 브리지, PostgreSQL | 108 통과 | 행 잠금·게시 취소 경합 포함, 건너뜀 없음 |
+| 프런트엔드 | 210 통과 | 새 viewer와 전역/패키지별·보관 roadmap |
+| 독립 SDK | 27 통과 | HTTP 및 원격 계약; wheel·sdist 빌드 성공 |
+
+`just lint`, `just check`, `just check-ui-api`, 세 환경의 `uv lock --check`,
+`devkit status`, `devkit sync --check`, 문서 파일 링크와 `git diff --check`가 통과했다.
+저장소 전체 `devkit rules check`는 오류 0건이며 기존 HTTP 클라이언트 경고 3건이
+남아 있다. 운영 배포, Docker 이미지 빌드, 실제 GitHub canary는 실행하지 않았다.
+기존 서버의 런타임 경로 전환과 활성 실행 정리는 [전환 절차](devkit-integration.md#assign-repositories)를 따른다.
+
 ### devkit v0.1.5 verification (2026-10-29)
 
 The devkit v0.1.5 upgrade was verified locally against immutable monorepo commit
 `96f34f89b689bf73a5cf225224d93583249c3bf3`; the reviewed manifests and locks under
-`config/sdd-runtime*` record it. The follow-up aligns Hub with v0.1.5 behavior: an
+`config/sdd-runtime*` recorded it for that verification. The follow-up aligned Hub with v0.1.5 behavior: an
 XL draft is refused at Hub's Planning start with devkit-spec's size gate as the
 reason, an `incubation` development approach refuses starts and acceptance before
 any write, the new configuration refusals carry fix hints, `ux-review` rounds appear

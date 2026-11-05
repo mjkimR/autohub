@@ -6,17 +6,19 @@ from .checkout import checkout, command
 from .runtime import restore
 
 SIZES = ("S", "M", "L")
-INCUBATION = "incubation"
+ADAPTIVE_DEV = "adaptive-dev"
 LIFECYCLE_INACTIVE = (
-    "The repository's [development] approach is incubation, so devkit-spec refuses proposal acceptance and handoff "
+    "The repository's [development] approach is adaptive-dev, so devkit-spec refuses proposal acceptance and handoff "
     '(SPEC_LIFECYCLE_INACTIVE); choose approach = "sdd" in .devkit/config.toml to use the SDD lifecycle'
 )
 
 
 def development_approach(policy: dict | None) -> str:
-    """The ``[development] approach`` a ``devkit spec policy`` result reports; ``sdd`` when it reports none."""
+    """Read current policy and saved pre-0.1.6 snapshots; absent approaches default to ``sdd``."""
     development = (policy or {}).get("development")
     approach = development.get("approach") if isinstance(development, dict) else None
+    if approach == "incubation":  # historical run evidence, not a supported repository configuration
+        return ADAPTIVE_DEV
     return approach if isinstance(approach, str) and approach else "sdd"
 
 
@@ -60,7 +62,7 @@ async def start_blocker(repository: str, base: str, token: str, unit: str, activ
 
     async with checkout(repository, base, base, token) as root:
         await restore(root)
-        if development_approach(await cli(root, "spec", "policy")) == INCUBATION:
+        if development_approach(await cli(root, "spec", "policy")) == ADAPTIVE_DEV:
             return LIFECYCLE_INACTIVE
         if activity != "plan":
             return None

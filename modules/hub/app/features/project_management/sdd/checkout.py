@@ -33,11 +33,11 @@ CLI_FIXES = {
         'plan-accept = "auto" in [workflow.approvals] of the base\'s .devkit/config.toml.'
     ),
     "SPEC_LIFECYCLE_INACTIVE": (
-        "The repository's [development] approach is incubation, which disables proposal acceptance and handoff; "
+        "The repository's [development] approach is adaptive-dev, which disables proposal acceptance and handoff; "
         'set approach = "sdd" in .devkit/config.toml to use the SDD lifecycle.'
     ),
     "DEVELOPMENT_CONFIG_INVALID": (
-        'Set [development] to only approach = "sdd" or "incubation" in .devkit/config.toml and commit it.'
+        'Set [development] to only approach = "sdd" or "adaptive-dev" in .devkit/config.toml and commit it.'
     ),
     "SPEC_CONFIG_INVALID": (
         "Correct the devkit-spec configuration in .devkit/config.toml ([tool.spec], or [workflow.approvals] and "

@@ -55,7 +55,7 @@ def register_sdd(registry: ToolRegistry, deps: Dependencies) -> None:
     register(
         registry,
         "sdd_start_development",
-        "Start Development of an accepted proposal in the cloud: Hub creates dev-<slug> from base_branch with an empty start commit, opens a draft pull request and enrolls a handoff-first run whose first step is devkit spec proposal handoff. An existing remote dev-<slug> refuses the start unless it carries Hub's own open pull request. Repositories whose [development] approach is incubation refuse both starts.",
+        "Start Development of an accepted proposal in the cloud: Hub creates dev-<slug> from base_branch with an empty start commit, opens a draft pull request and enrolls a handoff-first run whose first step is devkit spec proposal handoff. An existing remote dev-<slug> refuses the start unless it carries Hub's own open pull request. Repositories whose [development] approach is adaptive-dev refuse both starts.",
         StartActivity,
         RunView,
         start_development,

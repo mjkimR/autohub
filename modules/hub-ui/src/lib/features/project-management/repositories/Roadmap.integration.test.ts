@@ -4,22 +4,28 @@ import { SddViewer, type RepositoryDataSource } from 'devkit-viewer';
 
 afterEach(cleanup);
 
-test('embedded roadmap reads the selected branch proposal and opens its unit for execution links', async () => {
+test.each([
+	'docs/roadmap/MS-delivery.md',
+	'docs/roadmap/_archive/MS-delivery.md',
+	'docs/packages/sdk/roadmap/MS-delivery.md',
+	'docs/packages/sdk/roadmap/_archive/MS-delivery.md'
+])('embedded roadmap opens selected-branch proposal members of %s', async (milestone) => {
 	const proposal = 'docs/proposals/PROP-feature/proposal.md';
-	const milestone = 'docs/roadmap/MS-delivery.md';
 	const documents: Record<string, string> = {
 		[milestone]:
 			'---\nid: MS-delivery\ntitle: Delivery\nstatus: active\ndepends_on: []\n---\n# Delivery',
 		[proposal]:
 			'---\nid: PROP-feature\ntitle: Active feature\nstatus: reviewing\nmilestone: MS-delivery\n---\n# Active feature'
 	};
-	const tree: Record<string, string[]> = {
-		'': ['docs'],
-		docs: ['docs/roadmap', 'docs/proposals'],
-		'docs/roadmap': [milestone],
-		'docs/proposals': ['docs/proposals/PROP-feature'],
-		'docs/proposals/PROP-feature': [proposal]
-	};
+	const tree: Record<string, string[]> = {};
+	for (const path of [milestone, proposal]) {
+		const parts = path.split('/');
+		for (let i = 0; i < parts.length; i++) {
+			const parent = parts.slice(0, i).join('/');
+			const child = parts.slice(0, i + 1).join('/');
+			if (!(tree[parent] ??= []).includes(child)) tree[parent].push(child);
+		}
+	}
 	const source: RepositoryDataSource = {
 		info: async () => ({ default_branch: 'main' }),
 		refs: async () => ({ default_branch: 'main', branches: ['main', 'plan-feature'] }),

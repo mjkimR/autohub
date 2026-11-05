@@ -32,9 +32,13 @@ their review gaps are guidance, while the CLI remains the source of gate state.
 | Existing PR and bound spec/proposal | Check readiness and enroll the same PR |
 | Externally implemented, paused PR | SDK bridge verifies evidence and requires scoped approval before resuming its owner |
 
-A repository whose `[development] approach` is `incubation` has no SDD lifecycle:
+A repository whose `[development] approach` is `adaptive-dev` has no SDD lifecycle:
 devkit-spec refuses acceptance and handoff (`SPEC_LIFECYCLE_INACTIVE`), so Hub
 neither offers nor starts Planning or Development there and refuses acceptance.
+devkit 0.1.6 renamed `incubation` to `adaptive-dev`: update the repository's
+`.devkit/config.toml` and run `devkit sync`. The old configuration is rejected with
+`DEVELOPMENT_CONFIG_INVALID`; Hub still recognizes the former name in saved run
+evidence so historical records keep their lifecycle restrictions.
 Planning and Development start/decision rules are in
 [run decisions](run-decisions.md#starting-planning-and-development). Existing-PR
 execution is available in the [SDD repository panel](repository-viewer.md); the
@@ -121,12 +125,12 @@ The installer refuses to replace a destination whose lock differs; use a new
 directory when updating locally. Settle existing runs before changing their runtime.
 
 When adopting another devkit commit, preserve the existing installation directories and
-provision fresh profiles (any new directory names) before switching the host configuration:
+provision fresh profiles before switching the host configuration. For 0.1.6:
 
 ```sh
-just install-sdd .cache/sdd-next
-just install-sdd .cache/sdd-app-common-next config/sdd-runtime-app-common
-AUTOHUB_TEST_SDD_APP_COMMON="$PWD/.cache/sdd-app-common-next" just test-sdd .cache/sdd-next
+just install-sdd .cache/sdd-v016
+just install-sdd .cache/sdd-app-common-v016 config/sdd-runtime-app-common
+AUTOHUB_TEST_SDD_APP_COMMON="$PWD/.cache/sdd-app-common-v016" just test-sdd .cache/sdd-v016
 ```
 
 After settling active runs, set `AUTOHUB_SDD_HOME` and any `AUTOHUB_SDD_PROFILES`
@@ -135,6 +139,9 @@ mapping to these absolute paths (or deploy the image's refreshed `/opt/sdd` and
 before enrolling replacement runs. The installer records versions and revisions
 for every devkit distribution the lock resolves (`devkit-core`, `devkit-cli`,
 `devkit-dist`, `devkit-agt`, `devkit-advisory`, `devkit-docs` and `devkit-spec`).
+After changing dependency pins, synchronize the resulting environment and assets,
+rebuild the [vendored viewer](../modules/hub-ui/vendor/devkit-viewer.md), and run
+lint, type/build, backend, SDK, frontend and isolated SDD checks with the new runtime.
 
 ### Add or update a profile
 

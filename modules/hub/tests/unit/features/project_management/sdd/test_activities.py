@@ -229,12 +229,12 @@ async def test_planning_refusal_reports_what_the_base_evaluation_found(started, 
 
 
 @pytest.mark.parametrize("activity", ["plan", "dev"])
-async def test_incubation_base_refuses_starts_before_creating_branches(started, activity):
+async def test_adaptive_dev_base_refuses_starts_before_creating_branches(started, activity):
     github, branches, enrolled, project, starter = started
-    github.approach = "incubation"
+    github.approach = "adaptive-dev"
     if activity == "dev":
         github.proposal = DRAFT.replace("status: draft", "status: accepted")
-    with pytest.raises(ProjectError, match="incubation") as refused:
+    with pytest.raises(ProjectError, match="adaptive-dev") as refused:
         await starter.start(project, activity, "demo", request(), "user:mj")
     assert refused.value.status == 409 and refused.value.code == "SDD_LIFECYCLE_INACTIVE"
     assert github.checkouts == [BASE] and not branches and not github.created and not enrolled

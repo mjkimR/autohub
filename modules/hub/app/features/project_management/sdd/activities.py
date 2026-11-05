@@ -4,7 +4,7 @@ Planning: ``plan-<slug>`` from the base, a start commit that sets the draft prop
 request and a run whose first attempt is the Planning worker. Development: ``dev-<slug>`` from the base, an empty
 start commit, a draft pull request and a run whose first step is ``devkit spec proposal handoff``. Both refuse an
 existing remote branch; Hub's own open pull request on it is enrolled again instead (recovery after a lost response).
-Before writing anything, both read the base through devkit: an ``incubation`` development approach refuses them, and
+Before writing anything, both read the base through devkit: an ``adaptive-dev`` development approach refuses them, and
 Planning also needs devkit-spec's size gate (S, M, L or no size) and a recorded plan-intent.
 """
 
