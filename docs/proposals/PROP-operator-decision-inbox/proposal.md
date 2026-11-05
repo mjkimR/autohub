@@ -90,7 +90,7 @@ Closing review preserves filters, loaded page and focus on the originating row, 
 - **E4**: Given more than 100 pending subjects, paging queries at most limit plus one rows, starts no execution and performs zero repository/provider calls; closing an earlier entry does not duplicate unchanged later entries.
 - **E5**: Given two requests on a native run, selecting one opens that identity or explains why it cannot be answered; it never substitutes the first request.
 - **E6**: Given pre-existing native evidence, bootstrap labels age First observed waiting from backfill; repeated same-subject refresh preserves that timestamp, and a changed generation resets it.
-- **E7**: Given publication in progress, current approval, terminal owner, hidden project or held integration, its nonactionable subject is absent while the appropriate blocking question remains discoverable.
+- **E7**: Given native proposal publication in progress, current approval, terminal owner, hidden project or held integration, that decision subject is absent while the appropriate blocking question remains discoverable. Native worker answer publication follows E9 instead.
 - **E9**: Given a native worker answer is dispatched before envelope publication, its row remains visible as Answer publication pending with no answer controls; publication resolution removes it.
 - **E10**: Given repository evidence changed or an inspection races an owner mutation, refresh either persists the current replacement basis under CAS or discards the stale result; explicit reinspection can review the replacement without dispatch or authority revival.
 - **E8**: Given a conflict after refreshed inspection, the existing owner rejects the stale mutation; the inbox grants no authority and reinspection is required.

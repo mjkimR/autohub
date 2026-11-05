@@ -43,8 +43,7 @@ Draft additions to the existing object register rows (retain their other represe
 | Project connection | Operator | Decision inbox project filter and row context | Filter pending decisions, open project |
 | PR run | Operator | Decision inbox owner row and refreshed review dialog | Review exact decision, inspect PR |
 | Run question | Operator | Ordinary pending/Answer saved row; native Hub question row using native owner behavior | Review question, save/select/dismiss through owner controls |
-| SDD unit | Operator | Decision inbox proposal identity and inspected evidence head | Review native Run question | `UC-complete-sdd-workflow` 3d | populated | reviewing | `UX-run-decisions` | `CAP-SDD-workflow-control` | Exact Hub question loads with native answer/application behavior. |
-| Review proposal decision |
+| SDD unit | Operator | Decision inbox proposal identity and inspected evidence head | Review proposal decision |
 | Native SDD activity | Operator | Exact worker/workflow/integration row; disabled Answer publication pending row; First observed waiting label | Review exact request, inspect publication progress |
 
 
