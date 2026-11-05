@@ -235,4 +235,3 @@ with recovery disclosure/history representations and retry, inspect history and
 refresh recovery actions. Register a qualified Work Item recovery record in the
 glossary only if exposed as a separately named domain object; do not reuse
 Execution attempt for it.
-
