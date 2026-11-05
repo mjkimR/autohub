@@ -1,0 +1,27 @@
+kind: challenger
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-05T06:00:37.509031Z'
+status: completed
+summary: Pinned Hub panel fits scope; fold shared scheduling semantics and separate workflow holds from native start admission.
+findings:
+- issue: Dependency projection changes existing devkit scheduling semantics.
+  evidence: proposal.md decisions 5-6; .devkit/managed/spec/skills/spec-next/references/next-work.md:10-12,30-39
+  failure_condition: Dropped milestone prerequisite, completed SPEC with unfinished historical prerequisites, or active stale handed-off PROP reference.
+  suggested_action: Match done/dropped milestone and exact completed SPEC semantics; stop at completed anchors; add no start gate.
+  resolution: open
+  severity: P1
+- issue: Shared start admission alone does not implement worker-question/problem holds.
+  evidence: modules/hub/app/features/project_management/sdd/policy.py:44-70; services.py:69-97; progress.py:78-83
+  failure_condition: Intent is done while a worker question/problem remains; accepted proposal start does not evaluate every workflow hold.
+  suggested_action: Separate native admission and preview scheduling/hold facets, reuse read_hold/held, and preserve single-start behavior.
+  resolution: open
+  severity: P2
+assumptions:
+- 'Codex emulated route: explicit absolute paths, read-only role commands and reported no outside reads/writes; no native confinement guarantee.'
+checks:
+  scope: PASS matching before/after temporary-index trees ca6e6fef0ca3d80a667f431901f201650ad544ec
+diff_scope:
+  base: ac9e7562d5835dd8d8cc380c7203af9544f080a0
+  head: a74a33ba69c419a4313f54a2a2431b8083eb4cb8

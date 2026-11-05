@@ -54,7 +54,8 @@ The recommendation is a routine design assumption within the authorized read-onl
 **Content**: The member table is primary. The captured basis and completeness notice sit above it; local selection and suggested order follow it. Row details reveal exact dependency anchors and activity links. Style follows `modules/hub-ui/src/routes/layout.css` and existing repository controls.
 
 - Repository viewer: project/repository, ref, captured SHA and refresh control.
-- SDD unit: milestone selector and member rows with exact proposal IDs/paths.
+- Repository viewer: milestone selector and Preview milestone action.
+- SDD unit: member rows with exact proposal IDs/paths.
 - SDD unit: eligibility, proposed Planning or handoff-first Development, exact prerequisite reasons, selection checkbox when eligible.
 - Native SDD activity: timestamped workflow/runtime evidence and existing activity links, when available.
 - PR run: existing project-scoped execution/PR link, when recorded.
@@ -75,8 +76,8 @@ The recommendation is a routine design assumption within the authorized read-onl
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Choose ref/milestone | UC-preview-sdd-milestone 1 | empty, populated, selected | stale | | `CAP-SDD-native-delivery` | Prior selection clears and the chosen basis appears. |
-| Preview or refresh | UC-preview-sdd-milestone 2 | empty, populated, held, incomplete, error | loading | | `CAP-SDD-native-delivery` | Matching basis, completeness and member rows appear, or the exact refusal appears. |
+| Choose ref/milestone | UC-preview-sdd-milestone 1 | empty, loading, populated, selected, held, incomplete, error | stale | | `CAP-SDD-native-delivery` | Prior selection clears and the chosen basis appears. |
+| Preview or refresh | UC-preview-sdd-milestone 2 | empty, populated, selected, held, incomplete, error | loading | | `CAP-SDD-native-delivery` | Prior selection clears; obsolete responses are invalidated. Matching basis, completeness and member rows appear, or the exact refusal appears. |
 | Expand member prerequisites | UC-preview-sdd-milestone 3 | populated, held, incomplete | same | | `CAP-SDD-native-delivery` | Exact prerequisite IDs, anchors, status and hold reasons appear. |
 | Open source anchor | UC-preview-sdd-milestone 3 | populated, held, incomplete | same | `UX-repository` | `CAP-DOC-repository-viewer` | Read the anchor at the captured SHA. |
 | Open existing execution | UC-preview-sdd-milestone 3 | populated, held | same | `UX-run-decisions` | `CAP-SDD-native-delivery` | Open recorded run without resuming or approving it. |
@@ -84,7 +85,7 @@ The recommendation is a routine design assumption within the authorized read-onl
 | Clear selection | UC-preview-sdd-milestone 4 | selected | populated | | `CAP-SDD-native-delivery` | Selected count returns to zero. |
 | End inspection | UC-preview-sdd-milestone 5 | populated, selected, held, incomplete, error | end | back | `CAP-SDD-native-delivery` | Return to repository content without saving a queue. |
 
-**Register changes**: Extend the SDD unit row with milestone member/prerequisite representation and Preview milestone, select subset, inspect order and clear selection actions. Extend Repository viewer representations with captured preview basis. Do not add Work Plan/Work Item rows or rename existing terms. These are representations of existing objects, not a new execution domain object.
+**Register changes**: Extend the SDD unit row with milestone member/prerequisite representation and select subset, inspect order and clear selection actions. Extend Repository viewer representations with milestone selector and captured preview basis, plus Preview milestone action. Do not add Work Plan/Work Item rows or rename existing terms. These are representations of existing objects, not a new execution domain object.
 
 ## 3. Architecture and Decision Impact
 
