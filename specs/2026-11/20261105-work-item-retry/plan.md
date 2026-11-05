@@ -31,7 +31,7 @@ Normative input: `POST /{plan_id}/items/{item_id}/recover` accepts UUID `request
 
 Immutable recovery command/snapshot rows plus append-only typed outcome events preserve history separately from mutable current Item state. A partial unique pending index gives one recovery owner per Item. Events record accepted, reconciling, awaiting-admission, running, completed and refused transitions. Run identity is a snapshot rather than a deleting FK. Legacy Items need no backfill.
 
-Lock order is Project → Plan → catalog when admission needs it → Run → Item → recovery. Existing observation/retention uses Run → Item and never acquires Project/Plan afterward. Item-only lease writes acquire no parent afterward. A recovery intent commits before I/O. Applying observations rechecks Plan revision/state, Run revision, Item lease token/expiry and recovery identity. No transaction holds locks during remote I/O. Pause/revoke after recovery acceptance fences activation rather than silently activating the Plan.
+Lock order is Project → Plan → Run → Item → catalog when terminal admission needs it → recovery. Ordinary preparation admission locks Project → Plan → catalog without locking Runs. Existing observation/retention uses Run → Item and never acquires Project/Plan afterward. Existing delivery also locks Run before catalog. Item-only lease writes acquire no parent afterward. A recovery intent commits before I/O. Applying observations rechecks Plan revision/state, Run revision, Item lease token/expiry and recovery identity. No transaction holds locks during remote I/O. Pause/revoke after recovery acceptance fences activation rather than silently activating the Plan.
 
 ## 5. Error Handling & Edge Cases
 

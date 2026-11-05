@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -125,3 +126,43 @@ class WorkPlanActivity(Base, UUIDMixin, TimestampMixin):
     revision: Mapped[int] = mapped_column()
     body: Mapped[str] = mapped_column(Text, default="")
     changes: Mapped[dict] = mapped_column(JSON_VARIANT, default=dict)
+
+
+class WorkItemRecovery(Base, UUIDMixin, TimestampMixin):
+    """Immutable command and prior outcome; mutable progress is also recorded as events."""
+
+    __tablename__ = "work_item_recoveries"
+    __table_args__ = (
+        UniqueConstraint("project_id", "request_id", name="uq_work_item_recovery_request"),
+        Index(
+            "uq_work_item_pending_recovery",
+            "item_id",
+            unique=True,
+            postgresql_where=text("state IN ('accepted', 'reconciling', 'awaiting-admission')"),
+            sqlite_where=text("state IN ('accepted', 'reconciling', 'awaiting-admission')"),
+        ),
+    )
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id", ondelete="RESTRICT"))
+    plan_id: Mapped[UUID] = mapped_column(ForeignKey("work_plans.id", ondelete="RESTRICT"), index=True)
+    item_id: Mapped[UUID] = mapped_column(ForeignKey("work_items.id", ondelete="RESTRICT"), index=True)
+    request_id: Mapped[UUID] = mapped_column()
+    request_digest: Mapped[str] = mapped_column(String(64))
+    actor: Mapped[str] = mapped_column(String(255))
+    reason: Mapped[str] = mapped_column(String(500))
+    command: Mapped[dict] = mapped_column(JSON_VARIANT)
+    prior_outcome: Mapped[dict] = mapped_column(JSON_VARIANT)
+    accepted_revision: Mapped[int] = mapped_column()
+    accepted_run_revision: Mapped[int | None] = mapped_column()
+    state: Mapped[str] = mapped_column(String(30), default="accepted")
+    detail: Mapped[str] = mapped_column(Text, default="Accepted; checking original execution")
+    lease_generation: Mapped[int] = mapped_column(default=0)
+
+
+class WorkItemRecoveryEvent(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "work_item_recovery_events"
+    __table_args__ = (UniqueConstraint("recovery_id", "sequence", name="uq_work_item_recovery_event_sequence"),)
+    sequence: Mapped[int] = mapped_column()
+    recovery_id: Mapped[UUID] = mapped_column(ForeignKey("work_item_recoveries.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(30))
+    detail: Mapped[str] = mapped_column(Text)
+    evidence: Mapped[dict] = mapped_column(JSON_VARIANT, default=dict)

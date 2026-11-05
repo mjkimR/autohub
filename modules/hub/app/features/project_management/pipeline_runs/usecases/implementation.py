@@ -174,9 +174,11 @@ class ImplementationProgress:
             and observed.posted_at is not None
             and now - observed.posted_at >= observed.adapter.silent_timeout
         ):
-            silent_retries = sum(
-                item.cause == "silent" for item in await self.repo.list_deliveries(session, attempt.id)
-            )
+            epoch_deliveries = []
+            for prior_attempt in await self.repo.list_attempts(session, run.id):
+                if prior_attempt.epoch == run.epoch:
+                    epoch_deliveries.extend(await self.repo.list_deliveries(session, prior_attempt.id))
+            silent_retries = sum(item.cause in ("silent", "recovery") for item in epoch_deliveries)
             if silent_retries >= 1:
                 run.state = PipelineRunState.BLOCKED
                 run.pause_reason = observed.adapter.silent_block_reason

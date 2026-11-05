@@ -131,6 +131,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/work-plans/{plan_id}/items/{item_id}/recover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recover Work Item */
+        post: operations["recover_work_item_api_v1_projects__project_id__work_plans__plan_id__items__item_id__recover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/work-plans/{plan_id}/items/{item_id}/recoveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Work Item Recoveries */
+        get: operations["work_item_recoveries_api_v1_projects__project_id__work_plans__plan_id__items__item_id__recoveries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export interface components {
     schemas: {
@@ -204,6 +238,42 @@ export interface components {
              */
             reason: string;
         };
+        /** RecoveryEligibility */
+        RecoveryEligibility: {
+            /** Eligible */
+            eligible: boolean;
+            /** Reason */
+            reason: string;
+            /** Next Action */
+            next_action: string;
+            /** Run Revision */
+            run_revision?: number | null;
+            /** Pending State */
+            pending_state?: string | null;
+            /** Pending Detail */
+            pending_detail?: string | null;
+        };
+        /** RecoveryEventRead */
+        RecoveryEventRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Detail */
+            detail: string;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         ValidationError: CommonComponents["schemas"]["ValidationError"];
         /** WorkItemRead */
         WorkItemRead: {
@@ -243,6 +313,75 @@ export interface components {
             /** Completed At */
             completed_at: string | null;
             issue: components["schemas"]["IssueMirrorRead"] | null;
+            recovery: components["schemas"]["RecoveryEligibility"] | null;
+        };
+        /** WorkItemRecover */
+        WorkItemRecover: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /** Expected Run Revision */
+            expected_run_revision?: number | null;
+            /** Reason */
+            reason: string;
+        };
+        /** WorkItemRecoveryList */
+        WorkItemRecoveryList: {
+            /** Items */
+            items: components["schemas"]["WorkItemRecoveryRead"][];
+            /** Total Count */
+            total_count: number;
+        };
+        /** WorkItemRecoveryRead */
+        WorkItemRecoveryRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Actor */
+            actor: string;
+            /** Reason */
+            reason: string;
+            /** Command */
+            command: {
+                [key: string]: unknown;
+            };
+            /** Prior Outcome */
+            prior_outcome: {
+                [key: string]: unknown;
+            };
+            /** Accepted Revision */
+            accepted_revision: number;
+            /** Accepted Run Revision */
+            accepted_run_revision: number | null;
+            /** State */
+            state: string;
+            /** Detail */
+            detail: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Refusal Reason */
+            refusal_reason?: string | null;
+            /** Events */
+            events?: components["schemas"]["RecoveryEventRead"][];
+        };
+        /** WorkItemRecoveryResult */
+        WorkItemRecoveryResult: {
+            recovery: components["schemas"]["WorkItemRecoveryRead"];
+            item: components["schemas"]["WorkItemRead"];
         };
         /** WorkItemWrite */
         WorkItemWrite: {
@@ -711,6 +850,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanActivityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recover_work_item_api_v1_projects__project_id__work_plans__plan_id__items__item_id__recover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                plan_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkItemRecover"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkItemRecoveryResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    work_item_recoveries_api_v1_projects__project_id__work_plans__plan_id__items__item_id__recoveries_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                plan_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkItemRecoveryList"];
                 };
             };
             /** @description Validation Error */

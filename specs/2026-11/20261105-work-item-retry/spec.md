@@ -2,7 +2,7 @@
 id: SPEC-work-item-retry
 title: Retry failed Work Items
 summary: "Recover eligible failed Work Items while preserving successful work, prior execution evidence and external request identities."
-status: planned
+status: in-progress
 created: 2026-11-05
 related_capabilities: [CAP-WORK-work-plan-execution, CAP-PR-pull-request-delivery]
 related_usecases: [UC-execute-work-plan, UC-deliver-pull-request]

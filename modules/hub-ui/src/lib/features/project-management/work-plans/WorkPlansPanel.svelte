@@ -7,6 +7,7 @@
 	import WorkPlanForm from './WorkPlanForm.svelte';
 	import WorkPlanActivity from './WorkPlanActivity.svelte';
 	import WorkPlanGroup from './WorkPlanGroup.svelte';
+	import WorkItemRecovery from './WorkItemRecovery.svelte';
 	type Plan = components['schemas']['WorkPlanRead'];
 	let { project }: { project: components['schemas']['ProjectRead'] } = $props();
 	let plans = $state<Plan[]>([]);
@@ -308,6 +309,14 @@
 										href={`/projects/${project.id}?tab=runs`}>Execution runs</a
 									>{/if}
 							</div>
+							<WorkItemRecovery
+								projectId={project.id}
+								planId={plan.id}
+								revision={plan.revision}
+								baseBranch={plan.base_branch}
+								{item}
+								refresh={load}
+							/>
 							{#if item.pipeline_run_retired_at}<p class="text-muted-foreground">
 									Execution history expired; completion evidence is retained.
 								</p>{/if}
