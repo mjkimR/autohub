@@ -1,0 +1,25 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T07:03:34.123103Z'
+status: completed
+summary: round 2; closes reconcile-check-01; PASS. Independent verification confirmed both fixes and all10 targets with no recurrence or contract waiver.
+findings: []
+assumptions:
+- Exact Host authority admitted only CAP-PR-agent-dispatch recovery cause/allowance/evidence clauses; Task2/4 boundaries and reconcile record this addition.
+- Isolation emulated through explicit worktree-only reads and unchanged HEAD/index/tree1734e902fed037c8875bac3779011bff8893d03e; no outside reads, writes or network reported.
+unverified_areas:
+- Live provider/deployment and eventual integrated head; supplied application checks were inspected rather than repeated for documentation-only changes.
+checks:
+  review: PASS complete fix batch and affected contract meaning; both prior findings resolved
+  targets: PASS all10 changed Living Spec files named in reconcile
+  scope: PASS exact Host-admitted addition; no new behavior/dependency edge/waiver
+  source: PASS modules/packages unchanged since reviewed7030760
+  tests: PASS supplied PG280 focusedPG37 SQLite127 with1 PG-only skip UI219 and required lint/check/build/API
+  documents: PASS supplied35 document rules and36 hygiene rules
+  diff: PASS independently executed full accepted-base range diff --check
+diff_scope:
+  base: 898510f03d71060b7494a97d22fb1d87b35f28f0
+  head: e034b26e1572bfdbd9ead390b0b24f6a2d3d3203
+activity_effort: high
