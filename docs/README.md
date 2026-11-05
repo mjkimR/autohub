@@ -1,58 +1,49 @@
 # Documentation guide
 
-Start with the current contract for the task you are doing. Deployment claims and
-validation counts belong in [delivery status](delivery-status.md), where the last
-recorded production baseline is separate from newer local implementation.
+Use the capability contracts for implemented guarantees and the use cases for
+actor goals, alternative outcomes and acceptance examples. They are derived from
+source and enforcing tests. A documented test is not a claim that it was executed
+or that the code is deployed; [deployment status](operations/deployment-status.md)
+keeps that evidence separate.
 
-## Start here
+## Read by purpose
 
-| Task | Document |
+| Purpose | Entry point |
 | --- | --- |
-| Check what is implemented, tested or deployed | [Delivery status](delivery-status.md) |
-| Connect a devkit repository, select its runtime, or understand SDD ownership | [devkit integration](devkit-integration.md) |
-| Browse documents, roadmap members and their executions | [Repository viewer](repository-viewer.md) |
-| Start Planning/Development, answer questions, approve or recover a run | [Run decisions](run-decisions.md) |
-| Run checks, understand tick timing or operate maintenance | [Development and operations](development.md) |
-| Deploy the service and verify its host | [Cloud Run deployment](cloud-run-deployment.md) |
+| Product context and terminology | [Product context](steering/product.md), [glossary](steering/glossary.md) |
+| Feature guarantees, interfaces and code entrypoints | [Capabilities](capabilities/README.md) |
+| Actor goals and acceptance criteria | [Use cases](usecases/README.md) |
+| System boundaries, runtime structure and constraints | [Architecture](architecture/README.md) |
+| Contributor environment, checks and extension work | [Developing Auto Hub](development/README.md) |
+| Serving-host and client configuration/recovery | [Operations](operations/README.md) |
+| Deployment and notices | [Cloud Run](operations/cloud-run-deployment.md), [operator notices](operations/operator-notices.md) |
+| Recorded local/production verification and rollout gaps | [Deployment status](operations/deployment-status.md), [retained evidence](materials/index.md) |
 
-## Current contracts
+Auto Hub's support for native SDD in connected repositories is defined by
+`CAP-SDD-native-delivery`. Its own development approach, installed tooling and
+lifecycle activation are separate from the product documentation.
 
-| Area | Documents |
-| --- | --- |
-| Engine and GitHub | [Architecture](architecture.md), [CI connection contract](ci-contract.md), [Codex PR mention protocol](codex-pr-mention.md), [CI templates](../templates/github-actions/README.md) |
-| Agent admission and connections | [AI catalogs](ai-catalogs.md), [implementation notes and limitations](ai-catalog-implementation-notes.md), [project connection tests](project-detail-and-connection-tests.md) |
-| Plans and execution batches | [Work plans](work-plans.md), [backlog and activity](work-plan-backlog.md), [domain design](work-plans-design.md) |
-| SDK and external flows | [SDK contract and PR bridge](sdk-task-flow.md), [standalone SDK](../packages/sdk/README.md) |
-| Access and notifications | [MCP](mcp.md), [Google authentication](google-auth.md), [operator notices](operator-notices.md), [connector encryption](../modules/hub/README.md#connector-credential-encryption) |
+## Document ownership
 
-Multiple devkit proposals and milestone-wide execution remain
-[deferred](devkit-integration.md#deferred-multiple-proposals-and-milestone-execution).
-The roadmap currently supports inspection and individual execution actions.
+- Put feature guarantees in `docs/capabilities/<area>/CAP-<AREA>-<slug>.md` and
+  actor goals in `docs/usecases/<area>/UC-<slug>.md`. Keep their relationships
+  reciprocal. Express capability rules as scoped EARS statements and use-case
+  acceptance examples as Given/When/Then scenarios.
+- Put system structure in numbered arc42 documents under `docs/architecture/`.
+  Cite the actual check for a structural constraint, or identify it as review-only.
+- Keep steering context short, with a title and English summary but no document ID.
+  Put behavior in capabilities and verification evidence in materials.
+- Refer to ID-bearing documents by full ID in prose and relationship fields.
+  Ordinary links remain appropriate for code, external sources and ID-free guides.
+- Update the owning contract and its use-case examples when behavior changes.
+  Operations guides carry serving-host/client procedures. Development guides
+  cover changing Auto Hub itself. Both refer to the owning contracts rather than
+  keeping competing guarantees. Contributor commands follow the root [justfile](../justfile).
+- Write documentation in English. Preserve literal UI labels, localized examples
+  and the configured language of planning artifacts.
 
-## Dated evidence and reviews
-
-These documents explain a specific verification run or design review. They do not
-establish the currently deployed revision or supersede the current contracts.
-
-| Date | Evidence or review |
-| --- | --- |
-| 2026-09-21 | [Code hygiene review](code-hygiene-review.md) |
-| 2026-09-22 | [PR automation canary](canary-results-2026-09-22.md), [MCP distribution review](autohub-distribution-review-2026-09-22.md) |
-| 2026-09-23 | [Work Plan canary](canary-results-2026-09-23.md) |
-| 2026-09-28 | [Prompt Issue sync canary](canary-results-2026-09-28.md) |
-| 2026-09-29 | [MCP tool review](mcp-tool-review-2026-09-29.md) |
-| 2026-10-01 | [Fresh schema and question/answer canary](canary-results-2026-10-01.md) |
-| 2026-10-02 | [Control and recovery canary](canary-results-2026-10-02.md) |
-
-## Maintaining these documents
-
-- Keep behavior in its owning contract and link to it from overviews. Runtime
-  provisioning belongs in devkit integration; approval semantics in run decisions;
-  viewer behavior in repository viewer; check commands in development.
-- Keep public command names and defaults aligned with the repository
-  [justfile](../justfile). Preserve section anchors used by other documents when
-  moving procedures, or leave a short pointer at the old location.
-- Update delivery status with the date, tested scope, limits and deployment evidence
-  when behavior changes. Do not promote local tests to a production claim.
-- Label proposed and deferred work explicitly. Do not document APIs or commands as
-  available before they exist, or present a candidate design as a settled contract.
+Retain material only when its source identity, observation or uncertainty supports
+an active decision or compatibility/deployment claim. Keep dated evidence in
+`materials/YYYY-MM/YYYYMMDD-<slug>/report.md`; consolidate overlapping checks and
+remove superseded reviews. Existing `specs/` records remain historical delivery
+evidence; do not reconstruct missing approvals or invent decision rationale.

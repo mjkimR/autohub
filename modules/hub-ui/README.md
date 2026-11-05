@@ -69,3 +69,17 @@ domain at the backend route.
 
 Generation and freshness checks pass `--default-non-nullable` to retain the
 previous openapi-typescript policy for properties with defaults.
+
+## Data loading and session boundaries
+
+Use `allPages` from `src/lib/api/pagination.ts` for complete selector options;
+propagate page failures instead of accepting a partial list. Use `countedPage`
+from the same module to require server-filtered totals, and `PaginatedState`
+from `src/lib/state/paginated.svelte.ts` for history tables. Obsolete requests must
+not replace current rows, errors or loading state. Show load failures separately
+from valid empty data.
+
+Use the shared API client for authenticated requests. Refresh exchanges are shared
+only within one signed-in session generation. Keep generation checks on refresh
+and late 401 responses so an old request cannot replace tokens or log out a newer
+session.

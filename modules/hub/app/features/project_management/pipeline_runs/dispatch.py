@@ -1,4 +1,4 @@
-"""Codex PR mention payloads (docs/codex-pr-mention.md). Posting and reconciliation belong to
+"""Codex PR mention payloads (CAP-PR-agent-dispatch). Posting and reconciliation belong to
 ``adapters.codex_github_mention``."""
 
 import json

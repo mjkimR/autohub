@@ -18,19 +18,19 @@ to draft holds merging again. Hub never marks a PR ready on the operator's behal
 Branch Protection Rules and required reviews are not used for this personal-repository
 approval workflow. Existing GitHub rule-block handling is retained for compatibility.
 
-[Work plans](docs/work-plans.md) accept task batches before PRs exist, with plan
+Work plans (`CAP-WORK-work-plan-execution`) accept task batches before PRs exist, with plan
 dependencies and dependencies between items in the same plan. Registration requests
 execution; eligible items create ready PRs and follow the project's merge policy.
 Plan pause/revoke controls unstarted work. GitHub Issues mirror specifications and
-history without controlling execution. See [delivery status](docs/delivery-status.md)
+history without controlling execution. See [delivery status](docs/operations/deployment-status.md)
 for the dated production evidence and later additions.
 
 Saved runs retain task snapshots and delivery history; dispatch reconciles comment
-markers to avoid duplicate requests. See [delivery status](docs/delivery-status.md)
+markers to avoid duplicate requests. See [delivery status](docs/operations/deployment-status.md)
 for implemented behavior and deferred work. [CI templates](templates/github-actions/README.md)
 are manually installed starter files.
 
-[SDD projects](docs/devkit-integration.md) connect devkit proposals/specs to cloud
+[SDD projects](docs/operations/sdd-runtime.md) connect devkit proposals/specs to cloud
 Planning and Development runs. The repository viewer reads milestone proposal members
 from the selected branch and links units to their executions. Runtime profiles and rollout
 requirements are documented in the integration guide.
@@ -42,7 +42,7 @@ The standalone [pipeline SDK](packages/sdk/README.md) lives in `packages/sdk`.
 It supports local declarations and validation, manifest export, remote task/flow
 contracts, and an HTTP client. The backend now provides release/run/command APIs and durable flow execution
 through system maintenance, with scoped machine keys and configured worker targets.
-See the [host contract](docs/sdk-task-flow.md). The first native SDD/PR bridge resumes an existing paused PR after evidence
+See the host contract (`CAP-SDK-task-flow-execution`). The first native SDD/PR bridge resumes an existing paused PR after evidence
 verification and approval; production rollout and live GitHub validation remain separate.
 PostgreSQL is the standard database, with SQLite used for default testing.
 [justfile](justfile) defines commands, aliases, and defaults; run `just --list`.
@@ -63,8 +63,9 @@ initialization deploys app-common devkit bundles from the installed packages.
 ## Documentation
 
 - [Documentation guide](docs/README.md): architecture, protocols, AI catalogs, and operator notices.
-- [devkit integration](docs/devkit-integration.md): SDD execution paths, runtime profiles, evidence and deferred batch execution.
-- [Development and operations](docs/development.md): checks, migrations, authentication, CI, and devkit updates.
+- [Capability contracts](docs/capabilities/README.md) and [use cases](docs/usecases/README.md): implemented guarantees, actor goals, acceptance examples and source/test ownership.
+- [Developing Auto Hub](docs/development/README.md): contributor setup, checks, migrations, toolchain updates and extension guides.
+- [Operations](docs/operations/README.md): deployment, accounts/clients, provider connections, runtime profiles and recovery.
 - [Connector encryption](modules/hub/README.md#connector-credential-encryption): key configuration and rotation constraints.
 - [Frontend](modules/hub-ui/README.md): UI tooling and API generation.
 - [Agent guide](AGENTS.md): code boundaries and required checks.

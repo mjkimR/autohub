@@ -1,0 +1,312 @@
+# Cloud Run Deployment Guide
+
+This guide covers the end-to-end process of deploying Auto Hub to Google Cloud Run.  
+The FastAPI backend (`modules/hub`) and Svelte 5 frontend (`modules/hub-ui`) are built and deployed together in a single consolidated container.
+
+---
+
+## ⚡ Quick Start (Using Helper Scripts)
+
+Automated scripts are available under `docker/helper/`, allowing you to configure secrets and deploy with a single command:
+
+- **GCS Staging Bucket**: The helper creates a Cloud Build source bucket in the selected region. After a successful deployment path it attempts to remove source/log objects; failures before that step can leave them, and the bucket itself is retained.
+- **Cloud Run & Artifact Registry**: Default to **`us-west1` (Oregon)**; pass `REGION` or `--region` when another region is required.
+
+```bash
+# [Case A: Using External PostgreSQL]
+# 1) Set up secrets
+just setup-secrets -e "you@example.com" -b "postgresql+psycopg://avnadmin:<PASSWORD>@<HOST>:<PORT>/defaultdb?sslmode=require"
+
+# 2) Deploy to Cloud Run (runs directly without Cloud SQL flag)
+just deploy-cloud-run
+
+# [Case B: Using Google Cloud SQL]
+# 1) Set up secrets
+just setup-secrets -e "you@example.com" -c "PROJECT:REGION:INSTANCE"
+
+# 2) Deploy to Cloud Run
+just deploy-cloud-run -c "PROJECT:REGION:INSTANCE"
+```
+
+`just setup-secrets` is safe to re-run, for example to change the database URL: it keeps every value the `autohub-secrets` bundle already holds unless an option replaces it, and never regenerates the connector credential key (which would make stored connector credentials undecryptable) or the webhook secret. It refuses to run when the bundle exists but cannot be read. Change the operator's password with `just update-password`, which updates the bundle and restarts Cloud Run; the hub applies the bundle's password to the account at startup. Cloud Scheduler is not involved: it uses a database-managed machine API key.
+
+_(To run each step manually, see steps 1 through 6 below.)_
+
+---
+
+## 1. Prerequisites (GCP Environment Setup)
+
+### 1.1 Set GCP Project and Variables
+
+```bash
+export PROJECT_ID="your-gcp-project-id"
+export REGION="us-west1" # Oregon (North America)
+export SERVICE_NAME="autohub"
+export REPO_NAME="autohub"
+export DB_INSTANCE_NAME="autohub-db"
+
+gcloud config set project "$PROJECT_ID"
+```
+
+### 1.2 Enable Required APIs
+
+```bash
+gcloud services enable \
+  run.googleapis.com \
+  sqladmin.googleapis.com \
+  secretmanager.googleapis.com \
+  cloudscheduler.googleapis.com \
+  artifactregistry.googleapis.com \
+  cloudbuild.googleapis.com
+```
+
+---
+
+## 2. Database (Cloud SQL for PostgreSQL)
+
+### 2.1 Create Cloud SQL Instance (If creating new)
+
+> [!NOTE]
+> If you already have an active PostgreSQL instance, skip this step and proceed to 2.2 to create the database and user.
+
+```bash
+gcloud sql instances create "$DB_INSTANCE_NAME" \
+  --database-version=POSTGRES_16 \
+  --tier=db-f1-micro \
+  --region="$REGION" \
+  --root-password="<STRONG_ROOT_PASSWORD>"
+```
+
+### 2.2 Create Database and User
+
+```bash
+# Create database
+gcloud sql databases create auto_hub --instance="$DB_INSTANCE_NAME"
+
+# Create application user
+gcloud sql users create hub_user \
+  --instance="$DB_INSTANCE_NAME" \
+  --password="<STRONG_USER_PASSWORD>"
+```
+
+---
+
+## 3. Secret Manager Configuration
+
+All Auto Hub secrets are stored as one JSON payload and injected through `APP_SECRETS_JSON`.
+The setup helper generates the bundle. Pass `--email` the first time (the address you sign in with) and optionally `--app-secret` (your password); a password is generated and printed once when you omit it:
+
+```bash
+export DB_CONNECTION_NAME=$(gcloud sql instances describe "$DB_INSTANCE_NAME" --format="value(connectionName)")
+just setup-secrets --project "$PROJECT_ID" --connection-name "$DB_CONNECTION_NAME" --email "you@example.com"
+```
+
+The bundle contains the operator's account (`FIRST_USER_EMAIL`, `FIRST_USER_PASSWORD`,
+`FIRST_USER_SYNC_PASSWORD`), the token signing key (`SECRET_KEY`), the M2M
+management root credential (`APP_API_KEY_ROOT_KEY`), how long an unused session lasts (`REFRESH_TOKEN_EXPIRE_DAYS`, 7), `DATABASE_URL`, `GITHUB_WEBHOOK_SECRET`, `CONNECTOR_CREDENTIAL_KEY`, and
+`CONNECTOR_CREDENTIAL_KEY_VERSION`. A bundle written before accounts existed is upgraded in place by
+re-running the helper: `APP_SECRET_KEY` is removed and the new values are added. The app-common
+environment loader expands these into normal environment variables at startup.
+
+### 3.1 Database Connection URL (`DATABASE_URL`)
+
+Cloud Run connects via Cloud SQL Unix Domain Socket (`/cloudsql/PROJECT:REGION:INSTANCE`):
+
+```bash
+# Reuse DB_CONNECTION_NAME retrieved before running the setup helper
+
+# Format: postgresql+psycopg://<USER>:<PASSWORD>@/<DB_NAME>?host=/cloudsql/<CONNECTION_NAME>
+export DATABASE_URL="postgresql+psycopg://hub_user:<STRONG_USER_PASSWORD>@/auto_hub?host=/cloudsql/${DB_CONNECTION_NAME}"
+# Pass DATABASE_URL to the setup helper, or use --database-url directly.
+```
+
+---
+
+## 4. Service Account (IAM) Permissions
+
+Grant Cloud SQL and Secret Manager access to the default Cloud Run Compute Service Account (or a custom dedicated service account).
+
+```bash
+export PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format="value(projectNumber)")
+export RUN_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+# Secret Manager Secret Accessor
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${RUN_SA}" \
+  --role="roles/secretmanager.secretAccessor"
+
+# Cloud SQL Client
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${RUN_SA}" \
+  --role="roles/cloudsql.client"
+```
+
+---
+
+## 5. Container Build & Cloud Run Deployment
+
+Even without a local Docker daemon, you can build directly in the cloud using **Google Cloud Build**.
+
+### 5.1 Create Artifact Registry Repository
+
+```bash
+gcloud artifacts repositories create "$REPO_NAME" \
+  --repository-format=docker \
+  --location="$REGION" \
+  --description="Auto Hub docker repository"
+```
+
+### 5.2 Build & Push with Cloud Build
+
+Use the reviewed helper from the repository root. It builds and deploys the
+image, wiring a Secret Manager read credential into BuildKit for the pinned
+private runtime sources:
+
+```bash
+export SDD_BUILD_SECRET="<existing-secret-name>"
+just deploy-cloud-run --project "$PROJECT_ID" --region "$REGION" --service "$SERVICE_NAME" --connection-name "$DB_CONNECTION_NAME" --no-scheduler
+```
+
+The named secret contains the source-read token; grant the Cloud Build identity
+access to that secret and the token access to the reviewed source repositories.
+The helper maps it to `GH_TOKEN` and passes only the `sdd_token` BuildKit secret
+mount. This is separate from the application secret bundle. Use
+`bash docker/helper/deploy_cloud_run.sh --help` for supported flags; repository
+and tag settings follow the helper's environment/defaults. Provision the external
+scheduler separately in section 6 when using `--no-scheduler`.
+
+For deployment of an already built reviewed image, use the next section.
+
+### 5.3 Deploy Cloud Run Service
+
+```bash
+gcloud run deploy "$SERVICE_NAME" \
+  --image="$IMAGE_URI" \
+  --region="$REGION" \
+  --platform=managed \
+  --allow-unauthenticated \
+  --port=8389 \
+  --timeout=1200 \
+  --memory=1Gi \
+  --cpu=1 \
+  --add-cloudsql-instances="$DB_CONNECTION_NAME" \
+  --set-secrets="APP_SECRETS_JSON=autohub-secrets:latest"
+```
+
+The image includes the default SDD runtime at `/opt/sdd` and the reviewed app-common
+profile at `/opt/sdd-app-common`. Set `AUTOHUB_SDD_PROFILES` to the server-owned
+repository mapping documented in [runtime profiles](sdd-runtime.md#runtime-profiles)
+for projects requiring app-common. Give the build identity read access to both
+pinned source repositories. `ARCH-07-deployment` and `CAP-SDD-runtime-isolation` own
+the packaged-runtime and request-isolation contracts.
+
+Native SDD evaluation runs devkit inside bubblewrap, which needs unprivileged user
+namespaces: add `--execution-environment=gen2` to the deploy command for a service
+that evaluates SDD runs, then confirm on the deployed host with
+`GET /api/v1/projects/{id}/sdd/runtime` (or the SDD panel's **Check runtime**), which
+must report `ok: true` with `isolation: bubblewrap`. See
+`CAP-SDD-runtime-isolation` for the runtime contract and the
+[provisioning reference](sdd-runtime.md#isolation-and-deployment) for operational setup.
+
+Record the deployed Service URL output (e.g. `https://autohub-xxxx-du.a.run.app`):
+
+```bash
+export SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" --region="$REGION" --format="value(status.url)")
+echo "Auto Hub Service URL: $SERVICE_URL"
+```
+
+---
+
+## 6. Register Cloud Scheduler (Periodic Trigger)
+
+Cloud Scheduler sends a managed `X-API-Key` with the `autohub:dispatch` scope.
+The root key is only used by provisioning; it never goes into the Scheduler job.
+Run migrations and deploy first, then provision against the running server:
+
+```bash
+just provision-scheduler --project "$PROJECT_ID" --region "$REGION" \
+  --service "$SERVICE_NAME" --url "$SERVICE_URL"
+```
+
+The standalone helper defaults to a one-minute tick. Pass `--schedule "*/5 * * * *"`
+for a five-minute tick. Workbench's `just deploy autohub` delegates to this helper
+using workbench's Python interpreter and the cron schedule in its deployment inventory.
+Project dispatch intervals are evaluated when this external tick arrives; a
+60-second project interval does not make a five-minute external tick run more often.
+
+`just setup-secrets` creates/preserves `APP_API_KEY_ROOT_KEY` in `autohub-secrets`.
+The deployment helper invokes the command above when scheduler setup is enabled.
+It registers `<service>-scheduler`, issues a key once, saves `{machine_id,key_id,key}`
+in the separate `<service>-scheduler-credential` Secret Manager secret, and configures
+Scheduler with that key. Subsequent deploys reuse the credential. An unreadable secret,
+inactive machine, revoked/expired key, or unexpected scope stops provisioning; none
+is silently replaced. If saving a newly issued secret fails, the helper revokes it.
+No root or workload credential is printed.
+
+Before upgrading an existing deployment, pause the Scheduler job, run
+`just setup-secrets` to add the root setting, then deploy/provision and resume it.
+The former `SCHEDULER_KEY` bundle entry and `X-Scheduler-Key` header are retired.
+The provisioning helper replaces the job header after the new server is ready.
+Never pass the root key as `X-API-Key` to the dispatcher.
+
+For explicit rotation, issue a replacement through
+`POST /api/v1/machines/{id}/keys`, save its one-time response in the credential
+secret using the same `{machine_id,key_id,key}` shape, rerun provisioning to switch
+the job, and then revoke the old key through
+`DELETE /api/v1/machines/{id}/keys/{key_id}`. Root removal/rotation happens in the
+server's secret bundle followed by restarting every instance. Management also accepts
+a human administrator's bearer token. Concurrent provisioning jobs should be serialized;
+a lost issuance response requires reconciling key history and explicitly issuing/storing a replacement. The helper never treats missing Secret Manager data as permission to replace prior keys.
+
+### 6.1 Webhook Processing Queue (Cloud Tasks, recommended)
+
+Configure a processing queue so webhook work receives its own Cloud Run request.
+`CAP-PR-webhook-advancement` owns intake signatures, callback authorization,
+deduplication, fallback processing and replay. Queue setup does not replace the
+external scheduler used for recovery.
+
+1. Enable `cloudtasks.googleapis.com` and create a queue in the service's region.
+2. Grant the runtime service account `roles/cloudtasks.enqueuer`.
+3. Set `WEBHOOK_TASK_QUEUE=projects/<project>/locations/<region>/queues/<queue>`
+   and `WEBHOOK_TASK_BASE_URL=<service URL>` as plain environment variables.
+4. Deploy, send a signed webhook and inspect its stored delivery through
+   `GET /api/v1/github-webhook-deliveries`.
+
+The workbench deployment provisions the API, queue and IAM binding from its
+inventory. Callback credentials derive from `GITHUB_WEBHOOK_SECRET`; no separate
+callback key is provisioned. When rotating that secret, account for pending tasks
+whose old signatures no longer validate and verify scheduler replay afterward.
+Local development can leave queue settings unset and use background processing.
+
+---
+
+## 7. Post-Deployment Verification & Integration
+
+1. **Verify Web Browser Access**
+   - Navigate to `${SERVICE_URL}/` and verify that the Hub UI dashboard loads properly.
+   - Sign in with the email and password given to `just setup-secrets`.
+2. **Verify Swagger Docs**
+   - Access `${SERVICE_URL}/docs` and verify the OpenAPI interactive documentation responds.
+3. **Register GitHub Repository Webhook**
+
+   **Method A: Automatic Registration via CLI (Recommended)**:
+   Automatically retrieves Google Cloud Secrets and the Cloud Run URL to register or update the webhook on the target repository in seconds:
+
+   ```bash
+   just register-webhook <owner/repo>
+   # Example: just register-webhook mjkimR/my-repo
+   ```
+
+   **Method B: Manual Registration via GitHub Web Console**:
+   - Go to `Settings → Webhooks → Add webhook` on your target GitHub repository.
+   - **Payload URL**: `${SERVICE_URL}/api/github/webhooks`
+   - **Content type**: `application/json`
+   - **Secret**: `GITHUB_WEBHOOK_SECRET` value from the `autohub-secrets` bundle
+   - **Events**: Select `Let me select individual events` and check:
+     - `Pull requests`
+     - `Issue comments`
+     - `Workflow runs`
+   - After creating, check `Recent Deliveries` to confirm Ping delivery returns 200/202 OK.
+
+4. **End-to-End Testing**
+   - Enroll a project and pull request in the UI (or include `@auto-run`, optionally `@auto-run:<catalog key or kind>`, in the PR description / comments) to verify automated dispatch and CI monitoring progression.

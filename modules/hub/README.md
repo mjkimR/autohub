@@ -2,13 +2,13 @@
 
 This is the FastAPI backend for Auto Hub, built on the existing scheduler engine.
 
-See the [Root README](../../README.md), [architecture](../../docs/architecture.md), and
-[CI observation contract](../../docs/ci-contract.md) for current scope and development direction.
+See the [Root README](../../README.md), [architecture](../../docs/architecture/README.md), and
+CI observation contract (`CAP-PR-ci-observation`) for current scope and development direction.
 
 ## Development
 
 Run commands from the repository root using the [justfile](../../justfile).
-See [development and operations](../../docs/development.md) for verification and scheduler behavior.
+See [development and operations](../../docs/development/README.md) for verification and scheduler behavior.
 
 ## Connector credential encryption
 

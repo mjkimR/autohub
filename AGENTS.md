@@ -13,7 +13,7 @@ See [README](README.md) and [documentation guide](docs/README.md) for scope.
 - Initialize the backend environment before using checks, even for frontend work.
 - Run lint and verification builds before finishing: `just lint` and `just check`.
   `just lint-check` provides the read-only lint equivalent. Follow
-  [development guidance](docs/development.md) for tests and PostgreSQL coverage.
+  [development guidance](docs/development/README.md) for tests and PostgreSQL coverage.
 - When API definitions change, regenerate the typed client with `just gen-ui-api`.
 - For SDK changes, also run `just test-sdk` and `just build-sdk`; `just lint` and
   `just check` include SDK checks. See [SDK README](packages/sdk/README.md).
@@ -42,12 +42,27 @@ See [README](README.md) and [documentation guide](docs/README.md) for scope.
 - Never commit `.env` files or log credentials/PII.
 - Commit messages are concise, imperative, and emoji-free.
 
-## Documentation language
+## Documentation
 
-Use English for README/AGENTS files and technical, operational, or agent instructions.
-Korean is for documents under `docs/` intended for the user's review, including
-analysis, research, and their review indexes. Preserve localized examples, literal
-UI labels, and the configured language of planning artifacts.
+- Write all authored repository documentation in English, including README/AGENTS
+  files, technical and operational guides, analysis, research, and review indexes.
+  Preserve literal UI labels, localized examples and the configured language of
+  planning artifacts.
+- Read [the documentation guide](docs/README.md), the relevant steering context
+  and the owning capability/use case before changing product behavior.
+- Follow devkit's document-writing and per-kind authoring instructions. If the
+  `docs` bundle is unavailable, obtain the instructions at the repository's pinned
+  devkit revision rather than guessing the document format.
+- Keep feature guarantees in `docs/capabilities/`, actor goals and acceptance
+  examples in `docs/usecases/`, structure in `docs/architecture/`, and background
+  terminology in `docs/steering/`. `docs/development/` covers Auto Hub contributor
+  setup, checks, toolchain changes and extension work. Put deployed-service/client
+  configuration and recovery procedures in `docs/operations/`.
+- Derive contracts from implementation and enforcing tests. Use full document IDs,
+  English summaries and reciprocal capability/use-case relationships. Record test
+  inspection separately from actual check execution and live deployment evidence.
+- Retain only necessary dated evidence in `docs/materials/`. Update owning
+  contracts when behavior changes; avoid a second contract in a reference guide.
 
 <!-- DEVKIT:START -->
 ## devkit
