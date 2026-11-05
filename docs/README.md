@@ -11,6 +11,7 @@ keeps that evidence separate.
 | Purpose | Entry point |
 | --- | --- |
 | Product context and terminology | [Product context](steering/product.md), [glossary](steering/glossary.md) |
+| Planned product themes and queued proposals | [Product roadmap](roadmap/README.md) |
 | Feature guarantees, interfaces and code entrypoints | [Capabilities](capabilities/README.md) |
 | Actor goals and acceptance criteria | [Use cases](usecases/README.md) |
 | Shared UX objects, representations and calls to action | [UX object register](steering/ux-objects.md) |
