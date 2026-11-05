@@ -38,9 +38,9 @@ just docs-check
 git diff --check
 ```
 
-`just docs-check` checks `docs/`, root `AGENTS.md` and root `README.md` in the
-linter and hygiene phases. Backend `just lint` and `just lint-check` include it,
-so the existing backend CI invokes the same document checks.
+`just docs-check` checks `docs/`, `specs/`, root `AGENTS.md` and root `README.md`
+in the linter and hygiene phases. Backend `just lint` and `just lint-check`
+include it, so the existing backend CI invokes the same document checks.
 
 Check metadata/IDs/summaries, referenced code paths, reciprocal relationships and
 acceptance coverage for every extension. Update incoming links when a guide or

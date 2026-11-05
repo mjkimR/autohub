@@ -10,7 +10,7 @@ for Auto Hub's own development.
 
 | Area | Implemented behavior | Owning reference |
 | --- | --- | --- |
-| SDD activities | Planning/Development starts, recoverable decisions, approval, questions, handoff and effort/review evidence | Run decisions (`CAP-PR-operator-decisions`) |
+| SDD activities | Planning/Development starts, recoverable decisions, approval, questions, handoff and effort/review evidence | Native delivery (`CAP-SDD-native-delivery`), workflow control (`CAP-SDD-workflow-control`) |
 | SDD runtime | Pinned default/app-common profiles, repository mapping, receipt checks and workflow/approval fencing | [devkit integration](sdd-runtime.md) |
 | Repository viewer | Branch-specific documents, proposal roadmap and recorded Proposal → Spec → Run/PR lineage | Viewer (`CAP-DOC-repository-viewer`) |
 | Pipeline progression | Shared tick/webhook/manual driver, bounded retries and preserved waits | Advancement (`CAP-PR-pull-request-delivery`) |

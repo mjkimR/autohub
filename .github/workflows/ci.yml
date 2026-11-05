@@ -30,7 +30,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - run: uv sync --locked --all-packages
-      - run: uv run --no-sync devkit sync
+      - run: uv run --no-sync devkit sync --locked
       - name: Format, lint, and architecture checks
         run: just lint-check hub
       - name: Type check
@@ -56,7 +56,7 @@ jobs:
       # Ubuntu runners can restrict unprivileged user namespaces through AppArmor.
       - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - run: uv sync --locked --all-packages
-      - run: uv run --no-sync devkit sync
+      - run: uv run --no-sync devkit sync --locked
       - name: Verify reviewed devkit and viewer pins before provisioning
         run: just check-devkit
       - name: Install the reviewed devkit-spec runtime
@@ -99,7 +99,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - run: uv sync --locked --all-packages
-      - run: uv run --no-sync devkit sync
+      - run: uv run --no-sync devkit sync --locked
       - name: Tests (PostgreSQL, testcontainers)
         run: just test-pg
       - name: Migrations apply, reverse one step, and match the models
@@ -130,7 +130,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - run: uv sync --locked --all-packages
-      - run: uv run --no-sync devkit sync
+      - run: uv run --no-sync devkit sync --locked
       - run: npm --prefix modules/hub-ui ci
       - name: Format and lint
         run: just lint-check hub-ui

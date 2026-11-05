@@ -8,10 +8,10 @@ default:
 check-devkit:
     @uv run --no-active --no-sync python scripts/check-devkit.py
 
-# Validate living documents and documentation hygiene with the installed devkit bundles
+# Validate living documents, SDD records and documentation hygiene
 docs-check:
-    @uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync devkit rules check docs AGENTS.md README.md
-    @uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync devkit rules check docs AGENTS.md README.md --phase hygiene
+    @uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync devkit rules check docs specs AGENTS.md README.md
+    @uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync devkit rules check docs specs AGENTS.md README.md --phase hygiene
 
 # Initialize project modules (all, hub, hub-ui, or sdk)
 init module="all":
