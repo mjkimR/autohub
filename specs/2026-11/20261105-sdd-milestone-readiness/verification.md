@@ -15,7 +15,7 @@ After: the preview endpoint returns captured SHA, exact member/dependency observ
 - Existing activity unit suite: 25 passed.
 - New preview unit/API/real-isolated catalog suites: 38 passed before final exact unresolved-ID strengthening; focused rerun recorded in final envelope.
 - Owning repository UI suite: 24 passed, including stale-request and eligible-selection cases.
-- Required `just test-sdd .cache/sdd-review` with `.cache/sdd-review-app-common`: 108 passed, 2 skipped optional cases. Both runtimes were provisioned from the declared pinned manifests. This executes real devkit and OS isolation; unit doubles are separate evidence.
+- Required `just test-sdd .cache/sdd-review` with `.cache/sdd-review-app-common`: 108 passed, 2 PostgreSQL-only lock-contention cases skipped. Both runtimes were provisioned from the declared pinned manifests. This executes real devkit and OS isolation; unit doubles are separate evidence.
 - `just check`: pass for backend/SDK types, Svelte types and UI production build.
 - `just lint-check`: backend, SDK and document phases passed; first UI pass found keyed-loop omissions, fixed before final rerun.
 
@@ -29,4 +29,6 @@ Round 1's actual upstream exception, nonanchor and missing PR evidence were repr
 
 Round 2's new historical flat-anchor defect failed the real-runtime `flat_proposal` fixture before its fix: only PROP-member appeared, omitting PROP-before. The corrected implementation mirrors the pinned devkit anchor predicate. Valid flat direct members remain unsupported for native start and visible for inspection; valid unfinished flat prerequisites remain held. The original nonanchor blueprint regression stays passing.
 
-Latest complete owning SDD units plus new API/real-isolated catalog/Git fixtures: 153 passed. Full UI suite: 229 passed. Required full real isolated SDD suite after round-one fixes: 112 passed, 2 optional skips; later flat-anchor change is covered by the focused real-isolation fixture. Required lint/type/build checks passed after the first fix batch; final document/range verification follows reconciliation.
+Latest complete owning SDD units plus new API/real-isolated catalog/Git fixtures: 153 passed. Full UI suite: 229 passed. Required full real isolated SDD suite after round-one fixes: 112 passed, 2 PostgreSQL-only lock-contention skips; later flat-anchor change is covered by the focused real-isolation fixture. Required lint/type/build checks passed after the first fix batch; final document/range verification follows reconciliation.
+
+The two full isolated-suite skips are the PostgreSQL-only row-lock and publication/cancel contention fixtures, rather than missing runtime/profile coverage. Both declared runtimes were present. Earlier review/check summaries called these optional skips; this record supplies the precise boundary. No database locking semantics changed in this unit.
