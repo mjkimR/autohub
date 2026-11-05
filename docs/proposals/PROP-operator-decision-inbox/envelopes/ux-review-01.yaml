@@ -1,0 +1,28 @@
+kind: ux-review
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-05T06:00:28.221977Z'
+status: completed
+summary: Walked three use cases and extensions. UX-decision-inbox R1=2 R2=2 R3=2 R4=2 R5=2 R6=1; native Hub route and register drafts missing in reviewed version.
+findings:
+- issue: 'link check (reviewer judgment): native Hub questions lack an explicit discovery interaction.'
+  evidence: target-docs.md Screens Interactions and Use Cases and Interface Plan
+  failure_condition: Native Hub question selection has no dedicated UC-complete-sdd-workflow 3d route.
+  suggested_action: Add native Hub question Review row with exact identity and native owner behavior.
+  resolution: open
+- issue: 'R6 objects: register updates are intentions rather than drafted rows.'
+  evidence: target-docs.md Use Cases and Interface Plan
+  failure_condition: Reconciliation lacks settled object-to-row mapping and can conflate native and ordinary ownership.
+  suggested_action: Draft concrete existing-object register additions with Operator role and Review actions.
+  resolution: open
+assumptions:
+- Reviewed uncommitted Screens at HEAD 246a77c; emulated scope/no-write, before-after snapshot unchanged.
+unverified_areas:
+- No implemented inbox, browser prototype or keyboard validation. Findings folded in Planning and remain visible for plan-accept.
+checks:
+  walkthrough: PASS three use cases main scenarios and extensions
+  existing_ux_rules: PASS existing linked UX rules zero violations
+diff_scope:
+  base: ''
+  head: 246a77c052b3610a12ba6ddcbea7da48f91ce669

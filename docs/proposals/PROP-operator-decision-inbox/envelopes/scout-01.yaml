@@ -1,0 +1,17 @@
+kind: scout
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-05T06:00:20.953372Z'
+status: completed
+summary: Persisted ordinary questions and native SDD snapshots support DB discovery; native per-subject waiting timestamps are absent.
+findings: []
+assumptions:
+- 'Emulated isolation: absolute worktree read scope and no-write instructions; no native guarantee.'
+unverified_areas:
+- No database scale, query plan, migration execution or application tests; no outside-worktree reads reported.
+checks:
+  source_review: PASS inspected ordinary question records, native progress and list APIs
+diff_scope:
+  base: 246a77c052b3610a12ba6ddcbea7da48f91ce669
+  head: 246a77c052b3610a12ba6ddcbea7da48f91ce669
