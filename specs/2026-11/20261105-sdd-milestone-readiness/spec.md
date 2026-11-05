@@ -2,7 +2,7 @@
 id: SPEC-sdd-milestone-readiness
 title: Preview executable SDD milestone work
 summary: Expose selected milestone members and authoritative readiness so operators can review a sequential execution selection without starting work.
-status: planned
+status: in-progress
 created: 2026-11-05
 related_capabilities: []
 related_usecases: []
@@ -185,3 +185,5 @@ The recommendation is a routine design assumption within the authorized read-onl
 ## 7. Assumptions and Baseline
 
 The accepted head is `8f5003e54b8943ef80ca4c63ac92968482c3864e`. Its product source matches main `658042b3d9e3f0423416b6655b4c2d2a6353e166`; handoff documents differ. Existing proposal admission and branch-specific viewer navigation remain valid premises. Candidate A and the retained Planning UX review apply unchanged. The baseline has no milestone preview endpoint or eligible-subset panel. Verify the after behavior through API/UI fixtures; claim no performance improvement.
+
+The pinned devkit resolver admits aliases only within the document prefix. Preview trusts only its returned canonical document. A recorded proposal origin or a same-slug completed SPEC supplies no mapping. Supported SPEC aliases are verified with the real isolated runtime; a cross-prefix mapping is tested only as a conditional resolver response, never authored or inferred by Hub.

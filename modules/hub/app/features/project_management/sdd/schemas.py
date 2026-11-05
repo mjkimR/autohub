@@ -88,3 +88,50 @@ class SddReadiness(BaseModel):
     workflow: dict = Field(default_factory=dict)
     current: dict = Field(default_factory=dict)
     warnings: list[SddWarning] = Field(default_factory=list)
+
+
+class MilestonePreviewRequest(BaseModel):
+    ref: str = Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_][A-Za-z0-9_./-]*$")
+    milestone_id: str = Field(pattern=r"^MS-[A-Za-z0-9_-]+$", max_length=255)
+    milestone_path: str | None = Field(default=None, max_length=1024)
+
+
+class MilestoneMember(BaseModel):
+    id: str
+    path: str
+    title: str = ""
+    status: str
+    activity_kind: Literal["plan", "dev"] | None = None
+    stage: str | None = None
+    admission: Literal["pass", "held", "unknown"]
+    scheduling: Literal["pass", "held"]
+    workflow_hold: dict = Field(default_factory=dict)
+    eligibility: Literal["eligible_now", "held", "existing_activity", "finished", "unsupported", "unknown"]
+    reasons: list[str]
+    evidence: list[dict] = Field(default_factory=list)
+    evidence_observed_at: str | None = None
+
+
+class MilestonePreview(BaseModel):
+    project_id: str
+    repository: str
+    requested_ref: str
+    resolved_sha: str
+    milestone: dict
+    observed_at: str
+    runtime_identity: str | None = None
+    complete: bool
+    counts: dict[str, int]
+    limits: dict[str, int]
+    reasons: list[str]
+    warnings: list[SddWarning]
+    nodes: list[dict]
+    edges: list[dict]
+    members: list[MilestoneMember]
+
+
+class MilestoneList(BaseModel):
+    resolved_sha: str
+    complete: bool
+    reasons: list[str]
+    items: list[dict]

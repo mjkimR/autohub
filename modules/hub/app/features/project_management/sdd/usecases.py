@@ -53,6 +53,32 @@ class SddUseCase:
 
         return ProposalList(**await list_proposals(self.observer, project, base_branch, runs_for))
 
+    async def milestone_context(self, project_id):
+        async with AsyncTransaction() as session:
+            project = await self.projects.get(session, project_id)
+            if project.project_type != "sdd":
+                raise ProjectError(422, "Select sdd project mode first")
+            if not project.enabled or not project.github_repository or not project.github_connector_id:
+                raise ProjectError(422, "Enable the project and connect its GitHub repository")
+        return project
+
+    async def milestones(self, project_id, ref):
+        from .milestones import list_milestones
+
+        project = await self.milestone_context(project_id)
+        return await list_milestones(self.observer, project, ref)
+
+    async def milestone_preview(self, project_id, request):
+        from .milestones import preview_milestone
+
+        project = await self.milestone_context(project_id)
+
+        async def runs_for(unit):
+            async with AsyncTransaction() as session:
+                return await SddRepository().runs(session, project_id, unit)
+
+        return await preview_milestone(self.observer, project, request, runs_for)
+
     async def runs(self, project_id, spec_dir):
         async with AsyncTransaction() as session:
             await self.projects.get(session, project_id)
