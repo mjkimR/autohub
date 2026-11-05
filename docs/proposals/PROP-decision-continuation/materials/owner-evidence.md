@@ -1,0 +1,9 @@
+# Continuation owner evidence
+
+Scout scope: worktree-only source and contract inspection at dd1ee85b61a8c5d9a552b4325be20b8e0cc52add; no outside reads or writes, no application tests.
+
+`CAP-PR-operator-decisions` rules 8–13 separate save, prepared application, delivery and replay. Source: modules/hub/app/features/project_management/pipeline_runs/usecases/control.py:169 and interaction_repo.py:13. `CAP-SDD-workflow-control` rules 13/15 retain worker publication and replay semantics. Source: modules/hub/app/features/project_management/sdd/control.py:29, :150, :239. `CAP-SDD-native-delivery` owns proposal publication; plan_publication.py:145 retains preparing/prepared/uncertain/published candidate evidence. sdd/repos.py:30 caps history at 100; ordinary public schemas.py:68 omits resume receipts. The proposal alternatives compare existing broad reads, exact owner lookup and a duplicate ledger; exact lookup is recommended.
+
+High-effort inbound queries were run for all three capabilities and provisional `PADR-decision-inbox-read-projection`. Relevant results: ARCH-05-2-components, ARCH-06-execution, ARCH-08-crosscutting-concepts, CAP-PR-pull-request-delivery, CAP-PR-agent-dispatch, CAP-SDD-runtime-isolation, UC-resolve-run-question, UC-complete-sdd-workflow, UC-decide-sdd-proposal, UX-run-decisions, UX-sdd-workflow-request, UX-sdd-run, UX-sdd-decision-history, UX-pipeline-runs, and the accepted predecessor bundle. No accepted ADR decision is replaced. The predecessor PADR owns the discovery projection and inspection adapter; continuation reuses them.
+
+The accepted `PROP-operator-decision-inbox` design remains provisional until its implementation completes. Revalidate exact selection, first-observed age and CAS inspection against its landed completed spec before Development/handoff. No live provider, SDK/Jules, operations or CI scope was inspected or added.
