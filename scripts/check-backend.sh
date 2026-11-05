@@ -23,3 +23,4 @@ if "$fix"; then
 fi
 uv run --no-active --no-sync devkit sync --check
 uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync devkit rules check "$backend_path"
+just docs-check

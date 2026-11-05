@@ -3,6 +3,7 @@
 import json
 import runpy
 import shutil
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -57,6 +58,31 @@ def test_transitive_package_version_cannot_drift(project):
         )
     )
     with pytest.raises(PinsError):
+        check(project)
+
+
+def test_catalog_git_pin_cannot_drift_independently(project):
+    revision, _ = check(project)
+    path = project / "uv.lock"
+    text = path.read_text()
+    start = text.index('\nname = "devkit-catalog"\n')
+    end = text.index("\n[[package]]", start)
+    path.write_text(text[:start] + text[start:end].replace(revision, "f" * 40) + text[end:])
+    with pytest.raises(PinsError, match="resolved devkit-catalog Git source"):
+        check(project)
+
+
+@pytest.mark.parametrize("profile", checker["PROFILES"][1:])
+def test_catalog_does_not_belong_in_isolated_sdd_runtime(project, profile):
+    path = project / "uv.lock"
+    text = path.read_text()
+    start = text.index('\nname = "devkit-catalog"\n')
+    end = text.index("\n[[package]]", start)
+    catalog = "\n[[package]]" + text[start:end]
+    runtime_lock = project / profile / "uv.lock"
+    runtime_lock.write_text(runtime_lock.read_text() + catalog)
+    assert any(package["name"] == "devkit-catalog" for package in tomllib.loads(runtime_lock.read_text())["package"])
+    with pytest.raises(PinsError, match="package inventory"):
         check(project)
 
 

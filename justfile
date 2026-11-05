@@ -8,9 +8,15 @@ default:
 check-devkit:
     @uv run --no-active --no-sync python scripts/check-devkit.py
 
+# Validate living documents and documentation hygiene with the installed devkit bundles
+docs-check:
+    @uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync devkit rules check docs AGENTS.md README.md
+    @uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync devkit rules check docs AGENTS.md README.md --phase hygiene
+
 # Initialize project modules (all, hub, hub-ui, or sdk)
 init module="all":
     #!/usr/bin/env bash
+    set -euo pipefail
     source ./scripts/_lib.sh
     target=$(resolve_module "{{ module }}")
 
@@ -19,7 +25,7 @@ init module="all":
         uv sync --no-active --locked --all-packages
     fi
     if should_run "$target" "hub"; then
-        just skills
+        uv run --no-active --no-sync devkit sync --locked
     fi
 
     if should_run "$target" "hub-ui"; then
@@ -31,46 +37,11 @@ init module="all":
 
 # Run linters for a specific module (all, hub, hub-ui, or sdk)
 lint module="all":
-    #!/usr/bin/env bash
-    set -e
-    source ./scripts/_lib.sh
-    target=$(resolve_module "{{ module }}")
-
-    if should_run "$target" "hub"; then
-        path=$(resolve_module_path "hub")
-        echo "Linting Python backend ($path)..."
-        bash scripts/check-backend.sh --fix "$path"
-    fi
-
-    if should_run "$target" "sdk"; then
-        uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync ruff check --fix --output-format=concise packages/sdk
-        uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync ruff format packages/sdk
-    fi
-
-    if should_run "$target" "hub-ui"; then
-        path=$(resolve_module_path "hub-ui")
-        echo "Linting Svelte frontend ($path)..."
-        activate_frontend_node
-        uv run --no-active --no-sync devkit run -- npm --prefix "$path" run lint
-    fi
+    @bash scripts/lint.sh --fix "{{ module }}"
 
 # Check formatting, lint, and architecture without modifying files
 lint-check module="all":
-    #!/usr/bin/env bash
-    set -e
-    source ./scripts/_lib.sh
-    target=$(resolve_module "{{ module }}")
-    if should_run "$target" "hub"; then
-        bash scripts/check-backend.sh "$(resolve_module_path hub)"
-    fi
-    if should_run "$target" "sdk"; then
-        uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync ruff check --output-format=concise packages/sdk
-        uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync ruff format --check packages/sdk
-    fi
-    if should_run "$target" "hub-ui"; then
-        activate_frontend_node
-        uv run --no-active --no-sync devkit run -- npm --prefix "$(resolve_module_path hub-ui)" run lint
-    fi
+    @bash scripts/lint.sh "{{ module }}"
 
 # Run static type checks for a specific module (all, hub, hub-ui, or sdk)
 check module="all":
@@ -104,53 +75,24 @@ dev-run module="all":
     target=$(resolve_module "{{ module }}")
     bash ./scripts/dev-run.sh "$target"
 
-# Kill any dangling development servers (FastAPI on 8389, Vite on 5173)
-kill:
-    #!/usr/bin/env bash
-    echo "Terminating dangling development processes..."
-    # Release ports 8389 (backend) and 5173 (frontend)
-    fuser -k 8389/tcp 2>/dev/null || true
-    fuser -k 5173/tcp 2>/dev/null || true
-    # Fallback to process name-based termination (disabled to prevent race conditions and accidental termination of unrelated servers)
-    # pkill -f "uvicorn.*app.main:create_app" 2>/dev/null || true
-    # pkill -f "vite" 2>/dev/null || true
-    echo "Development servers cleaned up."
-
-# Compile frontend production bundle
-build-ui:
-    #!/usr/bin/env bash
-    source ./scripts/_lib.sh
-    path=$(resolve_module_path "hub-ui")
-    activate_frontend_node
-    uv run --no-active --no-sync devkit run -- npm --prefix "$path" run build
-
-# Build docker image for a specific module or all modules
-docker-build module="all" tag="latest":
-    #!/usr/bin/env bash
-    source ./scripts/_lib.sh
-    target=$(resolve_module "{{ module }}")
-    bash ./scripts/docker-build.sh "$target" "{{ tag }}"
+# Build the Hub Docker image, including the frontend
+docker-build tag="latest":
+    @bash docker/build_hub.sh -t "{{ tag }}"
 
 # Generate a new database migration for hub
-db-revision message module="hub":
-    #!/usr/bin/env bash
-    source ./scripts/_lib.sh
-    target=$(resolve_module "{{ module }}")
-    path=$(resolve_module_path "$target")
-    uv run --no-active --directory "$path" alembic revision --autogenerate -m "{{ message }}"
+db-revision message:
+    @uv run --no-active --directory modules/hub alembic revision --autogenerate -m "{{ message }}"
 
 # Apply database migrations to head for hub
-db-upgrade module="hub":
+db-upgrade:
     #!/usr/bin/env bash
-    source ./scripts/_lib.sh
-    target=$(resolve_module "{{ module }}")
-    path=$(resolve_module_path "$target")
-    if [ -f "$path/.env" ]; then
+    set -euo pipefail
+    if [ -f modules/hub/.env ]; then
         set -a
-        source "$path/.env"
+        source modules/hub/.env
         set +a
     fi
-    uv run --no-active --directory "$path" alembic upgrade head
+    uv run --no-active --directory modules/hub alembic upgrade head
 
 # Run tests with SQLite (default)
 test +paths=default_test_path:
@@ -211,14 +153,6 @@ login-token +args="":
 # Sync the local signed-in Codex quota reset time to the global personal-codex AI catalog.
 sync-codex-quota:
     @uv run --no-active python ./scripts/sync-codex-quota.py
-
-# Deploy devkit bundles from the installed packages
-skills:
-    @bash ./scripts/install-skills.sh
-
-# Compatibility entry point; arguments are passed to devkit sync
-link-skills +args="":
-    @bash ./scripts/install-skills.sh {{ args }}
 
 # Setup Secret Manager secrets for Cloud Run
 setup-secrets +args="":

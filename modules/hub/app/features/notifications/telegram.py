@@ -9,16 +9,14 @@ class TelegramError(Exception):
     pass
 
 
-def create_telegram_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(base_url=TELEGRAM_API_BASE_URL, timeout=10)
-
-
 async def send_telegram_message(client: httpx.AsyncClient, bot_token: str, chat_id: str, text: str) -> None:
     """Post one plain-text message. The error never carries the URL, which holds the bot token."""
     try:
         response = await client.post(
-            f"/bot{bot_token}/sendMessage",
+            f"{TELEGRAM_API_BASE_URL}/bot{bot_token}/sendMessage",
             json={"chat_id": chat_id, "text": text[:TELEGRAM_MESSAGE_LIMIT], "disable_web_page_preview": True},
+            timeout=10,
+            follow_redirects=False,
         )
     except httpx.RequestError:
         raise TelegramError("Telegram request failed") from None

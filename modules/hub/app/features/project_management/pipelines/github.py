@@ -71,7 +71,7 @@ def github_http_error(context: str, response: httpx.Response, now: float | None 
 
 
 def create_github_client(token: str) -> httpx.AsyncClient:
-    return httpx.AsyncClient(
+    return httpx.AsyncClient(  # arch: ignore[RULE-app-http-client-construction] -- connector-scoped PAT and cookies; caller owns async-with cleanup
         base_url="https://api.github.com",
         headers={
             "Authorization": f"Bearer {token}",

@@ -2,6 +2,7 @@ import json
 from uuid import UUID
 
 import pytest
+from app.features.notifications import notifier
 from app.features.notifications.models import NotificationChannel
 
 from tests.utils.assertions import assert_status_code
@@ -44,6 +45,20 @@ async def test_a_test_notice_goes_to_the_channel_even_when_disabled(client, chan
     assert json.loads(request.content)["chat_id"] == "424242"
     [listed] = (await client.get(ROOT)).json()["items"]
     assert listed["last_sent_at"] is not None and listed["last_error"] is None
+
+
+async def test_repeated_notices_leave_the_shared_client_open_with_telegram_timeout(client, channel, telegram):
+    pool = notifier.get_http_client()
+    for _ in range(2):
+        response = await client.post(f"{ROOT}/{channel['id']}/test")
+        assert_status_code(response, 200)
+        assert response.json() == {"delivered": True, "detail": None}
+        assert not pool.is_closed
+
+    assert len(telegram.requests) == 2
+    for request in telegram.requests:
+        assert request.url.host == "api.telegram.org"
+        assert request.extensions["timeout"] == {"connect": 10, "read": 10, "write": 10, "pool": 10}
 
 
 async def test_a_refused_notice_is_reported_and_kept_without_the_token(client, channel, telegram):

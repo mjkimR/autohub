@@ -1,9 +1,9 @@
 import json
+from collections.abc import AsyncIterator
 
 import httpx
 import pytest
 from app.features.notifications import notifier
-from app.features.notifications.telegram import TELEGRAM_API_BASE_URL
 
 
 class FakeTelegram:
@@ -22,14 +22,11 @@ class FakeTelegram:
 
 
 @pytest.fixture
-def telegram(monkeypatch) -> FakeTelegram:
+async def telegram(monkeypatch) -> AsyncIterator[FakeTelegram]:
     fake = FakeTelegram()
-    monkeypatch.setattr(
-        notifier,
-        "create_telegram_client",
-        lambda: httpx.AsyncClient(base_url=TELEGRAM_API_BASE_URL, transport=httpx.MockTransport(fake.handle)),
-    )
-    return fake
+    async with httpx.AsyncClient(transport=httpx.MockTransport(fake.handle)) as http:
+        monkeypatch.setattr(notifier, "get_http_client", lambda: http)
+        yield fake
 
 
 @pytest.fixture

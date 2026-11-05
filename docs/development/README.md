@@ -5,6 +5,31 @@ code generation, tests, dependency updates and extension points. Product behavio
 belongs in capability/use-case contracts; deployed-service setup and recovery
 belong in [operations](../operations/README.md).
 
+## Change workflow
+
+Auto Hub's own development uses devkit SDD. Start a development request with
+`/spec <intent>`; the installed entry skill classifies the work and follows the
+applicable workflow. Use `/spec-next` to inspect active work and find the next
+stage. Follow that stage's guidance rather than creating records for every task.
+
+Read the effective policy and relevant context from the repository root:
+
+```sh
+uv run devkit spec policy
+uv run devkit get-context spec
+uv run devkit get-context docs
+```
+
+Keep current product contracts in `docs/`. The selected workflow determines
+whether a change needs a proposal or a spec under `specs/`. Preserve completed
+specs as delivery history; do not reconstruct records for work done before this
+tooling was applied. Approval boundaries remain those reported by
+`devkit spec policy`.
+
+The [toolchain guide](toolchain.md#selected-agent-assets) lists selected assets.
+This contributor workflow is separate from Auto Hub's execution of SDD work in
+connected repositories (`CAP-SDD-native-delivery`).
+
 ## Environment and commands
 
 Run project commands from the repository root. Use Python 3.13+, uv, just and the
@@ -23,16 +48,24 @@ The root [justfile](../../justfile) owns command syntax and defaults.
 | Work | Contributor command |
 | --- | --- |
 | Format/lint | `just lint`; read-only equivalent: `just lint-check` |
+| Living Spec and documentation hygiene | `just docs-check` |
 | Python/UI types and production UI build | `just check` |
 | Backend or UI tests | `just test`, `just test-ui`; see [test selection](testing.md) |
 | Standalone SDK | `just test-sdk`, `just build-sdk` |
 | Regenerate typed UI API | `just gen-ui-api`; verify with `just check-ui-api` |
 | Generate a migration | `just db-revision "Describe the schema change"` |
 | Apply local migrations | `just db-upgrade` |
+| Build the local Hub image, including UI | `just docker-build <tag>`; defaults to `latest` |
 
 Check recipes already use `devkit run`, printing bounded output and a complete
 log path; do not wrap them again. Frontend recipes activate `.nvmrc` through nvm
 when available. Install that Node version before invoking them.
+
+`just init hub` restores the committed devkit assets with `devkit sync --locked`.
+After an intentional bundle/configuration change, run `uv run devkit sync` and
+review the updated receipt. Agent asset management uses the native devkit CLI.
+`just check hub-ui` includes the production UI build. Stop `just dev-run` with
+Ctrl-C so its cleanup handles the processes it started.
 
 Follow `ARCH-02-constraints` for dependency/transaction boundaries and
 `ARCH-05-2-components` for code ownership. The frontend consumes generated typed

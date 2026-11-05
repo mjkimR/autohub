@@ -60,6 +60,10 @@ Initialize the Python environment even for frontend-only checks. Commands print
 bounded results and a log path for full output through `devkit run`. Backend
 initialization deploys app-common devkit bundles from the installed packages.
 
+Auto Hub's own development uses devkit SDD. Start with `/spec <intent>` and use
+`/spec-next` to inspect work in progress. See the [contributor workflow](docs/development/README.md#change-workflow)
+and [selected tooling](docs/development/toolchain.md#selected-agent-assets).
+
 ## Documentation
 
 - [Documentation guide](docs/README.md): architecture, protocols, AI catalogs, and operator notices.

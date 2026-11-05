@@ -8,10 +8,17 @@ English and preserve literal UI labels and localized examples.
 
 Follow devkit's `document-writing`, `living-spec-writing`, `contract-authoring`
 and the applicable capability/use-case/architecture instruction and template.
-Use the repository's reviewed devkit revision. When the `docs` bundle is not
-installed in the contributor environment, read these files from that revision's
-`packages/devkit-docs/src/devkit_docs/bundles/docs/bundle/` source; do not infer a
-format from an unrelated repository's document sample.
+The root development environment installs the `docs` bundle through
+`devkit-spec`. Load its context before document work:
+
+```sh
+uv run devkit get-context docs
+```
+
+Read the instruction paths it returns and the steering documents whose summaries
+apply to the change. Find documents with `uv run devkit docs list` and resolve
+their IDs with `uv run devkit docs resolve <ID>`. Restore a missing environment from the
+[locked toolchain](toolchain.md); do not substitute another repository's samples.
 
 Put implemented guarantees in CAPs, actor goals/examples in UCs and structural
 views in the appropriate arc42 chapter. Keep CAP/UC relationships reciprocal and
@@ -24,16 +31,16 @@ in materials only when it supports an active compatibility/deployment claim.
 
 ## Validate the documents
 
-The reviewed app-common SDD profile contains devkit-docs without adding it to the
-backend's dependency set. After [provisioning that profile](testing.md#isolated-sdd-contracts),
-run its actual documentation rules against the working tree:
+Run the installed document rules against the working tree:
 
 ```sh
-AUTOHUB_DOC_RUNTIME="$PWD/.cache/sdd-review-app-common/.venv"
-"$AUTOHUB_DOC_RUNTIME/bin/python" -I -B -m devkit_dist rules check docs AGENTS.md README.md --rules-dir "$AUTOHUB_DOC_RUNTIME/lib/python3.13/site-packages/devkit_docs/bundles/docs/bundle/rules"
-"$AUTOHUB_DOC_RUNTIME/bin/python" -I -B -m devkit_dist rules check docs --phase hygiene --rules-dir "$AUTOHUB_DOC_RUNTIME/lib/python3.13/site-packages/devkit_docs/bundles/docs/bundle/rules"
+just docs-check
 git diff --check
 ```
+
+`just docs-check` checks `docs/`, root `AGENTS.md` and root `README.md` in the
+linter and hygiene phases. Backend `just lint` and `just lint-check` include it,
+so the existing backend CI invokes the same document checks.
 
 Check metadata/IDs/summaries, referenced code paths, reciprocal relationships and
 acceptance coverage for every extension. Update incoming links when a guide or

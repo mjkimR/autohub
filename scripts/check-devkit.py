@@ -15,9 +15,13 @@ from devkit.advisory import Actor, AdvisoryError, ExitCode, Retry
 REPOSITORY = "https://github.com/mjkimR/devkit"
 SUBDIRECTORIES = {
     "devkit-agt": "packages/devkit",
-    **{f"devkit-{name}": f"packages/devkit-{name}" for name in ("advisory", "cli", "core", "dist", "docs", "spec")},
+    **{
+        f"devkit-{name}": f"packages/devkit-{name}"
+        for name in ("advisory", "catalog", "cli", "core", "dist", "docs", "spec")
+    },
 }
-BASE_PACKAGES = set(SUBDIRECTORIES) - {"devkit-docs", "devkit-spec"}
+DEVELOPMENT_PACKAGES = set(SUBDIRECTORIES)
+RUNTIME_PACKAGES = DEVELOPMENT_PACKAGES - {"devkit-catalog"}
 PROFILES = (".", "config/sdd-runtime", "config/sdd-runtime-app-common")
 VIEWER = "devkit-viewer-0.1.0.tgz"
 
@@ -70,7 +74,7 @@ def check(root: Path) -> tuple[str, str]:
                 )
         path = root / profile / "uv.lock"
         packages = {p["name"]: p for p in tomllib.loads(path.read_text())["package"] if p["name"].startswith("devkit-")}
-        expected = BASE_PACKAGES if profile == "." else set(SUBDIRECTORIES)
+        expected = DEVELOPMENT_PACKAGES if profile == "." else RUNTIME_PACKAGES
         require(set(packages) == expected, "Review the devkit package inventory", path)
         for name, package in packages.items():
             parsed = urlsplit(package["source"].get("git", ""))

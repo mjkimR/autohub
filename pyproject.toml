@@ -10,6 +10,8 @@ override-dependencies = [
 devkit-dist = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-dist", rev = "b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
 devkit-agt = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit", rev = "b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
 devkit-advisory = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-advisory", rev = "b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+devkit-spec = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-spec", rev = "b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+devkit-catalog = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-catalog", rev = "b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
 
 [tool.uv.workspace]
 members = ["modules/hub", "packages/sdk"]
@@ -43,8 +45,8 @@ extraPaths = ["./modules/hub"]
 
 [dependency-groups]
 dev = [
-    "devkit-agt",
-    "devkit-dist",
+    "devkit-spec",
+    "devkit-catalog",
     "devkit-advisory",
     "pyright>=1.1.409",
 ]

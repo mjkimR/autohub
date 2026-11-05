@@ -45,28 +45,8 @@ if [ -w /etc/profile.d ]; then
 fi
 
 do_init() {
-    echo "==> [init] Syncing Python dependencies..."
-    uv sync --no-active --locked --all-packages
-
-    echo "==> [init] Installing frontend SvelteKit dependencies..."
-    npm --prefix modules/hub-ui install
-
-    echo "==> [init] Deploying devkit bundles..."
-    bash "$REPO_ROOT/scripts/install-skills.sh"
-
-    # Link skills for Codex if target is codex or all
-    if [ "$TARGET" = "codex" ] || [ "$TARGET" = "all" ]; then
-        echo "==> [init] Linking skills for Codex into .codex/skills/..."
-        mkdir -p .codex/skills
-        if [ -d .agents/skills ]; then
-            for skill in .agents/skills/*; do
-                [ -e "$skill" ] || continue
-                name="$(basename "$skill")"
-                ln -sfn "../../.agents/skills/$name" ".codex/skills/$name"
-                echo "    linked .codex/skills/$name"
-            done
-        fi
-    fi
+    echo "==> [init] Initializing the locked project environment and devkit assets..."
+    just init
 }
 
 do_setup() {

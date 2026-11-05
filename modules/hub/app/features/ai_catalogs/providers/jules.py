@@ -19,7 +19,9 @@ class JulesApiError(ProviderRequestError):
 
 
 def create_jules_client(api_key: str) -> httpx.AsyncClient:
-    return httpx.AsyncClient(base_url=JULES_API_BASE_URL, headers={"X-Goog-Api-Key": api_key}, timeout=30)
+    return httpx.AsyncClient(  # arch: ignore[RULE-app-http-client-construction] -- catalog-scoped API key; caller owns async-with cleanup
+        base_url=JULES_API_BASE_URL, headers={"X-Goog-Api-Key": api_key}, timeout=30
+    )
 
 
 class JulesClient:

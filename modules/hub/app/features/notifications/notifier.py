@@ -4,7 +4,8 @@ from uuid import UUID
 
 from app.features.notifications.schemas import NotificationLevel, is_level_enabled
 from app.features.notifications.services import NotificationChannelService
-from app.features.notifications.telegram import TelegramError, create_telegram_client, send_telegram_message
+from app.features.notifications.telegram import TelegramError, send_telegram_message
+from app_http_client import get_http_client
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.core.log import logger
 from app_layer_base.utils.time_util import get_current_utc_time
@@ -79,19 +80,19 @@ class Notifier:
         deliveries: list[Delivery] = []
         if targets:
             formatted_text = format_notice(text, level)
-            async with create_telegram_client() as client:
-                for target_id, name, token, chat_id in targets:
-                    error: str | None = None
-                    if not token or not chat_id:
-                        error = "The channel's bot token or chat id is missing or cannot be decrypted"
-                    else:
-                        try:
-                            await send_telegram_message(client, token, chat_id, formatted_text)
-                        except TelegramError as exc:
-                            error = str(exc)
-                    if error is not None:
-                        logger.warning(f"Notification through channel {name} failed: {error}")
-                    deliveries.append(Delivery(target_id, name, error))
+            client = get_http_client()
+            for target_id, name, token, chat_id in targets:
+                error: str | None = None
+                if not token or not chat_id:
+                    error = "The channel's bot token or chat id is missing or cannot be decrypted"
+                else:
+                    try:
+                        await send_telegram_message(client, token, chat_id, formatted_text)
+                    except TelegramError as exc:
+                        error = str(exc)
+                if error is not None:
+                    logger.warning(f"Notification through channel {name} failed: {error}")
+                deliveries.append(Delivery(target_id, name, error))
 
         now = get_current_utc_time()
         async with AsyncTransaction() as session:

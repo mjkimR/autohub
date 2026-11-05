@@ -14,6 +14,7 @@ keeps that evidence separate.
 | Feature guarantees, interfaces and code entrypoints | [Capabilities](capabilities/README.md) |
 | Actor goals and acceptance criteria | [Use cases](usecases/README.md) |
 | System boundaries, runtime structure and constraints | [Architecture](architecture/README.md) |
+| Development approach decision | `ADR-sdd-development` |
 | Contributor environment, checks and extension work | [Developing Auto Hub](development/README.md) |
 | Serving-host and client configuration/recovery | [Operations](operations/README.md) |
 | Deployment and notices | [Cloud Run](operations/cloud-run-deployment.md), [operator notices](operations/operator-notices.md) |
@@ -21,7 +22,7 @@ keeps that evidence separate.
 
 Auto Hub's support for native SDD in connected repositories is defined by
 `CAP-SDD-native-delivery`. Its own development approach, installed tooling and
-lifecycle activation are separate from the product documentation.
+lifecycle are described in [contributor guidance](development/README.md#change-workflow).
 
 ## Document ownership
 
@@ -45,5 +46,5 @@ lifecycle activation are separate from the product documentation.
 Retain material only when its source identity, observation or uncertainty supports
 an active decision or compatibility/deployment claim. Keep dated evidence in
 `materials/YYYY-MM/YYYYMMDD-<slug>/report.md`; consolidate overlapping checks and
-remove superseded reviews. Existing `specs/` records remain historical delivery
+remove superseded reviews. Keep completed `specs/` records as historical delivery
 evidence; do not reconstruct missing approvals or invent decision rationale.

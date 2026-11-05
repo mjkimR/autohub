@@ -20,8 +20,8 @@ overrides = [
 [manifest.dependency-groups]
 dev = [
     { name = "devkit-advisory", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" },
-    { name = "devkit-agt", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" },
-    { name = "devkit-dist", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-dist&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" },
+    { name = "devkit-catalog", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-catalog&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" },
+    { name = "devkit-spec", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-spec&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" },
     { name = "pyright", specifier = ">=1.1.409" },
 ]
 
@@ -692,6 +692,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "devkit-catalog"
+version = "0.1.6"
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-catalog&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+
+[[package]]
 name = "devkit-cli"
 version = "0.1.6"
 source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-cli&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
@@ -721,6 +726,27 @@ dependencies = [
     { name = "jinja2" },
     { name = "pyyaml" },
     { name = "tomlkit" },
+]
+
+[[package]]
+name = "devkit-docs"
+version = "0.1.6"
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-docs&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+dependencies = [
+    { name = "click" },
+    { name = "devkit-agt" },
+    { name = "devkit-core" },
+]
+
+[[package]]
+name = "devkit-spec"
+version = "0.1.6"
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-spec&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+dependencies = [
+    { name = "click" },
+    { name = "devkit-agt" },
+    { name = "devkit-core" },
+    { name = "devkit-docs" },
 ]
 
 [[package]]

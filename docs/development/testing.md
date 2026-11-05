@@ -23,7 +23,7 @@ deployed-process e2e suite; live canaries are operator procedures, not an empty
 passing test target.
 
 For shared fixtures, read the installed app-common testing guide after
-`just skills`, or run `uv run devkit app guide show testing`.
+`just init hub`, or run `uv run devkit app guide show testing`.
 Vitest caches transformed modules but still executes tests. To compare without
 the transform cache, use the repository's Node version and run:
 

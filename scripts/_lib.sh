@@ -3,8 +3,6 @@
 # Source this file from other scripts: source "$(dirname "$0")/_lib.sh"
 # Or from justfile recipes: source ./scripts/_lib.sh
 
-AVAILABLE_MODULES="all hub hub-ui sdk"
-
 resolve_module() {
     case "$1" in
         hub|back|backend) echo "hub" ;;
