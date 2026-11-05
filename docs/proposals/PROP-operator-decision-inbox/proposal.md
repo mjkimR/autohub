@@ -2,7 +2,7 @@
 id: PROP-operator-decision-inbox
 title: Find pending delivery decisions across projects
 summary: "Aggregate actionable PR questions and native SDD decisions with links to current owner-specific review and decision surfaces."
-status: reviewing
+status: accepted
 created_at: 2026-11-05
 target_area: capabilities/delivery/
 priority: medium
