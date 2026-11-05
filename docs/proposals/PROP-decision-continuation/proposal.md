@@ -2,7 +2,7 @@
 id: PROP-decision-continuation
 title: Follow decisions through explicit continuation
 summary: "Connect reviewed decisions to explicit next actions and visible application outcomes without conflating saved answers, approval or resumption."
-status: reviewing
+status: accepted
 created_at: 2026-11-05
 target_area: capabilities/delivery/
 priority: medium
