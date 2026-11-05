@@ -1,0 +1,31 @@
+kind: reverify
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-05T05:58:48.331902Z'
+status: completed
+review: challenger-01.yaml
+summary: round 1 fold; worker self-verified all three concrete suggested guards verbatim in proposal section 5 Request, transaction and dispatch contract. No decision changed; edits limited to the named section, so minor-fix self-verification applies.
+findings:
+- issue: Recovery does not explicitly preserve the Run epoch that scopes automatic repair budgets.
+  evidence: proposal.md:128-129; modules/hub/app/features/project_management/pipeline_runs/usecases/control.py:261; docs/capabilities/delivery/CAP-PR-pull-request-delivery.md:129-130
+  failure_condition: Ordinary resume increments epoch and resets epoch-scoped repair allowances despite retained history.
+  suggested_action: State that recovery never increments epoch or resets epoch-scoped allowances; add exhausted-current-epoch unchanged-epoch refusal test.
+  resolution: resolved
+  severity: P2
+- issue: Recovery lacks an explicit conflict rule for another active Run owning the same PR.
+  evidence: proposal.md:104-110,126-129; modules/hub/app/features/project_management/pipeline_runs/models.py:57-71; modules/hub/app/features/project_management/pipeline_runs/usecases/lifecycle.py:98-99
+  failure_condition: Terminal linked Run recovery races ordinary enrollment and violates active-owner uniqueness.
+  suggested_action: Refuse another active owner, atomically recheck at activation, return 409 for uniqueness race and test no delivery from loser.
+  resolution: resolved
+  severity: P2
+- issue: Reconciliation omits pushed-head/external-implementation observation without redundant delivery.
+  evidence: proposal.md:104-110,128-129; modules/hub/app/features/project_management/pipeline_runs/usecases/control.py:213-255
+  failure_condition: Prior implementation arrives after stop and recovery sends redundant implementation despite valid current-head evidence.
+  suggested_action: Reuse pushed-head/external-implementation reconciliation, observe current-head CI without new delivery, preserve epoch/attempts and add zero-delivery test.
+  resolution: resolved
+  severity: P2
+unverified_areas:
+- Implementation tests remain Development work.
+checks:
+  text: PASS epoch unchanged, active-owner 409 race, pushed-head zero-delivery checks explicitly specified
