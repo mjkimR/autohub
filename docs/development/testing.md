@@ -22,8 +22,8 @@ PostgreSQL lock contention or real provider behavior. The repository has no
 deployed-process e2e suite; live canaries are operator procedures, not an empty
 passing test target.
 
-SQLite backend recipes use two `pytest-xdist` workers with work stealing.
-Each worker owns its in-memory database. `just test-unit` stays serial because
+SQLite backend recipes use `pytest-xdist` CPU detection (`-n auto`) with at most
+eight workers and work stealing. Each worker owns its in-memory database. `just test-unit` stays serial because
 its short tests cost less than worker startup and repeated collection.
 PostgreSQL recipes also stay serial by default to avoid extra containers.
 Set `PYTEST_WORKERS` to select another worker count or run a focused test serially:

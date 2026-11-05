@@ -27,8 +27,8 @@ PYTEST_OPTIONS="${PYTEST_OPTIONS:-$DEFAULT_PYTEST_OPTIONS}"
 # by default to avoid starting several containers for a focused lock test.
 default_workers=0
 if [[ "$DB_TYPE" == sqlite ]]; then
-    default_workers=2
+    default_workers=auto
 fi
 workers="${PYTEST_WORKERS:-$default_workers}"
 
-uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync --directory "$hub_path" pytest -n "$workers" --dist worksteal $PYTEST_OPTIONS --db-type "$DB_TYPE" "${UPDATED_PATHS[@]}"
+uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync --directory "$hub_path" pytest -n "$workers" --maxprocesses=8 --dist worksteal $PYTEST_OPTIONS --db-type "$DB_TYPE" "${UPDATED_PATHS[@]}"
