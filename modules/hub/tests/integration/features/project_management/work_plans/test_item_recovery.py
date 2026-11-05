@@ -18,7 +18,7 @@ def endpoint(project, plan, item):
     return f"/api/v1/projects/{project['id']}/work-plans/{plan['id']}/items/{item['id']}"
 
 
-def command(plan, item):
+def command(plan, item) -> dict:
     return dict(
         request_id=str(uuid4()),
         expected_revision=plan["revision"],
@@ -420,7 +420,7 @@ async def test_preflight_revision_and_live_leases_refuse_without_history(client,
     project, _, _, plan, item, run = await terminal(client, setup_work, session)
     data = command(plan, item)
     if fence == "run_revision":
-        data["expected_run_revision"] += 1
+        data["expected_run_revision"] = int(data["expected_run_revision"]) + 1
     elif fence == "item_lease":
         current = await session.get(WorkItem, UUID(item["id"]))
         current.lease_token, current.lease_expires_at = uuid4(), utc_now() + timedelta(minutes=1)

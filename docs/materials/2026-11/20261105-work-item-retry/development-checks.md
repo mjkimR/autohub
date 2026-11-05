@@ -10,6 +10,7 @@ Checks use controlled GitHub/provider fixtures. No live provider execution or de
 - Full affected SQLite Work Plan and PR-run integration suites with the recovery migration: 261 passed, 10 PostgreSQL-only skips.
 - The same full affected suites on Docker/testcontainers PostgreSQL: 271 passed, no skips. This includes existing row-lock cases, distinct recovery requests and ordinary enrollment winning during recovery I/O.
 - Expanded focused recovery SQLite suite: 29 passed, one PostgreSQL-only skip. The added cases cover linked Run revision, live leases, schedule, disabled project and catalog quota holds.
+- Final expanded PostgreSQL recovery, ordinary-enrollment race and migration suite: 32 passed, no skips.
 - Additive migration down/up preserves failed and successful legacy Items, leaves recovery history empty, retains uniqueness indexes and supports real recovery writes after upgrade.
 
 ## Before and after invariant measurement
