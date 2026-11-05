@@ -22,6 +22,27 @@ PostgreSQL lock contention or real provider behavior. The repository has no
 deployed-process e2e suite; live canaries are operator procedures, not an empty
 passing test target.
 
+SQLite backend recipes use `pytest-xdist` CPU detection (`-n auto`) with at most
+eight workers and work stealing. Each worker owns its in-memory database. `just test-unit` stays serial because
+its short tests cost less than worker startup and repeated collection.
+PostgreSQL recipes also stay serial by default to avoid extra containers.
+Set `PYTEST_WORKERS` to select another worker count or run a focused test serially:
+
+```sh
+PYTEST_WORKERS=0 just test tests/integration/features/project_management/work_plans
+PYTEST_WORKERS=2 just test
+PYTEST_OPTIONS='-q --tb=short --durations=20' just test
+```
+
+Parallel PostgreSQL workers use separate Testcontainers instances. A shared
+`AUTOHUB_FLOW_TEST_POSTGRES_URL` requires `PYTEST_WORKERS=0`; the runner rejects
+parallel use of that database. SDK tests stay serial, and Vitest manages frontend
+parallelism separately.
+
+Work-plan tests using mock GitHub publication replace only Issue synchronization's
+pacing sleep with an event-loop yield. Production pacing and real timeout
+cancellation remain active outside that test double.
+
 For shared fixtures, read the installed app-common testing guide after
 `just init hub`, or run `uv run devkit app guide show testing`.
 Vitest caches transformed modules but still executes tests. To compare without

@@ -1,6 +1,5 @@
 import pytest
 from app.features.execution.tasks.core.registry import (
-    _registry,
     _wrap_with_payload_adapter,
     all_tasks,
     autodiscover,
@@ -8,14 +7,6 @@ from app.features.execution.tasks.core.registry import (
     task,
 )
 from pydantic import BaseModel
-
-
-# Clean up registry before and after tests
-@pytest.fixture(autouse=True)
-def clean_registry():
-    _registry.clear()
-    yield
-    _registry.clear()
 
 
 class DummyPayload(BaseModel):

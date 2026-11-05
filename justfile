@@ -100,7 +100,7 @@ test +paths=default_test_path:
 
 # Run isolated logic tests, following app/ source ownership
 test-unit:
-    @bash ./scripts/run-tests.sh sqlite tests/unit
+    @PYTEST_WORKERS="${PYTEST_WORKERS:-0}" bash ./scripts/run-tests.sh sqlite tests/unit
 
 # Run DB, application, and HTTP integration tests
 test-integration:

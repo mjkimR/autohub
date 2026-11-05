@@ -35,6 +35,19 @@ logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
+def pytest_configure(config):
+    """A caller-supplied PostgreSQL database cannot be shared by xdist workers."""
+    if (
+        os.environ.get("AUTOHUB_FLOW_TEST_POSTGRES_URL")
+        and config.getoption("--db-type") in {"postgres", "postgresql", "pg"}
+        and (
+            config.getoption("numprocesses", default=0)
+            or (config.getoption("dist", default="no") != "no" and config.getoption("tx", default=[]))
+        )
+    ):
+        raise pytest.UsageError("A shared AUTOHUB_FLOW_TEST_POSTGRES_URL requires serial execution (-n 0).")
+
+
 def pytest_collection_modifyitems(items):
     """The directory is authoritative; markers support existing focused commands."""
     for item in items:
