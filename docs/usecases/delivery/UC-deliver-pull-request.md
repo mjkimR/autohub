@@ -1,7 +1,7 @@
 ---
 id: UC-deliver-pull-request
 title: Deliver a Pull Request
-summary: "An operator delegates an existing pull request to Auto Hub and obtains a verified merge or a visible recoverable stop. The use case covers ordinary PR delivery rather than native SDD workflow decisions."
+summary: "An operator delegates an ordinary PR and obtains a verified merge or visible recoverable stop. Work Item-linked terminal recovery preserves its original Run while admission, uncertainty and budgets govern continuation."
 area: delivery
 primary_actor: Operator
 supporting_actors:
@@ -10,6 +10,7 @@ supporting_actors:
   - Repository CI
 status: active
 capabilities:
+  - CAP-WORK-work-plan-execution
   - CAP-PR-pull-request-delivery
   - CAP-PR-agent-dispatch
   - CAP-PR-ci-observation
@@ -17,6 +18,7 @@ capabilities:
 entrypoints:
   - modules/hub/app/features/project_management/projects/api/v1.py
   - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
+  - modules/hub/app/features/project_management/work_plans/api.py
 ---
 
 # [UC-deliver-pull-request] Deliver a Pull Request
@@ -109,6 +111,9 @@ entrypoints:
   instead of repeating the delivered request when resuming without an answer;
   resumes at step 4.
    Interface: `UX-pipeline-runs`.
+
+- **\*d.** A failed/canceled Run belongs to a Work Item: the operator inspects its original outcome in the Plan and requests unchanged-work recovery. Hub reconciles the same PR/Run and applies existing admission and budget gates; accepted continuation resumes at step 4, while refusal retains history and ends this continuation (`CAP-WORK-work-plan-execution`, `CAP-PR-pull-request-delivery`).
+   Interface: `UX-work-plans`.
 
 ## 4. Postconditions
 
@@ -217,10 +222,23 @@ describe observable outcomes; schemas and bounds remain in those capabilities.
 - **When**: the operator pauses it.
 - **Then**: the Run becomes `paused`, its lease is cleared and automatic advancement stops.
 
+### PR-14: Recover the original Work Item owner
+
+- **Covers**: \*d.
+- **Given**: an eligible terminal Work Item Run on its original open PR.
+- **When**: the operator confirms recovery after repairing the cause.
+- **Then**: the same Run and epoch remain authoritative, existing attempt budgets persist, and a competing active owner wins without losing-request dispatch.
+
+### PR-15: Hold uncertain Work Item delivery
+
+- **Covers**: \*d.
+- **Given**: the prior delivery outcome remains uncertain or its retry budget is exhausted.
+- **When**: recovery checks eligibility and evidence.
+- **Then**: uncertainty retains reconciliation without fresh work; exhaustion produces a refusal, and an already implemented head can continue CI without another implementation delivery.
+
 ## 6. Evidence boundary
 
 The examples derive from the source and named tests in
 `CAP-PR-pull-request-delivery`, especially `test_pipeline_runs_api.py`,
-`test_merge_stage.py` and `test_lifecycle.py`. Those tests were inspected rather
-than executed for this document. The examples do not assert a fresh end-to-end
+`test_merge_stage.py` and `test_lifecycle.py`. The original examples were source-inspected. Executed recovery and affected-suite checks are retained in `docs/materials/2026-11/20261105-work-item-retry/development-checks.md`. The examples do not assert a fresh end-to-end
 provider run or production deployment.

@@ -35,10 +35,10 @@ failures while the Item's current result advances.
 
 ## 4. Decision Outcome
 
-- Recovery retains the original Item, branch/PR identity and linked Run; a terminal Run is reactivated only through its guarded owner method. → `CAP-WORK-work-plan-execution` recovery ownership (MUST).
-- Recovery snapshots prior outcomes and appends reconciliation/result events without replacing previous execution evidence. → `CAP-WORK-work-plan-execution` recovery history (MUST).
-- Recovery keeps prior request identities and counters; uncertain outcomes are reconciled and exhausted automatic budgets prevent fresh dispatch. → `CAP-PR-pull-request-delivery` Work Item recovery (MUST).
-- Typed recovery records carry request uniqueness and lease generation alongside existing PR delivery intents. → `ARCH-06-execution` recovery structure (MUST).
+- Recovery retains the original Item, branch/PR identity and linked Run; a terminal Run is reactivated only through its guarded owner method. → `CAP-WORK-work-plan-execution` rule 32 Recovery ownership (MUST).
+- Recovery snapshots prior outcomes and appends reconciliation/result events without replacing previous execution evidence. → `CAP-WORK-work-plan-execution` rule 30 Recovery history (MUST).
+- Recovery keeps prior request identities and counters; uncertain outcomes are reconciled and exhausted automatic budgets prevent fresh dispatch. → `CAP-PR-pull-request-delivery` rules 23–24 Guarded terminal recovery and Recovery budget retention (MUST).
+- Typed recovery records carry request uniqueness and lease generation alongside existing PR delivery intents. → `ARCH-06-execution` Work Item recovery lease/fencing and compatible locking rules (MUST).
 
 ## 5. Consequences
 
@@ -50,8 +50,6 @@ reopening path is introduced.
 
 ## 6. Confirmation
 
-Development adds recovery integration tests under
-`modules/hub/tests/integration/features/project_management/work_plans/` and
-PR-owner tests under `modules/hub/tests/unit/features/project_management/`.
-Review confirms reciprocal use-case/UX citations and the capability/architecture
-restatements above. Tests are planned here; no implementation check is claimed.
+`modules/hub/tests/integration/features/project_management/work_plans/test_item_recovery.py` checks request/history atomicity, retained Item/Run identity, budget/lease fences and successful-history retention. `modules/hub/tests/integration/features/project_management/pipeline_runs/test_work_item_terminal_recovery.py` executes the ordinary-enrollment race with PostgreSQL and verifies zero losing deliveries. The additive migration test verifies legacy rows, uniqueness and real writes after upgrade.
+
+Executed checks and the same-head disabled/enabled invariant measurement are retained in `docs/materials/2026-11/20261105-work-item-retry/development-checks.md`. Code review and independent reconciliation check the restating contract IDs and reciprocal use-case/UX links. These checks establish fixture behavior; no live provider or deployment claim is made.

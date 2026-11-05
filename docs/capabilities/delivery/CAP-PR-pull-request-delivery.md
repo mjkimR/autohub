@@ -1,7 +1,7 @@
 ---
 id: CAP-PR-pull-request-delivery
 title: Pull Request Delivery
-summary: "Auto Hub enrolls an existing pull request, delivers implementation or repair requests, and observes current-head CI before policy-controlled merging. Durable attempts, delivery reconciliation and revision-checked controls keep interrupted work recoverable."
+summary: "PR Runs own implementation, current-head CI and policy-controlled merging. Guarded Work Item recovery retains terminal Run identity and budgets while ordinary paused/blocked resume keeps its existing meaning."
 area: delivery
 status: active
 usecases:
@@ -64,6 +64,11 @@ the same executor after `CAP-WORK-work-plan-execution` prepares an Item's PR.
 21. **Separate tick budgets**: WHEN a project dispatch tick observes existing Runs and admits dispatch candidates, Hub MUST keep the dispatch/follow-up candidates within their separate shared dispatch budget. Check: [`test_task.py`](../../../modules/hub/tests/unit/features/execution/tasks/domains/pipeline/test_task.py), `test_observation_failure_does_not_starve_dispatch`, `test_work_follow_up_uses_remaining_budget_after_existing_runs` and `test_full_dispatch_batch_does_not_expand_for_follow_up`.
 22. **No same-tick uncertain resend**: IF delivery fails uncertainly during observation or a catalog hold refuses dispatch, THEN the tick MUST exclude that attempted dispatch from follow-up retries in the same tick. Check: [`test_task.py`](../../../modules/hub/tests/unit/features/execution/tasks/domains/pipeline/test_task.py), `test_uncertain_delivery_after_observation_is_not_retried` and `test_catalog_hold_is_not_retried_in_the_same_tick`.
 
+23. **Guarded terminal recovery**: WHEN an eligible Work Item recovery reactivates a terminal Run, Hub MUST retain the original Run, epoch, attempt numbering and delivery history. Check: `test_terminal_recovery_keeps_run_epoch_and_commits_delivery` in [`test_item_recovery.py`](../../../modules/hub/tests/integration/features/project_management/work_plans/test_item_recovery.py).
+24. **Recovery budget retention**: IF current-epoch repair or retained retry allowance is exhausted, THEN Hub MUST refuse a fresh recovery delivery without resetting any allowance. Check: `test_epoch_budget_exhaustion_never_resets_or_dispatches`. Ordinary subsequent CI-fix attempts keep the per-attempt silent contract; check: [`test_work_item_recovery.py`](../../../modules/hub/tests/unit/features/project_management/pipeline_runs/usecases/test_work_item_recovery.py), `test_review_ordinary_ci_fix_keeps_its_silent_allowance_but_recovery_does_not`.
+25. **Recovery owner race**: IF ordinary enrollment wins active ownership while Work Item recovery reconciles, THEN Hub MUST close the losing recovery without dispatching. Check: [`test_work_item_terminal_recovery.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_work_item_terminal_recovery.py), `test_ordinary_enrollment_wins_during_recovery_io_without_loser_dispatch` (PostgreSQL).
+26. **Recovery push adoption**: WHEN recovery establishes an already implemented current head, Hub MUST continue CI without repeating implementation. Check: `test_pushed_implementation_advances_ci_without_delivery` in the recovery integration suite.
+
 ## 4. Interfaces & Data Contracts
 
 ### Public HTTP surface
@@ -86,7 +91,7 @@ applies before these routes; internal lease/worker endpoints are not MCP tools.
 
 The direct ordinary path starts `queued → dispatching → implementing →
 awaiting_ci`. Repairs return through dispatch; successful observed merging reaches
-`completed`. `failed` and `canceled` are terminal. `paused` and `blocked` require
+`completed`. `failed` and `canceled` are terminal for ordinary controls; the guarded Work Item recovery entry below is the explicit exception. `paused` and `blocked` require
 operator action. GitHub can already have accepted an effect when a later local
 authorization check fails.
 
@@ -96,6 +101,12 @@ Attempts retain `request_snapshot`, canonical `request_digest`,
 `idempotency_key`, kind and provider correlation. Deliveries belong to attempts;
 the exact delivery recovery/marker contract belongs to `CAP-PR-agent-dispatch`.
 A deliberate resume without a push can create a new attempt and send new work.
+
+### Work Item recovery owner
+
+`CAP-WORK-work-plan-execution` owns the recovery request and history. Its guarded owner entry accepts only the same linked failed/canceled Run and original owned open PR after reconciliation establishes that prior delivery stopped. It atomically activates that Run with its durable next intent under active-owner uniqueness. Uncertain comment/provider outcomes retain their existing markers and receive read-only reconciliation. Correctly merged original work records success without another delivery.
+
+Recovery never increments `epoch`, resets quota counters or discards attempts. Two CI-fix attempts and one conflict-fix attempt remain the current-epoch bounds. A fresh recovery delivery consumes the retained retry allowance; prior silent/recovery deliveries prevent a fresh recovery request from manufacturing another allowance. The ordinary per-attempt watchdog in `CAP-PR-agent-dispatch` remains unchanged for later CI/fix attempts. Already pushed-head or external-implementation evidence instead enters current-head CI without another implementation request. Ordinary paused/blocked resume retains its existing API and meaning.
 
 ### Catalog and advancement selection
 
@@ -159,8 +170,7 @@ Source inspected: [`lifecycle.py`](../../../modules/hub/app/features/project_man
 [`projects/api/v1.py`](../../../modules/hub/app/features/project_management/projects/api/v1.py)
 and [`pipeline_runs/api/v1.py`](../../../modules/hub/app/features/project_management/pipeline_runs/api/v1.py).
 
-The named tests were read to check the stated outcomes. They were not executed
-while authoring this contract. Unit tests use mock lifecycle objects and the
+The original named tests were source-inspected. Executed affected-suite and recovery checks are retained in `docs/materials/2026-11/20261105-work-item-retry/development-checks.md`. Unit tests use mock lifecycle objects and the
 integration examples use controlled GitHub responses; neither source/test
 inspection nor this document establishes live provider behavior, deployment of
 the inspected source or Auto Hub's own SDD baseline.

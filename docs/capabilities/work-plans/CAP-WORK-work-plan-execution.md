@@ -1,11 +1,12 @@
 ---
 id: CAP-WORK-work-plan-execution
 title: Work Plan Execution
-summary: "Auto Hub retains pre-PR work and admits dependency-ready Items under project and catalog capacity, then records confirmed merge outcomes. Revision-checked controls, registration identity and outbound Issue mirrors preserve execution ownership during retries and recovery."
+summary: "Work Plans admit dependency-ready Items and retain confirmed merge results. Explicit recovery preserves original Item and Run identities, prior outcomes and request history under shared admission gates."
 area: work-plans
 status: active
 usecases:
   - UC-execute-work-plan
+  - UC-deliver-pull-request
 entrypoints:
   - modules/hub/app/features/project_management/work_plans/api.py
   - modules/hub/app/features/project_management/work_plans/services.py
@@ -25,13 +26,13 @@ eligible Item's branch/PR and hands it to `CAP-PR-pull-request-delivery`.
 
 - **In-Scope**: seed/proposal/held/active registration, request replay, graph
   validation, revision-checked edits and controls, scheduled eligibility, capacity
-  reservation, branch preparation/reconciliation, outcome retention, activity and
+  reservation, branch preparation/reconciliation, explicit unchanged-work recovery, retained recovery history, outcome retention, activity and
   outbound GitHub Issue mirrors.
 - **Out-of-Scope**: PR implementation, CI fixes and merge authorization belong to
   `CAP-PR-pull-request-delivery`; GitHub owns actual PR merge facts; native SDD
   binding and SDK execution use separate paths.
 - **Scope Excluded**: cross-Plan Item dependencies, automatic WBS/decomposition,
-  bidirectional Issue synchronization, failed-Item retry APIs and automatic
+  bidirectional Issue synchronization and automatic
   substitution of successor Plans. `group_key` is classification metadata, not an
   execution, permission or filesystem-isolation policy.
 
@@ -66,6 +67,15 @@ eligible Item's branch/PR and hands it to `CAP-PR-pull-request-delivery`.
 27. **Draft key integrity**: WHEN editable task keys are renamed or swapped in the Plan form, the UI MUST preserve their intended dependency relationships instead of submitting an intermediate invalid key set. Check: [`WorkPlansPanel.integration.test.ts`](../../../modules/hub-ui/src/lib/features/project-management/work-plans/WorkPlansPanel.integration.test.ts), `renames %s task keys and preserves dependent references`, `swaps task keys without redirecting their dependency relationships` and `retains an invalid key and blocks saving after other tasks are removed or added`.
 28. **Replacement does not release old dependencies**: WHEN a replacement Plan completes, Hub MUST leave the original failed/revoked Plan's dependent work unreleased unless its original dependency conditions are independently satisfied. Check: [`test_registration.py`](../../../modules/hub/tests/integration/features/project_management/work_plans/test_registration.py), `test_replacement_keeps_canceled_evidence_and_does_not_release_old_dependents`.
 
+29. **Recovery identity**: WHEN an authenticated recovery request is identically replayed, Hub MUST return its original recovery record and current Item before rejecting stale revisions, without another acceptance event. Check: `test_preparation_recovery_replay_conflict_and_history` and `test_stale_and_cross_item_request_identity` in [`test_item_recovery.py`](../../../modules/hub/tests/integration/features/project_management/work_plans/test_item_recovery.py).
+30. **Recovery history**: WHEN accepting recovery, Hub MUST retain an immutable command and prior Item/Run outcome snapshot with append-only ordered outcome events. Check: `test_preparation_recovery_replay_conflict_and_history`, `test_activity_failure_rolls_back_recovery_and_revision` and `test_history_survives_successful_run_pruning` in the recovery integration suite.
+31. **Recovery fencing**: IF observed revisions, a live lease, Plan lifecycle, project mode or original PR identity prevent recovery, THEN Hub MUST refuse the stale or unsupported continuation without a fresh delivery. Check: `test_preflight_revision_and_live_leases_refuse_without_history`, `test_control_wins_after_remote_read_before_activation`, `test_review_project_mode_change_during_io_refuses_terminal_recovery` and `test_review_preparation_mode_change_while_held_refuses_before_admission`.
+32. **Recovery ownership**: WHEN recovering failed work, Hub MUST retain the original Item and any linked Run rather than replace execution lineage. Check: `test_terminal_recovery_keeps_run_epoch_and_commits_delivery` and `test_three_item_chain_baseline_preserves_success_and_original_dependencies`.
+33. **Recovery admission**: WHILE schedule, dependencies, enabled-project state, catalog availability or shared capacity holds recovery, Hub MUST preserve a visible awaiting-admission record without dispatch. Check: `test_recovery_uses_schedule_enabled_project_and_catalog_holds` and `test_capacity_hold_releases_without_reserving_or_losing_identity`.
+34. **Recovery uncertainty**: WHILE the prior effect is uncertain, Hub MUST reconcile its original request identity before authorizing fresh work. Check: `test_uncertain_delivery_retains_identity_without_dispatch`. A definitive pre-write refusal closes that recovery; check: `test_definitive_recovery_preflight_refusal_closes_history_and_requires_new_request`.
+35. **Recovery merge release**: WHEN recovery confirms the original-target merge of the last unfinished Item, Hub MUST complete its eligible Plan through ordinary completion and release dependent Plans. Check: `test_review_merge_completes_last_item_plan_and_releases_dependent_plan`.
+36. **Retained specification fence**: WHILE failed preparation awaits recovery admission, Hub MUST retain the existing started-work fence against specification/target/dependency edits. Check: `test_review_held_preparation_preserves_edit_fence_before_and_after_refusal`.
+
 ## 4. Interfaces & Data Contracts
 
 ### HTTP surface
@@ -83,6 +93,8 @@ edits, controls and group changes.
 | `PUT /{plan_id}` | Replace editable specification/graphs with `expected_revision` and optional reason |
 | `POST /{plan_id}/control` | `action`, `expected_revision`, optional reason |
 | `PATCH /{plan_id}/group` | `group_key`, `expected_revision`, optional reason; no execution kick |
+| `POST /{plan_id}/items/{item_id}/recover` | Revision-checked explicit recovery; returns `recovery` and current `item` |
+| `GET /{plan_id}/items/{item_id}/recoveries` | Paged immutable command/outcome history and ordered events |
 | `GET /{plan_id}/activity` | Paged history and optional `comments_only` filter |
 | `POST /{plan_id}/comments` | HTTP 201; `request_id`, plain `body` of 1–8,000 characters |
 
@@ -111,7 +123,7 @@ when all already-started Items succeed; a revoked Plan does not become completed
 Text/dependency edits require no Item to have started. Draft/proposed membership
 is flexible; active/paused membership keys are fixed. Stale revisions return 409;
 invalid graphs or incomplete activation return 422; absent Plan/request IDs
-return 404. No new stable error code is introduced here.
+return 404. Recovery error codes and local refusal reasons are described below.
 
 Admission commits `preparing`, `started_at`, catalog, branch and a lease before
 remote preparation. Default branches are `dev-<lowercased-key>`; explicit attach
@@ -140,6 +152,18 @@ the replacement graph; independently enrolling a PR does not satisfy the
 original Item's dependency because its recorded execution/merge evidence is
 still evaluated separately. Registration identity remains on its Plan row for
 the lifetime of that Plan.
+
+### Explicit Work Item recovery
+
+`ADR-work-item-recovery-lineage` records the retained Item/Run decision. Recovery accepts UUID `request_id`, `expected_revision >= 1`, `expected_run_revision >= 1` when linked and a trimmed `reason` of 1–500 characters. The authenticated caller supplies the actor. Project-local request uniqueness covers Item, actor and normalized command, including observed revisions. Changed content returns `RECOVERY_IDENTITY_CONFLICT` with HTTP 409. Access and Item scope are checked before replay; equivalent replay precedes stale-revision rejection (`RECOVERY_STALE`).
+
+Local preflight accepts only an active Plan's `preparation_failed` Item without a Run or an Item linked to a `failed`/`canceled` Run. Successful/waiting Items, active/paused/blocked Runs, missing execution, live leases, changed bindings and native `sdd` projects are refused with a machine-readable reason and next action. Paused Plans require explicit resume. Remote reconciliation then verifies the same repository, branch, PR number and original target. A closed unmerged or foreign/wrong-target PR is refused; Hub never reopens it or substitutes another Run. Correctly merged original work records success without dispatch.
+
+Acceptance atomically stores the command/snapshot, one Plan revision increment and authenticated activity. One pending recovery owns each Item. Events retain acceptance, reconciliation, admission, running, completion or refusal with ordered sequence numbers. History pages use `offset` and `limit` 1–100. Responses expose the current state/detail, `refusal_reason`, immutable prior repository/target/branch/head/execution evidence and actor/reason/time. Existing Items receive no invented historical recovery rows. Recovery history survives eligible detailed Run pruning.
+
+Unknown remote reads and delivery outcomes remain reconciling, retaining original delivery markers. A definitive pre-write refusal closes the record and requires another explicit request after repair. Waiting for admission preserves historical `started_at`, so recovery cannot make started specifications editable. Admission rechecks the recovery identity, Plan revision and project mode. An expired or replaced worker lease cannot apply observations. The shared lock protocol is in `ARCH-06-execution`.
+
+Terminal recovery delegates to the guarded owner in `CAP-PR-pull-request-delivery`. It retains epoch, attempt numbers, detailed delivery history and counters. Schedule/dependency/project/catalog/capacity gates still apply. A competing active owner closes the accepted record as refused with zero losing dispatch. The UI in `UX-work-plans` distinguishes accepted, awaiting-admission, reconciling, running and refused states and preserves a response-loss request through status lookup/replay.
 
 ### Classification and activity
 
@@ -217,7 +241,7 @@ Source inspected: [`schemas.py`](../../../modules/hub/app/features/project_manag
 [`kick.py`](../../../modules/hub/app/features/project_management/work_plans/kick.py)
 and [`activity_schemas.py`](../../../modules/hub/app/features/project_management/work_plans/activity_schemas.py).
 
-The named tests were read, not executed for this contract. The integration
+The original named tests were source-inspected. Executed recovery and affected-suite evidence is retained in `docs/materials/2026-11/20261105-work-item-retry/development-checks.md`; that evidence is distinct from live deployment. The integration
 fixtures provide controlled GitHub/provider behavior; concurrency cases require
 PostgreSQL and skip on SQLite. The native-project `attention` branch and some
 individual schema limits above are source-inspected boundaries, not claims of
