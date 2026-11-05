@@ -82,7 +82,7 @@ The selected decision and its outcome are the primary region. History is seconda
 - **empty**: Subject unavailable/resolved without retained accessible detail; explain and offer Open run or Close.
 - **saved**: Answer saved; run remains stopped. Show Resume with selected answer only for an eligible explicitly selected saved answer. No default selection or application follows Save.
 - **applied**: Applied to attempt identifies the existing attempt; show delivery independently and Open run. Later pause is shown as current state and is not overridden.
-- **uncertain**: Outcome unknown identifies the original operation; editing/replacement submissions disabled. Offer Check outcome, eligible Retry same request, Open run and Close. A read error or absent receipt does not prove failure.
+- **uncertain**: Outcome unknown identifies the original operation; editing/replacement submissions disabled while the in-memory original intent is retained. After a full reload it cannot be reconstructed automatically; explain the limit and use owner history/current review, without claiming a recovered retry guard. Offer Check outcome, eligible Retry same request, Open run and Close. A read error or absent receipt does not prove failure.
 - **changed**: Show changed context and retained answer separately; disable old continuation. Offer Review current context; stale ordinary answers require existing dismissal/new-question flow rather than application to the changed head.
 - **error**: A definitive validation failure shows its owner message and offers correction after review; no success is inferred.
 - **terminal**: Retained result is readable; no continuation is offered for ended work.
@@ -92,11 +92,11 @@ The selected decision and its outcome are the primary region. History is seconda
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
 | Save answer | `UC-resolve-run-question` 2 | populated | saved | | `CAP-PR-operator-decisions` | Saved answer ID/text shown; execution remains stopped. |
-| Select saved answer / Resume with selected answer | `UC-resolve-run-question` 3, `UC-complete-sdd-workflow` 3d | saved | applied, uncertain, changed | | `CAP-PR-operator-decisions` | Selection is explicit; existing owner checks apply; recorded attempt is distinct from delivery. |
-| Check outcome | `UC-resolve-run-question` 3a, `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d | uncertain | saved, applied, uncertain, changed | | `CAP-PR-operator-decisions` | Reads original request outcome and current state; never starts work. |
-| Retry same request | `UC-resolve-run-question` 3a, `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d | uncertain | uncertain, applied, changed | | `CAP-SDD-workflow-control` | Original immutable payload and owner request ID replay; no automatic replay. |
-| Review current context | `UC-resolve-run-question` 3b, `UC-complete-sdd-workflow` 4e, `UC-decide-sdd-proposal` 3b | changed | loading | | `CAP-SDD-workflow-control` | Predecessor inspection refreshes exact subject; nothing is submitted. |
-| Open run / Inspect pull request | `UC-resolve-run-question` 4, `UC-complete-sdd-workflow` 5, `UC-decide-sdd-proposal` 6 | applied, saved, uncertain, terminal | populated | end | `CAP-PR-operator-decisions` | Bound run or pull request opens with retained outcome accessible on return. |
+| Select saved answer / Resume with selected answer | `UC-resolve-run-question` 4, 5, `UC-complete-sdd-workflow` 3d | saved | applied, uncertain, changed | | `CAP-PR-operator-decisions` | Selection is explicit; existing owner checks apply; recorded attempt is distinct from delivery. |
+| Check outcome | `UC-resolve-run-question` 2b, 4d, `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d | uncertain | saved, applied, uncertain, changed | | `CAP-PR-operator-decisions` | Reads original request outcome and current state; never starts work. |
+| Retry same request | `UC-resolve-run-question` 2b, 4d, `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d | uncertain | uncertain, applied, changed | | `CAP-SDD-workflow-control` | Original immutable payload and owner request ID replay; no automatic replay. |
+| Review current context | `UC-resolve-run-question` 4b, `UC-complete-sdd-workflow` 4e, `UC-decide-sdd-proposal` 3b | changed | loading | | `CAP-SDD-workflow-control` | Predecessor inspection refreshes exact subject; nothing is submitted. |
+| Open run / Inspect pull request | `UC-resolve-run-question` 5, 5a, `UC-complete-sdd-workflow` 5, `UC-decide-sdd-proposal` 6 | applied, saved, uncertain, terminal | populated | end | `CAP-PR-operator-decisions` | Bound run or pull request opens with retained outcome accessible on return. |
 | Close | global: return from decision review | all | populated | close | | Origin and focus restored. |
 
 ### UX-sdd-workflow-request — Workflow request (panel amendment)
@@ -157,7 +157,7 @@ Current integration outcome is primary. Parent `UX-run-decisions` owns close/nav
 
 ### Use case and register amendments
 
-Retain each use case's main flow and extensions. `UC-resolve-run-question` step 2 shows saved feedback, step 3 explicitly selects the saved answer, step 4 follows the existing attempt/run. Its 3a recovery names the original request and treats missing receipt as unknown; 3b requires changed-head dismissal/new question before another application. `UC-complete-sdd-workflow` 3b shows publication pending, 3c preserves channel semantics, 3d separates applied from delivered, 4/4b/4c/4d shows authority, and *b names exact-request replay and later stop precedence. `UC-decide-sdd-proposal` 3d/5b/6a/6b distinguish recorded intent, published candidate and currently valid authority. All amended steps cite their owner UX above.
+Retain each use case's main flow and extensions. `UC-resolve-run-question` step 2 shows saved feedback, step 3 retains the saved result, step 4 explicitly selects the saved answer, and step 5 follows the existing attempt/run. Its 2b/4d recovery names the original request and treats missing receipt as unknown; 4b requires changed-head dismissal/new question before another application. `UC-complete-sdd-workflow` 3b shows publication pending, 3c preserves channel semantics, 3d separates applied from delivered, 4/4b/4c/4d shows authority, and *b names exact-request replay and later stop precedence. `UC-decide-sdd-proposal` 3d/5b/6a/6b distinguish recorded intent, published candidate and currently valid authority. All amended steps cite their owner UX above.
 
 | Object | Role | Added representations | Added calls to action |
 | --- | --- | --- | --- |
