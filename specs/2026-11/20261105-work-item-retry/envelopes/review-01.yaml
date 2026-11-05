@@ -1,0 +1,49 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T06:41:19.273855Z'
+status: completed
+summary: round 1; REVISE. Independent review of all12 AC found four correctness findings and one pending recovery disclosure defect.
+findings:
+- issue: Recovery-confirmed merge does not complete the Plan.
+  evidence: modules/hub/app/features/project_management/work_plans/recovery_tick.py:267-275 and execution_repo.py succeeded exclusion
+  failure_condition: Recovery confirms the last unfinished Item merge; Plan stays active and dependent Plans remain blocked.
+  suggested_action: Run ordinary Plan completion after recovery records merge success and add a one-Item Plan with dependent Plan regression.
+  resolution: open
+  severity: P1
+- issue: Preparation recovery removes the existing specification immutability fence.
+  evidence: modules/hub/app/features/project_management/work_plans/recovery_tick.py:255-261 and services.py:102
+  failure_condition: A Plan whose only started Item failed preparation waits for recovery admission; clearing started_at permits specification edits and refusal does not restore it.
+  suggested_action: Preserve historical started-work immutability while representing recovery admission separately; test rejected edits before and after refusal.
+  resolution: open
+  severity: P1
+- issue: Project mode changes can bypass native-SDD recovery refusal.
+  evidence: modules/hub/app/features/project_management/work_plans/recovery_tick.py:245-300 and admission_hold
+  failure_condition: Project changes to sdd after acceptance before apply; terminal ordinary Run activates and dispatches despite native-SDD refusal.
+  suggested_action: Recheck project mode under Project lock before activation; test mode change during I/O with zero new deliveries.
+  resolution: open
+  severity: P1
+- issue: The watchdog changes ordinary silent retry allowance from per attempt to per epoch.
+  evidence: modules/hub/app/features/project_management/pipeline_runs/usecases/implementation.py:177-184; CAP-PR-agent-dispatch rule11
+  failure_condition: An implementation consumes its silent retry then pushes; a later silent CI-fix in the same epoch loses its permitted per-attempt retry.
+  suggested_action: Preserve ordinary per-attempt silent behavior and separately enforce retained recovery allowance; test successive implementation and CI-fix attempts.
+  resolution: open
+  severity: P1
+- issue: Pending recovery disclosure displays old Item failure instead of current hold reason.
+  evidence: modules/hub-ui/src/lib/features/project-management/work-plans/WorkItemRecovery.svelte:119-122
+  failure_condition: After remount or refresh a pending recovery displays old item.detail rather than recovery.pending_detail; history is a workaround.
+  suggested_action: Render recovery.pending_detail and test distinct old failure and current hold text.
+  resolution: open
+  severity: P2
+assumptions:
+- Code reviewer isolation was emulated through absolute worktree scopes, no tracked writes and identical before/after tree94638aae6221f26655a5c324cb8058b722e272d4; no outside reads reported.
+unverified_areas:
+- Live provider/deployment behavior; Living Spec reconciliation follows code review.
+checks:
+  rules: PASS 35 rules zero violations
+  tests: PASS supplied SQLite261 PG271 UI218 and expanded PG32
+diff_scope:
+  base: f1e9693318ebf0181453142e75b98513fdbba4ff
+  head: 331e6ab3a526b153ca7849e574ef9b1bb1e1d501
+activity_effort: high

@@ -100,9 +100,9 @@ async def test_stale_and_cross_item_request_identity(client, setup_work):
     assert (await client.post(other + "/recover", json=data)).status_code == 409
 
 
-async def terminal(client, setup_work, session):
+async def terminal(client, setup_work, session, data=None):
     project, github, worker, _ = setup_work
-    plan = await create(client, project)
+    plan = await create(client, project, data)
     await worker.advance_project(UUID(project["id"]))
     plan = await get(client, project, plan)
     item = await session.get(WorkItem, UUID(plan["items"][0]["id"]))
@@ -456,3 +456,116 @@ async def test_recovery_uses_schedule_enabled_project_and_catalog_holds(client, 
     record = (await client.get(root + "/recoveries")).json()["items"][0]
     assert record["state"] == "awaiting-admission"
     assert await session.scalar(select(func.count()).select_from(ExecutionDelivery)) == 0
+
+
+async def test_review_merge_completes_last_item_plan_and_releases_dependent_plan(client, setup_work, session):
+    project, github, worker, plan, item, _run = await terminal(
+        client, setup_work, session, spec(items=spec()["items"][:1])
+    )
+    later = await create(
+        client,
+        project,
+        spec(
+            depends_on=[plan["id"]], items=[dict(key="next", title="Next", description="Next work", acceptance="Pass")]
+        ),
+    )
+    assert (await client.post(endpoint(project, plan, item) + "/recover", json=command(plan, item))).status_code == 200
+    github.merge(100)
+    await due(session)
+    await worker.advance_project(UUID(project["id"]))
+    assert (await get(client, project, plan))["state"] == "completed"
+    assert (await get(client, project, later))["items"][0]["state"] == "running"
+
+
+async def test_review_held_preparation_preserves_edit_fence_before_and_after_refusal(client, setup_work, session):
+    from app.features.project_management.projects.models import Project
+
+    project, github, worker, plan, item = await failed_preparation(client, setup_work)
+    saved = await session.get(Project, UUID(project["id"]))
+    saved.automation = {**saved.automation, "max_in_flight_runs": 0}
+    await session.commit()
+    root = endpoint(project, plan, item)
+    assert (await client.post(root + "/recover", json=command(plan, item))).status_code == 200
+    github.refs["main"] = "a" * 40
+    await due(session)
+    await worker.advance_project(UUID(project["id"]))
+    current = await get(client, project, plan)
+    edit = spec(title="Changed work", expected_revision=current["revision"])
+    response = await client.put(f"/api/v1/projects/{project['id']}/work-plans/{plan['id']}", json=edit)
+    assert response.status_code == 409
+    assert current["items"][0]["started_at"] == item["started_at"]
+    paused = await control(client, project, current, "pause")
+    await due(session)
+    await worker.advance_project(UUID(project["id"]))
+    record = (await client.get(root + "/recoveries")).json()["items"][0]
+    assert record["state"] == "refused"
+    response = await client.put(
+        f"/api/v1/projects/{project['id']}/work-plans/{plan['id']}",
+        json=spec(title="Changed work", expected_revision=paused["revision"]),
+    )
+    assert response.status_code == 409
+
+
+async def test_review_project_mode_change_during_io_refuses_terminal_recovery(client, setup_work, session, monkeypatch):
+    from app.features.project_management.projects.models import Project
+
+    project, _, worker, plan, item, run = await terminal(client, setup_work, session)
+    root = endpoint(project, plan, item)
+    assert (await client.post(root + "/recover", json=command(plan, item))).status_code == 200
+    original = RecoveryTick.apply
+
+    async def change_mode(self, *args, **kwargs):
+        saved = await session.get(Project, UUID(project["id"]))
+        saved.project_type, saved.revision = "sdd", saved.revision + 1
+        await session.commit()
+        return await original(self, *args, **kwargs)
+
+    monkeypatch.setattr(RecoveryTick, "apply", change_mode)
+    await due(session)
+    await worker.advance_project(UUID(project["id"]))
+    assert (await client.get(root + "/recoveries")).json()["items"][0]["state"] == "refused"
+    await session.refresh(run)
+    assert run.state == "failed"
+    assert await session.scalar(select(func.count()).select_from(ExecutionDelivery)) == 0
+
+
+async def test_definitive_recovery_preflight_refusal_closes_history_and_requires_new_request(
+    client, setup_work, session
+):
+    project, github, worker, plan, item = await failed_preparation(client, setup_work)
+    root = endpoint(project, plan, item)
+    assert (await client.post(root + "/recover", json=command(plan, item))).status_code == 200
+    await due(session)
+    await worker.advance_project(UUID(project["id"]))
+    assert (await client.get(root + "/recoveries")).json()["items"][0]["state"] == "refused"
+    github.refs["main"] = "a" * 40
+    await due(session)
+    await worker.advance_project(UUID(project["id"]))
+    assert not github.pulls
+    current = await get(client, project, plan)
+    assert (await client.post(root + "/recover", json=command(current, current["items"][0]))).status_code == 200
+    await due(session)
+    await worker.advance_project(UUID(project["id"]))
+    assert (await get(client, project, plan))["items"][0]["state"] == "running"
+
+
+async def test_review_preparation_mode_change_while_held_refuses_before_admission(client, setup_work, session):
+    from app.features.project_management.projects.models import Project
+
+    project, github, worker, plan, item = await failed_preparation(client, setup_work)
+    saved = await session.get(Project, UUID(project["id"]))
+    saved.automation = {**saved.automation, "max_in_flight_runs": 0}
+    await session.commit()
+    root = endpoint(project, plan, item)
+    assert (await client.post(root + "/recover", json=command(plan, item))).status_code == 200
+    github.refs["main"] = "a" * 40
+    await due(session)
+    await worker.advance_project(UUID(project["id"]))
+    assert (await client.get(root + "/recoveries")).json()["items"][0]["state"] == "awaiting-admission"
+    saved.project_type, saved.revision = "sdd", saved.revision + 1
+    saved.automation = {**saved.automation, "max_in_flight_runs": 1}
+    await session.commit()
+    await due(session)
+    await worker.advance_project(UUID(project["id"]))
+    assert (await client.get(root + "/recoveries")).json()["items"][0]["state"] == "refused"
+    assert not github.pulls

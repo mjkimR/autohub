@@ -24,3 +24,12 @@ Before explicit recovery, repeated ticks leave the second Item preparation_faile
 ## Evidence boundary
 
 Source inspection and executed checks are distinct. PostgreSQL results establish fixture locking behavior, not live GitHub behavior. Independent code and reconcile review records reside in the spec unit. The Host still verifies the eventual integrated head.
+
+
+## Independent review correction evidence
+
+Round 1 returned four P1 findings and one P2 disclosure finding. Each P1 received an executable regression before its production fix: the backend run reported four expected failures (last-Item Plan completion, held preparation edit fence, native-mode change during I/O and ordinary CI-fix silent allowance). The UI regression separately failed because the previous failure replaced the pending hold text.
+
+After the batch fixes, all affected PostgreSQL integration/migration tests passed: 280 tests, no skips. Required lint, full type/build checks and API consistency passed. All 219 UI tests passed. Two further focused regressions reproduced definitive missing-base refusal remaining pending and native-mode changes during preparation holds; both were fixed within the same review batch.
+
+Final focused PostgreSQL recovery, enrollment-race and migration tests: 37 passed, no skips. Final focused SQLite recovery and all PR-owner unit tests: 127 passed, one PostgreSQL-only skip. Final backend types: zero errors. These focused checks cover the final edge fixes; unchanged broad checks are retained rather than claimed as another execution.

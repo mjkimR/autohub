@@ -23,7 +23,7 @@ from app.features.project_management.pipeline_runs.usecases.transitions import (
 from app.features.project_management.pipelines import services
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.models import Project
-from app.features.project_management.work_plans.github import WorkGitHub
+from app.features.project_management.work_plans.github import PreparationRefused, WorkGitHub
 from app.features.project_management.work_plans.models import (
     ItemDependency,
     PlanDependency,
@@ -196,14 +196,18 @@ class RecoveryTick:
                 if locked:
                     _, _, _, current, row = locked
                     if self.owns(current, row, token, generation):
-                        await event(
-                            session,
-                            row,
-                            "reconciling",
-                            "Remote outcome remains uncertain; refresh after reconciliation",
-                        )
+                        if isinstance(exc, PreparationRefused):
+                            await event(session, row, "refused", str(exc))
+                            current.next_action_at = None
+                        else:
+                            await event(
+                                session,
+                                row,
+                                "reconciling",
+                                "Remote outcome remains uncertain; refresh after reconciliation",
+                            )
+                            current.next_action_at = get_current_utc_time() + timedelta(seconds=60)
                         current.lease_token = current.lease_expires_at = None
-                        current.next_action_at = get_current_utc_time() + timedelta(seconds=60)
 
     @staticmethod
     def owns(item, row, token, generation):
@@ -252,10 +256,13 @@ class RecoveryTick:
                     )
                 elif project.github_repository != plan.repository or project.github_connector_id != plan.connector_id:
                     await event(session, row, "refused", "Repository connection changed; restore original binding")
+                elif project.project_type == "sdd":
+                    await event(
+                        session, row, "refused", "Native sdd project requires a bound spec; use repository controls"
+                    )
                 elif not run:
-                    item.state, item.started_at, item.base_sha, item.detail = (
+                    item.state, item.base_sha, item.detail = (
                         "waiting",
-                        None,
                         base_sha,
                         "Recovery accepted; awaiting admission",
                     )
@@ -273,6 +280,11 @@ class RecoveryTick:
                     )
                     item.detail = None
                     await event(session, row, "completed", "Confirmed original-target merge without dispatch")
+                    from app.features.project_management.work_plans.execution import WorkPlanExecution
+                    from app.features.project_management.work_plans.mirror_records import refresh_mirrors
+
+                    await WorkPlanExecution.complete_plan(session, plan)
+                    await refresh_mirrors(session, plan)
                 elif pull.get("state") != "open":
                     await event(
                         session, row, "refused", "Original PR is closed without merge; reopen separately and refresh"

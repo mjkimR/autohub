@@ -118,7 +118,7 @@
 <section class="space-y-2 border-t pt-3" aria-label={`Recovery for ${item.key}`}>
 	{#if item.recovery?.pending_state}
 		<p role="status">
-			Recovery {item.recovery.pending_state}. {item.detail ??
+			Recovery {item.recovery.pending_state}. {item.recovery.pending_detail ??
 				'Refresh recovery status for the current hold or progress.'}
 		</p>
 	{:else if item.recovery?.eligible}

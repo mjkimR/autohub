@@ -106,3 +106,18 @@ test('ineligible Items explain the next action and preserve paged history', asyn
 	);
 	expect(api.POST).not.toHaveBeenCalled();
 });
+
+test('shows the pending hold reason after remount rather than the previous failure', () => {
+	mount({
+		...item,
+		detail: 'Previous delivery failed',
+		recovery: {
+			...item.recovery!,
+			eligible: false,
+			pending_state: 'awaiting-admission',
+			pending_detail: 'Waiting for AI catalog capacity'
+		}
+	});
+	expect(screen.getByRole('status').textContent).toContain('Waiting for AI catalog capacity');
+	expect(screen.getByRole('status').textContent).not.toContain('Previous delivery failed');
+});

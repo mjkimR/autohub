@@ -23,6 +23,7 @@ PENDING = ("accepted", "reconciling", "awaiting-admission")
 async def event(session, recovery, kind, detail, evidence=None):
     if kind == "refused" and not evidence:
         codes = {
+            "Target branch is absent": "BASE_BRANCH_ABSENT",
             "Plan": "PLAN_CHANGED",
             "Run": "RUN_CHANGED",
             "PR identity": "PR_IDENTITY_CHANGED",

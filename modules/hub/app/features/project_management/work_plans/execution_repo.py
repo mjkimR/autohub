@@ -69,7 +69,7 @@ class WorkExecutionRepository:
                         )
                     ),
                 ),
-                WorkItem.started_at.is_not(None)
+                and_(WorkItem.started_at.is_not(None), WorkItem.state != "waiting")
                 if phase == "observe"
                 else waiting_ready
                 if phase == "admit"
@@ -78,7 +78,7 @@ class WorkExecutionRepository:
                     waiting_ready,
                     and_(
                         WorkItem.started_at.is_not(None),
-                        WorkItem.state.not_in(("succeeded", "revoked", "preparation_failed")),
+                        WorkItem.state.not_in(("succeeded", "revoked", "preparation_failed", "waiting")),
                     ),
                 ),
                 WorkItem.pipeline_run_id == run_id
@@ -99,6 +99,18 @@ class WorkExecutionRepository:
         plan = await session.get(WorkPlan, candidate.plan_id, with_for_update=True)
         assert plan is not None
         if candidate.state == "waiting":
+            from app.features.project_management.work_plans.recovery import event, pending
+
+            recovery = await pending(session, candidate.id)
+            if recovery and (recovery.accepted_revision != plan.revision or project.project_type == "sdd"):
+                detail = (
+                    "Native sdd project requires a bound spec"
+                    if project.project_type == "sdd"
+                    else "Plan changed before recovery admission"
+                )
+                await event(session, recovery, "refused", detail)
+                candidate.state, candidate.detail = "preparation_failed", detail
+                return None
             catalog = await project_catalog(session, project)
             catalog = await AICatalogRepository().get(session, catalog.id, lock=True)
             assert catalog is not None
@@ -165,14 +177,7 @@ class WorkExecutionRepository:
                 candidate.detail = "Waiting for project or AI catalog capacity"
                 candidate.next_action_at = now + timedelta(seconds=60)
                 return None
-            from app.features.project_management.work_plans.recovery import event, pending
-
-            recovery = await pending(session, candidate.id)
             if recovery:
-                if recovery.accepted_revision != plan.revision:
-                    await event(session, recovery, "refused", "Plan changed before admission; reconfirm recovery")
-                    candidate.state, candidate.detail = "preparation_failed", "Plan changed before recovery admission"
-                    return None
                 await event(session, recovery, "running", "Preparation admitted; original Item and budgets retained")
             candidate.state, candidate.started_at = "preparing", now
             candidate.ai_catalog_id = catalog.id
