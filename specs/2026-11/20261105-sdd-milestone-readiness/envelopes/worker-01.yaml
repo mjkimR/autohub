@@ -1,0 +1,28 @@
+kind: worker
+stage: integration-approval
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T08:27:07.858475Z'
+status: completed
+summary: Completed MR01–08 pinned read-only preview, eligible-only local subset/order, tests and ten-target reconciliation. Final report committed; dev-integration remains with Host. No scope extensions or sync outputs.
+findings: []
+assumptions:
+- Confinement emulated through explicit worktree cwd/paths, per-operation sibling/shared-Git approvals and before/after reviewer snapshots plus committed-range audit; no native guarantee
+- All nested roles returned; no outside-worktree reads were reported; authored ignored probes remain for worktree cleanup
+- Supported flat/package proposal anchors are inspect-only when existing native start cannot operate on them; start effects and gates remain unchanged
+unverified_areas:
+- Live GitHub/provider deployment and eventual integrated head; Host owns synchronization and final checks on the actual target
+- No runtime execution on the accepted base; before measurement is immutable source absence only
+checks:
+  sync_start: PASS exit=0
+  tests: PASS owning backend153; full UI229; real isolated PostgreSQL115 no skips with both profiles; earlier SQLite112 with two PG-only skips closed by PG
+  build: PASS required just check types and UI production build; final backend types; generated API regeneration and freshness
+  lint: PASS final just lint-check, document rules35/hygiene36, committed-range governance and whitespace
+  review: PASS code round3 after all seven findings; independent reconcile plus exact minor wording fixes verified; no open findings
+  baseline: PASS accepted-base source absence versus tested head behavior; no performance claim
+  scope: PASS initial TierA only; 41 paths including this envelope; no extensions or sync outputs
+  feedback: PASS per-run repo sweep recorded0 duplicates0
+diff_scope:
+  base: 8f5003e54b8943ef80ca4c63ac92968482c3864e
+  head: 8ed90ffa612af93c5739342da02116ae7c4553c2
+activity_effort: high
