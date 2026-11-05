@@ -53,6 +53,16 @@ class ExecutionAdapter(Protocol):
         """Return the already-made delivery with this number, or await ``authorize`` and then make it."""
         ...
 
+    async def find_delivery(
+        self,
+        observer: PipelineObservationService,
+        target: DeliveryTarget,
+        request: ImplementationRequest,
+        delivery_number: int,
+    ) -> DeliveryReceipt | None:
+        """Read a prior durable delivery identity without authorizing a send."""
+        ...
+
     async def collect_replies(
         self, observer: PipelineObservationService, target: DeliveryTarget, posted_at: datetime | None
     ) -> list[AgentReply]:

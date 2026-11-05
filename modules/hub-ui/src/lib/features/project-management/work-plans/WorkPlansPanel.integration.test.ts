@@ -25,7 +25,8 @@ const item = {
 	merge_sha: null,
 	started_at: null,
 	completed_at: null,
-	issue: { issue_url: null, error: 'Rate limited', pending: true }
+	issue: { issue_url: null, error: 'Rate limited', pending: true },
+	recovery: null
 } satisfies components['schemas']['WorkItemRead'];
 const plan = {
 	registration_request_id: null,

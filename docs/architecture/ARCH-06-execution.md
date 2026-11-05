@@ -1,7 +1,7 @@
 ---
 id: ARCH-06-execution
 title: Execution and recovery sequences
-summary: "Shows how scheduler jobs, PR runs, native SDD activities, SDK flows and connection diagnostics delegate work and retain their independent execution records."
+summary: "Shows scheduler, PR, Work Plan recovery, native SDD, SDK and diagnostic execution paths, including their durable identities, compatible locks and remote-observation fences."
 status: active
 ---
 
@@ -13,7 +13,7 @@ status: active
 | --- | --- | --- | --- |
 | Scheduled task | `ScheduleConfig`, `ScheduleJob` | External trigger claims due work and invokes its registered handler | `CAP-EXEC-scheduling-maintenance` |
 | PR delivery | `PipelineRun`, attempts, deliveries and replies | Ticks/events/operator calls enter shared bounded advancement | `CAP-PR-pull-request-delivery` |
-| Work Plan | `WorkPlan`, `WorkItem` | Admission creates or attaches a PR, then hands it to the existing PR owner | `CAP-WORK-work-plan-execution` |
+| Work Plan | `WorkPlan`, `WorkItem`, typed recovery records/events | Admission creates or attaches a PR, then hands it to the existing PR owner | `CAP-WORK-work-plan-execution` |
 | Native SDD | PR activity/request and repository workflow evidence | Isolated evaluation selects a workflow operation; Hub fences its publication and continuation | `CAP-SDD-native-delivery`, `CAP-SDD-workflow-control` |
 | SDK task/flow | `sdk_flow_*` releases/runs/steps/attempts/commands | Maintenance advances an immutable admitted release through configured targets | `CAP-SDK-task-flow-execution` |
 | Connection diagnostic | Test record, ownership and cleanup evidence | A claimed recipe step prepares, dispatches, observes or cleans up diagnostic work | `CAP-CONN-connection-verification` |
@@ -49,6 +49,16 @@ transport are delegated to `CAP-PR-ci-observation` and `CAP-PR-agent-dispatch`.
 Webhook acknowledgement precedes completion of this path. The stored delivery
 can be processed through the configured queue or bounded recovery;
 `CAP-PR-webhook-advancement` owns that intake/continuation boundary.
+
+## Work Item recovery
+
+`ADR-work-item-recovery-lineage` retains the original Item and linked Run. `WorkItemRecovery` stores project-local request uniqueness, actor/reason, normalized command, accepted revisions, immutable prior outcome and mutable progress. `WorkItemRecoveryEvent` appends ordered outcome evidence. A partial unique index admits one pending recovery per Item. Recovery snapshots retain stable execution identities after eligible Run pruning; legacy Items receive no synthetic recovery rows.
+
+Recovery MUST commit its intent and lease generation before remote I/O, and recheck Plan/Run revisions, Item lease token/expiry and recovery generation before applying observations. Check: `test_expired_recovery_observation_cannot_activate`, control-during-I/O regressions and PostgreSQL recovery races in the Work Plan integration suite. Source: `modules/hub/app/features/project_management/work_plans/recovery_tick.py`.
+
+Request acceptance and terminal recovery apply Project → Plan → Run → Item locks; terminal admission then locks the catalog. Ordinary preparation admission uses Project → Plan → catalog and never locks a Run. Existing delivery locks Run before catalog. Observation/retention uses Run → Item and never acquires Project/Plan afterward. Item-only lease writes acquire no parent afterward. These orders MUST remain compatible when both owners operate on one Item. Check: PostgreSQL Work Plan/PR integration suites, including ordinary enrollment winning during recovery I/O; review also checks acquisition order.
+
+The recovery worker releases DB locks for PR/ref/comment reads. Pending records stay outside ordinary Item observation; the recovery due queue filters leases/holds before its bounded limit. Once preparation is admitted, the existing preparer owns it. Historical started-work metadata remains set while waiting, preserving the specification edit fence. Terminal activation and its durable intent commit together; active-owner uniqueness prevents a losing recovery from dispatching. The existing PR owner then controls delivery, current-head CI and final merge. A recovery-confirmed last-Item merge invokes ordinary Plan completion and mirror reflection in the same transaction.
 
 ## Native decision publication
 

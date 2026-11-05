@@ -36,6 +36,10 @@ class WorkPlanExecution:
 
     async def advance_phase(self, project_id: UUID, phase: str, *, limit: int) -> list[UUID]:
         """Advance up to `limit` claimed items of one phase; returns the advanced item IDs."""
+        if phase == "admit":
+            from app.features.project_management.work_plans.recovery_tick import RecoveryTick
+
+            await RecoveryTick(self.observer).advance(project_id, limit)
         advanced = []
         for _ in range(limit):
             async with AsyncTransaction() as session:
@@ -78,12 +82,20 @@ class WorkPlanExecution:
                         # branch, an attached branch that is not there. Raw HTTP errors remain retryable.
                         current.state = "preparation_failed"
                         current.next_action_at = None
+                        from app.features.project_management.work_plans.recovery import event, pending
+
+                        recovery = await pending(session, current.id)
+                        if recovery:
+                            await event(session, recovery, "refused", detail)
             logger.warning(f"Work item {item.id}: {detail}")
         finally:
             async with AsyncTransaction() as session:
                 saved_plan = await session.get(WorkPlan, plan.id, with_for_update=True)
                 current = await self.repo.leased(session, item.id, item.lease_token)
                 if current:
+                    from app.features.project_management.work_plans.recovery import record_result
+
+                    await record_result(session, current)
                     current.lease_token, current.lease_expires_at = None, None
                 assert saved_plan is not None
                 await self.complete_plan(session, saved_plan)
@@ -158,6 +170,11 @@ class WorkPlanExecution:
                     await session.flush()
                 current.pipeline_run_id = current.execution_id = run.id
             current.state, current.detail = "running", None
+            from app.features.project_management.work_plans.recovery import event, pending
+
+            recovery = await pending(session, current.id)
+            if recovery:
+                await event(session, recovery, "running", "Original Item admitted; execution link retained")
 
     async def observe(self, plan: WorkPlan, item: WorkItem, github: WorkGitHub) -> None:
         async with AsyncTransaction() as session:

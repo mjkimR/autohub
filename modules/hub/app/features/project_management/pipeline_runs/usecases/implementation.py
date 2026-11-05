@@ -174,9 +174,10 @@ class ImplementationProgress:
             and observed.posted_at is not None
             and now - observed.posted_at >= observed.adapter.silent_timeout
         ):
-            silent_retries = sum(
-                item.cause == "silent" for item in await self.repo.list_deliveries(session, attempt.id)
-            )
+            attempt_deliveries = await self.repo.list_deliveries(session, attempt.id)
+            # Recovery already consumes its retained retry allowance. Ordinary CI/fix attempts keep
+            # their own watchdog allowance, independently of other attempts in the same epoch.
+            silent_retries = sum(item.cause in ("silent", "recovery") for item in attempt_deliveries)
             if silent_retries >= 1:
                 run.state = PipelineRunState.BLOCKED
                 run.pause_reason = observed.adapter.silent_block_reason

@@ -1,16 +1,19 @@
 from typing import Annotated
 from uuid import UUID
 
+from app.features.project_management.pipeline_runs.models import PipelineRun
 from app.features.project_management.projects.errors import ProjectError
+from app.features.project_management.work_plans import recovery
 from app.features.project_management.work_plans.activity import WorkPlanActivityRepository
 from app.features.project_management.work_plans.activity_schemas import PlanActivityList, PlanActivityRead, PlanComment
 from app.features.project_management.work_plans.kick import WorkPlanKick
 from app.features.project_management.work_plans.mirror_records import refresh_mirrors
-from app.features.project_management.work_plans.models import ItemDependency, PlanDependency, WorkIssueMirror
+from app.features.project_management.work_plans.models import ItemDependency, PlanDependency, WorkIssueMirror, WorkItem
 from app.features.project_management.work_plans.schemas import (
     IssueMirrorRead,
     PlanControl,
     WorkItemRead,
+    WorkItemRecoveryResult,
     WorkPlanGroupUpdate,
     WorkPlanList,
     WorkPlanRead,
@@ -64,6 +67,7 @@ class WorkPlanUseCase:
                         update={
                             "depends_on": [keys[edge.depends_on_id] for edge in edges if edge.item_id == item.id],
                             "issue": mirror(item.id),
+                            "recovery": await recovery.eligibility(session, plan, item),
                         }
                     )
                     for item in items
@@ -141,3 +145,31 @@ class WorkPlanUseCase:
         async with AsyncTransaction() as session:
             plan = await self.service.get(session, project_id, plan_id, lock=True)
             return await WorkPlanActivityRepository().comment(session, plan, data, actor)
+
+    async def recover(self, project_id, plan_id, item_id, data, actor):
+        async with AsyncTransaction() as session:
+            await self.service.projects.get(session, project_id, lock=True)
+            plan = await self.service.get(session, project_id, plan_id, lock=True)
+            item = await session.get(WorkItem, item_id)
+            if item is None or item.plan_id != plan_id:
+                raise ProjectError(404, "Work Item not found")
+            run = (
+                await session.get(PipelineRun, item.pipeline_run_id, with_for_update=True)
+                if item.pipeline_run_id
+                else None
+            )
+            item = await session.get(WorkItem, item_id, with_for_update=True)
+            row = await recovery.accept(session, plan, item, run, data, actor)
+            saved = await recovery.read_recovery(session, row)
+            current = await self.read(session, plan)
+            result = WorkItemRecoveryResult(recovery=saved, item=next(i for i in current.items if i.id == item_id))
+        await self.kick.run(project_id)
+        return result
+
+    async def recoveries(self, project_id, plan_id, item_id, offset, limit):
+        async with AsyncTransaction() as session:
+            await self.service.get(session, project_id, plan_id)
+            item = await session.get(WorkItem, item_id)
+            if item is None or item.plan_id != plan_id:
+                raise ProjectError(404, "Work Item not found")
+            return await recovery.history(session, item_id, offset, limit)

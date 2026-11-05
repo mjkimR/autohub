@@ -5,6 +5,7 @@ from uuid import UUID
 
 from app.features.project_management.branches import ACTIVITY_BRANCH_RULE, is_activity_branch
 from app.features.project_management.work_plans.grouping import GroupKey
+from app.features.project_management.work_plans.recovery_schemas import RecoveryEligibility, WorkItemRecoveryRead
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
@@ -148,6 +149,12 @@ class WorkItemRead(BaseModel):
     started_at: datetime | None
     completed_at: datetime | None
     issue: IssueMirrorRead | None = None
+    recovery: RecoveryEligibility | None = None
+
+
+class WorkItemRecoveryResult(BaseModel):
+    recovery: WorkItemRecoveryRead
+    item: WorkItemRead
 
 
 class WorkPlanRead(BaseModel):

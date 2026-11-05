@@ -13,7 +13,7 @@ from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 
 
 class PreparationRefused(GitHubObservationError):
-    """Preparation stops for good before any write; the item needs a different start, not a retry."""
+    """Definitive refusal before writes; explicit recovery can retry after the cause is repaired."""
 
     def __init__(self, message: str):
         super().__init__(message, 422)

@@ -65,6 +65,21 @@ class CodexGithubMentionAdapter:
             url=str(comment.get("html_url")) if comment.get("html_url") else None,
         )
 
+    async def find_delivery(self, observer, target, request, delivery_number):
+        auth_token = await observer.get_token(target.connector_id, "github")
+        async with pipeline_services.create_github_client(auth_token) as client:
+            reader = GitHubActionsReader(client)
+            login = await reader.current_login()
+            marker = f"{request.correlation_marker} kind={request.kind} delivery={delivery_number}"
+            comment = await reader.reconcile_issue_comment(target.repository, target.pull_number, marker, login)
+        if comment is None:
+            return None
+        try:
+            posted_at = _utc(datetime.fromisoformat(comment["created_at"].replace("Z", "+00:00")))
+            return DeliveryReceipt(str(comment["id"]), posted_at, comment.get("html_url"))
+        except (KeyError, TypeError, ValueError):
+            raise ProjectError(502, "Incomplete prior delivery evidence") from None
+
     async def collect_replies(
         self, observer: PipelineObservationService, target: DeliveryTarget, posted_at: datetime | None
     ) -> list[AgentReply]:

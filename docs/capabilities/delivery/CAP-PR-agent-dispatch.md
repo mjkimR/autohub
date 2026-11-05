@@ -1,7 +1,7 @@
 ---
 id: CAP-PR-agent-dispatch
 title: PR Agent Dispatch and Recovery
-summary: "Auto Hub renders self-contained Codex PR mentions and reconciles each persisted delivery through trusted comment identity. Push, quota and watchdog observations keep provider acknowledgement separate from completed implementation."
+summary: "Auto Hub renders self-contained Codex PR mentions and reconciles each persisted delivery through trusted comment identity. Push, quota and watchdog observations retain recovery retry allowances without reducing later ordinary attempts."
 area: delivery
 status: active
 usecases:
@@ -46,7 +46,7 @@ connector author's identity. `UC-deliver-pull-request` uses this adapter;
 8. **Authorization before write**: IF the dispatcher's lease was replaced before posting, THEN Hub MUST reject the stale dispatcher without posting its mention. Check: [`test_pipeline_runs_api.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_pipeline_runs_api.py), `test_expired_dispatcher_cannot_post_after_another_worker_takes_over`.
 9. **Push wins**: WHEN an ordinary Run's PR head moved after the delivered request, Hub MUST enter CI observation before no-push/watchdog/quota-reply processing. Check: [`test_lifecycle.py`](../../../modules/hub/tests/unit/features/project_management/pipeline_runs/usecases/test_lifecycle.py), `test_pushed_head_wins_over_watchdog_and_quota_replies`.
 10. **No-push reply**: IF a non-quota Codex reply has no resulting push after five minutes and the latest delivery is not a silent retry, THEN Hub MUST block the ordinary Run for operator investigation. Check: [`test_lifecycle.py`](../../../modules/hub/tests/unit/features/project_management/pipeline_runs/usecases/test_lifecycle.py), `test_codex_reply_without_push_blocks_after_grace`.
-11. **Silent retry boundary**: IF an ordinary Run has no push two hours and five minutes after its latest delivery, no silent retry exists for that attempt and no earlier question/quota/no-push-reply branch applies, THEN Hub MUST prepare one delivery with cause `silent`. Check: [`test_lifecycle.py`](../../../modules/hub/tests/unit/features/project_management/pipeline_runs/usecases/test_lifecycle.py), `test_silent_watchdog_uses_an_exact_fixed_clock`.
+11. **Silent retry boundary**: IF an ordinary Run has no push two hours and five minutes after its latest delivery, no silent or recovery retry exists for that attempt and no earlier question/quota/no-push-reply branch applies, THEN Hub MUST prepare one delivery with cause `silent`. Check: [`test_lifecycle.py`](../../../modules/hub/tests/unit/features/project_management/pipeline_runs/usecases/test_lifecycle.py), `test_silent_watchdog_uses_an_exact_fixed_clock`.
 12. **Account quota brake**: WHEN a trusted quota reply is observed without a push, Hub MUST record the account-wide catalog hold and a quota delivery without imposing a per-Run quota-retry cap. Check: [`test_lifecycle.py`](../../../modules/hub/tests/unit/features/project_management/pipeline_runs/usecases/test_lifecycle.py), `test_quota_reply_sets_a_global_catalog_hold_without_a_run_retry_cap`.
 13. **Single catalog accounting**: WHEN a delivery is retried under its existing identity, Hub MUST count it once in the catalog dispatch ledger. Check: [`test_pipeline_runs_api.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_pipeline_runs_api.py), `test_a_retried_delivery_is_counted_once_in_the_catalog_ledger`.
 
@@ -64,7 +64,7 @@ The immutable `ImplementationRequest` contains `repository`, PR snapshot,
 instructions, kind and `correlation_marker`. The prompt includes the bound
 question marker defined by `CAP-PR-operator-decisions`; it avoids selecting the
 separate review mode. Deliveries retain their number, cause (`initial`, `silent`,
-`quota`, `resume`), external comment ID and posting time. Causes describe retry
+`quota`, `resume`, `recovery`), external comment ID and posting time. Causes describe retry
 intent; a process restart alone does not advance their number.
 
 Before adapter I/O, Hub persists the attempt and planned delivery under the Run
@@ -91,9 +91,11 @@ below do not override an earlier applicable question/quota/reply transition.
 | --- | --- |
 | Current PR head differs from delivered head | Enter `awaiting_ci` before reply/watchdog handling |
 | Trusted non-quota reply without a push after five minutes; latest cause is not `silent` | Enter `blocked` with the reply-investigation reason |
-| No push after 2h5m from latest delivery; no silent retry in this attempt | Prepare the next `silent` delivery |
-| No push after another 2h5m and a silent retry already exists | Enter `blocked`; a new reply does not reset the delivery timer |
+| No push after 2h5m from latest delivery; no silent or recovery retry in this attempt | Prepare the next `silent` delivery |
+| No push after another 2h5m and a silent or recovery retry already exists | Enter `blocked`; a new reply does not reset the delivery timer |
 | Trusted quota reply without a push | Record catalog policy state and prepare `quota` delivery; wait for admission |
+
+A `recovery` delivery consumes this attempt's retained retry allowance. A later ordinary implementation or CI-fix attempt retains its own per-attempt silent allowance. Check: [`test_work_item_recovery.py`](../../../modules/hub/tests/unit/features/project_management/pipeline_runs/usecases/test_work_item_recovery.py), `test_review_ordinary_ci_fix_keeps_its_silent_allowance_but_recovery_does_not`. Executed recovery/owner checks are retained in `docs/materials/2026-11/20261105-work-item-retry/development-checks.md`; these controlled checks make no live provider claim.
 
 The second-silent-expiry branch is source-defined in `ImplementationProgress`;
 the named fixed-clock example tests the first-retry boundary. A silent retry can

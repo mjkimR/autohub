@@ -9,7 +9,13 @@ from app.features.project_management.branches import item_branch
 from app.features.project_management.pipeline_runs.models import PipelineRun
 from app.features.project_management.pipeline_runs.usecases.catalogs import project_catalog
 from app.features.project_management.projects.repos import ProjectRepository
-from app.features.project_management.work_plans.models import ItemDependency, PlanDependency, WorkItem, WorkPlan
+from app.features.project_management.work_plans.models import (
+    ItemDependency,
+    PlanDependency,
+    WorkItem,
+    WorkItemRecovery,
+    WorkPlan,
+)
 from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy import and_, case, exists, func, or_, select, true, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,7 +60,16 @@ class WorkExecutionRepository:
             .join(WorkPlan, WorkPlan.id == WorkItem.plan_id)
             .where(
                 WorkPlan.project_id == project_id,
-                WorkItem.started_at.is_not(None)
+                or_(
+                    WorkItem.state == "waiting",
+                    ~exists(
+                        select(WorkItemRecovery.id).where(
+                            WorkItemRecovery.item_id == WorkItem.id,
+                            WorkItemRecovery.state.in_(("accepted", "reconciling", "awaiting-admission")),
+                        )
+                    ),
+                ),
+                and_(WorkItem.started_at.is_not(None), WorkItem.state != "waiting")
                 if phase == "observe"
                 else waiting_ready
                 if phase == "admit"
@@ -63,7 +78,7 @@ class WorkExecutionRepository:
                     waiting_ready,
                     and_(
                         WorkItem.started_at.is_not(None),
-                        WorkItem.state.not_in(("succeeded", "revoked", "preparation_failed")),
+                        WorkItem.state.not_in(("succeeded", "revoked", "preparation_failed", "waiting")),
                     ),
                 ),
                 WorkItem.pipeline_run_id == run_id
@@ -84,6 +99,18 @@ class WorkExecutionRepository:
         plan = await session.get(WorkPlan, candidate.plan_id, with_for_update=True)
         assert plan is not None
         if candidate.state == "waiting":
+            from app.features.project_management.work_plans.recovery import event, pending
+
+            recovery = await pending(session, candidate.id)
+            if recovery and (recovery.accepted_revision != plan.revision or project.project_type == "sdd"):
+                detail = (
+                    "Native sdd project requires a bound spec"
+                    if project.project_type == "sdd"
+                    else "Plan changed before recovery admission"
+                )
+                await event(session, recovery, "refused", detail)
+                candidate.state, candidate.detail = "preparation_failed", detail
+                return None
             catalog = await project_catalog(session, project)
             catalog = await AICatalogRepository().get(session, catalog.id, lock=True)
             assert catalog is not None
@@ -150,6 +177,8 @@ class WorkExecutionRepository:
                 candidate.detail = "Waiting for project or AI catalog capacity"
                 candidate.next_action_at = now + timedelta(seconds=60)
                 return None
+            if recovery:
+                await event(session, recovery, "running", "Preparation admitted; original Item and budgets retained")
             candidate.state, candidate.started_at = "preparing", now
             candidate.ai_catalog_id = catalog.id
             candidate.branch = candidate.attach_branch or item_branch(candidate.key)

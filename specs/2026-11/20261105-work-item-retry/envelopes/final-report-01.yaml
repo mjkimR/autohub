@@ -1,0 +1,21 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T07:05:16.108585Z'
+status: completed
+summary: Implemented guarded Work Item recovery with retained Item/Run identities, typed history, shared admission/lease fences and inline operator controls. High code and reconcile round2 passed; integration remains for Host authority.
+findings: []
+assumptions:
+- Host admitted exact docs/capabilities/delivery/CAP-PR-agent-dispatch.md recovery cause/watchdog/evidence reflection, recorded in Task2/4 and reconcile; no new behavior or dependency edge.
+- Baseline compared the same-head three-Item fixture without and with explicit recovery; successful predecessor equality, Item/Run identities, epochs and delivery counts were measured.
+unverified_areas:
+- Live provider/deployment and eventual integrated head; Host must synchronize and run final checks after approved Git effects.
+checks:
+  tests: PASS affected PostgreSQL280 no skips; final focused PostgreSQL37 no skips; SQLite recovery/all PR-owner units127 passed1 PG-only skip; UI219 passed
+  build: PASS just check backend/SDK/Svelte types and production UI build; final backend pyright0 errors; check-ui-api current
+  lint: PASS just lint; final focused Ruff; docs35 rules+hygiene36; exact accepted-base diff --check
+diff_scope:
+  base: f1e9693318ebf0181453142e75b98513fdbba4ff
+  head: da761209f1d7956cf9195c4bbbf28e0f4a631e6d
+activity_effort: high

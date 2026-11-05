@@ -4,8 +4,10 @@ from uuid import UUID
 from app.auth import CurrentUser
 from app.features.project_management.work_plans.activity_schemas import PlanActivityList, PlanActivityRead, PlanComment
 from app.features.project_management.work_plans.grouping import GroupFilter
+from app.features.project_management.work_plans.recovery_schemas import WorkItemRecover, WorkItemRecoveryList
 from app.features.project_management.work_plans.schemas import (
     PlanControl,
+    WorkItemRecoveryResult,
     WorkPlanCreate,
     WorkPlanGroupUpdate,
     WorkPlanList,
@@ -104,3 +106,27 @@ async def add_plan_comment(
     use_case: Annotated[WorkPlanUseCase, Depends()],
 ):
     return await use_case.comment(project_id, plan_id, data, f"user:{user.id}")
+
+
+@router.post("/{plan_id}/items/{item_id}/recover", response_model=WorkItemRecoveryResult)
+async def recover_work_item(
+    project_id: UUID,
+    plan_id: UUID,
+    item_id: UUID,
+    data: WorkItemRecover,
+    user: CurrentUser,
+    use_case: Annotated[WorkPlanUseCase, Depends()],
+):
+    return await use_case.recover(project_id, plan_id, item_id, data, f"user:{user.id}")
+
+
+@router.get("/{plan_id}/items/{item_id}/recoveries", response_model=WorkItemRecoveryList)
+async def work_item_recoveries(
+    project_id: UUID,
+    plan_id: UUID,
+    item_id: UUID,
+    use_case: Annotated[WorkPlanUseCase, Depends()],
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+):
+    return await use_case.recoveries(project_id, plan_id, item_id, offset, limit)

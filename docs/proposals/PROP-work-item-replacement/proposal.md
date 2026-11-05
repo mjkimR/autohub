@@ -11,7 +11,7 @@ planning_effort: high
 dev_effort: high
 milestone: MS-batch-recovery
 depends_on:
-  - PROP-work-item-retry
+  - SPEC-work-item-retry
 boundaries:
   owns:
     - modules/hub-ui/src/lib/api/
@@ -227,9 +227,9 @@ without checking out another head.
 ### Planning-only prerequisite override
 
 User authority starts this HIGH-effort Planning turn before
-`PROP-work-item-retry` Development completes. This changes sequencing for
-Planning only. Its accepted proposal and `PADR-work-item-recovery-lineage` are
-provisional API/history foundations at base
+`SPEC-work-item-retry` Development completes. This changes sequencing for
+Planning only. The original proposal of this spec and the decision now recorded
+as `ADR-work-item-recovery-lineage` were provisional API/history foundations at base
 `448247462d8d54d227eae7e68a70c762de12d46a`; no dirty concurrent implementation
 was consulted. It is not a completed SPEC dependency.
 

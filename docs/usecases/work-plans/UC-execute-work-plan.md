@@ -1,7 +1,7 @@
 ---
 id: UC-execute-work-plan
 title: Execute a Work Plan
-summary: "An operator registers a batch of specified work and obtains merge-confirmed Item and Plan outcomes while dependencies, scheduling and capacity govern admission. Explicit controls and durable identities preserve unfinished work through interruption."
+summary: "An operator obtains merge-confirmed results for a batch of specified work and explicitly recovers eligible failures in the original dependency graph. Retained history and visible holds preserve successful work through interruption."
 area: work-plans
 primary_actor: Operator
 supporting_actors:
@@ -80,6 +80,12 @@ entrypoints:
 
 - **4b.** Remote preparation is uncertain: Hub retains its preparation identity
   and reconciles on continuation; resumes at step 4 without creating duplicate work.
+  Interface: `UX-work-plans`.
+
+- **4c.** Preparation failed and the operator repaired its cause: the operator reviews unchanged work and confirms recovery; Hub preserves the original Item, prior result and successful predecessors. Accepted work returns through ordinary admission; a definitive refusal ends this continuation with history retained (`CAP-WORK-work-plan-execution`).
+  Interface: `UX-work-plans`.
+
+- **5c.** A failed/canceled Run belongs to this Item: the operator requests unchanged-work recovery. Hub reconciles the original PR and delivery, then resumes the same owner within its existing budgets or explains refusal. Capacity/schedule holds remain visible; uncertainty sends no fresh work. Response loss is resolved using the same request identity (`CAP-WORK-work-plan-execution`, `CAP-PR-pull-request-delivery`).
   Interface: `UX-work-plans`.
 
 - **5a.** Run delivery waits or stops: Hub preserves the Item's actual
@@ -219,12 +225,32 @@ and merge fencing once a PR is delegated.
 - **When**: admitted work finishes before the operator resumes the Plan.
 - **Then**: the waiting Item remains unstarted until resume rechecks admission; existing Runs are not restarted.
 
+### WORK-14: Recover preparation without repeating successful work
+
+- **Covers**: 4c.
+- **Given**: a three-Item chain whose predecessor succeeded and second Item failed preparation.
+- **When**: the operator repairs the cause and confirms recovery.
+- **Then**: the first Item stays unchanged, the second keeps its identity and its successor waits for the second's original-target merge.
+
+### WORK-15: Retain terminal Run identity and budgets
+
+- **Covers**: 5c.
+- **Given**: an eligible terminal Run and a stopped prior delivery on the original owned open PR.
+- **When**: recovery is admitted.
+- **Then**: the same Run continues without an epoch reset; existing implementation evidence enters CI without another implementation delivery, and exhausted allowance refuses fresh work.
+
+### WORK-16: Recover the response and inspect a hold
+
+- **Covers**: 4c, 5c.
+- **Given**: recovery was accepted but its response was lost or admission is held.
+- **When**: the operator checks the original request and current status.
+- **Then**: one recovery record returns with ordered history and a visible hold/reconciliation action, without duplicate acceptance or dispatch.
+
 ## 6. Evidence boundary
 
 The scenarios derive from the inspected source and named tests in
 `CAP-WORK-work-plan-execution`, including `test_work_plans.py`,
 `test_registration.py`, `test_backlog.py`, `test_scheduling.py` and
 `test_review_regressions.py`. The PR portion uses the evidence listed in
-`CAP-PR-pull-request-delivery`. No tests or live provider calls were executed
-while authoring this use case; these examples do not establish deployment or an
+`CAP-PR-pull-request-delivery`. Executed recovery evidence is retained in `docs/materials/2026-11/20261105-work-item-retry/development-checks.md`. No live provider calls were executed while authoring this use case; these examples do not establish deployment or an
 SDD adoption baseline.
