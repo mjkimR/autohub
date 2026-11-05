@@ -2,10 +2,40 @@
 id: SPEC-ux-documentation
 title: Document implemented UX and shared objects
 summary: "Describe implemented Auto Hub interface elements, their shared domain-object representations and their use-case step relationships."
-status: in-progress
+status: completed
 created: 2026-11-05
-related_capabilities: []
-related_usecases: []
+related_capabilities:
+  - CAP-ACCESS-authentication-authorization
+  - CAP-AGENT-catalog-admission
+  - CAP-AGENT-provider-sessions
+  - CAP-CONN-connection-verification
+  - CAP-DOC-repository-viewer
+  - CAP-EXEC-scheduling-maintenance
+  - CAP-MCP-tool-access
+  - CAP-NOTIFY-operator-notifications
+  - CAP-PR-ci-observation
+  - CAP-PR-operator-decisions
+  - CAP-PR-pull-request-delivery
+  - CAP-PR-webhook-advancement
+  - CAP-PROJ-project-connections
+  - CAP-SDD-native-delivery
+  - CAP-SDD-runtime-isolation
+  - CAP-SDD-workflow-control
+  - CAP-WORK-work-plan-execution
+related_usecases:
+  - UC-access-hub
+  - UC-complete-sdd-workflow
+  - UC-configure-agent-catalog
+  - UC-configure-operator-notifications
+  - UC-configure-project-connection
+  - UC-decide-sdd-proposal
+  - UC-deliver-pull-request
+  - UC-execute-work-plan
+  - UC-inspect-repository-documents
+  - UC-resolve-run-question
+  - UC-run-agent-session
+  - UC-start-sdd-activity
+  - UC-verify-project-connection
 workflow: sdd-spec-feature
 ---
 
