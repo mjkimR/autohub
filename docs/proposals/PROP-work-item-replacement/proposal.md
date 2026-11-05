@@ -75,8 +75,10 @@ narrow exception; all other release conditions remain in force.
 - Permit several historical candidate links but one active link per original
   Work Item and one live acceptance per dependency edge. A replacement cannot
   replace multiple originals. An Item cannot be both original and replacement
-  in any retained link, including withdrawn links. No chains or reuse after
-  withdrawal; register distinct work for unsupported replacement cases.
+  in any retained link, including withdrawn links. After an unconsumed link is
+  withdrawn, its original may link a distinct, previously unlinked replacement.
+  A replacement endpoint is lifetime-bound to its original; it cannot be reused
+  in another link. Endpoint roles cannot switch. No chains are followed.
 - Eligible originals are stopped unsuccessful Work Items: `preparation_failed`,
   `failed`, `canceled` or `revoked`, with no active preparation/recovery lease or
   nonterminal linked PR run. `attention`, `blocked`, `paused`, unknown remote
@@ -144,7 +146,8 @@ consumption appends an event and removes future eligibility; it does not undo a
 merge. Withdraw an individual unconsumed acceptance through the same operation
 with its acceptance ID, or the entire link with no acceptance ID. A withdrawn
 acceptance can be accepted again on the same still-active link using a fresh
-request/revision. Link withdrawal is permanent. Concurrent withdrawal/admission,
+request/revision. Link withdrawal is permanent for that pair; the original may select a distinct
+previously unlinked replacement after an unconsumed link is withdrawn. Concurrent withdrawal/admission,
 competing acceptance, recovery and pause/revoke serialize on project ownership;
 exactly the winning committed action determines eligibility. No downstream work
 is canceled or rewound by this feature.
@@ -160,8 +163,8 @@ existing error envelope rather than introducing a global error framework.
 
 Use additive tables, composite project/Item ownership constraints, unique request
 identity/digest, a unique active-original link, unique active replacement owner,
-and unique live acceptance per edge. Retained history prevents a withdrawn Item
-from entering a chain. Existing rows receive no synthetic links/acceptances.
+and unique live acceptance per edge. Retained history prevents endpoint role changes and replacement reuse; an
+original can have historical withdrawn candidates and one live candidate. Existing rows receive no synthetic links/acceptances.
 Endpoints, acceptance snapshots and consumption events survive detailed Run
 pruning; unresolved original Runs keep existing retention protection. Normal
 Work Plan retention does not delete the evidence. No retention worker expansion
@@ -194,6 +197,9 @@ without checking out another head.
 - **REPL-04**: Given accepted but unconsumed evidence, when withdrawal wins before
   admission, then no dependent starts; when admission wins, withdrawal conflicts
   and retained consumption explains why.
+- **REPL-04b**: Given an unconsumed A-to-R1 link is withdrawn, when A links
+  distinct unlinked R2, then the new link is accepted with history retained; R1
+  cannot serve another original and A/R1 cannot switch roles.
 - **REPL-05**: Given a response-lost accepted request, when identical replay and
   conflicting replay arrive, then the first returns its saved result and the
   second conflicts without duplicate events.

@@ -55,8 +55,9 @@ The chosen option is typed links plus per-existing-Item-edge acceptance.
 ## 5. Consequences
 
 Explicit per-edge review costs operator time. Whole-Plan dependents of revoked
-Plans still need a separate supported workflow. Retained endpoint identity makes
-chains intentionally unavailable even after withdrawal. The additive migration
+Plans still need a separate supported workflow. Retained endpoint roles make
+chains unavailable after withdrawal; an original can choose a distinct candidate
+after withdrawing an unconsumed link. The additive migration
 creates no historical equivalence claims. The accepted retry foundation must
 be revalidated against its landed completed spec before handoff.
 

@@ -34,7 +34,7 @@ Draft restatements (planned, not implemented):
   exact replacement merge evidence described in the proposal.
 - **Other admission fences**: WHEN a scoped acceptance exists, Hub MUST continue
   to enforce Plan dependencies, lifecycle, schedule, project and capacity gates.
-- **Replacement lifecycle**: IF a relation forms a chain, reuses an endpoint or
+- **Replacement lifecycle**: IF a relation switches a retained endpoint role, reuses a replacement or
   competes with a live link, THEN Hub MUST refuse it with 409.
 - **Consumption**: WHEN admission uses acceptance, Hub MUST record consumption
   in the admission transaction.
@@ -74,7 +74,7 @@ Extend `UC-execute-work-plan` after its prerequisite recovery extensions:
   and another explicit review; transport uncertainty reuses the saved request
   identity to recover the result. Interface: `UX-work-plans` replacement disclosure.
 
-Acceptance mapping: `REPL-01` covers 5d/6c; `REPL-02`, `REPL-03`, `REPL-07`
+Acceptance mapping: `REPL-04b` covers a fresh candidate after 6d; `REPL-01` covers 5d/6c; `REPL-02`, `REPL-03`, `REPL-07`
 cover 5e; `REPL-04` covers 6d; `REPL-05` covers *b; `REPL-06` covers 6c holds.
 Retain the original success guarantee; explicitly distinguish satisfied edge
 from succeeded Work Item and completed Work Plan in the minimal guarantee.
