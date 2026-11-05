@@ -6,6 +6,7 @@ from urllib.parse import quote
 import yaml
 from app.features.project_management.branches import activity_branch
 from app.features.project_management.pipelines import services as pipeline_services
+from app.features.project_management.pipelines.github import GitHubObservationError
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.work_plans.github import WorkGitHub
 from app_layer_base.utils.time_util import get_current_utc_time
@@ -28,6 +29,24 @@ async def _basis(github, repository: str, ref: str) -> str:
     if row is None:
         raise ProjectError(422, "Requested repository ref does not exist")
     return row["sha"]
+
+
+async def activity_pulls(github, repository: str, branch: str) -> list[dict]:
+    """Read every matching page or explicitly refuse complete ownership evidence."""
+    rows = []
+    for page in range(1, LIMITS["pull_pages"] + 1):
+        found = await github.reader._get_list(
+            f"/repos/{repository}/pulls",
+            {"head": f"{repository.split('/')[0]}:{branch}", "state": "open", "per_page": 100, "page": page},
+        )
+        rows.extend(found)
+        if len(found) < 100:
+            return rows
+    raise ProjectError(
+        422,
+        "Matching PR pagination exceeded 10 pages; ownership coverage is incomplete",
+        code="SDD_PREVIEW_PULLS_INCOMPLETE",
+    )
 
 
 async def list_milestones(observer, project, ref: str) -> dict:
@@ -142,14 +161,7 @@ async def preview_milestone(observer, project, request, runs_for) -> dict:
                             f"/repos/{project.github_repository}/git/ref/heads/{quote(branch, safe='')}"
                         )
                         if existing:
-                            pulls = await github.reader._get_list(
-                                f"/repos/{project.github_repository}/pulls",
-                                {
-                                    "head": f"{project.github_repository.split('/')[0]}:{branch}",
-                                    "state": "open",
-                                    "per_page": 100,
-                                },
-                            )
+                            pulls = await activity_pulls(github, project.github_repository, branch)
                             owned = [
                                 p
                                 for p in pulls
@@ -160,10 +172,19 @@ async def preview_milestone(observer, project, request, runs_for) -> dict:
                             runs = await runs_for(unit)
                             member["evidence"] = [
                                 {
+                                    "pull_number": p["number"],
+                                    "head_sha": (p.get("head") or {}).get("sha"),
+                                    "base_sha": (p.get("base") or {}).get("sha"),
+                                    "kind": "pull_request",
+                                }
+                                for p in owned
+                            ] + [
+                                {
                                     "run_id": str(r.id),
                                     "pull_number": r.pull_number,
                                     "head_sha": (r.sdd_progress or {}).get("head_sha"),
                                     "base_sha": (r.sdd_progress or {}).get("base_sha"),
+                                    "kind": "run",
                                 }
                                 for r in runs
                                 if any(p["number"] == r.pull_number for p in owned)
@@ -176,7 +197,15 @@ async def preview_milestone(observer, project, request, runs_for) -> dict:
                             member["eligibility"] = (
                                 "held" if reason or dependencies or workflow_held else "eligible_now"
                             )
-                    except (ProjectError, OSError, ValueError, TypeError, KeyError, yaml.YAMLError) as exc:
+                    except (
+                        ProjectError,
+                        GitHubObservationError,
+                        OSError,
+                        ValueError,
+                        TypeError,
+                        KeyError,
+                        yaml.YAMLError,
+                    ) as exc:
                         member["eligibility"] = "unknown"
                         member["reasons"].append(
                             f"Evaluation unavailable for {row['id']} ({row['path']}): "
@@ -192,6 +221,8 @@ async def preview_milestone(observer, project, request, runs_for) -> dict:
         ):
             raise
         result["reasons"].append(f"Runtime or repository evaluation unavailable: {exc.code}")
+    except (GitHubObservationError, OSError) as exc:
+        result["reasons"].append(f"Repository or runtime observation unavailable: {type(exc).__name__}")
     if graph:
         result["nodes"], result["edges"] = list(graph.nodes.values()), graph.edges
         result["counts"].update(anchors=len(graph.nodes), edges=len(graph.edges))

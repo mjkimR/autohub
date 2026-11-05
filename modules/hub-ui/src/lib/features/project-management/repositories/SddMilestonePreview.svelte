@@ -127,7 +127,7 @@
 				}}
 			>
 				<option value="">Choose a milestone</option>
-				{#each milestones?.items ?? [] as item (String(item.id))}
+				{#each milestones?.items ?? [] as item, index (`${String(item.id)}:${String(item.path)}:${index}`)}
 					<option value={String(item.id)}
 						>{String(item.id)} · {String(item.title)} · {String(item.status)}</option
 					>
@@ -184,7 +184,7 @@
 					></thead
 				>
 				<tbody
-					>{#each preview.members as member (member.id)}
+					>{#each preview.members as member, index (`${member.id}:${member.path}:${index}`)}
 						<tr class="border-t align-top">
 							<td class="py-2"
 								><input
@@ -239,14 +239,21 @@
 										)}</pre>
 									<p>Runtime: {preview.runtime_identity ?? 'unavailable'}</p>
 									{#each member.evidence as evidence, index (index)}<p>
+											{#if evidence.run_id}<a
+													class="underline"
+													href={`/projects/runs?run=${encodeURIComponent(String(evidence.run_id))}&view=decisions`}
+													>Inspect run {String(evidence.run_id)}</a
+												> ·
+											{/if}
 											<a
 												class="underline"
-												href={`/projects/runs?run=${encodeURIComponent(String(evidence.run_id))}&view=decisions`}
-												>Inspect run {String(evidence.run_id)}</a
+												href={`https://github.com/${repository}/pull/${Number(evidence.pull_number)}`}
+												target="_blank"
+												rel="noreferrer">Inspect PR #{String(evidence.pull_number)}</a
 											>
-											· PR #{String(evidence.pull_number)} · head {String(
-												evidence.head_sha ?? 'unknown'
-											)} · base {String(evidence.base_sha ?? 'unknown')}
+											· head {String(evidence.head_sha ?? 'unknown')} · base {String(
+												evidence.base_sha ?? 'unknown'
+											)}
 										</p>{/each}
 									{#if member.evidence_observed_at}<p>
 											External execution observation: {member.evidence_observed_at}. Separate from

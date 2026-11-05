@@ -44,3 +44,5 @@ No persisted state. UI selection starts empty, includes eligible direct members 
 ## 6. Verification & Test Plan
 
 AC-01–AC-08: backend tests cover zero mutation, pinned reads, admission parity, workflow holds, exact dependencies, ownership, 50/51 members, 200/201 anchors, 500/501 edges, deadlines and partial failures. UI tests cover eligible-only subset order and stale requests. Retain start and Roadmap regressions. Run `just gen-ui-api`, `just check-ui-api`, `just lint-check`, `just check`, focused backend/UI suites and the required real isolated SDD contracts. No locking semantics change is planned. Compare the absent endpoint/panel baseline with the tested after behavior; claim no numerical speedup.
+
+Matching activity PRs use at most 10 pages of 100 results. A full tenth page or failed later page is incomplete evidence. Owned PR identity/revisions remain inspectable before enrollment; optional run evidence stays project-scoped. This additional read bound preserves the 150-second request deadline.

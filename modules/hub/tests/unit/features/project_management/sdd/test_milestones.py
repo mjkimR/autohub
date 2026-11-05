@@ -255,7 +255,7 @@ async def test_existing_owned_activity_is_inspect_only_and_conflict_does_not_lin
     preview.runs.return_value = [SimpleNamespace(id="run", pull_number=3, sdd_progress={"head_sha": "b" * 40})]
     result = await preview.run()
     assert result["members"][0]["eligibility"] == "existing_activity"
-    assert result["members"][0]["evidence"][0]["run_id"] == "run"
+    assert result["members"][0]["evidence"][1]["run_id"] == "run"
 
 
 @pytest.mark.parametrize("path", ["../docs/MS-demo.md", "/docs/MS-demo.md", "docs/../MS-demo.md", "docs\\MS-demo.md"])
@@ -310,7 +310,7 @@ async def test_pr_pagination_failure_is_partial_and_never_selectable(preview, mo
     )
     monkeypatch.setattr(
         "app.features.project_management.pipelines.github.GitHubActionsReader._get_list",
-        AsyncMock(side_effect=ProjectError(502, "Pagination failed")),
+        AsyncMock(side_effect=milestones.GitHubObservationError("Pagination failed")),
     )
     result = await preview.run()
     assert not result["complete"] and result["members"][0]["eligibility"] == "unknown"
@@ -325,3 +325,56 @@ async def test_archive_package_membership_and_historical_spec_exclusion(preview)
     assert {row["id"] for row in result["members"]} == {"PROP-demo", "PROP-package"}
     assert all(row["eligibility"] != "eligible_now" for row in result["members"])
     assert next(row for row in result["members"] if row["id"] == "PROP-package")["eligibility"] == "unsupported"
+
+
+async def test_nonanchor_dependency_is_structurally_incomplete(preview):
+    preview.add("PROP-blueprint", status="draft", path="docs/proposals/PROP-other/target-docs.md")
+    file = preview.root / preview.documents[1]["path"]
+    file.write_text(file.read_text().replace("---\n# Anchor", "depends_on: [PROP-blueprint]\n---\n# Anchor"))
+    result = await preview.run()
+    assert not result["complete"]
+    assert result["edges"][0]["path"].endswith("target-docs.md")
+
+
+async def test_owned_pr_without_run_retains_exact_pr_revisions(preview):
+    preview.refs["plan-demo"] = True
+    preview.pulls.append(
+        {
+            "number": 19,
+            "head": {"ref": "plan-demo", "sha": "b" * 40},
+            "base": {"sha": SHA},
+            "body": activities.marker("plan", "demo"),
+        }
+    )
+    result = await preview.run()
+    member = result["members"][0]
+    assert member["eligibility"] == "existing_activity"
+    assert member["evidence"] == [{"pull_number": 19, "head_sha": "b" * 40, "base_sha": SHA, "kind": "pull_request"}]
+    assert member["evidence_observed_at"]
+
+
+@pytest.mark.parametrize("failure", [OSError("runtime missing"), milestones.GitHubObservationError("network")])
+async def test_outer_runtime_and_observation_errors_are_incomplete(preview, monkeypatch, failure):
+    monkeypatch.setattr(milestones, "restore", AsyncMock(side_effect=failure))
+    result = await preview.run()
+    assert not result["complete"] and type(failure).__name__ in result["reasons"][0]
+
+
+@pytest.mark.parametrize("mode", ["owned_second", "failure_second", "exhausted"])
+async def test_full_pr_pages_are_never_silently_complete(preview, monkeypatch, mode):
+    preview.refs["plan-demo"] = True
+    pages = []
+
+    async def listing(reader, path, params):
+        pages.append(params["page"])
+        if params["page"] == 1 or mode == "exhausted":
+            return [{"number": i, "head": {"ref": "plan-demo"}, "body": "unowned"} for i in range(100)]
+        if mode == "failure_second":
+            raise milestones.GitHubObservationError("Pagination failed")
+        return [{"number": 19, "head": {"ref": "plan-demo"}, "body": activities.marker("plan", "demo")}]
+
+    monkeypatch.setattr("app.features.project_management.pipelines.github.GitHubActionsReader._get_list", listing)
+    result = await preview.run()
+    assert pages == (list(range(1, 11)) if mode == "exhausted" else [1, 2])
+    assert result["complete"] is (mode == "owned_second")
+    assert result["members"][0]["eligibility"] == ("existing_activity" if mode == "owned_second" else "unknown")

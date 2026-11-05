@@ -129,3 +129,56 @@ test('milestone change and refresh discard selected and obsolete response state'
 	await view.rerender(props);
 	expect(screen.queryByRole('checkbox')).toBeNull();
 });
+
+test('duplicate milestone observations render incomplete catalog without duplicate keys', async () => {
+	api.GET.mockResolvedValue({
+		data: {
+			complete: false,
+			resolved_sha: 'a'.repeat(40),
+			reasons: ['Ambiguous MS-demo'],
+			items: [
+				{ id: 'MS-demo', path: 'docs/roadmap/MS-demo.md', title: 'One', status: 'active' },
+				{ id: 'MS-demo', path: 'docs/roadmap/_archive/MS-demo.md', title: 'Two', status: 'done' }
+			]
+		}
+	});
+	render(SddMilestonePreview, props);
+	expect((await screen.findByRole('alert')).textContent).toContain('Ambiguous MS-demo');
+	expect(screen.getAllByRole('option')).toHaveLength(3);
+	expect((screen.getByLabelText('Milestone') as HTMLSelectElement).disabled).toBe(true);
+});
+
+test('duplicate member IDs retain disabled incomplete rows without crashing', async () => {
+	const value = result(false);
+	value.members.push({
+		...value.members[0],
+		path: 'docs/packages/demo/proposals/PROP-z/proposal.md'
+	});
+	api.POST.mockResolvedValue({ data: value });
+	render(SddMilestonePreview, props);
+	await inspect();
+	await screen.findByRole('alert');
+	expect(screen.getAllByRole('checkbox')).toHaveLength(4);
+	expect(screen.getAllByRole('checkbox').every((e) => (e as HTMLInputElement).disabled)).toBe(true);
+});
+
+test('owned PR without a run keeps its PR link and revisions without inventing a run', async () => {
+	const value = result();
+	Object.assign(value.members[0], {
+		eligibility: 'existing_activity',
+		evidence_observed_at: '2026-11-05T00:00:01Z',
+		evidence: [
+			{ kind: 'pull_request', pull_number: 19, head_sha: 'b'.repeat(40), base_sha: 'a'.repeat(40) }
+		]
+	});
+	api.POST.mockResolvedValue({ data: value });
+	render(SddMilestonePreview, props);
+	const user = await inspect();
+	await screen.findByRole('checkbox', { name: 'Select PROP-z' });
+	await user.click(screen.getAllByText('Inspect prerequisites and evidence')[0]);
+	expect(screen.getByRole('link', { name: 'Inspect PR #19' }).getAttribute('href')).toBe(
+		'https://github.com/owner/repo/pull/19'
+	);
+	expect(screen.queryByRole('link', { name: /Inspect run/ })).toBeNull();
+	expect(screen.getByText(/External execution observation/)).toBeTruthy();
+});

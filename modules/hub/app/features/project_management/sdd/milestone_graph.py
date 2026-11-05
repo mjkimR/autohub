@@ -7,7 +7,7 @@ from app.features.project_management.projects.errors import ProjectError
 
 from .services import cli
 
-LIMITS = {"members": 50, "anchors": 200, "edges": 500, "deadline_seconds": 150}
+LIMITS = {"members": 50, "anchors": 200, "edges": 500, "deadline_seconds": 150, "pull_pages": 10}
 
 
 def safe_path(value: str) -> str:
@@ -28,6 +28,16 @@ def metadata(root: Path, path: str) -> dict:
     if not isinstance(value, dict):
         raise ValueError(f"Malformed frontmatter: {path}")
     return value
+
+
+def is_anchor(row: dict) -> bool:
+    path = PurePosixPath(str(row.get("path", "")))
+    identity, kind = str(row.get("id", "")), row.get("kind")
+    if kind == "proposal":
+        return identity.startswith("PROP-") and path.name == "proposal.md" and path.parent.name == identity
+    if kind == "spec":
+        return identity.startswith("SPEC-") and path.name == "spec.md"
+    return kind == "milestone" and identity.startswith("MS-") and path.name == f"{identity}.md"
 
 
 class MilestoneGraph:
@@ -66,7 +76,7 @@ class MilestoneGraph:
 
     async def milestone(self, identity: str, path: str | None) -> dict:
         row = await self.resolve(identity)
-        if not row or row.get("kind") != "milestone" or (path and path != row["path"]):
+        if not row or row.get("kind") != "milestone" or not is_anchor(row) or (path and path != row["path"]):
             raise ProjectError(422, "Milestone ID is missing, ambiguous or does not match its exact path")
         safe_path(row["path"])
         return row
@@ -120,9 +130,11 @@ class MilestoneGraph:
                 "status": "unknown",
             }
             self.edges.append(edge)
-            if not target or target.get("kind") not in allowed:
+            if not target or target.get("kind") not in allowed or not is_anchor(target):
                 reason = f"Missing, ambiguous or invalid prerequisite {dependency} from {identity} ({path})"
-                self.nodes[dependency] = {"id": dependency, "status": "unknown", "path": None}
+                self.nodes[dependency] = target or {"id": dependency, "status": "unknown", "path": None}
+                if target:
+                    edge.update(canonical_id=target["id"], path=target["path"], status=target.get("status", "unknown"))
                 self.reasons.append(reason)
                 holds.append(reason)
                 continue
