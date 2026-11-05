@@ -1,0 +1,13 @@
+kind: feedback
+stage: collect-feedback
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T07:04:25.726718Z'
+status: completed
+summary: Repository-owned workflow/tool/assets swept; no unrecorded actionable feedback. Ordinary implementation defects were fixed in review.
+findings: []
+checks:
+  swept: PASS recorded=0 duplicates=0
+diff_scope:
+  base: f1e9693318ebf0181453142e75b98513fdbba4ff
+  head: 8112ea93fcf082a11824244777b6202108708ade
