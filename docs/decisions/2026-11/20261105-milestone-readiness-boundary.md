@@ -36,7 +36,7 @@ The repository viewer shows branch-specific milestone proposals. Native activity
 Choose the separate Hub panel because it meets the observation goal with existing ownership.
 
 - All document membership and prerequisites use one captured repository commit. → `CAP-SDD-native-delivery` rule 21 (MUST).
-- Readiness delegates workflow evaluation to the server-selected isolated devkit runtime and shares the existing native admission evaluator. → `CAP-SDD-native-delivery` rules 23–24 (MUST).
+- Readiness delegates workflow evaluation to the server-selected isolated devkit runtime and shares the existing native admission evaluator. → `CAP-SDD-native-delivery` rules 8, 23–24 (MUST).
 - Preview and selection create no repository changes, activities, PRs, runs, decisions or execution queues. → `CAP-SDD-native-delivery` rule 26 (MUST).
 - Incomplete evidence disables selectable ordered results, and later admission evaluates again. → `CAP-SDD-native-delivery` rules 25, 28–29 (MUST).
 
