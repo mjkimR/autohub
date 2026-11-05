@@ -2,7 +2,7 @@
 id: PROP-work-item-replacement
 title: Link replacement work to original Work Items
 summary: "Record explicit replacement relationships and dependency satisfaction decisions without rewriting original Work Plan outcomes."
-status: reviewing
+status: accepted
 created_at: 2026-11-05
 target_area: capabilities/work-plans/
 priority: high
