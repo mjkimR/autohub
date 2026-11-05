@@ -22,3 +22,11 @@ After: the preview endpoint returns captured SHA, exact member/dependency observ
 ## Verification boundary
 
 No deployed service, live GitHub operation, production rollout or browser walkthrough is claimed. No database locking or persistence semantics changed. PostgreSQL lock contention coverage is therefore not expanded by this feature. Repository snapshot and separately timestamped execution observations are not an atomic external snapshot.
+
+## Review regression evidence
+
+Round 1's actual upstream exception, nonanchor and missing PR evidence were reproduced by the independent review probe. Ignored replay of the reviewed `6a2885d` modules confirmed nonanchor `complete=True`, lost PR evidence and first-page-only pagination. The actual GitHubObservationError escaped the old path. Old-component replay produced Svelte `each_key_duplicate` for both duplicated milestone and member IDs. Probe harness setup errors were corrected before these observations; those setup failures are not red behavior evidence. No base checkout or source replacement was used.
+
+Round 2's new historical flat-anchor defect failed the real-runtime `flat_proposal` fixture before its fix: only PROP-member appeared, omitting PROP-before. The corrected implementation mirrors the pinned devkit anchor predicate. Valid flat direct members remain unsupported for native start and visible for inspection; valid unfinished flat prerequisites remain held. The original nonanchor blueprint regression stays passing.
+
+Latest complete owning SDD units plus new API/real-isolated catalog/Git fixtures: 153 passed. Full UI suite: 229 passed. Required full real isolated SDD suite after round-one fixes: 112 passed, 2 optional skips; later flat-anchor change is covered by the focused real-isolation fixture. Required lint/type/build checks passed after the first fix batch; final document/range verification follows reconciliation.

@@ -34,7 +34,9 @@ def is_anchor(row: dict) -> bool:
     path = PurePosixPath(str(row.get("path", "")))
     identity, kind = str(row.get("id", "")), row.get("kind")
     if kind == "proposal":
-        return identity.startswith("PROP-") and path.name == "proposal.md" and path.parent.name == identity
+        return identity.startswith("PROP-") and (
+            str(path).endswith("/proposal.md") or str(path) == f"docs/proposals/{identity}.md"
+        )
     if kind == "spec":
         return identity.startswith("SPEC-") and path.name == "spec.md"
     return kind == "milestone" and identity.startswith("MS-") and path.name == f"{identity}.md"
@@ -84,7 +86,7 @@ class MilestoneGraph:
     async def members(self, milestone: dict) -> list[dict]:
         members = []
         for row in self.documents:
-            if row.get("kind") != "proposal" or not row.get("path", "").endswith("/proposal.md"):
+            if row.get("kind") != "proposal" or not is_anchor(row):
                 continue
             try:
                 meta = metadata(self.root, row["path"])

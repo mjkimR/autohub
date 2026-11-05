@@ -378,3 +378,15 @@ async def test_full_pr_pages_are_never_silently_complete(preview, monkeypatch, m
     assert pages == (list(range(1, 11)) if mode == "exhausted" else [1, 2])
     assert result["complete"] is (mode == "owned_second")
     assert result["members"][0]["eligibility"] == ("existing_activity" if mode == "owned_second" else "unknown")
+
+
+async def test_flat_member_is_inspect_only_and_valid_held_prerequisite(preview):
+    preview.add("PROP-before", status="accepted", milestone="MS-demo", path="docs/proposals/PROP-before.md")
+    file = preview.root / preview.documents[1]["path"]
+    file.write_text(file.read_text().replace("---\n# Anchor", "depends_on: [PROP-before]\n---\n# Anchor"))
+    result = await preview.run()
+    assert result["complete"]
+    members = {member["id"]: member for member in result["members"]}
+    assert members["PROP-before"]["eligibility"] == "unsupported"
+    assert members["PROP-demo"]["eligibility"] == "held"
+    assert result["edges"][0]["path"] == "docs/proposals/PROP-before.md"

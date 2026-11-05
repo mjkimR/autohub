@@ -177,3 +177,32 @@ async def test_two_real_branch_snapshots_pin_global_package_archive_and_dependen
             assert value["nodes"][0]["path"] == f"{test_bridge.SPEC}/spec.md"
             assert ("/_archive/" in value["milestone"]["path"]) is (ref == "second")
     assert checked == [first, first, second, second]
+
+
+async def test_real_catalog_retains_supported_flat_proposal_members_and_prerequisites(checkout):
+    root, _ = checkout
+    roadmap = root / "docs/roadmap"
+    roadmap.mkdir(parents=True)
+    (roadmap / "MS-flat.md").write_text(
+        '---\nid: MS-flat\ntitle: Flat\nsummary: "Flat fixture."\nstatus: active\n---\n'
+    )
+    proposals = root / "docs/proposals"
+    proposals.mkdir(parents=True)
+    (proposals / "PROP-before.md").write_text(
+        '---\nid: PROP-before\ntitle: Before\nsummary: "Historical anchor."\nstatus: accepted\nmilestone: MS-flat\n---\n'
+    )
+    member = proposals / "PROP-member"
+    member.mkdir()
+    (member / "proposal.md").write_text(
+        '---\nid: PROP-member\ntitle: Member\nsummary: "Member fixture."\nstatus: draft\nmilestone: MS-flat\ndepends_on: [PROP-before]\n---\n'
+    )
+    await restore(root)
+    graph = MilestoneGraph(root)
+    await graph.load()
+    milestone = await graph.milestone("MS-flat", None)
+    members = await graph.members(milestone)
+    assert {row["id"] for row in members} == {"PROP-before", "PROP-member"}
+    holds = await graph.dependencies(next(row for row in members if row["id"] == "PROP-member"))
+    assert holds and "status accepted" in holds[0]
+    assert graph.edges[0]["path"] == "docs/proposals/PROP-before.md"
+    assert not graph.reasons
