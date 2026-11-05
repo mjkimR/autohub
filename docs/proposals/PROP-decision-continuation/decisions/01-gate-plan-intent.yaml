@@ -1,0 +1,9 @@
+request: gate:plan-intent
+kind: approve
+action: accept
+workflow: sdd-proposal
+stage: intent-proposal
+note: Plan this successor before predecessor implementation completes; ORDER OVERRIDE
+  applies to Planning only. No acceptance or Development handoff authority.
+by: user
+at: '2026-11-05T06:21:39.572256Z'
