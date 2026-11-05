@@ -3,7 +3,7 @@ id: PROP-sdd-milestone-readiness-target
 title: Living Spec targets for PROP-sdd-milestone-readiness
 summary: "Candidate contract and interface updates for preview executable sdd milestone work."
 status: draft
-proposal: PROP-sdd-milestone-readiness
+proposal: SPEC-sdd-milestone-readiness
 created_at: 2026-11-05
 targets:
   - file: docs/capabilities/repository/CAP-DOC-repository-viewer.md
@@ -89,7 +89,7 @@ The recommendation is a routine design assumption within the authorized read-onl
 
 ## 3. Architecture and Decision Impact
 
-Retain the boundary in `PADR-milestone-readiness-boundary` and promote its clauses into `CAP-SDD-native-delivery` upon acceptance/handoff. No new runtime owner, execution ledger, vendor fork or SDK behavior is proposed. A new service/component fits the existing feature structure; no architecture document change is required.
+Retain the boundary in `ADR-milestone-readiness-boundary` and promote its clauses into `CAP-SDD-native-delivery` upon acceptance/handoff. No new runtime owner, execution ledger, vendor fork or SDK behavior is proposed. A new service/component fits the existing feature structure; no architecture document change is required.
 
 ## 4. Development Conventions and Governance
 

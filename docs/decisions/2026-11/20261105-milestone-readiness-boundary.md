@@ -1,16 +1,15 @@
 ---
-id: PADR-milestone-readiness-boundary
+id: ADR-milestone-readiness-boundary
 title: Keep milestone readiness separate from execution
 summary: "For milestone work selection, we pin a read-only Hub preview to a repository commit and reuse devkit eligibility, to preserve execution authority, accepting refresh before later admission."
-proposal: PROP-sdd-milestone-readiness
-# supersedes: [ADR-<slug>]   # an ADR this decision replaces, wholly or in part; name the replaced clauses in Decision Outcome
-status: draft
+proposal: SPEC-sdd-milestone-readiness
+status: accepted
 created_at: 2026-11-05
 ---
 
-# [PADR-milestone-readiness-boundary] Keep milestone readiness separate from execution
+# [ADR-milestone-readiness-boundary] Keep milestone readiness separate from execution
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Date**: 2026-11-05
 
 ---

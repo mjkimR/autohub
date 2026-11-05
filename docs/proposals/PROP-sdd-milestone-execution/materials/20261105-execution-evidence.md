@@ -22,7 +22,7 @@ Scout started with incoming refs; the caller retained a full `devkit docs refs <
 | Separate SDD ledger delegated to native owners | `CAP-SDD-native-delivery` rules 4–6, 17; `CAP-SDD-workflow-control` rule 21; `activities.py:101-214` | New durable claim/control/recovery tables and expected-base seam | Choose: preserves ownership and exact unit evidence. |
 | Reuse Work Plan | `work_plans/execution.py`, `WorkPlanExecution.prepare`; native binding in `CAP-SDD-workflow-control` rule 1 | Unbound SDD enters attention; copying units changes scope/authority | Reject for this feature. |
 | One PipelineRun for batch | `pipeline_runs/models.py:60-103`; native per-PR enrollment in `activities.py:202-214` | One-PR identity cannot carry several independent proposal/spec approvals | Reject. |
-| Eligible-only durable subset | `PROP-sdd-milestone-readiness` Planning decisions 6–8 | Cannot select dependency-held chain for future intent | Keep for read-only preview only. |
+| Eligible-only durable subset | `SPEC-sdd-milestone-readiness` Planning decisions 6–8 | Cannot select dependency-held chain for future intent | Keep for read-only preview only. |
 | Explicit future-intent execution subset | Same pinned complete graph, plus exact dependency-held members | Additional selection surface and honest repair/wait states | Choose for execution; all future starts remain freshly gated. |
 
 ## Source evidence and failure windows

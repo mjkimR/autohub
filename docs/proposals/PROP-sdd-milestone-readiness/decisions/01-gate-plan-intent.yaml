@@ -1,9 +1,0 @@
-request: gate:plan-intent
-kind: approve
-action: accept
-workflow: sdd-proposal
-stage: intent-proposal
-note: User invoked spec-orchestrate to advance the agreed roadmap and authorized Planning
-  for this feature.
-by: user
-at: '2026-11-05T05:54:04.161883Z'

@@ -1,49 +1,51 @@
 ---
-id: PROP-sdd-milestone-readiness
+id: SPEC-sdd-milestone-readiness
 title: Preview executable SDD milestone work
-summary: "Expose selected milestone members and authoritative readiness so operators can review a sequential execution selection without starting work."
-status: accepted
-created_at: 2026-11-05
-target_area: capabilities/sdd/
-priority: high
-size: M
-planning_effort: medium
-dev_effort: high
-milestone: MS-native-sdd-execution
-boundaries:
-  owns:
-    - modules/hub-ui/src/lib/api/
-    - modules/hub/app/features/project_management/sdd/
-    - modules/hub/app/features/project_management/repositories/
-    - modules/hub/tests/integration/features/project_management/sdd/
-    - modules/hub/tests/unit/features/project_management/sdd/
-    - modules/hub-ui/src/lib/features/project-management/repositories/
-    - docs/capabilities/repository/
-    - docs/capabilities/sdd/
-    - docs/usecases/repository/
-    - docs/usecases/sdd/
-    - docs/ux/repository/
-    - docs/ux/sdd/
-    - docs/steering/
-  excludes:
-    - docs/operations/
-    - .github/
-    - packages/sdk/
-task_kind: feature
-workflow: sdd-proposal
+summary: Expose selected milestone members and authoritative readiness so operators can review a sequential execution selection without starting work.
+status: planned
+created: 2026-11-05
+related_capabilities: []
+related_usecases: []
+workflow: sdd-spec-feature
 ---
+<!-- devkit:skeleton -->
 
-# [PROP-sdd-milestone-readiness] Preview executable SDD milestone work
+# [SPEC-sdd-milestone-readiness] Preview executable SDD milestone work
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-sdd-milestone-readiness on 2026-11-05.
+- **Preserved Materials**: `docs/materials/2026-11/20261105-sdd-milestone-readiness`
+- Target Docs Blueprint: `PROP-sdd-milestone-readiness-target` (Living Spec targets for this plan and reconcile.md)
+
+### 1. Background & Hypothesis
 
 `CAP-DOC-repository-viewer` displays branch-specific milestone members, and `CAP-SDD-native-delivery` exposes individual native activity admission. There is no Hub-owned preview that resolves a milestone selection into inspectable executable activities. A read-only readiness contract can establish the selection basis before sequential execution is added.
 
-### Source anchors
+#### Source anchors
 
 `modules/hub-ui/src/lib/features/project-management/repositories/Roadmap.integration.test.ts` covers selected-branch member navigation. `modules/hub/app/features/project_management/sdd/activities.py` owns individual start admission. Neither read-only milestone navigation nor a displayed document is execution authority.
 
-## 2. Technical Spike Findings
+## 2. User Stories
+
+- **US-1**: As a developer/agent, I want to implement Preview executable SDD milestone work so that system capabilities are extended.
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: <what this change will not do>
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] <scenario>
+- **Given** <precondition>
+- **When** <action>
+- **Then** <expected result>
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### 2. Technical Spike Findings
 
 The inspected source and design comparison are retained in `MAT-sdd-milestone-readiness`.
 
@@ -51,11 +53,11 @@ The inspected source and design comparison are retained in `MAT-sdd-milestone-re
 - **Q2 resolved**: Reuse `start_blocker`, `planning_blocker`, existing project validation and branch ownership checks through a shared read-only evaluator. Restore the server-selected runtime once per preview and call devkit policy/workflow commands inside its isolated checkout. Do not use the Proposals screen's `actions` hint as eligibility authority. Existing activities are inspect-only rows; this preview creates and resumes nothing.
 - **Q3 resolved**: Bound discovery and evaluation explicitly. The first implementation supports at most 50 direct members, 200 distinct prerequisite anchors and 500 dependency edges, a 150-second request deadline, and sequential per-unit evaluation within one pinned checkout. These are conservative limits to test, not measured performance claims. Return observed counts, configured limits and all incomplete reasons. A partial preview permits inspection but disables selection and ordered-selection output.
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
-### Planning decisions
+#### Planning decisions
 
-`PADR-milestone-readiness-boundary` records the boundary between repository inspection and native readiness.
+`ADR-milestone-readiness-boundary` records the boundary between repository inspection and native readiness.
 
 1. Add a Hub-owned milestone preview panel beside the existing native SDD surfaces. It accepts the current repository branch and an explicit milestone chosen from a Hub-owned selector. Viewer selection may prefill a recognized milestone path through the existing callback; correctness never depends on undocumented vendor events. No vendor changes are required.
 2. Add a read-only `POST /api/v1/projects/{project_id}/sdd/milestone-preview` request with `ref`, `milestone_id` and optional exact `milestone_path`. Resolve the project repository/connector server-side. Read all document content at `resolved_sha`; reject ambiguous or missing IDs, path traversal and a path/ID mismatch. Never fall back to main. Support archived and package milestones for inspection; a done/dropped milestone cannot produce an executable selection.
@@ -66,7 +68,7 @@ The inspected source and design comparison are retained in `MAT-sdd-milestone-re
 7. Selection is ephemeral UI state, initially empty, restricted to eligible direct member activities. Choosing a subset never silently includes held members or external prerequisites. For a complete graph, show a deterministic topological order with canonical ID tie-breaking. Unfinished prerequisite members remain held even if selected elsewhere: the order is a review recommendation, not a prediction that earlier work will complete or release later work. Do not reorder/edit the repository or persist a queue.
 8. Project/ref/milestone changes and explicit refresh clear selection and invalidate prior results. Cancel obsolete requests and ignore late responses. Display the captured SHA throughout. Repository data is a commit snapshot; run/PR evidence is a separately timestamped observation with exact head/base IDs where available. Do not label external evidence as atomic with the snapshot. Any future execution must re-evaluate admission; there is no execution control or authority token in this response.
 
-### Acceptance criteria for Development
+#### Acceptance criteria for Development
 
 - **MR-01**: Given an eligible milestone, when previewed and a subset selected, then repository refs/content, activities, PRs, runs, decisions and scheduler state remain unchanged. Assert zero calls to all execution/publication/enrollment collaborators.
 - **MR-02**: Given global/package and active/archive milestones on two different branches, when each is previewed, then membership and every document/dependency read use its resolved SHA. A branch moving during reads cannot mix contents. Historical SPEC milestone fields add no members.
@@ -77,19 +79,20 @@ The inspected source and design comparison are retained in `MAT-sdd-milestone-re
 - **MR-07**: Given an empty selection and complete preview, when an operator selects eligible members, then only those exact activities appear in deterministic order. Ref/project/milestone change or refresh clears it; a delayed prior response cannot restore it. Empty results offer another milestone or refresh.
 - **MR-08**: Given a non-SDD or unauthorized project, invalid path or ambiguous milestone, when preview is requested, then existing access/project validation refuses before evaluation or artifact creation. Existing single-activity start and viewer branch navigation retain their regression coverage.
 
-### Implementation and verification outline
+#### Implementation and verification outline
 
 Keep Router → UseCase → Service → Repository ownership. Add bounded preview schemas/API and an orchestration service in the existing SDD feature. Reuse repository reads, devkit catalog/resolution and isolated runtime; extract only the read-only start evaluation needed for parity, without altering start effects. Keep UI state in a separate component under the repository feature to respect component size limits. Regenerate the typed API client.
 
 Development adds focused unit/integration fixtures for the criteria above and a UI integration suite for subset selection, incomplete states and stale responses. Run backend initialization, `just gen-ui-api`, focused tests, `just lint` and `just check`. Planning checks documents and evidence only; no product tests or deployment checks are claimed here. No numerical before/after performance claim is proposed.
 
-### Non-goals
+#### Non-goals
 
 - **Scope Excluded**: Starting batches or individual activities from this preview, durable selection/queues, resumptions, automatic approvals, inferred dependencies, modifying the vendored viewer and Work Plan binding.
 - **Scope Excluded**: New devkit commands or workflow policy, downstream spec discovery by guessed lineage, pilot operation, deployment, production verification, monitoring, incident detection and CI trigger changes.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
 
 Planning recommends the separate preview panel and pinned read-only evaluation. `dev_effort: high` is retained for runtime, dependency and multi-surface verification. The challenger's two findings were folded into shared scheduling semantics and separate admission/workflow-hold facets. The requested UX review's two findings were folded into object ownership and transition coverage; its original open findings remain visible for plan-accept. No unresolved business choice requires a question round. The Host presents both UX candidates and the committed source for plan-accept; this turn records no acceptance or handoff.
 
 Acceptance and Development handoff follow `sdd-proposal`. Completion requires a verified accepted implementation, not this Planning result.
+
