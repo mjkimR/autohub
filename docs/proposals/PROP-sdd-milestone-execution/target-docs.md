@@ -74,6 +74,7 @@ Keep `UC-start-sdd-activity` registration semantics; add batch-origin links and 
 - Repository viewer: project/repository/base ref, initial SHA and latest evaluated SHA/time, milestone ID/path and completeness/limits.
 - SDD batch (proposed term): durable identifier, status/revision, selected/waiting/admitted/succeeded counts and through-Development intent.
 - SDD unit: exact original PROP ID/path, current phase and canonical SPEC when validated, order, eligible-now or waiting-for-prerequisite label, explicit checkbox before creation only.
+- Native SDD activity: per-member Planning/Development effort and catalog preferences, showing inherited defaults and explicit overrides before creation; effective retained preferences remain visible in confirmation and durable row details, subordinate to the ordered list.
 - Native SDD activity: current Planning/Development claim, separately timestamped workflow/authority observations and owner links.
 - PR run: exact PR/run links and owner-confirmed merged/failed/canceled result, when available.
 - SDD batch: Pause future admission, Resume future admission, Stop future admission and Refresh status controls.
@@ -83,7 +84,7 @@ Keep `UC-start-sdd-activity` registration semantics; add batch-origin links and 
 - `empty`: No executable selection; choose supported members or return to preview. A current nonterminal batch offers Open batch instead of Create.
 - `loading`: Announce evaluation/submission, preserve selected basis and pending request ID, disable duplicate mutation; return to repository remains available.
 - `selecting`: Show complete graph and unselected rows; waiting entries explicitly promise no start until prerequisites and admission pass. Create remains disabled for empty/invalid selection.
-- `confirming`: Show immutable ordered IDs, both phases, external holds and gate notice. Confirm create or back to selection. Stop confirmation names irrevocable end of future admissions and already-admitted work; confirm or back.
+- `confirming`: Show immutable ordered IDs, both phases, effective effort/catalog preferences with inherited-versus-overridden labels, external holds and gate notice. Confirm create or back to selection. Stop confirmation names irrevocable end of future admissions and already-admitted work; confirm or back.
 - `running`: Highlight the single claimed member/phase and next wait; inspect owner, refresh or pause/stop future admission.
 - `waiting`: Display exact dependency, workflow gate or owner wait. Offer read-only source/owner links, refresh, pause or stop; decisions occur only through owner controls.
 - `recovering`: Show durable claim and known artifacts with uncertainty; refresh reconciles it. Pause/stop remains available for future claims; no replacement action exists.
@@ -101,6 +102,7 @@ Keep `UC-start-sdd-activity` registration semantics; add batch-origin links and 
 | Open execution selection | UC-execute-sdd-batch 1 | empty | loading | | `CAP-SDD-native-delivery` | Current pinned evidence appears with empty explicit selection. |
 | Select/deselect supported member | UC-execute-sdd-batch 2 | selecting | selecting | | `CAP-SDD-native-delivery` | Exact order and waiting/outside prerequisite summary update; no effects occur. |
 | Inspect source/prerequisite | UC-execute-sdd-batch 2, 2a, 4a | selecting, waiting, attention | same | `UX-repository` | `CAP-SDD-native-delivery` | Open exact captured/current anchor and comparison. |
+| Edit per-member activity preferences | UC-execute-sdd-batch 2 | selecting | selecting | | `CAP-SDD-native-delivery` | Effective Planning/Development effort and catalog choices update; inherited defaults versus explicit overrides remain visible. No execution starts. |
 | Review selection | UC-execute-sdd-batch 3 | selecting | confirming | | `CAP-SDD-native-delivery` | Show exact intent, phases, immutable order and separate gates notice. |
 | Confirm create | UC-execute-sdd-batch 3, 3a, 3b | confirming | loading | | `CAP-SDD-native-delivery` | Same request yields durable receipt or exact conflict; no duplicate create on response loss. |
 | Back from confirmation | UC-execute-sdd-batch 3, 5 | confirming | selecting or prior durable state | | `CAP-SDD-native-delivery` | No create/stop is sent. |
@@ -111,7 +113,7 @@ Keep `UC-start-sdd-activity` registration semantics; add batch-origin links and 
 | Confirm Stop future admission | UC-execute-sdd-batch 5, 5a, 5b | confirming | loading | | `CAP-SDD-native-delivery` | Stop receipt is terminal for future claims; current owner is unaffected. |
 | Return to preview/repository | UC-execute-sdd-batch 6 | all states | end | back | `CAP-SDD-native-delivery` | Durable batch remains accessible from repository batch list. |
 
-**Register changes**: Add SDD batch as an Operator object, owned by `CAP-SDD-native-delivery`: immutable selected sequential unit intent and controls, excluding Work Plan, native activity and PR execution. Avoid generic batch/job/Work Plan synonyms; candidate code identifiers `SddBatch`, `SddBatchMember`. Register selected order, state/revision/holds, admission claim and retained outcome representations; calls to action Select members, Create batch, Open batch, Pause/Resume/Stop future admission, Refresh status and Inspect owner. Extend SDD unit with waiting exact prerequisite/canonical lineage representations. Keep all approvals on Native SDD activity; keep PR controls on PR run. Add the term to glossary only during Development reconciliation.
+**Register changes**: Add SDD batch as an Operator object, owned by `CAP-SDD-native-delivery`: immutable selected sequential unit intent and controls, excluding Work Plan, native activity and PR execution. Avoid generic batch/job/Work Plan synonyms; candidate code identifiers `SddBatch`, `SddBatchMember`. Register selected order, state/revision/holds, activity preferences, admission claim and retained outcome representations; calls to action Select members, Edit activity preferences, Create batch, Open batch, Pause/Resume/Stop future admission, Refresh status and Inspect owner. Extend SDD unit with waiting exact prerequisite/canonical lineage representations. Keep all approvals on Native SDD activity; keep PR controls on PR run. Add the term to glossary only during Development reconciliation.
 
 ## 3. Architecture and Decision Impact
 
