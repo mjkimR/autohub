@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-sdd-milestone-readiness
-status: pending
+status: resolved
 targets:
   - file: docs/capabilities/repository/CAP-DOC-repository-viewer.md
     resolution: modified
@@ -32,6 +32,6 @@ No architecture, runtime owner, persistence, dependency, vendor or SDK changes o
 
 Deferred sequential execution remains with `PROP-sdd-milestone-execution`; no successor documents were changed by this turn. There is no newly deferred required criterion or source feedback. The conditional canonical mapping rule follows actual devkit resolution; no cross-prefix alias or slug lineage is manufactured.
 
-Entrypoint derivation and independent high reconcile verification follow this draft. Pending status intentionally awaits those checks.
+Entrypoints were derived and narrowed to actual doorways. Independent high reconcile round 1 verified all ten targets. Its two P2 wording actions were applied exactly in the named UX/ADR locations and self-verified under the high minor-fix rule; no contract meaning or implementation changed. The closing reconcile-check records that comparison.
 
 Entrypoint candidates for generated API directories, helpers, test mirrors and broad shared directories are rejected. Existing native capability doorways are retained. The preview use case selects its API and panel doorways; repository navigation adds its actual embedding file. The wording-only start use case keeps its current ownership.
