@@ -1,0 +1,28 @@
+kind: challenger
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-05T06:28:36.394254Z'
+status: completed
+summary: round 1; owner-backed lookup is justified; exact envelope evidence and reload guard require clarification
+findings:
+- issue: E3 requires matching answer-envelope resolution, but proposed read model assumes persisted evidence current inspection drops
+  evidence: proposal.md Owner outcome read contract; modules/hub/app/features/project_management/sdd/evidence.py:7,35; services.py:214
+  failure_condition: A published worker answer cannot be correlated exactly because stored reports omit answer envelopes and links
+  suggested_action: Retain validated answer-envelope identity, answers_to, question ID and inspected workflow/head in existing owner evidence; test matching, unrelated and disappearance cases
+  resolution: open
+  severity: P2
+- issue: Reload contract promises unresolved guard after discarding its enforcement metadata
+  evidence: proposal.md Explicit continuation and unknown outcomes
+  failure_condition: Reload before receipt loses original request ID and unresolved marker
+  suggested_action: Explicitly limit the unresolved-outcome guard to the active in-memory session
+  resolution: open
+  severity: P2
+assumptions:
+- Emulated read-only role; unchanged HEAD and matching before/after tree a5b0d12312a4ddeeade02f1e54141e7fc02a8f6e; no outside reads
+unverified_areas:
+- No application/browser/live checks
+checks: {}
+diff_scope:
+  base: 448247462d8d54d227eae7e68a70c762de12d46a
+  head: 0953333fb99eb596e57894aa750dabdc539fcab6

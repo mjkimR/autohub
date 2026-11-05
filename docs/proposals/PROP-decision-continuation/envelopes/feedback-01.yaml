@@ -1,0 +1,13 @@
+kind: feedback
+stage: collect-feedback
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-05T06:33:04.286053Z'
+status: completed
+summary: Planning-run sweep covered intent, scout, criticism rounds and separate UX fold; no repository tooling feedback candidates; design defects fixed in scope
+findings: []
+checks:
+  swept: PASS recorded=0 duplicates=0
+diff_scope:
+  base: ''
+  head: 63a8a1ce366059fe8e80c0a20a35c0fe1ee7abd5
