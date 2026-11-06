@@ -158,6 +158,7 @@ class ActivityStarter:
             pull = next((p for p in pulls if p.get("head", {}).get("ref") == branch), None)
 
             async def candidate_checkpoint(**values):
+                assert checkpoint is not None
                 latest = await github.optional(f"{root}/git/ref/heads/{quote(request.base_branch, safe='')}")
                 if not latest or latest["object"]["sha"] != base_sha:
                     raise ProjectError(409, "Base moved before native branch publication")
