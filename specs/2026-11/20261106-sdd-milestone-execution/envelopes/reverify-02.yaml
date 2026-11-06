@@ -1,0 +1,51 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T01:18:50.090223Z'
+status: completed
+review: review-02.yaml
+summary: 'Closed round 2 as implementer: untracked project reset preserves acknowledged receipts; claim/run binding commits inside exact enrollment; authoritative external canonical repairs retain comparison evidence; final remote heads fence creation/claims; waits preserve reviewed refusals. Added terminal owner settlement and effective preference disclosure required by accepted scope; frozen migration replay. Fresh independent round 3 required.'
+findings:
+- issue: Reactive project reset clears successful receipts
+  evidence: SddBatch.svelte:21-23; sdd-batches.svelte.ts:36-43; own reviewer probe effect-reset.integration.test.ts
+  failure_condition: Pending changes retrigger reset and clear acknowledged create/control batch state
+  suggested_action: Track only project identity with untrack and test settled component effects
+  resolution: resolved
+  severity: P1
+- issue: Lost enrollment response cannot recover its committed run
+  evidence: activity_claims.py:98-121; activities.py:282-290; pipeline_runs/usecases/lifecycle.py:169-170
+  failure_condition: Enrollment commits then response is lost and retry receives ACTIVE_RUN_CONFLICT
+  suggested_action: Bind exact claim and run atomically within enrollment with ownership and lease fences
+  resolution: resolved
+  severity: P1
+- issue: External exact canonical aliases are over-refused
+  evidence: batch_policy.py:81-84; batch_driver.py:170-183
+  failure_condition: External PROP canonically resolves to completed SPEC without selected-member ledger entry
+  suggested_action: Validate authoritative exact canonical resolution separately and retain old/new edge evidence
+  resolution: resolved
+  severity: P1
+- issue: Creation and claim commits omit final remote head check
+  evidence: batch_usecases.py:90-103; batch_driver.py:66-116
+  failure_condition: Base advances after evaluation but stale creation or claim still commits
+  suggested_action: Re-read selected remote head immediately before creation/claim and refuse or re-evaluate stale basis
+  resolution: resolved
+  severity: P1
+- issue: Waiting observations drop reviewed refusal acknowledgement
+  evidence: batch_usecases.py:160-166; batch_driver.py:291-292
+  failure_condition: Resume acknowledges refusal then dependency wait overwrites evaluation and same refusal becomes attention again
+  suggested_action: Preserve recovery/control acknowledgements while updating observation evidence
+  resolution: resolved
+  severity: P2
+checks:
+  before_backend: PASS six expected failures against exact 508997c classes without checkout/HEAD changes
+  before_ui: PASS exact 508997c component loses create and pause receipts after effects settle; fixed component passes
+  backend: PASS 276; 42 skips comprise isolated native CLI and PostgreSQL-only cases
+  postgres: PASS 34 concurrency/recovery/progression/retention cases plus frozen migration roundtrip
+  ui: PASS 34 repository UI tests
+  types_build: PASS just check
+  generated: PASS current generated check
+diff_scope:
+  base: ''
+  head: 23b39dbec18423247a9f4698c2ce3196e1c18250
+activity_effort: high
