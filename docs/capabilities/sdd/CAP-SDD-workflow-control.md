@@ -128,6 +128,14 @@ IF inspection discovers a changed protected head or returned-to-draft PR, THEN H
 
 `CAP-PR-operator-decisions` defines the shared listing/review transport. `UX-decision-inbox` routes exact subjects to `UX-run-decisions`, `UX-sdd-workflow-request` and `UX-sdd-run`; selecting a non-first request never substitutes the first request.
 
+### Outcome disclosure
+
+WHEN reading a worker-answer outcome, Hub MUST correlate its exact recorded operation, source worker-envelope filename and question ID against the original retained workflow/segment and inspected basis. Matched publication proof is retained in its existing receipt during owner inspection. A later workflow position does not erase that proof. Legacy receipts without sufficient original context remain unknown. Check: `test_exact_native_answer_requires_matching_envelope_and_current_context` and `test_answer_publication_never_uses_a_later_subject` in [test_outcomes.py](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_outcomes.py).
+
+WHILE the exact worker answer is recorded without resolved publication, its controls MUST reject duplicate UI submission using persisted owner records or an acknowledged exact in-memory intent, including failed outcome/owner reads and reload. Missing requests or unrelated envelopes do not prove publication. Check: [SddWorkflowRequests.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/SddWorkflowRequests.integration.test.ts).
+
+WHEN showing a historical integration receipt, Hub MUST disclose current authority and holds separately. Neither generic resume nor a successful receipt grants fresh authority. The shared owner lookup is defined by `CAP-PR-operator-decisions`; `UX-sdd-run` shows these independent facts.
+
 ## 4. Interfaces & Data Contracts
 
 Native enrollment uses `POST /api/v1/projects/{project_id}/runs` with an existing

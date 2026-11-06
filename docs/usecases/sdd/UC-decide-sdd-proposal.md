@@ -77,7 +77,7 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
 
 - **3d.** Request ID repeats the identical completed decision: Hub returns its
   existing result without another publication; the use case reaches its goal.
-   Interface: `UX-sdd-workflow-request`.
+   Interface: `UX-run-decisions`, `UX-sdd-run`, `UX-sdd-workflow-request`, `UX-sdd-decision-history`.
 
 - **3e.** Request ID was used for different input or actor: Hub refuses with HTTP
   409 / `CONFLICT`; the use case ends without replacing the original receipt.
@@ -99,21 +99,23 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
 - **5b.** Push fails or its outcome is uncertain: Hub keeps the intent/candidate
   evidence; the operator retries the identical request after inspecting the failure;
   resumes at step 3 without assuming rollback or renewed approval.
-   Interface: `UX-sdd-decision-history`.
+   Interface: `UX-run-decisions`, `UX-sdd-run`, `UX-sdd-workflow-request`, `UX-sdd-decision-history`.
 
 - **6a.** Push succeeded but result persistence was lost: Hub reconciles the exact
   saved candidate against the remote head under the original applicable authority;
   records the existing publication without another push and reaches the goal.
-   Interface: `UX-sdd-decision-history`.
+   Interface: `UX-run-decisions`, `UX-sdd-run`, `UX-sdd-workflow-request`, `UX-sdd-decision-history`.
 
 - **6b.** The saved candidate was published but its authority no longer applies:
   Hub records the remote publication with `applied: false` without changing the
   run state or restoring approval; the use case ends with recorded publication
   evidence, without authorizing continuation (`CAP-SDD-native-delivery`, rule 20).
-   Interface: `UX-sdd-decision-history`.
+   Interface: `UX-run-decisions`, `UX-sdd-run`, `UX-sdd-workflow-request`, `UX-sdd-decision-history`.
 
 - **1z.** The inbox subject resolved, changed generation or failed inspection: controls remain disabled and the operator refreshes the list and explicitly reviews the current subject; resumes at step 1.
    Interface: `UX-decision-inbox`, `UX-run-decisions`.
+
+The retained owner review keeps the exact selected decision outcome after its pending request disappears. Check outcome reads the selected durable owner request; Retry same request retains its original input through refresh and temporary close. A reload explains that unacknowledged in-memory intent is unavailable. Recorded authority, matched worker publication, proposal candidates and current Run state remain separate facts in `UX-run-decisions`, `UX-sdd-workflow-request` and `UX-sdd-run`.
 
 ## 4. Postconditions
 
@@ -248,3 +250,10 @@ integration/OS-isolation suite during documentation work.
 - **Then** the exact owner subject loads and native controls wait for persisted inspection; an obsolete selection stays disabled until explicit reinspection.
 - **Covers**: 1z and the discovery entry.
 
+
+### CONTINUE-01: Follow recorded native direction without inferring completion
+
+- **Covers**: 3d, 5b, 6a, 6b.
+- **Given** recorded native direction with uncertain publication or a later stop,
+- **When** the operator checks its exact outcome or explicitly reviews publication reconciliation,
+- **Then** missing proof remains unknown/pending, historical direction does not restore current authority, and separately identified recovery preserves the original intent and later stop guards.

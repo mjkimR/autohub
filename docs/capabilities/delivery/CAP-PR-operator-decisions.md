@@ -11,6 +11,7 @@ entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/usecases/interactions.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/control.py
   - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
+  - modules/hub/app/features/project_management/pipeline_runs/usecases/outcomes.py
 ---
 
 # [CAP-PR-operator-decisions] Run Questions and Operator Decisions
@@ -69,6 +70,16 @@ The authenticated `GET /api/v1/pipeline-runs/decisions` accepts optional `projec
 
 `POST /api/v1/pipeline-runs/decisions/review` accepts an exact `key` and `fingerprint`. Missing/ended owners return 404; changed generations return 409. The Run question read `GET /api/v1/pipeline-runs/{run_id}/questions/{question_id}` resolves that exact owner question, including one outside the first history page. `UX-decision-inbox` opens `UX-run-decisions`; filters and loaded cursor page persist when it closes.
 
+### Exact owner outcomes and continuation
+
+WHEN an authenticated operator queries one request outcome, Hub MUST read the exact selected owner namespace within that Run and one database transaction, without provider/repository calls or mutation. Missing retained requests remain `record_state: unknown`; missing Runs return 404. Check: `test_exact_outcomes_namespace_unknown_and_no_external_reads` in [test_outcomes.py](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_outcomes.py).
+
+WHEN an application receipt exists, Hub MUST disclose its retained attempt and delivery facts separately from current Run state and authority. A later stop remains current. No attempt or delivery completion is inferred from a prepared receipt. Check: `test_application_outcome_survives_later_pause_and_receipt_replay` in the same file.
+
+WHILE a submission outcome is uncertain, the owner review MUST retain its original request ID and complete payload in memory across refresh and temporary close. Explicit retry replays that payload; replacement submissions remain disabled. A browser reload cannot restore unacknowledged intent. Structured request-validation rejection permits correction after current review; ambiguous owner errors, including publication runner timeout422, remain unknown. Check: [decision-intents.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/decision-intents.integration.test.ts).
+
+WHEN a mutation is acknowledged and a subsequent read fails, the interface MUST retain the recorded identity and saved text with a refresh error. Saving never selects an answer for application. Historical outcome selection has its own displayed request identity and read action. Check: [RunDecisionsDialog.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunDecisionsDialog.integration.test.ts).
+
 ## 4. Interfaces & Data Contracts
 
 ### HTTP surface
@@ -78,6 +89,7 @@ actor; requests do not supply authoritative actor identity.
 
 | Method and suffix | Input/result |
 | --- | --- |
+| `GET /decision-outcomes/{request_id}` | Required `operation` selecting question, answer or resume; `DecisionOutcome` with current Run revision/state, observed time and nullable owner evidence. Invalid discriminator/UUID returns 422. |
 | `GET /questions` | `offset >= 0`, `limit` 1–100; `items`, `total_count`, current `run_revision` |
 | `POST /questions` | `request_id`, `expected_revision`, `question`; returns `QuestionRead` |
 | `POST /questions/{question_id}/answers` | `request_id`, `expected_revision`, `answer`; returns `AnswerRead` |
@@ -91,6 +103,8 @@ binding, current project revision, open PR and branch before saving the head.
 Missing Runs return 404. State/identity/revision conflicts return 409. Invalid
 payloads return 422. A failed or timed-out PR read during question creation
 returns 502 or 504 respectively. No new stable error code is defined here.
+
+The outcome response includes question/answer identity and saved text, applied attempt, execution state, delivery state/time, native channel, publication state/candidate heads, matched envelope, inspected head/digest and current authority/hold. Missing facts are null with `unavailable_reason`. Multiple prepared candidates are listed without choosing one as authoritative. No request digest, credential or generic completion flag is returned. Retained results remain readable after the Run ends; existing retention still applies.
 
 ### Records and transitions
 

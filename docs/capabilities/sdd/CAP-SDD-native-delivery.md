@@ -131,6 +131,12 @@ WHEN a persisted native proposal is actionable, Hub MUST expose its exact propos
 
 `UC-decide-sdd-proposal` enters through `UX-decision-inbox` or the existing run surfaces; proposal decisions retain their existing publication and authority guards.
 
+### Decision recovery outcomes
+
+WHEN a proposal publication is prepared or uncertain, Hub MUST disclose retained candidate commit identities through the exact owner outcome read defined by `CAP-PR-operator-decisions`. Several candidates do not imply one authoritative publication. Check: `test_prepared_candidates_and_legacy_context_stay_truthful` in [test_outcomes.py](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_outcomes.py).
+
+WHEN the operator reviews publication reconciliation, the interface MUST explain its inspection/possible continuation effect and use a separate stable recovery intent against refreshed current Run context. It preserves the original uncertain proposal intent. An unresolved recovery request blocks competing original submissions and retries, while its own exact retry remains available. Ended Runs offer no recovery continuation. Check: [RunDecisionsDialog.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunDecisionsDialog.integration.test.ts) and [decision-intents.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/decision-intents.integration.test.ts).
+
 ## 4. Interfaces & Data Contracts
 
 All endpoint paths below include the `/api/v1` mount.
