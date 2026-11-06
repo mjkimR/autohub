@@ -1,0 +1,30 @@
+kind: worker
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T06:30:07.191363Z'
+status: failed
+summary: Implemented project-owned revisioned templates, atomic ordinary-owner registration and session recovery. High code-review cap reached with one recurring P2 exact Plan navigation finding; no integration or reconciliation completion claimed. All authored scratch remains ignored under .cache; no sync outputs or scope extensions.
+findings: []
+assumptions:
+- Isolation emulated using absolute scoped paths, per-operation approvals, frozen refs/status and scope audit; no native guarantee.
+- No source changes outside declared scope, TierB extensions, sync outputs, merge, push or cleanup.
+unverified_areas:
+- Living Spec targets/reconcile independent review and final change report remain pending; drafted reflection is only ignored .cache scratch.
+- No live provider/browser/deployment verification; Host owns landed-head synchronization and combined checks.
+checks:
+  sync_start: PASS exit=0
+  tests: PASS owner158/13skip; PostgreSQL templates+migrations34; UI71
+  lint: PASS final just lint and cumulative rules
+  build: PASS final just check backend/SDK/Svelte0warnings and production build
+  baseline: PASS same-head ordinary registration with template use absent; no performance claim
+  generated: PASS API regenerated; only admitted work-plan.d.ts changed
+diff_scope:
+  base: 933328448be17774a1408a1c6d008603df134204
+  head: d05fe1f2b5f7330148d06bf5a298f29224a28596
+problem:
+  cause: 'High code-review cap round4 retains recurring P2 review-04 #1 exact original Plan navigation under existing same-tab filters; high review-loop bounded recovery requires Host direction.'
+  attempts:
+  - Round1 added link, round2 stable anchor/focus, round3 applied concrete data-sveltekit-reload suggestion; installed SvelteKit handler proves same-path hash remains mounted. Findings and counts preserved in review01-04/reverify01-03.
+  recovery: 'Host-authorized single exact-Plan reveal callback batch within existing WorkPlan UI: clear lifecycle/group filters, close Templates, refresh if needed, await tick/focus/scroll; preserve fresh/modified anchor navigation. Then one further fresh high round named by resolution, followed by pending eight-target reconciliation and final workflow.'
+activity_effort: high
