@@ -222,7 +222,9 @@ owner commands inside project/Plan/Item or project/batch identities; clients
 supply request IDs and reviewed revisions. Actor fields are not accepted.
 Discovery filters include project/kind/question state, cursor and limit 1–100.
 Recovery pages use offset/limit 1–100; replacement reads retain candidate,
-history and event paging. Read scope and write scope remain independent.
+history and event paging. Inactive-history requests are served with an effective
+limit of at most99 so the independent active link fits the100link cap; advance
+using the returned `history_limit`. Read scope and write scope remain independent.
 
 ## 5. Implementation and verification
 
