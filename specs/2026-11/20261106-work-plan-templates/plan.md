@@ -2,35 +2,17 @@
 id: PLAN-work-plan-templates
 spec: SPEC-work-plan-templates
 ---
-<!-- devkit:skeleton -->
 
-# Technical Plan: `SPEC-work-plan-templates` Create fresh Work Plans from reusable templates
+# Technical Plan: `SPEC-work-plan-templates`
 
-## 1. Architecture Overview & Impact
-- Target Area: capabilities/work-plans/
-- Target Docs Blueprint: `PROP-work-plan-templates-target` (Living Spec targets for this plan and reconcile.md)
+## 1. Architecture
 
-## 2. Component Breakdown & Interface Contracts
+Router → TemplateUseCase → TemplateService/WorkPlanService → TemplateRepository. UseCase owns AsyncTransaction; Project then template/Plan locks serialize all writes. Add templates and actor-bound operation receipts without foreign keys to mutable historical Plan identities. Registration receipt and existing owner Plan creation commit atomically; only active registration invokes the ordinary post-commit kick.
 
-### Planned Boundaries:
-- `modules/hub/app/features/project_management/work_plans/`
-- `modules/hub/migrations/versions/`
-- `modules/hub/tests/integration/features/project_management/work_plans/`
-- `modules/hub/tests/integration/migrations/`
-- `modules/hub-ui/src/lib/api/generated/work-plan.d.ts`
-- `modules/hub-ui/src/lib/stores/session.svelte.ts`
-- `modules/hub-ui/src/lib/stores/session.test.ts`
-- `modules/hub-ui/src/lib/features/project-management/work-plans/`
-- `docs/capabilities/work-plans/`
-- `docs/usecases/work-plans/`
-- `docs/ux/work-plans/`
-- `docs/steering/glossary.md`
-- `docs/steering/ux-objects.md`
+## 2. Components
 
-### Excluded Boundaries:
-- `docs/operations/`
-- `.github/`
-- `packages/sdk/`
+Strict definition/command DTOs; project-scoped soft-delete CRUD, exact outcome queries and template registration. Add one migration after a471ce28d100 and update older metadata roundtrip dependencies. Separate Templates management and provenance review from ordinary editor; persistent account/project session intent coordinates all template writes, exact read recovery and explicit retries. Session logout clears only its namespace. Use existing WorkPlanForm as editable payload editor with a typed seeded submit callback; do not duplicate owner execution logic.
 
-## 3. Verification & Test Plan
-- <commands and checks that verify the acceptance criteria>
+## 3. Verification
+
+Source-mirrored API tests for allowlist, replay/actor/route conflicts, atomicity, stale revision/binding, lifecycle and ordinary owner compatibility; PostgreSQL barriers for edit/delete versus registration and migration roundtrips. UI tests cover definition lifecycle, draft default, changed review, unknown responses/remount/reload, current versus original receipts and logout cleanup. Regenerate typed API, run just lint/check and scoped suites. Baseline: ordinary registration unchanged with templates unused; no performance claim.

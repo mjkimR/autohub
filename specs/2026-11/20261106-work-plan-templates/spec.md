@@ -4,11 +4,11 @@ title: Create fresh Work Plans from reusable templates
 summary: Save reusable Work Plan specifications, local dependencies and execution preferences, then create explicitly reviewed new registrations without copying execution history or authority.
 status: planned
 created: 2026-11-06
-related_capabilities: []
-related_usecases: []
+related_capabilities: [CAP-WORK-work-plan-execution]
+related_usecases: [UC-execute-work-plan]
 workflow: sdd-spec-feature
 ---
-<!-- devkit:skeleton -->
+
 
 # [SPEC-work-plan-templates] Create fresh Work Plans from reusable templates
 
@@ -31,14 +31,45 @@ Recommended delivery order: third, after `SPEC-mcp-delivery-tools` and `SPEC-dec
 
 ## 3. Non-Goals
 
-1. **Scope Excluded**: <what this change will not do>
+1. **Scope Excluded**: recurring schedules, cross-project marketplaces, copied execution history/authority, SDK/native SDD templates, Jules and new agent preferences.
 
 ## 4. Acceptance Criteria & Behavioral Contracts
 
-### [AC-01] <scenario>
-- **Given** <precondition>
-- **When** <action>
-- **Then** <expected result>
+### [AC-01] Safe definition extraction
+
+- **Given** a source Plan and exact revision.
+- **When** its definition is saved.
+- **Then** only allowed specification/local edge fields are stored; stale reads and transaction failures create nothing and saving starts no external work.
+
+### [AC-02] Fresh preview identities
+
+- **Given** one template used twice.
+- **When** fresh draft previews are constructed.
+- **Then** request/ordinal-bound keys and local edges are remapped without attachment, authority or result copying, including colliding truncated stems.
+
+### [AC-03] Atomic revisioned registration
+
+- **Given** a reviewed template revision/digest and current binding.
+- **When** registration races edit/delete/binding changes or is replayed.
+- **Then** fresh stale requests refuse; identical actor/target/payload replay recovers original Plan even after later changes; changed identities conflict.
+
+### [AC-04] Ordinary owner admission
+
+- **Given** a draft or explicitly active reviewed payload.
+- **When** registration commits or persistence fails.
+- **Then** Plan/provenance commit together, ordinary validation/locks/admission remain, and lost response creates no duplicate Plan.
+
+### [AC-05] Independent template lifecycle
+
+- **Given** a derived Plan and retained template receipt.
+- **When** template/source is edited or deleted.
+- **Then** existing Plan state/specification/evidence and original provenance remain inspectable.
+
+### [AC-06] Recover immutable browser intent
+
+- **Given** a CRUD/registration response is lost or refresh fails.
+- **When** the panel remounts/reloads/closes or explicit Check/Retry runs.
+- **Then** account/project-scoped session intent and shared mutation guard survive; auth/access failures stay unknown; changed review clears confirmation; logout clears private payload with disclosed recovery limits.
 
 ## 5. Carried Proposal Notes
 
