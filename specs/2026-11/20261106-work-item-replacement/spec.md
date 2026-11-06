@@ -10,7 +10,6 @@ related_capabilities: []
 related_usecases: []
 workflow: sdd-spec-feature
 ---
-<!-- devkit:skeleton -->
 
 # [SPEC-work-item-replacement] Link replacement work to original Work Items
 
@@ -34,14 +33,50 @@ Handed off from proposal PROP-work-item-replacement on 2026-11-06.
 
 ## 3. Non-Goals
 
-1. **Scope Excluded**: <what this change will not do>
+1. **Scope Excluded**: automatic semantic equivalence, replacement chains, whole-Plan satisfaction, PR mutation and rewriting original outcomes.
+2. **Scope Excluded**: deployment, monitoring, SDK execution and general cross-Plan Item dependency graphs.
 
 ## 4. Acceptance Criteria & Behavioral Contracts
 
-### [AC-01] <scenario>
-- **Given** <precondition>
-- **When** <action>
-- **Then** <expected result>
+### [AC-01] Scoped release
+- **Given** stopped original A with waiting B/C and linked replacement R.
+- **When** R succeeds and its evidence is explicitly accepted for B→A.
+- **Then** only that existing edge becomes satisfied; linking and merge alone release nothing.
+
+### [AC-02] Exact evidence
+- **Given** replacement identities or merge evidence differ.
+- **When** link or acceptance is requested.
+- **Then** 404/409 preserves outcomes, ownership and all holds.
+
+### [AC-03] Retained roles
+- **Given** retained A→R relation exists.
+- **When** a chain, role switch or replacement reuse is requested.
+- **Then** 409 preserves history; unconsumed withdrawal permits A→distinct R2 only.
+
+### [AC-04] Atomic consumption
+- **Given** live acceptance exists.
+- **When** withdrawal and admission race.
+- **Then** project serialization determines eligibility; admitted consumption and preparing commit atomically, consumed withdrawal returns409.
+
+### [AC-05] Replay
+- **Given** an operation response was lost.
+- **When** same request and actor replay or changed input arrives.
+- **Then** identical replay returns original result plus current evidence, changed payload/actor returns409 without duplicate events.
+
+### [AC-06] Remaining holds
+- **Given** accepted edge exists.
+- **When** plan lifecycle, Plan dependencies, schedule, capacity or another Item edge blocks.
+- **Then** no admission occurs and original Item/Plan outcomes remain unchanged.
+
+### [AC-07] Retention
+- **Given** replacement confirmed merge remains after detailed Run pruning.
+- **When** acceptance is requested.
+- **Then** retained exact merge snapshot supports acceptance without provider calls or PR mutation.
+
+### [AC-08] Review and edits
+- **Given** a live link or unresolved request exists.
+- **When** specification edit or UI mutation is attempted.
+- **Then** linked endpoint edits are refused; UI binds displayed revisions/digests/merge, preserves immutable retry on uncertainty and refreshes conflict for explicit review.
 
 ## 5. Carried Proposal Notes
 
@@ -249,3 +284,7 @@ affected contracts and stable Screens drafts. No user-only design question is
 assumed: routine conservative choices above remain recommendations for direction
 review. Completion requires verified implementation and reconciliation.
 
+
+## 6. Implementation assumptions
+
+`SPEC-work-item-retry` is completed. `WorkPlanService.control` sets unstarted Items to `revoked`, so the accepted vocabulary remains valid. Replacement supports stopped originals on terminal Plans while retry retains its separate active-Plan requirement. Locks use Project, deterministic Plans, Runs, Items, then evidence. The accepted narrow relation direction in `ADR-work-item-replacement-evidence` is retained.

@@ -2,34 +2,20 @@
 id: PLAN-work-item-replacement
 spec: SPEC-work-item-replacement
 ---
-<!-- devkit:skeleton -->
-
-# Technical Plan: `SPEC-work-item-replacement` Link replacement work to original Work Items
+# Technical plan: `SPEC-work-item-replacement`
 
 ## 1. Architecture Overview & Impact
-- Target Area: capabilities/work-plans/
-- Target Docs Blueprint: `PROP-work-item-replacement-target` (Living Spec targets for this plan and reconcile.md)
+
+Extend the existing Work Plan owner with additive replacement link, edge acceptance, event and operation receipt records. Router delegates to a use case owning transactions; service/repository helpers never commit. Project serialization covers mutation, admission, recovery and controls. No provider call is required.
 
 ## 2. Component Breakdown & Interface Contracts
 
-### Planned Boundaries:
-- `modules/hub-ui/src/lib/api/`
-- `modules/hub/app/features/project_management/work_plans/`
-- `modules/hub/migrations/`
-- `modules/hub/tests/integration/migrations/`
-- `modules/hub/tests/integration/features/project_management/work_plans/`
-- `modules/hub/tests/unit/features/project_management/`
-- `modules/hub-ui/src/lib/features/project-management/work-plans/`
-- `docs/capabilities/work-plans/`
-- `docs/usecases/work-plans/`
-- `docs/ux/work-plans/`
-- `docs/steering/`
-- `docs/architecture/`
+Strict request schemas bind original and replacement Plan revisions plus evidence revision. Acceptance binds both specification digests and merge snapshot. Link history fixes endpoint roles for life. Read responses include immutable operation result and current relation, edge decisions and consumption events. Original Plan owns the URL. Request digest includes operation, path, actor and normalized command; replay precedes current eligibility.
 
-### Excluded Boundaries:
-- `docs/operations/`
-- `.github/`
-- `packages/sdk/`
+The scheduler's existing local-edge query gains only a validated accepted-evidence alternative. Admission records consumed acceptance IDs in the same transaction as preparing. Plan dependencies and all other fences remain unchanged. Editable endpoint specifications are guarded while links remain active. Existing confirmed Work Item merge evidence survives detailed Run retirement.
+
+UI extracts a cohesive per-Item review surface with candidate identifiers, exact snapshots, reason, explicit confirmation, conflicts and immutable request retry. It renders both endpoint identities and edge consumption; it creates no PR action.
 
 ## 3. Verification & Test Plan
-- <commands and checks that verify the acceptance criteria>
+
+Run SQLite owner/regression tests, PostgreSQL barrier races and migration roundtrip, UI review/conflict/response-loss tests, API generation, `just lint` and `just check`. Compare the same dependency fixture before acceptance and after exact-edge acceptance: zero vs one eligible local edge; no timing claim. High independent code and reconciliation reviews verify accepted criteria. `PROP-work-item-replacement-target` owns the retained screen draft and five initial Living Spec targets.
