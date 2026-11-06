@@ -192,3 +192,36 @@ async def test_replacement_link_replay_exact_machine(client, key, setup_work):
             error=True,
         )
     )["error"]["code"] == "REPLACEMENT_IDENTITY_CONFLICT"
+
+
+async def test_replacement_full_history_page_retains_every_identity(client, key, setup_work, session, monkeypatch):
+    from copy import deepcopy
+
+    from app.features.project_management.work_plans.replacement_schemas import ReplacementRead
+    from app.features.project_management.work_plans.replacement_usecase import ReplacementUseCase
+
+    project, _, _, original, _, _, read, _ = await replacement.fixture(client, setup_work, session)
+    active = read["links"][0]
+    history = [deepcopy(active) | {"id": str(uuid4()), "active": False} for _ in range(101)]
+
+    async def owner_get(self, project_id, plan_id, item_id, candidate, offset, limit, event_link_id, event_offset):
+        return ReplacementRead.model_validate(
+            read
+            | {
+                "links": [active, *history[offset : offset + limit]],
+                "history_offset": offset,
+                "history_total_count": len(history),
+                "history_limit": limit,
+            }
+        )
+
+    monkeypatch.setattr(ReplacementUseCase, "get", owner_get)
+    args = {"project_id": project["id"], "plan_id": original["id"], "item_id": original["items"][0]["id"], "limit": 100}
+    first = (await mcp.call(client, key, "work_items_replacements", args))["result"]
+    assert first["history_limit"] == 99
+    assert len(first["links"]) == 100 and first["links"][0]["active"]
+    second = (await mcp.call(client, key, "work_items_replacements", args | {"offset": first["history_limit"]}))[
+        "result"
+    ]
+    got = [link["id"] for page in (first, second) for link in page["links"] if not link["active"]]
+    assert got == [link["id"] for link in history]

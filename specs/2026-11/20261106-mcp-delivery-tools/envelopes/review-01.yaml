@@ -1,0 +1,20 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T04:54:36.166473Z'
+status: completed
+summary: round 1; REVISE. One bounded replacement-history pagination defect; owner authority and scopes otherwise align.
+findings:
+- issue: Replacement projection truncation skips one historical link.
+  evidence: work_item_replacements.py passes limit100; replacement_views.py caps independent active plus history at100 while retaining history_limit100.
+  failure_condition: One active plus100 inactive links returns only99 history; advancing100 skips omitted identity.
+  suggested_action: Bound inactive-history page to99 before owner call and preserve effective history_limit; add full-page and next-page regression.
+  resolution: open
+  severity: P2
+checks:
+  tests: PASS MCP55 owner104 PostgreSQL6 lint check
+diff_scope:
+  base: a1ce5663a5f0c070f76f6636a7425addb09e2b89
+  head: 2d0a2320b90b3b1eb2ba86f5f4b4a1efb7705675
+activity_effort: high

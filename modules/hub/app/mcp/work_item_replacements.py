@@ -48,7 +48,7 @@ def register_replacements(registry: ToolRegistry, deps: Dependencies):
                 args.item_id,
                 args.replacement_item_id,
                 args.offset,
-                args.limit,
+                min(args.limit, 99),
                 args.event_link_id,
                 args.event_offset,
             )
