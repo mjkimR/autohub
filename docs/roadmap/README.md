@@ -11,14 +11,14 @@ defines execution and authorization ownership.
 | 2 | `MS-native-sdd-execution` | Progress selected native SDD units sequentially under repository dependencies and existing approvals. |
 | 3 | `MS-operator-decisions` | Find pending questions and approvals across projects and follow each decision through its next permitted step. |
 
-The order records product priority. All three themes have completed implementation
-specs and await user confirmation of their milestone completion assertions.
+The order records product priority. All three milestones are done and retained
+under `_archive/`. Their scope decomposition and direct proposal work are confirmed.
 Each milestone's Completion review cites its delivery evidence. Direct proposal
 membership lives exclusively in proposal frontmatter; handed-off specs retain
 the completed implementation record. Inspect milestones and completed specs with:
 
 ```sh
-uv run devkit docs list milestone --all-namespaces -n 0
+uv run devkit docs list milestone --history --all-namespaces -n 0
 uv run devkit docs list spec --history --all-namespaces -n 0
 ```
 

@@ -2,7 +2,7 @@
 id: MS-operator-decisions
 title: Complete operator decisions across projects
 summary: "Bring pending PR questions and native SDD decisions into one operator task flow. Exit requires current decision context, explicit authorization and visible continuation outcomes."
-status: planned
+status: done
 created_at: 2026-11-05
 depends_on: []
 ---
@@ -12,7 +12,7 @@ depends_on: []
 ## Goal
 
 Support human decisions in the delivery paths described by
-[Product context](../steering/product.md) and preserve the separate authority
+[Product context](../../steering/product.md) and preserve the separate authority
 subjects in `ARCH-03-system-context`. Let an operator find actionable questions
 and approvals across projects and follow a decision to its permitted next step.
 
@@ -42,13 +42,11 @@ and `CAP-SDD-workflow-control` without replacing their mutation boundaries.
 
 ## Completion review
 
-Decomposition: pending
-Direct proposal work: pending
+Decomposition: confirmed
+Direct proposal work: confirmed
 
-The close candidate covers the full exit condition through completed
+The completed scope covers the full exit condition through completed
 `SPEC-operator-decision-inbox` and `SPEC-decision-continuation`. Cross-project
 discovery, exact owner inspection and retained request outcomes preserve
 separate save, apply, publication, delivery and authorization boundaries. No
 unresolved direct proposal or unfinished handed-off work remains in this scope.
-Both assertions await user confirmation before marking this milestone done and
-archiving it.

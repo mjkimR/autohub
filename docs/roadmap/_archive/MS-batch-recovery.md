@@ -2,7 +2,7 @@
 id: MS-batch-recovery
 title: Recover partially completed Work Plans
 summary: "Let operators finish partially failed Work Plans without repeating successful work. Exit requires recoverable failed Items and explicit replacement relationships that preserve execution evidence."
-status: planned
+status: done
 created_at: 2026-11-05
 depends_on: []
 ---
@@ -11,7 +11,7 @@ depends_on: []
 
 ## Goal
 
-Support the operator's batch delivery goal in [Product context](../steering/product.md)
+Support the operator's batch delivery goal in [Product context](../../steering/product.md)
 within the execution ownership described by `ARCH-03-system-context`. Let an
 operator continue a partially completed Work Plan while retaining successful
 results and the evidence of failed or superseded work.
@@ -40,12 +40,11 @@ These outcomes extend `CAP-WORK-work-plan-execution` and preserve
 
 ## Completion review
 
-Decomposition: pending
-Direct proposal work: pending
+Decomposition: confirmed
+Direct proposal work: confirmed
 
-The close candidate covers the full exit condition through completed
+The completed scope covers the full exit condition through completed
 `SPEC-work-item-retry` and `SPEC-work-item-replacement`. Their retained recovery
 and replacement evidence preserves original outcomes and limits dependency
 satisfaction to explicitly accepted existing Item edges. No unresolved direct
-proposal or unfinished handed-off work remains in this scope. Both assertions
-await user confirmation before marking this milestone done and archiving it.
+proposal or unfinished handed-off work remains in this scope.

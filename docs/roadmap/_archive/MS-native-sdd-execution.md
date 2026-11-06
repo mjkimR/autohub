@@ -2,7 +2,7 @@
 id: MS-native-sdd-execution
 title: Execute native SDD milestones sequentially
 summary: "Connect repository milestones to sequential native SDD execution. Exit requires inspectable selection, dependency-aware progression and recoverable batch controls under existing decision authority."
-status: planned
+status: done
 created_at: 2026-11-05
 depends_on: []
 ---
@@ -11,7 +11,7 @@ depends_on: []
 
 ## Goal
 
-Support native repository delivery in [Product context](../steering/product.md)
+Support native repository delivery in [Product context](../../steering/product.md)
 under `ARCH-03-system-context` ownership. Let an operator progress selected
 milestone members without manually finding and starting each subsequent SDD unit.
 
@@ -42,13 +42,11 @@ read-only viewer an execution owner.
 
 ## Completion review
 
-Decomposition: pending
-Direct proposal work: pending
+Decomposition: confirmed
+Direct proposal work: confirmed
 
-The close candidate covers the full exit condition through completed
+The completed scope covers the full exit condition through completed
 `SPEC-sdd-milestone-readiness` and `SPEC-sdd-milestone-execution`. Read-only
 readiness inspection and explicit sequential execution retain native decision
 authority, admission identities and future-admission controls. No unresolved
-direct proposal or unfinished handed-off work remains in this scope. Both
-assertions await user confirmation before marking this milestone done and
-archiving it.
+direct proposal or unfinished handed-off work remains in this scope.
