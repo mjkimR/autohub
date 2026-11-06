@@ -37,8 +37,8 @@
 	let mode = $state<components['schemas']['WorkPlanCreate']['state']>(
 		untrack(() => seed?.state ?? 'draft')
 	);
-	const flexible = !initial || ['draft', 'proposed'].includes(initial.state);
-	let draft = $derived(initial ? flexible : mode === 'draft');
+	const flexible = untrack(() => !editing || ['draft', 'proposed'].includes(editing.state));
+	let draft = $derived(editing ? flexible : mode === 'draft');
 	let reason = $state('');
 	let description = $state(initial?.description ?? '');
 	let baseBranch = $state(initial?.base_branch ?? 'main');

@@ -50,6 +50,7 @@
 	}}
 >
 	<h3>{initial ? 'Edit template' : 'New template'}</h3>
+	{#if initial}<p>Template {initial.id} · expected revision {initial.revision}</p>{/if}
 	<label class="block space-y-1"
 		>Template name<Input required maxlength={200} bind:value={name} /></label
 	>

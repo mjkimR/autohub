@@ -89,6 +89,25 @@
 			}
 		}
 	}
+	async function reloadDefinition() {
+		if (!editing || !intent || intent.locked) return;
+		loading = true;
+		try {
+			const result = await api.GET(
+				'/api/v1/projects/{project_id}/work-plan-templates/{template_id}',
+				{
+					params: { path: { project_id: project.id, template_id: editing.id } }
+				}
+			);
+			if (!result.data) throw new Error('Current definition unavailable; unsent content retained');
+			editing = result.data;
+			error = '';
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Current definition unavailable';
+		} finally {
+			loading = false;
+		}
+	}
 	async function extract() {
 		const source = plans.find((p) => p.id === sourceId);
 		if (!source || !intent) return;
@@ -112,7 +131,10 @@
 	async function use(template: Template) {
 		if (intent?.locked) return;
 		loading = true;
-		stalePreview = false;
+		stalePreview = true;
+		selected = null;
+		seed = undefined;
+		binding = null;
 		confirmed = false;
 		reviewed = null;
 		try {
@@ -131,6 +153,7 @@
 				connector: current.data.github.github_connector_id
 			};
 			seed = freshPreview(response.data);
+			stalePreview = false;
 			error = '';
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Template unavailable';
@@ -142,6 +165,7 @@
 	}
 	async function register() {
 		if (
+			loading ||
 			stalePreview ||
 			!selected ||
 			!reviewed ||
@@ -264,7 +288,13 @@
 					will be retained in this tab session for request recovery.</label
 				>
 				<Button disabled={stalePreview || !confirmed || !intent || intent.locked} onclick={register}
-					>{reviewed.state === 'active' ? 'Register active work' : 'Save reviewed plan'}</Button
+					>{reviewed.state === 'active'
+						? 'Register active work'
+						: reviewed.state === 'draft'
+							? 'Save draft'
+							: reviewed.state === 'proposed'
+								? 'Submit proposal'
+								: 'Save ready plan'}</Button
 				>
 				<Button
 					variant="outline"
@@ -331,14 +361,14 @@
 					>Use template</Button
 				><Button
 					variant="outline"
-					disabled={!intent || intent.locked}
+					disabled={!intent || intent.locked || loading}
 					onclick={() => {
 						editing = template;
 						editor = true;
 					}}>Edit template</Button
 				><Button
 					variant="outline"
-					disabled={!intent || intent.locked}
+					disabled={!intent || intent.locked || loading}
 					onclick={() => {
 						deleting = template;
 						deleteConfirmed = false;
@@ -357,9 +387,16 @@
 				onclick={() => void load(offset + 20).catch(() => {})}>Next templates</Button
 			>
 		</div>
+		{#if editor && editing && intent?.state === 'refused' && intent.pending?.op === 'update'}<p>
+				Unsent content is retained. Reload replaces it with the current definition for explicit
+				review.
+			</p>
+			<Button variant="outline" disabled={loading} onclick={reloadDefinition}
+				>Reload definition for review</Button
+			>{/if}
 		{#if editor}{#key `${editing?.id ?? 'new'}:${editing?.revision ?? 0}`}<TemplateDefinitionEditor
 					template={editing}
-					disabled={!intent || intent.locked}
+					disabled={!intent || intent.locked || loading}
 					{save}
 					cancel={() => {
 						editor = false;
@@ -371,7 +408,7 @@
 			<label class="block"
 				>Source Plan<select class="w-full rounded border p-2" bind:value={sourceId}
 					><option value="">Select a Plan</option>{#each plans as plan (plan.id)}<option
-							value={plan.id}>{plan.title} · revision {plan.revision}</option
+							value={plan.id}>{plan.title} · {plan.id} · revision {plan.revision}</option
 						>{/each}</select
 				></label
 			><label class="block">Template name<Input bind:value={sourceName} maxlength={200} /></label>

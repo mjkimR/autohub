@@ -584,3 +584,17 @@ test('retains an invalid key and blocks saving after other tasks are removed or 
 		{ key: 'task-3', depends_on: [] }
 	]);
 });
+
+test('original Plan anchor locates and focuses the exact loaded card', async () => {
+	window.history.replaceState({}, '', '/projects/p1?tab=plans#work-plan-plan1');
+	try {
+		render(WorkPlansPanel, { project });
+		await screen.findByText('Login');
+		await waitFor(() => expect(document.activeElement?.id).toBe('work-plan-plan1'));
+		expect(document.getElementById('work-plan-plan1')?.contains(screen.getByText('Login'))).toBe(
+			true
+		);
+	} finally {
+		window.history.replaceState({}, '', '/');
+	}
+});

@@ -38,7 +38,7 @@
 				<p>Current Plan: {intent.outcome.current_plan?.state}</p>
 				<a
 					class="underline"
-					href={`/projects/${intent.project}?tab=plans&plan_id=${intent.outcome.original_plan.id}`}
+					href={`/projects/${intent.project}?tab=plans#work-plan-${intent.outcome.original_plan.id}`}
 					>Open original Plan</a
 				>{/if}
 			{#if intent.outcome.source_plan_id}<p>

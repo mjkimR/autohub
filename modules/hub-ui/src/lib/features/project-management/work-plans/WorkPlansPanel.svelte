@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { allPages, responseData } from '$lib/api/pagination';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -117,7 +117,14 @@
 		void load();
 	}
 	onMount(() => {
-		void load();
+		void load().then(async () => {
+			await tick();
+			if (window.location.hash.startsWith('#work-plan-')) {
+				const card = document.getElementById(window.location.hash.slice(1));
+				card?.scrollIntoView?.();
+				card?.focus();
+			}
+		});
 		const timer = setInterval(() => {
 			if (!creating && !editing && !groupEditing && !busy) void load();
 		}, 15000);
@@ -199,7 +206,11 @@
 			No plans in this view.
 		</p>{/if}
 	{#each visible as plan (plan.id)}
-		<article class="space-y-4 rounded-xl border bg-card p-5">
+		<article
+			id={`work-plan-${plan.id}`}
+			tabindex="-1"
+			class="space-y-4 rounded-xl border bg-card p-5"
+		>
 			<header class="flex flex-wrap justify-between gap-3">
 				<div>
 					<h3 class="text-lg font-semibold">{plan.title}</h3>
