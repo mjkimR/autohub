@@ -55,6 +55,9 @@
 	let awaitingPublication = $derived(
 		question &&
 			(recordedAnswer ||
+				(review.intent?.acknowledged &&
+					(review.intent.body as { workflow_answer?: { request?: string } }).workflow_answer
+						?.request === current?.id) ||
 				(review.outcome?.native_channel === current?.id &&
 					review.outcome?.publication_state !== 'published'))
 	);
@@ -65,7 +68,14 @@
 		String((run.sdd_progress as { head_sha?: unknown } | null)?.head_sha ?? '')
 	);
 	async function decidePlan(decision: 'accept_plan' | 'reject_plan') {
-		if (!current || busy || disabled || decisionIntent(run.id).unresolved) return;
+		if (
+			!current ||
+			busy ||
+			disabled ||
+			review.competingUnresolved ||
+			decisionIntent(run.id).unresolved
+		)
+			return;
 		const intent = JSON.stringify([run.id, run.revision, decision, headSha, note]);
 		if (retry?.intent !== intent) retry = { intent, id: crypto.randomUUID() };
 		busy = true;
@@ -106,7 +116,14 @@
 		}
 	});
 	async function answer(action: 'accept' | 'decline' | 'cancel') {
-		if (!current || busy || disabled || decisionIntent(run.id).unresolved) return;
+		if (
+			!current ||
+			busy ||
+			disabled ||
+			review.competingUnresolved ||
+			decisionIntent(run.id).unresolved
+		)
+			return;
 		const workflow_answer = {
 			request: current.id,
 			action,
@@ -154,7 +171,7 @@
 				</p>{/if}
 		</div>
 		{#if current.kind === 'choose'}
-			<fieldset class="space-y-2" disabled={busy || disabled}>
+			<fieldset class="space-y-2" disabled={busy || disabled || review.competingUnresolved}>
 				<legend class="mb-2 text-sm font-medium"
 					>{question ? 'Choose an option' : 'Choose the next workflow'}</legend
 				>
@@ -188,18 +205,18 @@
 				class="min-h-20 w-full rounded-lg border bg-background p-3"
 				maxlength="8000"
 				bind:value={note}
-				disabled={busy || disabled}></textarea>
+				disabled={busy || disabled || review.competingUnresolved}></textarea>
 		</label>
 		{#if planAccept}
 			<div class="flex flex-wrap gap-2">
 				<Button
-					disabled={busy || disabled || !headSha}
+					disabled={busy || disabled || review.competingUnresolved || !headSha}
 					onclick={() => void decidePlan('accept_plan')}
 					>{busy ? 'Recording…' : 'Accept proposal'}</Button
 				>
 				<Button
 					variant="destructive"
-					disabled={busy || disabled || !headSha || !note.trim()}
+					disabled={busy || disabled || review.competingUnresolved || !headSha || !note.trim()}
 					onclick={() => void decidePlan('reject_plan')}>Reject proposal</Button
 				>
 			</div>
@@ -213,7 +230,12 @@
 		{:else}
 			<div class="flex flex-wrap gap-2">
 				<Button
-					disabled={busy || disabled || !answerable || awaitingPublication || review.unresolved}
+					disabled={busy ||
+						disabled ||
+						review.competingUnresolved ||
+						!answerable ||
+						awaitingPublication ||
+						review.unresolved}
 					onclick={() => void answer('accept')}
 					>{busy
 						? 'Recording…'
@@ -226,11 +248,13 @@
 				{#if !question}
 					<Button
 						variant="outline"
-						disabled={busy || disabled}
+						disabled={busy || disabled || review.competingUnresolved}
 						onclick={() => void answer('decline')}>Decline</Button
 					>
-					<Button variant="ghost" disabled={busy || disabled} onclick={() => void answer('cancel')}
-						>Defer decision</Button
+					<Button
+						variant="ghost"
+						disabled={busy || disabled || review.competingUnresolved}
+						onclick={() => void answer('cancel')}>Defer decision</Button
 					>
 				{/if}
 			</div>
@@ -249,13 +273,11 @@
 				Reconcile publication inspects current repository evidence and may continue the run. It
 				grants no approval and preserves later stops.
 			</p>
-			<Button variant="outline" disabled={busy} onclick={onreconcile}
-				>Reconcile publication</Button
-			>
+			<Button variant="outline" disabled={busy} onclick={onreconcile}>Reconcile publication</Button>
 		{/if}
 		{#if review.unresolved}<Button
 				variant="outline"
-				disabled={busy || disabled}
+				disabled={busy || disabled || review.competingUnresolved}
 				onclick={async () => {
 					try {
 						await review.retry(decisionBasis(run));

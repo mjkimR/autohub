@@ -221,3 +221,18 @@ test('persisted pending worker answer prevents duplicate submission after reload
 	).toBe(true);
 	expect(api.POST).not.toHaveBeenCalled();
 });
+
+test('acknowledged worker answer remains guarded when outcome and owner refresh both fail', async () => {
+	api.POST.mockResolvedValue({ data: questionRun });
+	render(SddWorkflowRequests, {
+		run: questionRun,
+		onchange: vi.fn().mockRejectedValue(new Error('owner refresh failed'))
+	});
+	const user = userEvent.setup();
+	await user.type(screen.getByLabelText(/Decision/), 'Record once only');
+	await user.click(screen.getByRole('button', { name: 'Record answer' }));
+	await screen.findByRole('alert');
+	expect(
+		(screen.getByRole('button', { name: 'Record answer' }) as HTMLButtonElement).disabled
+	).toBe(true);
+});

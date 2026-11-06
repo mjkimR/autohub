@@ -90,7 +90,7 @@
 			<Button
 				size="sm"
 				variant="outline"
-				disabled={review.busy || terminal || changed}
+				disabled={review.busy || terminal || changed || review.competingUnresolved}
 				onclick={retry}>Retry same request</Button
 			>{/if}
 	{:else}

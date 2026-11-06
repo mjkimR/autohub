@@ -42,7 +42,10 @@ describe('immutable decision continuation', () => {
 it('distinguishes definitive rejection from publication-in-progress and keeps history subject separate', async () => {
 	const review = decisionIntent('rejected-run');
 	vi.mocked(api.POST).mockResolvedValueOnce({
-		error: { code: 'INVALID_REQUEST' },
+		error: {
+			code: 'INVALID_REQUEST',
+			detail: [{ loc: ['body', 'feedback'], msg: 'Invalid input' }]
+		},
 		response: { status: 422 }
 	} as never);
 	await expect(
@@ -73,4 +76,53 @@ it('distinguishes definitive rejection from publication-in-progress and keeps hi
 	const recovery = decisionIntent('rejected-run', true);
 	expect(recovery.unresolved).toBe(false);
 	expect(recovery).not.toBe(review);
+});
+
+it('retains runner timeout422 candidate uncertainty and blocks original mutation during lost recovery', async () => {
+	const review = decisionIntent('timeout-run');
+	vi.mocked(api.POST).mockResolvedValueOnce({
+		error: {
+			code: 'INVALID_REQUEST',
+			detail: 'SDD runner unavailable or timed out; provision Git and the pinned CLI'
+		},
+		response: { status: 422 }
+	} as never);
+	await expect(
+		review.submit(
+			'resume',
+			{
+				request_id: 'original',
+				expected_revision: 1,
+				decision: 'accept_plan',
+				head_sha: 'a'.repeat(40)
+			},
+			'head'
+		)
+	).rejects.toThrow();
+	expect(review.intent?.rejected).not.toBe(true);
+	const history = decisionIntent('history-recovery-run');
+	const recovery = decisionIntent('history-recovery-run', true);
+	vi.mocked(api.POST).mockRejectedValueOnce(new Error('lost recovery response'));
+	await expect(
+		recovery.submit('resume', { request_id: 'recovery', expected_revision: 2 }, 'head')
+	).rejects.toThrow();
+	await expect(
+		history.submit(
+			'resume',
+			{ request_id: 'competing', expected_revision: 2, decision: 'approve' },
+			'head'
+		)
+	).rejects.toThrow('original outcome');
+});
+
+it('blocks competing original mutation while recovery response is unknown after history selection', async () => {
+	const original = decisionIntent('recovery-lock-run');
+	const recovery = decisionIntent('recovery-lock-run', true);
+	vi.mocked(api.POST).mockRejectedValueOnce(new Error('lost recovery'));
+	await expect(
+		recovery.submit('resume', { request_id: 'recovery-one', expected_revision: 1 }, 'head')
+	).rejects.toThrow();
+	await expect(
+		original.submit('resume', { request_id: 'competing-one', expected_revision: 1 }, 'head')
+	).rejects.toThrow('original outcome');
 });

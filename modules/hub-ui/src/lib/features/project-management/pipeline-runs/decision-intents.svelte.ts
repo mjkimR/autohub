@@ -31,7 +31,7 @@ export function decisionIntent(runId: string, recovery = false) {
 	const key = `${session.generation}:${runId}:${recovery}`;
 	for (const [id, value] of Object.entries(reviews))
 		if (value.generation !== session.generation) delete reviews[id];
-	if (!reviews[key]) reviews[key] = new DecisionIntent(runId);
+	if (!reviews[key]) reviews[key] = new DecisionIntent(runId, recovery);
 	return reviews[key];
 }
 export class DecisionIntent {
@@ -41,7 +41,24 @@ export class DecisionIntent {
 	outcome = $state<Outcome | null>(null);
 	error = $state('');
 	busy = $state(false);
-	constructor(readonly runId: string) {}
+	constructor(
+		readonly runId: string,
+		readonly recovery = false
+	) {}
+	get competingUnresolved() {
+		return Object.values(reviews).some(
+			(other) =>
+				other !== this &&
+				other.runId === this.runId &&
+				other.validSession &&
+				other.unresolved &&
+				!(
+					this.recovery &&
+					!other.recovery &&
+					['accept_plan', 'reject_plan'].includes((other.intent?.body as Resume)?.decision || '')
+				)
+		);
+	}
 	get unresolved() {
 		return !!this.intent && !this.intent.acknowledged;
 	}
@@ -62,7 +79,7 @@ export class DecisionIntent {
 		}
 	}
 	async submit(operation: Operation, body: Intent['body'], head: string, questionId?: string) {
-		if (!this.validSession || this.unresolved)
+		if (!this.validSession || this.unresolved || this.competingUnresolved)
 			throw new Error('Check the original outcome before another submission');
 		this.intent = {
 			operation,
@@ -79,7 +96,14 @@ export class DecisionIntent {
 	}
 	async retry(head: string, initial = false) {
 		const i = this.intent;
-		if (!i || i.rejected || !this.validSession || this.busy || (!initial && i.head !== head))
+		if (
+			!i ||
+			i.rejected ||
+			!this.validSession ||
+			this.busy ||
+			this.competingUnresolved ||
+			(!initial && i.head !== head)
+		)
 			return;
 		this.busy = true;
 		this.error = '';
@@ -100,11 +124,14 @@ export class DecisionIntent {
 								body: i.body as components['schemas']['QuestionWrite']
 							});
 			if (!this.validSession) return;
+			// Only FastAPI's structured request validation proves failure before owner execution.
+			// Owner 4xx may follow a prepared/pushed candidate and stays uncertain.
 			if (
+				result.response?.status === 422 &&
 				result.error &&
-				result.response?.status >= 400 &&
-				result.response.status < 500 &&
-				!JSON.stringify(result.error).includes('SDD_DECISION_IN_PROGRESS')
+				typeof result.error === 'object' &&
+				'detail' in result.error &&
+				Array.isArray(result.error.detail)
 			)
 				i.rejected = true;
 			responseData<unknown>(result, 'Request outcome unknown');

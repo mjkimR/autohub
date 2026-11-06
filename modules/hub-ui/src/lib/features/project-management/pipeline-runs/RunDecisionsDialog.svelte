@@ -60,7 +60,7 @@
 	}
 	let review = $derived(decisionIntent(run.id));
 	let head = $derived(decisionBasis(current));
-	let locked = $derived(busy || decisionBusy || review.unresolved);
+	let locked = $derived(busy || decisionBusy || review.unresolved || recovery.unresolved);
 	let ready = $state(false);
 	let saved = $state('');
 	let pending = $derived(
