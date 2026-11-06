@@ -2,7 +2,7 @@
 id: SPEC-decision-continuation
 title: Follow decisions through explicit continuation
 summary: Connect reviewed decisions to explicit next actions and visible application outcomes without conflating saved answers, approval or resumption.
-status: planned
+status: in-progress
 created: 2026-11-06
 depends_on:
   - SPEC-operator-decision-inbox
