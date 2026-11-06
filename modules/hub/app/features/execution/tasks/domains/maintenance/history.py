@@ -11,6 +11,7 @@ from app.features.project_management.pipeline_runs.models import (
     ExecutionReply,
     PipelineRun,
 )
+from app.features.project_management.sdd.batch_models import SddActivityClaim
 from app.features.project_management.work_plans.models import WorkItem
 from sqlalchemy import delete, exists, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -37,6 +38,12 @@ class HistoryRetentionRepository:
                 .where(
                     PipelineRun.state.in_(FINAL_RUN_STATES),
                     PipelineRun.updated_at < before,
+                    ~exists(
+                        select(SddActivityClaim.id).where(
+                            SddActivityClaim.run_id == PipelineRun.id,
+                            ~SddActivityClaim.settled,
+                        )
+                    ),
                     ~exists(
                         select(WorkItem.id).where(
                             WorkItem.pipeline_run_id == PipelineRun.id,
@@ -74,6 +81,11 @@ class HistoryRetentionRepository:
                 pipeline_run_id=None,
                 pipeline_run_retired_at=now,
             )
+        )
+        await session.execute(
+            update(SddActivityClaim)
+            .where(SddActivityClaim.run_id.in_(ids), SddActivityClaim.settled)
+            .values(run_id=None)
         )
         attempts = select(ExecutionAttempt.id).where(ExecutionAttempt.pipeline_run_id.in_(ids))
         # Explicit deletion also works on SQLite configurations without FK enforcement.

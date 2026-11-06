@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SddBatch from './SddBatch.svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
@@ -290,3 +291,5 @@
 		{/if}
 	{/if}
 </section>
+
+<SddBatch {projectId} {preview} onrefresh={inspect} />

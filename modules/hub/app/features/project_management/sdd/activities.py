@@ -56,7 +56,14 @@ def _frontmatter_value(text: str, key: str) -> str | None:
 
 
 async def start_branch(
-    repository: str, base_sha: str, branch: str, token: str, message: tuple[str, str], write: Callable | None
+    repository: str,
+    base_sha: str,
+    branch: str,
+    token: str,
+    message: tuple[str, str],
+    write: Callable | None,
+    *,
+    checkpoint=None,
 ) -> str:
     """Create ``branch`` at ``base_sha`` plus one start commit (``write`` edits the checkout; none means empty)."""
     name, email = commit_identity()
@@ -82,6 +89,8 @@ async def start_branch(
                     cwd=root,
                 )
                 sha = (await command("git-safe", "rev-parse", "HEAD", cwd=root)).strip()
+                if checkpoint:
+                    await checkpoint(initial_sha=sha, branch=branch, base_sha=base_sha)
                 await push_head(root, repository, branch, None, token)
     except (OSError, TimeoutError):
         raise ProjectError(422, "SDD runner unavailable or timed out; provision Git and the pinned CLI") from None
@@ -113,7 +122,18 @@ class ActivityStarter:
     def __init__(self, observer, runs):
         self.observer, self.runs = observer, runs
 
-    async def start(self, project, activity: str, slug: str, request, actor: str) -> PipelineRunRead:
+    async def start(
+        self,
+        project,
+        activity: str,
+        slug: str,
+        request,
+        actor: str,
+        *,
+        expected_base_sha=None,
+        checkpoint=None,
+        saved=None,
+    ) -> PipelineRunRead:
         if activity not in ACTIVITIES:
             raise ProjectError(422, "Activity must be plan or dev")
         try:
@@ -130,11 +150,42 @@ class ActivityStarter:
             if base is None:
                 raise ProjectError(422, f"Base branch {request.base_branch} is not on the remote")
             base_sha = base["object"]["sha"]
+            saved = saved or {}
+            if expected_base_sha and base_sha != expected_base_sha:
+                raise ProjectError(409, "Native admission base SHA changed; re-evaluate before claiming")
+            if checkpoint:
+                await checkpoint(expected_sha=base_sha)
+
             existing = await github.optional(f"{root}/git/ref/heads/{quote(branch, safe='')}")
             pulls = await github.reader._get_list(
                 f"{root}/pulls", {"head": f"{repository.split('/')[0]}:{branch}", "state": "open", "per_page": 100}
             )
             pull = next((p for p in pulls if p.get("head", {}).get("ref") == branch), None)
+            if existing is not None and checkpoint:
+                initial = saved.get("initial_sha")
+                known_pr = saved.get("pull_number")
+                if not initial or (pull is None and existing["object"]["sha"] != initial):
+                    raise ProjectError(409, "Existing native branch has no exact durable admission ownership")
+                if pull is not None and (
+                    (known_pr is not None and pull["number"] != known_pr)
+                    or (pull.get("base") or {}).get("ref") != request.base_branch
+                    or (known_pr is None and (pull.get("head") or {}).get("sha") != initial)
+                ):
+                    raise ProjectError(409, "Native PR does not match the saved admission claim")
+                if pull is None:
+                    created = await github.write(
+                        "POST",
+                        f"{root}/pulls",
+                        {
+                            "title": f"{ACTIVITIES[activity]}: PROP-{slug}",
+                            "head": branch,
+                            "base": request.base_branch,
+                            "draft": activity == "dev",
+                            "body": f"Recovered exact native admission.\n\n{marker(activity, slug)}",
+                        },
+                    )
+                    pull = created
+                    await checkpoint(pull_number=pull["number"])
             if existing is not None:
                 if pull is None or marker(activity, slug) not in (pull.get("body") or ""):
                     raise ProjectError(
@@ -150,6 +201,11 @@ class ActivityStarter:
                     raise ProjectError(422, f"PROP-{slug} is not on {request.base_branch}")
                 if reason := admission_reason(anchor, activity, slug):
                     raise ProjectError(409, reason)
+                if checkpoint:
+                    current_base = await github.optional(f"{root}/git/ref/heads/{quote(request.base_branch, safe='')}")
+                    if not current_base or current_base["object"]["sha"] != base_sha:
+                        raise ProjectError(409, "Base moved before native branch creation")
+                    await checkpoint(admission_base=base_sha)
                 if activity == "plan":
                     if reason := await start_blocker(repository, base_sha, token, unit, activity):
                         raise ProjectError(409, reason, code=_code(reason))
@@ -158,7 +214,15 @@ class ActivityStarter:
                     def write(checkout_root: Path) -> None:
                         set_status(checkout_root, unit, "draft", "reviewing")
 
-                    sha = await start_branch(repository, base_sha, branch, token, message, write)
+                    sha = await start_branch(
+                        repository,
+                        base_sha,
+                        branch,
+                        token,
+                        message,
+                        write,
+                        **({"checkpoint": checkpoint} if checkpoint else {}),
+                    )
                 else:
                     if reason := await start_blocker(repository, base_sha, token, unit, activity):
                         raise ProjectError(409, reason, code=_code(reason))
@@ -166,7 +230,15 @@ class ActivityStarter:
                         f"Start Development of PROP-{slug}",
                         f"Handoff follows as the first step.\nStarted-by: {actor}",
                     )
-                    sha = await start_branch(repository, base_sha, branch, token, message, None)
+                    sha = await start_branch(
+                        repository,
+                        base_sha,
+                        branch,
+                        token,
+                        message,
+                        None,
+                        **({"checkpoint": checkpoint} if checkpoint else {}),
+                    )
                 body = (
                     f"{ACTIVITIES[activity]} of PROP-{slug} on `{branch}` from `{request.base_branch}` ({base_sha[:12]}). "
                     + (
@@ -188,6 +260,8 @@ class ActivityStarter:
                     },
                 )
                 number = created["number"]
+                if checkpoint:
+                    await checkpoint(pull_number=number)
                 assert sha  # the start commit is what the pull request shows
         if request.activity_effort is None:
             value = _frontmatter_value(anchor or "", "planning_effort" if activity == "plan" else "dev_effort")

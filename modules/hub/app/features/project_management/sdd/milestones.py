@@ -65,7 +65,7 @@ async def list_milestones(observer, project, ref: str) -> dict:
             }
 
 
-async def preview_milestone(observer, project, request, runs_for) -> dict:
+async def preview_milestone(observer, project, request, runs_for, *, capture=False) -> dict:
     if request.milestone_path:
         safe_path(request.milestone_path)
     token = await observer.get_token(project.github_connector_id, "github")
@@ -103,6 +103,10 @@ async def preview_milestone(observer, project, request, runs_for) -> dict:
                 result["counts"]["members"] = len(members)
                 if len(members) > LIMITS["members"]:
                     graph.reasons.append("Direct member limit exceeded")
+                if capture:
+                    from .batch_evidence import capture_basis
+
+                    result["batch_basis"] = await capture_basis(root, graph, members)
                 milestone_holds = await graph.dependencies(milestone)
                 for row in members[: LIMITS["members"]]:
                     member = {

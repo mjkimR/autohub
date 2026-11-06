@@ -51,6 +51,12 @@ async def maintain_task(payload: MaintenancePayload) -> None:
         # Outbound record failures must not block execution or provider cleanup.
         logger.exception("Work issue synchronization will retry")
     try:
+        from .sdd_batches import maintain_batches
+
+        await maintain_batches(observer)
+    except Exception:
+        logger.exception("SDD batch maintenance will retry")
+    try:
         await FlowWorker().tick()
     except Exception:
         failures.append("SDK flow maintenance")

@@ -1,0 +1,219 @@
+"""Durable selection/control receipts at the authenticated HTTP/real transaction boundary."""
+
+from copy import deepcopy
+from typing import cast
+from unittest.mock import AsyncMock
+from uuid import uuid4
+
+import pytest
+from app.features.project_management.projects.errors import ProjectError
+from app.features.project_management.sdd import milestones
+from app.features.project_management.sdd.batch_policy import ordered_selection
+from app.features.project_management.sdd.usecases import SddUseCase
+
+from tests.integration.features.project_management.pipeline_runs import test_merge_stage as merge
+from tests.integration.features.project_management.pipeline_runs import test_pipeline_runs_api as scenarios
+
+github = merge.github
+project = scenarios.project
+pytestmark = [pytest.mark.integration, pytest.mark.real_commit]
+
+
+def preview(project_id):
+    return {
+        "project_id": project_id,
+        "repository": "owner/repo",
+        "requested_ref": "main",
+        "resolved_sha": "a" * 40,
+        "milestone": {"id": "MS-demo", "path": "docs/roadmap/MS-demo.md"},
+        "observed_at": "2026-11-06T00:00:00Z",
+        "runtime_identity": "fixture",
+        "complete": True,
+        "counts": {"members": 2, "anchors": 2, "edges": 1},
+        "limits": {},
+        "reasons": [],
+        "warnings": [],
+        "nodes": [],
+        "edges": [{"source": "PROP-b", "requested_id": "PROP-a", "canonical_id": "PROP-a"}],
+        "members": [
+            {
+                "id": f"PROP-{key}",
+                "path": f"docs/proposals/PROP-{key}/proposal.md",
+                "title": key,
+                "status": "accepted",
+                "activity_kind": "dev",
+                "admission": "pass",
+                "scheduling": "pass" if key == "a" else "held",
+                "eligibility": "eligible_now" if key == "a" else "held",
+                "workflow_hold": {},
+                "reasons": [],
+            }
+            for key in ("a", "b")
+        ],
+        "batch_basis": {"configuration": {}, "runtime": {}, "policy": {}, "members": []},
+    }
+
+
+def payload():
+    return {
+        "request_id": str(uuid4()),
+        "ref": "main",
+        "milestone_id": "MS-demo",
+        "expected_sha": "a" * 40,
+        "through_development": True,
+        "members": [
+            {"id": f"PROP-{key}", "path": f"docs/proposals/PROP-{key}/proposal.md", "activity": "dev"}
+            for key in ("b", "a")
+        ],
+    }
+
+
+async def test_durable_order_replay_and_controls_preserve_later_stop(client, project, monkeypatch):
+    result = await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    assert result.status_code == 200
+    evaluator = AsyncMock(return_value=preview(project["id"]))
+    monkeypatch.setattr(milestones, "preview_milestone", evaluator)
+    path = f"/api/v1/projects/{project['id']}/sdd/batches"
+    body = payload()
+    response = await client.post(path, json=body)
+    assert response.status_code == 201, response.text
+    batch = response.json()
+    assert [m["anchor_id"] for m in batch["members"]] == ["PROP-a", "PROP-b"]
+    assert batch["state"] == "running"
+    replay = await client.post(path, json=body)
+    assert replay.json()["id"] == batch["id"]
+    assert evaluator.await_count == 1
+    changed = await client.post(path, json={**body, "ref": "other"})
+    assert changed.status_code == 409
+    control_path = path + f"/{batch['id']}/controls"
+    pause = {"request_id": str(uuid4()), "expected_revision": 1, "action": "pause"}
+    response = await client.post(control_path, json=pause)
+    assert response.status_code == 200, response.text
+    assert response.json()["state"] == "paused"
+    stop = {"request_id": str(uuid4()), "expected_revision": response.json()["revision"], "action": "stop"}
+    response = await client.post(control_path, json=stop)
+    assert response.status_code == 200
+    assert not response.json()["exclusion"]
+    replay = await client.post(control_path, json=pause)
+    assert replay.json()["state"] == "stopped"
+    assert (await client.post(control_path, json={**pause, "request_id": str(uuid4())})).status_code == 409
+    assert (await client.get(path)).json()[0]["id"] == batch["id"]
+    assert (await client.get(f"/api/v1/projects/{uuid4()}/sdd/batches/{batch['id']}")).status_code == 404
+    runs = await client.get("/api/v1/pipeline-runs", params={"project_id": project["id"]})
+    assert not runs.json()["items"]
+
+
+async def test_stale_and_incomplete_selection_has_no_persisted_effect(client, project, monkeypatch):
+    await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    value = preview(project["id"])
+    evaluator = AsyncMock(return_value=value)
+    monkeypatch.setattr(milestones, "preview_milestone", evaluator)
+    path = f"/api/v1/projects/{project['id']}/sdd/batches"
+    body = payload()
+    assert (await client.post(path, json={**body, "expected_sha": "b" * 40})).status_code == 409
+    value["complete"] = False
+    assert (await client.post(path, json=body)).status_code == 422
+    assert (await client.get(path)).json() == []
+
+
+@pytest.mark.parametrize("key,limit", [("members", 50), ("anchors", 200), ("edges", 500)])
+async def test_selection_count_limits_are_strict(key, limit):
+    value, body = preview("fixture"), payload()
+    value["counts"][key] = limit
+    assert len(ordered_selection(value, body["members"])) == 2
+    value["counts"][key] = limit + 1
+    with pytest.raises(ProjectError):
+        ordered_selection(value, body["members"])
+
+
+async def test_workflow_hold_and_cycle_never_become_future_intent():
+    value, body = preview("fixture"), payload()
+    value["members"][0]["workflow_hold"] = {"blocked": True}
+    with pytest.raises(ProjectError):
+        ordered_selection(value, body["members"])
+    value = deepcopy(preview("fixture"))
+    value["edges"].append({"source": "PROP-a", "canonical_id": "PROP-b"})
+    with pytest.raises(ProjectError):
+        ordered_selection(value, body["members"])
+
+
+@pytest.mark.parametrize("control_first", [True, False])
+async def test_claim_control_linearization_preserves_exact_inflight_identity(
+    client, project, monkeypatch, control_first
+):
+    from types import SimpleNamespace
+    from uuid import UUID
+
+    from app.features.project_management.projects.repos import ProjectRepository
+    from app.features.project_management.projects.services import ProjectService
+    from app.features.project_management.sdd.activity_claims import ActivityClaims
+    from app.features.project_management.sdd.batch_driver import BatchDriver
+    from app.features.project_management.sdd.batch_usecases import SddBatchUseCase
+
+    await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    monkeypatch.setattr(milestones, "preview_milestone", AsyncMock(return_value=preview(project["id"])))
+    execute = AsyncMock()
+    monkeypatch.setattr(ActivityClaims, "execute", execute)
+    path = f"/api/v1/projects/{project['id']}/sdd/batches"
+    batch = (await client.post(path, json=payload())).json()
+    driver = BatchDriver(
+        SddBatchUseCase(
+            ProjectService(ProjectRepository()), cast(SddUseCase, SimpleNamespace(observer=None, run_use_case=None))
+        )
+    )
+    if not control_first:
+        await driver.tick(UUID(project["id"]), UUID(batch["id"]))
+        batch = (await client.get(path + f"/{batch['id']}")).json()
+        assert execute.await_count == 1
+    response = await client.post(
+        path + f"/{batch['id']}/controls",
+        json={"request_id": str(uuid4()), "expected_revision": batch["revision"], "action": "stop"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["exclusion"] is (not control_first)
+    await driver.tick(UUID(project["id"]), UUID(batch["id"]))
+    if control_first:
+        execute.assert_not_called()
+    else:
+        assert execute.await_count == 2
+        assert execute.await_args_list[0] == execute.await_args_list[1]
+
+
+async def test_runtime_or_remaining_content_drift_holds_without_claim(client, project, monkeypatch):
+    from types import SimpleNamespace
+    from uuid import UUID
+
+    from app.features.project_management.projects.repos import ProjectRepository
+    from app.features.project_management.projects.services import ProjectService
+    from app.features.project_management.sdd.activity_claims import ActivityClaims
+    from app.features.project_management.sdd.batch_driver import BatchDriver
+    from app.features.project_management.sdd.batch_usecases import SddBatchUseCase
+
+    await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    original = preview(project["id"])
+    monkeypatch.setattr(milestones, "preview_milestone", AsyncMock(return_value=original))
+    execute = AsyncMock()
+    monkeypatch.setattr(ActivityClaims, "execute", execute)
+    path = f"/api/v1/projects/{project['id']}/sdd/batches"
+    batch = (await client.post(path, json=payload())).json()
+    changed = deepcopy(original)
+    changed["batch_basis"]["runtime"] = {"version": "changed"}
+    monkeypatch.setattr(milestones, "preview_milestone", AsyncMock(return_value=changed))
+    driver = BatchDriver(
+        SddBatchUseCase(
+            ProjectService(ProjectRepository()), cast(SddUseCase, SimpleNamespace(observer=None, run_use_case=None))
+        )
+    )
+    await driver.tick(UUID(project["id"]), UUID(batch["id"]))
+    current = (await client.get(path + f"/{batch['id']}")).json()
+    assert current["state"] == "attention"
+    assert "Runtime" in current["detail"]
+    execute.assert_not_called()
