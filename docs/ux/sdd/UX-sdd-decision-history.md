@@ -55,6 +55,10 @@ The Check request outcome action selects that exact historical resume request in
 | Show all / fewer decisions | global: inspect bounded native approval history | populated | populated |  | `CAP-SDD-workflow-control` | The visible row count changes. |
 | Inspected revision | global: inspect the evidence basis of a retained decision | populated | populated |  | `CAP-SDD-workflow-control` | The decision’s head/base values are disclosed. |
 
+### Retained request outcome
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
 | Check request outcome | `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d | populated | populated | `UX-run-decisions` | `CAP-SDD-workflow-control` | Parent shows the exact historical request outcome; the action performs no continuation. |
 
 ## 5. Evidence
