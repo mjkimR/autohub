@@ -1,0 +1,42 @@
+kind: challenger
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-06T04:22:29.949655Z'
+status: completed
+summary: Project-scoped definition plus ordinary owner registration is sufficient; four bounded identity/recovery findings require clarification, no human-only decision.
+findings:
+- issue: Unresolved registration intent can be cleared by dismissal.
+  evidence: proposal.md:76 allowed acknowledgement/dismissal clearing while TEMPLATE-06 and screen draft require unresolved identity retention.
+  failure_condition: A committed active registration loses its response and dismissal drops identity, enabling a duplicate Plan under a fresh request.
+  suggested_action: Clear only acknowledged or authoritatively refused intent; retain unresolved identity on close/dismiss and state logout limitation with regression.
+  resolution: open
+  severity: P1
+- issue: Truncated Item stems can generate duplicate keys within one preview.
+  evidence: proposal.md:70 uses one registration UUID with 27-character stem; existing source keys may share that prefix.
+  failure_condition: Distinct valid long local slots truncate to one generated key and break the remapped graph.
+  suggested_action: Add a deterministic per-slot ordinal to the bounded request-derived key; test shared long prefixes and edges.
+  resolution: open
+  severity: P2
+- issue: CRUD replay does not explicitly bind the path target identity.
+  evidence: proposal.md:66 body digest does not name path template/source Plan target; provisional routes identify it separately.
+  failure_condition: Same request and body sent to a different update/delete path could acknowledge the first target.
+  suggested_action: Bind complete operation target, normalized body and actor; changed target conflicts with path-reuse tests.
+  resolution: open
+  severity: P2
+- issue: Read-only uncertain CRUD recovery has no declared endpoint.
+  evidence: target-docs.md offers Check original request for CRUD but proposal.md:80 only names registration request lookup.
+  failure_condition: Lost save/update/delete response cannot recover an exact recorded result after later edits or deletion.
+  suggested_action: Add exact project-authorized CRUD receipt read with operation/request identity, recorded-versus-unknown and distinct original result/current state.
+  resolution: open
+  severity: P2
+assumptions:
+- Emulated isolation audited absolute paths, fixed HEAD and identical temporary-index tree 44d2be9; no reviewer mutation or out-of-worktree reads.
+unverified_areas:
+- Planning static review only; no product or browser tests executed.
+checks:
+  inspection: PASS proposal/screens and owner source inspected
+diff_scope:
+  base: 0010af5fa2ca053e9023f90689f2cdb37a6bbaf5
+  head: 4eb63f8fe29003c0c6e217d74345a5706facc542
+activity_effort: medium

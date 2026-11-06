@@ -1,0 +1,39 @@
+kind: reverify
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-06T04:23:12.979889Z'
+status: completed
+review: challenger-01.yaml
+summary: 'Medium-effort author reverified all four concrete suggested actions: unresolved dismissal retention, request+ordinal keys, complete CRUD target identity and exact read-only CRUD receipt lookup.'
+findings:
+- issue: Unresolved registration intent can be cleared by dismissal.
+  evidence: proposal.md:76 allowed acknowledgement/dismissal clearing while TEMPLATE-06 and screen draft require unresolved identity retention.
+  failure_condition: A committed active registration loses its response and dismissal drops identity, enabling a duplicate Plan under a fresh request.
+  suggested_action: Clear only acknowledged or authoritatively refused intent; retain unresolved identity on close/dismiss and state logout limitation with regression.
+  resolution: resolved
+  severity: P1
+- issue: Truncated Item stems can generate duplicate keys within one preview.
+  evidence: proposal.md:70 uses one registration UUID with 27-character stem; existing source keys may share that prefix.
+  failure_condition: Distinct valid long local slots truncate to one generated key and break the remapped graph.
+  suggested_action: Add a deterministic per-slot ordinal to the bounded request-derived key; test shared long prefixes and edges.
+  resolution: resolved
+  severity: P2
+- issue: CRUD replay does not explicitly bind the path target identity.
+  evidence: proposal.md:66 body digest does not name path template/source Plan target; provisional routes identify it separately.
+  failure_condition: Same request and body sent to a different update/delete path could acknowledge the first target.
+  suggested_action: Bind complete operation target, normalized body and actor; changed target conflicts with path-reuse tests.
+  resolution: resolved
+  severity: P2
+- issue: Read-only uncertain CRUD recovery has no declared endpoint.
+  evidence: target-docs.md offers Check original request for CRUD but proposal.md:80 only names registration request lookup.
+  failure_condition: Lost save/update/delete response cannot recover an exact recorded result after later edits or deletion.
+  suggested_action: Add exact project-authorized CRUD receipt read with operation/request identity, recorded-versus-unknown and distinct original result/current state.
+  resolution: resolved
+  severity: P2
+checks:
+  inspection: PASS all four failure conditions excluded by explicit design and TEMPLATE-02/06 regressions; no user direction changed
+  ux_fold: PASS both exact UX table fixes applied; findings remain for plan-accept disclosure
+diff_scope:
+  base: ''
+  head: 3761be3fcf9578aea38942d858c89cd372b938f5
