@@ -4,6 +4,7 @@ Mapper hooks use their transaction connection and never commit or call providers
 Each changed run/question/receipt recomputes only its own bounded owner subjects.
 """
 
+from datetime import datetime
 from types import SimpleNamespace
 from typing import cast
 
@@ -28,6 +29,14 @@ def sync_run(connection, run_id, now=None):
     table = cast(Table, DecisionEntry.__table__)
     previous = {r["key"]: r for r in connection.execute(select(table).where(table.c.run_id == run_id)).mappings()}
     rows = []
+    progress = run.sdd_progress or {}
+    generation = {
+        "head": progress.get("head_sha"),
+        "base": progress.get("base_sha"),
+        "snapshot": run.sdd_snapshot,
+        "workflow": progress.get("workflow"),
+        "binding": [str(run.github_connector_id), run.github_repository, run.project_revision],
+    }
     if run.state not in ("completed", "failed", "canceled") and (
         not run.sdd_snapshot or run.sdd_snapshot.get("provider") == "devkit-spec"
     ):
@@ -44,7 +53,13 @@ def sync_run(connection, run_id, now=None):
                 dict(
                     kind="native-hub-question" if native else "run-question",
                     subject_id=str(question["id"]),
-                    fingerprint=request_digest({"question": str(question["id"]), "head": question["head_sha"]}),
+                    fingerprint=request_digest(
+                        {
+                            "question": str(question["id"]),
+                            "head": question["head_sha"],
+                            **({"native_generation": generation} if native else {}),
+                        }
+                    ),
                     title=question["question"],
                     question_state=question["state"],
                     actionable=True,
@@ -88,7 +103,11 @@ def sync_run(connection, run_id, now=None):
         old = previous.get(key)
         if old and old["fingerprint"] == row["fingerprint"]:
             row["waiting_since"] = old["waiting_since"]
-        values = dict(**row, run_id=run_id, project_id=run.project_id, observed_at=now, revision=run.revision)
+        observed = now
+        if row["kind"] != "run-question":
+            stamp = progress.get("observed_at")
+            observed = datetime.fromisoformat(stamp) if isinstance(stamp, str) else old["observed_at"] if old else now
+        values = dict(**row, run_id=run_id, project_id=run.project_id, observed_at=observed, revision=run.revision)
         if old:
             connection.execute(table.update().where(table.c.key == key).values(**values))
         else:

@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 
 from app.features.project_management.pipeline_runs.requests import request_digest
 from app.features.project_management.projects.errors import ProjectError
+from app_layer_base.utils.time_util import get_current_utc_time
 
 from .checkout import SddCommandError, checkout, command
 from .contracts import workflow_hash
@@ -242,6 +243,7 @@ class SddService:
         evidence = request_digest({"head": head, "base": base, "contract": contract, "current": current})
         return {
             "snapshot": contract,
+            "observed_at": get_current_utc_time().isoformat(),
             "head_sha": head,
             "base_sha": base,
             "workflow": workflow,

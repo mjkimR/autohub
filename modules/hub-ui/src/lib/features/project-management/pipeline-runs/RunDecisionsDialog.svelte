@@ -57,9 +57,9 @@
 		if (!requests.has(key)) requests.set(key, crypto.randomUUID());
 		return requests.get(key)!;
 	}
-	async function load() {
+	async function load(inspectSelection = true) {
 		ready = false;
-		if (selection) {
+		if (selection && inspectSelection) {
 			responseData(
 				await api.POST('/api/v1/pipeline-runs/decisions/review', {
 					body: { key: selection.key, fingerprint: selection.fingerprint }
@@ -93,7 +93,20 @@
 		total = data.total_count;
 		revision = data.run_revision;
 		current = latest;
-		ready = true;
+		ready = !selection || inspectSelection || (selection.kind === 'run-question' && !!pending);
+	}
+	async function afterMutation() {
+		onchange();
+		if (!selection) {
+			await load();
+			return;
+		}
+		try {
+			await load(false);
+		} catch {
+			ready = false;
+			saved ||= 'Decision recorded. Refresh the inbox to review its current subject.';
+		}
 	}
 	async function perform(action: () => Promise<void>) {
 		busy = true;
@@ -139,8 +152,7 @@
 		}
 		requests.delete(key);
 		text = '';
-		await load();
-		onchange();
+		await afterMutation();
 	}
 	async function resume(answerId?: string) {
 		if (decisionBusy || !ready || offset !== 0) return;
@@ -155,8 +167,7 @@
 			}),
 			'Unable to resume; refresh and inspect the current run before changing your request'
 		);
-		await load();
-		onchange();
+		await afterMutation();
 		saved = 'Resume recorded. Agent delivery may still be pending.';
 	}
 	async function dismiss() {
@@ -169,11 +180,10 @@
 			'Unable to dismiss question'
 		);
 		reason = '';
-		await load();
-		onchange();
+		await afterMutation();
 	}
 	onMount(() => {
-		void perform(load);
+		void perform(() => load());
 	});
 </script>
 
@@ -204,7 +214,7 @@
 				<Button variant="outline" size="sm" href={run.pull_url} target="_blank" rel="noreferrer"
 					><ExternalLink class="size-3.5" />Inspect pull request</Button
 				>
-				<Button variant="ghost" size="sm" disabled={locked} onclick={() => perform(load)}
+				<Button variant="ghost" size="sm" disabled={locked} onclick={() => perform(() => load())}
 					><RefreshCw class={busy ? 'size-3.5 animate-spin' : 'size-3.5'} />Refresh decisions</Button
 				>
 			</div>
@@ -304,8 +314,7 @@
 								decisionBusy = value;
 							}}
 							onchange={async () => {
-								await load();
-								onchange();
+								await afterMutation();
 							}}
 						/>
 					{/if}
@@ -346,8 +355,7 @@
 							{revision}
 							disabled={locked || !ready || offset !== 0}
 							onchange={async () => {
-								await load();
-								onchange();
+								await afterMutation();
 							}}
 						/>{/if}
 					<section class="space-y-3">

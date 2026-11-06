@@ -10,9 +10,10 @@ from app.features.project_management.pipeline_runs.repos import PipelineRunRepos
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.repos import ProjectRepository
-from app.features.project_management.sdd.progress import carry_decisions
+from app.features.project_management.sdd.progress import authority_revocation, carry_decisions
 from app.features.project_management.sdd.services import SddService
 from app_layer_base.core.database.transaction import AsyncTransaction
+from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
 
 
@@ -42,6 +43,8 @@ class DecisionDiscoveryUseCase:
             run = await runs.get(session, entry.run_id)
             if not run or run.state in FINAL_RUN_STATES:
                 raise ProjectError(404, "Decision owner is no longer available")
+            if not entry.actionable:
+                raise ProjectError(409, "Answer publication is pending; inspect the owner history")
             if entry.fingerprint != request.fingerprint:
                 raise ProjectError(409, "Decision changed; review the current subject explicitly")
             project = await projects.get(session, run.project_id)
@@ -67,11 +70,24 @@ class DecisionDiscoveryUseCase:
         if pull.get("state") != "open":
             raise ProjectError(409, "Pull request is no longer open")
         token = await observer.get_token(connector, "github")
-        evidence = await SddService().inspect(repository, snapshot["spec_dir"], pull, token, snapshot=snapshot)
+        revocation = authority_revocation(previous, pull)
+        evidence = await SddService().inspect(
+            repository,
+            snapshot["spec_dir"],
+            pull,
+            token,
+            snapshot=snapshot,
+            approved=bool(previous.get("approval")) and not revocation,
+        )
+        evidence["observed_at"] = get_current_utc_time().isoformat()
         carry_decisions(previous, evidence)
         # An inspection cannot erase a current grant or reopen a withdrawn grant.
-        if "approval" in previous:
+        if "approval" in previous and not revocation:
             evidence["approval"] = previous["approval"]
+        if revocation:
+            evidence.pop("approval", None)
+            evidence["approval_withheld"] = True
+            evidence["integrated"] = False
         evidence["pr_draft"] = bool(pull.get("draft"))
         changed = False
         async with AsyncTransaction() as session:
@@ -89,11 +105,15 @@ class DecisionDiscoveryUseCase:
             ):
                 raise ProjectError(409, "Owner changed during inspection; retry Review")
             run.sdd_progress = evidence
+            if revocation:
+                run.state, run.pause_reason = "blocked", revocation
             run.revision += 1
             await session.flush()
             current = await self.repo.entry(session, request.key)
             changed = not current or current.fingerprint != request.fingerprint
             result = PipelineRunRead.model_validate(run)
+        if revocation:
+            raise ProjectError(409, revocation)
         if changed:
             # Commit the new inspection basis before reporting an obsolete selection.
             raise ProjectError(409, "Subject changed during inspection; refresh and explicitly Review again")

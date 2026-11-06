@@ -279,3 +279,40 @@ test('failed inbox inspection leaves every mutation disabled', async () => {
 		body: { key: 'entry', fingerprint: 'old' }
 	});
 });
+
+test('acknowledged inbox dismissal refreshes the list without re-reviewing the removed entry', async () => {
+	const user = userEvent.setup();
+	let resolved = false;
+	const selection = {
+		key: 'entry',
+		fingerprint: 'fp',
+		subject_id: question.id,
+		kind: 'run-question'
+	} as components['schemas']['DecisionEntryRead'];
+	const onchange = vi.fn();
+	api.GET.mockImplementation(async (path: string) => ({
+		data: path.endsWith('/questions')
+			? {
+					items: [{ ...question, state: resolved ? 'dismissed' : 'open' }],
+					total_count: 1,
+					run_revision: 2
+				}
+			: path.endsWith('/{question_id}')
+				? { ...question, state: resolved ? 'dismissed' : 'open' }
+				: run
+	}));
+	api.POST.mockImplementation(async (path: string) => {
+		if (path.endsWith('/dismiss')) resolved = true;
+		return { data: {} };
+	});
+	render(RunDecisionsDialog, { run, selection, onclose: vi.fn(), onchange });
+	await screen.findByRole('button', { name: 'Save answer' });
+	await user.click(screen.getByText('Dismiss this question'));
+	await user.type(screen.getByLabelText('Reason to dismiss'), 'Resolved elsewhere');
+	await user.click(screen.getByRole('button', { name: 'Dismiss without resuming' }));
+	await waitFor(() => expect(onchange).toHaveBeenCalledOnce());
+	expect(api.POST.mock.calls.filter(([path]) => path.endsWith('/decisions/review'))).toHaveLength(
+		1
+	);
+	expect(screen.queryByRole('alert')).toBeNull();
+});

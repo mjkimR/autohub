@@ -133,6 +133,26 @@ def carry_decisions(previous, evidence):
     return evidence
 
 
+def authority_revocation(previous, pull):
+    approval = previous.get("approval")
+    if approval and approval.get("saw_ready") and pull.get("draft"):
+        return "Integration approval revoked: PR returned to draft"
+    plan = previous.get("plan_decision") or {}
+    published_head = (
+        approval
+        and not previous.get("approval_withheld")
+        and approval.get("head_sha") == plan.get("commit_sha") == pull["head"]["sha"]
+        and plan.get("head_sha") == previous.get("head_sha")
+    )
+    if (
+        approval
+        and pull["head"]["sha"] != previous.get("head_sha")
+        and not (published_head or previous.get("allow_head_change"))
+    ):
+        return "PR head changed outside a delivered integration or fix; inspect and approve again"
+    return None
+
+
 class SddProgress:
     def __init__(self, repo, projects=None):
         self.repo, self.projects = repo, projects
@@ -141,25 +161,8 @@ class SddProgress:
         if pull.get("state") == "closed":
             return {"pull": pull}
         approval = previous.get("approval")
-        if approval and approval.get("saw_ready") and pull.get("draft"):
-            return {"pull": pull, "error": "Integration approval revoked: PR returned to draft", "revoke": True}
-        plan = previous.get("plan_decision") or {}
-        published_head = (
-            approval
-            and not previous.get("approval_withheld")
-            and approval.get("head_sha") == plan.get("commit_sha") == pull["head"]["sha"]
-            and plan.get("head_sha") == previous.get("head_sha")
-        )
-        if (
-            approval
-            and pull["head"]["sha"] != previous.get("head_sha")
-            and not (published_head or previous.get("allow_head_change"))
-        ):
-            return {
-                "pull": pull,
-                "error": "PR head changed outside a delivered integration or fix; inspect and approve again",
-                "revoke": True,
-            }
+        if reason := authority_revocation(previous, pull):
+            return {"pull": pull, "error": reason, "revoke": True}
         publication_request_id = None
         try:
             token = await observer.get_token(target.connector_id, "github")

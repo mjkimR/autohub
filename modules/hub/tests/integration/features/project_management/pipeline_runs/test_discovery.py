@@ -205,3 +205,105 @@ async def test_native_review_persists_replacement_and_cas_discards_race(client, 
     retained = (await client.get(f"/api/v1/pipeline-runs/{run_id}")).json()
     assert retained["pause_reason"] == "Concurrent stop"
     assert retained["sdd_progress"]["head_sha"] == before["sdd_progress"]["head_sha"]
+
+
+@pytest.mark.parametrize("change", ["head", "draft"])
+async def test_review_withholds_stale_native_authority(client, project, github, session, monkeypatch, change):
+    from app.features.project_management.sdd.services import SddService
+
+    enrolled = (await enroll(client, project)).json()
+    await ask(client, f"/api/v1/pipeline-runs/{enrolled['id']}")
+    run = await session.get(PipelineRun, UUID(enrolled["id"]))
+    run.sdd_snapshot = {"provider": "devkit-spec", "spec_dir": "specs/test", "policy": {}}
+    progress = {
+        "head_sha": "c" * 40,
+        "base_sha": "d" * 40,
+        "current": {"requests": []},
+        "workflow": {},
+        "approval": {"actor": "user:test", "head_sha": "c" * 40, "saw_ready": True},
+    }
+    run.sdd_progress = progress
+    await session.commit()
+    entry = (await client.get(URL)).json()["items"][0]
+    if change == "head":
+        github.pulls[7]["head"]["sha"] = "e" * 40
+    else:
+        github.pulls[7]["draft"] = True
+
+    async def inspect(self, *args, **kwargs):
+        return {k: v for k, v in {**progress, "head_sha": github.pulls[7]["head"]["sha"]}.items() if k != "approval"}
+
+    monkeypatch.setattr(SddService, "inspect", inspect)
+    response = await client.post(URL + "/review", json={"key": entry["key"], "fingerprint": entry["fingerprint"]})
+    assert response.status_code == 409
+    saved = (await client.get(f"/api/v1/pipeline-runs/{run.id}")).json()["sdd_progress"]
+    assert not saved.get("approval")
+    assert saved["approval_withheld"] is True
+    from types import SimpleNamespace
+
+    from app.features.project_management.sdd.progress import SddProgress
+
+    class Observer:
+        async def get_token(self, *args):
+            return "test"
+
+    # The shared observation path retains the revocation after the inspection saved a replacement head.
+    observed = await SddProgress(None).observe(
+        run.sdd_snapshot,
+        saved,
+        SimpleNamespace(connector_id=run.github_connector_id, repository=run.github_repository),
+        github.pulls[7],
+        Observer(),
+    )
+    assert not observed["evidence"].get("approval")
+    assert observed["evidence"]["approval_withheld"] is True
+
+
+async def test_native_hub_question_tracks_inspected_generation(client, project, github, session, monkeypatch):
+    from app.features.project_management.sdd.services import SddService
+
+    enrolled = (await enroll(client, project)).json()
+    await ask(client, f"/api/v1/pipeline-runs/{enrolled['id']}")
+    run = await session.get(PipelineRun, UUID(enrolled["id"]))
+    run.sdd_snapshot = {"provider": "devkit-spec", "spec_dir": "specs/test", "policy": {}}
+    progress = {"head_sha": "c" * 40, "base_sha": "d" * 40, "current": {"requests": []}, "workflow": {}}
+    run.sdd_progress = progress
+    await session.commit()
+    old = (await client.get(URL)).json()["items"][0]
+
+    async def inspect(self, *args, **kwargs):
+        return {**progress, "head_sha": "e" * 40}
+
+    monkeypatch.setattr(SddService, "inspect", inspect)
+    assert (
+        await client.post(URL + "/review", json={"key": old["key"], "fingerprint": old["fingerprint"]})
+    ).status_code == 409
+    fresh = (await client.get(URL)).json()["items"][0]
+    assert fresh["fingerprint"] != old["fingerprint"]
+    assert (
+        await client.post(URL + "/review", json={"key": fresh["key"], "fingerprint": fresh["fingerprint"]})
+    ).status_code == 200
+
+
+async def test_native_observation_age_changes_only_after_inspection(client, project, github, session):
+    enrolled = (await enroll(client, project)).json()
+    run = await session.get(PipelineRun, UUID(enrolled["id"]))
+    run.state = "blocked"
+    run.sdd_snapshot = {"provider": "devkit-spec", "spec_dir": "specs/test"}
+    progress = {
+        "head_sha": "c" * 40,
+        "observed_at": "2026-11-01T00:00:00+00:00",
+        "current": {"requests": [{"id": "gate:plan-intent", "kind": "approve", "title": "Start"}]},
+    }
+    run.sdd_progress = progress
+    await session.commit()
+    first = (await client.get(URL)).json()["items"][0]
+    run.pause_reason = "Bookkeeping only"
+    run.revision += 1
+    await session.commit()
+    assert (await client.get(URL)).json()["items"][0]["observed_at"] == first["observed_at"]
+    run.sdd_progress = {**progress, "observed_at": "2026-11-02T00:00:00+00:00"}
+    await session.commit()
+    observed = (await client.get(URL)).json()["items"][0]
+    assert observed["observed_at"] != first["observed_at"]
+    assert observed["waiting_since"] == first["waiting_since"]
