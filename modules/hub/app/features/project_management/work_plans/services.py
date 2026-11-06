@@ -106,6 +106,9 @@ class WorkPlanService:
             self.require_ready(data)
         if not flexible and {item.key for item in items} != {item.key for item in data.items}:
             raise ProjectError(422, "Item keys are permanent; create another plan to add or remove work")
+        from app.features.project_management.work_plans.replacement_service import guard_edit
+
+        await guard_edit(session, plan, items, data)
         await self.validate_parents(session, project_id, plan_id, data.depends_on)
         before = await snapshot(session, plan)
         if flexible:

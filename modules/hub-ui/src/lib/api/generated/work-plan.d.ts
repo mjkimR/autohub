@@ -165,6 +165,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/work-plans/{plan_id}/items/{item_id}/replacement-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Replacement Links */
+        get: operations["replacement_links_api_v1_projects__project_id__work_plans__plan_id__items__item_id__replacement_links_get"];
+        put?: never;
+        /** Link Replacement */
+        post: operations["link_replacement_api_v1_projects__project_id__work_plans__plan_id__items__item_id__replacement_links_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/work-plans/{plan_id}/items/{item_id}/replacement-links/{link_id}/acceptances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Replacement */
+        post: operations["accept_replacement_api_v1_projects__project_id__work_plans__plan_id__items__item_id__replacement_links__link_id__acceptances_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/work-plans/{plan_id}/items/{item_id}/replacement-links/{link_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw Replacement */
+        post: operations["withdraw_replacement_api_v1_projects__project_id__work_plans__plan_id__items__item_id__replacement_links__link_id__withdraw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export interface components {
     schemas: {
@@ -273,6 +325,229 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** ReplacementAcceptCommand */
+        ReplacementAcceptCommand: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Reason */
+            reason: string;
+            /** Expected Original Revision */
+            expected_original_revision: number;
+            /** Expected Replacement Revision */
+            expected_replacement_revision: number;
+            /** Expected Evidence Revision */
+            expected_evidence_revision: number;
+            /**
+             * Dependent Item Id
+             * Format: uuid
+             */
+            dependent_item_id: string;
+            /** Original Digest */
+            original_digest: string;
+            /** Replacement Digest */
+            replacement_digest: string;
+            /** Merge Sha */
+            merge_sha: string;
+            /**
+             * Execution Id
+             * Format: uuid
+             */
+            execution_id: string;
+        };
+        /** ReplacementAcceptanceRead */
+        ReplacementAcceptanceRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Dependent Item Id
+             * Format: uuid
+             */
+            dependent_item_id: string;
+            /** Active */
+            active: boolean;
+            /** Consumed */
+            consumed: boolean;
+            snapshot: components["schemas"]["ReplacementSnapshot"];
+            /** Actor */
+            actor: string;
+            /** Reason */
+            reason: string;
+        };
+        /** ReplacementEndpoint */
+        ReplacementEndpoint: {
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /**
+             * Item Id
+             * Format: uuid
+             */
+            item_id: string;
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /** Acceptance */
+            acceptance: string;
+            /** Digest */
+            digest: string;
+            /** Plan Revision */
+            plan_revision: number;
+            /** Plan State */
+            plan_state: string;
+            /** Item State */
+            item_state: string;
+            /** Repository */
+            repository: string;
+            /**
+             * Connector Id
+             * Format: uuid
+             */
+            connector_id: string;
+            /** Target */
+            target: string;
+            /** Branch */
+            branch: string | null;
+            /** Execution Id */
+            execution_id: string | null;
+            /** Pull Number */
+            pull_number: number | null;
+            /** Pull Url */
+            pull_url: string | null;
+            /** Merge Sha */
+            merge_sha: string | null;
+            /** Completed At */
+            completed_at: string | null;
+        };
+        /** ReplacementEventRead */
+        ReplacementEventRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Acceptance Id */
+            acceptance_id: string | null;
+            /** Kind */
+            kind: string;
+            /** Actor */
+            actor: string;
+            /** Reason */
+            reason: string;
+            /** Revision */
+            revision: number;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            };
+            /** Created At */
+            created_at: string;
+        };
+        /** ReplacementLinkCommand */
+        ReplacementLinkCommand: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Reason */
+            reason: string;
+            /** Expected Original Revision */
+            expected_original_revision: number;
+            /** Expected Replacement Revision */
+            expected_replacement_revision: number;
+            /** Expected Evidence Revision */
+            expected_evidence_revision: number;
+            /**
+             * Replacement Item Id
+             * Format: uuid
+             */
+            replacement_item_id: string;
+        };
+        /** ReplacementLinkRead */
+        ReplacementLinkRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Active */
+            active: boolean;
+            snapshot: components["schemas"]["ReplacementSnapshot"];
+            current_replacement: components["schemas"]["ReplacementEndpoint"];
+            /** Actor */
+            actor: string;
+            /** Reason */
+            reason: string;
+            /** Acceptances */
+            acceptances: components["schemas"]["ReplacementAcceptanceRead"][];
+            /** Events */
+            events: components["schemas"]["ReplacementEventRead"][];
+        };
+        /** ReplacementRead */
+        ReplacementRead: {
+            original: components["schemas"]["ReplacementEndpoint"];
+            candidate?: components["schemas"]["ReplacementEndpoint"] | null;
+            /** Evidence Revision */
+            evidence_revision: number;
+            /** Links */
+            links: components["schemas"]["ReplacementLinkRead"][];
+            result?: components["schemas"]["ReplacementResult"] | null;
+        };
+        /** ReplacementResult */
+        ReplacementResult: {
+            /** Operation */
+            operation: string;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /**
+             * Link Id
+             * Format: uuid
+             */
+            link_id: string;
+            /** Acceptance Id */
+            acceptance_id: string | null;
+            /** Original Revision */
+            original_revision: number;
+            /** Evidence Revision */
+            evidence_revision: number;
+        };
+        /** ReplacementSnapshot */
+        ReplacementSnapshot: {
+            original: components["schemas"]["ReplacementEndpoint"];
+            replacement: components["schemas"]["ReplacementEndpoint"];
+        };
+        /** ReplacementWithdrawCommand */
+        ReplacementWithdrawCommand: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Reason */
+            reason: string;
+            /** Expected Original Revision */
+            expected_original_revision: number;
+            /** Expected Replacement Revision */
+            expected_replacement_revision: number;
+            /** Expected Evidence Revision */
+            expected_evidence_revision: number;
+            /** Acceptance Id */
+            acceptance_id?: string | null;
         };
         ValidationError: CommonComponents["schemas"]["ValidationError"];
         /** WorkItemRead */
@@ -923,6 +1198,154 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkItemRecoveryList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replacement_links_api_v1_projects__project_id__work_plans__plan_id__items__item_id__replacement_links_get: {
+        parameters: {
+            query?: {
+                replacement_item_id?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                plan_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplacementRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_replacement_api_v1_projects__project_id__work_plans__plan_id__items__item_id__replacement_links_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                plan_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplacementLinkCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplacementRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_replacement_api_v1_projects__project_id__work_plans__plan_id__items__item_id__replacement_links__link_id__acceptances_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                plan_id: string;
+                item_id: string;
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplacementAcceptCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplacementRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    withdraw_replacement_api_v1_projects__project_id__work_plans__plan_id__items__item_id__replacement_links__link_id__withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                plan_id: string;
+                item_id: string;
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplacementWithdrawCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplacementRead"];
                 };
             };
             /** @description Validation Error */

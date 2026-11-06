@@ -166,3 +166,13 @@ class WorkItemRecoveryEvent(Base, UUIDMixin, TimestampMixin):
     kind: Mapped[str] = mapped_column(String(30))
     detail: Mapped[str] = mapped_column(Text)
     evidence: Mapped[dict] = mapped_column(JSON_VARIANT, default=dict)
+
+
+# Register additive replacement metadata alongside the owning Work Plan models.
+from app.features.project_management.work_plans.replacement_models import (  # noqa: E402,F401
+    ReplacementAcceptance,
+    ReplacementEvent,
+    ReplacementEvidence,
+    ReplacementLink,
+    ReplacementReceipt,
+)

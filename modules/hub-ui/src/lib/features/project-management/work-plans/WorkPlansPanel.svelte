@@ -8,6 +8,7 @@
 	import WorkPlanActivity from './WorkPlanActivity.svelte';
 	import WorkPlanGroup from './WorkPlanGroup.svelte';
 	import WorkItemRecovery from './WorkItemRecovery.svelte';
+	import WorkItemReplacement from './WorkItemReplacement.svelte';
 	type Plan = components['schemas']['WorkPlanRead'];
 	let { project }: { project: components['schemas']['ProjectRead'] } = $props();
 	let plans = $state<Plan[]>([]);
@@ -315,6 +316,13 @@
 								revision={plan.revision}
 								baseBranch={plan.base_branch}
 								{item}
+								refresh={load}
+							/>
+							<WorkItemReplacement
+								projectId={project.id}
+								planId={plan.id}
+								{item}
+								items={plan.items}
 								refresh={load}
 							/>
 							{#if item.pipeline_run_retired_at}<p class="text-muted-foreground">
