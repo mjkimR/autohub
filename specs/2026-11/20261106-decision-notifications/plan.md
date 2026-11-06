@@ -2,7 +2,6 @@
 id: PLAN-decision-notifications
 spec: SPEC-decision-notifications
 ---
-<!-- devkit:skeleton -->
 
 # Technical Plan: `SPEC-decision-notifications` Notify operators about actionable delivery decisions
 
@@ -56,4 +55,9 @@ spec: SPEC-decision-notifications
 - `packages/sdk/`
 
 ## 3. Verification & Test Plan
-- <commands and checks that verify the acceptance criteria>
+- Run focused notification/discovery/auth UI and PostgreSQL admission/lease/migration tests, then `just lint`, `just check`, typed API and generated checks.
+- Baseline: disabled subscription produces zero decision-specific sends; enabled matching subscription produces one admitted generation.
+
+## Implementation design
+
+Notification-owned subscription, generation, attempt and request receipt tables use channel-first locking. Repositories own queries, services own domain validation/admission, UseCases own transactions and network calls. Structured Telegram outcomes are separate from generic notices. Exact selection extends existing discovery with an indexed read. UI settings and immutable command state are separate components; auth navigation stores only a validated notice selection. Shared maintenance invokes bounded notification work after existing owners.

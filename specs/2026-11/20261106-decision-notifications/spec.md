@@ -1,14 +1,13 @@
 ---
 id: SPEC-decision-notifications
 title: Notify operators about actionable delivery decisions
-summary: Deliver decision-focused notices with exact owner links, project and kind subscriptions, and bounded digests while preserving current decision authority.
+summary: "Deliver decision-focused notices with exact owner links, project and kind subscriptions, and bounded digests while preserving current decision authority."
 status: planned
 created: 2026-11-06
-related_capabilities: []
-related_usecases: []
+related_capabilities: [CAP-NOTIFY-operator-notifications, CAP-PR-operator-decisions]
+related_usecases: [UC-resolve-run-question]
 workflow: sdd-spec-feature
 ---
-<!-- devkit:skeleton -->
 
 # [SPEC-decision-notifications] Notify operators about actionable delivery decisions
 
@@ -28,18 +27,74 @@ Priority is second after `PROP-mcp-delivery-tools`, before `PROP-work-plan-templ
 
 ## 2. User Stories
 
-- **US-1**: As a developer/agent, I want to implement Notify operators about actionable delivery decisions so that system capabilities are extended.
+- As an operator, subscribe a trusted destination to relevant pending decisions and open the exact authenticated review.
+- As an operator, distinguish accepted, refused and unknown notice delivery and explicitly recover uncertain commands.
 
 ## 3. Non-Goals
 
-1. **Scope Excluded**: <what this change will not do>
+- **Scope Excluded**: inbound Telegram decisions, implicit approval/resume, new project ACLs, automatic uncertain resend, Jules/SDK work, monitoring and deployment.
 
 ## 4. Acceptance Criteria & Behavioral Contracts
 
-### [AC-01] <scenario>
-- **Given** <precondition>
-- **When** <action>
-- **Then** <expected result>
+### [AC-01] Disabled defaults
+
+- **Given** a migrated or never-configured channel.
+- **When** read or maintained.
+- **Then** decision notices remain disabled and legacy behavior is unchanged.
+
+### [AC-02] Subscription gates
+
+- **Given** trusted project/kind settings and destination generation.
+- **When** saving or admitting.
+- **Then** current severity/project/channel gates and exact actor-bound replay apply; stale destination changes refuse.
+
+### [AC-03] Atomic admission
+
+- **Given** concurrent workers inspect one generation.
+- **When** admitting send.
+- **Then** one durable leased attempt wins and channel generations deduplicate independently.
+
+### [AC-04] Bounded digest
+
+- **Given** more than ten eligible rows or long metadata.
+- **When** formatting and sending.
+- **Then** at most ten complete links fit 3500 characters and omitted rows remain pending.
+
+### [AC-05] Uncertain delivery
+
+- **Given** timeout, expired lease or acknowledgement persistence failure.
+- **When** maintenance repeats.
+- **Then** sending becomes unknown without automatic resend; explicit resend is reviewed and request-idempotent.
+
+### [AC-06] Exact navigation
+
+- **Given** a notice selection outside current inbox pages.
+- **When** opening after authentication.
+- **Then** an indexed exact lookup then existing owner review selects only matching key/fingerprint; stale/missing targets never substitute.
+
+### [AC-07] Destination rotation
+
+- **Given** credential/chat or subscription changes race admission.
+- **When** saving or ticking.
+- **Then** destination generation is checked even at revision zero; future admissions stop and admitted sends may finish.
+
+### [AC-08] Fair retention
+
+- **Given** old accepted/unknown generations and many subscriptions.
+- **When** compacting and rotating.
+- **Then** dedupe remains and bounded cursor progress lets other subscriptions advance.
+
+### [AC-09] Command recovery
+
+- **Given** lost save/resend responses or another actor.
+- **When** reading or replaying exact request.
+- **Then** original result stays separate from current state; missing proof stays unknown and wrong actor receives404.
+
+### [AC-10] Login restoration
+
+- **Given** password/Google completion, cancellation, TTL expiry or denied storage.
+- **When** returning from sign-in.
+- **Then** only successful approved authentication restores one validated same-origin selection; no payload/credentials or arbitrary redirect is stored.
 
 ## 5. Carried Proposal Notes
 
