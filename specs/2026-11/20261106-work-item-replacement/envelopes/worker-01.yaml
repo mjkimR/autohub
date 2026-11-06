@@ -1,0 +1,24 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T02:40:32.415242Z'
+status: completed
+summary: 'Completed full replacement Development: three tasks/eight ACs, exact retained relations and per-edge consumption, actor-bound replay and explicit persisted review UI. Code review3 PASS; independent seven-target reconciliation closed with two permitted exact minor text fixes. Clean committed result ready for Host integration; no merge/push/cleanup performed.'
+findings: []
+assumptions:
+- Revoked Item state confirmed in landed WorkPlanService.control; retry active-Plan gate remains separate from terminal-original replacement.
+- Emulated isolation supplemented by absolute cwd, per-operation escalation, fixed-head/tree audits and independent nested reviewers.
+unverified_areas:
+- No live provider/deployment verification; Host must integrate and verify combined landed batch head.
+checks:
+  sync_start: PASS exit=0
+  tests: PASS initial owners/migrations152; current replacementSQLite22 PG27 UI42; migrationPG roundtrip
+  required: PASS just lint just check final lint-check rules generated
+  review: PASS code3; independent reconcile1 plus documented minor-fix self-verification closes2textfindings
+  scope: PASS all paths within initial declared roots plus Host exact ADR confirmation path; no TierB extensions
+  baseline: PASS samefixture0released edges before acceptance,1after; original outcomes unchanged
+diff_scope:
+  base: 43e3341d010e3a79749f291d7a3b8beeefae40b6
+  head: 325b2f6e116016436b2ae7ad604810d66e8cb50e
+activity_effort: high

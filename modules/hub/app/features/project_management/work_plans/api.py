@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from app.auth import CurrentUser
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.work_plans.activity_schemas import PlanActivityList, PlanActivityRead, PlanComment
 from app.features.project_management.work_plans.grouping import GroupFilter
 from app.features.project_management.work_plans.recovery_schemas import WorkItemRecover, WorkItemRecoveryList
@@ -16,6 +17,7 @@ from app.features.project_management.work_plans.schemas import (
 )
 from app.features.project_management.work_plans.usecases import WorkPlanUseCase
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/projects/{project_id}/work-plans", tags=["Work Plan"])
 
@@ -130,3 +132,80 @@ async def work_item_recoveries(
     limit: int = Query(50, ge=1, le=100),
 ):
     return await use_case.recoveries(project_id, plan_id, item_id, offset, limit)
+
+
+from app.features.project_management.work_plans.replacement_schemas import (  # noqa: E402
+    ReplacementAcceptCommand,
+    ReplacementLinkCommand,
+    ReplacementRead,
+    ReplacementWithdrawCommand,
+)
+from app.features.project_management.work_plans.replacement_usecase import ReplacementUseCase  # noqa: E402
+
+
+@router.get("/{plan_id}/items/{item_id}/replacement-links", response_model=ReplacementRead)
+async def replacement_links(
+    project_id: UUID,
+    plan_id: UUID,
+    item_id: UUID,
+    use_case: Annotated[ReplacementUseCase, Depends()],
+    replacement_item_id: UUID | None = None,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=50),
+    event_link_id: UUID | None = None,
+    event_offset: int = Query(0, ge=0),
+):
+    return await use_case.get(
+        project_id, plan_id, item_id, replacement_item_id, offset, limit, event_link_id, event_offset
+    )
+
+
+async def replacement_mutation(use_case, *args):
+    # Preserve the owning application's detail envelope; code identifies only
+    # this feature's authoritative transaction refusal for exact-request replay.
+    try:
+        return await use_case.mutate(*args)
+    except ProjectError as exc:
+        return JSONResponse(status_code=exc.status, content={"detail": exc.detail, "code": exc.code})
+
+
+@router.post("/{plan_id}/items/{item_id}/replacement-links", response_model=ReplacementRead)
+async def link_replacement(
+    project_id: UUID,
+    plan_id: UUID,
+    item_id: UUID,
+    data: ReplacementLinkCommand,
+    user: CurrentUser,
+    use_case: Annotated[ReplacementUseCase, Depends()],
+):
+    return await replacement_mutation(use_case, project_id, plan_id, item_id, "link", data, f"user:{user.id}")
+
+
+@router.post("/{plan_id}/items/{item_id}/replacement-links/{link_id}/acceptances", response_model=ReplacementRead)
+async def accept_replacement(
+    project_id: UUID,
+    plan_id: UUID,
+    item_id: UUID,
+    link_id: UUID,
+    data: ReplacementAcceptCommand,
+    user: CurrentUser,
+    use_case: Annotated[ReplacementUseCase, Depends()],
+):
+    return await replacement_mutation(
+        use_case, project_id, plan_id, item_id, "accept", data, f"user:{user.id}", link_id
+    )
+
+
+@router.post("/{plan_id}/items/{item_id}/replacement-links/{link_id}/withdraw", response_model=ReplacementRead)
+async def withdraw_replacement(
+    project_id: UUID,
+    plan_id: UUID,
+    item_id: UUID,
+    link_id: UUID,
+    data: ReplacementWithdrawCommand,
+    user: CurrentUser,
+    use_case: Annotated[ReplacementUseCase, Depends()],
+):
+    return await replacement_mutation(
+        use_case, project_id, plan_id, item_id, "withdraw", data, f"user:{user.id}", link_id
+    )

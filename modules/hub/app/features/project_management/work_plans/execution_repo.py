@@ -16,6 +16,7 @@ from app.features.project_management.work_plans.models import (
     WorkItemRecovery,
     WorkPlan,
 )
+from app.features.project_management.work_plans.replacement_models import ReplacementAcceptance, ReplacementLink
 from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy import and_, case, exists, func, or_, select, true, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,7 +41,20 @@ class WorkExecutionRepository:
         item_wait = exists(
             select(ItemDependency.item_id)
             .join(parent_item, parent_item.id == ItemDependency.depends_on_id)
-            .where(ItemDependency.item_id == WorkItem.id, parent_item.state != "succeeded")
+            .where(
+                ItemDependency.item_id == WorkItem.id,
+                parent_item.state != "succeeded",
+                ~exists(
+                    select(ReplacementAcceptance.id)
+                    .join(ReplacementLink)
+                    .where(
+                        ReplacementAcceptance.dependent_item_id == ItemDependency.item_id,
+                        ReplacementAcceptance.original_item_id == ItemDependency.depends_on_id,
+                        ReplacementAcceptance.active.is_(True),
+                        ReplacementLink.active.is_(True),
+                    )
+                ),
+            )
         )
         waiting_ready = (
             and_(
@@ -179,6 +193,10 @@ class WorkExecutionRepository:
                 return None
             if recovery:
                 await event(session, recovery, "running", "Preparation admitted; original Item and budgets retained")
+            from app.features.project_management.work_plans.replacement_admission import consume
+
+            if not await consume(session, plan, candidate):
+                return None
             candidate.state, candidate.started_at = "preparing", now
             candidate.ai_catalog_id = catalog.id
             candidate.branch = candidate.attach_branch or item_branch(candidate.key)

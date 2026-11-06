@@ -1,9 +1,0 @@
-request: gate:plan-intent
-kind: approve
-action: accept
-workflow: sdd-proposal
-stage: intent-proposal
-note: User authorized pre-planning remaining successors while prerequisite Development
-  continues; Planning-only prerequisite-order override, no acceptance or handoff authority.
-by: user
-at: '2026-11-05T06:19:59.424398Z'

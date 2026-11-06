@@ -1,0 +1,31 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T02:38:02.869473Z'
+status: completed
+summary: round 1; REVISE. All seven targets covered; two documentation precision/formatting findings.
+findings:
+- issue: Consumed-withdrawal rule ambiguously extends sibling consumption to individual withdrawal.
+  evidence: CAP-WORK-work-plan-execution.md rule41; replacement_usecase.py252.
+  failure_condition: Consumed B and unconsumed C share a link; rule41 can imply refusing C withdrawal though implementation and accepted spec allow it.
+  suggested_action: 'Replace condition/consequence exactly with: IF an acceptance is consumed, THEN Hub MUST refuse withdrawal of that acceptance or its link with HTTP 409.'
+  resolution: open
+  severity: P2
+- issue: Replacement interactions separated from Markdown table.
+  evidence: UX-work-plans.md84 blank line before replacement rows.
+  failure_condition: Renderer ends the table and renders following rows as pipe prose.
+  suggested_action: Remove the blank line so replacement rows continue the same table.
+  resolution: open
+  severity: P3
+assumptions:
+- Emulated read-only absolute-path fixed-ref reviewer.
+unverified_areas:
+- No live provider/browser/deployment; reused executed test evidence.
+checks:
+  targets: PASS all7changed targets; no waiver/deferredscope
+  integrity: PASS unchanged frozen head/tree; no writes
+diff_scope:
+  base: 43e3341d010e3a79749f291d7a3b8beeefae40b6
+  head: 6a1f35f5337ae74588bdea70f8dba618425fa94b
+activity_effort: high

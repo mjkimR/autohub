@@ -1,16 +1,15 @@
 ---
-id: PADR-work-item-replacement-evidence
+id: ADR-work-item-replacement-evidence
 title: Accept replacement evidence for one dependency
 summary: "For replacement work, we accept confirmed merge evidence per existing Item dependency, to unblock reviewed work without rewriting outcomes, accepting explicit edge-by-edge review."
-proposal: PROP-work-item-replacement
-# supersedes: [ADR-<slug>]   # an ADR this decision replaces, wholly or in part; name the replaced clauses in Decision Outcome
-status: draft
+proposal: SPEC-work-item-replacement
+status: accepted
 created_at: 2026-11-05
 ---
 
-# [PADR-work-item-replacement-evidence] Accept replacement evidence for one dependency
+# [ADR-work-item-replacement-evidence] Accept replacement evidence for one dependency
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Date**: 2026-11-05
 
 ---
@@ -63,8 +62,6 @@ be revalidated against its landed completed spec before handoff.
 
 ## 6. Confirmation
 
-Review only in Planning. Development adds migration, integration and PostgreSQL
-race coverage under the proposal's declared boundaries. Checks must preserve the
-existing no-acceptance replacement regression and verify `REPL-01`–`REPL-07`.
-The target capability and architecture restatements live in
-`PROP-work-item-replacement-target` until reconciliation.
+`CAP-WORK-work-plan-execution` rules 37–45 and `ARCH-06-execution` replacement evidence structure restate the decision. `test_replacements.py` enforces exact-edge release, immutable replay, retained endpoint roles, merge identity, other admission gates, activity rollback and PostgreSQL control/withdrawal/admission races. `test_work_replacements.py` checks the additive migration. `WorkItemReplacement.integration.test.ts` verifies explicit review, persisted exact retry and paged retained history.
+
+`SPEC-work-item-replacement` retains code-review, reconciliation and executed check results. The descriptive no-acceptance regression remains enforced. Controlled fixtures and PostgreSQL tests do not establish live provider or deployment behavior.

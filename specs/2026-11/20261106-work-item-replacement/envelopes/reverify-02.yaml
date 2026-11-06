@@ -1,0 +1,32 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T02:30:34.724015Z'
+status: completed
+review: review-02.yaml
+summary: Closed review2 batch. Both new UI regressions failed before fixes and pass. Only authoritative replacement owner409 releases intent; auth/access and identity conflicts retain original. Accumulated history merges context with refreshed active/consumed state; fresh high review3 required.
+findings:
+- issue: Authentication refusal during replay discards unresolved original request.
+  evidence: WorkItemReplacement.svelte170-176 clears pending/storage for every4xx; ignored review02probe128 fails after lost response then replay401.
+  failure_condition: Original mutation may have committed, but replay expired authentication/access error deletes immutable original endpoint/request.
+  suggested_action: Preserve pending for auth/access/intermediary errors; clear only success or authoritative application refusal; add lost-response/replay401/remount tests.
+  resolution: resolved
+  severity: P1
+- issue: Appending event history removes earlier withdrawn acceptance details.
+  evidence: WorkItemReplacement.svelte95-96 appends events but replaces acceptances; read returns inactive details only for current eventpage; ignoredprobe141 loses Dependent b withdrawn.
+  failure_condition: Later page lacks prior withdrawn acceptance ID and UI drops dependent/decision details despite retaining its earlier event text.
+  suggested_action: Merge acceptance context by ID for accumulated events while keeping fresh active/consumed state authoritative; add multipage regression.
+  resolution: resolved
+  severity: P2
+assumptions:
+- Feature-local detail+code error serialization; global handler unchanged.
+checks:
+  p1_regression: PASS lostresponse/replay401/remount failed-before and passes
+  ui: PASS WorkPlan42 including multipage withdrawn context
+  backend: PASS SQLite22 focused identity conflict code
+  lint: PASS just lint
+diff_scope:
+  base: b9eb5e36e4cd8e09b8704b2bd9b3385dee99a90f
+  head: 3ade55f61c07feef95a5db10e9d91d86001c457c
+activity_effort: high

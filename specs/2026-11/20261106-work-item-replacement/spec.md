@@ -1,50 +1,90 @@
 ---
-id: PROP-work-item-replacement
+id: SPEC-work-item-replacement
 title: Link replacement work to original Work Items
-summary: "Record explicit replacement relationships and dependency satisfaction decisions without rewriting original Work Plan outcomes."
-status: accepted
-created_at: 2026-11-05
-target_area: capabilities/work-plans/
-priority: high
-size: L
-planning_effort: high
-dev_effort: high
-milestone: MS-batch-recovery
+summary: Record explicit replacement relationships and dependency satisfaction decisions without rewriting original Work Plan outcomes.
+status: completed
+created: 2026-11-06
 depends_on:
   - SPEC-work-item-retry
-boundaries:
-  owns:
-    - modules/hub-ui/src/lib/api/
-    - modules/hub/app/features/project_management/work_plans/
-    - modules/hub/migrations/
-    - modules/hub/tests/integration/migrations/
-    - modules/hub/tests/integration/features/project_management/work_plans/
-    - modules/hub/tests/unit/features/project_management/
-    - modules/hub-ui/src/lib/features/project-management/work-plans/
-    - docs/capabilities/work-plans/
-    - docs/usecases/work-plans/
-    - docs/ux/work-plans/
-    - docs/steering/
-    - docs/architecture/
-  excludes:
-    - docs/operations/
-    - .github/
-    - packages/sdk/
-task_kind: feature
-workflow: sdd-proposal
+related_capabilities:
+  - CAP-WORK-work-plan-execution
+related_usecases:
+  - UC-execute-work-plan
+workflow: sdd-spec-feature
 ---
 
-# [PROP-work-item-replacement] Link replacement work to original Work Items
+# [SPEC-work-item-replacement] Link replacement work to original Work Items
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-work-item-replacement on 2026-11-06.
+- **Preserved Materials**: `docs/materials/2026-11/20261106-work-item-replacement`
+- Target Docs Blueprint: `PROP-work-item-replacement-target` (Living Spec targets for this plan and reconcile.md)
+
+### 1. Background & Hypothesis
 
 `CAP-WORK-work-plan-execution` supports replacement registrations through descriptive links and optional branch attachment. It has no structured replacement relationship, and replacement completion does not satisfy the original dependencies. Explicit operator-selected replacement evidence can remove manual graph reconstruction without falsifying the original outcome.
 
-### Source anchors
+#### Source anchors
 
 `modules/hub/tests/integration/features/project_management/work_plans/test_registration.py::test_replacement_keeps_canceled_evidence_and_does_not_release_old_dependents` enforces the existing boundary. This is a feature proposal to extend that contract, not a claim that the existing behavior is defective.
 
-## 2. Technical Spike Findings
+## 2. User Stories
+
+- **US-1**: As a developer/agent, I want to implement Link replacement work to original Work Items so that system capabilities are extended.
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: automatic semantic equivalence, replacement chains, whole-Plan satisfaction, PR mutation and rewriting original outcomes.
+2. **Scope Excluded**: deployment, monitoring, SDK execution and general cross-Plan Item dependency graphs.
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] Scoped release
+- **Given** stopped original A with waiting B/C and linked replacement R.
+- **When** R succeeds and its evidence is explicitly accepted for B→A.
+- **Then** only that existing edge becomes satisfied; linking and merge alone release nothing.
+
+### [AC-02] Exact evidence
+- **Given** replacement identities or merge evidence differ.
+- **When** link or acceptance is requested.
+- **Then** 404/409 preserves outcomes, ownership and all holds.
+
+### [AC-03] Retained roles
+- **Given** retained A→R relation exists.
+- **When** a chain, role switch or replacement reuse is requested.
+- **Then** 409 preserves history; unconsumed withdrawal permits A→distinct R2 only.
+
+### [AC-04] Atomic consumption
+- **Given** live acceptance exists.
+- **When** withdrawal and admission race.
+- **Then** project serialization determines eligibility; admitted consumption and preparing commit atomically, consumed withdrawal returns409.
+
+### [AC-05] Replay
+- **Given** an operation response was lost.
+- **When** same request and actor replay or changed input arrives.
+- **Then** identical replay returns original result plus current evidence, changed payload/actor returns409 without duplicate events.
+
+### [AC-06] Remaining holds
+- **Given** accepted edge exists.
+- **When** plan lifecycle, Plan dependencies, schedule, capacity or another Item edge blocks.
+- **Then** no admission occurs and original Item/Plan outcomes remain unchanged.
+
+### [AC-07] Retention
+- **Given** replacement confirmed merge remains after detailed Run pruning.
+- **When** acceptance is requested.
+- **Then** retained exact merge snapshot supports acceptance without provider calls or PR mutation.
+
+### [AC-08] Review and edits
+- **Given** a live link or unresolved request exists.
+- **When** specification edit or UI mutation is attempted.
+- **Then** linked endpoint edits are refused; UI binds displayed revisions/digests/merge, preserves immutable retry on uncertainty and refreshes conflict for explicit review.
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### 2. Technical Spike Findings
 
 The inspected scheduler gates local Item edges by `succeeded`, and Plan edges by
 `completed`. Its project lock serializes registration/control/admission. The
@@ -52,7 +92,7 @@ replacement registration regression confirms that another Plan's merge does not
 release original dependencies. `PROP-work-item-replacement-target` defines the
 narrow exception; all other release conditions remain in force.
 
-### Alternatives
+#### Alternatives
 
 | Option | Benefit | Cost / risk | Recommendation |
 | --- | --- | --- | --- |
@@ -60,9 +100,9 @@ narrow exception; all other release conditions remain in force.
 | Descriptive links and manual recreation of dependent work | Existing behavior, no schema | Cannot release existing dependencies or preserve their admission identity | Retain as fallback for unsupported cases |
 | General cross-Plan Item dependencies or successor substitution | Broad automation | New graph semantics, cycles and implicit equivalence | Excluded |
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
-### Planning decisions
+#### Planning decisions
 
 - Keep original Work Item outcome, original Work Plan lifecycle, registration
   identity, recovery history and PR run ownership intact. Replacement is a
@@ -96,7 +136,7 @@ narrow exception; all other release conditions remain in force.
   precedence as ordinary evidence; historical replacement acceptance remains
   visible and cannot rewrite that recovery.
 
-### Identity, mutation and concurrency
+#### Identity, mutation and concurrency
 
 Add typed link, acceptance and event records. A link stores exact original and
 replacement IDs, Plan revisions, specification digests, repository/connector and
@@ -160,7 +200,7 @@ conflict reason and current evidence revision. The UI refreshes for review after
 409; it never automatically retries with fresh revisions. Reuse the project's
 existing error envelope rather than introducing a global error framework.
 
-### Persistence and verification
+#### Persistence and verification
 
 Use additive tables, composite project/Item ownership constraints, unique request
 identity/digest, a unique active-original link, unique active replacement owner,
@@ -188,7 +228,7 @@ after implementation. Planning executed no product tests and claims no timing
 improvement. Invariant comparisons use the same fixture with acceptance absent,
 without checking out another head.
 
-### Acceptance examples
+#### Acceptance examples
 
 - **REPL-01**: Given stopped original A and waiting local dependents B/C, when
   replacement R is linked and merges, then B/C remain held until an operator
@@ -214,7 +254,7 @@ without checking out another head.
   pruning, when accepted, then the evidence snapshot suffices; missing or
   ambiguous evidence is refused and no PR action is issued.
 
-### Non-goals
+#### Non-goals
 
 - **Scope Excluded**: Automatic semantic equivalence, automatic successor
   substitution, general cross-Plan Item scheduling edges, whole-Plan dependency
@@ -222,9 +262,9 @@ without checking out another head.
 - **Scope Excluded**: pilot operation, deployment, production verification,
   monitoring, incident detection, CI trigger changes and successful-work replay.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
 
-### Planning-only prerequisite override
+#### Planning-only prerequisite override
 
 User authority starts this HIGH-effort Planning turn before
 `SPEC-work-item-retry` Development completes. This changes sequencing for
@@ -245,3 +285,8 @@ The proposal remains reviewing. `PROP-work-item-replacement-target` carries the
 affected contracts and stable Screens drafts. No user-only design question is
 assumed: routine conservative choices above remain recommendations for direction
 review. Completion requires verified implementation and reconciliation.
+
+
+## 6. Implementation assumptions
+
+`SPEC-work-item-retry` is completed. `WorkPlanService.control` sets unstarted Items to `revoked`, so the accepted vocabulary remains valid. Replacement supports stopped originals on terminal Plans while retry retains its separate active-Plan requirement. Locks use Project, deterministic Plans, Runs, Items, then evidence. The accepted narrow relation direction in `ADR-work-item-replacement-evidence` is retained.

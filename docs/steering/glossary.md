@@ -13,6 +13,8 @@ summary: "Read before naming product concepts or distinguishing scheduler, PR, S
 | Run question | A request for operator input bound to a PR run and its attempt/head; a saved answer does not itself resume work. | `CAP-PR-operator-decisions` | approval, command | `RunQuestion`, `RunAnswer` |
 | Work Plan | A batch of pre-PR requirements with Plan dependencies and admission controls. | `CAP-WORK-work-plan-execution` | SDD proposal | `WorkPlan` |
 | Work Item | One requirement within a Work Plan, linked to its admitted PR run and retained result. | `CAP-WORK-work-plan-execution` | SDK task | `WorkItem` |
+| Work Item replacement link | Retained relation between original and distinct replacement Work Items; excludes execution ownership. | `CAP-WORK-work-plan-execution` | successor substitution | `ReplacementLink` |
+| Work Item dependency acceptance | Explicit confirmed replacement merge evidence for one existing local Item edge; excludes Item success and PR approval. | `CAP-WORK-work-plan-execution` | replacement approval | `ReplacementAcceptance` |
 | AI catalog | Admission gateway for one provider account or plan, including quota and concurrency state. | `CAP-AGENT-catalog-admission` | connector, execution adapter | `AICatalog` |
 | Connector | Saved provider credentials and provider identity; excludes the account's quota/admission policy. | `CAP-PROJ-project-connections` | AI catalog | `Connector` |
 | Provider session | Tracked Jules work delivering a report or a PR; excludes the schedule invocation and the adopted PR run. | `CAP-AGENT-provider-sessions` | schedule job | `AICatalogSession` |

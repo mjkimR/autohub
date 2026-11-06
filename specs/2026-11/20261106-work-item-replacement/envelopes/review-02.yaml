@@ -1,0 +1,29 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T02:26:20.771743Z'
+status: completed
+summary: round 2; REVISE. New auth refusal replay and accumulated acceptance context defects reproduced; no recurrence.
+findings:
+- issue: Authentication refusal during replay discards unresolved original request.
+  evidence: WorkItemReplacement.svelte170-176 clears pending/storage for every4xx; ignored review02probe128 fails after lost response then replay401.
+  failure_condition: Original mutation may have committed, but replay expired authentication/access error deletes immutable original endpoint/request.
+  suggested_action: Preserve pending for auth/access/intermediary errors; clear only success or authoritative application refusal; add lost-response/replay401/remount tests.
+  resolution: open
+  severity: P1
+- issue: Appending event history removes earlier withdrawn acceptance details.
+  evidence: WorkItemReplacement.svelte95-96 appends events but replaces acceptances; read returns inactive details only for current eventpage; ignoredprobe141 loses Dependent b withdrawn.
+  failure_condition: Later page lacks prior withdrawn acceptance ID and UI drops dependent/decision details despite retaining its earlier event text.
+  suggested_action: Merge acceptance context by ID for accumulated events while keeping fresh active/consumed state authoritative; add multipage regression.
+  resolution: open
+  severity: P2
+assumptions:
+- Emulated fixed-head review; only ignored round2 probes authored.
+checks:
+  probes: PASS two failure conditions reproduced at reviewed HEAD
+  rules: PASS 35rules0errors
+diff_scope:
+  base: edb89735b4881660616a63248d0c607b9cb961c5
+  head: b9eb5e36e4cd8e09b8704b2bd9b3385dee99a90f
+activity_effort: high

@@ -29,7 +29,7 @@ Source inspected, product tests not executed:
 `ARCH-03-system-context`, `ARCH-05-2-components`, `ARCH-06-execution`,
 `CAP-MCP-tool-access`, `CAP-PR-operator-decisions`,
 `CAP-PR-pull-request-delivery`, `MS-batch-recovery`,
-`PADR-work-item-recovery-lineage`, `PROP-work-item-replacement`,
+`PADR-work-item-recovery-lineage`, `SPEC-work-item-replacement`,
 `PROP-work-item-replacement-target`, `PROP-work-item-retry`,
 `PROP-work-item-retry-target`, `UC-execute-work-plan`, `UX-project-detail`,
 `UX-work-plan-editor`, `UX-work-plans`. Counts include multiple occurrences;

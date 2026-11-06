@@ -1,7 +1,7 @@
 ---
 id: UC-execute-work-plan
 title: Execute a Work Plan
-summary: "An operator obtains merge-confirmed results for a batch of specified work and explicitly recovers eligible failures in the original dependency graph. Retained history and visible holds preserve successful work through interruption."
+summary: "An operator obtains merge-confirmed Work Plan results, recovers original failures or explicitly accepts replacement evidence for one local dependency. Retained outcomes and admission holds remain visible."
 area: work-plans
 primary_actor: Operator
 supporting_actors:
@@ -116,6 +116,12 @@ entrypoints:
   replacing current work; the operator re-reads and decides whether to retry.
   Interface: `UX-work-plans`.
 
+- **5d.** Original work stopped unsuccessfully: the operator compares its specification with a distinct replacement Work Item and explicitly links them. Linking alone keeps dependents held; resumes at step 5 while the replacement follows its independent delivery (`CAP-WORK-work-plan-execution`). Interface: `UX-work-plans`.
+- **6c.** The linked replacement has confirmed merge evidence: the operator reviews one existing local dependent edge and accepts that evidence. Hub retains the original outcome and all remaining holds; resumes at step 3 only when every admission condition holds (`CAP-WORK-work-plan-execution`). Interface: `UX-work-plans`.
+- **6d.** Evidence is no longer wanted before consumption: the operator explicitly withdraws that acceptance or link. Hub retains history; consumed evidence refuses withdrawal with `REPLACEMENT_CONFLICT`, and the withdrawal flow ends (`CAP-WORK-work-plan-execution`). Interface: `UX-work-plans`.
+- **5e.** Replacement identity, retained role or merge evidence is ineligible: Hub refuses without changing original outcomes; the operator inspects evidence and returns to step 5d after correction (`CAP-WORK-work-plan-execution`). Interface: `UX-work-plans`.
+- **\*b.** Replacement response is uncertain: the operator replays the retained original request; authentication/access errors preserve that intent. An authoritative stale refusal requires refresh and explicit review at step 5d or 6c; an identity conflict retains the original operation for investigation (`CAP-WORK-work-plan-execution`). Interface: `UX-work-plans`.
+
 ## 4. Postconditions
 
 - **Success guarantee**: every successful Item retains a confirmed merge to the
@@ -124,7 +130,7 @@ entrypoints:
 - **Minimal guarantee**: invalid writes do not leave partial graphs; registration
   and preparation identities support recovery. Missing Runs, failed/canceled work
   and remote Issue state are not success evidence. Plan controls do not undo
-  already sent provider requests or completed merges.
+  already sent provider requests or completed merges. Satisfied replacement edges do not mark original Items successful or Plans complete; whole-Plan dependencies remain unchanged.
 
 ## 5. Acceptance Criteria (Given / When / Then)
 
@@ -245,6 +251,62 @@ and merge fencing once a PR is delegated.
 - **Given**: recovery was accepted but its response was lost or admission is held.
 - **When**: the operator checks the original request and current status.
 - **Then**: one recovery record returns with ordered history and a visible hold/reconciliation action, without duplicate acceptance or dispatch.
+
+### REPL-01: Explicit replacement evidence
+
+- **Covers**: 5d, 6c.
+- **Given**: stopped original A with dependents B and C and merged linked replacement R.
+- **When**: the operator accepts R only for B’s A edge.
+- **Then**: only that edge is satisfied and C remains held.
+
+### REPL-02: Explicit replacement evidence
+
+- **Covers**: 5e.
+- **Given**: replacement evidence for another project, binding or target.
+- **When**: the operator requests acceptance.
+- **Then**: Hub refuses and preserves original outcomes and holds.
+
+### REPL-03: Explicit replacement evidence
+
+- **Covers**: 5e.
+- **Given**: retained A-to-R history.
+- **When**: an endpoint role switch, chain or replacement reuse is requested.
+- **Then**: Hub refuses with history retained.
+
+### REPL-04: Explicit replacement evidence
+
+- **Covers**: 6d.
+- **Given**: unconsumed accepted evidence.
+- **When**: withdrawal and admission race.
+- **Then**: only the winning committed order governs admission, and consumed withdrawal refuses.
+
+### REPL-04b: Explicit replacement evidence
+
+- **Covers**: 6d, 5d.
+- **Given**: an unconsumed link was withdrawn.
+- **When**: the operator selects a distinct unused candidate.
+- **Then**: Hub records the candidate with history retained and still refuses endpoint reuse.
+
+### REPL-05: Explicit replacement evidence
+
+- **Covers**: *b.
+- **Given**: an original mutation response was lost.
+- **When**: the operator replays the same request or encounters authentication failure.
+- **Then**: exact replay recovers its original result and auth failure keeps its immutable intent; changed actor/path/payload conflicts.
+
+### REPL-06: Explicit replacement evidence
+
+- **Covers**: 6c.
+- **Given**: one accepted edge with another Item/Plan dependency, pause, schedule, disabled project or capacity hold.
+- **When**: Hub evaluates admission.
+- **Then**: the dependent stays held without changing original outcomes.
+
+### REPL-07: Explicit replacement evidence
+
+- **Covers**: 6c, 5e.
+- **Given**: a replacement retains complete merge evidence after detailed Run expiry.
+- **When**: the operator accepts that evidence.
+- **Then**: the retained snapshot suffices; incomplete evidence is refused without PR action.
 
 ## 6. Evidence boundary
 

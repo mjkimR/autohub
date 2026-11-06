@@ -1,0 +1,22 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T02:38:43.810729Z'
+status: completed
+summary: round 1; closes reconcile-check-01; PASS by permitted minor-fix self-verification. Both exact suggested wording/format corrections applied only to named rule/table locations; meaning unchanged and source agrees. Seven targets resolved with no deferred scope.
+findings: []
+assumptions:
+- Implementer self-verifies this minor batch under high review-loop section2; initial independent reconcile reviewer performed all-target inspection.
+unverified_areas:
+- No live provider/browser/deployment observation.
+checks:
+  minor_fix_location: PASS only named capability rule41 and UX table blankline changed
+  minor_fix_nature: PASS exact concrete suggested actions applied as written
+  minor_fix_contract: PASS accepted per-acceptance versus whole-link semantics unchanged; Markdown formatting only
+  minor_fix_evidence: PASS diff/source comparison and docs rules zero errors
+  reflection: PASS all7targets; no waiver or required deferral
+diff_scope:
+  base: 6a1f35f5337ae74588bdea70f8dba618425fa94b
+  head: 178b5f5ccde9ae81c2d689abfcf28750a9a2ef7d
+activity_effort: high

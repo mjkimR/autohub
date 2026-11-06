@@ -22,7 +22,7 @@ Scout ran `devkit docs refs <ID> --direction in` before the challenger.
 
 `CAP-WORK-work-plan-execution`: `ARCH-03-system-context`, `ARCH-05-2-components`,
 `ARCH-06-execution`, `CAP-MCP-tool-access`, `CAP-PR-operator-decisions`,
-`CAP-PR-pull-request-delivery`, `MS-batch-recovery`, `PROP-work-item-replacement`,
+`CAP-PR-pull-request-delivery`, `MS-batch-recovery`, `SPEC-work-item-replacement`,
 `SPEC-work-item-retry`, `SPEC-ux-documentation`, `UC-execute-work-plan`,
 `UX-project-detail`, `UX-work-plan-editor`, `UX-work-plans`.
 
