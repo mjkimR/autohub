@@ -1,0 +1,16 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T06:37:59.758237Z'
+status: completed
+review: review-04.yaml
+summary: Host-directed callback recovery resolves review04 exact Plan navigation; mounted filtered and same-hash regressions fail before and pass after. Fresh outside-cap review05 independently passes as named by resolution01.
+findings:
+- issue: 'recurs: review-03.yaml #1; data-sveltekit-reload does not remount same-path fragment navigation.'
+  evidence: TemplateOutcome.svelte:39-43; installed @sveltejs/kit/src/runtime/client/client.js:2748,2760-2795 keeps same-path hash navigation; WorkPlansPanel locates only on mount.
+  failure_condition: Existing Plans tab lifecycle/group filter excludes original Plan; receipt link or same-hash repeat preserves filter and absent card.
+  suggested_action: Existing WorkPlansPanel exact-Plan reveal callback clears filters, closes Templates, refreshes as needed and tick/focuses exact card; retain anchor for fresh/modified navigation. Test mounted filtered interaction including same hash.
+  resolution: resolved
+  severity: P2
+checks: {}
