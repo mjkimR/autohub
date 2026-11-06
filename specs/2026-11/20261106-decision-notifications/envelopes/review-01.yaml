@@ -1,0 +1,42 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T05:12:09.452334Z'
+status: completed
+summary: round 1; REVISE. Four contract defects in pending filter restoration, validation refusal recovery, resend basis disclosure and login return guidance; no scope violations.
+findings:
+- issue: Filter restoration permanently loses never-admitted pending generations.
+  evidence: decision_worker.py:47-52,81-85 and decision_repo generation queries; reviewer probe printed superseded before/after restoration and failed.
+  failure_condition: Pending digest generation excluded by kind/project becomes permanently superseded even after matching filters restore.
+  suggested_action: Distinguish temporary suppression from supersession and restore never-admitted exact actionable generations while preserving accepted/unknown dedupe; test kind and project restoration.
+  resolution: open
+  severity: P1
+- issue: Definitive request validation failures become unrecoverable unknown commands.
+  evidence: decision-notices.svelte.ts:63-90,105-133 and decision_api.py:20-43; pre-handler FastAPI422 has no owner refusal code.
+  failure_condition: Invalid settings never create receipt but client locks correction as unknown indefinitely.
+  suggested_action: Recognize proven pre-admission validation refusals, expose field errors and permit explicit correction with fresh request; preserve ambiguous/identity conflict uncertainty.
+  resolution: open
+  severity: P1
+- issue: Send-again confirmation omits current destination and filter context being approved.
+  evidence: DecisionNotices.svelte:176-239,249-305 vs target-docs:140-150,159,169.
+  failure_condition: Direct history resend confirmation lacks current destination/filter/generation/revision/subject observation evidence.
+  suggested_action: Render selected subject kind/project/run/observation plus current chat/origin/generation/revision/filters/gates/freshness and invalidate confirmation when basis changes; test direct entry and refresh.
+  resolution: open
+  severity: P1
+- issue: Lost or malformed login-return state silently drops required recovery guidance.
+  evidence: notice-return.ts:17-39 swallows denied/expired/malformed state; parsed key/fingerprint types are not checked before coercion.
+  failure_condition: Successful Google login loses exact selection without reopen guidance or can coerce missing/non-string key.
+  suggested_action: Validate parsed shape before URL construction and return bounded recovery outcome displayed after successful auth without blocking login; test denied/expired/missing/non-string.
+  resolution: open
+  severity: P1
+assumptions:
+- Emulated isolation audited fixed HEAD/status and ignored probe only; no tracked/index changes.
+unverified_areas:
+- No live Telegram/OAuth or deployment evidence.
+checks:
+  tests: PASS backend84 UI273 PostgreSQL29
+diff_scope:
+  base: f0697e4e4182bd0d6ab8eab2e67c570df28de533
+  head: 3031cf0d801e8593b3909427593fa473cd23e173
+activity_effort: high

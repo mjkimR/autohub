@@ -1,0 +1,7 @@
+request: return:build-verify
+kind: return
+action: accept
+workflow: sdd-spec-feature
+stage: build-verify
+note: Implement full review1 batch with failing-before regressions
+at: '2026-11-06T05:12:09.889914Z'
