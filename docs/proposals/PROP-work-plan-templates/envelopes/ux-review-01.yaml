@@ -1,0 +1,27 @@
+kind: ux-review
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-06T04:22:30.089796Z'
+status: completed
+summary: 'Round1: main flow and every extension walked; both screens R1=2 R2=2 R3=2 R4=2 R5=2 R6=2. Two interaction-table coverage actions retained for plan-accept.'
+findings:
+- issue: 'link check (reviewer judgment): template acknowledged-write refresh recovery lacks a table row.'
+  evidence: target-docs.md recorded-refresh-error state promises Refresh, original table only covers unavailable/error.
+  failure_condition: A save/edit/delete succeeds but later refresh fails and table-driven implementation repeats or loses acknowledgement.
+  suggested_action: Add read-only Refresh acknowledged result row from recorded-refresh-error with recorded identity retained and no repeated write.
+  resolution: open
+- issue: 'link check (reviewer judgment): Close row omits states where the panel offers it.'
+  evidence: Original target-docs.md loading/saving states retain Close while table row names populated/editing/uncertain only.
+  failure_condition: Closing while loading or saving has no documented transition retaining pending intent.
+  suggested_action: Add loading/saving/conflict/unavailable/error/recorded-refresh-error to Close row; retain unresolved identity and cancel only unsent edits.
+  resolution: open
+assumptions:
+- Emulated fixed-head absolute-path read-only review; identical before/after tree and clean worktree; no out-of-tree reads.
+unverified_areas:
+- Textual draft only; no browser or implementation verification.
+checks:
+  walkthrough: PASS main1-7 and all draft extensions, both screens12/12
+diff_scope:
+  base: 0010af5fa2ca053e9023f90689f2cdb37a6bbaf5
+  head: 4eb63f8fe29003c0c6e217d74345a5706facc542

@@ -44,7 +44,7 @@ Extensions:
 - **5a invalid graph/keys/readiness**: show owner validation, keep the editable unsent preview (`UX-work-plan-editor`).
 - **5b template/binding changed**: registration refusal clears confirmation; show original versus current basis, reload and explicitly review a new request (`UX-work-plan-editor`).
 - **3a/6a/7b uncertain write**: retain immutable endpoint/request/payload across remount/reload in account/project-scoped browser session storage, block competing template writes, offer read-only Check original request and explicit Retry same request (UX-work-plan-templates, `UX-work-plan-editor`). Do not clear uncertainty from auth/access/read failures.
-- **6b write acknowledged, refresh failed**: show recorded Plan link/result and independent refresh error (`UX-work-plan-editor`).
+- **3b/6b/7d write acknowledged, refresh failed**: keep the recorded template identity for 3b/7d (UX-work-plan-templates planned panel) or Plan link for 6b (`UX-work-plan-editor`), with a separate read-only refresh action and refresh error.
 - **6c known request after template deletion/change**: recover original receipt/snapshot and current Plan without creating another Plan (`UX-work-plan-editor`).
 - **7c concurrent deletion/update**: exactly one revision wins; existing Plans and saved registration snapshots remain unchanged (UX-work-plan-templates).
 - **\*a cancel before send**: return to parent with no write. Closing unresolved operation keeps its account/project session intent; reopening restores it. Explain retained private task text and provide a read-only route; do not offer discard-and-resubmit as an uncertainty bypass.
@@ -69,7 +69,7 @@ States:
 - **saving**: immutable request pending; competing template mutations disabled, Close retains intent.
 - **conflict**: retain unsent content, display expected/current revision, Reload for review or cancel; no silent overwrite.
 - **unavailable**: template/source absent or inaccessible; Refresh list or return to ordinary Plan creation.
-- **uncertain**: Check original request, Retry same request and Close; no new mutation until original result is known.
+- **uncertain**: Check original request, Retry same request and Close; no new mutation until original result is known. Closing/dismissing an unresolved operation does not release the guard. Logout/session loss clears local private payload and loses this local guarantee; do not imply restoration or server deduplication under a fresh UUID.
 - **recorded-refresh-error**: keep acknowledged outcome/ID, offer read-only Refresh, never replace with failed-write label.
 - **error**: keep source/form and show validation/refusal; supported correction requires explicit review/new intent only after definite owner refusal.
 
@@ -80,9 +80,10 @@ States:
 | Use template | UC-reuse-work-plan-template 4 | populated | populated | `UX-work-plan-editor` | Fresh editable draft, remapped keys and source snapshot loaded. |
 | Edit / Delete and confirm | UC-reuse-work-plan-template 7 | populated | editing, saving | | `CAP-WORK-work-plan-execution` | Revision-aware change; derived Plans unchanged. |
 | Reload / correct / cancel stale form | UC-reuse-work-plan-template 2a, UC-reuse-work-plan-template 7a, UC-reuse-work-plan-template 7c | conflict, error | editing, populated | | `CAP-WORK-work-plan-execution` | Unsaved text retained; stale confirmation cleared. |
-| Check / Retry same request | UC-reuse-work-plan-template 3a, UC-reuse-work-plan-template 7b | uncertain | uncertain, populated | | `CAP-WORK-work-plan-execution` | Exact immutable original intent is retained or acknowledged. |
+| Check / Retry same request | UC-reuse-work-plan-template 3a, UC-reuse-work-plan-template 7b | uncertain | uncertain, populated | | `CAP-WORK-work-plan-execution` | Exact immutable original intent is retained or acknowledged using read-only CRUD receipt lookup or explicit same-request write retry. |
 | Refresh unavailable/list | UC-reuse-work-plan-template 4a | unavailable, error | loading | | `CAP-WORK-work-plan-execution` | No replacement template silently selected. |
-| Close / Cancel unsent editor | UC-reuse-work-plan-template *a | populated, editing, uncertain | populated | close | | Work Plans context restored; unresolved intent retained. |
+| Refresh acknowledged result | UC-reuse-work-plan-template 3b, UC-reuse-work-plan-template 7d | recorded-refresh-error | populated, recorded-refresh-error | | `CAP-WORK-work-plan-execution` | Recorded template identity remains visible; read-only refresh repeats no write. |
+| Close / Cancel unsent editor | UC-reuse-work-plan-template *a | loading, populated, editing, saving, conflict, unavailable, error, recorded-refresh-error, uncertain | populated | close | | Work Plans context restored; unresolved intent retained. |
 | Next / Previous page | global: browse project definitions without execution | populated | loading | | | Deterministic bounded page, selected context preserved. |
 
 ### UX-work-plan-editor (existing panel extension)
