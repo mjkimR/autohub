@@ -1,0 +1,42 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T02:15:04.308929Z'
+status: completed
+summary: round 1; REVISE. Two reproduced UI state defects and incomplete retained history/contract coverage.
+findings:
+- issue: Changing reviewed evidence retains the previous confirmation.
+  evidence: WorkItemReplacement.svelte:40-50 replaces read without clearing review; ignored review-01 probe125 expected disabled true and got false after candidate change.
+  failure_condition: Review R1 and confirm, then load R2; submit sends R2 under the old acknowledgement, violating AC-08.
+  suggested_action: Invalidate unsubmitted review when evidence or candidate changes, bind command to immutable review snapshot, preserve pending separately and add candidate/refresh regressions.
+  resolution: open
+  severity: P1
+- issue: Unresolved commands disappear when Item component remounts.
+  evidence: WorkItemReplacement.svelte:36 component-local pending; parent filtered Plans unmount it. Ignored probe134 loses Retry same request after remount.
+  failure_condition: Lost mutation response followed by filter, navigation or reload loses original identity and permits new mutations.
+  suggested_action: Persist immutable operation, complete endpoint and command before sending, keyed by project/Item; restore pending on mount and clear only definite result; test remount/reload.
+  resolution: open
+  severity: P1
+- issue: Replacement history omits accepted paging and time context.
+  evidence: replacement_repo.py loads all links/events; component renders all without merge completed_at or event created_at. Retained screen requires paged time context.
+  failure_condition: Accumulated history loads entirely under Project lock and operators cannot inspect merge/event times.
+  suggested_action: Bound ordered history with next-page controls, render merge/event times and keep selected active evidence independently available; add tests.
+  resolution: open
+  severity: P2
+- issue: Explicit identity, role and admission scenarios lack enforcing tests.
+  evidence: test_replacements.py omits authenticated actor/path conflicts, chains/role switches, foreign binding and additional-edge/Plan/project/capacity holds.
+  failure_condition: Distinct AC-02/03/05/06 regressions pass current suite.
+  suggested_action: Add focused refusal/hold tests, replay after withdrawal, actor/path request conflicts, unchanged outcomes and no duplicate events.
+  resolution: open
+  severity: P2
+assumptions:
+- Emulated fixed-head absolute-path review; ignored probes only; tracked tree unchanged.
+unverified_areas:
+- No live provider or deployment observation; Living Spec pending.
+checks:
+  tests: PASS SQLite152 PostgreSQL17 UI37 types/build
+diff_scope:
+  base: 43e3341d010e3a79749f291d7a3b8beeefae40b6
+  head: edb89735b4881660616a63248d0c607b9cb961c5
+activity_effort: high
