@@ -68,7 +68,8 @@
 			label: 'Project management',
 			items: [
 				{ href: '/projects', label: 'Projects', icon: FolderKanban },
-				{ href: '/projects/runs', label: 'Pipeline runs', icon: Workflow }
+				{ href: '/projects/runs', label: 'Pipeline runs', icon: Workflow },
+				{ href: '/decisions', label: 'Decisions', icon: Workflow }
 			]
 		},
 		{

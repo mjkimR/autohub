@@ -39,3 +39,8 @@ async def dismiss_question(
     run_id: UUID, question_id: UUID, data: QuestionDismiss, user: CurrentUser, use_case: UseCase
 ):
     return await use_case.dismiss(run_id, question_id, data, f"user:{user.id}")
+
+
+@router.get("/{question_id}", response_model=QuestionRead)
+async def get_question(run_id: UUID, question_id: UUID, use_case: UseCase):
+    return await use_case.question(run_id, question_id)

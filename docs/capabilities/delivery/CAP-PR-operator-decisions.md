@@ -1,7 +1,7 @@
 ---
 id: CAP-PR-operator-decisions
 title: Run Questions and Operator Decisions
-summary: "Auto Hub retains PR-bound questions and append-only operator answers, then applies one explicitly selected answer through a revision-checked resume. Durable request identities preserve answers and prevent a retried resume from undoing a later stop."
+summary: "Retain PR-bound questions and append-only answers, discover pending decisions across projects, and apply an explicitly selected answer through revision-checked resume. Discovery preserves owner authority and request replay identity."
 area: delivery
 status: active
 usecases:
@@ -10,6 +10,7 @@ entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/api/interactions.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/interactions.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/control.py
+  - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
 ---
 
 # [CAP-PR-operator-decisions] Run Questions and Operator Decisions
@@ -57,6 +58,16 @@ question-state transition.
 13. **Replay cannot unpause**: WHEN a successful resume request is replayed after a later pause, Hub MUST return the current paused Run without undoing that stop or creating another attempt. Check: [`test_interactions.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_interactions.py), `test_old_resume_replay_does_not_unpause_a_later_stop`.
 14. **Dismissal is not resume**: WHEN a pending question is dismissed with the current revision and a reason, Hub MUST close the question while leaving the Run stopped for inspection. Check: [`test_interactions.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_interactions.py), `test_pending_question_and_changed_head_require_explicit_resolution`.
 15. **Bounded marker search**: WHEN looking for an agent question marker, the parser MUST restrict its search to the first 112,000 reply characters. Source: [`questions.py`](../../../modules/hub/app/features/project_management/pipeline_runs/questions.py), `_MAX_REPLY_CHARS`; bounded-scan example: [`test_questions.py`](../../../modules/hub/tests/unit/features/project_management/pipeline_runs/test_questions.py), `test_question_scan_remains_bounded`.
+
+### Pending discovery
+
+WHEN an authenticated operator lists decisions, Hub MUST expose visible nonterminal Run questions in open or answered state through a persisted discovery projection. Saving retains Answer saved; application or dismissal removes the row in the owner transaction. Check: `test_discovery_question_lifecycle_and_exact_owner` and `test_projection_rolls_back_with_owner` in [test_discovery.py](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_discovery.py).
+
+WHEN listing a changing worklist, Hub MUST use oldest waiting time and stable key with a limit-plus-one keyset query and zero provider calls. Ordinary waiting time is question creation time. Check: `test_keyset_bounded_and_cursor_filters` in the same test file.
+
+The authenticated `GET /api/v1/pipeline-runs/decisions` accepts optional `project_id`, `kind`, `question_state` (open/answered), `cursor` and `limit` (default 20, range 1–100). It returns `items`, `has_more` and `next_cursor`; malformed or filter-mismatched cursors return 422, unknown projects 404. It follows existing run-read visibility: admitted users share projects; no independent project ACL is introduced. Refresh restarts pagination because new generations may precede a retained cursor.
+
+`POST /api/v1/pipeline-runs/decisions/review` accepts an exact `key` and `fingerprint`. Missing/ended owners return 404; changed generations return 409. The Run question read `GET /api/v1/pipeline-runs/{run_id}/questions/{question_id}` resolves that exact owner question, including one outside the first history page. `UX-decision-inbox` opens `UX-run-decisions`; filters and loaded cursor page persist when it closes.
 
 ## 4. Interfaces & Data Contracts
 

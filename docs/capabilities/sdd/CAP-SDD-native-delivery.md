@@ -1,7 +1,7 @@
 ---
 id: CAP-SDD-native-delivery
 title: Native SDD activity and proposal delivery
-summary: "Auto Hub starts native proposal activities and previews milestone readiness at a pinned commit. Ephemeral preview selection creates no execution artifacts; existing PR owners retain execution and merge authority."
+summary: "Auto Hub starts native proposal activities and previews milestone readiness at a pinned commit. Ephemeral preview selection creates no execution artifacts; existing PR owners retain execution and merge authority. Pending decisions can be discovered through the shared owner-preserving inbox."
 area: sdd
 status: active
 usecases:
@@ -12,6 +12,7 @@ entrypoints:
   - modules/hub/app/features/project_management/sdd/api.py
   - modules/hub/app/features/project_management/sdd/activities.py
   - modules/hub/app/features/project_management/sdd/plan_publication.py
+  - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
 ---
 
 # [CAP-SDD-native-delivery] Native SDD activity and proposal delivery
@@ -123,6 +124,12 @@ CI observation and merge control.
 27. **Existing activities**: WHEN a matching branch exists, Hub MUST expose its marker-bearing owned PR and optional exact project-scoped run as inspect-only evidence, or an unrelated-branch hold. Check: `modules/hub/tests/unit/features/project_management/sdd/test_milestones.py`, owned-PR-before-enrollment and pagination fixtures.
 28. **Ephemeral subset**: WHEN an operator selects milestone activities, Hub MUST retain only explicitly selected eligible direct members of a complete preview in deterministic canonical-ID topological order. Check: `modules/hub-ui/src/lib/features/project-management/repositories/milestone-selection.test.ts` and `SddMilestonePreview.integration.test.ts` beside it.
 29. **Context invalidation**: WHEN project, ref, milestone or explicit refresh changes, Hub MUST clear local selection and discard obsolete preview responses. Check: `modules/hub-ui/src/lib/features/project-management/repositories/SddMilestonePreview.integration.test.ts`.
+
+### Proposal discovery
+
+WHEN a persisted native proposal is actionable, Hub MUST expose its exact proposal decision identity in the shared worklist without creating a second mutation owner. In-progress/published proposal decisions are excluded. Discovery does not accept, publish, hand off or merge work. `CAP-SDD-workflow-control` owns exact-subject inspection and native generation guards; `CAP-PR-operator-decisions` owns the shared listing interface. Check: [discovery.py](../../../modules/hub/app/features/project_management/sdd/discovery.py), reviewed against the existing owner predicates.
+
+`UC-decide-sdd-proposal` enters through `UX-decision-inbox` or the existing run surfaces; proposal decisions retain their existing publication and authority guards.
 
 ## 4. Interfaces & Data Contracts
 

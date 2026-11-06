@@ -1,0 +1,38 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T23:24:37.541439Z'
+status: completed
+review: review-01.yaml
+summary: Fixed four round 1 findings; shared authority guard, native Hub generation, actual inspection time and acknowledged mutation notification. Fresh round 2 required because authority and generation contracts changed.
+findings:
+- issue: Inspection preserves an approval after replacing its protected PR head.
+  evidence: pipeline_runs/usecases/discovery.py:70-91; sdd/progress.py:143-165
+  failure_condition: Review persists a changed head or draft state with stale approval and bypasses owner revocation guards; nonactionable rows are also accepted.
+  suggested_action: Extract and reuse the owner changed-head/draft guard including legitimate head exceptions; withhold stale authority transactionally and test subsequent observation.
+  resolution: resolved
+  severity: P1
+- issue: A native Hub question remains reviewable after its evidence generation changes.
+  evidence: pipeline_runs/discovery_projection.py:40-52
+  failure_condition: Only question ID/head contributes to the native Hub fingerprint, so changed inspected head/base/workflow still enables the old subject.
+  suggested_action: Include native inspection generation plus question identity/head; test 409 and explicit replacement Review.
+  resolution: resolved
+  severity: P1
+- issue: Owner bookkeeping makes old native evidence appear newly inspected.
+  evidence: pipeline_runs/discovery_projection.py:91
+  failure_condition: Unrelated ORM writes advance Evidence observed despite no repository inspection.
+  suggested_action: Store actual owner inspection time and preserve it through unrelated mutations; test unchanged and refreshed timestamps.
+  resolution: resolved
+  severity: P2
+- issue: Successful resolution can skip inbox mutation notification.
+  evidence: RunDecisionsDialog.svelte:60-68 and mutation onchange sequencing
+  failure_condition: Post-mutation re-review of the removed row throws before onchange, leaving inbox stale.
+  suggested_action: Separate initial exact inspection from post-mutation reload; notify first and disable resolved selection controls; test dismissal/application/native submission.
+  resolution: resolved
+  severity: P2
+checks:
+  regressions: PASS 9 backend tests; 10 owner dialog UI tests; P1 cases failed before fix
+diff_scope:
+  base: 9661ec7bdf7a895280672d24a61ea916bc4fc0d0
+  head: ''

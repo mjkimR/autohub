@@ -1,7 +1,7 @@
 ---
 id: UX-sdd-run
 title: Native SDD Run
-summary: "The native run panel presents inspected workflow evidence, holds and integration authority separately from PR readiness and ordinary resume."
+summary: "The native run panel presents inspected workflow evidence, holds and integration authority separately from PR readiness and ordinary resume. Supports exact pending-decision navigation."
 area: sdd
 element: panel
 status: active
@@ -40,6 +40,8 @@ behind Other actions or an explicit feedback editor.
 Pending Hub questions disable integration decisions. Request changes requires
 nonblank feedback. Stop run and Withdraw approval expose their effect before the
 operator confirms the specific action.
+
+Inbox entry supplies the exact integration/request identity through the parent review. Refreshed persisted evidence is required before controls enable. Existing hold, revision and authority checks remain applicable.
 
 ## 3. States
 

@@ -1,0 +1,25 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T23:31:35.168717Z'
+status: completed
+summary: round 1; REVISE. Retained screen context and accepted ADR Confirmation require fixes.
+findings:
+- issue: Inbox omits the retained screen run/PR link and state facts.
+  evidence: docs/ux/delivery/UX-decision-inbox.md:32; DecisionInbox.svelte:160-183; discovery_schemas.py:21-35
+  failure_condition: Listed decision lacks current PR link/identification and run state promised in the accepted draft.
+  suggested_action: Expose owner PR link/number/state through bounded joined listing, render rows, regenerate types and add UI assertion; keep provider-free limit-plus-one reads.
+  resolution: open
+  severity: P1
+- issue: Accepted ADR Confirmation still describes a preliminary PADR.
+  evidence: docs/decisions/2026-11/20261106-decision-inbox-read-projection.md:41-43
+  failure_condition: Implemented accepted direction still claims preliminary no-contract status and ADR absent from reconcile targets.
+  suggested_action: With Host authority replace Confirmation with implementation verification references and explicit evidence limits; add modified target; retain decision.
+  resolution: open
+  severity: P2
+checks: {}
+diff_scope:
+  base: 132efda42b384c9e15550d3dfe2c56498e29d888
+  head: 8bdbe8f1ee9560a55904738ce4aae2222ae5c156
+activity_effort: high

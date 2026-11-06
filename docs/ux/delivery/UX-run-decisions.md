@@ -1,7 +1,7 @@
 ---
 id: UX-run-decisions
 title: Run Decisions
-summary: "The decision dialog separates saved Run question answers, explicit resumption and native SDD direction while retaining current run context and history."
+summary: "The decision dialog separates saved Run question answers, explicit resumption and native SDD direction while retaining current run context and history. Supports exact pending-decision navigation."
 area: delivery
 element: modal
 status: active
@@ -41,6 +41,8 @@ actions occupy linked panels; question/approval histories sit beside them.
 Only the latest history page offers actions. Loading compares question and run
 revisions; mismatched data requires refresh rather than enabling stale controls.
 Saving an answer does not resume; selecting a saved answer is a separate action.
+
+Inbox entry supplies an exact question/request identity. Native inspection persists current evidence before controls enable. A changed or resolved selection cannot inherit editors or authority. After an acknowledged mutation the inbox reloads its current cursor page before owner reload; a resolved selection remains disabled. Closing restores the originating row or nearest remaining row and retains filters.
 
 ## 3. States
 

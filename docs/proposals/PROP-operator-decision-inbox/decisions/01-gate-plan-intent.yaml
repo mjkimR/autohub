@@ -1,8 +1,0 @@
-request: gate:plan-intent
-kind: approve
-action: accept
-workflow: sdd-proposal
-stage: intent-proposal
-note: User authorized Planning of the agreed operator decision inbox roadmap scope.
-by: user
-at: '2026-11-05T05:54:33.402424Z'

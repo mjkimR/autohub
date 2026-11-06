@@ -19,8 +19,17 @@
 	} from '$lib/components/ui/dialog';
 	type Run = components['schemas']['PipelineRunRead'];
 	type Question = components['schemas']['QuestionRead'];
-	let { run, onclose, onchange }: { run: Run; onclose: () => void; onchange: () => void } =
-		$props();
+	let {
+		run,
+		onclose,
+		onchange,
+		selection
+	}: {
+		run: Run;
+		onclose: () => void;
+		onchange: () => void;
+		selection?: components['schemas']['DecisionEntryRead'];
+	} = $props();
 	let current = $state(untrack(() => run));
 	let questions = $state<Question[]>([]);
 	let total = $state(0);
@@ -34,7 +43,13 @@
 	let locked = $derived(busy || decisionBusy);
 	let ready = $state(false);
 	let saved = $state('');
-	let pending = $derived(questions.find((q) => q.state === 'open' || q.state === 'answered'));
+	let pending = $derived(
+		questions.find(
+			(q) =>
+				(!selection || q.id === selection.subject_id) &&
+				(q.state === 'open' || q.state === 'answered')
+		)
+	);
 	let terminal = $derived(['completed', 'failed', 'canceled'].includes(current.state));
 	let pastQuestions = $derived(questions.filter((q) => q.id !== pending?.id));
 	const requests = new SvelteMap<string, string>();
@@ -42,8 +57,16 @@
 		if (!requests.has(key)) requests.set(key, crypto.randomUUID());
 		return requests.get(key)!;
 	}
-	async function load() {
+	async function load(inspectSelection = true) {
 		ready = false;
+		if (selection && inspectSelection) {
+			responseData(
+				await api.POST('/api/v1/pipeline-runs/decisions/review', {
+					body: { key: selection.key, fingerprint: selection.fingerprint }
+				}),
+				'Subject changed or inspection failed. Close, refresh and Review again.'
+			);
+		}
 		const [q, r] = await Promise.all([
 			api.GET('/api/v1/pipeline-runs/{run_id}/questions', {
 				params: { path: { run_id: run.id }, query: { offset, limit: 20 } }
@@ -56,10 +79,34 @@
 			throw new Error('Run changed while loading decisions. Refresh before making a decision.');
 		}
 		questions = data.items;
+		if (selection && ['run-question', 'native-hub-question'].includes(selection.kind)) {
+			const selected = responseData(
+				await api.GET('/api/v1/pipeline-runs/{run_id}/questions/{question_id}', {
+					params: { path: { run_id: run.id, question_id: selection.subject_id } }
+				}),
+				'Selected question is unavailable'
+			);
+			if (!questions.some((q) => q.id === selected.id)) questions = [selected, ...questions];
+			if (!['open', 'answered'].includes(selected.state))
+				throw new Error('Selected question has resolved. Review the current list.');
+		}
 		total = data.total_count;
 		revision = data.run_revision;
 		current = latest;
-		ready = true;
+		ready = !selection || inspectSelection || (selection.kind === 'run-question' && !!pending);
+	}
+	async function afterMutation() {
+		onchange();
+		if (!selection) {
+			await load();
+			return;
+		}
+		try {
+			await load(false);
+		} catch {
+			ready = false;
+			saved ||= 'Decision recorded. Refresh the inbox to review its current subject.';
+		}
 	}
 	async function perform(action: () => Promise<void>) {
 		busy = true;
@@ -105,8 +152,7 @@
 		}
 		requests.delete(key);
 		text = '';
-		await load();
-		onchange();
+		await afterMutation();
 	}
 	async function resume(answerId?: string) {
 		if (decisionBusy || !ready || offset !== 0) return;
@@ -121,8 +167,7 @@
 			}),
 			'Unable to resume; refresh and inspect the current run before changing your request'
 		);
-		await load();
-		onchange();
+		await afterMutation();
 		saved = 'Resume recorded. Agent delivery may still be pending.';
 	}
 	async function dismiss() {
@@ -135,11 +180,10 @@
 			'Unable to dismiss question'
 		);
 		reason = '';
-		await load();
-		onchange();
+		await afterMutation();
 	}
 	onMount(() => {
-		void perform(load);
+		void perform(() => load());
 	});
 </script>
 
@@ -170,7 +214,7 @@
 				<Button variant="outline" size="sm" href={run.pull_url} target="_blank" rel="noreferrer"
 					><ExternalLink class="size-3.5" />Inspect pull request</Button
 				>
-				<Button variant="ghost" size="sm" disabled={locked} onclick={() => perform(load)}
+				<Button variant="ghost" size="sm" disabled={locked} onclick={() => perform(() => load())}
 					><RefreshCw class={busy ? 'size-3.5 animate-spin' : 'size-3.5'} />Refresh decisions</Button
 				>
 			</div>
@@ -262,12 +306,15 @@
 							run={current}
 							disabled={locked || !ready || offset !== 0}
 							questionPending={!!pending}
+							selectedRequestId={selection &&
+							!['run-question', 'native-hub-question'].includes(selection.kind)
+								? selection.subject_id
+								: undefined}
 							onbusychange={(value) => {
 								decisionBusy = value;
 							}}
 							onchange={async () => {
-								await load();
-								onchange();
+								await afterMutation();
 							}}
 						/>
 					{/if}
@@ -308,8 +355,7 @@
 							{revision}
 							disabled={locked || !ready || offset !== 0}
 							onchange={async () => {
-								await load();
-								onchange();
+								await afterMutation();
 							}}
 						/>{/if}
 					<section class="space-y-3">

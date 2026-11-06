@@ -1,7 +1,7 @@
 ---
 id: UC-complete-sdd-workflow
 title: Complete a bound native SDD workflow
-summary: "A project operator advances an existing native spec PR through worker evidence, explicit workflow direction and integration authority to the existing PR owner's CI/merge outcome. Holds, withheld approval and revisioned decisions remain effective across retries."
+summary: "A project operator discovers exact pending native decisions and advances a bound spec PR through worker evidence, workflow direction and integration authority. Holds and revisioned decisions remain effective across retries."
 area: sdd
 primary_actor: Project operator
 supporting_actors:
@@ -13,6 +13,8 @@ status: active
 capabilities:
   - CAP-SDD-workflow-control
   - CAP-SDD-runtime-isolation
+entrypoints:
+  - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
 ---
 
 # [UC-complete-sdd-workflow] Complete a bound native SDD workflow
@@ -42,7 +44,7 @@ capabilities:
 
 4. The operator reviews the inspected evidence and approves integration
    (`CAP-SDD-workflow-control`, rules 3, 6).
-   Interface: `UX-sdd-run`.
+   Interface: `UX-decision-inbox`, `UX-sdd-run`.
 
 5. Hub continues the authorized workflow through integration and its final checks
    (`CAP-SDD-workflow-control`, rules 4–6, 19; `CAP-SDD-runtime-isolation`, rule 13).
@@ -54,6 +56,8 @@ capabilities:
 7. Hub delegates current-head CI and merge authorization to the existing PR owner
    and records that owner's outcome (`CAP-SDD-workflow-control`, rule 21).
    Interface: `UX-pipeline-runs`.
+
+The operator can locate the pending subject through `UX-decision-inbox` before opening its exact owner review. Native review refreshes and persists the current inspection basis before controls enable. Existing per-run entry points remain available.
 
 ## 3. Extensions
 
@@ -71,18 +75,18 @@ capabilities:
   supplies a decision outside them; Hub records an answer-envelope instruction
   and the agent publishes it before evaluation resumes at step 3. Invalid answers
   are refused with HTTP 422 and the question remains pending.
-   Interface: `UX-sdd-workflow-request`.
+   Interface: `UX-decision-inbox`, `UX-sdd-workflow-request`.
 
 - **3c.** Another workflow request is open: the operator answers its current options;
   Hub retains the CLI-authored publication artifact and dispatches publication;
   resumes at step 3 only after repository evidence permits it. Unsupported handoff
   anchors are refused instead of arbitrarily rebinding the run.
-   Interface: `UX-sdd-workflow-request`.
+   Interface: `UX-decision-inbox`, `UX-sdd-workflow-request`.
 
 - **3d.** The operator applies a stored run clarification: Hub dispatches that selected
   direction and carries it into later stages; resumes at step 3. A no-change answer
   can return to the gate without a fabricated push; answering is not approval.
-   Interface: `UX-run-decisions`.
+   Interface: `UX-decision-inbox`, `UX-run-decisions`.
 
 - **4a.** Ready status or pinned auto policy already authorizes the unheld gate:
   Hub records the observed/policy authority; resumes at step 5 without inventing
@@ -138,6 +142,9 @@ capabilities:
   without repeating the earlier transition or undoing a later stop; the invocation
   ends with the recorded outcome.
    Interface: `UX-sdd-decision-history`.
+
+- **4z.** The inbox subject resolved, changed generation or failed inspection: controls remain disabled and the operator refreshes the list and explicitly reviews the current subject; resumes at step 4.
+   Interface: `UX-decision-inbox`, `UX-run-decisions`.
 
 ## 4. Postconditions
 
@@ -300,3 +307,11 @@ checks linked in the owning capabilities. These are contracts derived from sourc
 and inspected regression tests, not a claim that every variant above was executed
 or that a live provider published envelopes and completed a merge. The full choice
 validation/path matrix and some runtime-failure combinations remain source-inspected.
+
+### INBOX-01: Preserve exact owner review
+
+- **Given** an observed pending decision in the shared inbox,
+- **When** the operator selects Review,
+- **Then** the exact owner subject loads and native controls wait for persisted inspection; an obsolete selection stays disabled until explicit reinspection.
+- **Covers**: 4z and the discovery entry.
+

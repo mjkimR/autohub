@@ -1,13 +1,13 @@
 ---
-id: PADR-decision-inbox-read-projection
+id: ADR-decision-inbox-read-projection
 title: Discover decisions through an owner-backed read projection
 summary: "For cross-project decision discovery, we keep a durable read projection and refresh the owning review context before acting, to bound listing cost and preserve authority, accepting snapshot lag and projection maintenance."
-proposal: PROP-operator-decision-inbox
-status: draft
+proposal: SPEC-operator-decision-inbox
+status: accepted
 created_at: 2026-11-05
 ---
 
-# [PADR-decision-inbox-read-projection] Discover decisions through an owner-backed read projection
+# [ADR-decision-inbox-read-projection] Discover decisions through an owner-backed read projection
 
 ## 1. Context & Problem Statement
 
@@ -40,4 +40,6 @@ The migration bootstraps older native subjects with an explicitly labeled observ
 
 ## 6. Confirmation
 
-Development verifies bounded SQL/page size, no repository calls during listing/backfill, transactional invalidation, migration and current-owner filtering on both supported databases. UI integration checks verify exact subject routing, freshness failure and preserved owner mutation APIs. Review only until these checks exist; this PADR is preliminary and does not amend the current contracts.
+`SPEC-operator-decision-inbox` implements the rebuildable projection, transaction-bound maintenance, bounded joined listing and exact owner review. `CAP-PR-operator-decisions` and `CAP-SDD-workflow-control` restate its guarantees.
+
+Executed persistence, generation, authority/CAS and migration assertions are in `modules/hub/tests/integration/features/project_management/pipeline_runs/test_discovery.py` and `modules/hub/tests/integration/migrations/test_decision_discovery.py`. These passed with SQLite and disposable PostgreSQL. UI interaction tests, repository lint and types/production build passed on the source branch; final branch evidence is retained in the spec envelopes. This establishes no live deployment, external-provider result or measured performance improvement.

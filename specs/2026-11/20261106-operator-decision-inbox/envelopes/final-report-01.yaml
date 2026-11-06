@@ -1,0 +1,18 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T23:35:48.384542Z'
+status: completed
+summary: Implemented cross-project pending decision discovery, exact owner inspection/CAS and Decisions navigation. Three code-review rounds and two reconciliation rounds closed all findings; 14 Living Spec targets resolved.
+findings: []
+assumptions:
+- No live deployment or external-provider result verified; native isolated CLI cases skipped without dedicated runtime fixture.
+checks:
+  tests: PASS affected backend241 with39 isolated-CLI skips; UI235; changed listing/backend9 SQLite and9 PostgreSQL; migration+discovery PostgreSQL10; actual SQL query-plan/limit probe1
+  build: PASS just check backend/SDK types and Svelte types/production build
+  lint: PASS just lint and final lint-check; cumulative CI rules and generated freshness
+diff_scope:
+  base: 132efda42b384c9e15550d3dfe2c56498e29d888
+  head: 7a82694221d3b9907d371901bc8f05d5c9154082
+activity_effort: high

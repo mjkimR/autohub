@@ -1,0 +1,19 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T23:26:33.979054Z'
+status: completed
+summary: round 2; Prior four findings fixed. One native Hub generation metadata defect remains.
+findings:
+- issue: Native Hub question generations retain ordinary waiting age and head metadata.
+  evidence: modules/hub/app/features/project_management/pipeline_runs/discovery_projection.py:53-66
+  failure_condition: Backfilled or changed native Hub generations use question.created_at and original head instead of first observation age and inspected head.
+  suggested_action: Set native waiting_since=now and native head_sha=progress.get(head_sha) or question head in the question-row construction; retain ordinary values and same-generation preservation. Extend generation test for initial observation age, reset and unchanged preservation.
+  resolution: open
+  severity: P1
+checks: {}
+diff_scope:
+  base: 9661ec7bdf7a895280672d24a61ea916bc4fc0d0
+  head: d34b4bd46e06070b0a05811c9fdce4f2f0a0893c
+activity_effort: high

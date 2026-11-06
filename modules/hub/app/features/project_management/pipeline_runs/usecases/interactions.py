@@ -46,6 +46,14 @@ class RunInteractionUseCase:
                 items=[await self._read(session, row) for row in rows], total_count=total, run_revision=run.revision
             )
 
+    async def question(self, run_id: UUID, question_id: UUID) -> QuestionRead:
+        async with AsyncTransaction() as session:
+            await self._run(session, run_id)
+            row = await session.get(RunQuestion, question_id)
+            if not row or row.pipeline_run_id != run_id:
+                raise ProjectError(404, "Question not found for this run")
+            return await self._read(session, row)
+
     async def ask(self, run_id: UUID, data: QuestionWrite, actor: str) -> QuestionRead:
         async with AsyncTransaction() as session:
             run = await self._run(session, run_id)

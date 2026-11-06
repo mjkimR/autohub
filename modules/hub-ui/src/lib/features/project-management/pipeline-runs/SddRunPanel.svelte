@@ -22,12 +22,14 @@
 		onchange,
 		disabled = false,
 		questionPending = false,
+		selectedRequestId,
 		onbusychange = () => {}
 	}: {
 		run: components['schemas']['PipelineRunRead'];
 		onchange: () => void | Promise<void>;
 		disabled?: boolean;
 		questionPending?: boolean;
+		selectedRequestId?: string;
 		onbusychange?: (busy: boolean) => void;
 	} = $props();
 	// The devkit-spec integration gate Hub decides; its label replaces the former G3 badge.
@@ -120,7 +122,13 @@
 
 <SddNextAction {run} />
 {#if spec.startsWith('docs/proposals/PROP-')}<SddPlanningEvidence {progress} {evidenceUrl} />{/if}
-<SddWorkflowRequests {run} {onchange} disabled={disabled || questionPending} {onbusychange} />
+<SddWorkflowRequests
+	{selectedRequestId}
+	{run}
+	{onchange}
+	disabled={disabled || questionPending}
+	{onbusychange}
+/>
 
 <section class="overflow-hidden rounded-xl border bg-card" aria-label="SDD integration decision">
 	<div class="space-y-4 p-4 sm:p-5">
