@@ -1,0 +1,44 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T02:22:36.603256Z'
+status: completed
+review: review-01.yaml
+summary: Closed all four round1 findings; both P1 repository regressions failed before fixes and pass, history bounded with timestamps, distinct identity/role/binding/hold tests pass. API/state changes require fresh high review2.
+findings:
+- issue: Changing reviewed evidence retains the previous confirmation.
+  evidence: WorkItemReplacement.svelte:40-50 replaces read without clearing review; ignored review-01 probe125 expected disabled true and got false after candidate change.
+  failure_condition: Review R1 and confirm, then load R2; submit sends R2 under the old acknowledgement, violating AC-08.
+  suggested_action: Invalidate unsubmitted review when evidence or candidate changes, bind command to immutable review snapshot, preserve pending separately and add candidate/refresh regressions.
+  resolution: resolved
+  severity: P1
+- issue: Unresolved commands disappear when Item component remounts.
+  evidence: WorkItemReplacement.svelte:36 component-local pending; parent filtered Plans unmount it. Ignored probe134 loses Retry same request after remount.
+  failure_condition: Lost mutation response followed by filter, navigation or reload loses original identity and permits new mutations.
+  suggested_action: Persist immutable operation, complete endpoint and command before sending, keyed by project/Item; restore pending on mount and clear only definite result; test remount/reload.
+  resolution: resolved
+  severity: P1
+- issue: Replacement history omits accepted paging and time context.
+  evidence: replacement_repo.py loads all links/events; component renders all without merge completed_at or event created_at. Retained screen requires paged time context.
+  failure_condition: Accumulated history loads entirely under Project lock and operators cannot inspect merge/event times.
+  suggested_action: Bound ordered history with next-page controls, render merge/event times and keep selected active evidence independently available; add tests.
+  resolution: resolved
+  severity: P2
+- issue: Explicit identity, role and admission scenarios lack enforcing tests.
+  evidence: test_replacements.py omits authenticated actor/path conflicts, chains/role switches, foreign binding and additional-edge/Plan/project/capacity holds.
+  failure_condition: Distinct AC-02/03/05/06 regressions pass current suite.
+  suggested_action: Add focused refusal/hold tests, replay after withdrawal, actor/path request conflicts, unchanged outcomes and no duplicate events.
+  resolution: resolved
+  severity: P2
+assumptions:
+- No minor-fix exemption; fresh high review2 required.
+checks:
+  p1_regressions: PASS 2 failed-before; 9 UI now pass
+  backend: PASS SQLite22 PG27; actor/path/withdrawn replay/binding/roles/allholds/paging
+  required: PASS just lint and just check
+  scope: PASS Host exact ADR confirmation authorization added
+diff_scope:
+  base: edb89735b4881660616a63248d0c607b9cb961c5
+  head: fee9dae995393ff47ba909a636a3c04992432616
+activity_effort: high
