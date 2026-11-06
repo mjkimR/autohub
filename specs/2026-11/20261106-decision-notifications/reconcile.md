@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-decision-notifications
-status: pending
+status: resolved
 targets:
   - file: docs/capabilities/notifications/CAP-NOTIFY-operator-notifications.md
     resolution: modified
@@ -59,3 +59,7 @@ Selected notification decision API, exact discovery UseCase and login component 
 Original save revision, destination generation and settings are rendered as immutable fields. Original resend notice and attempt IDs are separate from current subscription/attempt observation. No raw payload dump is rendered. Missing selected-project rejection carries an owner-proven refusal code; generic404 remains uncertain. Approved bounds, timing, example link and sign-in/content disclosures appear before Save. The timing rule explicitly excludes reviewed resend, and the selector document describes the loaded first100 accessible choices.
 
 Fail-before evidence: new component regressions failed for absent original save/resend details and settings disclosures; API regression failed on UNAVAILABLE rather than definitive refusal. After fixes, SQLite15 passed1skipped and notificationUI11 passed. Required type/build check passed.
+
+## Final verification
+
+Independent high reconcile round2 confirmed all five round1 findings resolved. Final source fb0fe74 has SQLite15 passed1skipped, PostgreSQL16 passed, notificationUI13 passed and auth13 passed. Both fresh-command stale-receipt regressions failed before their exact two-line fix and pass afterward. Mandatory lint, type checks and production build passed; final API regeneration produced no tracked drift. Only metadata and records follow this verified source.
