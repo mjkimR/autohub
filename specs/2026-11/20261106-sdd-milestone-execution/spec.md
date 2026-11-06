@@ -10,7 +10,6 @@ related_capabilities: []
 related_usecases: []
 workflow: sdd-spec-feature
 ---
-<!-- devkit:skeleton -->
 
 # [SPEC-sdd-milestone-execution] Execute selected SDD milestone work sequentially
 
@@ -30,18 +29,54 @@ A project operator needs a durable selection that can advance successive native 
 
 ## 2. User Stories
 
-- **US-1**: As a developer/agent, I want to implement Execute selected SDD milestone work sequentially so that system capabilities are extended.
+- **US-1**: As an operator, I want an explicit durable sequential selection so that the existing native owners advance selected work after I close the browser.
+- **US-2**: As an operator, I want revision-fenced future-admission controls and exact owner evidence so that uncertain effects never authorize another activity.
 
 ## 3. Non-Goals
 
-1. **Scope Excluded**: <what this change will not do>
+- **Scope Excluded**: parallel members/batches, implicit approval, inferred dependencies, a second PR executor, automatic replacement, Work Item copies, SDK/vendor changes, deployment and live verification.
 
 ## 4. Acceptance Criteria & Behavioral Contracts
 
-### [AC-01] <scenario>
-- **Given** <precondition>
-- **When** <action>
-- **Then** <expected result>
+### [AC-01] ME-01
+
+Given complete pinned preview evidence with A and dependency-held B, when explicitly selected, then a durable ordered selection contains exactly A/B with their future-intent labels. No work/gates are approved by selection. Incomplete/unknown/over-limit input and stale SHA cause zero admission calls. Include 50/51, 200/201 and 500/501 boundary fixtures.
+
+### [AC-02] ME-02
+
+Given done/dropped milestone prerequisites and exact completed SPEC prerequisites, when the next entry is evaluated, then they pass without reopening completed history. Accepted/rejected PROP, missing/ambiguous/cyclic anchors and guessed same-slug lineage hold. Test canonical handoff repair and missing deleted PROP separately; assert dependency evaluation invokes no publication collaborator.
+
+### [AC-03] ME-03
+
+Given draft A then B, when A reaches a worker report, accepted-but-unmerged Planning, merged Planning, handoff and completed-but-unmerged Development, then no premature next member starts. Only exact completed SPEC plus owner-confirmed Development merge releases its slot. Existing ask gates and withdrawn approvals remain effective at every phase. Cover normal A-to-B progression after A's exact owner-confirmed handoff removes its direct proposal membership.
+
+### [AC-04] ME-04
+
+Given concurrent ticks/controls/single starts, when the claim and pause/stop race, then exactly one committed admission identity wins, one slot remains occupied and control ordering matches the linearization point. PostgreSQL multi-connection barriers cover both orders, stale leases and expired-worker recovery.
+
+### [AC-05] ME-05
+
+Given failure after claim, branch creation, PR creation or enrollment and loss of each database response, when reconciled, then the same claim/artifacts/run are recovered or held with exact uncertainty; no later member, replacement branch or duplicate PR/run is created. Include branch-only recovery and unrelated branch/marker spoof/cross-project evidence refusals.
+
+### [AC-06] ME-06
+
+Given base drift during evaluation or before native creation, when admission runs, then it uses one evaluated SHA or refuses/retries. Unrelated/confirmed selected merges re-evaluate; membership/scope/runtime/policy changes hold. Canonical dependency repair is accepted only by the bounded comparison rule. An expected admitted-member handoff removal advances only with exact recorded lineage and selected owner merge; an unadmitted removal holds. A missing unadmitted proposal never becomes a guessed spec.
+
+### [AC-07] ME-07
+
+Given paused/stopped batches and replayed requests, when controls or maintenance run, then no prohibited future claim occurs and no native approval/control changes. An earlier admitted effect remains honestly visible. A stopped batch with unresolved work prevents a second active batch until settlement.
+
+### [AC-08] ME-08
+
+Given reload, late responses and project changes, when the operator opens the batch, then durable identity/order/holds/control revisions restore without reverting newer controls. Failed/stopped/partial outcomes never display full completion. Read-only links inspect existing native owners.
+
+### [AC-09] ME-09
+
+Given pending batches and retention/maintenance work, when bounded ticks/pruning run, then fair bounded progress and failure isolation hold; unresolved PR/run links survive pruning or retain an explicit durable outcome tombstone after settlement. No new scheduler/merge owner is created.
+
+### [AC-10] ME-10
+
+Given unauthorized/non-SDD/rebound projects or unsafe paths, when create/get/control runs, then existing access/lifecycle/runtime restrictions apply before effects. Individual starts, proposal decisions and native CI/merge regression tests remain green.
 
 ## 5. Carried Proposal Notes
 
