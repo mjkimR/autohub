@@ -200,7 +200,10 @@ test('refused conflict requires refreshed explicit review, with no automatic ret
 	await load();
 	await reviewCandidate();
 	await reason();
-	api.POST.mockResolvedValueOnce({ response: { status: 409 }, error: { detail: 'stale' } });
+	api.POST.mockResolvedValueOnce({
+		response: { status: 409 },
+		error: { code: 'REPLACEMENT_CONFLICT', detail: 'stale' }
+	});
 	await fireEvent.click(screen.getByRole('button', { name: 'Confirm replacement decision' }));
 	expect(await screen.findByText(/Refused. Refresh evidence/)).toBeTruthy();
 	expect(api.POST).toHaveBeenCalledOnce();
@@ -341,4 +344,77 @@ test('paginates decision history and shows retained merge and event times', asyn
 	await fireEvent.click(screen.getByRole('button', { name: 'Next replacement links' }));
 	await screen.findByRole('button', { name: 'Previous replacement links' });
 	expect(api.GET.mock.calls[2][1].params.query.offset).toBe(10);
+});
+
+test('lost response then authentication refusal preserves exact request through remount', async () => {
+	const view = mount();
+	await load();
+	await reviewCandidate();
+	await reason();
+	api.POST.mockRejectedValueOnce(new Error('response lost'));
+	await fireEvent.click(screen.getByRole('button', { name: 'Confirm replacement decision' }));
+	await screen.findByRole('button', { name: 'Retry same request' });
+	const first = api.POST.mock.calls[0];
+	api.POST.mockResolvedValueOnce({ response: { status: 401 }, error: { detail: 'Sign in again' } });
+	await fireEvent.click(screen.getByRole('button', { name: 'Retry same request' }));
+	await screen.findByRole('alert');
+	expect(sessionStorage.getItem('work-item-replacement:project:a')).not.toBeNull();
+	view.unmount();
+	mount();
+	await screen.findByRole('button', { name: 'Retry same request' });
+	api.POST.mockResolvedValueOnce({ data: { ...linked, result: { operation: 'link' } } });
+	await fireEvent.click(screen.getByRole('button', { name: 'Retry same request' }));
+	await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(3));
+	expect(api.POST.mock.calls[2]).toEqual(first);
+});
+
+test('accumulated history retains earlier withdrawn edge context', async () => {
+	const withdrawn = {
+		id: 'withdrawn1',
+		dependent_item_id: 'b',
+		active: false,
+		consumed: false,
+		snapshot: link.snapshot,
+		actor: 'user:operator',
+		reason: 'Earlier review'
+	};
+	const event = {
+		id: 'event1',
+		kind: 'withdraw',
+		actor: 'user:operator',
+		reason: 'Earlier withdrawal',
+		revision: 2,
+		created_at: '2026-11-06T01:00:00Z',
+		evidence: {},
+		acceptance_id: 'withdrawn1'
+	};
+	const page = {
+		...linked,
+		history_offset: 0,
+		history_total_count: 0,
+		history_limit: 10,
+		links: [
+			{ ...link, event_offset: 0, event_total_count: 2, events: [event], acceptances: [withdrawn] }
+		]
+	};
+	api.GET.mockResolvedValueOnce({ data: page });
+	mount();
+	await fireEvent.click(screen.getByRole('button', { name: 'Inspect replacement evidence' }));
+	await screen.findByText(/Dependent b · withdrawn/);
+	api.GET.mockResolvedValueOnce({
+		data: {
+			...page,
+			links: [
+				{
+					...page.links[0],
+					acceptances: [],
+					event_offset: 1,
+					events: [{ ...event, id: 'event2', acceptance_id: null, kind: 'link' }]
+				}
+			]
+		}
+	});
+	await fireEvent.click(screen.getByRole('button', { name: 'Load more replacement events' }));
+	await waitFor(() => expect(api.GET).toHaveBeenCalledTimes(2));
+	expect(screen.queryByText(/Dependent b · withdrawn/)).not.toBeNull();
 });

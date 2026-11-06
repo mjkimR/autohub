@@ -93,7 +93,14 @@
 							? {
 									...link,
 									events: [...eventLink.events, ...link.events],
-									acceptances: link.acceptances
+									acceptances: [
+										...new Map(
+											[
+												...eventLink.acceptances.map((a) => ({ ...a, active: false })),
+												...link.acceptances
+											].map((a) => [a.id, a])
+										).values()
+									]
 								}
 							: link
 					)
@@ -167,7 +174,11 @@
 								}
 							);
 			if (!response.data) {
-				if (response.response.status >= 400 && response.response.status < 500) {
+				const ownerCode =
+					response.error && typeof response.error === 'object' && 'code' in response.error
+						? response.error.code
+						: null;
+				if (response.response.status === 409 && ownerCode === 'REPLACEMENT_CONFLICT') {
 					sessionStorage.removeItem(storageKey);
 					pending = null;
 					read = null;

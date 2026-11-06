@@ -144,7 +144,9 @@ class ReplacementUseCase:
                 if prior.digest != digest:
                     current = await service.evidence(session, item_id)
                     service.conflict(
-                        "Request identity used for another payload or actor", current.revision if current else 0
+                        "Request identity used for another payload or actor",
+                        current.revision if current else 0,
+                        code="REPLACEMENT_IDENTITY_CONFLICT",
                     )
                 return await self.read(session, plan, item, result=prior.result)
             link = await session.get(ReplacementLink, link_id) if link_id else None

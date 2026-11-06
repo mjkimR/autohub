@@ -13,8 +13,8 @@ from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy import select
 
 
-def conflict(reason, revision) -> NoReturn:
-    raise ProjectError(409, f"{reason}; current evidence revision={revision}", code="REPLACEMENT_CONFLICT")
+def conflict(reason, revision, *, code="REPLACEMENT_CONFLICT") -> NoReturn:
+    raise ProjectError(409, f"{reason}; current evidence revision={revision}", code=code)
 
 
 def item_digest(item):

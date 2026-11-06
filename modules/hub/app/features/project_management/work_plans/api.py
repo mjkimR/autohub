@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from app.auth import CurrentUser
+from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.work_plans.activity_schemas import PlanActivityList, PlanActivityRead, PlanComment
 from app.features.project_management.work_plans.grouping import GroupFilter
 from app.features.project_management.work_plans.recovery_schemas import WorkItemRecover, WorkItemRecoveryList
@@ -16,6 +17,7 @@ from app.features.project_management.work_plans.schemas import (
 )
 from app.features.project_management.work_plans.usecases import WorkPlanUseCase
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/projects/{project_id}/work-plans", tags=["Work Plan"])
 
@@ -158,6 +160,15 @@ async def replacement_links(
     )
 
 
+async def replacement_mutation(use_case, *args):
+    # Preserve the owning application's detail envelope; code identifies only
+    # this feature's authoritative transaction refusal for exact-request replay.
+    try:
+        return await use_case.mutate(*args)
+    except ProjectError as exc:
+        return JSONResponse(status_code=exc.status, content={"detail": exc.detail, "code": exc.code})
+
+
 @router.post("/{plan_id}/items/{item_id}/replacement-links", response_model=ReplacementRead)
 async def link_replacement(
     project_id: UUID,
@@ -167,7 +178,7 @@ async def link_replacement(
     user: CurrentUser,
     use_case: Annotated[ReplacementUseCase, Depends()],
 ):
-    return await use_case.mutate(project_id, plan_id, item_id, "link", data, f"user:{user.id}")
+    return await replacement_mutation(use_case, project_id, plan_id, item_id, "link", data, f"user:{user.id}")
 
 
 @router.post("/{plan_id}/items/{item_id}/replacement-links/{link_id}/acceptances", response_model=ReplacementRead)
@@ -180,7 +191,9 @@ async def accept_replacement(
     user: CurrentUser,
     use_case: Annotated[ReplacementUseCase, Depends()],
 ):
-    return await use_case.mutate(project_id, plan_id, item_id, "accept", data, f"user:{user.id}", link_id)
+    return await replacement_mutation(
+        use_case, project_id, plan_id, item_id, "accept", data, f"user:{user.id}", link_id
+    )
 
 
 @router.post("/{plan_id}/items/{item_id}/replacement-links/{link_id}/withdraw", response_model=ReplacementRead)
@@ -193,4 +206,6 @@ async def withdraw_replacement(
     user: CurrentUser,
     use_case: Annotated[ReplacementUseCase, Depends()],
 ):
-    return await use_case.mutate(project_id, plan_id, item_id, "withdraw", data, f"user:{user.id}", link_id)
+    return await replacement_mutation(
+        use_case, project_id, plan_id, item_id, "withdraw", data, f"user:{user.id}", link_id
+    )

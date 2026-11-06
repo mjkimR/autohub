@@ -353,6 +353,7 @@ async def test_replay_actor_path_and_withdrawn_receipt_identity(client, app, set
     )
     response = await client.post(root, json=body)
     assert response.status_code == 409, response.text
+    assert response.json().get("code") == "REPLACEMENT_IDENTITY_CONFLICT", response.json()
     assert await session.scalar(select(func.count()).select_from(ReplacementEvent)) == before
 
 
