@@ -2,7 +2,7 @@
 id: PROP-decision-notifications
 title: Notify operators about actionable delivery decisions
 summary: "Deliver decision-focused notices with exact owner links, project and kind subscriptions, and bounded digests while preserving current decision authority."
-status: draft
+status: reviewing
 created_at: 2026-11-06
 target_area: capabilities/notifications/
 priority: medium
