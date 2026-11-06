@@ -2,7 +2,7 @@
 id: PROP-mcp-delivery-tools
 title: Expose delivery decisions and recovery through MCP
 summary: "Expose decision discovery, request outcomes, SDD batch controls and Work Item recovery through scoped MCP tools that reuse their existing business owners."
-status: draft
+status: reviewing
 created_at: 2026-11-06
 target_area: capabilities/mcp/
 priority: high
