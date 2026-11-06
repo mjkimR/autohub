@@ -3,7 +3,7 @@ id: PROP-decision-continuation-target
 title: Living Spec targets for PROP-decision-continuation
 summary: "Candidate contract and interface updates for follow decisions through explicit continuation."
 status: draft
-proposal: PROP-decision-continuation
+proposal: SPEC-decision-continuation
 created_at: 2026-11-05
 targets:
   - file: docs/capabilities/delivery/CAP-PR-operator-decisions.md

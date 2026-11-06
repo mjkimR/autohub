@@ -1,16 +1,15 @@
 ---
-id: PADR-decision-continuation-outcomes
+id: ADR-decision-continuation-outcomes
 title: Expose owner outcomes beside explicit continuation
 summary: "For decision follow-through, we expose owner-backed outcomes beside explicit continuation, to preserve authority and retry identity, accepting a typed read-model extension."
-proposal: PROP-decision-continuation
-# supersedes: [ADR-<slug>]   # an ADR this decision replaces, wholly or in part; name the replaced clauses in Decision Outcome
-status: draft
+proposal: SPEC-decision-continuation
+status: accepted
 created_at: 2026-11-05
 ---
 
-# [PADR-decision-continuation-outcomes] Expose owner outcomes beside explicit continuation
+# [ADR-decision-continuation-outcomes] Expose owner outcomes beside explicit continuation
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Date**: 2026-11-05
 
 ---

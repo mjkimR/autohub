@@ -1,59 +1,61 @@
 ---
-id: PROP-decision-continuation
+id: SPEC-decision-continuation
 title: Follow decisions through explicit continuation
-summary: "Connect reviewed decisions to explicit next actions and visible application outcomes without conflating saved answers, approval or resumption."
-status: accepted
-created_at: 2026-11-05
-target_area: capabilities/delivery/
-priority: medium
-size: M
-planning_effort: high
-dev_effort: high
-milestone: MS-operator-decisions
+summary: Connect reviewed decisions to explicit next actions and visible application outcomes without conflating saved answers, approval or resumption.
+status: planned
+created: 2026-11-06
 depends_on:
   - SPEC-operator-decision-inbox
-boundaries:
-  owns:
-    - modules/hub-ui/src/lib/api/
-    - modules/hub/app/features/project_management/pipeline_runs/
-    - modules/hub/app/features/project_management/sdd/
-    - modules/hub/tests/integration/features/project_management/pipeline_runs/
-    - modules/hub/tests/integration/features/project_management/sdd/
-    - modules/hub-ui/src/lib/features/project-management/pipeline-runs/
-    - docs/capabilities/delivery/
-    - docs/capabilities/sdd/
-    - docs/usecases/delivery/
-    - docs/usecases/sdd/
-    - docs/ux/delivery/
-    - docs/ux/sdd/
-    - docs/steering/
-  excludes:
-    - docs/operations/
-    - .github/
-    - packages/sdk/
-task_kind: feature
-workflow: sdd-proposal
+related_capabilities: []
+related_usecases: []
+workflow: sdd-spec-feature
 ---
+<!-- devkit:skeleton -->
 
-# [PROP-decision-continuation] Follow decisions through explicit continuation
+# [SPEC-decision-continuation] Follow decisions through explicit continuation
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-decision-continuation on 2026-11-06.
+- **Preserved Materials**: `docs/materials/2026-11/20261106-decision-continuation`
+- Target Docs Blueprint: `PROP-decision-continuation-target` (Living Spec targets for this plan and reconcile.md)
+
+### 1. Background & Hypothesis
 
 Existing contracts intentionally separate saving an answer, applying it, publishing native decisions and authorizing integration. These distinctions protect authority, but completing a decision can leave the operator locating its next step elsewhere. Contextual continuation can make each transition visible and accessible without collapsing those operations.
 
-### Source anchors
+#### Source anchors
 
 `CAP-PR-operator-decisions` requires explicit saved-answer selection for resume. `UX-sdd-workflow-request` states that a recorded worker answer remains open until its envelope is published. `SPEC-operator-decision-inbox` supplies the common discovery and navigation entry point this work completes.
 
-## 2. Technical Spike Questions
+## 2. User Stories
+
+- **US-1**: As a developer/agent, I want to implement Follow decisions through explicit continuation so that system capabilities are extended.
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: <what this change will not do>
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] <scenario>
+- **Given** <precondition>
+- **When** <action>
+- **Then** <expected result>
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### 2. Technical Spike Questions
 
 - **Q1**: Which saved, applied, publication-pending and delivery-pending states can existing owner receipts expose, and where is a read-model extension needed?
 - **Q2**: Which next actions are valid for ordinary answers, proposal decisions, worker answers and integration authority without treating them as interchangeable?
 - **Q3**: How should unknown outcomes, changed heads, later pauses and replayed requests appear while preserving stable mutation identities?
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
-### Alternatives and decision
+#### Alternatives and decision
 
 | Option | Benefit | Cost and risk |
 | --- | --- | --- |
@@ -61,9 +63,9 @@ Existing contracts intentionally separate saving an answer, applying it, publish
 | B: read-only owner request outcome plus persistent owner UI, recommended | Exact recovery with existing owner records; preserves authority boundaries | Typed read query and request-intent state in UI; incomplete evidence remains unknown. |
 | C: independent continuation ledger or controller | Uniform state machine | Duplicates owner truth and introduces synchronization and authorization drift. |
 
-Choose B. `PADR-decision-continuation-outcomes` records this cross-feature decision. This adds no mutation controller, persistence table or inbox projection.
+Choose B. `ADR-decision-continuation-outcomes` records this cross-feature decision. This adds no mutation controller, persistence table or inbox projection.
 
-### Owner outcome read contract
+#### Owner outcome read contract
 
 Add authenticated `GET /api/v1/pipeline-runs/{run_id}/decision-outcomes/{request_id}` with required `operation` discriminator: `question`, `answer`, or `resume`. The discriminator chooses the existing owner namespace; identical UUIDs across namespaces never alias. The caller supplies no authoritative actor. Apply the same run/project visibility and history policy as existing decision reads. Missing/inaccessible runs return 404; invalid operation/UUID returns 422. A missing request on an accessible run returns 200 with `record_state: unknown`, never definite failure. The endpoint performs no repository/provider/network call or mutation and returns no request digest or credentials.
 
@@ -71,7 +73,7 @@ Return a typed response with the requested operation/request ID and run ID; `rec
 
 Query existing question/answer rows and `RunResumeReceipt` by exact request ID and run ownership. Correlate the receipt's existing execution attempt and delivery records; use a consistent database transaction for the response. Do not scan the capped native history list. For worker answers, extend existing owner inspection to retain validated answer-envelope file/identity, `answers_to`, answered question ID, workflow/segment and inspected head alongside the existing native evidence. Current `evidence.reports` omits answer envelopes; add a bounded owner evidence extractor rather than infer resolution from request disappearance. Correlate that exact evidence to the receipt/decision record. Unrelated envelopes, wrong questions/workflows, malformed links and mere request disappearance do not prove publication; retain publication pending or unknown according to available evidence. Refresh replaces the inspection basis under the predecessor CAS and does not grant authority. Delivery/publication failure labels require their respective recorded failure evidence. An ended run keeps its retained outcome visible while its records exist; run retention remains unchanged.
 
-### Explicit continuation and unknown outcomes
+#### Explicit continuation and unknown outcomes
 
 The selected owner review remains open after mutation and shows the recorded outcome separately from the current run. Reopening the same run and question/request can reconstruct durable evidence. Save answer never selects or applies an answer automatically. Resume with selected answer requires an explicit saved-answer selection, current revision, matching question/head and existing owner guards. Native Hub clarification follows native control, not ordinary resume semantics. Native worker answer recording remains publication pending until matching envelope resolution is observed. Proposal acceptance publication does not imply handoff, integration approval or merge. Integration authority recorded does not imply workflow completion, delivery or PR merge.
 
@@ -81,7 +83,7 @@ After a timeout/lost response, show Outcome unknown and Check outcome. A success
 
 If current head/generation/binding/authority differs, keep the historical outcome visible and disable replay-as-continuation. Use the predecessor's exact-subject inspection/CAS to review a fresh basis before any new action; do not silently rebind the old selection. For uncertain native proposal publication, expose the existing owner reconciliation route explicitly and explain its possible inspection/continuation effect; it is not Check outcome and cannot grant authority or override later stops. The workflow panel exposes Reconcile publication through the parent recovery control. After refreshed review, an explicit submission uses the existing native resume/recovery route with its own stable request ID and current expected revision; it does not reuse or alter the original proposal decision payload. Explain possible continuation before submission, retain that recovery intent on uncertainty, and keep it unavailable for ended work. A prior successful receipt can be replayed only as its owner permits; the current paused/revoked/canceled state remains authoritative. No automatic dispatch retry is added; delivery recovery routes to existing run controls.
 
-### Candidate acceptance examples and verification
+#### Candidate acceptance examples and verification
 
 - **E1**: Given an ordinary pending question, when Save answer succeeds, then the saved answer/text/ID remains visible, the run stays stopped, and no answer is preselected for application.
 - **E2**: Given an explicitly selected saved answer, when valid resume prepares its attempt, then Applied to attempt identifies that one attempt while delivery is pending/unknown until delivery evidence exists. Native clarification retains its native branch behavior.
@@ -97,18 +99,18 @@ If current head/generation/binding/authority differs, keep the historical outcom
 
 Development adds integration tests for scoped exact lookup, unknown/not-visible/invalid cases, receipt/attempt joins and no external calls; owner tests cover replay after later stop, changed head, publication uncertainty, lost persistence, matching/unrelated answer-envelope correlations, request disappearance and full reload before the durable receipt boundary. UI tests cover the E1–E11 matrix, exact selection, focus/close/reopen, immutable retry payload and response-then-refresh failure. Inspect and extend existing owner tests rather than duplicate their implementation. Run relevant backend/UI tests, typed API generation, `just lint` and `just check` after backend initialization in Development. Planning runs document/envelope checks only. No timing/count improvement is claimed; observable before/after is whether the selected outcome and explicit next step remain accessible.
 
-### Non-goals
+#### Non-goals
 
 - **Scope Excluded**: implicit application, automatic approval, generic resume as native authority, batch approval, new authority ledgers, inbox projection/age/pagination implementation, browser durable storage of decision text, and automatic delivery recovery.
 - **Scope Excluded**: provider/SDK/Jules decision support, operations, pilot/deployment/live verification, monitoring and CI changes.
 
-### Planning assumptions and dependency revalidation
+#### Planning assumptions and dependency revalidation
 
 The user authorized routine design choices and requested separate UX review. B and the owner-modal arrangement are assumptions within that scope; no business choice blocks this turn. High Development effort remains appropriate because replay, external publication and authority disclosure span persisted owner boundaries.
 
 `SPEC-operator-decision-inbox` is accepted but not implemented/completed in this worktree. Its exact-subject selection, first-observed native age, refreshed inspection and CAS persistence are provisional prerequisites, reused without duplication. Before Development or handoff, compare the landed predecessor's exact completed spec and implementation with this bundle, replace the dependency anchor through the normal process, and revise any mismatched fields/routes/UI boundaries. Recheck touched owner tests, generated types and active branch overlap; do not treat this branch's checks as evidence for the eventual landed head.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
 
 User plan-intent authorizes this high-effort Planning turn. ORDER OVERRIDE: Planning may precede completion of `SPEC-operator-decision-inbox`; this exception authorizes Planning only. The accepted inbox design is a provisional dependency, not implemented evidence. No plan-accept or Development handoff authority is supplied. Planning resolves the spike
 questions, evaluates the recommended design and drafts affected interactions
@@ -119,3 +121,4 @@ The direct prerequisite is `SPEC-operator-decision-inbox`. It supplies the share
 Acceptance and Development handoff follow `sdd-proposal`. Rejection retains
 the decision and reason through the proposal lifecycle. This proposal is complete
 only through a verified accepted implementation, not from creating this draft.
+
