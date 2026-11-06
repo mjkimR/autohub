@@ -12,15 +12,18 @@ dev_effort: high
 boundaries:
   owns:
   - modules/hub/app/features/project_management/work_plans/
-  - modules/hub/migrations/
+  - modules/hub/migrations/versions/
   - modules/hub/tests/integration/features/project_management/work_plans/
   - modules/hub/tests/integration/migrations/
-  - modules/hub-ui/src/lib/api/
+  - modules/hub-ui/src/lib/api/generated/work-plan.d.ts
+  - modules/hub-ui/src/lib/stores/session.svelte.ts
+  - modules/hub-ui/src/lib/stores/session.test.ts
   - modules/hub-ui/src/lib/features/project-management/work-plans/
   - docs/capabilities/work-plans/
   - docs/usecases/work-plans/
   - docs/ux/work-plans/
-  - docs/steering/
+  - docs/steering/glossary.md
+  - docs/steering/ux-objects.md
   excludes:
   - docs/operations/
   - .github/
@@ -92,7 +95,7 @@ Development runs focused owner/API/migration tests, PostgreSQL races for edit/de
 
 ### Future write scope and parallel work
 
-Primary future code stays in new `template_models.py`, `template_schemas.py`, `template_repo.py`, `template_service.py`, `template_usecase.py`, `template_api.py` under the existing Work Plan owner. Existing edits are limited to `work_plans/api.py` router inclusion, `work_plans/models.py` model discovery, `WorkPlansPanel.svelte` entry, and `WorkPlanForm.svelte` reviewed preview seed. Add dedicated `WorkPlanTemplates.svelte`/intent helper and source-mirrored tests; keep UI size limits. Add one migration after the then-landed head. Shared generated output is `modules/hub-ui/src/lib/api/generated/work-plan.d.ts`; it can be regenerated after sequential merges. Existing full Work Plan migration roundtrip may need exact newer-table downgrade/upgrade setup in `modules/hub/tests/integration/migrations/test_work_plan_migration.py`. No production dependency on MCP or notifications is required. Resolve the shared migration chain and generated output in integration order; do not claim parallel write independence for those files.
+Primary future code stays in new `template_models.py`, `template_schemas.py`, `template_repo.py`, `template_service.py`, `template_usecase.py`, `template_api.py` under the existing Work Plan owner. Existing edits are limited to `work_plans/api.py` router inclusion, `work_plans/models.py` model discovery, `WorkPlansPanel.svelte` entry, and `WorkPlanForm.svelte` reviewed preview seed. Add dedicated `WorkPlanTemplates.svelte`/intent helper and source-mirrored tests; keep UI size limits. Add one migration after the then-landed head. Privacy cleanup is limited to the template-intent session-storage namespace in existing `modules/hub-ui/src/lib/stores/session.svelte.ts` logout handling and its `session.test.ts` regression; do not introduce a store-to-feature import or change token/session authentication semantics. Shared generated output is `modules/hub-ui/src/lib/api/generated/work-plan.d.ts`; it can be regenerated after sequential merges. Existing full Work Plan migration roundtrip may need exact newer-table downgrade/upgrade setup in `modules/hub/tests/integration/migrations/test_work_plan_migration.py`. No production dependency on MCP or notifications is required. Resolve the shared migration chain and generated output in integration order; do not claim parallel write independence for those files.
 
 ### Non-goals
 
@@ -101,4 +104,4 @@ Primary future code stays in new `template_models.py`, `template_schemas.py`, `t
 
 ## 4. Lifecycle & Retirement Criteria
 
-This medium-effort Planning turn recommends option B under Host-authorized routine choices. High Development effort remains appropriate for additive persistence, idempotency and execution admission. No user-only business question is required; project scope, draft default and existing owner reuse are conservative assumptions for direction review. `target-docs.md` carries the retained UI candidate and owning contract changes. No acceptance, handoff or implementation is recorded. Complete Planning after challenger and separately authorized UX review, present any retained UX findings at plan-accept, then use the ordinary accepted-proposal handoff.
+This medium-effort Planning turn recommends option B under Host-authorized routine choices. High Development effort remains appropriate for additive persistence, idempotency and execution admission. Challenger round1 identified one P1 and three P2 specification gaps; its exact concrete actions are folded and developer-reverified at medium effort. Independent UX round1 scored both screens12/12 and identified two table coverage findings; both suggested actions are folded, with the original findings retained for plan-accept disclosure. No user-only business question is required; project scope, draft default and existing owner reuse are conservative assumptions for direction review. `target-docs.md` carries the retained UI candidate and owning contract changes. No acceptance, handoff or implementation is recorded. Complete Planning after challenger and separately authorized UX review, present any retained UX findings at plan-accept, then use the ordinary accepted-proposal handoff.
