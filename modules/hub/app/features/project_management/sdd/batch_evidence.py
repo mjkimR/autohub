@@ -83,3 +83,21 @@ async def confirmed_ancestry(observer, project, before, after):
         and comparison.get("status") in ("ahead", "identical")
         and (comparison.get("merge_base_commit") or {}).get("sha") == before
     )
+
+
+async def accepted_proposal(observer, project, ref, path, merge_sha):
+    """Capture the one allowed Planning transformation at its exact confirmed merge."""
+    from app.features.project_management.pipelines import services as pipeline_services
+    from app.features.project_management.work_plans.github import WorkGitHub
+
+    from .checkout import checkout
+    from .milestones import _basis
+
+    token = await observer.get_token(project.github_connector_id, "github")
+    async with pipeline_services.create_github_client(token) as client:
+        selected_sha = await _basis(WorkGitHub(client), project.github_repository, ref)
+    if not await confirmed_ancestry(observer, project, merge_sha, selected_sha):
+        return None
+    async with checkout(project.github_repository, merge_sha, merge_sha, token) as root:
+        basis = content_basis(root, {"id": metadata(root, path).get("id"), "path": path})
+        return basis if basis["status"] == "accepted" else None

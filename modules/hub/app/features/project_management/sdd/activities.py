@@ -151,16 +151,18 @@ class ActivityStarter:
                 raise ProjectError(422, f"Base branch {request.base_branch} is not on the remote")
             base_sha = base["object"]["sha"]
             saved = saved or {}
-            if expected_base_sha and base_sha != expected_base_sha:
-                raise ProjectError(409, "Native admission base SHA changed; re-evaluate before claiming")
-            if checkpoint:
-                await checkpoint(expected_sha=base_sha)
-
             existing = await github.optional(f"{root}/git/ref/heads/{quote(branch, safe='')}")
             pulls = await github.reader._get_list(
                 f"{root}/pulls", {"head": f"{repository.split('/')[0]}:{branch}", "state": "open", "per_page": 100}
             )
             pull = next((p for p in pulls if p.get("head", {}).get("ref") == branch), None)
+
+            async def candidate_checkpoint(**values):
+                latest = await github.optional(f"{root}/git/ref/heads/{quote(request.base_branch, safe='')}")
+                if not latest or latest["object"]["sha"] != base_sha:
+                    raise ProjectError(409, "Base moved before native branch publication")
+                await checkpoint(**values)
+
             if existing is not None and checkpoint:
                 initial = saved.get("initial_sha")
                 known_pr = saved.get("pull_number")
@@ -196,19 +198,23 @@ class ActivityStarter:
                 number = pull["number"]  # Hub's own start whose response was lost: enroll it again
                 anchor = _text(await github.optional(f"{root}/contents/{unit}/proposal.md", {"ref": base_sha}))
             else:
+                if expected_base_sha and base_sha != expected_base_sha:
+                    raise ProjectError(409, "Native admission base SHA changed; re-evaluate before claiming")
+                if checkpoint:
+                    await checkpoint(expected_sha=base_sha)
                 anchor = _text(await github.optional(f"{root}/contents/{unit}/proposal.md", {"ref": base_sha}))
                 if anchor is None:
                     raise ProjectError(422, f"PROP-{slug} is not on {request.base_branch}")
                 if reason := admission_reason(anchor, activity, slug):
                     raise ProjectError(409, reason)
-                if checkpoint:
-                    current_base = await github.optional(f"{root}/git/ref/heads/{quote(request.base_branch, safe='')}")
-                    if not current_base or current_base["object"]["sha"] != base_sha:
-                        raise ProjectError(409, "Base moved before native branch creation")
-                    await checkpoint(admission_base=base_sha)
                 if activity == "plan":
                     if reason := await start_blocker(repository, base_sha, token, unit, activity):
                         raise ProjectError(409, reason, code=_code(reason))
+                    if checkpoint:
+                        latest = await github.optional(f"{root}/git/ref/heads/{quote(request.base_branch, safe='')}")
+                        if not latest or latest["object"]["sha"] != base_sha:
+                            raise ProjectError(409, "Base moved during native policy evaluation")
+                        await checkpoint(admission_base=base_sha)
                     message = (f"Start Planning of PROP-{slug}", f"Started-by: {actor}")
 
                     def write(checkout_root: Path) -> None:
@@ -221,11 +227,16 @@ class ActivityStarter:
                         token,
                         message,
                         write,
-                        **({"checkpoint": checkpoint} if checkpoint else {}),
+                        **({"checkpoint": candidate_checkpoint} if checkpoint else {}),
                     )
                 else:
                     if reason := await start_blocker(repository, base_sha, token, unit, activity):
                         raise ProjectError(409, reason, code=_code(reason))
+                    if checkpoint:
+                        latest = await github.optional(f"{root}/git/ref/heads/{quote(request.base_branch, safe='')}")
+                        if not latest or latest["object"]["sha"] != base_sha:
+                            raise ProjectError(409, "Base moved during native policy evaluation")
+                        await checkpoint(admission_base=base_sha)
                     message = (
                         f"Start Development of PROP-{slug}",
                         f"Handoff follows as the first step.\nStarted-by: {actor}",
@@ -237,7 +248,7 @@ class ActivityStarter:
                         token,
                         message,
                         None,
-                        **({"checkpoint": checkpoint} if checkpoint else {}),
+                        **({"checkpoint": candidate_checkpoint} if checkpoint else {}),
                     )
                 body = (
                     f"{ACTIVITIES[activity]} of PROP-{slug} on `{branch}` from `{request.base_branch}` ({base_sha[:12]}). "

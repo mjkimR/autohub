@@ -53,3 +53,40 @@ it('ignores older control responses and replays exact control identity', async (
 	const calls = vi.mocked(api.POST).mock.calls as unknown as [string, { body: unknown }][];
 	expect(calls[1][1].body).toEqual(original);
 });
+
+it('does not let a delayed retained list overwrite a newer stopped receipt', async () => {
+	const batches = new SddBatches();
+	batches.project = 'p';
+	batches.batch = batch(1);
+	let resolve!: (value: never) => void;
+	vi.mocked(api.GET).mockImplementationOnce(
+		() =>
+			new Promise((done) => {
+				resolve = done;
+			})
+	);
+	const listing = batches.load('p');
+	batches.batch = batch(9, 'stopped');
+	resolve({ data: [batch(2, 'running')] } as never);
+	await listing;
+	expect(batches.batch?.state).toBe('stopped');
+	expect(batches.batch?.revision).toBe(9);
+});
+
+it('confirms topological order rather than reverse click order with canonical ties', async () => {
+	const { executionOrder } = await import('./sdd-batches.svelte');
+	const preview = {
+		complete: true,
+		edges: [{ source: 'PROP-b', canonical_id: 'PROP-a' }]
+	} as unknown as Preview;
+	const rows = ['PROP-b', 'PROP-z', 'PROP-a'].map((id) => ({
+		id,
+		path: `docs/proposals/${id}/proposal.md`,
+		activity: 'dev' as const
+	}));
+	expect(executionOrder(preview, rows).map((row) => row.id)).toEqual([
+		'PROP-a',
+		'PROP-b',
+		'PROP-z'
+	]);
+});

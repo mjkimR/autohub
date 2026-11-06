@@ -152,6 +152,13 @@ class SddBatchUseCase:
                 raise ProjectError(409, "Future admission is terminal")
             row.state = {"pause": "paused", "resume": "running", "stop": "stopped"}[request.action]
             row.revision += 1
+            if request.action == "resume":
+                members = await self.repo.members(session, row.id)
+                refusals = [
+                    c for m in members for c in await self.repo.claims(session, m.id) if c.checkpoint.get("refusal")
+                ]
+                if refusals:
+                    row.evaluation = {**row.evaluation, "reviewed_refusal": str(refusals[-1].id)}
             if request.action == "stop":
                 members = await self.repo.members(session, row.id)
                 all_claims = [c for m in members for c in await self.repo.claims(session, m.id)]

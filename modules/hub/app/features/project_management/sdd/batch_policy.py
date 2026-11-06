@@ -1,13 +1,13 @@
 """Pure selection and drift decisions; no publication or execution collaborators."""
 
-from graphlib import CycleError, TopologicalSorter
-
 from app.features.project_management.projects.errors import ProjectError
 
 from .milestone_graph import LIMITS, safe_path
 
 
 def ordered_selection(preview: dict, requested: list[dict]) -> list[dict]:
+    if preview.get("milestone", {}).get("status") in ("done", "dropped"):
+        raise ProjectError(422, "Finished milestones are inspection only")
     if not preview.get("complete") or any(
         preview["counts"].get(k, 0) > LIMITS[k] for k in ("members", "anchors", "edges")
     ):
@@ -25,6 +25,8 @@ def ordered_selection(preview: dict, requested: list[dict]) -> list[dict]:
             or row["activity_kind"] != value["activity"]
             or row["admission"] != "pass"
             or row["eligibility"] not in ("eligible_now", "held")
+            or (row["eligibility"] == "held" and row.get("scheduling") != "held")
+            or "SDD_BRANCH_EXISTS" in row.get("reasons", [])
             or any((row.get("workflow_hold") or {}).values())
         ):
             raise ProjectError(422, "Selection contains an unsupported or workflow-held member")
@@ -34,15 +36,13 @@ def ordered_selection(preview: dict, requested: list[dict]) -> list[dict]:
         if edge["source"] in graph and edge.get("canonical_id") in graph:
             graph[edge["source"]].add(edge["canonical_id"])
     order = []
-    try:
-        sorter = TopologicalSorter(graph)
-        sorter.prepare()
-        while sorter.is_active():
-            ready = sorted(sorter.get_ready())
-            order.extend(ready)
-            sorter.done(*ready)
-    except CycleError:
-        raise ProjectError(422, "Selected members have a dependency cycle") from None
+    remaining = set(graph)
+    while remaining:
+        next_id = next((key for key in sorted(remaining) if not (graph[key] & remaining)), None)
+        if next_id is None:
+            raise ProjectError(422, "Selected members have a dependency cycle")
+        order.append(next_id)
+        remaining.remove(next_id)
     return [selected[key] for key in order]
 
 
@@ -61,3 +61,39 @@ def project_basis(project) -> dict:
 def same_request(row, actor: str, digest: str) -> None:
     if row.actor != actor or row.request_digest != digest:
         raise ProjectError(409, "Request identity already binds a different actor or payload")
+
+
+def graph_drift(original, current, nodes, selected):
+    """Status may advance; identity/adjacency changes need exact canonical repair evidence."""
+
+    def key(edge):
+        return (edge["source"], edge["requested_id"], edge.get("canonical_id"), edge.get("path"))
+
+    old, new = {key(e) for e in original}, {key(e) for e in current}
+    removed, added = old - new, new - old
+    completed = {n["id"] for n in nodes if n.get("kind") == "spec" and n.get("status") == "completed"}
+    for edge in list(removed):
+        source, requested, canonical, _ = edge
+        source_member = selected.get(source)
+        if source in completed or (source_member and source_member.state == "succeeded" and source_member.spec_anchor):
+            removed.remove(edge)
+            continue
+        predecessor = selected.get(canonical or requested)
+        target = (predecessor.spec_anchor or {}).get("id") if predecessor else None
+        if not target or predecessor is None or predecessor.state != "succeeded" or not predecessor.outcome:
+            continue
+        replacement = next(
+            (
+                e
+                for e in added
+                if e[0] == source
+                and e[1] in (requested, target)
+                and e[2] == target
+                and e[3] == predecessor.spec_anchor["path"]
+            ),
+            None,
+        )
+        if replacement:
+            removed.remove(edge)
+            added.remove(replacement)
+    return "Dependency graph identity changed beyond a proven canonical repair" if removed or added else None

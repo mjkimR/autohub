@@ -1,3 +1,4 @@
+import { SvelteMap } from 'svelte/reactivity';
 import { api, type components } from '$lib/api';
 import { apiErrorMessage } from '$lib/api/errors';
 
@@ -11,6 +12,8 @@ export function selectable(member: Preview['members'][number]) {
 	return (
 		member.admission === 'pass' &&
 		['eligible_now', 'held'].includes(member.eligibility) &&
+		(member.eligibility !== 'held' || member.scheduling === 'held') &&
+		!member.reasons.includes('SDD_BRANCH_EXISTS') &&
 		!Object.values(member.workflow_hold ?? {}).some(Boolean)
 	);
 }
@@ -31,33 +34,36 @@ export class SddBatches {
 	private generation = 0;
 
 	reset(project: string) {
-        this.project = project;
-        ++this.generation;
-        this.rows = [];
-        this.batch = null;
-        this.busy = false;
-        this.error = '';
-        if (this.pending?.project !== project) this.pending = null;
-    }
-
-    async load(project: string) {
 		this.project = project;
-		const generation = ++this.generation;
+		++this.generation;
 		this.rows = [];
-		this.busy = false;
 		this.batch = null;
+		this.busy = false;
 		this.error = '';
 		if (this.pending?.project !== project) this.pending = null;
+	}
+
+	async load(project: string) {
+		if (this.project !== project) this.reset(project);
+		const generation = ++this.generation;
+		this.error = '';
 		try {
 			const response = await api.GET('/api/v1/projects/{project_id}/sdd/batches', {
 				params: { path: { project_id: project } }
 			});
 			if (generation !== this.generation) return;
-			if (!response.data)
+			if (!response.data || !Array.isArray(response.data))
 				throw new Error(apiErrorMessage(response.error, 'Unable to load SDD batches'));
-			if (!Array.isArray(response.data)) throw new Error('Unable to load SDD batches');
-			this.rows = response.data;
-			this.batch = this.rows.find((row) => row.exclusion) ?? null;
+			const merged = new SvelteMap(this.rows.map((row) => [row.id, row]));
+			if (this.batch) merged.set(this.batch.id, this.batch);
+			for (const row of response.data) {
+				const known = merged.get(row.id);
+				if (!known || row.revision >= known.revision) merged.set(row.id, row);
+			}
+			const selected = this.batch?.id;
+			this.rows = [...merged.values()];
+			this.batch =
+				(selected ? merged.get(selected) : null) ?? this.rows.find((row) => row.exclusion) ?? null;
 		} catch (error) {
 			if (generation === this.generation) this.error = String(error);
 		}
@@ -97,7 +103,7 @@ export class SddBatches {
 				milestone_path: String(preview.milestone.path),
 				expected_sha: preview.resolved_sha,
 				through_development: true,
-				members: structuredClone(members)
+				members: members.map((member) => ({ ...member }))
 			}
 		};
 		await this.retry();
@@ -149,4 +155,24 @@ export class SddBatches {
 			if (intent.project === this.project) this.busy = false;
 		}
 	}
+}
+
+export function executionOrder(preview: Preview | null, selected: Selection[]): Selection[] {
+	if (!preview?.complete) return [];
+	const remaining = new SvelteMap(selected.map((row) => [row.id, row]));
+	const result: Selection[] = [];
+	while (remaining.size) {
+		const next = [...remaining.keys()]
+			.sort()
+			.find(
+				(id) =>
+					!preview.edges.some(
+						(edge) => edge.source === id && remaining.has(String(edge.canonical_id))
+					)
+			);
+		if (!next) return [];
+		result.push(remaining.get(next)!);
+		remaining.delete(next);
+	}
+	return result;
 }

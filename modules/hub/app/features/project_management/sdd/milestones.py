@@ -104,7 +104,7 @@ async def preview_milestone(observer, project, request, runs_for, *, capture=Fal
                 if len(members) > LIMITS["members"]:
                     graph.reasons.append("Direct member limit exceeded")
                 if capture:
-                    from .batch_evidence import capture_basis
+                    from .batch_evidence import capture_basis, content_basis
 
                     result["batch_basis"] = await capture_basis(root, graph, members)
                 milestone_holds = await graph.dependencies(milestone)
@@ -216,6 +216,10 @@ async def preview_milestone(observer, project, request, runs_for, *, capture=Fal
                             + (f"{exc.code}: {exc.detail}" if isinstance(exc, ProjectError) else type(exc).__name__)
                         )
                         graph.reasons.append(f"Partial member evaluation: {row['id']} ({row['path']})")
+                if capture:
+                    result["batch_basis"]["milestone"] = content_basis(root, milestone)
+                    result["batch_basis"]["graph"] = [dict(edge) for edge in graph.edges]
+
     except TimeoutError:
         result["reasons"].append("Preview deadline exceeded")
     except ProjectError as exc:

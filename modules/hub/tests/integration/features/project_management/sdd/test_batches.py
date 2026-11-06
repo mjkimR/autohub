@@ -217,3 +217,208 @@ async def test_runtime_or_remaining_content_drift_holds_without_claim(client, pr
     assert current["state"] == "attention"
     assert "Runtime" in current["detail"]
     execute.assert_not_called()
+
+
+async def test_simultaneous_postgres_ticks_commit_one_claim(client, project, monkeypatch, session):
+    import asyncio
+    from types import SimpleNamespace
+    from uuid import UUID
+
+    from app.features.project_management.projects.repos import ProjectRepository
+    from app.features.project_management.projects.services import ProjectService
+    from app.features.project_management.sdd.activity_claims import ActivityClaims
+    from app.features.project_management.sdd.batch_driver import BatchDriver
+    from app.features.project_management.sdd.batch_usecases import SddBatchUseCase
+
+    if session.get_bind().dialect.name != "postgresql":
+        pytest.skip("Multi-connection row-lock evidence requires PostgreSQL")
+    await session.commit()
+    await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    value = preview(project["id"])
+    evaluator = AsyncMock(return_value=value)
+    monkeypatch.setattr(milestones, "preview_milestone", evaluator)
+    path = f"/api/v1/projects/{project['id']}/sdd/batches"
+    batch = (await client.post(path, json=payload())).json()
+    barrier = asyncio.Barrier(2)
+
+    async def evaluate(*args, **kwargs):
+        await barrier.wait()
+        return deepcopy(value)
+
+    evaluator.side_effect = evaluate
+    execute = AsyncMock()
+    monkeypatch.setattr(ActivityClaims, "execute", execute)
+    driver = BatchDriver(
+        SddBatchUseCase(
+            ProjectService(ProjectRepository()), cast(SddUseCase, SimpleNamespace(observer=None, run_use_case=None))
+        )
+    )
+    await asyncio.wait_for(asyncio.gather(*(driver.tick(UUID(project["id"]), UUID(batch["id"])) for _ in range(2))), 10)
+    assert execute.await_count == 1
+    current = (await client.get(path + f"/{batch['id']}")).json()
+    assert len(current["members"][0]["claims"]) == 1
+    assert not current["members"][1]["claims"]
+
+
+@pytest.mark.parametrize("change", ["milestone_graph", "post_planning_body"])
+async def test_reviewed_graph_and_post_planning_content_drift_is_refused(client, project, monkeypatch, change):
+    from types import SimpleNamespace
+    from uuid import UUID
+
+    from app.features.project_management.projects.repos import ProjectRepository
+    from app.features.project_management.projects.services import ProjectService
+    from app.features.project_management.sdd.batch_driver import BatchDriver
+    from app.features.project_management.sdd.batch_models import SddBatchMember
+    from app.features.project_management.sdd.batch_usecases import SddBatchUseCase
+    from app_layer_base.core.database.transaction import AsyncTransaction
+    from sqlalchemy import select
+
+    await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    original = preview(project["id"])
+    a = {
+        "id": "PROP-a",
+        "path": original["members"][0]["path"],
+        "status": "accepted",
+        "content_digest": "original",
+        "depends_on": [],
+    }
+    original["batch_basis"]["members"] = [a]
+    original["edges"].append(
+        {
+            "source": "MS-demo",
+            "requested_id": "MS-prerequisite",
+            "canonical_id": "MS-prerequisite",
+            "path": "docs/roadmap/MS-prerequisite.md",
+        }
+    )
+    monkeypatch.setattr(milestones, "preview_milestone", AsyncMock(return_value=original))
+    path = f"/api/v1/projects/{project['id']}/sdd/batches"
+    batch = (await client.post(path, json=payload())).json()
+    fresh = deepcopy(original)
+    if change == "milestone_graph":
+        fresh["edges"] = fresh["edges"][:1]
+    else:
+        async with AsyncTransaction() as session:
+            member = await session.scalar(
+                select(SddBatchMember).where(
+                    SddBatchMember.batch_id == UUID(batch["id"]), SddBatchMember.anchor_id == "PROP-a"
+                )
+            )
+            assert member
+            member.outcome = {
+                "planning_merge": {"merge_sha": "c" * 40},
+                "accepted_basis": {**a, "content_digest": "accepted"},
+            }
+        fresh["batch_basis"]["members"][0]["content_digest"] = "later-unrelated-scope-edit"
+    driver = BatchDriver(
+        SddBatchUseCase(
+            ProjectService(ProjectRepository()), cast(SddUseCase, SimpleNamespace(observer=None, run_use_case=None))
+        )
+    )
+    reason = await driver._compare(UUID(project["id"]), UUID(batch["id"]), batch["revision"], batch["basis"], fresh)
+    assert reason is not None
+    assert ("graph" in reason) if change == "milestone_graph" else ("content/scope" in reason)
+
+
+@pytest.mark.parametrize(
+    "winner,contender", [("batch", "single"), ("single", "batch"), ("batch", "stop"), ("stop", "batch")]
+)
+async def test_postgres_cross_entry_and_control_races(client, project, monkeypatch, session, winner, contender):
+    import asyncio
+    from uuid import UUID
+
+    from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
+    from app.features.project_management.pipelines.services import PipelineObservationService
+    from app.features.project_management.projects.repos import ProjectRepository
+    from app.features.project_management.projects.services import ProjectService
+    from app.features.project_management.sdd.activity_claims import ActivityClaims
+    from app.features.project_management.sdd.batch_driver import BatchDriver
+    from app.features.project_management.sdd.batch_models import SddActivityClaim
+    from app.features.project_management.sdd.batch_usecases import SddBatchUseCase
+    from app.features.project_management.sdd.schemas import StartActivityRequest
+    from app_layer_base.core.database.transaction import AsyncTransaction
+    from sqlalchemy import select
+
+    if session.get_bind().dialect.name != "postgresql":
+        pytest.skip("Cross-entry row-lock evidence requires PostgreSQL")
+    await session.commit()
+    await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    value = preview(project["id"])
+    monkeypatch.setattr(milestones, "preview_milestone", AsyncMock(return_value=value))
+    path = f"/api/v1/projects/{project['id']}/sdd/batches"
+    batch = (await client.post(path, json=payload())).json()
+    project_id, batch_id = UUID(project["id"]), UUID(batch["id"])
+    projects = ProjectService(ProjectRepository())
+    sdd = SddUseCase(projects, cast(PipelineObservationService, None), cast(PipelineRunUseCase, None))
+    driver = BatchDriver(SddBatchUseCase(projects, sdd))
+    entered, release = asyncio.Event(), asyncio.Event()
+    calls = []
+
+    async def execute(self, project_id, claim_id):
+        calls.append(claim_id)
+        entered.set()
+        await release.wait()
+
+    monkeypatch.setattr(ActivityClaims, "execute", execute)
+
+    async def single():
+        await sdd.start_activity(project_id, "dev", "a", StartActivityRequest(request_id=uuid4()), "user:operator")
+
+    async def stop():
+        response = await client.post(
+            path + f"/{batch_id}/controls",
+            json={
+                "request_id": str(uuid4()),
+                "expected_revision": (await client.get(path + f"/{batch_id}")).json()["revision"],
+                "action": "stop",
+            },
+        )
+        assert response.status_code == 200
+        return response.json()
+
+    if winner == "batch":
+        task = asyncio.create_task(driver.tick(project_id, batch_id))
+        await asyncio.wait_for(entered.wait(), 5)
+        if contender == "single":
+            with pytest.raises(ProjectError):
+                await single()
+        else:
+            stopped = await stop()
+            assert stopped["exclusion"]
+        release.set()
+        await task
+    else:
+
+        async def evaluate(*args, **kwargs):
+            entered.set()
+            await release.wait()
+            return deepcopy(value)
+
+        monkeypatch.setattr(milestones, "preview_milestone", evaluate)
+        task = asyncio.create_task(driver.tick(project_id, batch_id))
+        await asyncio.wait_for(entered.wait(), 5)
+        if winner == "single":
+            # Let the single owner commit its reservation while batch evaluation is paused.
+            # Commit the individual reservation while the competing batch's evaluation is held.
+            async with AsyncTransaction() as tx:
+                p = await projects.get(tx, project_id, lock=True)
+                claims = ActivityClaims(projects, None, None)
+                await claims.reserve(tx, p, "dev", "a", StartActivityRequest(request_id=uuid4()), "user:operator")
+            release.set()
+            with pytest.raises(ProjectError):
+                await task
+        else:
+            stopped = await stop()
+            assert not stopped["exclusion"]
+            release.set()
+            await task
+    async with AsyncTransaction() as tx:
+        claims = list(await tx.scalars(select(SddActivityClaim).where(SddActivityClaim.project_id == project_id)))
+        assert len(claims) == (0 if winner == "stop" else 1)
+        assert len(calls) <= 1

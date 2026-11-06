@@ -64,6 +64,8 @@ class ActivityClaims:
             if claim.run_id:
                 return await self.runs.get(claim.run_id)
             cp = dict(claim.checkpoint)
+            if cp.get("refusal"):
+                raise ProjectError(cp["refusal"]["status"], cp["refusal"]["detail"])
             expires = cp.get("lease_expires_at")
             if expires and datetime.fromisoformat(expires) > get_current_utc_time():
                 raise ProjectError(409, "Native activity reconciliation is already in flight")
@@ -78,7 +80,12 @@ class ActivityClaims:
             async with AsyncTransaction() as session:
                 current = await self.projects.get(session, project_id, lock=True)
                 row = await session.get(SddActivityClaim, claim_id, with_for_update=True)
-                if row is None or row.checkpoint.get("lease") != lease or project_basis(current) != cp["project"]:
+                if (
+                    row is None
+                    or row.checkpoint.get("lease") != lease
+                    or project_basis(current) != cp["project"]
+                    or not lease_valid(row.checkpoint)
+                ):
                     raise ProjectError(409, "Native activity claim fence changed")
                 row.checkpoint = {**row.checkpoint, **values}
                 cp.update(values)
@@ -97,15 +104,74 @@ class ActivityClaims:
             async with AsyncTransaction() as session:
                 await self.projects.get(session, project_id, lock=True)
                 row = await session.get(SddActivityClaim, claim_id, with_for_update=True)
-                if row is None or row.checkpoint.get("lease") != lease:
+                if row is None or row.checkpoint.get("lease") != lease or not lease_valid(row.checkpoint):
                     raise ProjectError(409, "Native enrollment result requires reconciliation")
                 row.run_id = result.id
                 row.checkpoint = {**row.checkpoint, "lease_expires_at": None, "run_id": str(result.id)}
             return result
-        except BaseException:
+        except BaseException as exc:
             # Preserve every remote checkpoint; another invocation reconciles the same claim.
             async with AsyncTransaction() as session:
                 row = await session.get(SddActivityClaim, claim_id, with_for_update=True)
                 if row is not None and row.checkpoint.get("lease") == lease:
-                    row.checkpoint = {**row.checkpoint, "lease_expires_at": None, "uncertain": True}
+                    no_effect = not row.checkpoint.get("initial_sha") and not row.checkpoint.get("pull_number")
+                    refusal = {
+                        "status": exc.status if isinstance(exc, ProjectError) else 503,
+                        "detail": exc.detail
+                        if isinstance(exc, ProjectError)
+                        else "Native admission failed before any external effect",
+                    }
+                    row.checkpoint = {
+                        **row.checkpoint,
+                        "lease_expires_at": None,
+                        "uncertain": not no_effect,
+                        **({"refusal": refusal} if no_effect else {}),
+                    }
+                    if no_effect:
+                        row.settled = True
             raise
+
+
+def lease_valid(checkpoint):
+    expires = checkpoint.get("lease_expires_at")
+    return isinstance(expires, str) and datetime.fromisoformat(expires) > get_current_utc_time()
+
+
+async def settle_individual_claims(projects, *, limit=20):
+    """Retain exact final owner tombstones before releasing standalone reservations."""
+    from app.features.project_management.pipeline_runs.models import FINAL_RUN_STATES, PipelineRun
+    from sqlalchemy import select
+
+    async with AsyncTransaction() as session:
+        ids = list(
+            await session.execute(
+                select(SddActivityClaim.project_id, SddActivityClaim.id)
+                .join(PipelineRun, PipelineRun.id == SddActivityClaim.run_id)
+                .where(
+                    SddActivityClaim.member_id.is_(None),
+                    ~SddActivityClaim.settled,
+                    PipelineRun.state.in_(FINAL_RUN_STATES),
+                )
+                .order_by(SddActivityClaim.id)
+                .limit(limit)
+            )
+        )
+    for project_id, claim_id in ids:
+        async with AsyncTransaction() as session:
+            await projects.get(session, project_id, lock=True)
+            row = await session.get(SddActivityClaim, claim_id, with_for_update=True)
+            if row is None or row.settled or row.run_id is None:
+                continue
+            run = await session.get(PipelineRun, row.run_id)
+            if run is None or run.state not in FINAL_RUN_STATES or run.project_id != project_id:
+                continue
+            row.checkpoint = {
+                **row.checkpoint,
+                "outcome": {
+                    "state": run.state,
+                    "run_id": str(run.id),
+                    "pull_number": run.pull_number,
+                    "pull_url": run.pull_url,
+                },
+            }
+            row.settled = True

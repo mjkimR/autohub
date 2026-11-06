@@ -2,7 +2,7 @@
 id: SPEC-sdd-milestone-execution
 title: Execute selected SDD milestone work sequentially
 summary: Progress a durable selection of native SDD units sequentially while preserving dependency checks, approval boundaries and recoverable controls.
-status: planned
+status: in-progress
 created: 2026-11-06
 depends_on:
   - SPEC-sdd-milestone-readiness

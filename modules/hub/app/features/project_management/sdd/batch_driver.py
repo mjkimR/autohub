@@ -6,7 +6,7 @@ from app.features.project_management.pipeline_runs.models import PipelineRun
 from app_layer_base.core.database.transaction import AsyncTransaction
 
 from .activity_claims import ActivityClaims
-from .batch_policy import project_basis
+from .batch_policy import graph_drift, project_basis
 from .batch_schemas import activity_request
 from .schemas import MilestonePreviewRequest
 
@@ -34,6 +34,16 @@ class BatchDriver:
             current_claim = next((c for c in claims if not c.settled), None)
             claim_id = current_claim.id if current_claim else None
             run_id = current_claim.run_id if current_claim else None
+            refused = next((c for c in reversed(claims) if c.checkpoint.get("refusal")), None)
+            acknowledged = (row.evaluation or {}).get("reviewed_refusal")
+            if refused and str(refused.id) != acknowledged and not current_claim:
+                return await self._hold(
+                    project_id,
+                    batch_id,
+                    revision,
+                    "Native admission was definitively refused; inspect before explicit Resume: "
+                    + refused.checkpoint["refusal"]["detail"],
+                )
             if project_basis(project) != basis["project"]:
                 return await self._hold(project_id, batch_id, revision, "Project binding/configuration changed")
         if current_claim and not run_id:
@@ -119,6 +129,19 @@ class BatchDriver:
             return "Milestone membership expanded; immutable selection cannot adopt it"
         async with AsyncTransaction() as session:
             selected = {m.anchor_id: m for m in await self.repo.members(session, batch_id)}
+            reason = graph_drift(basis["edges"], preview["edges"], preview["nodes"], selected)
+            if reason:
+                return reason
+            old_milestone = old.get("milestone")
+            new_milestone = fresh.get("milestone")
+            if (
+                old_milestone
+                and new_milestone
+                and any(
+                    old_milestone.get(k) != new_milestone.get(k) for k in ("id", "path", "content_digest", "depends_on")
+                )
+            ):
+                return "Milestone anchor changed beyond ordinary prerequisite completion"
             for key, original in old_members.items():
                 current = new_members.get(key)
                 member = selected.get(key)
@@ -126,15 +149,8 @@ class BatchDriver:
                     if member is None or not member.spec_anchor or not member.outcome:
                         return f"Unexplained member removal: {key}"
                     continue
-                planned_transition = bool(
-                    member
-                    and member.phase == "dev"
-                    and (member.outcome or {}).get("planning_merge")
-                    and current["status"] == "accepted"
-                )
-                if original["path"] != current["path"] or (
-                    original["content_digest"] != current["content_digest"] and not planned_transition
-                ):
+                expected = (member.outcome or {}).get("accepted_basis", original) if member else original
+                if expected["path"] != current["path"] or expected["content_digest"] != current["content_digest"]:
                     return f"Selected member content/scope changed: {key}"
                 if original["status"] != current["status"] and (
                     not member
@@ -196,6 +212,17 @@ class BatchDriver:
             return await self._hold(
                 project.id, batch_id, revision, "Owner-confirmed merge evidence is pending", attention=False
             )
+        accepted = None
+        if not snapshot.get("handoff_from"):
+            from .batch_evidence import accepted_proposal
+
+            accepted = await accepted_proposal(
+                self.sdd.observer,
+                project,
+                basis["ref"],
+                snapshot.get("spec_dir", "") + "/proposal.md",
+                pull["merge_commit_sha"],
+            )
         completed = None
         if snapshot.get("handoff_from") and snapshot.get("spec_dir", "").startswith("specs/"):
             from .batch_evidence import completed_spec
@@ -219,9 +246,13 @@ class BatchDriver:
                     row.state = "attention"
                     row.revision += 1
                     return
+                if not accepted or accepted["id"] != member.anchor_id:
+                    row.state, row.detail = "attention", "Accepted exact Planning merge checkpoint is missing"
+                    row.revision += 1
+                    return
                 member.phase = "dev"
                 member.state = "waiting"
-                member.outcome = {"planning_merge": evidence}
+                member.outcome = {"planning_merge": evidence, "accepted_basis": accepted}
             else:
                 target = snapshot.get("spec_dir")
                 origin = snapshot.get("handoff_from")

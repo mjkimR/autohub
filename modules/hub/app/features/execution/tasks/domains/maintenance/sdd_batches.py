@@ -1,5 +1,7 @@
 """Fair, bounded SDD coordination inside the existing maintenance owner."""
 
+from uuid import UUID
+
 from app.features.configuration.system_configs.models import SystemConfig
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
@@ -19,7 +21,10 @@ CHECKPOINT = "maintenance.sdd-batches"
 
 
 async def maintain_batches(observer):
+    from app.features.project_management.sdd.activity_claims import settle_individual_claims
+
     projects = ProjectService(ProjectRepository())
+    await settle_individual_claims(projects)
     runs = PipelineRunUseCase(PipelineRunRepository(), projects, observer)
     driver = BatchDriver(SddBatchUseCase(projects, SddUseCase(projects, observer, runs)))
     async with AsyncTransaction() as session:
@@ -31,7 +36,7 @@ async def maintain_batches(observer):
         assert cursor is not None
         after = (cursor.data or {}).get("after")
         stmt = select(SddBatch).where(SddBatch.exclusion).order_by(SddBatch.id).limit(4)
-        rows = list(await session.scalars(stmt.where(SddBatch.id > after) if after else stmt))
+        rows = list(await session.scalars(stmt.where(SddBatch.id > UUID(after)) if after else stmt))
         if not rows and after:
             rows = list(await session.scalars(stmt))
         ids = [(r.project_id, r.id) for r in rows]

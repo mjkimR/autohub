@@ -1,11 +1,22 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
-	import { SddBatches, selectable, type Preview, type Selection } from './sdd-batches.svelte';
-	let { projectId, preview = null, onrefresh }: { projectId: string; preview?: Preview | null; onrefresh?: () => void } = $props();
+	import {
+		SddBatches,
+		executionOrder,
+		selectable,
+		type Preview,
+		type Selection
+	} from './sdd-batches.svelte';
+	let {
+		projectId,
+		preview = null,
+		onrefresh
+	}: { projectId: string; preview?: Preview | null; onrefresh?: () => void } = $props();
 	const batches = new SddBatches();
 	let selected = $state<Selection[]>([]);
 	let executionOpen = $state(false);
+	const ordered = $derived(executionOrder(preview, selected));
 	let confirm = $state<'create' | 'stop' | null>(null);
 	$effect(() => {
 		batches.reset(projectId);
@@ -34,7 +45,11 @@
 
 <section class="space-y-3 rounded-xl border bg-card p-4" aria-label="SDD batch execution">
 	<h3 class="font-semibold">Sequential milestone execution</h3>
-    <Button variant="outline" onclick={() => batches.load(projectId)}>Load retained batches</Button>
+	<Button
+		variant="outline"
+		disabled={batches.busy || Boolean(batches.pending)}
+		onclick={() => batches.load(projectId)}>Load retained batches</Button
+	>
 	<p class="text-sm text-muted-foreground">
 		Selection records intent through Development. Native approval, questions and PR merge remain
 		separate.
@@ -58,6 +73,12 @@
 	{/if}
 	{#if batches.batch}
 		<p>{batches.batch.id} · {batches.batch.state} · revision {batches.batch.revision}</p>
+		<p>
+			{batches.batch.members.length} selected · {batches.batch.members.filter(
+				(m) => m.state === 'waiting'
+			).length} waiting · {batches.batch.members.filter((m) => m.state === 'admitted').length} admitted
+			· {batches.batch.members.filter((m) => m.state === 'succeeded').length} succeeded
+		</p>
 		<p class="break-all">
 			Initial SHA: {String(batches.batch.basis.sha)} · Latest evaluation: {String(
 				batches.batch.evaluation.sha ?? 'pending'
@@ -98,6 +119,46 @@
 								)?.dev_effort ?? 'inherited proposal default'
 							)}
 						</p>
+						<p>
+							Planning catalog: {String(
+								(
+									(member.initial as Record<string, unknown>)?.preferences as Record<
+										string,
+										unknown
+									>
+								)?.planning_catalog ?? 'inherited project default'
+							)}
+						</p>
+						<p>
+							Development catalog: {String(
+								(
+									(member.initial as Record<string, unknown>)?.preferences as Record<
+										string,
+										unknown
+									>
+								)?.dev_catalog ?? 'inherited project default'
+							)}
+						</p>
+						{#each (member.claims ?? []) as Record<string, unknown>[] as claim (String(claim.id))}
+							<p>
+								{String(claim.activity)} · {claim.settled ? 'Settled' : 'In flight or recovering'}
+								{#if claim.run_id}<a
+										class="underline"
+										href={`/projects/runs?run=${encodeURIComponent(String(claim.run_id))}&view=decisions`}
+										>Inspect native owner</a
+									>{/if}
+								{#if claim.pull_number}<a
+										class="underline"
+										href={`https://github.com/${String((batches.batch?.basis.project as Record<string, unknown>)?.repository)}/pull/${Number(claim.pull_number)}`}
+										>PR #{String(claim.pull_number)}</a
+									>{/if}
+								{#if claim.branch}<span
+										>Branch {String(claim.branch)} · initial commit {String(
+											claim.initial_sha ?? 'not yet confirmed'
+										)}</span
+									>{/if}
+							</p>
+						{/each}
 					</details>
 				</li>{/each}
 		</ol>
@@ -119,9 +180,15 @@
 			for run controls.
 		</p>
 	{/if}
-	{#if batches.staleCreate}<p role="alert">Selection basis changed. Refresh preview and review a new selection.</p><Button onclick={() => onrefresh?.()}>Refresh execution preview</Button>{/if}
-    {#if preview && !executionOpen}<Button disabled={!preview.complete} onclick={() => executionOpen = true}>Open execution selection</Button>{/if}
-    {#if preview && executionOpen && !batches.staleCreate && !batches.rows.some((row) => row.exclusion)}
+	{#if batches.staleCreate}<p role="alert">
+			Selection basis changed. Refresh preview and review a new selection.
+		</p>
+		<Button onclick={() => onrefresh?.()}>Refresh execution preview</Button>{/if}
+	{#if preview && !executionOpen}<Button
+			disabled={!preview.complete}
+			onclick={() => (executionOpen = true)}>Open execution selection</Button
+		>{/if}
+	{#if preview && executionOpen && !batches.staleCreate && !batches.rows.some((row) => row.exclusion)}
 		<h4 class="font-medium">Execution selection</h4>
 		<p class="text-sm break-all">
 			{String(preview.milestone.id)} · {preview.requested_ref} · {preview.resolved_sha}
@@ -143,7 +210,7 @@
 					>
 					<p class="text-sm">{member.reasons.join('; ')}</p>
 					{#if selected.some((row) => row.id === member.id)}<div class="flex flex-wrap gap-2">
-							{#each ['planning', 'dev'] as phase}
+							{#each ['planning', 'dev'] as phase (phase)}
 								<label
 									>{phase} effort
 									<select
@@ -177,7 +244,7 @@
 				</li>{/each}
 		</ul>
 		<Button
-			disabled={!selected.length || !preview.complete || Boolean(batches.pending)}
+			disabled={!ordered.length || !preview.complete || Boolean(batches.pending)}
 			onclick={() => (confirm = 'create')}>Review selection</Button
 		>
 	{/if}
@@ -188,19 +255,24 @@
 					Unselected prerequisites remain holds.
 				</p>
 				<ol>
-					{#each selected as row (row.id)}<li>
+					{#each ordered as row (row.id)}<li>
 							{row.id} · {row.activity} · Planning effort: {row.planning_effort ??
 								'inherited proposal default'} · Development effort: {row.dev_effort ??
 								'inherited proposal default'} · Planning catalog: {row.planning_catalog ??
 								'inherited project default'} · Development catalog: {row.dev_catalog ??
 								'inherited project default'}
+							<p>
+								Current prerequisite holds: {preview?.members
+									.find((m) => m.id === row.id)
+									?.reasons.join('; ') || 'none observed'}
+							</p>
 						</li>{/each}
 				</ol>
 				<Button
 					disabled={batches.busy}
 					onclick={() => {
 						confirm = null;
-						if (preview) void batches.create(preview, selected);
+						if (preview) void batches.create(preview, ordered);
 					}}>Confirm create</Button
 				>
 			{:else}<p>
