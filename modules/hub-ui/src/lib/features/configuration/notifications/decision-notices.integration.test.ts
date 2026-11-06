@@ -108,3 +108,27 @@ test('resend replay keeps exact original target and acknowledgement', async () =
 	await state.retry();
 	expect(api.POST.mock.calls[1][1].params.path.notice_id).toBe('notice');
 });
+
+test('pre-handler validation refusal allows explicitly corrected fresh request', async () => {
+	const state = new DecisionNoticeState('channel');
+	api.PUT.mockResolvedValueOnce({
+		error: { detail: [{ type: 'value_error', loc: ['body'], msg: 'invalid settings', input: {} }] },
+		response: { status: 422 }
+	});
+	await state.save({ ...body, request_id: 'invalid', review_origin: '' });
+	expect(state.status).toBe('refused');
+	state.dismiss();
+	expect(state.intent).toBeNull();
+	api.PUT.mockResolvedValueOnce({
+		data: {
+			record_state: 'recorded',
+			operation: 'subscription',
+			request_id: 'corrected',
+			result: { revision: 1 },
+			current
+		}
+	});
+	await state.save({ ...body, request_id: 'corrected', review_origin: 'https://hub.example' });
+	expect(state.status).toBe('recorded');
+	expect(api.PUT).toHaveBeenCalledTimes(2);
+});

@@ -74,3 +74,17 @@ test('approved Google completion restores only the retained exact notice', async
 		)
 	);
 });
+
+test('expired return identity explains reopening the original notice after successful login', async () => {
+	window.sessionStorage.setItem(
+		'autohub.notice-return',
+		JSON.stringify({ key: 'old', fingerprint: 'a'.repeat(64), at: Date.now() - 31 * 60 * 1000 })
+	);
+	window.history.replaceState({}, '', '/?google=complete');
+	api.POST.mockResolvedValue({
+		data: { status: 'approved', email: 'member@example.com', tokens: { access_token: 'token' } }
+	});
+	render(GoogleLogin);
+	await waitFor(() => expect(session.setTokens).toHaveBeenCalled());
+	expect(await screen.findByText(/Reopen original notice/)).toBeTruthy();
+});

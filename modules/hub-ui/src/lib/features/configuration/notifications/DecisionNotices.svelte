@@ -238,6 +238,30 @@
 				</fieldset>
 			{/if}
 			{#if view === 'history'}
+				{#if notices.current}
+					<div class="rounded border p-2" aria-label="Current resend basis">
+						<p>
+							Current destination: {notices.current.chat_id} · destination generation {notices
+								.current.destination_generation} · subscription revision {notices.current.revision}
+						</p>
+						<p>Review origin: {notices.current.settings.review_origin}</p>
+						<p>
+							Project scope: {notices.current.settings.project_scope === 'all'
+								? 'All current and future projects'
+								: notices.current.settings.project_ids.join(', ')}
+						</p>
+						<p>Decision kinds: {notices.current.settings.kinds.join(', ')}</p>
+						<p>
+							Channel {notices.current.channel_enabled ? 'enabled' : 'disabled'} · warning {notices
+								.current.severity_enabled
+								? 'allowed'
+								: 'filtered out'} · subscription {notices.current.settings.enabled
+								? 'enabled'
+								: 'disabled'}
+						</p>
+						<p>Basis observed {new Date(notices.current.observed_at).toLocaleString()}</p>
+					</div>
+				{/if}
 				<h4 class="font-medium">Decision delivery history</h4>
 				{#if notices.history}<p class="text-xs">
 						History observed {new Date(notices.history.observed_at).toLocaleString()}
@@ -254,6 +278,11 @@
 							).toLocaleString()} · destination generation {notice.destination_generation}
 						</p>
 						<p class="text-xs break-all">{notice.decision_key} · {notice.fingerprint}</p>
+						<p class="text-xs">
+							Project: {String(notice.observed.project_name ?? 'unavailable')} · Run: {String(
+								notice.observed.run_id ?? 'unavailable'
+							)} · observed {String(notice.observed.observed_at ?? 'unavailable')}
+						</p>
 						<a
 							class="underline"
 							href={'/decisions?' +

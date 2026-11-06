@@ -10,6 +10,25 @@ type History = components['schemas']['NoticeHistory'];
 type Intent =
 	| { operation: 'subscription'; body: Write }
 	| { operation: 'resend'; body: Resend; noticeId: string };
+function validationRefusal(error: unknown, status: number | undefined): string | null {
+	if (status !== 422 || !error || typeof error !== 'object' || !('detail' in error)) return null;
+	const details = error.detail;
+	if (!Array.isArray(details) || details.length === 0) return null;
+	if (
+		!details.every(
+			(item) =>
+				item &&
+				typeof item === 'object' &&
+				Array.isArray(item.loc) &&
+				['body', 'query', 'path'].includes(item.loc[0]) &&
+				typeof item.type === 'string' &&
+				typeof item.msg === 'string'
+		)
+	)
+		return null;
+	return details.map((item) => `${item.loc.join('.')}: ${item.msg}`).join('; ');
+}
+
 export class DecisionNoticeState {
 	current = $state<Read | null>(null);
 	history = $state<History | null>(null);
@@ -81,8 +100,10 @@ export class DecisionNoticeState {
 							}
 						);
 			if (!result.data) {
-				if ((result.error as { code?: string })?.code === 'DECISION_NOTICE_REFUSED')
+				const invalid = validationRefusal(result.error, result.response?.status);
+				if ((result.error as { code?: string })?.code === 'DECISION_NOTICE_REFUSED' || invalid)
 					this.status = 'refused';
+				if (invalid) throw new Error('Request refused before admission: ' + invalid);
 				throw new Error(
 					this.status === 'refused'
 						? 'Request refused. Refresh and review corrected input.'

@@ -3,6 +3,7 @@ import {
 	noticeSelection,
 	retainNoticeReturn,
 	consumeNoticeReturn,
+	consumeNoticeReturnOutcome,
 	clearNoticeReturn
 } from './notice-return';
 afterEach(() => {
@@ -53,4 +54,23 @@ test('storage refusal preserves normal authentication and clear is safe', () => 
 	);
 	expect(() => retainNoticeReturn()).not.toThrow();
 	expect(() => clearNoticeReturn()).not.toThrow();
+});
+
+test.each([{}, { key: 42 }, { key: null }])(
+	'rejects malformed stored selection before string coercion %j',
+	(fields) => {
+		window.sessionStorage.setItem(
+			'autohub.notice-return',
+			JSON.stringify({ ...fields, fingerprint: 'a'.repeat(64), at: Date.now() })
+		);
+		expect(consumeNoticeReturn()).toBeNull();
+	}
+);
+
+test('missing and denied stored return identities produce explicit recovery outcomes', () => {
+	expect(consumeNoticeReturnOutcome(true)).toEqual({ path: null, reason: 'missing' });
+	vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+		throw new Error('denied');
+	});
+	expect(consumeNoticeReturnOutcome(true)).toEqual({ path: null, reason: 'unavailable' });
 });

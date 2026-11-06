@@ -287,3 +287,33 @@ async def test_disabled_subscription_baseline_then_one_matching_admission(client
     assert (await client.put(root + "/decision-subscription", json=settings())).status_code == 200
     assert await worker.collect(UUID(channel["id"])) is not None
     assert await worker.collect(UUID(channel["id"])) is None
+
+
+@pytest.mark.parametrize("exclusion", ["kind", "project"])
+async def test_pending_digest_generation_recovers_after_filter_restoration(
+    client, channel, project, github, session, exclusion
+):
+    await setup_decision(client, project)
+    root = f"{ROOT}/{channel['id']}"
+    original = settings(mode="digest")
+    await client.put(root + "/decision-subscription", json=original)
+    worker = DecisionNoticeWorker()
+    assert await worker.collect(UUID(channel["id"])) is None
+    excluded = (
+        settings(expected_revision=1, mode="digest", kinds=["native-workflow"])
+        if exclusion == "kind"
+        else settings(expected_revision=1, mode="digest", project_scope="selected", project_ids=[str(project["id"])])
+    )
+    if exclusion == "project":
+        # A second real project is not necessary: temporarily remove the entry's project from an all-project subscription by selecting an accessible other project.
+        from app.features.project_management.projects.models import Project
+
+        other = Project(name="Other project", github_repository="other/app")
+        session.add(other)
+        await session.commit()
+        excluded["project_ids"] = [str(other.id)]
+    assert (await client.put(root + "/decision-subscription", json=excluded)).status_code == 200
+    assert await worker.collect(UUID(channel["id"])) is None
+    restored = settings(expected_revision=2, mode="immediate")
+    assert (await client.put(root + "/decision-subscription", json=restored)).status_code == 200
+    assert await worker.collect(UUID(channel["id"])) is not None

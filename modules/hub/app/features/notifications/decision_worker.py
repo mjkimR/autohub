@@ -44,13 +44,12 @@ class DecisionNoticeWorker:
             by_key = {(n.decision_key, n.fingerprint): n for n in known}
             rows = await self.repo.scan(session, sub)
             for entry, run, project in rows:
-                if (
-                    matches(entry, sub)
-                    and (entry.key, entry.fingerprint) not in by_key
-                    and not await self.repo.generation(
-                        session, channel_id, channel.destination_generation, entry.key, entry.fingerprint
-                    )
-                ):
+                if not matches(entry, sub) or (entry.key, entry.fingerprint) in by_key:
+                    continue
+                notice = await self.repo.generation(
+                    session, channel_id, channel.destination_generation, entry.key, entry.fingerprint
+                )
+                if notice is None:
                     notice = DecisionNotice(
                         id=uuid4(),
                         channel_id=channel_id,
@@ -68,8 +67,12 @@ class DecisionNoticeWorker:
                         },
                     )
                     session.add(notice)
-                    known.append(notice)
-                    by_key[(entry.key, entry.fingerprint)] = notice
+                elif notice.last_attempt_id is not None:
+                    continue
+                else:
+                    notice.state = "pending"
+                known.append(notice)
+                by_key[(entry.key, entry.fingerprint)] = notice
             if rows:
                 sub.scan_time, sub.scan_key = rows[-1][0].waiting_since, rows[-1][0].key
             else:
@@ -79,10 +82,11 @@ class DecisionNoticeWorker:
                 if notice.state != "pending":
                     continue
                 row = await self.repo.exact(session, notice.decision_key)
-                if row and row[0].fingerprint == notice.fingerprint and matches(row[0], sub):
-                    pending.append((notice, *row))
-                else:
+                if not row or row[0].fingerprint != notice.fingerprint:
                     notice.state = "superseded"
+                elif matches(row[0], sub):
+                    pending.append((notice, *row))
+                # Filter/publication suppression is temporary; never-admitted work stays pending.
             now = get_current_utc_time()
             if not pending:
                 sub.digest_since = None
