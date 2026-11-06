@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-mcp-delivery-tools
-status: pending
+status: resolved
 targets:
   - file: docs/capabilities/mcp/CAP-MCP-tool-access.md
     resolution: modified
