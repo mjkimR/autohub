@@ -1,7 +1,7 @@
 ---
 id: UC-resolve-run-question
 title: Resolve a Run Question
-summary: "An operator resolves a PR-bound question by saving a clarification and explicitly applying the chosen answer to an ordinary Run. Head checks and durable receipt identity preserve that direction through stale observations and delivery retries."
+summary: "An operator discovers a PR-bound question, saves clarification and explicitly applies a selected answer. Head guards and durable request identity preserve direction across stale reads and retries."
 area: delivery
 primary_actor: Operator
 supporting_actors:
@@ -13,6 +13,7 @@ capabilities:
 entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/api/interactions.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/control.py
+  - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
 ---
 
 # [UC-resolve-run-question] Resolve a Run Question
@@ -30,7 +31,7 @@ entrypoints:
 ## 2. Main Success Scenario
 
 1. The operator inspects the pending question and its PR context (`CAP-PR-operator-decisions`).
-   Interface: `UX-run-decisions`.
+   Interface: `UX-decision-inbox`, `UX-run-decisions`.
 
 2. The operator saves the intended clarification (`CAP-PR-operator-decisions`).
    Interface: `UX-run-decisions`.
@@ -43,6 +44,8 @@ entrypoints:
 
 5. Hub verifies the current context and records the answer's application to one prepared attempt (`CAP-PR-operator-decisions`).
    Interface: `UX-run-decisions`.
+
+The operator can locate the pending subject through `UX-decision-inbox` before opening its exact owner review. Native review refreshes and persists the current inspection basis before controls enable. Existing per-run entry points remain available.
 
 ## 3. Extensions
 
@@ -90,6 +93,9 @@ entrypoints:
   application remains recorded; later delivery reconciliation uses that attempt
   rather than applying the same receipt again.
    Interface: `UX-run-decisions`.
+
+- **1z.** The inbox subject resolved, changed generation or failed inspection: controls remain disabled and the operator refreshes the list and explicitly reviews the current subject; resumes at step 1.
+   Interface: `UX-decision-inbox`, `UX-run-decisions`.
 
 ## 4. Postconditions
 
@@ -190,3 +196,11 @@ The examples derive from the production source and named tests in
 `test_questions.py`. They were inspected rather than executed for this document.
 They do not establish a live provider result, deployment or a verified SDD
 baseline for Auto Hub.
+
+### INBOX-01: Preserve exact owner review
+
+- **Given** an observed pending decision in the shared inbox,
+- **When** the operator selects Review,
+- **Then** the exact owner subject loads and native controls wait for persisted inspection; an obsolete selection stays disabled until explicit reinspection.
+- **Covers**: 1z and the discovery entry.
+

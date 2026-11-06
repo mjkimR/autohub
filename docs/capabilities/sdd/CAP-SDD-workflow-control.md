@@ -1,7 +1,7 @@
 ---
 id: CAP-SDD-workflow-control
 title: Native SDD workflow control and integration authority
-summary: "Auto Hub advances a bound native workflow through worker evidence, operator answers, integration approval and rework while retaining one PR execution owner. Repository records and generic resume cannot restore withheld Hub approval or bypass current-head CI and merge policy."
+summary: "Control native SDD workflow decisions, worker questions and integration authority. Cross-project discovery opens exact subjects through persisted inspection CAS while preserving holds, revocation and publication evidence."
 area: sdd
 status: active
 usecases:
@@ -10,6 +10,7 @@ entrypoints:
   - modules/hub/app/features/project_management/sdd/control.py
   - modules/hub/app/features/project_management/sdd/progress.py
   - modules/hub/app/features/project_management/sdd/decisions.py
+  - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
 ---
 
 # [CAP-SDD-workflow-control] Native SDD workflow control and integration authority
@@ -114,6 +115,18 @@ records. `UC-complete-sdd-workflow` follows a bound spec through that process.
     Hub MUST retain the existing PR executor for CI and policy-controlled merge
     rather than introduce a second merge controller.
     Check: [test_native.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_native.py), `test_single_owner_approval_to_ci_merge_and_idempotent_receipt`.
+
+### Exact native decision discovery
+
+WHEN listing native decisions, Hub MUST derive supported worker, workflow, proposal and integration subjects from persisted devkit-spec owner evidence. Unsupported snapshots/kinds are excluded. Held requests do not create competing actionable gates; existing approval or proposal publication excludes a duplicate integration/proposal action. Recorded worker answers remain nonactionable publication-pending subjects until validated answer-envelope evidence resolves that exact worker/question. Check: [discovery.py](../../../modules/hub/app/features/project_management/sdd/discovery.py) and `test_native_generation_and_publication_pending` in [test_discovery.py](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_discovery.py).
+
+WHEN native evidence head/base, workflow/runtime/policy, binding or request content changes, Hub MUST create a new discovery fingerprint with First observed waiting age. Native Hub questions additionally retain their own question identity/head. Unchanged generations retain waiting age; evidence observation time comes from actual owner inspection, including through unrelated bookkeeping writes. Backfill records observation time without reconstructing historical native wait. Check: `test_native_hub_question_tracks_inspected_generation`, `test_native_observation_age_changes_only_after_inspection` and `test_discovery_backfill_roundtrip`.
+
+WHEN Review selects a native subject, Hub MUST inspect outside the database transaction and persist the replacement evidence only after run revision/epoch and project revision/binding CAS succeeds. An obsolete selection returns 409 after committing its replacement basis; an inspection race discards stale results. Explicit Review of the replacement is required. Nonactionable publication rows refuse Review. The adapter never advances, dispatches, answers, publishes or grants approval. Check: `test_native_review_persists_replacement_and_cas_discards_race`.
+
+IF inspection discovers a changed protected head or returned-to-draft PR, THEN Hub MUST apply the same authority revocation guard as scheduled observation before storing replacement evidence. Published-plan and authorized-head-change exceptions retain their owner semantics. Check: `test_review_withholds_stale_native_authority` and existing native observation tests.
+
+`CAP-PR-operator-decisions` defines the shared listing/review transport. `UX-decision-inbox` routes exact subjects to `UX-run-decisions`, `UX-sdd-workflow-request` and `UX-sdd-run`; selecting a non-first request never substitutes the first request.
 
 ## 4. Interfaces & Data Contracts
 

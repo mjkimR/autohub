@@ -39,6 +39,7 @@ exhaustive import graph. Existing feature handlers can use a service directly;
 | Project/connector configuration | `configuration/connectors/`, `project_management/projects/` | API, services, repositories and onboarding | `CAP-PROJ-project-connections` |
 | PR coordination | `project_management/pipeline_runs/usecases/` | `lifecycle.py`, `advancement.py`, `progress.py`, `ci.py`, `control.py` | `CAP-PR-pull-request-delivery` |
 | Operator interactions | `project_management/pipeline_runs/` | `usecases/interactions.py`, `api/interactions.py`, `interaction_service.py`, `interaction_repo.py` | `CAP-PR-operator-decisions` |
+| Decision discovery | `project_management/pipeline_runs/`, `project_management/sdd/` | `discovery_projection.py` transaction hooks, bounded `discovery_repo.py`, exact-inspection `usecases/discovery.py`, native `discovery.py` | `CAP-PR-operator-decisions`, `CAP-SDD-workflow-control` |
 | PR observation | `project_management/pipelines/` | `github.py`, `services.py` | `CAP-PR-ci-observation` |
 | PR delivery transport | `project_management/pipeline_runs/adapters/` | `base.py`, `registry.py`, `codex_github_mention.py` | `CAP-PR-agent-dispatch` |
 | Webhook intake and continuation | `project_management/github_webhooks/` | `api.py`, `usecases.py`, `repos.py`, `tasks.py` | `CAP-PR-webhook-advancement` |
@@ -94,3 +95,5 @@ repository documents through Hub's authenticated data source.
 contributor steps and tests for a new kind/adapter/recipe. These registry and
 component boundaries are source-defined; review is required for responsibility
 changes beyond the import checks named in `ARCH-02-constraints`.
+
+Decision discovery uses the rebuildable projection selected by `ADR-decision-inbox-read-projection`. Mapper hooks share each owner transaction; listing has no provider calls. `DecisionInbox.svelte` reuses the existing owner dialog and exact request selection.

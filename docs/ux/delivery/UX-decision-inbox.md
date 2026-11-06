@@ -1,0 +1,66 @@
+---
+id: UX-decision-inbox
+title: Decision inbox
+summary: "Discover observed pending decisions across projects and open the exact owner review with current native evidence."
+area: delivery
+element: screen
+status: active
+usecases:
+  - UC-resolve-run-question
+  - UC-decide-sdd-proposal
+  - UC-complete-sdd-workflow
+capabilities:
+  - CAP-PR-operator-decisions
+  - CAP-SDD-native-delivery
+  - CAP-SDD-workflow-control
+---
+
+# [UX-decision-inbox] Decision inbox
+
+## 1. Purpose
+
+- **Primary task**: Find a pending decision and open its current review context.
+- **Facts to commit**: Project/run, explicit decision kind, question/request identity, saved-versus-applied state, evidence head and observation time, and waiting-age basis.
+- **Secondary items**: Decision editors and complete evidence remain in `UX-run-decisions` and its native panels; history stays with the owner.
+
+## 2. Content
+
+The filtered mixed worklist is primary. Filters sit above it, and cursor navigation sits below. No approve/resume control appears in a row.
+
+- Project connection (all-visible-projects default; optional project filter).
+- Run question / Native SDD activity (kind filter and ordinary open/answered filter).
+- PR run (row project, run/PR link and state).
+  - Run question (title, question ID, Needs answer or Answer saved; exact waiting age).
+  - Native SDD activity (request kind/title/identity, First observed waiting age, evidence head, last inspected time; Answer publication pending as a disabled review-only status while its worker envelope is being published).
+  - Review (opens exact owner subject after freshness verification).
+- Pagination (Next; loaded previous cursor pages; Refresh restarts at first page).
+- Application shell (global navigation to other screens).
+
+## 3. States
+
+- **loading**: Explain that pending decisions are loading; filters/navigation remain accessible, Review waits for data.
+- **populated**: Review any row; distinguish native observation age from ordinary waiting age. Explain that new or changed decisions can precede the current cursor and Refresh restarts the list.
+- **empty**: No matching observed pending decisions; offer Clear filters and Refresh. This does not assert that every repository is live-evaluated.
+- **error**: Keep filters and offer Retry; no stale row becomes actionable from the failure.
+- **reviewing**: Owner dialog loads fresh context; all mutation controls disabled until exact subject validation succeeds.
+- **changed**: Subject resolved, changed or unavailable; explain the outcome, refresh the worklist and offer explicit Review again for any replacement.
+
+## 4. Interactions
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
+| Review ordinary question | `UC-resolve-run-question` 1 | populated | reviewing | `UX-run-decisions` | `CAP-PR-operator-decisions` | Exact question and current revision load; old question cannot be substituted. |
+| Review native Run question | `UC-complete-sdd-workflow` 3d | populated | reviewing | `UX-run-decisions` | `CAP-SDD-workflow-control` | Exact Hub question loads with native answer/application behavior. |
+| Review proposal decision | `UC-decide-sdd-proposal` 1 | populated | reviewing | `UX-run-decisions` | `CAP-SDD-native-delivery` | Current native evidence loads before proposal controls enable. |
+| Review worker/workflow request | `UC-complete-sdd-workflow` 3b, `UC-complete-sdd-workflow` 3c | populated | reviewing | `UX-run-decisions` | `CAP-SDD-workflow-control` | Exact request is selected in `UX-sdd-workflow-request`; missing identity requires reinspection. |
+| Review integration decision | `UC-complete-sdd-workflow` 4 | populated | reviewing | `UX-run-decisions` | `CAP-SDD-workflow-control` | `UX-sdd-run` receives refreshed evidence and preserves approval fences. |
+| Change filters | global: narrow discovery without deciding | populated | loading | | | Cursor resets; only matching visible subjects load. |
+| Next / Previous | global: browse observed pending decisions | populated | loading | | | Current filters persist; unavailable cursor navigation is disabled. |
+| Refresh / Retry / Clear filters | global: recover discovery | error, empty, populated | loading | | | First page reloads with selected filters or cleared filters. |
+| Close owner dialog | global: return from inspection | reviewing, changed | populated | close | | Filters/page persist; focus returns to row or nearest remaining neighbor. |
+| Leave Decisions | global: navigate to another task | populated, empty, error | populated | `UX-app-shell` | | Selected destination opens. |
+
+## 5. Evidence
+
+Source: `modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.svelte`.
+Interaction assertions: `DecisionInbox.integration.test.ts` covers filters, cursor pages and focus restoration. This source-derived contract claims no live repository walkthrough or deployment.

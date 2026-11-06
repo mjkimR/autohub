@@ -1,7 +1,7 @@
 ---
 id: UC-decide-sdd-proposal
 title: Accept or reject a reviewed SDD proposal
-summary: "A project operator publishes an acceptance or rejection against inspected proposal evidence and obtains a durable decision result. Publication remains recoverable after uncertain responses and does not bypass CI or PR merge policy."
+summary: "A project operator publishes an acceptance or rejection against inspected proposal evidence and obtains a durable decision result. Publication remains recoverable after uncertain responses and does not bypass CI or PR merge policy. The shared Decisions screen opens the exact current owner subject."
 area: sdd
 primary_actor: Project operator
 supporting_actors:
@@ -11,6 +11,8 @@ status: active
 capabilities:
   - CAP-SDD-native-delivery
   - CAP-SDD-runtime-isolation
+entrypoints:
+  - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
 ---
 
 # [UC-decide-sdd-proposal] Accept or reject a reviewed SDD proposal
@@ -27,7 +29,7 @@ capabilities:
 
 1. The operator inspects the waiting proposal run and its evidence
    (`CAP-SDD-native-delivery`, rules 9–11).
-   Interface: `UX-run-decisions`, `UX-sdd-run`, `UX-sdd-proposals`.
+   Interface: `UX-decision-inbox`, `UX-run-decisions`, `UX-sdd-run`, `UX-sdd-proposals`.
 
 2. The operator submits acceptance bound to the inspected head and run revision
    (`CAP-SDD-native-delivery`, rules 10–11).
@@ -48,6 +50,8 @@ capabilities:
 6. Hub records the published decision and returns the run waiting for that
    commit's CI (`CAP-SDD-native-delivery`, rules 14, 16).
    Interface: `UX-sdd-decision-history`.
+
+The operator can locate the pending subject through `UX-decision-inbox` before opening its exact owner review. Native review refreshes and persists the current inspection basis before controls enable. Existing per-run entry points remain available.
 
 ## 3. Extensions
 
@@ -107,6 +111,9 @@ capabilities:
   run state or restoring approval; the use case ends with recorded publication
   evidence, without authorizing continuation (`CAP-SDD-native-delivery`, rule 20).
    Interface: `UX-sdd-decision-history`.
+
+- **1z.** The inbox subject resolved, changed generation or failed inspection: controls remain disabled and the operator refreshes the list and explicitly reviews the current subject; resumes at step 1.
+   Interface: `UX-decision-inbox`, `UX-run-decisions`.
 
 ## 4. Postconditions
 
@@ -233,3 +240,11 @@ Publication and recovery derive from the source and regression checks linked in
 `CAP-SDD-native-delivery`. These examples describe observable contracts; they do
 not claim live GitHub publication, current deployment, or execution of every
 integration/OS-isolation suite during documentation work.
+
+### INBOX-01: Preserve exact owner review
+
+- **Given** an observed pending decision in the shared inbox,
+- **When** the operator selects Review,
+- **Then** the exact owner subject loads and native controls wait for persisted inspection; an obsolete selection stays disabled until explicit reinspection.
+- **Covers**: 1z and the discovery entry.
+

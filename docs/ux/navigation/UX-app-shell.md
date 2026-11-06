@@ -1,7 +1,7 @@
 ---
 id: UX-app-shell
 title: Authenticated navigation panel
-summary: "Provide navigation, health indication and session controls around each authenticated management screen."
+summary: "Provide navigation, health indication and session controls around each authenticated management screen. Supports exact pending-decision navigation."
 area: navigation
 element: panel
 status: active
@@ -32,6 +32,8 @@ The navigation is secondary to the active screen. It is a persistent side region
 - Service health (indicator): a periodic shallow health check reports Core Online or Offline.
 - Theme preference (toggle): also accessible in the narrow header.
 
+Decisions opens `UX-decision-inbox` from the project management navigation and highlights the current destination.
+
 ## 3. States
 
 - **populated**: authenticated children and navigation remain usable; choose a destination or Logout.
@@ -43,6 +45,7 @@ The navigation is secondary to the active screen. It is a persistent side region
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
+| Decisions | global: navigate to pending operator work | populated | populated | `UX-decision-inbox` | | The cross-project worklist opens. |
 | Display the admitted console | `UC-access-hub` 2, `UC-access-hub` 3 | populated | populated |  | `CAP-ACCESS-authentication-authorization` | The requested feature screen is rendered inside the shell. |
 | Logout | `UC-access-hub` 5 | populated | populated | `UX-sign-in` | `CAP-ACCESS-authentication-authorization` | Successful logout replaces the shell with the sign-in screen; failure is a toast. |
 | Open Dashboard | global: navigation between management surfaces | populated | populated | `UX-dashboard` |  | System Overview becomes the selected screen. |

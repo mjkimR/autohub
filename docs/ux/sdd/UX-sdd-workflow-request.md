@@ -1,7 +1,7 @@
 ---
 id: UX-sdd-workflow-request
 title: SDD Workflow Request
-summary: "The workflow-request panel presents the current native request and keeps proposal decisions, worker answers and other workflow choices distinct."
+summary: "The workflow-request panel presents the current native request and keeps proposal decisions, worker answers and other workflow choices distinct. Supports exact pending-decision navigation."
 area: sdd
 element: panel
 status: active
@@ -36,6 +36,8 @@ The panel appears for a paused/blocked run with an applicable request. It exclud
 the dev-integration gate. Worker questions expose Record answer but no Decline or
 Defer; proposal rejection requires a reason; other requests can expose Decline
 and Defer with text explaining that these leave the request open.
+
+An inbox selection names the exact request, including a non-first request. Missing requests do not substitute the first request. The parent disables controls until native inspection succeeds; acknowledged submission reloads the inbox before owner reload.
 
 ## 3. States
 
