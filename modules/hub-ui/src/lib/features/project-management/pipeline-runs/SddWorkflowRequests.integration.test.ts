@@ -1,3 +1,4 @@
+import { session } from '$lib/stores/session.svelte';
 import { cleanup, render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -7,6 +8,7 @@ import SddWorkflowRequests from './SddWorkflowRequests.svelte';
 const { api } = vi.hoisted(() => ({ api: { POST: vi.fn() } }));
 vi.mock('$lib/api', () => ({ api }));
 afterEach(() => {
+	session.logout();
 	cleanup();
 	api.POST.mockReset();
 });
@@ -54,7 +56,7 @@ test('only eligible choices can be accepted and retries preserve the receipt ide
 		expected_revision: 5,
 		workflow_answer: { request: 'handoff', action: 'accept', value: 'direct' }
 	});
-	await user.click(confirm);
+	await user.click(screen.getByRole('button', { name: 'Retry same request' }));
 	expect(api.POST.mock.calls[1][1].body.request_id).toBe(first.request_id);
 });
 

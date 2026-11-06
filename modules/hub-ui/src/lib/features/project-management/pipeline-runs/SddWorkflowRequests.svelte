@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { decisionIntent, decisionBasis } from './decision-intents.svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
@@ -7,12 +8,14 @@
 		disabled = false,
 		selectedRequestId,
 		onchange,
+		onreconcile = () => {},
 		onbusychange = () => {}
 	}: {
 		run: components['schemas']['PipelineRunRead'];
 		disabled?: boolean;
 		selectedRequestId?: string;
 		onchange: () => void | Promise<void>;
+		onreconcile?: () => void | Promise<void>;
 		onbusychange?: (value: boolean) => void;
 	} = $props();
 	type Request = {
@@ -38,30 +41,39 @@
 	let current = $derived(
 		selectedRequestId ? requests.find((r) => r.id === selectedRequestId) : requests[0]
 	);
+	let review = $derived(decisionIntent(run.id));
+
 	let question = $derived(current?.answer === 'envelope' || current?.id.startsWith('question:'));
+	let awaitingPublication = $derived(
+		question &&
+			!!review.outcome?.publication_state &&
+			review.outcome.publication_state !== 'published'
+	);
 	// Accepting or rejecting a proposal: Hub writes the decision commit itself on the head shown here.
 	let planAccept = $derived(current?.id === 'gate:plan-accept');
 	let headSha = $derived(
 		String((run.sdd_progress as { head_sha?: unknown } | null)?.head_sha ?? '')
 	);
 	async function decidePlan(decision: 'accept_plan' | 'reject_plan') {
-		if (!current || busy || disabled) return;
+		if (!current || busy || disabled || decisionIntent(run.id).unresolved) return;
 		const intent = JSON.stringify([run.id, run.revision, decision, headSha, note]);
 		if (retry?.intent !== intent) retry = { intent, id: crypto.randomUUID() };
 		busy = true;
 		onbusychange(true);
 		error = '';
 		try {
-			const result = await api.POST('/api/v1/pipeline-runs/{run_id}/resume', {
-				params: { path: { run_id: run.id } },
-				body: {
+			await decisionIntent(run.id).submit(
+				'resume',
+				{
 					request_id: retry!.id,
 					expected_revision: run.revision,
 					decision,
 					head_sha: headSha,
 					feedback: note
-				}
-			});
+				},
+				decisionBasis(run)
+			);
+			const result = { error: null };
 			if (result.error)
 				throw new Error(apiErrorMessage(result.error, 'Could not record the decision'));
 			await onchange();
@@ -84,7 +96,7 @@
 		}
 	});
 	async function answer(action: 'accept' | 'decline' | 'cancel') {
-		if (!current || busy || disabled) return;
+		if (!current || busy || disabled || decisionIntent(run.id).unresolved) return;
 		const workflow_answer = {
 			request: current.id,
 			action,
@@ -96,15 +108,17 @@
 		onbusychange(true);
 		error = '';
 		try {
-			const result = await api.POST('/api/v1/pipeline-runs/{run_id}/resume', {
-				params: { path: { run_id: run.id } },
-				body: {
+			await decisionIntent(run.id).submit(
+				'resume',
+				{
 					request_id: retry!.id,
 					expected_revision: run.revision,
 					workflow_answer,
 					feedback: note
-				}
-			});
+				},
+				decisionBasis(run)
+			);
+			const result = { error: null };
 			if (result.error)
 				throw new Error(apiErrorMessage(result.error, 'Could not record the decision'));
 			await onchange();
@@ -188,7 +202,9 @@
 			</p>
 		{:else}
 			<div class="flex flex-wrap gap-2">
-				<Button disabled={busy || disabled || !answerable} onclick={() => void answer('accept')}
+				<Button
+					disabled={busy || disabled || !answerable || awaitingPublication || review.unresolved}
+					onclick={() => void answer('accept')}
 					>{busy
 						? 'Recording…'
 						: question
@@ -218,6 +234,27 @@
 				{/if}
 			</p>
 		{/if}
+		{#if planAccept && ['prepared', 'preparing', 'uncertain'].includes(review.outcome?.publication_state || '')}
+			<p>
+				Reconcile publication inspects current repository evidence and may continue the run. It
+				grants no approval and preserves later stops.
+			</p>
+			<Button variant="outline" disabled={busy || disabled} onclick={onreconcile}
+				>Reconcile publication</Button
+			>
+		{/if}
+		{#if review.unresolved}<Button
+				variant="outline"
+				disabled={busy || disabled}
+				onclick={async () => {
+					try {
+						await review.retry(decisionBasis(run));
+						await onchange();
+					} catch {
+						/* outcome remains unknown */
+					}
+				}}>Retry same request</Button
+			>{/if}
 		{#if error}<p role="alert" class="text-sm text-destructive">{error}</p>{/if}
 	</section>
 {/if}

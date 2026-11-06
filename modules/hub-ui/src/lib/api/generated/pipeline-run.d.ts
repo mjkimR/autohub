@@ -52,6 +52,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pipeline-runs/{run_id}/decision-outcomes/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Decision Outcome */
+        get: operations["decision_outcome_api_v1_pipeline_runs__run_id__decision_outcomes__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pipeline-runs/{run_id}": {
         parameters: {
             query?: never;
@@ -383,6 +400,74 @@ export interface components {
             revision: number;
             /** Head Sha */
             head_sha: string | null;
+        };
+        /** DecisionOutcome */
+        DecisionOutcome: {
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "question" | "answer" | "resume";
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Record State
+             * @enum {string}
+             */
+            record_state: "unknown" | "recorded";
+            /** Run Revision */
+            run_revision: number;
+            /** Run State */
+            run_state: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Question Id */
+            question_id?: string | null;
+            /** Answer Id */
+            answer_id?: string | null;
+            /** Answer Text */
+            answer_text?: string | null;
+            /** Applied Attempt Id */
+            applied_attempt_id?: string | null;
+            /** Execution State */
+            execution_state?: string | null;
+            /** Delivery State */
+            delivery_state?: ("posted" | "pending") | null;
+            /** Delivery At */
+            delivery_at?: string | null;
+            /** Native Channel */
+            native_channel?: string | null;
+            /** Publication State */
+            publication_state?: string | null;
+            /** Candidate Head */
+            candidate_head?: string | null;
+            /** Resolved Envelope */
+            resolved_envelope?: string | null;
+            /** Inspected Head */
+            inspected_head?: string | null;
+            /** Inspected Digest */
+            inspected_digest?: string | null;
+            /** Current Authority */
+            current_authority?: {
+                [key: string]: unknown;
+            } | null;
+            /** Current Hold */
+            current_hold?: {
+                [key: string]: unknown;
+            } | null;
+            /** Unavailable Reason */
+            unavailable_reason?: string | null;
         };
         /** DecisionPage */
         DecisionPage: {
@@ -811,6 +896,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PipelineRunRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decision_outcome_api_v1_pipeline_runs__run_id__decision_outcomes__request_id__get: {
+        parameters: {
+            query: {
+                operation: "question" | "answer" | "resume";
+            };
+            header?: never;
+            path: {
+                run_id: string;
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionOutcome"];
                 };
             };
             /** @description Validation Error */

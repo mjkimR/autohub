@@ -1,3 +1,4 @@
+import { session } from '$lib/stores/session.svelte';
 import { cleanup, render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -32,6 +33,7 @@ beforeEach(() => {
 	}));
 });
 afterEach(() => {
+	session.logout();
 	cleanup();
 	document.body.innerHTML = '';
 	document.body.removeAttribute('style');
@@ -64,7 +66,7 @@ test('saves an answer separately and explicitly resumes with the new revision', 
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
-	await user.type(screen.getByLabelText('Your answer'), 'Yes');
+	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
 	expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).value).toBe('Yes');
 	expect((screen.getByRole('button', { name: 'Save answer' }) as HTMLButtonElement).disabled).toBe(
 		false
@@ -91,10 +93,10 @@ test('retries a lost answer response with the same request identity', async () =
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
-	await user.type(screen.getByLabelText('Your answer'), 'Yes');
+	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
 	await user.click(screen.getByRole('button', { name: 'Save answer' }));
 	await screen.findByRole('alert');
-	await user.click(screen.getByRole('button', { name: 'Save answer' }));
+	await user.click(screen.getByRole('button', { name: 'Retry same request' }));
 	expect(api.POST.mock.calls[1]).toEqual(api.POST.mock.calls[0]);
 });
 
@@ -125,24 +127,24 @@ test('keeps the answer request identity after response loss and a revision refre
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
-	await user.type(screen.getByLabelText('Your answer'), 'Yes');
+	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
 	await user.click(screen.getByRole('button', { name: 'Save answer' }));
 	await screen.findByRole('alert');
 	const original = api.POST.mock.calls[0][1].body.request_id;
 	await user.click(screen.getByRole('button', { name: 'Refresh decisions' }));
 	await screen.findByRole('button', { name: 'Resume with this answer' });
-	await user.click(screen.getByRole('button', { name: 'Save answer' }));
-	await screen.findByText('Answer saved. The run remains stopped until you resume.');
+	await user.click(screen.getByRole('button', { name: 'Retry same request' }));
+	await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(2));
 	expect(api.POST.mock.calls[1][1].body).toEqual({
 		request_id: original,
-		expected_revision: 3,
+		expected_revision: 2,
 		answer: 'Yes'
 	});
 	// A confirmed submission ends the retry identity; a later intentional answer is new.
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
-	await user.type(screen.getByLabelText('Your answer'), 'Yes');
+	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
 	await user.click(screen.getByRole('button', { name: 'Save answer' }));
 	expect(api.POST.mock.calls[2][1].body.request_id).not.toBe(original);
 });

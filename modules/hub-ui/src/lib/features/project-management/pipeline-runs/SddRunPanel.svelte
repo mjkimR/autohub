@@ -1,4 +1,6 @@
 <script lang="ts">
+	import DecisionOutcome from './DecisionOutcome.svelte';
+	import { decisionIntent, decisionBasis } from './decision-intents.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -20,6 +22,8 @@
 	let {
 		run,
 		onchange,
+		showOutcome = true,
+		onreconcile = () => {},
 		disabled = false,
 		questionPending = false,
 		selectedRequestId,
@@ -27,6 +31,8 @@
 	}: {
 		run: components['schemas']['PipelineRunRead'];
 		onchange: () => void | Promise<void>;
+		showOutcome?: boolean;
+		onreconcile?: () => void | Promise<void>;
 		disabled?: boolean;
 		questionPending?: boolean;
 		selectedRequestId?: string;
@@ -91,22 +97,24 @@
 	}
 	const ids = new SvelteMap<string, string>();
 	async function decide(decision: 'approve' | 'revise' | 'reject' | 'revoke') {
-		if (busy || disabled || questionPending) return;
+		if (busy || disabled || questionPending || decisionIntent(run.id).unresolved) return;
 		const intent = JSON.stringify([run.id, run.revision, decision, feedback]);
 		if (!ids.has(intent)) ids.set(intent, crypto.randomUUID());
 		busy = true;
 		onbusychange(true);
 		error = '';
 		try {
-			const result = await api.POST('/api/v1/pipeline-runs/{run_id}/resume', {
-				params: { path: { run_id: run.id } },
-				body: {
+			await decisionIntent(run.id).submit(
+				'resume',
+				{
 					request_id: ids.get(intent)!,
 					expected_revision: run.revision,
 					decision,
 					feedback
-				}
-			});
+				},
+				decisionBasis(run)
+			);
+			const result = { error: null };
 			if (result.error) throw new Error(apiErrorMessage(result.error, 'Decision was not applied'));
 			await onchange();
 			mode = null;
@@ -120,9 +128,17 @@
 	}
 </script>
 
+{#if showOutcome}<DecisionOutcome
+		runId={run.id}
+		head={decisionBasis(run)}
+		revision={run.revision}
+		{terminal}
+		onrefresh={onchange}
+	/>{/if}
 <SddNextAction {run} />
 {#if spec.startsWith('docs/proposals/PROP-')}<SddPlanningEvidence {progress} {evidenceUrl} />{/if}
 <SddWorkflowRequests
+	{onreconcile}
 	{selectedRequestId}
 	{run}
 	{onchange}
