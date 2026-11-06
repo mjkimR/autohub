@@ -59,3 +59,7 @@ The member table is primary. The captured basis and completeness notice sit abov
 ## 5. Evidence
 
 The implemented panel and UI regression suite are `modules/hub-ui/src/lib/features/project-management/repositories/SddMilestonePreview.svelte` and `SddMilestonePreview.integration.test.ts` beside it. Style uses `modules/hub-ui/src/routes/layout.css`. Catalog and member duplicate observations retain incomplete warnings and disabled controls. Existing owned PR links remain available before enrollment; no run is invented. Execution evidence is timestamped separately from repository content. This contract follows source/test inspection; executed checks are recorded in the spec verification record, not a live browser/deployment claim.
+
+## 6. Adjacent execution selection
+
+`UX-sdd-batch` is a separate panel below the observational preview and is available for retained-batch lookup even without a current preview. Open execution selection uses the complete captured basis with an initially empty explicit selection. It can include supported prerequisite-held future intent. The preview's own eligible-only local subset stays observational and is never silently copied into execution selection.

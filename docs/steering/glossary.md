@@ -21,6 +21,7 @@ summary: "Read before naming product concepts or distinguishing scheduler, PR, S
 | Schedule job | One recorded scheduler execution, including attempts, logs and retry outcome. | `CAP-EXEC-scheduling-maintenance` | PR run | `ScheduleJob` |
 | System maintenance | Protected shared schedule for retained background work and cleanup. | `CAP-EXEC-scheduling-maintenance` | external tick | `system.maintain` |
 | SDD unit | A connected repository's native proposal or change spec used by devkit workflow evaluation. | `CAP-SDD-native-delivery` | Work Item | `spec_dir`, `unit_kind` |
+| SDD batch | Immutable selected sequential native-unit intent and retained admission/control evidence; excludes a Work Plan, a native activity and its PR run. | `CAP-SDD-native-delivery` | batch job, Work Plan | `SddBatch`, `SddBatchMember` |
 | Native SDD activity | Hub admission and execution of repository-native Planning or Development work. | `CAP-SDD-native-delivery` | SDK flow | `activity_kind` |
 | Repository viewer | Read-only access to a selected branch's documents and recorded execution lineage. | `CAP-DOC-repository-viewer` | execution coordinator | `RepositoryService` |
 | SDK task/flow run | External manifest execution in the SDK host's durable ledger; excludes PR and scheduler runs. | `CAP-SDK-task-flow-execution` | PR run, schedule job | `RunView`, `sdk_flow_runs` |

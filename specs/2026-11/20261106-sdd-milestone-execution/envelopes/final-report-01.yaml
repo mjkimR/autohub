@@ -1,0 +1,22 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T01:51:28.718819Z'
+status: completed
+summary: Implemented immutable sequential SDD selection, shared exact admission/recovery claims, native-owner progression, revisioned future-admission controls, fair maintenance, retention tombstones and durable UI. Code review4 and reconcile round2 passed; all14 Living Spec targets resolved.
+findings: []
+assumptions:
+- Before/after uses behavioral baseline and retained historical-module failing probes without checkout; no numeric performance claim.
+unverified_areas:
+- No deployment live GitHub/provider or live browser verification; Host owns integration and final landed-head checks.
+checks:
+  tests: PASS broad backend276/42skips; latest backend31/5PGskips plus individual68; dedicated PostgreSQL34 then latest27 plus migration roundtrip; latest UI35
+  build: PASS just check backend/SDK typing Svelte types and production build
+  lint: PASS just lint; final cumulative35 rules zero violations/errors/notices; whitespace clean
+  generated: PASS typed API regenerated and final freshness stale=0
+  review: PASS fresh high code round4 and reconcile round2; all findings resolved
+diff_scope:
+  base: e0eb0e1991919c59801ab513e75e8581111c3767
+  head: 3e9ece9b612b912028a69478ad4bf73cc44e3b19
+activity_effort: high

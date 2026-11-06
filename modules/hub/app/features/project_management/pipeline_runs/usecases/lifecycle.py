@@ -88,7 +88,9 @@ class PipelineRunUseCase:
     async def get(self, run_id: UUID) -> PipelineRunRead:
         return await PipelineRunQueries(self.repo).get(run_id)
 
-    async def enroll(self, project_id: UUID, request: EnrollPullRequest) -> PipelineRunRead:
+    async def enroll(
+        self, project_id: UUID, request: EnrollPullRequest, *, admission: tuple[UUID, str] | None = None
+    ) -> PipelineRunRead:
         async with AsyncTransaction() as session:
             project = await self.projects.get(session, project_id)
             if not project.enabled:
@@ -198,6 +200,10 @@ class PipelineRunUseCase:
                         revision=1,
                     ),
                 )
+                if admission:
+                    from app.features.project_management.sdd.activity_claims import bind_enrollment
+
+                    await bind_enrollment(session, project, run, admission)
                 if inspect_only:
                     await self._record_external_implementation(session, run, repository)
                 return PipelineRunRead.model_validate(run)

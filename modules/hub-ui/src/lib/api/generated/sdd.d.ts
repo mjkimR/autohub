@@ -161,9 +161,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/sdd/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Batches */
+        get: operations["list_batches_api_v1_projects__project_id__sdd_batches_get"];
+        put?: never;
+        /** Create Batch */
+        post: operations["create_batch_api_v1_projects__project_id__sdd_batches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/sdd/batches/{batch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Batch */
+        get: operations["get_batch_api_v1_projects__project_id__sdd_batches__batch_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/sdd/batches/{batch_id}/controls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Control Batch */
+        post: operations["control_batch_api_v1_projects__project_id__sdd_batches__batch_id__controls_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export interface components {
     schemas: {
+        /** BatchRead */
+        BatchRead: {
+            /** Id */
+            id: string;
+            /** Project Id */
+            project_id: string;
+            /** State */
+            state: string;
+            /** Revision */
+            revision: number;
+            /** Exclusion */
+            exclusion: boolean;
+            /** Detail */
+            detail: string | null;
+            /** Basis */
+            basis: {
+                [key: string]: unknown;
+            };
+            /** Evaluation */
+            evaluation: {
+                [key: string]: unknown;
+            };
+            /** Members */
+            members: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** BatchSelection */
+        BatchSelection: {
+            /** Id */
+            id: string;
+            /** Path */
+            path: string;
+            /**
+             * Activity
+             * @enum {string}
+             */
+            activity: "plan" | "dev";
+            /** Planning Effort */
+            planning_effort?: ("low" | "medium" | "high") | null;
+            /** Dev Effort */
+            dev_effort?: ("low" | "medium" | "high") | null;
+            /** Planning Catalog */
+            planning_catalog?: string | null;
+            /** Dev Catalog */
+            dev_catalog?: string | null;
+        };
+        /** ControlBatch */
+        ControlBatch: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "pause" | "resume" | "stop";
+        };
+        /** CreateBatch */
+        CreateBatch: {
+            /** Ref */
+            ref: string;
+            /** Milestone Id */
+            milestone_id: string;
+            /** Milestone Path */
+            milestone_path?: string | null;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Sha */
+            expected_sha: string;
+            /**
+             * Through Development
+             * @constant
+             */
+            through_development: true;
+            /** Members */
+            members: components["schemas"]["BatchSelection"][];
+        };
         HTTPValidationError: CommonComponents["schemas"]["HTTPValidationError"];
         LinkedIssue: CommonComponents["schemas"]["LinkedIssue"];
         /** MilestoneList */
@@ -181,6 +318,10 @@ export interface components {
         };
         /** MilestoneMember */
         MilestoneMember: {
+            /** Planning Effort */
+            planning_effort?: ("low" | "medium" | "high") | null;
+            /** Dev Effort */
+            dev_effort?: ("low" | "medium" | "high") | null;
             /** Id */
             id: string;
             /** Path */
@@ -226,6 +367,8 @@ export interface components {
         };
         /** MilestonePreview */
         MilestonePreview: {
+            /** Default Catalog */
+            default_catalog?: string | null;
             /** Project Id */
             project_id: string;
             /** Repository */
@@ -705,6 +848,140 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MilestonePreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_batches_api_v1_projects__project_id__sdd_batches_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_batch_api_v1_projects__project_id__sdd_batches_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_batch_api_v1_projects__project_id__sdd_batches__batch_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_batch_api_v1_projects__project_id__sdd_batches__batch_id__controls_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ControlBatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchRead"];
                 };
             };
             /** @description Validation Error */

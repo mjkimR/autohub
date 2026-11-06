@@ -31,13 +31,13 @@ async def _basis(github, repository: str, ref: str) -> str:
     return row["sha"]
 
 
-async def activity_pulls(github, repository: str, branch: str) -> list[dict]:
+async def activity_pulls(github, repository: str, branch: str, *, state="open") -> list[dict]:
     """Read every matching page or explicitly refuse complete ownership evidence."""
     rows = []
     for page in range(1, LIMITS["pull_pages"] + 1):
         found = await github.reader._get_list(
             f"/repos/{repository}/pulls",
-            {"head": f"{repository.split('/')[0]}:{branch}", "state": "open", "per_page": 100, "page": page},
+            {"head": f"{repository.split('/')[0]}:{branch}", "state": state, "per_page": 100, "page": page},
         )
         rows.extend(found)
         if len(found) < 100:
@@ -65,11 +65,12 @@ async def list_milestones(observer, project, ref: str) -> dict:
             }
 
 
-async def preview_milestone(observer, project, request, runs_for) -> dict:
+async def preview_milestone(observer, project, request, runs_for, *, capture=False, retained_dependencies=()) -> dict:
     if request.milestone_path:
         safe_path(request.milestone_path)
     token = await observer.get_token(project.github_connector_id, "github")
     result = {
+        "default_catalog": str(getattr(project, "ai_catalog_id", None) or "personal-codex"),
         "project_id": str(project.id),
         "repository": project.github_repository,
         "requested_ref": request.ref,
@@ -103,6 +104,10 @@ async def preview_milestone(observer, project, request, runs_for) -> dict:
                 result["counts"]["members"] = len(members)
                 if len(members) > LIMITS["members"]:
                     graph.reasons.append("Direct member limit exceeded")
+                if capture:
+                    from .batch_evidence import canonical_resolutions, capture_basis, content_basis
+
+                    result["batch_basis"] = await capture_basis(root, graph, members)
                 milestone_holds = await graph.dependencies(milestone)
                 for row in members[: LIMITS["members"]]:
                     member = {
@@ -120,6 +125,10 @@ async def preview_milestone(observer, project, request, runs_for) -> dict:
                     result["members"].append(member)
                     try:
                         meta = metadata(root, row["path"])
+                        for effort_key in ("planning_effort", "dev_effort"):
+                            member[effort_key] = (
+                                meta.get(effort_key) if meta.get(effort_key) in ("low", "medium", "high") else "medium"
+                            )
                         status = meta.get("status")
                         activity = "plan" if status == "draft" else "dev" if status == "accepted" else None
                         member["activity_kind"] = activity
@@ -212,6 +221,13 @@ async def preview_milestone(observer, project, request, runs_for) -> dict:
                             + (f"{exc.code}: {exc.detail}" if isinstance(exc, ProjectError) else type(exc).__name__)
                         )
                         graph.reasons.append(f"Partial member evaluation: {row['id']} ({row['path']})")
+                if capture:
+                    result["batch_basis"]["milestone"] = content_basis(root, milestone)
+                    result["batch_basis"]["graph"] = [dict(edge) for edge in graph.edges]
+                    result["batch_basis"]["canonical_resolutions"] = await canonical_resolutions(
+                        root, retained_dependencies
+                    )
+
     except TimeoutError:
         result["reasons"].append("Preview deadline exceeded")
     except ProjectError as exc:

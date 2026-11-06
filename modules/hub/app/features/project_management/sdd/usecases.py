@@ -27,15 +27,18 @@ class SddUseCase:
         self.projects, self.observer, self.run_use_case = projects, observer, runs
 
     async def start_activity(self, project_id, activity, slug, request, actor: str) -> PipelineRunRead:
-        from .activities import ActivityStarter
+        from .activity_claims import ActivityClaims
 
         async with AsyncTransaction() as session:
-            project = await self.projects.get(session, project_id)
+            project = await self.projects.get(session, project_id, lock=True)
             if project.project_type != "sdd":
                 raise ProjectError(422, "Select sdd project mode first")
             if not project.enabled or not project.github_repository or not project.github_connector_id:
                 raise ProjectError(422, "Enable the project and connect its GitHub repository")
-        return await ActivityStarter(self.observer, self.run_use_case).start(project, activity, slug, request, actor)
+            claims = ActivityClaims(self.projects, self.observer, self.run_use_case)
+            claim = await claims.reserve(session, project, activity, slug, request, actor)
+            claim_id = claim.id
+        return await claims.execute(project_id, claim_id)
 
     async def proposals(self, project_id, base_branch) -> ProposalList:
         from .proposals import list_proposals

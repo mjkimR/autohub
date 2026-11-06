@@ -3,7 +3,7 @@ id: PROP-sdd-milestone-execution-target
 title: Living Spec targets for PROP-sdd-milestone-execution
 summary: "Candidate contract and interface updates for execute selected sdd milestone work sequentially."
 status: draft
-proposal: PROP-sdd-milestone-execution
+proposal: SPEC-sdd-milestone-execution
 created_at: 2026-11-05
 targets:
   - file: docs/capabilities/sdd/CAP-SDD-native-delivery.md
@@ -117,7 +117,7 @@ Keep `UC-start-sdd-activity` registration semantics; add batch-origin links and 
 
 ## 3. Architecture and Decision Impact
 
-Promote `PADR-sdd-batch-ledger` and restate its clauses in `CAP-SDD-native-delivery` and `ARCH-06-execution`. Describe Project→Batch→shared activity reservation lock order, immutable selection, admission linearization, expected-base seam, recovery checkpoints and retention protection. No separate PR executor or new feature dependency edge is assumed.
+Promote `ADR-sdd-batch-ledger` and restate its clauses in `CAP-SDD-native-delivery` and `ARCH-06-execution`. Describe Project→Batch→shared activity reservation lock order, immutable selection, admission linearization, expected-base seam, recovery checkpoints and retention protection. No separate PR executor or new feature dependency edge is assumed.
 
 ## 4. Development Conventions and Governance
 

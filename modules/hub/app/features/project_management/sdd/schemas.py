@@ -97,6 +97,8 @@ class MilestonePreviewRequest(BaseModel):
 
 
 class MilestoneMember(BaseModel):
+    planning_effort: Literal["low", "medium", "high"] | None = None
+    dev_effort: Literal["low", "medium", "high"] | None = None
     id: str
     path: str
     title: str = ""
@@ -113,6 +115,7 @@ class MilestoneMember(BaseModel):
 
 
 class MilestonePreview(BaseModel):
+    default_catalog: str | None = None
     project_id: str
     repository: str
     requested_ref: str

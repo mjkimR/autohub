@@ -5,10 +5,12 @@ summary: "Auto Hub claims due schedules, records bounded task execution and cont
 area: execution
 status: active
 usecases:
+  - UC-execute-sdd-batch
   - UC-run-due-work
 entrypoints:
   - modules/hub/app/features/execution/dispatchers/usecases/dispatch.py
   - modules/hub/app/features/scheduling/schedule_configs/api/v1.py
+  - modules/hub/app/features/execution/tasks/domains/maintenance/sdd_batches.py
 ---
 
 # [CAP-EXEC-scheduling-maintenance] Scheduling and shared maintenance
@@ -136,3 +138,12 @@ cases require PostgreSQL and cannot be established by SQLite tests alone.
 See [deployment operations](../../operations/cloud-run-deployment.md#6-register-cloud-scheduler-periodic-trigger)
 for external trigger provisioning and [operator diagnostics](../../operations/operator-notices.md)
 for inspecting maintenance and retained history.
+
+## 6. SDD batch maintenance
+
+1. **Bounded batch progress**: WHEN maintenance advances SDD batches, Hub MUST attempt at most four batches per invocation and at most one bounded transition per batch, rotating a persisted UUID cursor across eligible batches. Check: `modules/hub/tests/integration/features/execution/maintenance/test_sdd_batches.py`.
+2. **Batch failure isolation**: IF a selected batch raises, THEN maintenance MUST log that isolated failure and attempt the remaining selected batches; a later maintenance invocation retries the retained admission. Check: the same maintenance suite.
+3. **Unresolved admission retention**: WHILE an SDD activity claim is unresolved, maintenance MUST preserve its linked run and recovery evidence. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_claims.py`.
+4. **Settled admission tombstones**: WHEN a settled activity's run becomes eligible for pruning, maintenance MUST retain its settled claim identity and remove only its run link so replay cannot create replacement activity artifacts. Check: the same claim suite.
+
+This task uses the existing externally triggered `system.maintain` schedule. `CAP-SDD-native-delivery` owns batch transitions and `CAP-SDD-workflow-control` owns activity decisions; maintenance supplies no separate approval or merge path.

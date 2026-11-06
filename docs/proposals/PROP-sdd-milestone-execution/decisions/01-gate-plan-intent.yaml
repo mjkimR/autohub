@@ -1,9 +1,0 @@
-request: gate:plan-intent
-kind: approve
-action: accept
-workflow: sdd-proposal
-stage: intent-proposal
-note: User authorized advance Planning of all three successor proposals with prerequisite
-  order override for Planning only.
-by: user
-at: '2026-11-05T06:20:40.685472Z'

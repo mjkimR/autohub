@@ -1,0 +1,50 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T01:48:36.907379Z'
+status: completed
+summary: round 1; all 14 targets recorded; five document reflections require correction to match retained behavior.
+findings:
+- issue: The documented batch-control route has the wrong suffix.
+  evidence: docs/capabilities/sdd/CAP-SDD-native-delivery.md:219; modules/hub/app/features/project_management/sdd/api.py:126
+  failure_condition: POST /batches/{batch_id}/control differs from implemented /controls.
+  suggested_action: Replace POST /{batch_id}/control with POST /{batch_id}/controls.
+  resolution: open
+  severity: P1
+- issue: The immutable-basis rule forbids permitted unrelated base advances.
+  evidence: docs/capabilities/sdd/CAP-SDD-native-delivery.md:207; modules/hub/app/features/project_management/sdd/batch_driver.py:83
+  failure_condition: An unrelated descendant changes SHA with unchanged protected inputs; driver permits admission while wording forbids it.
+  suggested_action: Separate creation exact expected SHA from later descendant admission after fresh complete unchanged-input evidence; refuse unknown or rewritten ancestry and unexplained protected changes.
+  resolution: open
+  severity: P1
+- issue: Shared-reservation wording promises adoption of another compatible reservation.
+  evidence: docs/capabilities/sdd/CAP-SDD-native-delivery.md:210; modules/hub/app/features/project_management/sdd/activity_claims.py:22
+  failure_condition: A different batch request encounters an unsettled individual reservation; reserve conflicts rather than transfers it.
+  suggested_action: Matching original request receipts recover their exact owner and saved artifacts; a different unsettled reservation conflicts and remains authoritative, preventing duplicate admission. Keep owned-PR recovery distinct.
+  resolution: open
+  severity: P1
+- issue: SDD batch maintenance does not report aggregate failure.
+  evidence: docs/capabilities/execution/CAP-EXEC-scheduling-maintenance.md:145; modules/hub/app/features/execution/tasks/domains/maintenance/sdd_batches.py:45
+  failure_condition: A batch tick raises; loop logs and continues without aggregate reporting.
+  suggested_action: State isolated failure logging, remaining selected attempts, and later retry of retained admission.
+  resolution: open
+  severity: P1
+- issue: The promoted batch UX attributes adjacent/owner content and mutation effects to the batch panel.
+  evidence: docs/ux/sdd/UX-sdd-batch.md:25; docs/ux/sdd/UX-sdd-batch.md:32; docs/ux/sdd/UX-sdd-batch.md:39; docs/ux/sdd/UX-sdd-batch.md:43; docs/ux/sdd/UX-sdd-batch.md:57
+  failure_condition: Retained lookup without preview lacks full graph/source/workflow details; GET refresh cannot reconcile or resume.
+  suggested_action: 'Clarify sections2-4: graph/source/prerequisite inspection is adjacent UX-sdd-milestone-preview; detailed authority/merge inspection is owner dialog. Retained rows show actual path/current SPEC, safe detail, preferences, claims/artifacts/owners. Refresh reads maintenance results only. Preserve accepted boundaries.'
+  resolution: open
+  severity: P1
+assumptions:
+- Independent read-only reviewer used absolute worktree scope and HEAD/status audits; emulated isolation supplies no native guarantee.
+unverified_areas:
+- No live browser deployment provider or GitHub execution.
+checks:
+  rules: PASS zero violations/errors/notices
+  targets: PASS all14 changed targets recorded
+  fixed_head: PASS clean unchanged 5cb184a
+diff_scope:
+  base: e0eb0e1991919c59801ab513e75e8581111c3767
+  head: 5cb184a4a03c163aa9d7b49d1cd82930a1284d49
+activity_effort: high

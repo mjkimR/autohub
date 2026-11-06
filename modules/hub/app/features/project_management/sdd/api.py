@@ -5,6 +5,9 @@ from app.auth import CurrentUser
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from fastapi import APIRouter, Depends, Path, Query
 
+from . import batch_models  # noqa: F401 -- register durable batch metadata
+from .batch_schemas import BatchRead, ControlBatch, CreateBatch
+from .batch_usecases import SddBatchUseCase
 from .schemas import (
     SPEC_PATTERN,
     MilestoneList,
@@ -101,3 +104,31 @@ async def preview_milestone(
 ):
     """Observe bounded member readiness without creating or resuming activities."""
     return await use_case.milestone_preview(project_id, request)
+
+
+@router.post("/batches", response_model=BatchRead, status_code=201)
+async def create_batch(
+    project_id: UUID, request: CreateBatch, user: CurrentUser, use_case: Annotated[SddBatchUseCase, Depends()]
+):
+    return await use_case.create(project_id, request, f"user:{user.id}")
+
+
+@router.get("/batches", response_model=list[BatchRead])
+async def list_batches(project_id: UUID, use_case: Annotated[SddBatchUseCase, Depends()]):
+    return await use_case.lists(project_id)
+
+
+@router.get("/batches/{batch_id}", response_model=BatchRead)
+async def get_batch(project_id: UUID, batch_id: UUID, use_case: Annotated[SddBatchUseCase, Depends()]):
+    return await use_case.get(project_id, batch_id)
+
+
+@router.post("/batches/{batch_id}/controls", response_model=BatchRead)
+async def control_batch(
+    project_id: UUID,
+    batch_id: UUID,
+    request: ControlBatch,
+    user: CurrentUser,
+    use_case: Annotated[SddBatchUseCase, Depends()],
+):
+    return await use_case.control(project_id, batch_id, request, f"user:{user.id}")
