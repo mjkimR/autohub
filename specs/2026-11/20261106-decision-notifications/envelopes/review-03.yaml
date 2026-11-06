@@ -1,0 +1,23 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T05:35:36.771663Z'
+status: completed
+summary: round 3; Reconcile batch confirmed. One distinct P1 stale receipt under a fresh unknown command; exact two-line suggestion and regressions supplied.
+findings:
+- issue: A new command can display the previous command's recorded result.
+  evidence: decision-notices.svelte.ts:72-80 and DecisionNotices.svelte:133-142; reviewer isolated probe failed subscription and resend cases.
+  failure_condition: After a settled save, a fresh unknown save or resend retains the old outcome under the new request identity.
+  suggested_action: Set this.outcome = null in save() and resend() immediately before replacing this.intent. Preserve outcome during identical retry/check. Add parameterized settled-to-new-unknown regressions.
+  resolution: open
+  severity: P1
+assumptions:
+- Emulated fixedHEAD/status isolation; authorized ignored probes only, no tracked/index/HEADwrites or outside reads. Distinct failure condition, not recurrence.
+checks:
+  rules: PASS independent CI rules0errors0warnings
+  probe: FAIL two isolated stale receipt regressions before fix
+diff_scope:
+  base: f0697e4e4182bd0d6ab8eab2e67c570df28de533
+  head: 7f042def5168634ff4bb168349b295c658e9cd1e
+activity_effort: high

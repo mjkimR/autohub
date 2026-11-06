@@ -71,11 +71,13 @@ export class DecisionNoticeState {
 	}
 	async save(body: Write) {
 		if (this.unresolved || this.busy) return;
+		this.outcome = null;
 		this.intent = { operation: 'subscription', body: JSON.parse(JSON.stringify(body)) };
 		await this.retry();
 	}
 	async resend(noticeId: string, body: Resend) {
 		if (this.unresolved || this.busy) return;
+		this.outcome = null;
 		this.intent = { operation: 'resend', noticeId, body: JSON.parse(JSON.stringify(body)) };
 		await this.retry();
 	}

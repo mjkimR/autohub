@@ -162,3 +162,34 @@ test('owner-proven missing-project refusal permits fresh correction while unavai
 	await uncertain.save(body);
 	expect(uncertain.unresolved).toBe(true);
 });
+
+test.each(['subscription', 'resend'] as const)(
+	'fresh unknown %s never inherits a settled request receipt',
+	async (operation) => {
+		const state = new DecisionNoticeState('stale-' + operation);
+		api.PUT.mockResolvedValueOnce({
+			data: {
+				record_state: 'recorded',
+				operation: 'subscription',
+				request_id: 'old',
+				result: { revision: 1 },
+				current
+			}
+		});
+		await state.save({ ...body, request_id: 'old' });
+		expect(state.outcome?.request_id).toBe('old');
+		api.PUT.mockRejectedValueOnce(new Error('lost new response'));
+		api.POST.mockRejectedValueOnce(new Error('lost new response'));
+		if (operation === 'subscription') await state.save({ ...body, request_id: 'new' });
+		else
+			await state.resend('notice', {
+				request_id: 'new',
+				expected_revision: 1,
+				expected_destination_generation: 2,
+				acknowledge_possible_duplicate: true
+			});
+		expect(state.intent?.body.request_id).toBe('new');
+		expect(state.unresolved).toBe(true);
+		expect(state.outcome).toBeNull();
+	}
+);
