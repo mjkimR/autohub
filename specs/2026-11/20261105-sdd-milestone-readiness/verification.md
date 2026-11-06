@@ -36,3 +36,23 @@ The two full isolated-suite skips are the PostgreSQL-only row-lock and publicati
 ## Final PostgreSQL verification
 
 `AUTOHUB_TEST_SDD_APP_COMMON="$PWD/.cache/sdd-review-app-common" just test-sdd-pg .cache/sdd-review` passed **115 tests with no skips**, using both provisioned locked profiles and real OS isolation. This includes both PostgreSQL contention cases and the final historical-flat-anchor fixture. The earlier SQLite skips are closed by this separate execution, without a locking implementation change. Final backend types, required read-only lint, document/hygiene rules, generated API freshness and committed-range whitespace/governance checks passed. Full UI remains 229 passed; complete owning SDD units plus new API/real Git/catalog fixtures remain 153 passed. Counts describe distinct runs and overlap; they are not summed.
+
+## Host post-landing verification
+
+The local no-ff integration landed at `a1580cd0376fb3ac7d8b2b3c6e9c7738f15cc061`, containing reviewed source `9b8b5ba7074012f267163ca9db82d508931691a5`. The saved premerge target was `01e1bd2251c526c3fe5107f3c2929931a073df77`. Its additional changes since the worker baseline concern test execution, fixtures, dependencies and approval settings. Integration used the retained base's `dev-integration=auto` policy after the user's approval of the same source and local cleanup effects. The development worktree, local branch and scope record were removed. No network publication occurred.
+
+Fresh processes executed these checks against the landed main runtime:
+
+- `uv sync --no-active --locked --all-packages`: passed.
+- `uv run --no-active devkit sync --check`: passed with no changes.
+- `uv run --no-active devkit generated check`: passed, one artifact checked and none stale.
+- `just lint-check`: passed, including backend, SDK, UI and document/hygiene checks.
+- `just check`: passed backend/SDK types, Svelte types and production UI build.
+- `just check-ui-api`: passed.
+- `just test-ui`: 229 passed across 40 files.
+- `just test`: 1,284 passed and 62 skipped. The initial sandboxed run failed one local HTTP listener test because socket creation was denied; the complete rerun with the required host permission passed without source changes.
+- `AUTOHUB_TEST_SDD_APP_COMMON="$PWD/.cache/sdd-app-common-v016" just test-sdd-pg .cache/sdd-v016`: 115 passed with no skips. Both runtime pin lock hashes matched the committed manifests. The initial sandboxed invocation could not access Docker and OS isolation; the permitted rerun passed without source changes.
+- `uv run --no-active devkit rules check --ci --base 01e1bd2251c526c3fe5107f3c2929931a073df77`: passed 35 rules with no errors or warnings.
+- `devkit workflow next` with the executed lint/merge evidence reports all stages complete.
+
+The repository has no affected-test selector, so the complete backend and UI suites were used. PostgreSQL SDD coverage overlaps those tests and is reported separately. This record adds no deployment, live GitHub or rendered-browser evidence.
