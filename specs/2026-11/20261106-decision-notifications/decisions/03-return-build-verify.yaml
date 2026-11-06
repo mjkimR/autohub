@@ -1,0 +1,10 @@
+request: return:build-verify
+kind: return
+action: accept
+workflow: sdd-spec-feature
+stage: build-verify
+note: Independent reconcile found missing original result rendering, definitive deleted-project
+  refusal recovery and retained disclosure content. Preserve contract and fix all
+  findings.
+by: host
+at: '2026-11-06T05:29:18.556247Z'
