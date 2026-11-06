@@ -2,7 +2,7 @@
 id: SPEC-work-plan-templates
 title: Create fresh Work Plans from reusable templates
 summary: Save reusable Work Plan specifications, local dependencies and execution preferences, then create explicitly reviewed new registrations without copying execution history or authority.
-status: in-progress
+status: completed
 created: 2026-11-06
 related_capabilities: [CAP-WORK-work-plan-execution]
 related_usecases: [UC-execute-work-plan]
