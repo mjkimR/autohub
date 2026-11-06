@@ -1,0 +1,24 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T06:29:47.640464Z'
+status: completed
+summary: round 4; REVISE recurring P2 original Plan navigation; loading mutation guards corrected; bounded recovery required
+findings:
+- issue: 'recurs: review-03.yaml #1; data-sveltekit-reload does not remount same-path fragment navigation.'
+  evidence: TemplateOutcome.svelte:39-43; installed @sveltejs/kit/src/runtime/client/client.js:2748,2760-2795 keeps same-path hash navigation; WorkPlansPanel locates only on mount.
+  failure_condition: Existing Plans tab lifecycle/group filter excludes original Plan; receipt link or same-hash repeat preserves filter and absent card.
+  suggested_action: Existing WorkPlansPanel exact-Plan reveal callback clears filters, closes Templates, refreshes as needed and tick/focuses exact card; retain anchor for fresh/modified navigation. Test mounted filtered interaction including same hash.
+  resolution: open
+  severity: P2
+assumptions:
+- Emulated fixed refs/status; no writes; authorized installed SvelteKit read inside worktree
+checks:
+  tests: PASS UI71; owner158/13skip and PG34 unchanged
+  lint: PASS just lint and independent cumulative rules
+  build: PASS just check backend/SDK/Svelte/build
+diff_scope:
+  base: 8c1c95b895a6c4a75e971493416be279f0759ea3
+  head: d05fe1f2b5f7330148d06bf5a298f29224a28596
+activity_effort: high

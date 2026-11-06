@@ -1,0 +1,27 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T06:26:58.295428Z'
+status: completed
+review: review-03.yaml
+summary: Closes review-03 both concrete fixes; three fail-before navigation/loading regressions now pass in UI71. Exact full-reload anchor navigation retains existing initial-load focus. Recurring P2 requires fresh high round4.
+findings:
+- issue: 'recurs: review-02.yaml #2; original Plan navigation fails when same-tab filter excludes card.'
+  evidence: TemplateOutcome.svelte:39-42; WorkPlansPanel.svelte:119-127; review03 filtered-anchor probe failed.
+  failure_condition: Follow original draft receipt link while mounted Plans tab filters to active; original card stays absent.
+  suggested_action: Add data-sveltekit-reload to original exact Plan anchor and test full-reload attribute plus mount/focus.
+  resolution: resolved
+  severity: P2
+- issue: Source extraction and confirmed deletion remain available during loading.
+  evidence: WorkPlanTemplates.svelte:420,431 and save/extract/remove handlers; review03 pending read probe failed.
+  failure_condition: Delayed template loading leaves source/delete mutation buttons enabled.
+  suggested_action: Add loading to source/delete disabled conditions and guard save/extract/remove at entry; test delayed reads.
+  resolution: resolved
+  severity: P2
+checks:
+  tests: PASS UI71; unchanged backend owner158 PG34 retained
+diff_scope:
+  base: 8c1c95b895a6c4a75e971493416be279f0759ea3
+  head: 97bc265c3efacabea6a45c165d36fd9aac8ef278
+activity_effort: high

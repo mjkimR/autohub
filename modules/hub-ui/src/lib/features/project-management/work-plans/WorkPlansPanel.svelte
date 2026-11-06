@@ -1,10 +1,12 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
+	import { SvelteURL } from 'svelte/reactivity';
 	import { api, type components } from '$lib/api';
 	import { allPages, responseData } from '$lib/api/pagination';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
 	import WorkPlanForm from './WorkPlanForm.svelte';
+	import WorkPlanTemplates from './WorkPlanTemplates.svelte';
 	import WorkPlanActivity from './WorkPlanActivity.svelte';
 	import WorkPlanGroup from './WorkPlanGroup.svelte';
 	import WorkItemRecovery from './WorkItemRecovery.svelte';
@@ -16,6 +18,7 @@
 	let error = $state('');
 	let busy = $state('');
 	let creating = $state(false);
+	let templatesOpen = $state(false);
 	let filter = $state('all');
 	let groupFilter = $state('all');
 	let groupEditing = $state<Plan | undefined>();
@@ -114,8 +117,33 @@
 		groupEditing = undefined;
 		void load();
 	}
+	async function revealPlan(id: string) {
+		filter = 'all';
+		groupFilter = 'all';
+		templatesOpen = false;
+		if (!plans.some((plan) => plan.id === id)) await load();
+		await tick();
+		const card = document.getElementById(`work-plan-${id}`);
+		if (!card) {
+			error = 'Original Plan unavailable. Refresh plans to inspect retained work.';
+			return;
+		}
+		const url = new SvelteURL(window.location.href);
+		url.searchParams.set('tab', 'plans');
+		url.hash = `work-plan-${id}`;
+		window.history.replaceState(window.history.state, '', url);
+		card.scrollIntoView?.();
+		card.focus();
+	}
 	onMount(() => {
-		void load();
+		void load().then(async () => {
+			await tick();
+			if (window.location.hash.startsWith('#work-plan-')) {
+				const card = document.getElementById(window.location.hash.slice(1));
+				card?.scrollIntoView?.();
+				card?.focus();
+			}
+		});
 		const timer = setInterval(() => {
 			if (!creating && !editing && !groupEditing && !busy) void load();
 		}, 15000);
@@ -133,7 +161,10 @@
 			</p>
 		</div>
 		<div class="flex gap-2">
-			<Button variant="outline" onclick={load}>Refresh</Button><Button
+			<Button variant="outline" onclick={() => (templatesOpen = true)}>Templates</Button><Button
+				variant="outline"
+				onclick={load}>Refresh</Button
+			><Button
 				disabled={!project.github || creating || !!editing || !!groupEditing}
 				onclick={() => (creating = true)}>Add plan</Button
 			>
@@ -142,6 +173,13 @@
 	{#if error}<p role="alert" class="rounded-lg border border-destructive/30 p-4 text-sm">
 			{error}
 		</p>{/if}
+	{#if templatesOpen}{#key project.id}<WorkPlanTemplates
+				{project}
+				{plans}
+				onclose={() => (templatesOpen = false)}
+				refresh={load}
+				{revealPlan}
+			/>{/key}{/if}
 	{#if creating || editing}<WorkPlanForm
 			projectId={project.id}
 			{plans}
@@ -188,7 +226,11 @@
 			No plans in this view.
 		</p>{/if}
 	{#each visible as plan (plan.id)}
-		<article class="space-y-4 rounded-xl border bg-card p-5">
+		<article
+			id={`work-plan-${plan.id}`}
+			tabindex="-1"
+			class="space-y-4 rounded-xl border bg-card p-5"
+		>
 			<header class="flex flex-wrap justify-between gap-3">
 				<div>
 					<h3 class="text-lg font-semibold">{plan.title}</h3>

@@ -1,0 +1,40 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T06:21:48.085621Z'
+status: completed
+review: review-02.yaml
+summary: Closes review-02 four findings; three delayed-reload/structural regressions failed before fixes, then UI69 passes. Stable exact Plan anchors and state labels verified. Recurring P2 findings require fresh high round3.
+findings:
+- issue: 'recurs: review-01.yaml #2; pending basis reload permits stale review and request reuse.'
+  evidence: WorkPlanTemplates.svelte:112-164; review-02 delayed reload probe expected1 POST got2
+  failure_condition: Delay reload basis GET; review old seed before completion; registration uses old request with new basis.
+  suggested_action: Clear selected/seed/binding before reads, block review/submission while loading, publish fresh basis/request/keys with cleared review.
+  resolution: resolved
+  severity: P2
+- issue: 'recurs: review-01.yaml #3; Open original Plan navigates only to project list.'
+  evidence: TemplateOutcome.svelte:41; project route consumes only tab and panel has no anchor.
+  failure_condition: Original receipt link opens list without locating original Plan.
+  suggested_action: Add stable Plan card anchors and link original Plan anchor; verify actual destination.
+  resolution: resolved
+  severity: P2
+- issue: Unregistered active/paused previews lose structural editing after review.
+  evidence: WorkPlanForm.svelte:34-41; review-02 active-back probe Add task absent.
+  failure_condition: Active/paused unsent preview loses key/add/remove/import editing on Back.
+  suggested_action: Base persisted restrictions on editing, keep unsent seeds structurally editable, selected creation mode controls draft validation.
+  resolution: resolved
+  severity: P2
+- issue: Draft confirmation label differs from retained screen.
+  evidence: WorkPlanTemplates.svelte:267; target-docs retained editor.
+  failure_condition: Draft confirmation says Save reviewed plan.
+  suggested_action: Use Save draft, retain Register active work and existing proposed/paused labels.
+  resolution: resolved
+  severity: P3
+checks:
+  tests: PASS UI69; retained backend owner158 PG34 unchanged
+  ui: PASS lint and Svelte0errors0warnings
+diff_scope:
+  base: 8fdcdbb6771365e19fce83e5e642ba11f319d6f9
+  head: 125428f3480c5c5f4298e1fd93a2a714a7e86406
+activity_effort: high

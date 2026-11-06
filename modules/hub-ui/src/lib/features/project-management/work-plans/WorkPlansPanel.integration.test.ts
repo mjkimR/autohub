@@ -584,3 +584,71 @@ test('retains an invalid key and blocks saving after other tasks are removed or 
 		{ key: 'task-3', depends_on: [] }
 	]);
 });
+
+test('original Plan anchor locates and focuses the exact loaded card', async () => {
+	window.history.replaceState({}, '', '/projects/p1?tab=plans#work-plan-plan1');
+	try {
+		render(WorkPlansPanel, { project });
+		await screen.findByText('Login');
+		await waitFor(() => expect(document.activeElement?.id).toBe('work-plan-plan1'));
+		expect(document.getElementById('work-plan-plan1')?.contains(screen.getByText('Login'))).toBe(
+			true
+		);
+	} finally {
+		window.history.replaceState({}, '', '/');
+	}
+});
+
+test.each(['', '#work-plan-plan1'])(
+	'template receipt reveals the exact Plan in a mounted filtered panel (%s)',
+	async (hash) => {
+		sessionStorage.setItem(
+			'work-plan-template-intent:account:p1',
+			JSON.stringify({
+				version: 1,
+				state: 'recorded',
+				pending: { op: 'register', target: 'template', body: { request_id: 'receipt' } },
+				outcome: {
+					record_state: 'recorded',
+					original_plan: { id: 'plan1', state: 'active' },
+					current_plan: { state: 'active' }
+				}
+			})
+		);
+		window.history.replaceState({}, '', `/projects/p1?tab=plans${hash}`);
+		api.GET.mockImplementation(async (path: string) => ({
+			data: path.endsWith('/users/me')
+				? { id: 'account' }
+				: {
+						items: path.endsWith('/work-plans')
+							? [
+									plan,
+									{ ...plan, id: 'other', title: 'Other', state: 'completed', group_key: 'other' }
+								]
+							: [],
+						total_count: path.endsWith('/work-plans') ? 2 : 0
+					}
+		}));
+		try {
+			render(WorkPlansPanel, { project });
+			await screen.findByText('Other');
+			await fireEvent.change(screen.getByLabelText('Show'), { target: { value: 'finished' } });
+			await fireEvent.change(screen.getByLabelText('Group'), {
+				target: { value: JSON.stringify('other') }
+			});
+			expect(screen.queryByText('Login')).toBeNull();
+			await fireEvent.click(screen.getByRole('button', { name: 'Templates' }));
+			await fireEvent.click(await screen.findByRole('link', { name: 'Open original Plan' }));
+			await waitFor(() =>
+				expect((screen.getByLabelText('Show') as HTMLSelectElement).value).toBe('all')
+			);
+			expect((screen.getByLabelText('Group') as HTMLSelectElement).value).toBe('all');
+			expect(screen.queryByRole('region', { name: 'Work Plan templates' })).toBeNull();
+			await waitFor(() => expect(document.activeElement?.id).toBe('work-plan-plan1'));
+			expect(screen.getByText('Login')).toBeTruthy();
+		} finally {
+			sessionStorage.clear();
+			window.history.replaceState({}, '', '/');
+		}
+	}
+);

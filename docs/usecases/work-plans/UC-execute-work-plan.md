@@ -30,6 +30,8 @@ entrypoints:
   project. Repository binding, specification completeness, dependencies and
   capacity are checked by Hub rather than assumed.
 
+Reusable definition creation follows `UC-reuse-work-plan-templates`; its derived Plan enters the same registration and admission contract below. Saving a definition alone requests no execution.
+
 ## 2. Main Success Scenario
 
 1. The operator submits an active batch with specifications, acceptance criteria and dependencies (`CAP-WORK-work-plan-execution`).

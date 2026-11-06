@@ -1,0 +1,40 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T06:18:27.072924Z'
+status: completed
+summary: round 2; REVISE two recurring P2 findings, one new P2 and one P3; terminal recovery and creation mode corrected
+findings:
+- issue: 'recurs: review-01.yaml #2; pending basis reload permits stale review and request reuse.'
+  evidence: WorkPlanTemplates.svelte:112-164; review-02 delayed reload probe expected1 POST got2
+  failure_condition: Delay reload basis GET; review old seed before completion; registration uses old request with new basis.
+  suggested_action: Clear selected/seed/binding before reads, block review/submission while loading, publish fresh basis/request/keys with cleared review.
+  resolution: open
+  severity: P2
+- issue: 'recurs: review-01.yaml #3; Open original Plan navigates only to project list.'
+  evidence: TemplateOutcome.svelte:41; project route consumes only tab and panel has no anchor.
+  failure_condition: Original receipt link opens list without locating original Plan.
+  suggested_action: Add stable Plan card anchors and link original Plan anchor; verify actual destination.
+  resolution: open
+  severity: P2
+- issue: Unregistered active/paused previews lose structural editing after review.
+  evidence: WorkPlanForm.svelte:34-41; review-02 active-back probe Add task absent.
+  failure_condition: Active/paused unsent preview loses key/add/remove/import editing on Back.
+  suggested_action: Base persisted restrictions on editing, keep unsent seeds structurally editable, selected creation mode controls draft validation.
+  resolution: open
+  severity: P2
+- issue: Draft confirmation label differs from retained screen.
+  evidence: WorkPlanTemplates.svelte:267; target-docs retained editor.
+  failure_condition: Draft confirmation says Save reviewed plan.
+  suggested_action: Use Save draft, retain Register active work and existing proposed/paused labels.
+  resolution: open
+  severity: P3
+assumptions:
+- Emulated fixed HEAD/tree/status; reviewer only ignored round2 probes; narrow project route/tab read authorized
+checks:
+  tests: PASS supplied UI64 lint/check; reviewer probes reproduced two failures
+diff_scope:
+  base: b05f09ed706f20d6929f932d81d79aece45096b1
+  head: 8fdcdbb6771365e19fce83e5e642ba11f319d6f9
+activity_effort: high

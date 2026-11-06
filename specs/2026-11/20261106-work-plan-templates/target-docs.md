@@ -3,11 +3,11 @@ id: PROP-work-plan-templates-target
 title: Living Spec targets for Work Plan templates
 summary: "Draft template lifecycle, fresh-registration use case and project-local management/review screens."
 status: draft
-proposal: PROP-work-plan-templates
+proposal: SPEC-work-plan-templates
 created_at: 2026-11-06
 targets:
   - file: docs/capabilities/work-plans/CAP-WORK-work-plan-execution.md
-  - file: docs/usecases/work-plans/UC-reuse-work-plan-template.md
+  - file: docs/usecases/work-plans/UC-reuse-work-plan-templates.md
   - file: docs/usecases/work-plans/UC-execute-work-plan.md
   - file: docs/ux/work-plans/UX-work-plan-templates.md
   - file: docs/ux/work-plans/UX-work-plan-editor.md
@@ -28,7 +28,7 @@ Add the following distinct glossary/register row during reconciliation: Work Pla
 
 ## 2. Use case draft
 
-Planned UC-reuse-work-plan-template, Operator, capability `CAP-WORK-work-plan-execution`:
+Planned UC-reuse-work-plan-templates, Operator, capability `CAP-WORK-work-plan-execution`:
 
 1. Operator opens Templates from the project Work Plans panel (`UX-work-plans` to planned UX-work-plan-templates).
 2. Operator authors a definition or selects Save as template on a loaded source Plan; the template panel shows exact source/revision and omissions (UX-work-plan-templates).
@@ -75,15 +75,15 @@ States:
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Open Templates / Save as template | UC-reuse-work-plan-template 1, UC-reuse-work-plan-template 2 | populated, empty | loading, editing | | `CAP-WORK-work-plan-execution` | Exact project/source and omission summary visible; no execution. |
-| Save definition | UC-reuse-work-plan-template 3 | editing | saving, populated | | `CAP-WORK-work-plan-execution` | Saved template ID/revision or retained uncertainty. |
-| Use template | UC-reuse-work-plan-template 4 | populated | populated | `UX-work-plan-editor` | Fresh editable draft, remapped keys and source snapshot loaded. |
-| Edit / Delete and confirm | UC-reuse-work-plan-template 7 | populated | editing, saving | | `CAP-WORK-work-plan-execution` | Revision-aware change; derived Plans unchanged. |
-| Reload / correct / cancel stale form | UC-reuse-work-plan-template 2a, UC-reuse-work-plan-template 7a, UC-reuse-work-plan-template 7c | conflict, error | editing, populated | | `CAP-WORK-work-plan-execution` | Unsaved text retained; stale confirmation cleared. |
-| Check / Retry same request | UC-reuse-work-plan-template 3a, UC-reuse-work-plan-template 7b | uncertain | uncertain, populated | | `CAP-WORK-work-plan-execution` | Exact immutable original intent is retained or acknowledged using read-only CRUD receipt lookup or explicit same-request write retry. |
-| Refresh unavailable/list | UC-reuse-work-plan-template 4a | unavailable, error | loading | | `CAP-WORK-work-plan-execution` | No replacement template silently selected. |
-| Refresh acknowledged result | UC-reuse-work-plan-template 3b, UC-reuse-work-plan-template 7d | recorded-refresh-error | populated, recorded-refresh-error | | `CAP-WORK-work-plan-execution` | Recorded template identity remains visible; read-only refresh repeats no write. |
-| Close / Cancel unsent editor | UC-reuse-work-plan-template *a | loading, populated, editing, saving, conflict, unavailable, error, recorded-refresh-error, uncertain | populated | close | | Work Plans context restored; unresolved intent retained. |
+| Open Templates / Save as template | UC-reuse-work-plan-templates 1, UC-reuse-work-plan-templates 2 | populated, empty | loading, editing | | `CAP-WORK-work-plan-execution` | Exact project/source and omission summary visible; no execution. |
+| Save definition | UC-reuse-work-plan-templates 3 | editing | saving, populated | | `CAP-WORK-work-plan-execution` | Saved template ID/revision or retained uncertainty. |
+| Use template | UC-reuse-work-plan-templates 4 | populated | populated | `UX-work-plan-editor` | Fresh editable draft, remapped keys and source snapshot loaded. |
+| Edit / Delete and confirm | UC-reuse-work-plan-templates 7 | populated | editing, saving | | `CAP-WORK-work-plan-execution` | Revision-aware change; derived Plans unchanged. |
+| Reload / correct / cancel stale form | UC-reuse-work-plan-templates 2a, UC-reuse-work-plan-templates 7a, UC-reuse-work-plan-templates 7c | conflict, error | editing, populated | | `CAP-WORK-work-plan-execution` | Unsaved text retained; stale confirmation cleared. |
+| Check / Retry same request | UC-reuse-work-plan-templates 3a, UC-reuse-work-plan-templates 7b | uncertain | uncertain, populated | | `CAP-WORK-work-plan-execution` | Exact immutable original intent is retained or acknowledged using read-only CRUD receipt lookup or explicit same-request write retry. |
+| Refresh unavailable/list | UC-reuse-work-plan-templates 4a | unavailable, error | loading | | `CAP-WORK-work-plan-execution` | No replacement template silently selected. |
+| Refresh acknowledged result | UC-reuse-work-plan-templates 3b, UC-reuse-work-plan-templates 7d | recorded-refresh-error | populated, recorded-refresh-error | | `CAP-WORK-work-plan-execution` | Recorded template identity remains visible; read-only refresh repeats no write. |
+| Close / Cancel unsent editor | UC-reuse-work-plan-templates *a | loading, populated, editing, saving, conflict, unavailable, error, recorded-refresh-error, uncertain | populated | close | | Work Plans context restored; unresolved intent retained. |
 | Next / Previous page | global: browse project definitions without execution | populated | loading | | | Deterministic bounded page, selected context preserved. |
 
 ### UX-work-plan-editor (existing panel extension)
@@ -98,15 +98,15 @@ States: **editing** can review/cancel; **confirming** can confirm or return to e
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Review registration | UC-reuse-work-plan-template 5 | editing | confirming | | `CAP-WORK-work-plan-execution` | Complete payload, fresh keys, binding and state reviewed. |
-| Edit input/basis | UC-reuse-work-plan-template 5 | confirming | editing | | `CAP-WORK-work-plan-execution` | Confirmation clears; original source snapshot is explicit. |
-| Confirm Save draft / Register active work | UC-reuse-work-plan-template 6 | confirming | submitting, recorded | `UX-work-plans` | Retained receipt and current Plan link; active admission disclosure. |
-| Correct invalid payload | UC-reuse-work-plan-template 5a | error | editing | | `CAP-WORK-work-plan-execution` | Owner error points to inputs; no automatic write. |
-| Reload changed basis | UC-reuse-work-plan-template 5b | conflict | editing | | `CAP-WORK-work-plan-execution` | Current template/binding loaded for a new reviewed request. |
-| Check original request / Retry same request | UC-reuse-work-plan-template 6a, UC-reuse-work-plan-template 6c | uncertain | uncertain, recorded | | `CAP-WORK-work-plan-execution` | Same original operation/payload; missing read remains unknown. |
-| Refresh acknowledged result | UC-reuse-work-plan-template 6b | recorded-refresh-error | recorded, recorded-refresh-error | | `CAP-WORK-work-plan-execution` | Recorded outcome remains distinct from refresh status. |
-| Back to Templates | UC-reuse-work-plan-template 4a | unavailable | populated | UX-work-plan-templates | No new execution or substituted source. |
-| Cancel / Close | UC-reuse-work-plan-template *a | editing, confirming, uncertain | populated | close | | Return to parent; original unresolved intent survives. |
+| Review registration | UC-reuse-work-plan-templates 5 | editing | confirming | | `CAP-WORK-work-plan-execution` | Complete payload, fresh keys, binding and state reviewed. |
+| Edit input/basis | UC-reuse-work-plan-templates 5 | confirming | editing | | `CAP-WORK-work-plan-execution` | Confirmation clears; original source snapshot is explicit. |
+| Confirm Save draft / Register active work | UC-reuse-work-plan-templates 6 | confirming | submitting, recorded | `UX-work-plans` | Retained receipt and current Plan link; active admission disclosure. |
+| Correct invalid payload | UC-reuse-work-plan-templates 5a | error | editing | | `CAP-WORK-work-plan-execution` | Owner error points to inputs; no automatic write. |
+| Reload changed basis | UC-reuse-work-plan-templates 5b | conflict | editing | | `CAP-WORK-work-plan-execution` | Current template/binding loaded for a new reviewed request. |
+| Check original request / Retry same request | UC-reuse-work-plan-templates 6a, UC-reuse-work-plan-templates 6c | uncertain | uncertain, recorded | | `CAP-WORK-work-plan-execution` | Same original operation/payload; missing read remains unknown. |
+| Refresh acknowledged result | UC-reuse-work-plan-templates 6b | recorded-refresh-error | recorded, recorded-refresh-error | | `CAP-WORK-work-plan-execution` | Recorded outcome remains distinct from refresh status. |
+| Back to Templates | UC-reuse-work-plan-templates 4a | unavailable | populated | UX-work-plan-templates | No new execution or substituted source. |
+| Cancel / Close | UC-reuse-work-plan-templates *a | editing, confirming, uncertain | populated | close | | Return to parent; original unresolved intent survives. |
 
 ### Alternatives and retained choice
 

@@ -1,0 +1,13 @@
+kind: resolution
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T06:33:32.867872Z'
+status: completed
+summary: Host-directed bounded recovery replaces same-document anchor reliance with explicit WorkPlansPanel reveal callback clearing both filters, closing Templates, refreshing missing records and focusing exact Plan. Mounted filtered and same-hash regressions failed before and pass after. One further fresh high review round 5 outside the cap will verify this batch; prior counts and failed range remain retained.
+findings: []
+assumptions:
+- Emulated isolation uses absolute paths, operation approvals and fixed-head audits. Boundary Markdown normalized without adding paths.
+checks: {}
+resolves: worker-01.yaml
+activity_effort: high

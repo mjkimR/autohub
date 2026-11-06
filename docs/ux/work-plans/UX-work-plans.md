@@ -7,6 +7,7 @@ element: panel
 status: active
 usecases:
   - UC-execute-work-plan
+  - UC-reuse-work-plan-templates
   - UC-deliver-pull-request
 capabilities:
   - CAP-WORK-work-plan-execution
@@ -34,6 +35,7 @@ The filtered Plan list is primary. New/edit controls precede it; each card group
   - Work Item (execution links): PR, Issue and `UX-pipeline-runs`; expired Run history is distinguished from retained completion evidence.
   - Work Plan (mirror status): Issue link, pending/error state separate from execution.
   - Work Plan (activity/comment region): author/time/revision, change details, comments filter and further-page loading.
+- Work Plan template (management): Templates opens `UX-work-plan-templates`, where the operator can select an exact loaded source Plan/revision. A derived Plan retains ordinary execution controls.
 - Work Plan (editor): `UX-work-plan-editor`.
 - Work Plan (group editor): classification-only field; current group and concurrent revision warning remain visible.
 
@@ -87,6 +89,9 @@ Filters include All, Next work, Needs a decision, Execution requested, On hold/p
 | Retry same request | `UC-execute-work-plan` *b | replacement-uncertain | replacement-recorded, replacement-refused, replacement-uncertain | | `CAP-WORK-work-plan-execution` | Replay the original stored endpoint and immutable payload; auth/access failure keeps it unresolved. |
 | Previous/Next replacement links / Load more replacement events | `UC-execute-work-plan` 7 | populated, replacement-recorded, replacement-consumed | populated | | `CAP-WORK-work-plan-execution` | Read bounded history while retaining current active evidence and prior event context. |
 | Cancel replacement decision | `UC-execute-work-plan` 5d, `UC-execute-work-plan` 6c, `UC-execute-work-plan` 6d | replacement-review | populated | close | `CAP-WORK-work-plan-execution` | Close the review without a mutation; the selected Item remains visible. |
+
+| Templates | `UC-reuse-work-plan-templates` 1 | populated, empty | editing | `UX-work-plan-templates` | `CAP-WORK-work-plan-execution` | Project-local definitions and source omissions open without execution. |
+| Open original Plan | `UC-reuse-work-plan-templates` 6 | populated | populated | | `CAP-WORK-work-plan-execution` | Clear lifecycle/group filters, close Templates and focus the exact retained original Plan. Refresh missing records; unavailable targets show guidance without substitution. |
 
 ## 5. Evidence
 

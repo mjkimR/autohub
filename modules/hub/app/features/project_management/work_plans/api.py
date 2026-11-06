@@ -209,3 +209,11 @@ async def withdraw_replacement(
     return await replacement_mutation(
         use_case, project_id, plan_id, item_id, "withdraw", data, f"user:{user.id}", link_id
     )
+
+
+from app.features.project_management.work_plans.template_api import router as template_router  # noqa: E402
+
+work_router = router
+router = APIRouter()
+router.include_router(work_router)
+router.include_router(template_router)

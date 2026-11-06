@@ -1,40 +1,23 @@
 ---
-id: PROP-work-plan-templates
+id: SPEC-work-plan-templates
 title: Create fresh Work Plans from reusable templates
-summary: "Save reusable Work Plan specifications, local dependencies and execution preferences, then create explicitly reviewed new registrations without copying execution history or authority."
-status: accepted
-created_at: 2026-11-06
-target_area: capabilities/work-plans/
-priority: low
-size: M
-planning_effort: medium
-dev_effort: high
-boundaries:
-  owns:
-  - modules/hub/app/features/project_management/work_plans/
-  - modules/hub/migrations/versions/
-  - modules/hub/tests/integration/features/project_management/work_plans/
-  - modules/hub/tests/integration/migrations/
-  - modules/hub-ui/src/lib/api/generated/work-plan.d.ts
-  - modules/hub-ui/src/lib/stores/session.svelte.ts
-  - modules/hub-ui/src/lib/stores/session.test.ts
-  - modules/hub-ui/src/lib/features/project-management/work-plans/
-  - docs/capabilities/work-plans/
-  - docs/usecases/work-plans/
-  - docs/ux/work-plans/
-  - docs/steering/glossary.md
-  - docs/steering/ux-objects.md
-  excludes:
-  - docs/operations/
-  - .github/
-  - packages/sdk/
-task_kind: feature
-workflow: sdd-proposal
+summary: Save reusable Work Plan specifications, local dependencies and execution preferences, then create explicitly reviewed new registrations without copying execution history or authority.
+status: completed
+created: 2026-11-06
+related_capabilities: [CAP-WORK-work-plan-execution]
+related_usecases: [UC-execute-work-plan]
+workflow: sdd-spec-feature
 ---
 
-# [PROP-work-plan-templates] Create fresh Work Plans from reusable templates
 
-## 1. Background & Hypothesis
+# [SPEC-work-plan-templates] Create fresh Work Plans from reusable templates
+
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-work-plan-templates on 2026-11-06.
+- Target Docs Blueprint: `PROP-work-plan-templates-target` (Living Spec targets for this plan and reconcile.md)
+
+### 1. Background & Hypothesis
 
 `CAP-WORK-work-plan-execution` registers task batches with local Item dependencies and execution preferences. Repeating a similar batch requires composing that specification again. Its execution history, merge evidence and replacement relationships belong to a particular registration and cannot serve as a reusable definition.
 
@@ -42,15 +25,65 @@ Save reusable Work Plan definitions and create fresh explicitly reviewed registr
 
 Recommended delivery order: third, after `SPEC-mcp-delivery-tools` and `SPEC-decision-notifications`. These are product priorities, not required implementation dependencies. Medium size is provisional; Planning should keep the feature to reusable Work Plan definitions and fresh registration.
 
-## 2. Technical Spike Findings
+## 2. User Stories
+
+- **US-1**: As a developer/agent, I want to implement Create fresh Work Plans from reusable templates so that system capabilities are extended.
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: recurring schedules, cross-project marketplaces, copied execution history/authority, SDK/native SDD templates, Jules and new agent preferences.
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] Safe definition extraction
+
+- **Given** a source Plan and exact revision.
+- **When** its definition is saved.
+- **Then** only allowed specification/local edge fields are stored; stale reads and transaction failures create nothing and saving starts no external work.
+
+### [AC-02] Fresh preview identities
+
+- **Given** one template used twice.
+- **When** fresh draft previews are constructed.
+- **Then** request/ordinal-bound keys and local edges are remapped without attachment, authority or result copying, including colliding truncated stems.
+
+### [AC-03] Atomic revisioned registration
+
+- **Given** a reviewed template revision/digest and current binding.
+- **When** registration races edit/delete/binding changes or is replayed.
+- **Then** fresh stale requests refuse; identical actor/target/payload replay recovers original Plan even after later changes; changed identities conflict.
+
+### [AC-04] Ordinary owner admission
+
+- **Given** a draft or explicitly active reviewed payload.
+- **When** registration commits or persistence fails.
+- **Then** Plan/provenance commit together, ordinary validation/locks/admission remain, and lost response creates no duplicate Plan.
+
+### [AC-05] Independent template lifecycle
+
+- **Given** a derived Plan and retained template receipt.
+- **When** template/source is edited or deleted.
+- **Then** existing Plan state/specification/evidence and original provenance remain inspectable.
+
+### [AC-06] Recover immutable browser intent
+
+- **Given** a CRUD/registration response is lost or refresh fails.
+- **When** the panel remounts/reloads/closes or explicit Check/Retry runs.
+- **Then** account/project-scoped session intent and shared mutation guard survive; auth/access failures stay unknown; changed review clears confirmation; logout clears private payload with disclosed recovery limits.
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### 2. Technical Spike Findings
 
 The existing `WorkPlanWrite` contains title, description, base branch, absolute schedule, Plan dependencies, group metadata and Items; it has no per-Plan catalog/effort settings. `WorkItemWrite` contains local key, specification, acceptance, local dependency keys and optional explicit branch attachment. `WorkPlanService.create` serializes registration under the Project lock and uses its registration digest/request identity; creating an active Plan can invoke immediate admission after commit. Item branch names derive from Item keys, so copying keys unchanged makes repeated use collide with retained remote branches.
 
 These findings are source inspection, not test execution. Evidence: `modules/hub/app/features/project_management/work_plans/{schemas.py,services.py,usecases.py,execution.py}` and `modules/hub-ui/src/lib/features/project-management/work-plans/WorkPlanForm.svelte` at base `0010af5fa2ca053e9023f90689f2cdb37a6bbaf5`.
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
-### Compared options and recommendation
+#### Compared options and recommendation
 
 | Option | Benefit | Cost / consequence |
 | --- | --- | --- |
@@ -60,7 +93,7 @@ These findings are source inspection, not test execution. Evidence: `modules/hub
 
 Choose B. No new execution controller or general policy is needed; the scoped lifecycle choices below remain proposal decisions rather than a PADR.
 
-### Definition and lifecycle
+#### Definition and lifecycle
 
 A Work Plan template is project-owned reusable definition metadata, separate from a Work Plan. Store an opaque UUID, name (1–200), revision (positive integer), supported definition JSON, schema version and created/updated actor/time. Use soft deletion with revision change; hide deleted templates from normal listing while retaining rows for known registration receipts. Updates require expected revision and replace the complete validated definition; stale edits/delete return 409. List is project-scoped, paged (limit 1–100, offset nonnegative) with deterministic name/ID order. Unknown/deleted/inaccessible templates return 404 for ordinary reads; malformed or unknown fields return 422. Existing signed-in human authorization applies, and actor identity comes from the authenticated user, never the body. No MCP template tools are added.
 
@@ -68,7 +101,7 @@ Definition allowlist: default Plan title/description, candidate base branch, and
 
 CRUD command receipt identity is project+operation+request UUID with normalized complete operation target (template ID or source Plan ID where applicable), body digest and authenticated actor. Identical replay returns its recorded outcome and current template revision/deleted state before current-revision checks; changed payload/actor is 409. Create/update/delete receipts persist even after deletion so response loss cannot create duplicate definitions or reapply edits. Definition saving and its receipt commit or roll back together. A plain form cancel before submission sends nothing.
 
-### Fresh preview, registration and replay
+#### Fresh preview, registration and replay
 
 Using a template first reads its exact revision and content digest into an editable client preview. Allocate a registration request UUID before deriving fresh Item keys: sort source slot keys lexicographically and map each to a bounded readable stem plus its stable zero-based ordinal and full request UUID hex (stem at most 22 characters + '-' + four-digit ordinal + '-' + 32 hex digits, total at most 60). The ordinal remains unique within the at-most-100-slot definition even when truncated stems collide. Map every local dependency to the generated key, and show those keys for explicit editing. Use the original slot-to-generated mapping to avoid confusing source and fresh identities. Remote branch collisions still fail under existing owner rules; no uniqueness promise replaces those guards. No original `attach_branch` is carried. A deliberate explicit attachment can be entered in the ordinary registration editor and is separately visible in confirmation; it never comes from the definition.
 
@@ -78,11 +111,11 @@ A new project-scoped template registration operation accepts exact template ID/r
 
 A response-lost registration keeps its original endpoint/request UUID/full payload in project-scoped browser session storage until acknowledged or definitively refused by the owner. Label that storage on confirmation because specifications can contain private task text. Retain across remount/reload; clear only on explicit acknowledgement or dismissal of an acknowledged/authoritatively refused operation, or on logout; never share across accounts/projects. Dismissing or closing an unresolved operation retains its identity and write guard. Logout/browser-session loss clears private payload text and loses the local unresolved-intent guarantee; on later login explain that recovery is limited to durable owner records and new reviewed operations rely on owner request/binding guards. Never claim that a new request UUID deduplicates a lost intent. Reads use an exact template registration request lookup and never retry a write implicitly. Authentication/access/transport failures do not prove original refusal; preserve the request. While unresolved, block competing template mutations/registrations in that local project context; permit read-only checks and explicit exact retry. A successful write followed by refresh failure stays recorded with refresh error. A definitive revision/binding refusal requires fresh review, regenerated confirmation and a new request UUID; no silent fresh-revision resubmission. Template registration provenance remains independently readable after template deletion or source Plan changes and is not reconstructed from the current template.
 
-### Interfaces and ownership
+#### Interfaces and ownership
 
 Provisional base `/api/v1/projects/{project_id}/work-plan-templates`: GET/POST collection; GET/PUT/DELETE `/{template_id}` with typed expected revisions/request IDs for writes; POST `/from-plan`; POST `/{template_id}/registrations`; GET `/registrations/{request_id}`; GET `/requests/{operation}/{request_id}` for exact CRUD outcomes (`operation` identifies create/from-plan/update/delete). The CRUD lookup returns 200 with recorded or unknown state on an accessible project, 404 for inaccessible/missing project, and 422 for invalid operation/UUID; it performs no mutation. A recorded response identifies original operation/target/request/result plus separately observed current revision/deleted state. Missing receipt remains unknown, never definite refusal. The query never treats a supplied different target as the original command, and exposes no request digest or credentials. Static routes precede dynamic UUID routes. All requests use strict schemas and existing authentication. Reads make no external calls. Additive tables hold templates, CRUD receipts and registration receipts; existing Plans get no synthetic provenance. Retain nullable historical source IDs as snapshots where a foreign key would block unrelated historical migration/retention; enforce live project ownership through typed owner transactions. Choose exact database constraints during Development and cover migration metadata roundtrips.
 
-### Candidate acceptance and Development checks
+#### Candidate acceptance and Development checks
 
 - **TEMPLATE-01**: Given a terminal or draft source Plan, saving its exact revision extracts only the allowlist, reports omitted fields, and creates no Issue/Run/PR/admission. Stale source revision or receipt-write failure leaves no template/receipt.
 - **TEMPLATE-02**: Given one template used twice, previews have fresh deterministic request/ordinal-bound Item keys with correctly remapped local edges, including long source keys sharing their truncated stem; no source execution/attachment/authority enters either payload. Invalid/cyclic/missing local dependencies and bounds fail validation.
@@ -93,15 +126,16 @@ Provisional base `/api/v1/projects/{project_id}/work-plan-templates`: GET/POST c
 
 Development runs focused owner/API/migration tests, PostgreSQL races for edit/delete versus registration, atomic persistence and replay, UI save/use/changed-confirmation/unknown-response tests, typed API generation, `just lint` and `just check` after initialization. Preserve existing registration and metadata-roundtrip regressions. Baseline is the same head with template use absent: ordinary registration's behavior remains unchanged; no timing/count improvement is claimed.
 
-### Future write scope and parallel work
+#### Future write scope and parallel work
 
 Primary future code stays in new `template_models.py`, `template_schemas.py`, `template_repo.py`, `template_service.py`, `template_usecase.py`, `template_api.py` under the existing Work Plan owner. Existing edits are limited to `work_plans/api.py` router inclusion, `work_plans/models.py` model discovery, `WorkPlansPanel.svelte` entry, and `WorkPlanForm.svelte` reviewed preview seed. Add dedicated `WorkPlanTemplates.svelte`/intent helper and source-mirrored tests; keep UI size limits. Add one migration after the then-landed head. Privacy cleanup is limited to the template-intent session-storage namespace in existing `modules/hub-ui/src/lib/stores/session.svelte.ts` logout handling and its `session.test.ts` regression; do not introduce a store-to-feature import or change token/session authentication semantics. Shared generated output is `modules/hub-ui/src/lib/api/generated/work-plan.d.ts`; it can be regenerated after sequential merges. Existing full Work Plan migration roundtrip may need exact newer-table downgrade/upgrade setup in `modules/hub/tests/integration/migrations/test_work_plan_migration.py`. No production dependency on MCP or notifications is required. Resolve the shared migration chain and generated output in integration order; do not claim parallel write independence for those files.
 
-### Non-goals
+#### Non-goals
 
 - **Scope Excluded**: recurring schedules, automatic decomposition, global/cross-project template marketplace, parameter substitution language, native SDD/SDK templates, automatic recovery/replacement and copied execution authority.
 - **Scope Excluded**: catalog/effort settings not supported by current Work Plan input, MCP template tools, Jules integration, deployed-service verification, monitoring and CI changes.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
 
 This medium-effort Planning turn recommends option B under Host-authorized routine choices. High Development effort remains appropriate for additive persistence, idempotency and execution admission. Challenger round1 identified one P1 and three P2 specification gaps; its exact concrete actions are folded and developer-reverified at medium effort. Independent UX round1 scored both screens12/12 and identified two table coverage findings; both suggested actions are folded, with the original findings retained for plan-accept disclosure. No user-only business question is required; project scope, draft default and existing owner reuse are conservative assumptions for direction review. `target-docs.md` carries the retained UI candidate and owning contract changes. No acceptance, handoff or implementation is recorded. Complete Planning after challenger and separately authorized UX review, present any retained UX findings at plan-accept, then use the ordinary accepted-proposal handoff.
+

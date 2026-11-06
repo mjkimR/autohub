@@ -176,3 +176,9 @@ from app.features.project_management.work_plans.replacement_models import (  # n
     ReplacementLink,
     ReplacementReceipt,
 )
+
+# Register additive template metadata alongside the owner models.
+from app.features.project_management.work_plans.template_models import (  # noqa: E402,F401
+    TemplateRequest,
+    WorkPlanTemplate,
+)

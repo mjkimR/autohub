@@ -35,7 +35,7 @@ async def test_additive_recovery_migration_preserves_legacy_rows(client, setup_w
             c["name"] == "uq_work_item_recovery_request"
             for c in inspect(conn).get_unique_constraints("work_item_recoveries")
         )
-        assert scripts().get_heads() == ["a471ce28d100"]
+        assert scripts().get_heads() == ["b582df39e211"]
 
     await connection.run_sync(roundtrip)
     await session.commit()

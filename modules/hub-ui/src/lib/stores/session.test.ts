@@ -33,3 +33,24 @@ test('legacy tokens are removed and new tokens never enter browser storage', asy
 		expect(target.getItem('autohub-refresh-token')).toBeNull();
 	}
 });
+
+test('logout clears template private intent namespace only', async () => {
+	vi.resetModules();
+	const values = new Map<string, string>([
+		['work-plan-template-intent:account:p', 'private spec'],
+		['unrelated', 'keep']
+	]);
+	vi.stubGlobal('sessionStorage', {
+		getItem: (key: string) => values.get(key) ?? null,
+		setItem: (key: string, value: string) => values.set(key, value),
+		removeItem: (key: string) => values.delete(key),
+		get length() {
+			return values.size;
+		},
+		key: (index: number) => [...values.keys()][index] ?? null
+	});
+	const { session } = await import('./session.svelte');
+	session.logout();
+	expect(values.has('work-plan-template-intent:account:p')).toBe(false);
+	expect(values.get('unrelated')).toBe('keep');
+});

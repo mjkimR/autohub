@@ -1,0 +1,41 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T06:13:16.877382Z'
+status: completed
+review: review-01.yaml
+summary: Closes review-01 four findings; five regressions failed before corrections, then all 64 WorkPlan/session UI tests pass. Fresh high independent round required for adjacent session recovery and editor identity changes.
+findings:
+- issue: Known recorded/refused requests restore as unknown after remount or reload.
+  evidence: template-intent.svelte.ts:30-40 persists pending only and always restores unknown.
+  failure_condition: Success/refusal/recorded-refresh-error is lost after close/reload, and a known refusal cannot be recovered by success-receipt lookup.
+  suggested_action: Persist a versioned recovery record with unresolved/recorded/refused state and original outcome separate from refresh errors; test remount.
+  resolution: resolved
+  severity: P1
+- issue: Revision/binding refusal permits stale reconfirmation with the same UUID.
+  evidence: WorkPlanTemplates.svelte:141-155 and 237-253 retain reviewed request/basis after refusal.
+  failure_condition: Confirming again after TEMPLATE_BINDING_CHANGED or TEMPLATE_REVISION_CHANGED reuses stale basis and UUID.
+  suggested_action: Disable stale preview submission; add explicit reload-for-review with current template/project basis, new UUID/keys and confirmation.
+  resolution: resolved
+  severity: P2
+- issue: Recorded outcomes omit promised template identity and Plan navigation.
+  evidence: TemplateOutcome.svelte:25-38 and WorkPlanTemplates.svelte:302-305 omit IDs/links required by retained screens.
+  failure_condition: Saved result cannot identify exact template UUID or navigate to original Plan after refresh failure.
+  suggested_action: Show immutable template ID/revision, source Plan ID/revision and original Plan link separately from current observations.
+  resolution: resolved
+  severity: P2
+- issue: Returning to editing resets chosen creation state to draft.
+  evidence: WorkPlanForm.svelte:34-37 initializes mode unconditionally to draft despite seeded reviewed payload.
+  failure_condition: Active/proposed/paused review-back-edit-review silently changes state to draft.
+  suggested_action: Initialize mode from seed.state while fresh previews default draft, and test review-back-edit-review.
+  resolution: resolved
+  severity: P2
+checks:
+  tests: PASS WorkPlan/session UI64; backend unchanged owner158 PG34 retained
+  lint: PASS just lint
+  build: PASS just check
+diff_scope:
+  base: b05f09ed706f20d6929f932d81d79aece45096b1
+  head: 0a05c39b6ab39042d896d55e1e1c96bf18317fa1
+activity_effort: high
