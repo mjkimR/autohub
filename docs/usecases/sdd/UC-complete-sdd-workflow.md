@@ -324,3 +324,7 @@ validation/path matrix and some runtime-failure combinations remain source-inspe
 - **Given** recorded native direction with uncertain publication or a later stop,
 - **When** the operator checks its exact outcome or explicitly reviews publication reconciliation,
 - **Then** missing proof remains unknown/pending, historical direction does not restore current authority, and separately identified recovery preserves the original intent and later stop guards.
+
+## 7. Batch ancestry
+
+When entered from `UC-execute-sdd-batch`, the operator follows the exact owner through `UX-sdd-batch` into the existing run controls. The batch retains original proposal/current SPEC ancestry and observes this owner's result. Its receipt is no plan-accept, handoff or integration approval. Success of this use case supplies owner evidence; only the batch's fresh exact prerequisite/lineage checks can release its next member. The batch creates no second PR executor (`CAP-SDD-native-delivery`, `CAP-SDD-workflow-control`).

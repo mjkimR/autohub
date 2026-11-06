@@ -11,6 +11,9 @@ status: active
 capabilities:
   - CAP-SDD-native-delivery
   - CAP-SDD-runtime-isolation
+entrypoints:
+  - modules/hub/app/features/project_management/sdd/activities.py
+  - modules/hub/app/features/project_management/sdd/api.py
 ---
 
 # [UC-start-sdd-activity] Start a proposal Planning or Development activity
@@ -178,3 +181,7 @@ The activity source and inspected tests are linked in `CAP-SDD-native-delivery`.
 The runner-failure and post-PR enrollment-failure outcomes follow source control
 flow; the cited activity tests do not establish dedicated coverage for those two
 failure paths. Live provider execution is outside this registration goal.
+
+## 7. Shared batch exclusion and recovery
+
+The individual registration path shares durable activity reservations with `UC-execute-sdd-batch`. A winning batch claim or individual claim preserves the exact owner rather than creating competing artifacts. Enrollment failure or response loss retains the original candidate/PR/request evidence; recovery checks those saved artifacts. Missing or retired evidence never means permission to start again. See `CAP-SDD-native-delivery` sequential SDD batch contract and `UX-sdd-batch` for batch-origin evidence. Selection supplies no native approval.

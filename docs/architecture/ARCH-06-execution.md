@@ -109,3 +109,15 @@ Implementation anchors include
 [connection coordination](../../modules/hub/app/features/project_management/connection_tests/services.py).
 `ARCH-10-quality-requirements` connects these sequences to measurable regression
 scenarios; [deployment status](../operations/deployment-status.md) retains live evidence.
+
+## Sequential SDD admission and recovery
+
+`SddBatch` and `SddBatchMember` retain immutable through-Development selection, source basis, exact order and phase checkpoints. `SddBatchControl` retains revisioned request receipts. `SddActivityClaim` is shared by individual and batch starts. `ADR-sdd-batch-ledger` records this ownership choice; `CAP-SDD-native-delivery` owns the interface.
+
+Batch admission and controls MUST lock Project before Batch and the shared activity reservation. Claim-only lease writes acquire no parent afterward. Existing PR owners retain their Run transaction; exact claim binding is validated and written atomically in enrollment, including project, lease, unit, repository, branch, candidate and enrollment snapshot. No Run lock is held while acquiring a parent Project/Batch lock. Check: PostgreSQL multi-connection `modules/hub/tests/integration/features/project_management/sdd/test_batch_claims.py`; lock-order review complements these races.
+
+Sequential admission MUST retain one member's slot through its exact Planning/Development owner outcomes. A claim is committed before remote effects; its exact candidate is saved before push. A final selected-base read follows policy evaluation before the bounded publication under its claim fence. Recovery reuses only saved artifacts and a live matching lease. Enrollment response loss recovers the exact persisted binding. Missing artifacts or uncertain ownership preserve the hold; retired settled receipts never restart. Check: `test_batch_claims.py` and `modules/hub/tests/unit/features/project_management/sdd/test_batch_activities.py`.
+
+A maintenance transition observes the existing owner or performs one next phase admission. Planning merge/accepted-source evidence precedes Development; validated handoff identifies the exact SPEC; completed SPEC and confirmed Development merge finish a member. Canonical edge-only repair preserves all other graph/content identities. These checks grant no workflow or merge authority. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py`.
+
+Unresolved claims protect their runs from retention. Settled claims retain tombstones after eligible run-link pruning. The migration freezes four explicit table definitions and indexes rather than importing changing application metadata. Check: `modules/hub/tests/integration/migrations/test_sdd_batch_migration.py`.

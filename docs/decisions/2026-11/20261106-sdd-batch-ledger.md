@@ -42,4 +42,4 @@ Operators can retain chain intent across reloads while each unready entry visibl
 
 ## 6. Confirmation
 
-Development adds ME-01–ME-10 fixtures in the SDD unit/integration tests, PostgreSQL multi-connection tests and UI integration tests. Review the restating capability/architecture clauses during reconciliation. Planning contains no executed product verification.
+Compliance is checked by `modules/hub/tests/integration/features/project_management/sdd/test_batches.py`, `test_batch_claims.py` and `test_batch_progression.py` beside it; `modules/hub/tests/unit/features/project_management/sdd/test_batch_activities.py` and `test_batch_evidence.py`; `modules/hub/tests/integration/features/execution/maintenance/test_sdd_batches.py`; and the repository UI batch tests. PostgreSQL multi-connection checks cover shared claims, controls and enrollment response loss. `CAP-SDD-native-delivery` sequential SDD batch contract and `ARCH-06-execution` sequential admission and recovery restate the clauses. `SPEC-sdd-milestone-execution` retains executed check results separately from source inspection; no deployment or live GitHub result is claimed.

@@ -70,3 +70,7 @@ Milestone subset inspection belongs to `UX-sdd-milestone-preview`. Its result su
 
 This description is derived from source inspection. It does not claim a browser
 walkthrough, a fresh test execution or a live provider result.
+
+## 6. Sequential selection context
+
+The separate adjacent `UX-sdd-batch` panel owns execution selection and retained batch status. Its Inspect native owner link opens `UX-run-decisions` for an existing activity. This panel continues to register one existing PR; batch intent and preview results do not populate or approve its enrollment inputs.

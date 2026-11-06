@@ -5,6 +5,7 @@ summary: "Auto Hub evaluates repository workflow content in a server-selected is
 area: sdd
 status: active
 usecases:
+  - UC-execute-sdd-batch
   - UC-start-sdd-activity
   - UC-decide-sdd-proposal
   - UC-complete-sdd-workflow
@@ -149,3 +150,11 @@ The cited tests identify inspected evidence. Symlink rejection and the complete
 CLI diagnostic allowlist are source-inspected boundaries, not a claim that each
 case has a separately executed regression test. Provisioning and host recovery
 belong in the [runtime operations guide](../../operations/sdd-runtime.md).
+
+## 6. Sequential admission identity
+
+WHEN a batch prepares another activity, Hub MUST evaluate its current complete repository evidence through the same isolated native evaluator and compare the retained configuration/runtime identity. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py`.
+
+WHEN committing a batch or preparing its external activity effect, Hub MUST re-read the selected remote base after policy evaluation and refuse a changed head before publishing. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batches.py` and `modules/hub/tests/unit/features/project_management/sdd/test_batch_activities.py`.
+
+`CAP-SDD-native-delivery` owns the limited accepted Planning, validated handoff and canonical edge-repair transitions. These authorize no unrelated configuration, workflow, policy, runtime or source drift. Admitted activities retain their own evaluated native identity; a batch never replaces the isolated runtime or silently reenrolls uncertain work.

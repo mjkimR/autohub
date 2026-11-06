@@ -1,18 +1,21 @@
 ---
 id: CAP-SDD-native-delivery
 title: Native SDD activity and proposal delivery
-summary: "Auto Hub starts native proposal activities and previews milestone readiness at a pinned commit. Ephemeral preview selection creates no execution artifacts; existing PR owners retain execution and merge authority. Pending decisions can be discovered through the shared owner-preserving inbox."
+summary: "Auto Hub starts native proposal activities and progresses immutable milestone selections through existing native owners. Read-only previews remain separate; batch admission preserves exact dependencies, recoverable claims and native approval authority."
 area: sdd
 status: active
 usecases:
   - UC-start-sdd-activity
   - UC-decide-sdd-proposal
   - UC-preview-sdd-milestone
+  - UC-execute-sdd-batch
 entrypoints:
   - modules/hub/app/features/project_management/sdd/api.py
   - modules/hub/app/features/project_management/sdd/activities.py
   - modules/hub/app/features/project_management/sdd/plan_publication.py
   - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
+  - modules/hub/app/features/project_management/sdd/batch_driver.py
+  - modules/hub/app/features/project_management/sdd/batch_usecases.py
 ---
 
 # [CAP-SDD-native-delivery] Native SDD activity and proposal delivery
@@ -27,12 +30,12 @@ CI observation and merge control.
 ## 2. Scope & Boundary
 
 - **In-Scope**: activity start admission, proposal/spec binding, proposal decision
-  publication, decision recovery, proposal approval fences and observational milestone preview.
+  publication, decision recovery, proposal approval fences, observational milestone preview and explicit sequential SDD batch admission.
 - **Out-of-Scope**: `CAP-SDD-runtime-isolation` owns isolated evaluation and
   restore; `CAP-SDD-workflow-control` owns native stage answers, holds and
   integration authority. Devkit owns workflow definitions/document authoring;
   providers own implementation; GitHub owns CI. Work Plan admission, milestone
-  batch execution and adoption of SDD for Auto Hub's own development are excluded.
+  execution outside the bounded sequential SDD batch path and adoption of SDD for Auto Hub's own development are excluded.
 - **Scope Excluded**: generic resume as approval, cross-proposal branch acceptance,
   repository evidence as independent merge authority, and retrospective approvals.
 
@@ -196,3 +199,25 @@ suites were executed while writing this contract. Runtime provisioning and opera
 procedures remain in the [runtime operations guide](../../operations/sdd-runtime.md).
 `CAP-SDD-runtime-isolation` defines receipt/restore/drift/isolation guarantees;
 `CAP-SDD-workflow-control` defines native workflow continuation and integration authority.
+
+## 6. Sequential SDD batch contract
+
+1. **Batch ownership**: WHEN an operator confirms through-Development intent, Hub MUST retain an immutable explicit selection while existing native owners retain all workflow gates, handoff, CI and merge authority. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py`.
+2. **Execution selection**: WHEN creating a batch, Hub MUST independently evaluate a complete pinned preview and accept only 1–50 explicitly selected supported direct proposal members in canonical-ID topological order, including prerequisite-held future intent. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batches.py`.
+3. **Immutable basis**: IF project binding, captured SHA, membership, graph, source content, configuration or runtime identity differs outside the recorded authorized phase transition or canonical repair, THEN Hub MUST hold admission. Check: `test_batches.py` and `test_batch_progression.py` beside the preceding test.
+4. **Batch dependencies**: WHEN admitting a member, Hub MUST require exact satisfied prerequisites from current complete evidence. A done/dropped milestone or exact completed canonical SPEC satisfies scheduling; a PROP-to-SPEC activity link alone does not. Edge-only canonical repair must prove preserved graph and content, including outside prerequisites. Check: `modules/hub/tests/unit/features/project_management/sdd/test_batch_evidence.py`.
+5. **Sequential slot**: WHILE an earlier member has unresolved admitted work, Hub MUST retain its slot and refuse later admission. Planning requires its owner's confirmed merge and accepted source checkpoint before Development; completion requires exact completed SPEC evidence and the Development owner's confirmed merge. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py`.
+6. **Shared reservation**: WHEN individual or batch start competes for one native activity, Hub MUST use the same durable project/activity reservation and preserve the winning exact owner. Existing compatible reservations and owned in-flight artifacts are adopted rather than duplicated. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_claims.py`.
+7. **Saved recovery**: IF admission has an uncertain external or enrollment result, THEN Hub MUST reconcile its retained exact candidate, branch, PR and enrollment identity before continuation. Missing, closed, ambiguous or retired artifacts remain a hold and never authorize a replacement start. Check: `modules/hub/tests/unit/features/project_management/sdd/test_batch_activities.py` and `test_batch_claims.py`.
+8. **Batch controls**: WHEN pause, resume or stop wins its expected-revision fence, Hub MUST apply that control only to future claims. A prior winning claim can still produce artifacts; its native owner retains its controls. Stop permanently ends future admission and its receipt cannot undo a later state. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batches.py` and `test_batch_claims.py`.
+9. **Request identity**: WHEN a create/control request is replayed, Hub MUST compare its actor and normalized payload and return current retained state without repeating effects; changed reuse conflicts. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batches.py`.
+10. **Failed owner**: IF the native owner is failed, canceled or rejected, THEN Hub MUST retain the inspected terminal outcome without automatically skipping or replacing that member. Exclusion is released only after admitted claims settle. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py`.
+11. **Pinned preferences**: WHEN dispatching a selected activity, Hub MUST retain its confirmed effective effort and catalog preferences rather than adopt later defaults. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py` and UI batch tests.
+
+### Batch interfaces
+
+All paths use `/api/v1/projects/{project_id}/sdd/batches`: `POST` creates, `GET` lists retained batches, `GET /{batch_id}` reads, and `POST /{batch_id}/control` controls future admission. Create requires UUID `request_id`, `ref`, `milestone_id`, optional exact `milestone_path`, full lowercase `expected_sha`, literal `through_development: true` and `members`. Each member carries exact `id`, `path`, `activity` (`plan` or `dev`) and optional `planning_effort`, `dev_effort`, `planning_catalog`, `dev_catalog`. Effort values are `low`, `medium`, `high`; missing preferences inherit the inspected defaults before retention. Control requires UUID `request_id`, positive `expected_revision` and `action` (`pause`, `resume`, `stop`). Unknown input fields are refused.
+
+The retained result includes `id`, `project_id`, `state`, `revision`, `exclusion`, safe `detail`, immutable `basis`, latest `evaluation` and ordered `members`. Batch states are `running`, `paused`, `attention`, `stopped`, `completed`. Member states are `waiting`, `admitted`, `succeeded`, `failed`, `canceled`, `rejected`. Claim uncertainty is separate evidence, not success. Invalid input uses HTTP 422 / `INVALID_REQUEST`; stale evidence, active exclusion and changed identity/revision use HTTP 409 / `CONFLICT`.
+
+`UC-execute-sdd-batch` and `UX-sdd-batch` expose the retained intent. `UC-start-sdd-activity` remains a single-activity registration goal. The eligible-only local subset in `UC-preview-sdd-milestone` remains observation-only. `ADR-sdd-batch-ledger` records the separation.

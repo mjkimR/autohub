@@ -5,6 +5,7 @@ summary: "Control native SDD workflow decisions, worker questions and integratio
 area: sdd
 status: active
 usecases:
+  - UC-execute-sdd-batch
   - UC-complete-sdd-workflow
 entrypoints:
   - modules/hub/app/features/project_management/sdd/control.py
@@ -216,3 +217,9 @@ Tests above identify inspected regression evidence; the source-only stage-attemp
 bound and full answer-validation/path matrix are not claimed as individually
 executed coverage. Live provider questions, agent publication and serving-host
 CI/merge still require the operational canary.
+
+## 6. Batch-origin work
+
+WHEN a native activity originates in an SDD batch, Hub MUST preserve the same per-run workflow decisions and integration authority as an individual activity. A batch receipt, dependency result, pause/resume or retained run link grants no approval and performs no handoff or merge. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py`.
+
+`UC-execute-sdd-batch` exposes read-only original/current anchor, claim, PR and owner evidence through `UX-sdd-batch`. The operator opens `UX-run-decisions`, `UX-sdd-run` or `UX-sdd-workflow-request` for existing owner controls. `UC-complete-sdd-workflow` continues unchanged for that exact owner. Shared start reservations and atomic exact enrollment binding belong to `CAP-SDD-native-delivery`; they do not create a second executor.

@@ -6,8 +6,15 @@ status: in-progress
 created: 2026-11-06
 depends_on:
   - SPEC-sdd-milestone-readiness
-related_capabilities: []
-related_usecases: []
+related_capabilities:
+  - CAP-SDD-native-delivery
+  - CAP-SDD-workflow-control
+  - CAP-SDD-runtime-isolation
+  - CAP-EXEC-scheduling-maintenance
+related_usecases:
+  - UC-execute-sdd-batch
+  - UC-start-sdd-activity
+  - UC-complete-sdd-workflow
 workflow: sdd-spec-feature
 ---
 
