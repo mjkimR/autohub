@@ -63,8 +63,8 @@ def sync_run(connection, run_id, now=None):
                     title=question["question"],
                     question_state=question["state"],
                     actionable=True,
-                    waiting_since=question["created_at"],
-                    head_sha=question["head_sha"],
+                    waiting_since=now if native else question["created_at"],
+                    head_sha=(progress.get("head_sha") or question["head_sha"]) if native else question["head_sha"],
                 )
             )
         receipts = list(

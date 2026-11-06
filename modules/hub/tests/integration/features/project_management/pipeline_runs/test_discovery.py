@@ -265,11 +265,21 @@ async def test_native_hub_question_tracks_inspected_generation(client, project, 
     enrolled = (await enroll(client, project)).json()
     await ask(client, f"/api/v1/pipeline-runs/{enrolled['id']}")
     run = await session.get(PipelineRun, UUID(enrolled["id"]))
+    from datetime import UTC, datetime
+    from app.features.project_management.pipeline_runs import discovery_projection
+
+    clock = [datetime(2026, 11, 3, tzinfo=UTC)]
+    monkeypatch.setattr(discovery_projection, "get_current_utc_time", lambda: clock[0])
+    question = (await session.scalars(select(RunQuestion).where(RunQuestion.pipeline_run_id == run.id))).one()
+    question.created_at = datetime(2026, 11, 1, tzinfo=UTC)
     run.sdd_snapshot = {"provider": "devkit-spec", "spec_dir": "specs/test", "policy": {}}
     progress = {"head_sha": "c" * 40, "base_sha": "d" * 40, "current": {"requests": []}, "workflow": {}}
     run.sdd_progress = progress
     await session.commit()
     old = (await client.get(URL)).json()["items"][0]
+
+    assert old["waiting_since"].startswith("2026-11-03")
+    clock[0] = datetime(2026, 11, 4, tzinfo=UTC)
 
     async def inspect(self, *args, **kwargs):
         return {**progress, "head_sha": "e" * 40}
@@ -280,9 +290,16 @@ async def test_native_hub_question_tracks_inspected_generation(client, project, 
     ).status_code == 409
     fresh = (await client.get(URL)).json()["items"][0]
     assert fresh["fingerprint"] != old["fingerprint"]
+    assert fresh["waiting_since"].startswith("2026-11-04")
+    assert fresh["head_sha"] == "e" * 40
+    assert question.head_sha == "c" * 40
+    clock[0] = datetime(2026, 11, 5, tzinfo=UTC)
     assert (
         await client.post(URL + "/review", json={"key": fresh["key"], "fingerprint": fresh["fingerprint"]})
     ).status_code == 200
+
+    unchanged = (await client.get(URL)).json()["items"][0]
+    assert unchanged["waiting_since"] == fresh["waiting_since"]
 
 
 async def test_native_observation_age_changes_only_after_inspection(client, project, github, session):
