@@ -28,8 +28,8 @@ results and the evidence of failed or superseded work.
   dependencies. PR execution and merge authority retain their existing owners.
 
 These outcomes extend `CAP-WORK-work-plan-execution` and preserve
-`CAP-PR-pull-request-delivery` ownership. Planning defines eligible recovery and
-replacement cases.
+`CAP-PR-pull-request-delivery` ownership. `SPEC-work-item-retry` and
+`SPEC-work-item-replacement` define the delivered recovery and replacement cases.
 
 ## Non-goals
 
@@ -42,3 +42,10 @@ replacement cases.
 
 Decomposition: pending
 Direct proposal work: pending
+
+The close candidate covers the full exit condition through completed
+`SPEC-work-item-retry` and `SPEC-work-item-replacement`. Their retained recovery
+and replacement evidence preserves original outcomes and limits dependency
+satisfaction to explicitly accepted existing Item edges. No unresolved direct
+proposal or unfinished handed-off work remains in this scope. Both assertions
+await user confirmation before marking this milestone done and archiving it.

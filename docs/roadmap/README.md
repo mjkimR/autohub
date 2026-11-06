@@ -1,7 +1,7 @@
 # Product roadmap
 
-The recommended sequence strengthens recovery, connects native SDD work across
-units and brings human decisions into one task flow. The product purpose is
+The delivered themes strengthen recovery, connect native SDD work across
+units and bring human decisions into one task flow. The product purpose is
 defined in [Product context](../steering/product.md); `ARCH-03-system-context`
 defines execution and authorization ownership.
 
@@ -11,19 +11,20 @@ defines execution and authorization ownership.
 | 2 | `MS-native-sdd-execution` | Progress selected native SDD units sequentially under repository dependencies and existing approvals. |
 | 3 | `MS-operator-decisions` | Find pending questions and approvals across projects and follow each decision through its next permitted step. |
 
-This order expresses product priority. Milestone prerequisites are declared only
-when one outcome requires another; the three themes can be planned independently.
-Direct proposal membership lives exclusively in proposal frontmatter. Discover
-members, sizes and unit prerequisites with:
+The order records product priority. All three themes have completed implementation
+specs and await user confirmation of their milestone completion assertions.
+Each milestone's Completion review cites its delivery evidence. Direct proposal
+membership lives exclusively in proposal frontmatter; handed-off specs retain
+the completed implementation record. Inspect milestones and completed specs with:
 
 ```sh
 uv run devkit docs list milestone --all-namespaces -n 0
-uv run devkit docs list proposal --all-namespaces -n 0
+uv run devkit docs list spec --history --all-namespaces -n 0
 ```
 
-These themes and their draft proposals frame future work. Proposal Planning
-settles implementation scope and requirements; no theme activates execution or
-grants implementation or merge approval.
+Milestone closure does not establish deployment or live-provider verification.
+Milestones frame product outcomes; they do not activate execution or grant
+implementation or merge approval.
 
 ## Scope
 

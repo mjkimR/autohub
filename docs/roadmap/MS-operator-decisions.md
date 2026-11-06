@@ -44,3 +44,11 @@ and `CAP-SDD-workflow-control` without replacing their mutation boundaries.
 
 Decomposition: pending
 Direct proposal work: pending
+
+The close candidate covers the full exit condition through completed
+`SPEC-operator-decision-inbox` and `SPEC-decision-continuation`. Cross-project
+discovery, exact owner inspection and retained request outcomes preserve
+separate save, apply, publication, delivery and authorization boundaries. No
+unresolved direct proposal or unfinished handed-off work remains in this scope.
+Both assertions await user confirmation before marking this milestone done and
+archiving it.

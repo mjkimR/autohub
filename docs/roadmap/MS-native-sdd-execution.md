@@ -44,3 +44,11 @@ read-only viewer an execution owner.
 
 Decomposition: pending
 Direct proposal work: pending
+
+The close candidate covers the full exit condition through completed
+`SPEC-sdd-milestone-readiness` and `SPEC-sdd-milestone-execution`. Read-only
+readiness inspection and explicit sequential execution retain native decision
+authority, admission identities and future-admission controls. No unresolved
+direct proposal or unfinished handed-off work remains in this scope. Both
+assertions await user confirmation before marking this milestone done and
+archiving it.
