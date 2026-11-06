@@ -1,0 +1,43 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T01:27:22.441640Z'
+status: completed
+summary: round 3; Round-two fixes confirmed; two new P1 recovery gaps and three P2 recovery/disclosure gaps remain.
+findings:
+- issue: Retired settled receipt can restart admission
+  evidence: activity_claims.py:64-75; maintenance/history.py; own reviewer probe test_settled_replay.py
+  failure_condition: Settled claim run is pruned and original request replay calls Starter again
+  suggested_action: Preserve refusal/existing-run reads then refuse retired settled tombstone before lease or Starter; test real retention replay
+  resolution: open
+  severity: P1
+- issue: Missing recorded artifacts enter fresh admission path
+  evidence: activities.py:202-220 and179-192
+  failure_condition: Saved candidate/PR exists but remote branch or known open PR disappears and recovery creates replacement artifacts
+  suggested_action: Resolve known PR exactly; missing/closed/unavailable saved artifacts retain evidence and hold without replacements
+  resolution: open
+  severity: P1
+- issue: Known PR depends on first branch-list match
+  evidence: activities.py:159 and174
+  failure_condition: Another-base PR precedes the saved native PR in matching head results
+  suggested_action: Retrieve saved PR identity first; for unrecorded result filter complete bounded evidence and require a unique exact owner
+  resolution: open
+  severity: P2
+- issue: Retained effective preferences diverge from admitted request
+  evidence: batch_usecases.py:130-136; batch_driver.py:120; activities.py:279-282
+  failure_condition: Planning changes inherited Development hint while ledger continues showing original value
+  suggested_action: Bind retained effective phase effort while preserving original requested inheritance; test changed Planning hint
+  resolution: open
+  severity: P2
+- issue: Persisted transport uncertainty omitted from read model
+  evidence: activity_claims.py checkpoint.uncertain; batch_usecases.py:42-50; SddBatch.svelte
+  failure_condition: Retained artifact timeout appears indistinguishable from ordinary in-flight admission on refresh
+  suggested_action: Expose safe persisted uncertainty evidence with exact existing owner/artifact links; no new enum or authority
+  resolution: open
+  severity: P2
+checks: {}
+diff_scope:
+  base: 508997c498e197a176a4aba0255e2d3cb535075e
+  head: f558640e8ed6000b505801894a626ec3461a63fc
+activity_effort: high
