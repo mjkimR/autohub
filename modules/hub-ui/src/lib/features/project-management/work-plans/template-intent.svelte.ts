@@ -29,7 +29,8 @@ export class TemplateIntent {
 		try {
 			const saved = sessionStorage.getItem(this.key);
 			if (saved) {
-				const value = JSON.parse(saved);
+				const stored = JSON.parse(saved);
+				const value = stored?.version === 1 ? stored.pending : stored;
 				if (
 					!value ||
 					!['create', 'from-plan', 'update', 'delete', 'register'].includes(value.op) ||
@@ -37,7 +38,12 @@ export class TemplateIntent {
 				)
 					throw new Error('Invalid saved request');
 				this.pending = value;
-				this.state = 'unknown';
+				this.state =
+					stored?.version === 1 && ['recorded', 'refused'].includes(stored.state)
+						? stored.state
+						: 'unknown';
+				this.outcome = stored?.version === 1 ? (stored.outcome ?? null) : null;
+				this.error = stored?.version === 1 ? (stored.error ?? '') : '';
 			}
 		} catch {
 			this.storageError = true;
@@ -52,13 +58,23 @@ export class TemplateIntent {
 		return this.state === 'unknown' || this.busy || this.storageError;
 	}
 	remember() {
-		sessionStorage.setItem(this.key, JSON.stringify(this.pending));
+		sessionStorage.setItem(
+			this.key,
+			JSON.stringify({
+				version: 1,
+				pending: this.pending,
+				state: this.state,
+				outcome: this.outcome,
+				error: this.error
+			})
+		);
 	}
 	async submit(pending: Pending) {
 		if (this.locked) throw new Error('Resolve the original template request first');
 		this.outcome = null;
 		this.error = '';
 		this.pending = JSON.parse(JSON.stringify(pending));
+		this.state = 'unknown';
 		try {
 			this.remember();
 		} catch {
@@ -66,7 +82,6 @@ export class TemplateIntent {
 			this.error = 'Browser session storage is unavailable; request was not sent.';
 			return;
 		}
-		this.state = 'unknown';
 		await this.retry();
 	}
 	async retry() {
@@ -125,7 +140,13 @@ export class TemplateIntent {
 				].includes(error?.code ?? '')
 			)
 				this.state = 'refused';
-			this.error = apiErrorMessage(result.error, 'Outcome unknown. Check the original request.');
+			this.error = apiErrorMessage(
+				result.error,
+				this.state === 'refused'
+					? 'Original request was refused.'
+					: 'Outcome unknown. Check the original request.'
+			);
+			if (this.state === 'refused') this.persistKnown();
 		} catch (e) {
 			this.error = e instanceof Error ? e.message : 'Outcome unknown';
 		} finally {
@@ -164,6 +185,15 @@ export class TemplateIntent {
 	record(outcome: Outcome) {
 		this.outcome = outcome;
 		this.state = 'recorded';
+		this.persistKnown();
+	}
+	persistKnown() {
+		try {
+			this.remember();
+		} catch {
+			this.error =
+				'Recorded/refused result retained in memory; browser recovery update failed. Check durable request history after reload.';
+		}
 	}
 	dismiss() {
 		if (this.locked) return;

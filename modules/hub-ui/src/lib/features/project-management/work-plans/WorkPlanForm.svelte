@@ -34,7 +34,9 @@
 	const initial = untrack(() => editing ?? seed);
 	let title = $state(initial?.title ?? '');
 	let groupKey = $state(initial?.group_key ?? '');
-	let mode = $state<components['schemas']['WorkPlanCreate']['state']>('draft');
+	let mode = $state<components['schemas']['WorkPlanCreate']['state']>(
+		untrack(() => seed?.state ?? 'draft')
+	);
 	const flexible = !initial || ['draft', 'proposed'].includes(initial.state);
 	let draft = $derived(initial ? flexible : mode === 'draft');
 	let reason = $state('');

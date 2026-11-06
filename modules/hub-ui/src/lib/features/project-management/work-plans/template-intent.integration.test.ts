@@ -141,3 +141,30 @@ test('denied storage prevents submission before a recoverable identity can be sa
 	expect(intent.storageError).toBe(true);
 	spy.mockRestore();
 });
+
+test.each(['recorded', 'refused'])(
+	'known %s outcome is restored without an unknown-state write guard',
+	async (state) => {
+		const intent = new TemplateIntent('terminal', 'actor');
+		const request = pending();
+		api.POST.mockResolvedValue(
+			state === 'recorded'
+				? {
+						data: {
+							record_state: 'recorded',
+							operation: 'create',
+							request_id: request.body.request_id,
+							original_template: template,
+							current_template: template
+						}
+					}
+				: { error: { code: 'TEMPLATE_REVISION_CHANGED' }, response: { status: 409 } }
+		);
+		await intent.submit(request);
+		expect(intent.state).toBe(state);
+		const restored = new TemplateIntent('terminal', 'actor');
+		expect(restored.state).toBe(state);
+		expect(restored.locked).toBe(false);
+		if (state === 'recorded') expect(restored.outcome?.original_template?.id).toBe('template');
+	}
+);

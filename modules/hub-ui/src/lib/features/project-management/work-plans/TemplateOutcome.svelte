@@ -23,8 +23,8 @@
 		{#if intent.outcome}
 			{#if intent.outcome.refresh_error}<p role="alert">{intent.outcome.refresh_error}</p>{/if}
 			<p>
-				Original template: {intent.outcome.original_template?.name} · revision {intent.outcome
-					.original_template?.revision}
+				Original template: {intent.outcome.original_template?.name} · {intent.outcome
+					.original_template?.id} · revision {intent.outcome.original_template?.revision}
 			</p>
 			<p>
 				Current template revision: {intent.outcome.current_template?.revision} · {intent.outcome
@@ -35,7 +35,15 @@
 			{#if intent.outcome.original_plan}<p>
 					Original Plan: {intent.outcome.original_plan.id} · {intent.outcome.original_plan.state}
 				</p>
-				<p>Current Plan: {intent.outcome.current_plan?.state}</p>{/if}
+				<p>Current Plan: {intent.outcome.current_plan?.state}</p>
+				<a
+					class="underline"
+					href={`/projects/${intent.project}?tab=plans&plan_id=${intent.outcome.original_plan.id}`}
+					>Open original Plan</a
+				>{/if}
+			{#if intent.outcome.source_plan_id}<p>
+					Source Plan: {intent.outcome.source_plan_id} · revision {intent.outcome.source_revision}
+				</p>{/if}
 			{#if intent.outcome.omitted?.length}<p>Omitted: {intent.outcome.omitted?.join(', ')}</p>{/if}
 		{/if}
 		{#if intent.error}<p role="alert">{intent.error}</p>{/if}

@@ -38,6 +38,7 @@
 		confirmed = $state(false);
 	let deleting = $state<Template | null>(null),
 		deleteConfirmed = $state(false);
+	let stalePreview = $state(false);
 	async function load(page = offset) {
 		loading = true;
 		try {
@@ -111,6 +112,7 @@
 	async function use(template: Template) {
 		if (intent?.locked) return;
 		loading = true;
+		stalePreview = false;
 		confirmed = false;
 		reviewed = null;
 		try {
@@ -139,7 +141,16 @@
 		}
 	}
 	async function register() {
-		if (!selected || !reviewed || !binding || !confirmed || !intent || !reviewed.request_id) return;
+		if (
+			stalePreview ||
+			!selected ||
+			!reviewed ||
+			!binding ||
+			!confirmed ||
+			!intent ||
+			!reviewed.request_id
+		)
+			return;
 		await intent.submit({
 			op: 'register',
 			target: selected.id,
@@ -152,7 +163,10 @@
 				payload: reviewed
 			}
 		});
-		if (intent.state === 'refused') confirmed = false;
+		if (intent.state === 'refused') {
+			confirmed = false;
+			stalePreview = true;
+		}
 		if (intent.state === 'recorded') {
 			selected = null;
 			seed = undefined;
@@ -224,6 +238,12 @@
 				</ul>
 			</details>
 			{#if reviewed}
+				{#if stalePreview}<p role="alert">
+						The reviewed template or binding was refused. Reload current basis for a new request.
+					</p>
+					<Button variant="outline" disabled={intent?.locked} onclick={() => use(selected!)}
+						>Reload for review</Button
+					>{/if}
 				<h4>Review complete registration</h4>
 				<pre class="max-h-96 overflow-auto text-sm whitespace-pre-wrap">{JSON.stringify(
 						reviewed,
@@ -236,11 +256,14 @@
 						: 'Only active creation requests execution; draft stores the specification.'}
 				</p>
 				<label class="flex gap-2"
-					><input type="checkbox" bind:checked={confirmed} disabled={intent?.locked} />I reviewed
-					this source, current binding and complete specification. Private task text will be
-					retained in this tab session for request recovery.</label
+					><input
+						type="checkbox"
+						bind:checked={confirmed}
+						disabled={stalePreview || intent?.locked}
+					/>I reviewed this source, current binding and complete specification. Private task text
+					will be retained in this tab session for request recovery.</label
 				>
-				<Button disabled={!confirmed || !intent || intent.locked} onclick={register}
+				<Button disabled={stalePreview || !confirmed || !intent || intent.locked} onclick={register}
 					>{reviewed.state === 'active' ? 'Register active work' : 'Save reviewed plan'}</Button
 				>
 				<Button
@@ -253,21 +276,21 @@
 					}}>Back to editing</Button
 				>
 			{:else}
-				<WorkPlanForm
-					projectId={project.id}
-					{plans}
-					{seed}
-					onsaved={() => {}}
-					onreview={(payload) => {
-						reviewed = payload;
-						confirmed = false;
-					}}
-					oncancel={() => {
-						selected = null;
-						seed = undefined;
-						confirmed = false;
-					}}
-				/>
+				{#key seed.request_id}<WorkPlanForm
+						projectId={project.id}
+						{plans}
+						{seed}
+						onsaved={() => {}}
+						onreview={(payload) => {
+							reviewed = payload;
+							confirmed = false;
+						}}
+						oncancel={() => {
+							selected = null;
+							seed = undefined;
+							confirmed = false;
+						}}
+					/>{/key}
 			{/if}
 			<Button
 				variant="ghost"
@@ -300,7 +323,7 @@
 				No templates on this page. Create a definition or save one from a Plan.
 			</p>{/if}
 		{#each items as template (template.id)}<article class="space-y-2 rounded-lg border p-3">
-				<h3>{template.name} · revision {template.revision}</h3>
+				<h3>{template.name} · {template.id} · revision {template.revision}</h3>
 				<p>
 					{(template.definition.items ?? []).length} local tasks · {template.definition.base_branch}
 				</p>

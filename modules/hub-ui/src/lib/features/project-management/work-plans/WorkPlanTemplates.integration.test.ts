@@ -105,3 +105,66 @@ test('closing and reopening restores the original account/project request', asyn
 	await userEvent.setup().click(screen.getByRole('button', { name: 'Close Templates' }));
 	expect(sessionStorage.getItem('work-plan-template-intent:account:p')).not.toBeNull();
 });
+
+test('review back to editor preserves active creation state', async () => {
+	setup();
+	render(WorkPlanTemplates, { project, plans: [], onclose: vi.fn(), refresh: vi.fn() });
+	const user = userEvent.setup();
+	await user.click(await screen.findByRole('button', { name: 'Use template' }));
+	await user.selectOptions(screen.getByRole('combobox', { name: 'Save as' }), 'active');
+	await user.click(screen.getByRole('button', { name: 'Review registration' }));
+	await user.click(screen.getByRole('button', { name: 'Back to editing' }));
+	expect((screen.getByRole('combobox', { name: 'Save as' }) as HTMLSelectElement).value).toBe(
+		'active'
+	);
+});
+
+test('binding refusal prevents stale resubmission and offers fresh reviewed reload', async () => {
+	setup();
+	render(WorkPlanTemplates, { project, plans: [], onclose: vi.fn(), refresh: vi.fn() });
+	const user = userEvent.setup();
+	await user.click(await screen.findByRole('button', { name: 'Use template' }));
+	await user.click(screen.getByRole('button', { name: 'Review registration' }));
+	await user.click(screen.getByRole('checkbox'));
+	api.POST.mockResolvedValue({
+		error: { code: 'TEMPLATE_BINDING_CHANGED' },
+		response: { status: 409 }
+	});
+	await user.click(screen.getByRole('button', { name: 'Save reviewed plan' }));
+	await screen.findByText(
+		'The reviewed template or binding was refused. Reload current basis for a new request.'
+	);
+	expect(screen.getByRole('button', { name: 'Save reviewed plan' }).hasAttribute('disabled')).toBe(
+		true
+	);
+	const first = api.POST.mock.calls[0][1].body.request_id;
+	await user.click(screen.getByRole('button', { name: 'Reload for review' }));
+	await user.click(screen.getByRole('button', { name: 'Review registration' }));
+	await user.click(screen.getByRole('checkbox'));
+	await user.click(screen.getByRole('button', { name: 'Save reviewed plan' }));
+	expect(api.POST.mock.calls[1][1].body.request_id).not.toBe(first);
+});
+
+test('acknowledged outcome preserves exact template ID and original Plan navigation on reopen', async () => {
+	setup();
+	sessionStorage.setItem(
+		'work-plan-template-intent:account:p',
+		JSON.stringify({
+			version: 1,
+			state: 'recorded',
+			pending: { op: 'register', target: 'template', body: { request_id: 'original' } },
+			outcome: {
+				record_state: 'recorded',
+				original_template: template,
+				current_template: template,
+				original_plan: { id: 'plan', state: 'draft' },
+				current_plan: { state: 'active' }
+			}
+		})
+	);
+	render(WorkPlanTemplates, { project, plans: [], onclose: vi.fn(), refresh: vi.fn() });
+	await screen.findByText(/Original template:.*template/);
+	expect(screen.getByRole('link', { name: 'Open original Plan' }).getAttribute('href')).toContain(
+		'/projects/p?tab=plans'
+	);
+});
