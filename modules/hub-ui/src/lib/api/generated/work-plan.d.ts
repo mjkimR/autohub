@@ -217,6 +217,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/work-plan-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listing */
+        get: operations["listing_api_v1_projects__project_id__work_plan_templates_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_api_v1_projects__project_id__work_plan_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/work-plan-templates/from-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** From Plan */
+        post: operations["from_plan_api_v1_projects__project_id__work_plan_templates_from_plan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/work-plan-templates/requests/{operation}/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Request */
+        get: operations["request_api_v1_projects__project_id__work_plan_templates_requests__operation___request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/work-plan-templates/registrations/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Registration */
+        get: operations["registration_api_v1_projects__project_id__work_plan_templates_registrations__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/work-plan-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get */
+        get: operations["get_api_v1_projects__project_id__work_plan_templates__template_id__get"];
+        /** Update */
+        put: operations["update_api_v1_projects__project_id__work_plan_templates__template_id__put"];
+        post?: never;
+        /** Delete */
+        delete: operations["delete_api_v1_projects__project_id__work_plan_templates__template_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/work-plan-templates/{template_id}/registrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register */
+        post: operations["register_api_v1_projects__project_id__work_plan_templates__template_id__registrations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export interface components {
     schemas: {
@@ -574,6 +679,158 @@ export interface components {
             /** Acceptance Id */
             acceptance_id?: string | null;
         };
+        /** TemplateCreate */
+        TemplateCreate: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Name */
+            name: string;
+            definition: components["schemas"]["TemplateDefinition"];
+        };
+        /** TemplateDefinition */
+        TemplateDefinition: {
+            /** Title */
+            title: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Base Branch
+             * @default main
+             */
+            base_branch: string;
+            /** Items */
+            items?: components["schemas"]["TemplateItem"][];
+        };
+        /** TemplateDelete */
+        TemplateDelete: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+        };
+        /** TemplateFromPlan */
+        TemplateFromPlan: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Source Plan Id
+             * Format: uuid
+             */
+            source_plan_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+        };
+        /** TemplateItem */
+        TemplateItem: {
+            /** Key */
+            key: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Acceptance
+             * @default
+             */
+            acceptance: string;
+            /** Depends On */
+            depends_on?: string[];
+        };
+        /** TemplateList */
+        TemplateList: {
+            /** Items */
+            items: components["schemas"]["WorkPlanTemplateRead"][];
+            /** Total Count */
+            total_count: number;
+        };
+        /** TemplateOutcome */
+        TemplateOutcome: {
+            /** Refresh Error */
+            refresh_error?: string | null;
+            /**
+             * Record State
+             * @enum {string}
+             */
+            record_state: "unknown" | "recorded";
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "create" | "from-plan" | "update" | "delete" | "register";
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            original_template?: components["schemas"]["WorkPlanTemplateRead"] | null;
+            current_template?: components["schemas"]["WorkPlanTemplateRead"] | null;
+            original_plan?: components["schemas"]["WorkPlanRead"] | null;
+            current_plan?: components["schemas"]["WorkPlanRead"] | null;
+            /** Source Plan Id */
+            source_plan_id?: string | null;
+            /** Source Revision */
+            source_revision?: number | null;
+            /** Repository */
+            repository?: string | null;
+            /** Connector Id */
+            connector_id?: string | null;
+            reviewed_payload?: components["schemas"]["WorkPlanCreate"] | null;
+            /** Omitted */
+            omitted?: string[];
+        };
+        /** TemplateRegistration */
+        TemplateRegistration: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Template Revision */
+            template_revision: number;
+            /** Template Digest */
+            template_digest: string;
+            /** Expected Repository */
+            expected_repository: string;
+            /**
+             * Expected Connector Id
+             * Format: uuid
+             */
+            expected_connector_id: string;
+            payload: components["schemas"]["WorkPlanCreate"];
+        };
+        /** TemplateUpdate */
+        TemplateUpdate: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Name */
+            name: string;
+            definition: components["schemas"]["TemplateDefinition"];
+            /** Expected Revision */
+            expected_revision: number;
+        };
         ValidationError: CommonComponents["schemas"]["ValidationError"];
         /** WorkItemRead */
         WorkItemRead: {
@@ -806,6 +1063,44 @@ export interface components {
             /** Items */
             items: components["schemas"]["WorkItemRead"][];
             issue: components["schemas"]["IssueMirrorRead"] | null;
+        };
+        /** WorkPlanTemplateRead */
+        WorkPlanTemplateRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /** Name */
+            name: string;
+            /** Revision */
+            revision: number;
+            /** Deleted */
+            deleted: boolean;
+            /** Schema Version */
+            schema_version: number;
+            definition: components["schemas"]["TemplateDefinition"];
+            /** Digest */
+            digest: string;
+            /** Created Actor */
+            created_actor: string;
+            /** Updated Actor */
+            updated_actor: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** WorkPlanUpdate */
         WorkPlanUpdate: {
@@ -1375,6 +1670,315 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReplacementRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listing_api_v1_projects__project_id__work_plan_templates_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_api_v1_projects__project_id__work_plan_templates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOutcome"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    from_plan_api_v1_projects__project_id__work_plan_templates_from_plan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateFromPlan"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOutcome"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_api_v1_projects__project_id__work_plan_templates_requests__operation___request_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                operation: "create" | "from-plan" | "update" | "delete";
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOutcome"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    registration_api_v1_projects__project_id__work_plan_templates_registrations__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOutcome"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_api_v1_projects__project_id__work_plan_templates__template_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkPlanTemplateRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_api_v1_projects__project_id__work_plan_templates__template_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOutcome"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_api_v1_projects__project_id__work_plan_templates__template_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateDelete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOutcome"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_api_v1_projects__project_id__work_plan_templates__template_id__registrations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateRegistration"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOutcome"];
                 };
             };
             /** @description Validation Error */

@@ -5,6 +5,7 @@
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
 	import WorkPlanForm from './WorkPlanForm.svelte';
+	import WorkPlanTemplates from './WorkPlanTemplates.svelte';
 	import WorkPlanActivity from './WorkPlanActivity.svelte';
 	import WorkPlanGroup from './WorkPlanGroup.svelte';
 	import WorkItemRecovery from './WorkItemRecovery.svelte';
@@ -16,6 +17,7 @@
 	let error = $state('');
 	let busy = $state('');
 	let creating = $state(false);
+	let templatesOpen = $state(false);
 	let filter = $state('all');
 	let groupFilter = $state('all');
 	let groupEditing = $state<Plan | undefined>();
@@ -133,7 +135,10 @@
 			</p>
 		</div>
 		<div class="flex gap-2">
-			<Button variant="outline" onclick={load}>Refresh</Button><Button
+			<Button variant="outline" onclick={() => (templatesOpen = true)}>Templates</Button><Button
+				variant="outline"
+				onclick={load}>Refresh</Button
+			><Button
 				disabled={!project.github || creating || !!editing || !!groupEditing}
 				onclick={() => (creating = true)}>Add plan</Button
 			>
@@ -142,6 +147,12 @@
 	{#if error}<p role="alert" class="rounded-lg border border-destructive/30 p-4 text-sm">
 			{error}
 		</p>{/if}
+	{#if templatesOpen}{#key project.id}<WorkPlanTemplates
+				{project}
+				{plans}
+				onclose={() => (templatesOpen = false)}
+				refresh={load}
+			/>{/key}{/if}
 	{#if creating || editing}<WorkPlanForm
 			projectId={project.id}
 			{plans}

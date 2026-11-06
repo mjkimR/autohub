@@ -19,15 +19,19 @@
 		plans,
 		editing,
 		onsaved,
-		oncancel
+		oncancel,
+		seed,
+		onreview
 	}: {
 		projectId: string;
 		plans: Plan[];
 		editing?: Plan;
 		onsaved: () => void;
 		oncancel: () => void;
+		seed?: components['schemas']['WorkPlanCreate'];
+		onreview?: (payload: components['schemas']['WorkPlanCreate']) => void;
 	} = $props();
-	const initial = untrack(() => editing);
+	const initial = untrack(() => editing ?? seed);
 	let title = $state(initial?.title ?? '');
 	let groupKey = $state(initial?.group_key ?? '');
 	let mode = $state<components['schemas']['WorkPlanCreate']['state']>('draft');
@@ -46,13 +50,14 @@
 	let scheduledAt = $state(initialSchedule);
 	let parents = $state<string[]>(initial?.depends_on ?? []);
 	let items = $state<EditableItem[]>(
-		initial?.items.map((item) =>
+		initial?.items?.map((item) =>
 			editableItem({
 				key: item.key,
 				title: item.title,
 				description: item.description,
 				acceptance: item.acceptance,
-				depends_on: [...item.depends_on]
+				depends_on: [...(item.depends_on ?? [])],
+				attach_branch: item.attach_branch ?? null
 			})
 		) ?? []
 	);
@@ -60,7 +65,7 @@
 		for (const item of items) item.keyElement?.setCustomValidity(item.keyError);
 	});
 	let saving = $state(false);
-	const registrationId = crypto.randomUUID();
+	const registrationId = untrack(() => seed?.request_id ?? crypto.randomUUID());
 	let error = $state('');
 	let bulkOpen = $state(false);
 	let bulk = $state('');
@@ -169,9 +174,14 @@
 					title: item.title,
 					description: item.description,
 					acceptance: item.acceptance,
-					depends_on: item.depends_on
+					depends_on: item.depends_on,
+					...(item.attach_branch?.trim() ? { attach_branch: item.attach_branch.trim() } : {})
 				}))
 			};
+			if (onreview) {
+				onreview({ ...body, state: mode, request_id: registrationId });
+				return;
+			}
 			const result = editing
 				? await api.PUT('/api/v1/projects/{project_id}/work-plans/{plan_id}', {
 						params: { path: { project_id: projectId, plan_id: editing.id } },
@@ -297,6 +307,12 @@
 				>
 			</div>
 			<label class="block space-y-2 text-sm"
+				>Attach existing activity branch (optional, explicit)<Input
+					bind:value={item.attach_branch}
+					placeholder="plan-... or dev-..."
+				/></label
+			>
+			<label class="block space-y-2 text-sm"
 				>Specification<textarea
 					required={!draft}
 					class={textareaClass}
@@ -339,19 +355,21 @@
 				onclick={addItem}>Add task</Button
 			>{/if}
 		<Button type="submit" disabled={saving}
-			>{saving
-				? 'Saving…'
-				: editing
-					? 'Save plan'
-					: mode === 'draft'
-						? 'Save draft'
-						: mode === 'proposed'
-							? 'Submit proposal'
-							: mode === 'paused'
-								? 'Save ready plan'
-								: scheduledAt
-									? 'Add and schedule'
-									: 'Add and start'}</Button
+			>{onreview
+				? 'Review registration'
+				: saving
+					? 'Saving…'
+					: editing
+						? 'Save plan'
+						: mode === 'draft'
+							? 'Save draft'
+							: mode === 'proposed'
+								? 'Submit proposal'
+								: mode === 'paused'
+									? 'Save ready plan'
+									: scheduledAt
+										? 'Add and schedule'
+										: 'Add and start'}</Button
 		>
 		<Button type="button" variant="ghost" disabled={saving} onclick={oncancel}>Cancel</Button>
 	</div>

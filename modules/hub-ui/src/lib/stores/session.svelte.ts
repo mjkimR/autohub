@@ -66,6 +66,15 @@ class Session {
 	logout(broadcast = false) {
 		this.generation += 1;
 		this.accessToken = '';
+		try {
+			const storage = globalThis.sessionStorage;
+			for (let i = (storage?.length ?? 0) - 1; i >= 0; i--) {
+				const key = storage.key(i);
+				if (key?.startsWith('work-plan-template-intent:')) storage.removeItem(key);
+			}
+		} catch {
+			/* Session storage may be unavailable. */
+		}
 		if (broadcast)
 			write('localStorage', `${EMAIL_STORAGE}.logout`, `${Date.now()}-${Math.random()}`);
 	}
