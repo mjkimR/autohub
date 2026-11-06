@@ -6,6 +6,7 @@ area: access
 element: screen
 status: active
 usecases:
+  - UC-receive-decision-notice
   - UC-access-hub
 capabilities:
   - CAP-ACCESS-authentication-authorization
@@ -46,7 +47,12 @@ The credential form is the primary region. Provider sign-in and admission messag
 | Return after access or renewal ends | `UC-access-hub` 3a, `UC-access-hub` 4a, `UC-access-hub` 5 | session-ended | populated |  | `CAP-ACCESS-authentication-authorization` | The credential form replaces authenticated content. |
 | Continue with Google | global: optional provider admission alongside the modeled password sign-in | populated | google-completing | end | `CAP-ACCESS-authentication-authorization` | The browser navigates to provider authorization; callback results return here. |
 | Toggle theme | global: a visual preference independent of authentication | populated | populated |  |  | The selected theme changes. |
+| Complete approved notice sign-in | `UC-receive-decision-notice` 1b | submitting, google-completing | populated | `UX-decision-inbox` | `CAP-PR-operator-decisions` | Restores only validated exact identity; otherwise conditional reopen guidance appears. |
 
 ## 5. Evidence
 
 Implementation inspected: `modules/hub-ui/src/routes/+layout.svelte`, `modules/hub-ui/src/lib/features/auth/login/LoginView.svelte` and `modules/hub-ui/src/lib/features/auth/login/GoogleLogin.svelte`. Inspected checks: `modules/hub-ui/src/lib/features/auth/login/LoginView.integration.test.ts` and `modules/hub-ui/src/lib/features/auth/login/GoogleLogin.integration.test.ts`. These references do not record a browser or live identity-provider execution.
+
+## 6. Exact notice return
+
+The optional notice context contains only validated decision key/fingerprint and a thirty-minute tab-local timestamp. Password admission keeps the requested URL. Before Google departure, the helper retains that bounded identity; approved completion consumes it once and returns only to same-origin Decisions. No mutation payload, credential or arbitrary redirect is retained. Expired, malformed, missing or denied storage leaves successful login intact and displays: Signed in. If you arrived from a decision notice, reopen its original link to review the exact decision.

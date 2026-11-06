@@ -6,6 +6,7 @@ area: settings
 element: screen
 status: active
 usecases:
+  - UC-receive-decision-notice
   - UC-configure-operator-notifications
 capabilities:
   - CAP-NOTIFY-operator-notifications
@@ -47,7 +48,13 @@ Channel cards are primary below the add and refresh controls.
 | Delete and confirm | global: remove a destination after confirmation | populated | populated |  | `CAP-NOTIFY-operator-notifications` | The browser asks for confirmation, then a toast and reload report the outcome. |
 | Refresh | global: reload channel configuration and delivery observations | populated | loading |  | `CAP-NOTIFY-operator-notifications` | Cards reload or a retryable load error appears. |
 | Navigate to Projects | global: shared application navigation | populated | populated | `UX-projects` |  | The Projects screen opens. |
+| Decision notices | `UC-configure-operator-notifications` 5 | populated | populated | `UX-decision-subscription` | `CAP-NOTIFY-operator-notifications` | Loads current settings, destination generation and effective gates. |
+| Notice history | `UC-receive-decision-notice` 4 | populated | populated | `UX-decision-notice-history` | `CAP-NOTIFY-operator-notifications` | Loads bounded transport observations. |
 
 ## 5. Evidence
 
 Implementation inspection: `modules/hub-ui/src/lib/features/configuration/notifications/NotificationsView.svelte`.
+
+## 6. Decision notice dialogs
+
+Below each Notification channel, a Decision subscription summary shows Off by default or the saved project/kind/timing settings. Decision notices opens `UX-decision-subscription`; Notice history opens `UX-decision-notice-history`. Disabled channel and severity gates are visible. Immediate means next eligible maintenance; digest means after fifteen minutes and a subsequent pass, without a delivery deadline. An admitted external send can finish after settings change or deletion.

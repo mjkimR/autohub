@@ -51,7 +51,7 @@ entrypoints:
    commit's CI (`CAP-SDD-native-delivery`, rules 14, 16).
    Interface: `UX-sdd-decision-history`.
 
-The operator can locate the pending subject through `UX-decision-inbox` before opening its exact owner review. Native review refreshes and persists the current inspection basis before controls enable. Existing per-run entry points remain available.
+The operator can locate the pending subject through `UX-decision-inbox` before opening its exact owner review. Optional notice-link entry follows `UC-receive-decision-notice`; authentication and exact current identity are checked before the existing owner controls enable. Native review refreshes and persists the current inspection basis before controls enable. Existing per-run entry points remain available.
 
 ## 3. Extensions
 

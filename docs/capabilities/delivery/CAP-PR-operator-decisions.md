@@ -5,6 +5,7 @@ summary: "Retain PR-bound questions and append-only answers, discover pending de
 area: delivery
 status: active
 usecases:
+  - UC-receive-decision-notice
   - UC-resolve-run-question
 entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/api/interactions.py
@@ -183,3 +184,9 @@ The concurrent-answer/resume test requires PostgreSQL and skips on SQLite.
 Integration examples use controlled GitHub responses and do not prove live
 provider behavior, deployment or Auto Hub's own SDD baseline. Native decision
 revocation remains outside this ordinary-run contract.
+
+## Exact notice selection
+
+WHEN an authenticated caller supplies a decision key and fingerprint, Hub MUST resolve only that indexed discovery entry before invoking the existing owner review. IF the entry is missing or no longer actionable, THEN Hub MUST return HTTP404. IF the fingerprint changed, THEN Hub MUST return HTTP409. Check: `modules/hub/tests/integration/features/notifications/test_decision_notices.py`, `test_exact_selection_late_page_and_no_provider_calls`; `modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.integration.test.ts`.
+
+`GET /api/v1/pipeline-runs/decisions/selection` accepts `key` of at most 255 characters and a 64-character lowercase hexadecimal `fingerprint`. It returns the existing discovery-entry read shape. Lookup performs no list-page scan or provider call. The selected entry then follows the existing owner review, including native inspection and CAS effects; the URL itself grants no mutation authority.
