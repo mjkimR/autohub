@@ -1,0 +1,28 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T05:39:03.751467Z'
+status: completed
+summary: Completed Development from handed-off skeleton through verified source, high code review3 and reconcile review2,17-target Living Spec reconciliation and final report. No integration, push, merge or cleanup performed; ready for Host handoff.
+findings: []
+assumptions:
+- 'Isolation is emulated: explicit worktree cwd, admitted path audit, fixed reviewer HEAD/status and before/after comparisons substitute for native enforcement. No native boundary guarantee is claimed.'
+- Input premises checked at f0697e4; global human visibility and owner authority preserved. Concurrent MCP integration was not merged into this independent branch; Host verifies the combined landed head.
+- 'One-off scratch-path deviation: authored /tmp/decision_notice_sources.py; audited helper output only admitted source paths and no credentials. Host ordered stop use/write and leave intact; complied. All subsequent authored scratch stayed in ignored worktree .cache/probes. Deviation is recorded here rather than committed as a helper.'
+- Generated client diff is limited to notification-channel.d.ts and pipeline-run.d.ts; no index output changed. ADR write is Confirmation only under explicit Host authority.
+unverified_areas:
+- No live Telegram messages, OAuth-provider calls or deployment. Host owns integration runtime synchronization and final landed-head checks.
+checks:
+  sync_start: PASS exit=0
+  tests: PASS SQLite15/1skip PostgreSQL16 notificationUI13 auth13; earlier affected backend84/5skip fullUI273 and migration checks retained with evidence scope
+  build: PASS final just check backend/SDK0errors Svelte0errors productionbuild
+  lint: PASS final just lint and CI rules0errors0warnings
+  generated: PASS just gen-ui-api no tracked drift
+  baseline: PASS same-fixture disabled0 sends enabled1 admitted generation
+  review: PASS high code3 with exact minor closures; independent reconcile2 no findings; all roles completed
+  scope: PASS original admitted paths plus initial explicit ADR Confirmation; no TierB or sync output paths; no denied source writes
+diff_scope:
+  base: f0697e4e4182bd0d6ab8eab2e67c570df28de533
+  head: e914ee00d8895893fcdb247ee72404952ae22e8b
+activity_effort: high
