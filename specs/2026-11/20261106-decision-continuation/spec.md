@@ -10,7 +10,6 @@ related_capabilities: []
 related_usecases: []
 workflow: sdd-spec-feature
 ---
-<!-- devkit:skeleton -->
 
 # [SPEC-decision-continuation] Follow decisions through explicit continuation
 
@@ -30,18 +29,79 @@ Existing contracts intentionally separate saving an answer, applying it, publish
 
 ## 2. User Stories
 
-- **US-1**: As a developer/agent, I want to implement Follow decisions through explicit continuation so that system capabilities are extended.
+- **US-1**: As an operator, I want retained decision outcomes and explicit continuation so that saved answers, publication and current execution remain distinguishable.
 
 ## 3. Non-Goals
 
-1. **Scope Excluded**: <what this change will not do>
+1. **Scope Excluded**: New mutation controllers, automatic approval/application/retry, durable browser answer storage, inbox projection changes, SDK/provider work and deployment.
 
 ## 4. Acceptance Criteria & Behavioral Contracts
 
-### [AC-01] <scenario>
-- **Given** <precondition>
-- **When** <action>
-- **Then** <expected result>
+### [AC-01] Retain decision outcome E1
+
+- **Given** an ordinary pending question
+- **When** Save answer succeeds
+- **Then** the saved answer/text/ID remains visible, the run stays stopped, and no answer is preselected for application.
+
+### [AC-02] Retain decision outcome E2
+
+- **Given** an explicitly selected saved answer
+- **When** valid resume prepares its attempt
+- **Then** Applied to attempt identifies that one attempt while delivery is pending/unknown until delivery evidence exists. Native clarification retains its native branch behavior.
+
+### [AC-03] Retain decision outcome E3
+
+- **Given** a recorded native worker answer
+- **When** publication has not resolved its exact question
+- **Then** Answer recorded — publication pending remains visible with duplicate answer controls disabled. A matching envelope resolution changes the disclosure; unrelated envelopes and request disappearance without exact proof do not.
+
+### [AC-04] Retain decision outcome E4
+
+- **Given** proposal preparation/publication uncertainty
+- **When** Check outcome reads its original request
+- **Then** saved intent, candidate publication and current authority are distinct; a later canceled/paused state is never revived.
+
+### [AC-05] Retain decision outcome E5
+
+- **Given** lost mutation response
+- **When** reads refresh the revision or the dialog reopens
+- **Then** an explicit retry sends the original owner ID and payload. A missing receipt/read error stays Outcome unknown, and changed-input submission remains disabled.
+
+### [AC-06] Retain decision outcome E6
+
+- **Given** successful application followed by later pause
+- **When** the receipt is replayed
+- **Then** the UI shows the current pause and the original attempt; no second attempt or resumed execution is created.
+
+### [AC-07] Retain decision outcome E7
+
+- **Given** a changed native head/subject or ordinary question head
+- **When** current context loads
+- **Then** continuation is disabled until fresh exact-subject review; an ordinary stale answer cannot be applied to the new head.
+
+### [AC-08] Retain decision outcome E8
+
+- **Given** integration authority was recorded
+- **When** outcome loads after revocation or a hold
+- **Then** current authority is shown separately from its historical receipt; generic resume is not labelled or submitted as approval.
+
+### [AC-09] Retain decision outcome E9
+
+- **Given** a known request older than the native history cap
+- **When** outcome is queried
+- **Then** exact evidence is returned without scanning history or external calls. A different namespace/run cannot return that request's evidence.
+
+### [AC-10] Retain decision outcome E10
+
+- **Given** a successful save/apply response followed by a read error
+- **When** the acknowledged result remains visible with Refresh failed; no replacement mutation appears.
+- **Then** Given a successful save/apply response followed by a read error, then the acknowledged result remains visible with Refresh failed; no replacement mutation appears.
+
+### [AC-11] Retain decision outcome E11
+
+- **Given** unknown/recorded/published/failed delivery states and no external live observation
+- **When** labels reflect only persisted owner evidence; no Delivered, Implemented or Completed claim is inferred.
+- **Then** Given unknown/recorded/published/failed delivery states and no external live observation, then labels reflect only persisted owner evidence; no Delivered, Implemented or Completed claim is inferred.
 
 ## 5. Carried Proposal Notes
 
@@ -108,7 +168,7 @@ Development adds integration tests for scoped exact lookup, unknown/not-visible/
 
 The user authorized routine design choices and requested separate UX review. B and the owner-modal arrangement are assumptions within that scope; no business choice blocks this turn. High Development effort remains appropriate because replay, external publication and authority disclosure span persisted owner boundaries.
 
-`SPEC-operator-decision-inbox` is accepted but not implemented/completed in this worktree. Its exact-subject selection, first-observed native age, refreshed inspection and CAS persistence are provisional prerequisites, reused without duplication. Before Development or handoff, compare the landed predecessor's exact completed spec and implementation with this bundle, replace the dependency anchor through the normal process, and revise any mismatched fields/routes/UI boundaries. Recheck touched owner tests, generated types and active branch overlap; do not treat this branch's checks as evidence for the eventual landed head.
+`SPEC-operator-decision-inbox` is completed and landed at base 7035c33. Its exact-subject CAS and native answer extractor are reused. Its exact-subject selection, first-observed native age, refreshed inspection and CAS persistence are provisional prerequisites, reused without duplication. Before Development or handoff, compare the landed predecessor's exact completed spec and implementation with this bundle, replace the dependency anchor through the normal process, and revise any mismatched fields/routes/UI boundaries. Recheck touched owner tests, generated types and active branch overlap; do not treat this branch's checks as evidence for the eventual landed head.
 
 ### 4. Lifecycle & Retirement Criteria
 
@@ -122,3 +182,128 @@ Acceptance and Development handoff follow `sdd-proposal`. Rejection retains
 the decision and reason through the proposal lifecycle. This proposal is complete
 only through a verified accepted implementation, not from creating this draft.
 
+
+## Screens
+
+### Candidates
+
+- **A — owner review with persistent outcome region, recommended**: retain the selected subject and show its recorded result, current run state and explicit next action beside owner controls. This preserves review context after a row leaves the inbox.
+- **B — separate continuation screen**: gives follow-through its own primary region but adds navigation and duplicates owner context.
+- **C — transient success notice and run link**: costs less but loses the saved/applied/publication distinction when a response is lost or the dialog reopens.
+
+A is the within-scope assumption. These drafts amend existing elements; existing controls and style remain governed by their owning UX documents. The predecessor owns inbox layout, exact-subject Review, waiting age, and native inspection/CAS. No continuation action is added to discovery rows.
+
+### UX-run-decisions — Run decisions (modal amendment)
+
+- **Use cases**: `UC-resolve-run-question`, `UC-complete-sdd-workflow`, `UC-decide-sdd-proposal`.
+- **Capabilities**: `CAP-PR-operator-decisions`, `CAP-SDD-workflow-control`, `CAP-SDD-native-delivery`.
+- **Purpose**: Follow one exact question/request through its recorded outcome and choose the next owner action. Facts: project/run, question/request identity, selected answer, inspected head/revision, recorded request and current run state. Other decisions stay in history or the existing native panels.
+
+#### Content
+
+The selected decision and its outcome are the primary region. History is secondary. The outcome remains visible after the question leaves the pending list and is reachable by its run/question or request identity on reopening.
+
+- PR run: current state, last loaded time and Open run / Inspect pull request.
+- Run question: exact question, saved answers, explicit selected answer and Save answer.
+- Recorded outcome: Saved, Applied to attempt, delivery evidence or Outcome unknown; saved answer text remains inspectable separately from the composer.
+- Native SDD activity: the exact workflow panel or integration panel below.
+- Recovery: Check outcome; Retry same request only when eligible; Review current context after change.
+- Close: returns focus to originating inbox row or nearest remaining neighbor, preserving filters and page.
+
+#### States
+
+- **loading**: Wait for current owner reads; decision controls disabled; Close remains available.
+- **empty**: Subject unavailable/resolved without retained accessible detail; explain and offer Open run or Close.
+- **saved**: Answer saved; run remains stopped. Show Resume with selected answer only for an eligible explicitly selected saved answer. No default selection or application follows Save.
+- **applied**: Applied to attempt identifies the existing attempt; show delivery independently and Open run. Later pause is shown as current state and is not overridden.
+- **uncertain**: Outcome unknown identifies the original operation; editing/replacement submissions disabled while the in-memory original intent is retained. After a full reload it cannot be reconstructed automatically; explain the limit and use owner history/current review, without claiming a recovered retry guard. Offer Check outcome, eligible Retry same request, Open run and Close. A read error or absent receipt does not prove failure.
+- **changed**: Show changed context and retained answer separately; disable old continuation. Offer Review current context; stale ordinary answers require existing dismissal/new-question flow rather than application to the changed head.
+- **acknowledged-refresh-error**: Keep the acknowledged saved/applied/recorded outcome and original identity visible with Refresh failed and Retry read. Disable new continuation until current context reloads; do not replace the mutation or relabel its acknowledged result unknown.
+- **error**: A definitive validation failure shows its owner message and offers correction after review; no success is inferred.
+- **terminal**: Retained result is readable; no continuation is offered for ended work.
+
+#### Interactions
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
+| Save answer | `UC-resolve-run-question` 2 | populated | saved | | `CAP-PR-operator-decisions` | Saved answer ID/text shown; execution remains stopped. |
+| Select saved answer / Resume with selected answer | `UC-resolve-run-question` 4, 5, `UC-complete-sdd-workflow` 3d | saved | applied, uncertain, changed | | `CAP-PR-operator-decisions` | Selection is explicit; existing owner checks apply; recorded attempt is distinct from delivery. |
+| Check outcome | `UC-resolve-run-question` 2b, 4d, `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d | uncertain | saved, applied, uncertain, changed | | `CAP-PR-operator-decisions` | Reads original request outcome and current state; never starts work. |
+| Retry same request | `UC-resolve-run-question` 2b, 4d, `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d | uncertain | saved, uncertain, applied, changed | | `CAP-PR-operator-decisions`, `CAP-SDD-workflow-control` | Original immutable payload and owner request ID replay; successful ordinary save replay returns its saved answer without applying it; no automatic replay. |
+| Review current context | `UC-resolve-run-question` 4b, `UC-complete-sdd-workflow` 4e, `UC-decide-sdd-proposal` 3b | changed | loading | | `CAP-SDD-workflow-control` | Predecessor inspection refreshes exact subject; nothing is submitted. |
+| Open run / Inspect pull request | `UC-resolve-run-question` 5, 5a, `UC-complete-sdd-workflow` 5, `UC-decide-sdd-proposal` 6 | applied, saved, uncertain, terminal | populated | end | `CAP-PR-operator-decisions` | Bound run or pull request opens with retained outcome accessible on return. |
+| Close | global: return from decision review | all | populated | close | | Origin and focus restored. |
+
+### UX-sdd-workflow-request — Workflow request (panel amendment)
+
+- **Use cases**: `UC-complete-sdd-workflow`, `UC-decide-sdd-proposal`.
+- **Capabilities**: `CAP-SDD-workflow-control`, `CAP-SDD-native-delivery`.
+- **Purpose**: See whether the selected native decision is recorded, published or still waiting. Facts: exact request, answer channel, reviewed head, retained request identity and current publication evidence. Execution history stays with Open run.
+
+#### Content
+
+The exact request outcome is primary. Parent `UX-run-decisions` supplies context and exit. Worker answers say Answer recorded — publication pending until a matching answer envelope resolves the question. Proposal decisions distinguish preparation, publication uncertain, published, and published without current authority. Other workflow record/given channels retain their own effects. Decline/defer retain the open request.
+
+#### States
+
+- **populated**: Existing exact-request controls remain; labels name the channel effect.
+- **recorded**: Pending worker publication disables duplicate answer controls. Show View publication progress and Check outcome.
+- **published**: Show matched publication evidence and current request/run separately; no automatic handoff or integration authority follows proposal acceptance.
+- **uncertain**: Show Outcome unknown and immutable request; Check outcome or eligible Retry same request. For uncertain proposal publication, show Reconcile publication with an explanation that owner inspection may continue the run, preserves all stop/authority fences, and is distinct from reading outcome.
+- **changed**: Require refreshed review before any replacement answer; historical outcome stays visible.
+- **held/error/empty/loading**: Explain the hold, owner error, absence or loading; Check outcome/Review current context and parent Close remain available. No unavailable evidence is called published.
+
+#### Interactions
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
+| Record worker answer | `UC-complete-sdd-workflow` 3b | populated | recorded, uncertain | | `CAP-SDD-workflow-control` | Answer retained; question remains open until envelope publication. |
+| Confirm workflow choice / Approve / Decline / Defer | `UC-complete-sdd-workflow` 3c | populated | recorded, uncertain | | `CAP-SDD-workflow-control` | Owner result shown; declined/deferred request stays open. |
+| Accept / Reject proposal | `UC-decide-sdd-proposal` 2, 2a | populated | recorded, published, uncertain | | `CAP-SDD-native-delivery` | Existing head confirmation/rejection reason remain; publication and merge are separate. |
+| Check outcome / eligible Retry same request | `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d, 5b, 6a, 6b | recorded, uncertain | recorded, published, uncertain, changed | | `CAP-SDD-native-delivery` | Read first; explicit replay uses original input; publication after stop never revives authority. |
+| Reconcile publication | `UC-decide-sdd-proposal` 5b, 6a, 6b | uncertain | recorded, published, uncertain, changed | `UX-run-decisions` | `CAP-SDD-native-delivery` | Opens the parent recovery control with current review required; explicit submission may inspect/continue, never approve or undo a later stop. |
+| View publication progress / Back to review | `UC-complete-sdd-workflow` 3b, `UC-decide-sdd-proposal` 6 | all | populated | `UX-run-decisions` | `CAP-SDD-workflow-control` | Parent review retains the exact request and accessible run link. |
+
+### UX-sdd-run — Native execution (panel amendment)
+
+- **Use cases**: `UC-complete-sdd-workflow`, `UC-decide-sdd-proposal`.
+- **Capabilities**: `CAP-SDD-workflow-control`, `CAP-SDD-native-delivery`.
+- **Purpose**: Follow retained integration authority and current execution independently. Facts: approved head/basis, current head, hold/revocation, current run and recorded outcome. Reports stay in existing disclosures.
+
+#### Content
+
+Current integration outcome is primary. Parent `UX-run-decisions` owns close/navigation. Show Authority recorded independently of workflow integration, PR delivery and merge. Revocation/hold/later pause take precedence for available actions. A successful API response does not become Delivered or Completed.
+
+#### States
+
+- **populated**: Current basis and existing approval/revise/revoke/reject controls are explicit.
+- **recorded**: Authority recorded; show current waiting/running state and Open run. No second approval action while the basis remains authorized.
+- **uncertain**: Check outcome; eligible exact replay is distinct from new approval.
+- **changed/held**: Show changed head/hold/revocation and require reviewed current basis. Resume after inspection is labelled as inspection/continuation and never as approval.
+- **terminal/error/empty/loading**: Explain terminal result, read failure, missing evidence or loading; offer parent Close/Open run/Retry read where applicable; approval stays disabled without current evidence.
+
+#### Interactions
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
+| Approve / Request changes / Withdraw approval / Stop run | `UC-complete-sdd-workflow` 4, 4b, 4c, 4d | populated, recorded | recorded, held, uncertain | | `CAP-SDD-workflow-control` | Existing reason/confirmation requirements retained; resulting authority and run state shown separately. |
+| Check outcome / eligible Retry same request | `UC-complete-sdd-workflow` *b | uncertain | recorded, held, changed, uncertain | | `CAP-SDD-workflow-control` | Original receipt replay cannot undo a later pause or revocation. |
+| Review current context | `UC-complete-sdd-workflow` 4e | changed, held | loading | `UX-run-decisions` | `CAP-SDD-workflow-control` | Fresh inspection; no approval granted. |
+| Open run / Back to review | `UC-complete-sdd-workflow` 5, `UC-decide-sdd-proposal` 6 | all | populated | `UX-run-decisions` | `CAP-SDD-workflow-control` | Parent retains run link, exact context and close exit. |
+
+### Use case and register amendments
+
+Retain each use case's main flow and extensions. `UC-resolve-run-question` step 2 shows saved feedback, step 3 retains the saved result, step 4 explicitly selects the saved answer, and step 5 follows the existing attempt/run. Its 2b/4d recovery names the original request and treats missing receipt as unknown; 4b requires changed-head dismissal/new question before another application. `UC-complete-sdd-workflow` 3b shows publication pending, 3c preserves channel semantics, 3d separates applied from delivered, 4/4b/4c/4d shows authority, and *b names exact-request replay and later stop precedence. `UC-decide-sdd-proposal` 3d/5b/6a/6b distinguish recorded intent, published candidate and currently valid authority. All amended steps cite their owner UX above.
+
+| Object | Role | Added representations | Added calls to action |
+| --- | --- | --- | --- |
+| Run question | Operator | Saved/applied answer and exact selected answer; retained outcome | Check outcome, Resume with selected answer |
+| Execution attempt | Operator | Prepared application with independent delivery evidence | Open run, inspect attempt |
+| Native SDD activity | Operator | Recorded/publication-pending/published/uncertain outcome and current authority | Check outcome, Retry same request, View publication progress, Reconcile publication, Review current context |
+| PR run | Operator | Current pause/terminal state beside historical outcome | Open run |
+
+Use existing style tokens and modal/panel hierarchy. No new domain object, screen or inline inbox mutation is introduced. No prototype or browser verification is claimed.
+
+### UX review fold
+
+Separate round 1 walked all three use cases. Its acknowledged-refresh-error, discoverable publication reconciliation, and ordinary saved-replay destination findings are folded above. Original findings remain in ux-review-01 for the Host at plan-accept; Development verifies retained screens and closes them. No browser/prototype result is claimed.
