@@ -66,4 +66,4 @@ export function clearNoticeReturn() {
 	}
 }
 export const noticeRecoveryGuidance =
-	'Reopen original notice to review the exact decision. The prior notice-return identity is unavailable; sign-in still succeeded.';
+	'Signed in. If you arrived from a decision notice, reopen its original link to review the exact decision.';

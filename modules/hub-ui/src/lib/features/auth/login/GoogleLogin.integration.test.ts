@@ -43,6 +43,9 @@ test('approved exchange starts the existing session store', async () => {
 	render(GoogleLogin);
 	await waitFor(() => expect(session.setTokens).toHaveBeenCalledWith(tokens));
 	expect(api.POST).toHaveBeenCalledExactlyOnceWith('/api/v1/auth/google/exchange');
+	expect(
+		await screen.findByText(/If you arrived from a decision notice, reopen its original link/)
+	).toBeTruthy();
 });
 
 test('an existing email collision requires the existing login', async () => {
@@ -86,5 +89,7 @@ test('expired return identity explains reopening the original notice after succe
 	});
 	render(GoogleLogin);
 	await waitFor(() => expect(session.setTokens).toHaveBeenCalled());
-	expect(await screen.findByText(/Reopen original notice/)).toBeTruthy();
+	expect(
+		await screen.findByText(/If you arrived from a decision notice, reopen its original link/)
+	).toBeTruthy();
 });

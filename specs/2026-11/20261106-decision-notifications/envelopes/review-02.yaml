@@ -1,0 +1,23 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T05:21:55.518224Z'
+status: completed
+summary: round 2; All four P1s resolved. One P2 conditional recovery wording; no source or boundary defects.
+findings:
+- issue: Ordinary Google sign-in falsely reports a lost original notice.
+  evidence: GoogleLogin.svelte:37-41; notice-return.ts:69; GoogleLogin.integration.test.ts:40-45
+  failure_condition: Approved ordinary Google login without retained notice state claims a prior notice-return identity existed.
+  suggested_action: 'Replace noticeRecoveryGuidance with exactly: Signed in. If you arrived from a decision notice, reopen its original link to review the exact decision. Update expired-return assertion and ordinary approved-login assertion; preserve behavior.'
+  resolution: open
+  severity: P2
+assumptions:
+- Emulated isolation fixed HEAD and clean status; reviewer reports no tracked/index writes or outside source reads.
+checks:
+  rules: PASS independent CI base rules0errors0warnings
+  tests: PASS reviewed SQLite14/1skip PostgreSQL15 UI19 storage7 and mandatory lint/check
+diff_scope:
+  base: f0697e4e4182bd0d6ab8eab2e67c570df28de533
+  head: f3257f838dce0704f269f0fd3e07fda77b205d4d
+activity_effort: high
