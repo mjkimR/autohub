@@ -10,6 +10,8 @@ supporting_actors:
 status: active
 capabilities:
   - CAP-DOC-repository-viewer
+entrypoints:
+  - modules/hub-ui/src/lib/features/project-management/repositories/RepositoryView.svelte
 ---
 
 # [UC-inspect-repository-documents] Inspect repository documents and their executions
@@ -87,6 +89,9 @@ capabilities:
   action while retaining the selected document; the use case ends with execution
   context unresolved rather than claiming no runs exist.
    Interface: `UX-sdd-execution`.
+
+- **4c.** The operator wants to review milestone readiness: The repository surface offers `UC-preview-sdd-milestone` in its separate panel; the inspection goal continues there without making the viewer execution authority.
+   Interface: `UX-repository`.
 
 ## 4. Postconditions
 
@@ -171,6 +176,13 @@ roadmap navigation, lineage, read-only execution links and visible refusal.
 - **When**: Hub presents the result.
 - **Then**: The document remains selected and the execution area shows an error
   with retry instead of an empty-success claim.
+
+### DOC-INSPECT-10: Continue to milestone preview
+
+- **Covers**: 4c.
+- **Given**: An SDD project repository is open at a selected ref.
+- **When**: The operator chooses milestone inspection in the separate panel.
+- **Then**: `UC-preview-sdd-milestone` uses that ref while the repository viewer remains read-only.
 
 ## 6. Source and Verification Boundary
 

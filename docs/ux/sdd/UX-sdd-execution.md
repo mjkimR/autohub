@@ -39,6 +39,8 @@ combination and is disabled after that combination registers successfully. A
 changed selection invalidates the old readiness. Related-run lookup has its own
 loading/empty/error state and ignores responses for an old selection.
 
+Milestone subset inspection belongs to `UX-sdd-milestone-preview`. Its result supplies neither this panel's PR number nor permission to enroll or resume a run.
+
 ## 3. States
 
 - **populated**: Enter the unit and PR, then check readiness; inspect related executions when present.

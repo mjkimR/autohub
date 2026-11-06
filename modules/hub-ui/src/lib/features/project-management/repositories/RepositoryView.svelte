@@ -9,6 +9,7 @@
 	import FileBlobViewer from './FileBlobViewer.svelte';
 	import SddExecution from './SddExecution.svelte';
 	import SddProposals from './SddProposals.svelte';
+	import SddMilestonePreview from './SddMilestonePreview.svelte';
 	import { repositoryDataSource } from './data-source';
 	import type { RepoBlob, RepoInfo, RepoItem, RepoTree } from './types';
 
@@ -300,6 +301,12 @@
 						projectId={project.id}
 						repository={project.github?.repository ?? ''}
 					/>{/key}{/if}
+			{#if isSdd}<SddMilestonePreview
+					projectId={project.id}
+					repository={project.github.repository}
+					{currentRef}
+					refresh={viewerRevision}
+				/>{/if}
 			<!-- Native Sdd Viewer -->
 			<section class="rounded-xl border bg-card p-4 shadow-xs">
 				{#key viewerRevision}

@@ -80,6 +80,8 @@ capabilities:
   the reported enrollment error; the use case ends with remote artifacts retained.
    Interface: `UX-sdd-proposals`.
 
+Milestone observations in `UC-preview-sdd-milestone` supply no start authority. Step 2 evaluates native admission afresh; preview scheduling introduces no additional start gate.
+
 ## 4. Postconditions
 
 - **Success guarantee**: The returned run binds the intended proposal and activity

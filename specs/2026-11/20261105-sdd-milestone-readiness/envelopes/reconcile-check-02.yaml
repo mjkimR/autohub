@@ -1,0 +1,17 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T08:24:01.780195Z'
+status: completed
+summary: round 1; closes reconcile-check-01; exact owned-PR interaction and ADR rule8 wording actions self-verified under high minor-fix rule; all ten targets agree
+findings: []
+assumptions:
+- 'Minor-fix self-verification: concrete actions applied exactly, named UX/ADR locations only, no contract meaning/API/source change; independent round1 remains basis for full target verification'
+checks:
+  targets: PASS all ten modified targets; no waiver or missing reflection
+  wording: PASS exact two suggested actions in named locations only; contract meaning unchanged; diff and implementation agree
+  documents: PASS rules35 hygiene36 entrypoint lookups and exact whitespace
+diff_scope:
+  base: 8035fc675705f0ce64398ffdf6710f15ffa4d22d
+  head: c59d1d951a9abf2ae7b6885eda360b38132fe53e

@@ -1,0 +1,21 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T08:13:00.943033Z'
+status: completed
+review: review-02.yaml
+summary: 'Close round 2: exact pinned devkit flat/bundle anchor semantics restored; real flat membership fixture failed before fix and passes after; fresh round 3 verifies affected contract'
+findings:
+- issue: Supported historical flat proposal anchors are rejected or silently omitted.
+  evidence: modules/hub/app/features/project_management/sdd/milestone_graph.py:36,87,133; .cache/review-probes/review-02/flat_anchor_probe.py
+  failure_condition: The pinned devkit accepts docs/proposals/PROP-before.md but preview rejects its prerequisite and skips its milestone membership.
+  suggested_action: Match pinned devkit unit-anchor semantics including flat proposal anchors, retain them as held prerequisites and inspect-only unsupported native members, and add real-runtime regression coverage.
+  resolution: resolved
+  severity: P1
+checks:
+  tests: PASS owning backend153 including actual isolated flat/bundle/alias and moving-branch cases
+  lint: PASS targeted Ruff and exact-range whitespace
+diff_scope:
+  base: ''
+  head: f1bd904f1b1f75c2e2bfec72602795e0e4a819fa

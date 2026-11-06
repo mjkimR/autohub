@@ -11,7 +11,7 @@ planning_effort: high
 dev_effort: high
 milestone: MS-native-sdd-execution
 depends_on:
-  - PROP-sdd-milestone-readiness
+  - SPEC-sdd-milestone-readiness
 boundaries:
   owns:
     - modules/hub-ui/src/lib/api/
@@ -43,11 +43,11 @@ workflow: sdd-proposal
 
 ## 1. Background & Hypothesis
 
-A project operator needs a durable selection that can advance successive native SDD units after closing the browser. `CAP-SDD-native-delivery` starts individual activities; it deliberately excludes milestone execution. `PROP-sdd-milestone-readiness` supplies a bounded, pinned observation rather than execution authority. This proposal adds execution coordination while retaining existing per-activity PR owners.
+A project operator needs a durable selection that can advance successive native SDD units after closing the browser. `CAP-SDD-native-delivery` starts individual activities; it deliberately excludes milestone execution. `SPEC-sdd-milestone-readiness` supplies a bounded, pinned observation rather than execution authority. This proposal adds execution coordination while retaining existing per-activity PR owners.
 
 ### Source anchors and prerequisite assumptions
 
-`MAT-sdd-milestone-execution` records source inspection, incoming references and the option comparison. `PROP-sdd-milestone-readiness` is accepted but unimplemented at the Planning base. The user authorized prerequisite order override for Planning only. Before Development/handoff, compare this design with its landed completed SPEC and replace the prerequisite through the normal canonical reference process. Acceptance of its proposal is not prerequisite completion. Do not invent the SPEC ID.
+`MAT-sdd-milestone-execution` records source inspection, incoming references and the option comparison. The original proposal of `SPEC-sdd-milestone-readiness` was accepted but unimplemented at the Planning base. The user authorized prerequisite order override for Planning only. Before Development/handoff, compare this design with its landed completed SPEC and replace the prerequisite through the normal canonical reference process. Acceptance of its proposal is not prerequisite completion. Do not invent the SPEC ID.
 
 ## 2. Technical Spike Findings
 
@@ -98,4 +98,4 @@ Initialize the backend environment, regenerate the API client with `just gen-ui-
 
 ## 4. Lifecycle & Retirement Criteria
 
-This turn recommends explicit future-intent chain selection and a separate immutable execution ledger. It records no plan-accept or handoff. The Host must compare the provisional readiness contract with its landed exact completed SPEC before Development/handoff and present the execution-selection extension at plan-accept. `PROP-sdd-milestone-readiness` remains a true prerequisite; Planning order override does not weaken it. Challenger round 1 returned two P2 clarifications, folded by its concrete wording actions and closed by reverify. The separate UX reviewer returned one preference-visibility finding; its exact content/edit/confirmation action is folded into the screen draft. The original UX finding remains open for presentation at plan-accept under the Planning UX procedure. Required findings and checks are retained in this bundle. No unresolved business choice requires a question round.
+This turn recommends explicit future-intent chain selection and a separate immutable execution ledger. It records no plan-accept or handoff. The Host must compare the provisional readiness contract with its landed exact completed SPEC before Development/handoff and present the execution-selection extension at plan-accept. `SPEC-sdd-milestone-readiness` remains a true prerequisite; Planning order override does not weaken it. Challenger round 1 returned two P2 clarifications, folded by its concrete wording actions and closed by reverify. The separate UX reviewer returned one preference-visibility finding; its exact content/edit/confirmation action is folded into the screen draft. The original UX finding remains open for presentation at plan-accept under the Planning UX procedure. Required findings and checks are retained in this bundle. No unresolved business choice requires a question round.

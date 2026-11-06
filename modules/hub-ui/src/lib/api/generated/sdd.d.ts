@@ -121,11 +121,161 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/sdd/milestones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Milestones
+         * @description Global and package milestones at the selected immutable ref; inspection only.
+         */
+        get: operations["list_milestones_api_v1_projects__project_id__sdd_milestones_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/sdd/milestone-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Milestone
+         * @description Observe bounded member readiness without creating or resuming activities.
+         */
+        post: operations["preview_milestone_api_v1_projects__project_id__sdd_milestone_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export interface components {
     schemas: {
         HTTPValidationError: CommonComponents["schemas"]["HTTPValidationError"];
         LinkedIssue: CommonComponents["schemas"]["LinkedIssue"];
+        /** MilestoneList */
+        MilestoneList: {
+            /** Resolved Sha */
+            resolved_sha: string;
+            /** Complete */
+            complete: boolean;
+            /** Reasons */
+            reasons: string[];
+            /** Items */
+            items: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** MilestoneMember */
+        MilestoneMember: {
+            /** Id */
+            id: string;
+            /** Path */
+            path: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /** Status */
+            status: string;
+            /** Activity Kind */
+            activity_kind?: ("plan" | "dev") | null;
+            /** Stage */
+            stage?: string | null;
+            /**
+             * Admission
+             * @enum {string}
+             */
+            admission: "pass" | "held" | "unknown";
+            /**
+             * Scheduling
+             * @enum {string}
+             */
+            scheduling: "pass" | "held";
+            /** Workflow Hold */
+            workflow_hold?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Eligibility
+             * @enum {string}
+             */
+            eligibility: "eligible_now" | "held" | "existing_activity" | "finished" | "unsupported" | "unknown";
+            /** Reasons */
+            reasons: string[];
+            /** Evidence */
+            evidence?: {
+                [key: string]: unknown;
+            }[];
+            /** Evidence Observed At */
+            evidence_observed_at?: string | null;
+        };
+        /** MilestonePreview */
+        MilestonePreview: {
+            /** Project Id */
+            project_id: string;
+            /** Repository */
+            repository: string;
+            /** Requested Ref */
+            requested_ref: string;
+            /** Resolved Sha */
+            resolved_sha: string;
+            /** Milestone */
+            milestone: {
+                [key: string]: unknown;
+            };
+            /** Observed At */
+            observed_at: string;
+            /** Runtime Identity */
+            runtime_identity?: string | null;
+            /** Complete */
+            complete: boolean;
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Limits */
+            limits: {
+                [key: string]: number;
+            };
+            /** Reasons */
+            reasons: string[];
+            /** Warnings */
+            warnings: components["schemas"]["SddWarning"][];
+            /** Nodes */
+            nodes: {
+                [key: string]: unknown;
+            }[];
+            /** Edges */
+            edges: {
+                [key: string]: unknown;
+            }[];
+            /** Members */
+            members: components["schemas"]["MilestoneMember"][];
+        };
+        /** MilestonePreviewRequest */
+        MilestonePreviewRequest: {
+            /** Ref */
+            ref: string;
+            /** Milestone Id */
+            milestone_id: string;
+            /** Milestone Path */
+            milestone_path?: string | null;
+        };
         PipelineRunRead: CommonComponents["schemas"]["PipelineRunRead"];
         PipelineRunState: CommonComponents["schemas"]["PipelineRunState"];
         /** ProposalList */
@@ -487,6 +637,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SddReadiness"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_milestones_api_v1_projects__project_id__sdd_milestones_get: {
+        parameters: {
+            query: {
+                ref: string;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MilestoneList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_milestone_api_v1_projects__project_id__sdd_milestone_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestonePreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MilestonePreview"];
                 };
             };
             /** @description Validation Error */

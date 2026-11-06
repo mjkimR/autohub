@@ -1,0 +1,22 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T08:26:30.943116Z'
+status: completed
+summary: Implemented pinned read-only milestone preview and ephemeral eligible-only subset/order; all MR01–08 verified, seven code findings and two reconcile precision findings closed; no execution starts or queue persistence
+findings: []
+assumptions:
+- No numerical performance claim; before evidence is absent preview source at accepted base and after evidence is executable fixtures
+- No scope extensions or sync outputs; all ten Living Spec targets resolved; deferred sequential execution remains PROP-sdd-milestone-execution
+unverified_areas:
+- Live GitHub, production deployment and eventual integrated head; Host owns current-target integration and landed runtime checks
+- No runtime execution at the base commit; immutable source absence is the before measurement
+checks:
+  tests: PASS owning backend153; full UI229; full real isolated PostgreSQL115 no skips with both profiles; SQLite isolated112 with two PG-only skips separately closed by PG
+  build: PASS just check backend/SDK/Svelte types and production UI build; final backend types; gen-ui-api and final check-ui-api
+  lint: PASS final just lint-check, docs35/hygiene36, committed-range governance and whitespace
+  review: PASS fresh code round3; independent reconcile round1 plus exact two wording actions self-verified under high minor-fix rule
+diff_scope:
+  base: 8f5003e54b8943ef80ca4c63ac92968482c3864e
+  head: 33920776f8cd0f3e8ad3fcfa3ef6f898e476453c

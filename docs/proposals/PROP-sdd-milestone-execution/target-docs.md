@@ -26,7 +26,7 @@ targets:
 
 Extend `CAP-SDD-native-delivery` with explicit execution selection, immutable ledger, single-batch/member exclusion, fresh dependency/admission checks, canonical lineage, control receipts and recovery boundaries. Replace its milestone-batch exclusion only for this bounded sequential path. Preserve individual admission parity and existing decision/PR ownership in `CAP-SDD-workflow-control`. Describe fresh per-activity evaluation and retained admitted identity in `CAP-SDD-runtime-isolation`, without weakening isolation or drift refusal. Extend `CAP-EXEC-scheduling-maintenance` with bounded fair batch reconciliation and unresolved-run retention.
 
-The accepted `PROP-sdd-milestone-readiness` remains provisional until landed. Its eligible-only ephemeral subset remains observation-only. This feature adds a distinct execution selection that can include supported dependency-held direct proposals as explicitly waiting future intent. Name this same-feature prerequisite impact at plan-accept and compare it against the landed predecessor before Development/handoff.
+The accepted design carried into `SPEC-sdd-milestone-readiness` remains provisional until its implementation lands. Its eligible-only ephemeral subset remains observation-only. This feature adds a distinct execution selection that can include supported dependency-held direct proposals as explicitly waiting future intent. Name this same-feature prerequisite impact at plan-accept and compare it against the landed predecessor before Development/handoff.
 
 ## 2. Use Cases and Interface Plan
 

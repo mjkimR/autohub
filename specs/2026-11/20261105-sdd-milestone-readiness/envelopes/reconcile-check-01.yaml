@@ -1,0 +1,28 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T08:23:03.065522Z'
+status: completed
+summary: round 1; all ten targets verified; two P2 precision gaps in owned-PR interaction and ADR runtime-rule pointer
+findings:
+- issue: Preview interaction table omits owned-PR inspection before enrollment.
+  evidence: docs/ux/sdd/UX-sdd-milestone-preview.md:49–56
+  failure_condition: Owned PR exists without a run, but only recorded-run opening is described in the interaction table.
+  suggested_action: Add an Open owned PR interaction for UC-preview-sdd-milestone step 3 describing external GitHub, retained panel and no enrollment/resumption.
+  resolution: open
+  severity: P2
+- issue: ADR runtime-delegation restatement pointer omits its owning rule.
+  evidence: docs/decisions/2026-11/20261105-milestone-readiness-boundary.md:39
+  failure_condition: Rules23–24 cover facets/scheduling rather than server-selected runtime ownership.
+  suggested_action: Include CAP-SDD-native-delivery rule8 in that clause while retaining rules23–24.
+  resolution: open
+  severity: P2
+assumptions:
+- Emulated explicit-path read-only verification; unchanged tree and no outside reads
+checks:
+  targets: PASS all ten modified targets and no contract waivers
+  contracts: PASS MR01–08 reflected, pending two precision edits
+diff_scope:
+  base: 8f5003e54b8943ef80ca4c63ac92968482c3864e
+  head: 8035fc675705f0ce64398ffdf6710f15ffa4d22d

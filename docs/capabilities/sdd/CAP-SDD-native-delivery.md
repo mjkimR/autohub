@@ -1,12 +1,13 @@
 ---
 id: CAP-SDD-native-delivery
 title: Native SDD activity and proposal delivery
-summary: "Auto Hub starts proposal Planning and Development in connected repositories and publishes fenced proposal decisions through its existing PR execution owner. Repository workflow evidence does not independently authorize Hub to merge."
+summary: "Auto Hub starts native proposal activities and previews milestone readiness at a pinned commit. Ephemeral preview selection creates no execution artifacts; existing PR owners retain execution and merge authority."
 area: sdd
 status: active
 usecases:
   - UC-start-sdd-activity
   - UC-decide-sdd-proposal
+  - UC-preview-sdd-milestone
 entrypoints:
   - modules/hub/app/features/project_management/sdd/api.py
   - modules/hub/app/features/project_management/sdd/activities.py
@@ -25,7 +26,7 @@ CI observation and merge control.
 ## 2. Scope & Boundary
 
 - **In-Scope**: activity start admission, proposal/spec binding, proposal decision
-  publication, decision recovery and proposal approval fences.
+  publication, decision recovery, proposal approval fences and observational milestone preview.
 - **Out-of-Scope**: `CAP-SDD-runtime-isolation` owns isolated evaluation and
   restore; `CAP-SDD-workflow-control` owns native stage answers, holds and
   integration authority. Devkit owns workflow definitions/document authoring;
@@ -113,12 +114,24 @@ CI observation and merge control.
     or granting approval.
     Check: [test_plan_publication.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_plan_publication.py), `test_lost_database_result_recovers_exact_pushed_commit_without_publishing_again`.
 
+21. **Pinned preview**: WHEN a milestone preview is requested, Hub MUST resolve its repository ref once and use that full SHA for all membership and prerequisite document reads. Check: `modules/hub/tests/integration/features/project_management/sdd/test_milestone_cli.py`, two-branch/moving-ref fixture.
+22. **Direct membership**: WHEN discovering milestone work, Hub MUST use devkit's global/registered-package catalog and exact resolver for direct proposal anchors, including supported historical flat anchors, without adding historical SPEC milestone metadata as members. Check: `modules/hub/tests/integration/features/project_management/sdd/test_milestone_cli.py`.
+23. **Separate readiness facets**: WHEN evaluating supported draft or accepted members, Hub MUST expose shared native admission separately from preview dependency scheduling and workflow worker holds. Check: `modules/hub/tests/unit/features/project_management/sdd/test_milestones.py`, admission parity and blocked/question/malformed worker fixtures.
+24. **Exact scheduling**: WHEN evaluating a prerequisite, Hub MUST satisfy it only through a done/dropped milestone or an exact canonical completed SPEC, without reopening completed SPEC history or inferring proposal-to-spec lineage. Check: `modules/hub/tests/unit/features/project_management/sdd/test_milestones.py` and real isolated alias fixtures.
+25. **Incomplete evidence**: IF the observed graph has missing/ambiguous/nonanchor relations, active cycles, unavailable evidence or an exceeded read bound, THEN Hub MUST report an incomplete preview that permits no selectable order. Check: `modules/hub/tests/unit/features/project_management/sdd/test_milestones.py`, graph/boundary/pagination/runtime fixtures.
+26. **Observational preview**: WHEN previewing or selecting milestone work, Hub MUST create no activity, PR, run, decision, repository edit or scheduler queue. Check: `modules/hub/tests/unit/features/project_management/sdd/test_milestones.py`, `modules/hub/tests/integration/features/project_management/sdd/test_milestone_api.py` and UI preview tests.
+27. **Existing activities**: WHEN a matching branch exists, Hub MUST expose its marker-bearing owned PR and optional exact project-scoped run as inspect-only evidence, or an unrelated-branch hold. Check: `modules/hub/tests/unit/features/project_management/sdd/test_milestones.py`, owned-PR-before-enrollment and pagination fixtures.
+28. **Ephemeral subset**: WHEN an operator selects milestone activities, Hub MUST retain only explicitly selected eligible direct members of a complete preview in deterministic canonical-ID topological order. Check: `modules/hub-ui/src/lib/features/project-management/repositories/milestone-selection.test.ts` and `SddMilestonePreview.integration.test.ts` beside it.
+29. **Context invalidation**: WHEN project, ref, milestone or explicit refresh changes, Hub MUST clear local selection and discard obsolete preview responses. Check: `modules/hub-ui/src/lib/features/project-management/repositories/SddMilestonePreview.integration.test.ts`.
+
 ## 4. Interfaces & Data Contracts
 
 All endpoint paths below include the `/api/v1` mount.
 
 | Interface | Request / result |
 | --- | --- |
+| `GET /api/v1/projects/{project_id}/sdd/milestones` | Required `ref`; captured SHA, complete flag/reasons and global/package active/archive catalog for the Hub selector |
+| `POST /api/v1/projects/{project_id}/sdd/milestone-preview` | Required `ref`, `milestone_id`; optional exact `milestone_path`; `MilestonePreview` observation |
 | `GET /api/v1/projects/{project_id}/sdd/proposals` | `base_branch` defaults to `main`; returns base identity, proposal actions, activity PRs, related waiting run and `truncated` |
 | `POST /api/v1/projects/{project_id}/sdd/proposals/{slug}/planning` | `StartActivityRequest`; HTTP 201 `PipelineRunRead` |
 | `POST /api/v1/projects/{project_id}/sdd/proposals/{slug}/development` | `StartActivityRequest`; HTTP 201 `PipelineRunRead` |
@@ -126,6 +139,16 @@ All endpoint paths below include the `/api/v1` mount.
 | `POST /api/v1/projects/{project_id}/sdd/readiness` | `pull_number`, `spec_dir`; result includes `ready`, reason, head/base, CLI/workflow/current evidence and warnings |
 | `POST /api/v1/pipeline-runs/{run_id}/resume` | Proposal decisions use `request_id`, `expected_revision`, `decision`, `head_sha`, optional `feedback` |
 | `GET /api/v1/pipeline-runs/{run_id}/sdd-decisions` | Durable decision evidence, including candidate/publication outcome |
+
+`MilestonePreview` carries project/repository identity, requested ref and resolved SHA, exact milestone identity/path/status, repository observation time, runtime identity, completeness/reasons, counts/limits, prerequisite nodes/edges and member rows. Rows distinguish `eligible_now`, `held`, `existing_activity`, `finished`, `unsupported` and `unknown`. Admission and scheduling are separate facets; workflow holds retain exact worker evidence. Valid flat or package proposal anchors unsupported by native start remain inspect-only. Reviewing/rejected proposals offer no new activity.
+
+Preview bounds are 50 direct members, 200 distinct prerequisite anchors, 500 dependency edges and a 150-second request deadline. Evaluation is sequential in one pinned checkout with one runtime restoration. Matching activity PR observation allows 10 pages of 100 rows; an exhausted full tenth page or failed later page is incomplete. Counts are observed coverage, not an estimate of unseen work. Incomplete previews expose no selected order. Done/dropped milestones remain inspectable without executable selection.
+
+A milestone prerequisite accepts only an MS identity. A work prerequisite accepts only an exact PROP/SPEC anchor. Draft, reviewing, accepted and rejected PROP prerequisites remain held; origin metadata and matching slugs supply no canonical mapping. Only the devkit resolver's unambiguous canonical result supplies one. The pinned runtime's supported aliases retain their own document prefix. An unfinished member is not released by selecting another member first.
+
+Run/PR observations carry their own timestamp and exact known head/base IDs. An owned PR remains inspectable before any run exists; no run is fabricated. External observations are not atomic with the repository snapshot. The response carries no execution authority token. Later activity start evaluates its existing admission afresh; preview scheduling adds no start gate.
+
+Existing project access and enabled-SDD/connection checks precede evaluation. Invalid paths, unknown/ambiguous milestones and path/ID mismatches refuse with HTTP 422; an unreadable member/runtime/dependency yields incomplete evidence. The request never falls back to main.
 
 `StartActivityRequest` requires UUID `request_id`; `base_branch` defaults to
 `main`; optional `activity_effort` is `low`, `medium` or `high`; optional `catalog`

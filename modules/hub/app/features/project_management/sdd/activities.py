@@ -88,6 +88,21 @@ async def start_branch(
     return sha
 
 
+def admission_reason(anchor: str, activity: str, slug: str) -> str | None:
+    """Shared pure admission, preserving individual start's status/decomposition gates."""
+    status = _frontmatter_value(anchor, "status")
+    if activity == "plan":
+        if status != "draft":
+            return f"PROP-{slug} is {status or 'without a status'}; Planning starts from a draft"
+        if _frontmatter_value(anchor, "needs_decompose") == "true":
+            return f"PROP-{slug} needs decomposition in Backlog before Planning"
+        if size := size_blocker(_frontmatter_value(anchor, "size")):
+            return f"PROP-{slug} is {size}; decompose it in Backlog before Planning (S, M or L)"
+    elif status != "accepted":
+        return f"PROP-{slug} is {status or 'without a status'}; Development starts from an accepted proposal"
+    return None
+
+
 def _code(reason: str) -> str | None:
     return "SDD_LIFECYCLE_INACTIVE" if reason == LIFECYCLE_INACTIVE else None
 
@@ -133,18 +148,9 @@ class ActivityStarter:
                 anchor = _text(await github.optional(f"{root}/contents/{unit}/proposal.md", {"ref": base_sha}))
                 if anchor is None:
                     raise ProjectError(422, f"PROP-{slug} is not on {request.base_branch}")
-                status = _frontmatter_value(anchor, "status")
+                if reason := admission_reason(anchor, activity, slug):
+                    raise ProjectError(409, reason)
                 if activity == "plan":
-                    if status != "draft":
-                        raise ProjectError(
-                            409, f"PROP-{slug} is {status or 'without a status'}; Planning starts from a draft"
-                        )
-                    if _frontmatter_value(anchor, "needs_decompose") == "true":
-                        raise ProjectError(409, f"PROP-{slug} needs decomposition in Backlog before Planning")
-                    if size := size_blocker(_frontmatter_value(anchor, "size")):
-                        raise ProjectError(
-                            409, f"PROP-{slug} is {size}; decompose it in Backlog before Planning (S, M or L)"
-                        )
                     if reason := await start_blocker(repository, base_sha, token, unit, activity):
                         raise ProjectError(409, reason, code=_code(reason))
                     message = (f"Start Planning of PROP-{slug}", f"Started-by: {actor}")
@@ -153,11 +159,6 @@ class ActivityStarter:
                         set_status(checkout_root, unit, "draft", "reviewing")
 
                     sha = await start_branch(repository, base_sha, branch, token, message, write)
-                elif status != "accepted":
-                    raise ProjectError(
-                        409,
-                        f"PROP-{slug} is {status or 'without a status'}; Development starts from an accepted proposal",
-                    )
                 else:
                     if reason := await start_blocker(repository, base_sha, token, unit, activity):
                         raise ProjectError(409, reason, code=_code(reason))

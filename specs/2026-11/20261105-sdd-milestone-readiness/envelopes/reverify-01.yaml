@@ -1,0 +1,52 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T08:07:19.591151Z'
+status: completed
+review: review-01.yaml
+summary: Close round 1 findings with actual-error, nonanchor, PR-only, pagination, duplicate-rendering and real two-branch/moving-ref tests; fresh high round required for behavior changes
+findings:
+- issue: Real upstream observation failures escape instead of producing incomplete previews.
+  evidence: modules/hub/app/features/project_management/sdd/milestones.py:179; .cache/review-probes/review-01/probe.py
+  failure_condition: GitHubObservationError during branch/PR observation and outer OSError abort rather than returning incomplete evidence.
+  suggested_action: Handle actual GitHubObservationError and outer OSError as explicit incomplete observations with safe reasons and real-exception regression fixtures.
+  resolution: resolved
+  severity: P1
+- issue: Proposal-kind non-anchor documents are accepted as unit prerequisites.
+  evidence: modules/hub/app/features/project_management/sdd/milestone_graph.py:114
+  failure_condition: A dependency resolves to target-docs.md and remains a complete graph.
+  suggested_action: Validate proposal/spec anchor identity and path, mark nonanchors incomplete and add regression coverage.
+  resolution: resolved
+  severity: P1
+- issue: Owned PR evidence disappears without an enrolled run.
+  evidence: modules/hub/app/features/project_management/sdd/milestones.py:160
+  failure_condition: An owned activity PR exists before or after failed enrollment and evidence is empty despite known PR/head/base.
+  suggested_action: Return owned PR identity/revisions independently of optional project-scoped runs and render its inspection link.
+  resolution: resolved
+  severity: P1
+- issue: The first PR page is treated as complete ownership evidence.
+  evidence: modules/hub/app/features/project_management/sdd/milestones.py:145
+  failure_condition: A full first page omits an owned PR on a later page and the result reports a complete conflict.
+  suggested_action: Add bounded explicit PR pagination with exhausted-bound/later-page-failure incompleteness fixtures.
+  resolution: resolved
+  severity: P1
+- issue: Duplicate catalog identities crash incomplete-result rendering.
+  evidence: modules/hub-ui/src/lib/features/project-management/repositories/SddMilestonePreview.svelte:130 and :187
+  failure_condition: Duplicate milestone/member IDs produce Svelte duplicate keyed-block errors instead of ambiguity disclosure.
+  suggested_action: Render duplicate observations safely with unambiguous keys and disabled selection, covered by UI tests.
+  resolution: resolved
+  severity: P1
+- issue: Two-branch and moving-ref snapshot scenarios lack coverage.
+  evidence: modules/hub/tests/unit/features/project_management/sdd/test_milestones.py:74
+  failure_condition: Existing fixture accepts only one hardcoded ref/SHA and cannot detect mixed branch snapshots.
+  suggested_action: Test distinct branch snapshots and movement after resolution, including registered package and archive discovery and exact dependency anchors.
+  resolution: resolved
+  severity: P2
+checks:
+  tests: PASS backend151 UI229; real branch/catalog/isolation cases included
+  build: PASS just check
+  lint: PASS source Ruff and document rules; full UI lint finalizing
+diff_scope:
+  base: ''
+  head: babf82a175a88021e0ede8c0fad6a2caa8f08f18

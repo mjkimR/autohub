@@ -5,10 +5,12 @@ summary: "Auto Hub serves authenticated repository files and embeds the pinned d
 area: repository
 status: active
 usecases:
+  - UC-preview-sdd-milestone
   - UC-inspect-repository-documents
 entrypoints:
   - modules/hub/app/features/project_management/repositories/api/v1.py
   - modules/hub/app/features/project_management/repositories/services.py
+  - modules/hub-ui/src/lib/features/project-management/repositories/RepositoryView.svelte
 ---
 
 # [CAP-DOC-repository-viewer] Repository document and execution inspection
@@ -66,6 +68,8 @@ a PR's inspected revision independently determines execution readiness.
 9. **Visible refusal**: IF a repository API read is refused, THEN the embedded
    data source MUST propagate its error rather than supply fabricated contents.
    Check: [data-source.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/data-source.test.ts), `repository refusals propagate to the embedded viewer`.
+
+10. **Milestone preview navigation**: WHEN an SDD repository is inspected, Hub MUST offer its separate milestone-preview panel using the selected ref while retaining read-only viewer navigation. `CAP-SDD-native-delivery` owns readiness and local selection. Check: `modules/hub-ui/src/lib/features/project-management/repositories/RepositoryView.svelte` and repository UI integration tests.
 
 ## 4. Interfaces & Data Contracts
 

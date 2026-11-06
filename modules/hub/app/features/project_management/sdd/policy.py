@@ -58,13 +58,18 @@ def planning_blocker(current: dict, slug: str) -> str | None:
 
 async def start_blocker(repository: str, base: str, token: str, unit: str, activity: str) -> str | None:
     """Why the base refuses to start ``activity`` for ``unit``, read through devkit in one checkout; ``None`` if not."""
-    from .services import cli
-
     async with checkout(repository, base, base, token) as root:
         await restore(root)
-        if development_approach(await cli(root, "spec", "policy")) == ADAPTIVE_DEV:
-            return LIFECYCLE_INACTIVE
-        if activity != "plan":
-            return None
-        current = await cli(root, "workflow", "next", "--unit", unit)
+        return await admission_blocker(root, unit, activity)
+
+
+async def admission_blocker(root: Path, unit: str, activity: str) -> str | None:
+    """Existing native admission inside an already restored read-only evaluation checkout."""
+    from .services import cli
+
+    if development_approach(await cli(root, "spec", "policy")) == ADAPTIVE_DEV:
+        return LIFECYCLE_INACTIVE
+    if activity != "plan":
+        return None
+    current = await cli(root, "workflow", "next", "--unit", unit)
     return planning_blocker(current, unit.rsplit("PROP-", 1)[-1])

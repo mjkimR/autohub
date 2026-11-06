@@ -1,0 +1,8 @@
+request: gate:plan-accept
+kind: approve
+action: accept
+workflow: sdd-spec-feature
+stage: direction-handoff
+note: PROP-sdd-milestone-readiness
+by: user
+at: '2026-11-05T07:39:46.748671Z'

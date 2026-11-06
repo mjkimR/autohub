@@ -7,6 +7,9 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from .schemas import (
     SPEC_PATTERN,
+    MilestoneList,
+    MilestonePreview,
+    MilestonePreviewRequest,
     ProposalList,
     SddInspectionRequest,
     SddReadiness,
@@ -78,3 +81,23 @@ async def inspect_sdd(
 ):
     """Inspect a bound spec at a PR revision without starting work or changing Git."""
     return await use_case.readiness(project_id, request)
+
+
+@router.get("/milestones", response_model=MilestoneList)
+async def list_milestones(
+    project_id: UUID,
+    use_case: Annotated[SddUseCase, Depends()],
+    ref: Annotated[str, Query(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_][A-Za-z0-9_./-]*$")],
+):
+    """Global and package milestones at the selected immutable ref; inspection only."""
+    return await use_case.milestones(project_id, ref)
+
+
+@router.post("/milestone-preview", response_model=MilestonePreview)
+async def preview_milestone(
+    project_id: UUID,
+    request: MilestonePreviewRequest,
+    use_case: Annotated[SddUseCase, Depends()],
+):
+    """Observe bounded member readiness without creating or resuming activities."""
+    return await use_case.milestone_preview(project_id, request)

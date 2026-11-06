@@ -1,16 +1,15 @@
 ---
-id: PADR-milestone-readiness-boundary
+id: ADR-milestone-readiness-boundary
 title: Keep milestone readiness separate from execution
 summary: "For milestone work selection, we pin a read-only Hub preview to a repository commit and reuse devkit eligibility, to preserve execution authority, accepting refresh before later admission."
-proposal: PROP-sdd-milestone-readiness
-# supersedes: [ADR-<slug>]   # an ADR this decision replaces, wholly or in part; name the replaced clauses in Decision Outcome
-status: draft
+proposal: SPEC-sdd-milestone-readiness
+status: accepted
 created_at: 2026-11-05
 ---
 
-# [PADR-milestone-readiness-boundary] Keep milestone readiness separate from execution
+# [ADR-milestone-readiness-boundary] Keep milestone readiness separate from execution
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Date**: 2026-11-05
 
 ---
@@ -36,12 +35,12 @@ The repository viewer shows branch-specific milestone proposals. Native activity
 
 Choose the separate Hub panel because it meets the observation goal with existing ownership.
 
-- All document membership and prerequisites use one captured repository commit. → `CAP-SDD-native-delivery` milestone preview interface (MUST).
-- Readiness delegates workflow evaluation to the server-selected isolated devkit runtime and shares the existing native admission evaluator. → `CAP-SDD-native-delivery` milestone preview evaluation (MUST).
-- Preview and selection create no repository changes, activities, PRs, runs, decisions or execution queues. → `CAP-SDD-native-delivery` observational preview (MUST).
-- Incomplete evidence disables selectable ordered results, and later admission evaluates again. → `CAP-SDD-native-delivery` incomplete preview handling (MUST).
+- All document membership and prerequisites use one captured repository commit. → `CAP-SDD-native-delivery` rule 21 (MUST).
+- Readiness delegates workflow evaluation to the server-selected isolated devkit runtime and shares the existing native admission evaluator. → `CAP-SDD-native-delivery` rules 8, 23–24 (MUST).
+- Preview and selection create no repository changes, activities, PRs, runs, decisions or execution queues. → `CAP-SDD-native-delivery` rule 26 (MUST).
+- Incomplete evidence disables selectable ordered results, and later admission evaluates again. → `CAP-SDD-native-delivery` rules 25, 28–29 (MUST).
 
-The named capability sections are proposed restatement locations; Development settles their rule numbers and confirms the trace during reconciliation.
+The named capability rules restate the accepted boundary.
 
 ## 5. Consequences
 
@@ -49,4 +48,4 @@ The preview has bounded runtime cost and requires refresh when its basis changes
 
 ## 6. Confirmation
 
-Development verifies MR-01 through MR-08 with admission parity, immutable-ref, dependency, limit and stale-response fixtures. Review checks the retained `CAP-SDD-native-delivery` clauses and vendor-free UI diff. Planning checks the proposal's documented scope; it does not establish implemented guarantees.
+`CAP-SDD-native-delivery` rules 21–29 restate the preview boundary. The enforcing fixtures are `modules/hub/tests/unit/features/project_management/sdd/test_milestones.py`, the API and real isolated catalog/Git tests beside `test_milestone_api.py` and `test_milestone_cli.py`, and the repository UI preview/selection suites. The spec's verification record separates executed checks from source inspection. Review verifies admission parity, exact snapshot/dependency handling, incomplete-result selection refusal and the vendor-free UI diff. No live deployment claim follows from these checks.
