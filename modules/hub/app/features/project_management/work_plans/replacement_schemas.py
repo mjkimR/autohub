@@ -93,6 +93,8 @@ class ReplacementLinkRead(BaseModel):
     reason: str
     acceptances: list[ReplacementAcceptanceRead]
     events: list[ReplacementEventRead]
+    event_offset: int = 0
+    event_total_count: int = 0
 
 
 class ReplacementResult(BaseModel):
@@ -109,4 +111,7 @@ class ReplacementRead(BaseModel):
     candidate: ReplacementEndpoint | None = None
     evidence_revision: int
     links: list[ReplacementLinkRead]
+    history_offset: int = 0
+    history_total_count: int = 0
+    history_limit: int = 10
     result: ReplacementResult | None = None

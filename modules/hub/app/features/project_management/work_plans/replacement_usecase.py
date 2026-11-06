@@ -32,12 +32,16 @@ class ReplacementUseCase:
             raise ProjectError(404, "Work Item not found")
         return plan, item
 
-    async def read(self, session, plan, item, candidate=None, result=None):
+    async def read(
+        self, session, plan, item, candidate=None, result=None, offset=0, limit=10, event_link_id=None, event_offset=0
+    ):
         row = await service.evidence(session, item.id)
         links = []
-        for link in await repo.links(session, item.id):
-            accepts = await repo.acceptances(session, link.id)
-            events = await repo.events(session, link.id)
+        rows, total = await repo.links(session, item.id, offset, limit)
+        for link in rows:
+            current_offset = event_offset if link.id == event_link_id else 0
+            events, event_total = await repo.events(session, link.id, current_offset)
+            accepts = await repo.acceptances(session, link.id, [e.acceptance_id for e in events if e.acceptance_id])
             replacement = await session.get(WorkItem, link.replacement_item_id)
             replacement_plan = await session.get(WorkPlan, link.replacement_plan_id)
             links.append(
@@ -46,6 +50,8 @@ class ReplacementUseCase:
                     active=link.active,
                     snapshot=link.snapshot,
                     current_replacement=service.facts(replacement_plan, replacement),
+                    event_offset=current_offset,
+                    event_total_count=event_total,
                     actor=link.actor,
                     reason=link.reason,
                     acceptances=[
@@ -82,10 +88,23 @@ class ReplacementUseCase:
                 evidence_revision=row.revision if row else 0,
                 links=links,
                 result=result,
+                history_offset=offset,
+                history_total_count=total,
+                history_limit=limit,
             )
         )
 
-    async def get(self, project_id, plan_id, item_id, replacement_item_id=None):
+    async def get(
+        self,
+        project_id,
+        plan_id,
+        item_id,
+        replacement_item_id=None,
+        offset=0,
+        limit=10,
+        event_link_id=None,
+        event_offset=0,
+    ):
         async with AsyncTransaction() as session:
             await self.plans.projects.get(session, project_id, lock=True)
             plan, item = await self.subject(session, project_id, plan_id, item_id)
@@ -96,7 +115,16 @@ class ReplacementUseCase:
                 if not other or not other_plan or other_plan.project_id != project_id:
                     raise ProjectError(404, "Replacement Work Item not found")
                 candidate = service.facts(other_plan, other)
-            return await self.read(session, plan, item, candidate)
+            return await self.read(
+                session,
+                plan,
+                item,
+                candidate,
+                offset=offset,
+                limit=limit,
+                event_link_id=event_link_id,
+                event_offset=event_offset,
+            )
 
     async def mutate(self, project_id, plan_id, item_id, operation, data, actor, link_id=None):
         async with AsyncTransaction() as session:

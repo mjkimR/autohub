@@ -82,6 +82,7 @@ const linked = {
 };
 const refresh = vi.fn();
 beforeEach(() => {
+	sessionStorage.clear();
 	api.GET.mockReset().mockResolvedValue({ data: empty });
 	api.POST.mockReset();
 	refresh.mockReset().mockResolvedValue(undefined);
@@ -242,4 +243,102 @@ test('consumed acceptance disables withdrawal and exposes retained history', asy
 	expect(screen.getByRole('link', { name: 'Inspect replacement PR' }).getAttribute('href')).toBe(
 		candidate.pull_url
 	);
+});
+
+test('candidate changes and evidence refresh invalidate prior confirmation', async () => {
+	mount();
+	await load();
+	await reviewCandidate();
+	await reason();
+	expect(
+		(screen.getByRole('button', { name: 'Confirm replacement decision' }) as HTMLButtonElement)
+			.disabled
+	).toBe(false);
+	api.GET.mockResolvedValueOnce({
+		data: { ...empty, candidate: { ...candidate, item_id: 'r2', key: 'r2' } }
+	});
+	await fireEvent.input(screen.getByLabelText('Replacement Work Item ID'), {
+		target: { value: 'r2' }
+	});
+	await fireEvent.click(screen.getByRole('button', { name: 'Review replacement' }));
+	await screen.findByText(/r2: Replacement/);
+	const old = screen.queryByRole('button', {
+		name: 'Confirm replacement decision'
+	}) as HTMLButtonElement | null;
+	expect(old === null || old.disabled).toBe(true);
+	await fireEvent.click(screen.getByRole('button', { name: 'Link replacement' }));
+	await reason();
+	api.GET.mockResolvedValueOnce({ data: empty });
+	await fireEvent.click(screen.getByRole('button', { name: 'Inspect replacement evidence' }));
+	await waitFor(() =>
+		expect(screen.queryByRole('button', { name: 'Confirm replacement decision' })).toBeNull()
+	);
+	expect(api.POST).not.toHaveBeenCalled();
+});
+
+test('unresolved request survives remount and reload storage restoration', async () => {
+	const view = mount();
+	await load();
+	await reviewCandidate();
+	await reason();
+	api.POST.mockRejectedValueOnce(new Error('lost'));
+	await fireEvent.click(screen.getByRole('button', { name: 'Confirm replacement decision' }));
+	await screen.findByRole('button', { name: 'Retry same request' });
+	const first = api.POST.mock.calls[0];
+	view.unmount();
+	mount();
+	expect(await screen.findByRole('button', { name: 'Retry same request' })).toBeTruthy();
+	api.POST.mockResolvedValueOnce({ data: { ...linked, result: { operation: 'link' } } });
+	await fireEvent.click(screen.getByRole('button', { name: 'Retry same request' }));
+	await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(2));
+	expect(api.POST.mock.calls[1]).toEqual(first);
+	expect(sessionStorage.getItem('work-item-replacement:project:a')).toBeNull();
+});
+
+test('paginates decision history and shows retained merge and event times', async () => {
+	const event = {
+		id: 'event1',
+		kind: 'link',
+		actor: 'user:operator',
+		reason: 'Reviewed',
+		revision: 1,
+		created_at: '2026-11-06T01:00:00Z',
+		evidence: {},
+		acceptance_id: null
+	};
+	const page = {
+		...linked,
+		history_offset: 0,
+		history_total_count: 11,
+		history_limit: 10,
+		links: [{ ...link, event_offset: 0, event_total_count: 2, events: [event] }]
+	};
+	api.GET.mockResolvedValueOnce({ data: page });
+	mount();
+	await fireEvent.click(screen.getByRole('button', { name: 'Inspect replacement evidence' }));
+	expect(await screen.findByText(/Merge completed: 2026-11-06T00:00:00Z/)).toBeTruthy();
+	expect(screen.getByText(/2026-11-06T01:00:00Z/)).toBeTruthy();
+	api.GET.mockResolvedValueOnce({
+		data: {
+			...page,
+			links: [
+				{
+					...page.links[0],
+					event_offset: 1,
+					events: [{ ...event, id: 'event2', kind: 'withdraw', created_at: '2026-11-06T02:00:00Z' }]
+				}
+			]
+		}
+	});
+	await fireEvent.click(screen.getByRole('button', { name: 'Load more replacement events' }));
+	await screen.findByText(/2026-11-06T02:00:00Z/);
+	expect(api.GET.mock.calls[1][1].params.query).toMatchObject({
+		event_link_id: 'link1',
+		event_offset: 1,
+		offset: 0
+	});
+	api.GET.mockResolvedValueOnce({ data: { ...page, history_offset: 10 } });
+	await fireEvent.click(screen.getByRole('button', { name: 'Next replacement links' }));
+	await screen.findByRole('button', { name: 'Previous replacement links' });
+	expect(api.GET.mock.calls[2][1].params.query.offset).toBe(10);
 });

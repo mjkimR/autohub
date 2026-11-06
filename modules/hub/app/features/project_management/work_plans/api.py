@@ -148,8 +148,14 @@ async def replacement_links(
     item_id: UUID,
     use_case: Annotated[ReplacementUseCase, Depends()],
     replacement_item_id: UUID | None = None,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=50),
+    event_link_id: UUID | None = None,
+    event_offset: int = Query(0, ge=0),
 ):
-    return await use_case.get(project_id, plan_id, item_id, replacement_item_id)
+    return await use_case.get(
+        project_id, plan_id, item_id, replacement_item_id, offset, limit, event_link_id, event_offset
+    )
 
 
 @router.post("/{plan_id}/items/{item_id}/replacement-links", response_model=ReplacementRead)

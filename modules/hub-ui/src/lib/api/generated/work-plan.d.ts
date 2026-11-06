@@ -494,6 +494,16 @@ export interface components {
             acceptances: components["schemas"]["ReplacementAcceptanceRead"][];
             /** Events */
             events: components["schemas"]["ReplacementEventRead"][];
+            /**
+             * Event Offset
+             * @default 0
+             */
+            event_offset: number;
+            /**
+             * Event Total Count
+             * @default 0
+             */
+            event_total_count: number;
         };
         /** ReplacementRead */
         ReplacementRead: {
@@ -503,6 +513,21 @@ export interface components {
             evidence_revision: number;
             /** Links */
             links: components["schemas"]["ReplacementLinkRead"][];
+            /**
+             * History Offset
+             * @default 0
+             */
+            history_offset: number;
+            /**
+             * History Total Count
+             * @default 0
+             */
+            history_total_count: number;
+            /**
+             * History Limit
+             * @default 10
+             */
+            history_limit: number;
             result?: components["schemas"]["ReplacementResult"] | null;
         };
         /** ReplacementResult */
@@ -1215,6 +1240,10 @@ export interface operations {
         parameters: {
             query?: {
                 replacement_item_id?: string | null;
+                offset?: number;
+                limit?: number;
+                event_link_id?: string | null;
+                event_offset?: number;
             };
             header?: never;
             path: {

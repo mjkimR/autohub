@@ -14,6 +14,6 @@ plan: PLAN-work-item-replacement
   - _Requirements: AC-01, AC-04, AC-06, AC-08_
   - Verification: ordinary baseline, one-edge release and PostgreSQL concurrent controls/withdrawal/admission/recovery tests.
 - [x] **Task 3**: Implement review UI and identify owning contracts for reconciliation.
-  - _Boundary:_ modules/hub-ui/src/lib/api/, modules/hub-ui/src/lib/features/project-management/work-plans/, docs/capabilities/work-plans/, docs/usecases/work-plans/, docs/ux/work-plans/, docs/steering/, docs/architecture/
+  - _Boundary:_ modules/hub-ui/src/lib/api/, modules/hub-ui/src/lib/features/project-management/work-plans/, docs/capabilities/work-plans/, docs/usecases/work-plans/, docs/ux/work-plans/, docs/steering/, docs/architecture/, docs/decisions/2026-11/20261106-work-item-replacement-evidence.md
   - _Requirements: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06, AC-07, AC-08_
   - Verification: UI integration tests, API generation, lint/type/build and independent reconciliation.

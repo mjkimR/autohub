@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
@@ -32,22 +33,72 @@
 	let busy = $state(false);
 	let error = $state('');
 	let status = $state('');
-	let reviewing = $state<{ op: Op; link: Link | null; acceptanceId?: string } | null>(null);
-	let pending = $state<{ op: Op; linkId: string | null; body: Body } | null>(null);
+	let reviewing = $state<{ op: Op; link: Link | null; basis: Read; acceptanceId?: string } | null>(
+		null
+	);
+	let pending = $state<{
+		op: Op;
+		linkId: string | null;
+		path: { project_id: string; plan_id: string; item_id: string };
+		body: Body;
+	} | null>(null);
 	let confirmed = $state(false);
 	const path = $derived({ project_id: projectId, plan_id: planId, item_id: item.id });
 	const dependents = $derived(items.filter((i) => i.depends_on.includes(item.key)));
-	async function load(candidate = false) {
+	const storageKey = $derived(`work-item-replacement:${projectId}:${item.id}`);
+	onMount(() => {
+		const saved = sessionStorage.getItem(storageKey);
+		if (saved) {
+			try {
+				pending = JSON.parse(saved);
+				status =
+					'Restored unresolved replacement request. Retry its original endpoint and payload.';
+			} catch {
+				error =
+					'Saved request cannot be read. Preserve it and inspect the original decision history.';
+			}
+		}
+	});
+	function invalidate() {
+		reviewing = null;
+		confirmed = false;
+	}
+	async function load(candidate = false, offset = 0, eventLink: Link | null = null) {
+		invalidate();
 		busy = true;
 		error = '';
 		try {
 			const response = await api.GET(
 				'/api/v1/projects/{project_id}/work-plans/{plan_id}/items/{item_id}/replacement-links',
-				{ params: { path, query: candidate ? { replacement_item_id: candidateId } : undefined } }
+				{
+					params: {
+						path,
+						query: {
+							replacement_item_id: candidate ? candidateId : undefined,
+							offset,
+							limit: 10,
+							event_link_id: eventLink?.id,
+							event_offset: eventLink?.events.length ?? 0
+						}
+					}
+				}
 			);
 			if (!response.data)
 				throw new Error(apiErrorMessage(response.error, 'Could not load replacement evidence'));
-			read = response.data;
+			if (eventLink && read) {
+				read = {
+					...response.data,
+					links: response.data.links.map((link) =>
+						link.id === eventLink.id
+							? {
+									...link,
+									events: [...eventLink.events, ...link.events],
+									acceptances: link.acceptances
+								}
+							: link
+					)
+				};
+			} else read = response.data;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Could not load replacement evidence';
 		} finally {
@@ -55,46 +106,48 @@
 		}
 	}
 	function review(op: Op, link: Link | null = null, acceptanceId?: string) {
-		reviewing = { op, link, acceptanceId };
+		if (!read) return;
+		reviewing = JSON.parse(JSON.stringify({ op, link, acceptanceId, basis: read }));
 		confirmed = false;
 		reason = '';
 		dependentId = '';
 	}
 	async function submit() {
-		if (!read || (!reviewing && !pending)) return;
+		if (!pending && (!read || !reviewing)) return;
 		if (!pending) {
 			const r = reviewing!;
-			const replacement = r.link?.current_replacement ?? read.candidate;
+			const replacement = r.link?.current_replacement ?? r.basis.candidate;
 			if (!replacement) return;
 			const body: Body = {
 				request_id: crypto.randomUUID(),
 				reason: reason.trim(),
-				expected_original_revision: read.original.plan_revision,
+				expected_original_revision: r.basis.original.plan_revision,
 				expected_replacement_revision: replacement.plan_revision,
-				expected_evidence_revision: read.evidence_revision
+				expected_evidence_revision: r.basis.evidence_revision
 			};
 			if (r.op === 'link') body.replacement_item_id = replacement.item_id;
 			if (r.op === 'accept')
 				Object.assign(body, {
 					dependent_item_id: dependentId,
-					original_digest: read.original.digest,
+					original_digest: r.basis.original.digest,
 					replacement_digest: replacement.digest,
 					merge_sha: replacement.merge_sha,
 					execution_id: replacement.execution_id
 				});
 			if (r.op === 'withdraw') body.acceptance_id = r.acceptanceId ?? null;
-			pending = { op: r.op, linkId: r.link?.id ?? null, body };
+			pending = { op: r.op, linkId: r.link?.id ?? null, path: { ...path }, body };
 		}
 		busy = true;
 		error = '';
 		const original = pending;
 		try {
+			sessionStorage.setItem(storageKey, JSON.stringify(original));
 			const response =
 				original.op === 'link'
 					? await api.POST(
 							'/api/v1/projects/{project_id}/work-plans/{plan_id}/items/{item_id}/replacement-links',
 							{
-								params: { path },
+								params: { path: original.path },
 								body: original.body as components['schemas']['ReplacementLinkCommand']
 							}
 						)
@@ -102,19 +155,20 @@
 						? await api.POST(
 								'/api/v1/projects/{project_id}/work-plans/{plan_id}/items/{item_id}/replacement-links/{link_id}/acceptances',
 								{
-									params: { path: { ...path, link_id: original.linkId! } },
+									params: { path: { ...original.path, link_id: original.linkId! } },
 									body: original.body as components['schemas']['ReplacementAcceptCommand']
 								}
 							)
 						: await api.POST(
 								'/api/v1/projects/{project_id}/work-plans/{plan_id}/items/{item_id}/replacement-links/{link_id}/withdraw',
 								{
-									params: { path: { ...path, link_id: original.linkId! } },
+									params: { path: { ...original.path, link_id: original.linkId! } },
 									body: original.body as components['schemas']['ReplacementWithdrawCommand']
 								}
 							);
 			if (!response.data) {
 				if (response.response.status >= 400 && response.response.status < 500) {
+					sessionStorage.removeItem(storageKey);
 					pending = null;
 					read = null;
 					reviewing = null;
@@ -124,6 +178,7 @@
 				throw new Error(apiErrorMessage(response.error, 'Replacement outcome unknown'));
 			}
 			read = response.data;
+			sessionStorage.removeItem(storageKey);
 			pending = null;
 			reviewing = null;
 			status = `Recorded ${response.data.result?.operation}. Original outcome remains ${response.data.original.item_state}.`;
@@ -168,6 +223,7 @@
 				>Replacement Work Item ID<input
 					class="block w-full rounded border bg-background p-2"
 					bind:value={candidateId}
+					oninput={invalidate}
 					disabled={busy || !!pending}
 				/></label
 			>
@@ -201,6 +257,7 @@
 					{link.current_replacement.repository} → {link.current_replacement.target} · merge {link
 						.current_replacement.merge_sha ?? 'not confirmed'}
 				</p>
+				<p>Merge completed: {link.current_replacement.completed_at ?? 'not recorded'}</p>
 				<p>{link.current_replacement.title}: {link.current_replacement.description}</p>
 				<p>Acceptance: {link.current_replacement.acceptance}</p>
 				<p>
@@ -245,11 +302,29 @@
 				{/each}
 				<details>
 					<summary>Replacement history</summary>{#each link.events as event (event.id)}<p>
-							{event.kind} · {event.actor}: {event.reason} · revision {event.revision}
+							{event.kind} · {event.actor}: {event.reason} · {event.created_at} · revision {event.revision}
 						</p>{/each}
+					{#if link.events.length < link.event_total_count}<Button
+							size="sm"
+							variant="ghost"
+							onclick={() => load(false, read!.history_offset, link)}
+							disabled={busy}>Load more replacement events</Button
+						>{/if}
 				</details>
 			</article>
 		{/each}
+		{#if read.history_offset > 0}<Button
+				size="sm"
+				variant="ghost"
+				onclick={() => load(false, Math.max(0, read!.history_offset - read!.history_limit))}
+				disabled={busy}>Previous replacement links</Button
+			>{/if}
+		{#if read.history_offset + read.history_limit < read.history_total_count}<Button
+				size="sm"
+				variant="ghost"
+				onclick={() => load(false, read!.history_offset + read!.history_limit)}
+				disabled={busy}>Next replacement links</Button
+			>{/if}
 		{#if !read.links.length}<p>No replacement history. Legacy outcomes are unchanged.</p>{/if}
 		{#if reviewing && !pending}
 			<div class="space-y-2 rounded border p-3" aria-label="Confirm replacement decision">
@@ -262,6 +337,7 @@
 						>Dependent edge<select
 							class="block rounded border bg-background p-2"
 							bind:value={dependentId}
+							onchange={() => (confirmed = false)}
 							disabled={busy}
 							><option value="">Choose one existing edge</option
 							>{#each dependents as dependent (dependent.id)}<option value={dependent.id}
@@ -278,6 +354,7 @@
 					>Replacement reason<textarea
 						class="block w-full rounded border bg-background p-2"
 						bind:value={reason}
+						oninput={() => (confirmed = false)}
 						maxlength="500"
 						disabled={busy}></textarea></label
 				>
