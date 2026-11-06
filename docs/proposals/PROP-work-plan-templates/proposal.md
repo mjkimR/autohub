@@ -2,7 +2,7 @@
 id: PROP-work-plan-templates
 title: Create fresh Work Plans from reusable templates
 summary: "Save reusable Work Plan specifications, local dependencies and execution preferences, then create explicitly reviewed new registrations without copying execution history or authority."
-status: reviewing
+status: accepted
 created_at: 2026-11-06
 target_area: capabilities/work-plans/
 priority: low
