@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-operator-decision-inbox
-status: pending
+status: resolved
 targets:
   - file: docs/decisions/2026-11/20261106-decision-inbox-read-projection.md
     resolution: modified
@@ -36,6 +36,6 @@ targets:
 
 The projection and exact owner review implement AC-01–AC-08. Discovery has no mutation authority; owner controls and revocation guards retain their contracts. The dedicated screen, exact routing and focus restoration replace manual cross-project discovery. No quantitative improvement is claimed or measured.
 
-Inspected tests are named in the owning contracts. Executed checks: backend owner/migration SQLite 241 passed with 39 isolated CLI cases skipped; focused PostgreSQL 6 passed before the review metadata fix; UI 235 passed; repository types/build passed. Final changed-path and repository checks follow reconciliation. No live deployment evidence is claimed.
+Inspected tests are named in the owning contracts. Executed checks: backend owner/migration SQLite 241 passed with 39 isolated CLI cases skipped; final discovery/migration PostgreSQL 10 passed, followed by 9 changed-listing PostgreSQL tests; UI 235 passed; repository types/build passed. Final lint/lint-check and types/production build passed. An ignored PostgreSQL probe captured the actual listing query, verified its limit-plus-one bound and inspected its normal and indexed-compatible plans; indexed-path compatibility used seqscan disabled only within the disposable probe. No timing claim is made. No live deployment evidence is claimed.
 
 No in-scope work is deferred. Decision-outcome continuation remains the independently accepted PROP-decision-continuation and is not implemented here. Source proposal UX findings are reflected in the retained screen and object register.
