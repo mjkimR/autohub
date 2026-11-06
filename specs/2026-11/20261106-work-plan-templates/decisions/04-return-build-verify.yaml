@@ -1,0 +1,7 @@
+request: return:build-verify
+kind: return
+action: accept
+workflow: sdd-spec-feature
+stage: build-verify
+note: Apply full round3 concrete corrections; recurrence requires fresh high round4
+at: '2026-11-06T06:25:24.895087Z'

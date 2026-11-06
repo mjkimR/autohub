@@ -1,0 +1,28 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T06:25:24.589554Z'
+status: completed
+summary: round 3; REVISE recurring P2 original Plan same-tab filtered navigation and new P2 loading mutation guards; prior behavioral fixes confirmed
+findings:
+- issue: 'recurs: review-02.yaml #2; original Plan navigation fails when same-tab filter excludes card.'
+  evidence: TemplateOutcome.svelte:39-42; WorkPlansPanel.svelte:119-127; review03 filtered-anchor probe failed.
+  failure_condition: Follow original draft receipt link while mounted Plans tab filters to active; original card stays absent.
+  suggested_action: Add data-sveltekit-reload to original exact Plan anchor and test full-reload attribute plus mount/focus.
+  resolution: open
+  severity: P2
+- issue: Source extraction and confirmed deletion remain available during loading.
+  evidence: WorkPlanTemplates.svelte:420,431 and save/extract/remove handlers; review03 pending read probe failed.
+  failure_condition: Delayed template loading leaves source/delete mutation buttons enabled.
+  suggested_action: Add loading to source/delete disabled conditions and guard save/extract/remove at entry; test delayed reads.
+  resolution: open
+  severity: P2
+assumptions:
+- Emulated fixed refs/status; ignored probes only; authorized narrow route reads
+checks:
+  tests: PASS supplied UI69 lint/check; two reviewer probes failed as recorded
+diff_scope:
+  base: 8fdcdbb6771365e19fce83e5e642ba11f319d6f9
+  head: 8c1c95b895a6c4a75e971493416be279f0759ea3
+activity_effort: high
