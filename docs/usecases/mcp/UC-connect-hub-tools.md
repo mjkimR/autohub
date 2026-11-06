@@ -10,6 +10,8 @@ status: active
 capabilities:
   - CAP-ACCESS-authentication-authorization
   - CAP-MCP-tool-access
+entrypoints:
+  - modules/hub/app/mcp/server.py
 ---
 
 # [UC-connect-hub-tools] Connect an agent to scoped Hub tools
