@@ -1,0 +1,52 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T01:36:19.796946Z'
+status: completed
+review: review-03.yaml
+summary: 'Closed round 3 as implementer: retired settled receipts refuse before leasing; recorded absent/closed artifacts cannot create replacements; saved PR identity is fetched exactly and unknown outcomes use complete bounded evidence including closed PRs; dispatch pins retained effective phase effort; read/UI expose safe persisted uncertainty. Fresh cap round 4 required.'
+findings:
+- issue: Retired settled receipt can restart admission
+  evidence: activity_claims.py:64-75; maintenance/history.py; own reviewer probe test_settled_replay.py
+  failure_condition: Settled claim run is pruned and original request replay calls Starter again
+  suggested_action: Preserve refusal/existing-run reads then refuse retired settled tombstone before lease or Starter; test real retention replay
+  resolution: resolved
+  severity: P1
+- issue: Missing recorded artifacts enter fresh admission path
+  evidence: activities.py:202-220 and179-192
+  failure_condition: Saved candidate/PR exists but remote branch or known open PR disappears and recovery creates replacement artifacts
+  suggested_action: Resolve known PR exactly; missing/closed/unavailable saved artifacts retain evidence and hold without replacements
+  resolution: resolved
+  severity: P1
+- issue: Known PR depends on first branch-list match
+  evidence: activities.py:159 and174
+  failure_condition: Another-base PR precedes the saved native PR in matching head results
+  suggested_action: Retrieve saved PR identity first; for unrecorded result filter complete bounded evidence and require a unique exact owner
+  resolution: resolved
+  severity: P2
+- issue: Retained effective preferences diverge from admitted request
+  evidence: batch_usecases.py:130-136; batch_driver.py:120; activities.py:279-282
+  failure_condition: Planning changes inherited Development hint while ledger continues showing original value
+  suggested_action: Bind retained effective phase effort while preserving original requested inheritance; test changed Planning hint
+  resolution: resolved
+  severity: P2
+- issue: Persisted transport uncertainty omitted from read model
+  evidence: activity_claims.py checkpoint.uncertain; batch_usecases.py:42-50; SddBatch.svelte
+  failure_condition: Retained artifact timeout appears indistinguishable from ordinary in-flight admission on refresh
+  suggested_action: Expose safe persisted uncertainty evidence with exact existing owner/artifact links; no new enum or authority
+  resolution: resolved
+  severity: P2
+checks:
+  red: 'PASS five expected failures before source fixes: retired replay, missing branch/PR, closed PR and known-PR order'
+  green: PASS recovery12; expanded focused backend31 and five PostgreSQL-only skips
+  regression: PASS existing individual start/preview68
+  postgres: PASS 27 focused recovery/control/progression tests
+  ui: PASS repository UI35 including uncertainty evidence
+  lint: PASS just lint
+  types_build: PASS just check
+  generated: PASS generated freshness; no public schema change in this fix batch
+diff_scope:
+  base: ''
+  head: 79d5e3761f7836ecea1a943a501c3628770e9360
+activity_effort: high
