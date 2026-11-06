@@ -1,46 +1,57 @@
 ---
-id: PROP-mcp-delivery-tools
+id: SPEC-mcp-delivery-tools
 title: Expose delivery decisions and recovery through MCP
-summary: "Expose decision discovery, request outcomes, SDD batch controls and Work Item recovery through scoped MCP tools that reuse their existing business owners."
-status: accepted
-created_at: 2026-11-06
-target_area: capabilities/mcp/
-priority: high
-size: L
-planning_effort: high
-dev_effort: high
-boundaries:
-  owns:
-  - modules/hub/app/mcp/
-  - modules/hub/tests/integration/mcp/
-  - modules/hub/tests/unit/mcp/
-  - docs/capabilities/mcp/CAP-MCP-tool-access.md
-  - docs/usecases/mcp/UC-connect-hub-tools.md
-  excludes:
-  - docs/operations/
-  - .github/
-  - packages/sdk/
-task_kind: feature
-workflow: sdd-proposal
+summary: Expose decision discovery, request outcomes, SDD batch controls and Work Item recovery through scoped MCP tools that reuse their existing business owners.
+status: planned
+created: 2026-11-06
+related_capabilities: []
+related_usecases: []
+workflow: sdd-spec-feature
 ---
+<!-- devkit:skeleton -->
 
-# [PROP-mcp-delivery-tools] Expose delivery decisions and recovery through MCP
+# [SPEC-mcp-delivery-tools] Expose delivery decisions and recovery through MCP
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-mcp-delivery-tools on 2026-11-06.
+- **Preserved Materials**: `docs/materials/2026-11/20261106-mcp-delivery-tools`
+- Target Docs Blueprint: `PROP-mcp-delivery-tools-target` (Living Spec targets for this plan and reconcile.md)
+
+### 1. Background & Hypothesis
 
 Existing MCP work tools adapt shared UseCases with `machine:<machine UUID>` actors. Completed decision discovery/outcome, batch controls and Item recovery/replacement have no MCP adapters. Operators currently leave their conversational client for these operations.
 
-Expose those owners through a deliberately bounded machine surface. Source inspection is retained in `materials/owner-evidence.md`. No repository or provider is called by discovery/outcome reads. Exact native review is different: it inspects provider/repository evidence and persists a new owner revision, so it is a write operation.
+Expose those owners through a deliberately bounded machine surface. Source inspection is retained in `docs/materials/2026-11/20261106-mcp-delivery-tools/owner-evidence.md`. No repository or provider is called by discovery/outcome reads. Exact native review is different: it inspects provider/repository evidence and persists a new owner revision, so it is a write operation.
 
-## 2. Technical Spike Questions
+## 2. User Stories
+
+- **US-1**: As a developer/agent, I want to implement Expose delivery decisions and recovery through MCP so that system capabilities are extended.
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: <what this change will not do>
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] <scenario>
+- **Given** <precondition>
+- **When** <action>
+- **Then** <expected result>
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### 2. Technical Spike Questions
 
 - **Q1 resolved**: actor parameters on batch, recovery and replacement owners accept authenticated machine strings. Preserve actor-bound replay; never accept a user/actor field from the client or impersonate a human. No new native proposal acceptance, worker answer or integration approval tool is added.
 - **Q2 resolved**: use focused adapters with MCP-specific allowlisted output models, rather than returning raw owner snapshots. See the inventory and output contract below.
 - **Q3 resolved**: unknown records stay unknown. Reads do not retry commands, and existing owner revision/idempotency/lease/retention fences remain authoritative.
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
-### Alternatives
+#### Alternatives
 
 | Option | Benefit | Cost / consequence |
 | --- | --- | --- |
@@ -48,9 +59,9 @@ Expose those owners through a deliberately bounded machine surface. Source inspe
 | B: scoped owner adapters with allowlisted views, recommended | Reuses ownership, replay and audit identity | Requires explicit schemas and field projections |
 | C: raw owner REST proxy | Small initial adapter | Leaks snapshots and makes mutation/authority semantics implicit |
 
-Choose B. `PADR-mcp-delivery-owner-adapters` records the cross-feature transport decision. No second controller, database migration, native evaluator or identity model is added.
+Choose B. `ADR-mcp-delivery-owner-adapters` records the cross-feature transport decision. No second controller, database migration, native evaluator or identity model is added.
 
-### Fixed tool inventory
+#### Fixed tool inventory
 
 All tools are registered only on `/mcp/`. Existing tools and names remain compatible. Descriptions disclose side effects and exact retry requirements.
 
@@ -73,7 +84,7 @@ READ means `autohub:mcp:read`, WRITE means `autohub:mcp:write`. The registry che
 
 Inputs extend the existing MCP `Input` (`extra=forbid`), UUID and page patterns. Reuse strict owner command models instead of re-declaring their validation. Require explicit request IDs and supplied revisions; never generate them, infer an actor from input, refresh-and-retry, or call another mutation after a refusal. Cross-project Plan/Item/batch/run identities are checked by existing owners. Current machine scopes are service-level access, not per-project grants; the adapters add no fabricated per-user project ACL.
 
-### Safe output contract
+#### Safe output contract
 
 Return typed MCP views, not `PipelineRunRead`, `BatchRead.basis`, arbitrary `evaluation`, `initial`, `sdd_progress`, recovery `command`/`prior_outcome` or raw replacement `evidence` dictionaries. No credentials, PR bodies or task/answer text are added. Existing owner question-answer tools retain their prior contract.
 
@@ -86,13 +97,13 @@ Return typed MCP views, not `PipelineRunRead`, `BatchRead.basis`, arbitrary `eva
 
 Existing owner history/list construction may load more than the public view; this proposal promises bounded returned collections, not a new database work bound. Nested variable collections use explicit caps (100 events, 50 candidate heads, latest claim per member) and carry count/omission disclosure. Truncation never substitutes another identity or converts unknown into failure/success. Strings used as owner diagnostics remain within existing validated owner limits; unsupported structured fields remain absent/null instead of arbitrary serialization.
 
-### Implementation and parallel boundaries
+#### Implementation and parallel boundaries
 
 Use new focused MCP modules `decision_inbox.py`, `sdd_batches.py`, `work_item_recovery.py`, `work_item_replacements.py` and a split output-model module as size requires; the nearest existing parent is `modules/hub/app/mcp/`. Wire only `server.py` and explicit dependency construction in `dependencies.py`. Reuse owner calls, not direct repositories or HTTP-to-REST calls. New cross-feature edges outside already declared MCP ownership are out of scope; report a missing declaration rather than bypassing architecture checks.
 
 Add focused tests under the existing MCP integration/unit directories. Living Spec changes are limited to `CAP-MCP-tool-access` and `UC-connect-hub-tools`, plus the promoted PADR's confirmation. Owner capabilities remain unchanged because their semantics are reused. No frontend, generated UI API, migration, schema ownership, notification code or template code changes are expected. This isolates Development from `PROP-decision-notifications` and `PROP-work-plan-templates`; Host validates exact final task boundaries before parallel handoff.
 
-### Acceptance examples and verification
+#### Acceptance examples and verification
 
 - **MCP-01**: Given read-only, write-only, revoked and wrong-endpoint credentials, when each new tool is discovered/called, then transport and per-tool scope rules hold and rejected handlers have no effects. `decisions_review` is WRITE even for ordinary subject inspection.
 - **MCP-02**: Given exact decision key/fingerprint, when owner review races head/revision/binding changes, then the same CAS and 409 semantics apply; no replacement subject or native authority is submitted.
@@ -105,11 +116,12 @@ Add focused tests under the existing MCP integration/unit directories. Living Sp
 
 Development runs new real-handler MCP tests with controlled external services, existing MCP/auth suites, relevant owner replay tests, `just lint` and `just check` after backend initialization. PostgreSQL owner races are reused and extended only when new transport execution exposes a missing case. Planning executes document/envelope checks only. Baseline is the same head with new tool registrations disabled: new tool discovery absent, existing tools unaffected; no timing improvement claim.
 
-### Non-goals
+#### Non-goals
 
 - **Scope Excluded**: batch creation/selection and milestone preview tools, proposal acceptance/handoff/integration authority, native worker-answer mutation tools, new human delegation, implicit approvals/retries, new persistence, OAuth, UI redesign, provider/Jules and SDK flow tools.
 - **Scope Excluded**: deployment, live-provider verification, monitoring, CI changes, changes to owner eligibility or machine project authorization.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
 
 Planning recommends B within the authorized goal; routine machine-adapter and field-projection choices are Host-authorized assumptions. No user-only business question blocks this turn. High Development effort remains appropriate for external MCP contracts and actor/replay boundaries. `CAP-MCP-tool-access`, `UC-connect-hub-tools` and the promoted decision are the reconciliation targets. Direction acceptance and handoff remain Host actions; this branch records neither.
+

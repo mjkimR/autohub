@@ -1,16 +1,15 @@
 ---
-id: PADR-mcp-delivery-owner-adapters
+id: ADR-mcp-delivery-owner-adapters
 title: Keep MCP delivery adapters within owner authority
 summary: For conversational delivery access, we use scoped machine adapters and allowlisted owner views, to preserve existing authority and replay semantics, accepting a deliberately limited tool surface.
-proposal: PROP-mcp-delivery-tools
-# supersedes: [ADR-<slug>]   # an ADR this decision replaces, wholly or in part; name the replaced clauses in Decision Outcome
-status: draft
+proposal: SPEC-mcp-delivery-tools
+status: accepted
 created_at: 2026-11-06
 ---
 
-# [PADR-mcp-delivery-owner-adapters] Keep MCP delivery adapters within owner authority
+# [ADR-mcp-delivery-owner-adapters] Keep MCP delivery adapters within owner authority
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Date**: 2026-11-06
 
 ---
