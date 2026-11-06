@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-decision-continuation
-status: pending
+status: resolved
 targets:
   - file: docs/ux/sdd/UX-sdd-decision-history.md
     resolution: modified
