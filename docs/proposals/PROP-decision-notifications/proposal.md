@@ -21,7 +21,9 @@ boundaries:
   - modules/hub-ui/src/lib/features/configuration/notifications/
   - modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.svelte
   - modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.integration.test.ts
-  - modules/hub-ui/src/lib/api/generated/
+  - modules/hub-ui/src/lib/api/generated/notification-channel.d.ts
+  - modules/hub-ui/src/lib/api/generated/pipeline-run.d.ts
+  - modules/hub-ui/src/lib/api/generated/index.d.ts
   - docs/capabilities/notifications/
   - docs/usecases/notifications/
   - docs/usecases/delivery/UC-resolve-run-question.md
