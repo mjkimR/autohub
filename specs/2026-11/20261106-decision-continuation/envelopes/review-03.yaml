@@ -1,0 +1,13 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T00:03:21.846220Z'
+status: completed
+summary: round 3; PASS uncertainty classification, shared recovery guard and acknowledged worker-answer fixes
+findings: []
+checks:
+  tests: PASS 55 UI and final just check
+diff_scope:
+  base: 88733bff973b60f0f0f1cf09f9084326a08bb363
+  head: 26caabb1a0290520559311b26f74712738a5519e
