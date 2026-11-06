@@ -3,12 +3,22 @@ id: TASKS-operator-decision-inbox
 spec: SPEC-operator-decision-inbox
 plan: PLAN-operator-decision-inbox
 ---
-<!-- devkit:skeleton -->
 
 # Task Breakdown: `SPEC-operator-decision-inbox` Find pending delivery decisions across projects
 
 ## Phase 1: Implementation
-- [ ] **Task 1.1**: Core Implementation
-  - **_Boundary**: modules/hub/migrations/versions/, modules/hub/tests/integration/migrations/, modules/hub-ui/src/lib/api/, modules/hub/app/features/project_management/pipeline_runs/, modules/hub/app/features/project_management/sdd/, modules/hub/tests/integration/features/project_management/pipeline_runs/, modules/hub/tests/integration/features/project_management/sdd/, modules/hub-ui/src/lib/features/project-management/pipeline-runs/, modules/hub-ui/src/lib/components/, modules/hub-ui/src/routes/, docs/capabilities/delivery/, docs/capabilities/sdd/, docs/usecases/delivery/, docs/usecases/sdd/, docs/ux/delivery/, docs/ux/navigation/, docs/steering/, docs/architecture/
-  - _Requirements: AC-01_
-  - **Verification**: <command that verifies the task>
+
+- [ ] **Task 1**: Persist and transactionally maintain decision discovery with migration and owner lifecycle tests
+  - **_Boundary**: `modules/hub/app/features/project_management/pipeline_runs/`, `modules/hub/app/features/project_management/sdd/`, `modules/hub/migrations/versions/`, `modules/hub/tests/integration/migrations/`, `modules/hub/tests/integration/features/project_management/pipeline_runs/`, `modules/hub/tests/integration/features/project_management/sdd/`
+  - _Requirements: AC-01, AC-02, AC-04, AC-07_
+  - **Verification**: Owner integration and migration tests on SQLite and PostgreSQL.
+
+- [ ] **Task 2**: Expose bounded discovery and exact-subject refresh with cursor and concurrency tests
+  - **_Boundary**: `modules/hub/app/features/project_management/pipeline_runs/`, `modules/hub/app/features/project_management/sdd/`, `modules/hub/tests/integration/features/project_management/pipeline_runs/`, `modules/hub/tests/integration/features/project_management/sdd/`, `modules/hub-ui/src/lib/api/`
+  - _Requirements: AC-01, AC-03, AC-05, AC-06, AC-07_
+  - **Verification**: Listing/provider-call bounds and refreshed inspection CAS tests; regenerate typed API.
+
+- [ ] **Task 3**: Build Decisions navigation and exact owner review with UI interaction tests
+  - **_Boundary**: `modules/hub-ui/src/lib/features/project-management/pipeline-runs/`, `modules/hub-ui/src/lib/components/`, `modules/hub-ui/src/routes/`, `modules/hub-ui/src/lib/api/`
+  - _Requirements: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06, AC-07, AC-08_
+  - **Verification**: UI tests cover filtering, paging, exact request review, failure, changed generations and focus restoration; `just lint` and `just check`.
