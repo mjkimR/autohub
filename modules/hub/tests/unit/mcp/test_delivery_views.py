@@ -75,6 +75,7 @@ def test_batch_private_maps_and_latest_claim_history_disclosure():
     view = batch_view(row)
     assert "PRIVATE" not in view.model_dump_json()
     assert len(view.members) == 50 and view.members_omitted and view.member_count == 51
+    assert view.members[0].latest_claim is not None
     assert (
         str(view.members[0].latest_claim.id) == latest["id"]
         and view.members[0].claim_count == 2
