@@ -12,6 +12,7 @@ summary: "Read before naming product concepts or distinguishing scheduler, PR, S
 | Execution attempt | One implementation/fix request within a PR run, with immutable request and delivery correlation. | `CAP-PR-pull-request-delivery` | scheduler attempt | `ExecutionAttempt` |
 | Run question | A request for operator input bound to a PR run and its attempt/head; a saved answer does not itself resume work. | `CAP-PR-operator-decisions` | approval, command | `RunQuestion`, `RunAnswer` |
 | Work Plan | A batch of pre-PR requirements with Plan dependencies and admission controls. | `CAP-WORK-work-plan-execution` | SDD proposal | `WorkPlan` |
+| Work Plan template | Reusable project-owned definition, excluding Work Plan execution, Schedule configuration and SDK release. | `CAP-WORK-work-plan-execution` | execution clone | `WorkPlanTemplate` |
 | Work Item | One requirement within a Work Plan, linked to its admitted PR run and retained result. | `CAP-WORK-work-plan-execution` | SDK task | `WorkItem` |
 | Work Item replacement link | Retained relation between original and distinct replacement Work Items; excludes execution ownership. | `CAP-WORK-work-plan-execution` | successor substitution | `ReplacementLink` |
 | Work Item dependency acceptance | Explicit confirmed replacement merge evidence for one existing local Item edge; excludes Item success and PR approval. | `CAP-WORK-work-plan-execution` | replacement approval | `ReplacementAcceptance` |

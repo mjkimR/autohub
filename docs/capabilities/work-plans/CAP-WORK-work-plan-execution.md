@@ -1,11 +1,12 @@
 ---
 id: CAP-WORK-work-plan-execution
 title: Work Plan Execution
-summary: "Work Plans retain merge-confirmed results and original recovery identities. Explicit replacement evidence satisfies one reviewed local dependency without rewriting outcomes or bypassing admission gates."
+summary: "Work Plans retain merge-confirmed outcomes and exact recovery identities. Project-owned revisioned templates create explicitly reviewed fresh Plans without copying execution authority."
 area: work-plans
 status: active
 usecases:
   - UC-execute-work-plan
+  - UC-reuse-work-plan-templates
   - UC-deliver-pull-request
 entrypoints:
   - modules/hub/app/features/project_management/work_plans/api.py
@@ -20,14 +21,14 @@ entrypoints:
 A `WorkPlan` holds local specifications, a Plan dependency graph and an Item
 dependency graph before PRs exist. Admission prepares or explicitly attaches each
 eligible Item's branch/PR and hands it to `CAP-PR-pull-request-delivery`.
-`UC-execute-work-plan` describes the operator's path to confirmed completion.
+`UC-execute-work-plan` describes the operator's path to confirmed completion. `UC-reuse-work-plan-templates` covers reusable definitions and fresh registration.
 
 ## 2. Scope & Boundary
 
 - **In-Scope**: seed/proposal/held/active registration, request replay, graph
   validation, revision-checked edits and controls, scheduled eligibility, capacity
   reservation, branch preparation/reconciliation, explicit unchanged-work recovery, retained recovery history, outcome retention, explicit replacement evidence, activity and
-  outbound GitHub Issue mirrors.
+  outbound GitHub Issue mirrors, reusable project-owned templates and atomic template registration provenance.
 - **Out-of-Scope**: PR implementation, CI fixes and merge authorization belong to
   `CAP-PR-pull-request-delivery`; GitHub owns actual PR merge facts; native SDD
   binding and SDK execution use separate paths.
@@ -86,6 +87,18 @@ eligible Item's branch/PR and hands it to `CAP-PR-pull-request-delivery`.
 44. **Linked specification fence**: WHILE an endpoint has a live replacement link, Hub MUST refuse specification/target edits or endpoint removal that would invalidate its reviewed identity. Check: `test_live_link_guards_edit_and_wrong_project_target`; started-work fences remain independent.
 45. **Uncertain replacement review**: WHILE a replacement request outcome is unknown, the UI MUST retain its operation, endpoint and immutable command across Item remount/reload and permit exact replay rather than competing mutation. Check: `WorkItemReplacement.integration.test.ts`, including lost-response/authentication/remount and changed-basis regressions.
 
+46. **Definition extraction**: WHEN an exact source Plan revision is saved as a template, Hub MUST extract only specification and local dependencies. Check: `test_source_extracts_only_definition_and_revision_guard` in `test_templates.py`.
+47. **Independent definitions**: WHEN a template is saved, edited or deleted, Hub MUST leave derived Plan execution and retained provenance unchanged. Check: `test_template_crud_replay_and_deleted_receipt` and `test_registration_fresh_guards_replay_and_independence` in `test_templates.py`.
+48. **Fresh preview identity**: WHEN a template preview is created, the UI MUST remap local keys/edges using stable source ordering, ordinal and a fresh request UUID. Check: `template-intent.integration.test.ts` under `modules/hub-ui/src/lib/features/project-management/work-plans/`.
+49. **Current registration basis**: IF a fresh registration's template revision/digest or project repository/connector differs from its reviewed basis, THEN Hub MUST refuse before creating a Plan. Check: `test_stale_template_binding_refuses_without_plan` and PostgreSQL `test_registration_serializes_template_change` in `test_templates.py`.
+50. **Atomic template provenance**: WHEN a template registration is accepted, Hub MUST commit its ordinary owner Plan and immutable original template/actor/request/binding/reviewed-payload receipt together. Check: `test_registration_receipt_failure_rolls_back_plan` in `test_templates.py`.
+51. **Exact template replay**: WHEN an actor identically replays a project/operation/target/request/body, Hub MUST return its original recorded result before applying current eligibility checks. Check: `test_actor_and_target_bound_replay`, `test_strict_definition_path_actor_and_ordinary_collision` and the CRUD/registration replay tests in `test_templates.py`.
+52. **Uncertain browser intent**: WHILE a template write result is unknown, the UI MUST retain its immutable original account/project session intent and block competing template writes across close/remount/reload. Check: `template-intent.integration.test.ts` and `WorkPlanTemplates.integration.test.ts`.
+53. **Acknowledged browser result**: WHEN a template write is recorded or authoritatively refused, the UI MUST preserve that terminal result separately from later read/refresh failures across remount. Check: terminal recovery regressions in `template-intent.integration.test.ts`.
+54. **Fresh review after refusal**: WHEN a reviewed template registration is refused, the UI MUST require explicit current-basis reload with a new request identity and confirmation before resubmission. Check: binding refusal regression in `WorkPlanTemplates.integration.test.ts`.
+55. **Admission owner**: WHEN an explicitly active template registration commits, Hub MUST use the existing Work Plan owner admission path. Check: `test_post_commit_admission_failure_keeps_recorded_result` in `test_templates.py`; ordinary owner admission tests remain applicable.
+56. **Private session cleanup**: WHEN the operator logs out, the UI MUST remove the template-intent session-storage namespace. Check: `modules/hub-ui/src/lib/stores/session.test.ts`.
+
 ## 4. Interfaces & Data Contracts
 
 ### HTTP surface
@@ -115,6 +128,30 @@ optional `attach_branch`. Keys match `[a-zA-Z0-9][a-zA-Z0-9_-]{0,59}`. Plans car
 `base_branch` (default `main`), optional timezone-aware `scheduled_at` normalized
 to UTC, and Plan dependencies from the same project. Unknown input fields and
 agent-trigger mentions in Item text are rejected by the schemas.
+
+### Reusable definitions and registration provenance
+
+`UC-reuse-work-plan-templates` owns the operator goal. Base: `/api/v1/projects/{project_id}/work-plan-templates`; existing authenticated project access applies.
+
+| Method and suffix | Contract |
+| --- | --- |
+| `GET` base | `offset`, `limit` 1–100; nondeleted definitions ordered by name/ID, `items`, `total_count` |
+| `POST` base | New strict definition, name and request UUID; no execution |
+| `POST /from-plan` | Source Plan ID and expected revision; allowlisted definition plus omissions |
+| `GET /{template_id}` | Exact current template with revision and canonical digest |
+| `PUT /{template_id}` | Full definition/name replacement with expected revision and request UUID |
+| `DELETE /{template_id}` | Revision-aware soft deletion with request UUID |
+| `POST /{template_id}/registrations` | Exact template revision/digest, expected repository/connector, request UUID and complete reviewed `WorkPlanCreate` payload |
+| `GET /requests/{operation}/{request_id}` | Read-only original CRUD result or `record_state: unknown` |
+| `GET /registrations/{request_id}` | Read-only original registration result or `record_state: unknown` |
+
+Definitions retain schema version 1, project ownership, actor/time metadata and at most 100 local slots. They contain title/description/base branch and Item key/title/specification/acceptance/local dependencies. Attachments, Issue/PR/Run/history/approval, schedule/group and external Plan dependencies are omitted. The source branch is a candidate for fresh review.
+
+Fresh preview keys use ASCII lexicographic source order, a stem of at most 22 characters, four-digit zero-based ordinal and full 32-digit request UUID hex. The preview defaults to draft with no group, schedule or external Plan dependency. The operator may explicitly edit all ordinary registration fields, including a fresh branch attachment. No attachment is copied from the template.
+
+The wrapper locks Project then template and checks an existing receipt before current eligibility. A matching receipt recovers its original Plan even after template deletion or Plan changes. Reusing an ordinary registration ID without matching template provenance conflicts. Original snapshots and separately observed current template/Plan state remain distinguishable; no current definition reconstructs original authority. A postcommit mirror/admission refresh error preserves the recorded result.
+
+`TEMPLATE_REVISION_CHANGED`, `TEMPLATE_SOURCE_CHANGED`, `TEMPLATE_BINDING_CHANGED`, `TEMPLATE_UNAVAILABLE` and `TEMPLATE_REFUSED` are authoritative refusals. Changed actor/path/body identity conflicts with HTTP 409. Authentication/access/transport failures and absent receipt reads leave a previously uncertain request unknown. The browser stores private immutable payload text in account/project-scoped `sessionStorage`; explicit exact retry is the only retrying write. Known outcomes survive remount until explicit dismissal or another reviewed operation. Logout or browser-session loss clears local recovery; only retained owner records can recover the old identity afterward. A new UUID does not deduplicate a lost intent.
 
 ### Lifecycle and ownership
 
@@ -245,6 +282,8 @@ revoke. Pruning and completion use compatible Run-before-Item locking.
 
 Operator registration, group-conflict recovery and replacement-work procedures
 belong in operational guides; schema and transition guarantees remain here.
+
+Template enforcement sources: `template_api.py`, `template_usecase.py`, `template_service.py` and `template_repo.py` in the Work Plan owner. API/rollback/replay/race tests are in `modules/hub/tests/integration/features/project_management/work_plans/test_templates.py`; the additive migration and historical metadata roundtrips are in `modules/hub/tests/integration/migrations/`. Actual local command evidence is retained in `SPEC-work-plan-templates`; these paths alone assert neither execution nor deployment.
 
 ## 5. Source and verification evidence
 
