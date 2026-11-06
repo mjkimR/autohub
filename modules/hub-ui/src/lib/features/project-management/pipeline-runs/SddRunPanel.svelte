@@ -2,7 +2,7 @@
 	import DecisionOutcome from './DecisionOutcome.svelte';
 	import { decisionIntent, decisionBasis } from './decision-intents.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
-	import { api, type components } from '$lib/api';
+	import type { components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';

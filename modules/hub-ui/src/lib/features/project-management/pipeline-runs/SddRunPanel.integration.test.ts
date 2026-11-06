@@ -27,7 +27,10 @@ beforeEach(() => {
 	api.POST.mockReset();
 	api.GET.mockReset().mockResolvedValue({ data: [] });
 });
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	session.logout();
+});
 
 test('withheld automatic Planning requires an explicit proposal approval', async () => {
 	const user = userEvent.setup();

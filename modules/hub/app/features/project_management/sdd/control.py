@@ -238,6 +238,12 @@ class SddControl:
                         "action": request.decision
                         or (request.workflow_answer.action if request.workflow_answer else "resume"),
                         "workflow_answer": request.workflow_answer.model_dump() if request.workflow_answer else None,
+                        "subject_context": {
+                            "workflow": (evidence.get("current") or {}).get("workflow"),
+                            "segment": (evidence.get("current") or {}).get("segment"),
+                            "head_sha": evidence.get("head_sha"),
+                            "evidence_digest": evidence.get("evidence_digest"),
+                        },
                         "decision_records": evidence.get("decision_records", []),
                         "plan_decision": None,
                         "revision": request.expected_revision,

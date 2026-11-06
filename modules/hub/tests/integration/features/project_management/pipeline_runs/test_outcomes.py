@@ -85,6 +85,7 @@ async def test_exact_native_answer_requires_matching_envelope_and_current_contex
         decision_evidence={
             "workflow_answer": {"request": "question:worker-01.direction"},
             "decision_records": [record],
+            "subject_context": {"workflow": "sdd-spec-feature", "segment": 0, "head_sha": "c" * 40},
         },
     )
     session.add(receipt)
@@ -108,6 +109,67 @@ async def test_exact_native_answer_requires_matching_envelope_and_current_contex
     result = (await client.get(url, params={"operation": "resume"})).json()
     assert result["publication_state"] == "published"
     assert result["resolved_envelope"] == "answer-01.yaml"
+    from app.features.project_management.sdd.answer_publication import retain_publications
+
+    await retain_publications(session, row.id, row.sdd_progress)
     row.sdd_progress = {**row.sdd_progress, "current": {"workflow": "sdd-proposal", "segment": 1}}
     await session.commit()
-    assert (await client.get(url, params={"operation": "resume"})).json()["publication_state"] == "pending"
+    assert (await client.get(url, params={"operation": "resume"})).json()["publication_state"] == "published"
+
+
+async def test_prepared_candidates_and_legacy_context_stay_truthful(client, project, github, session):
+    run = (await enroll(client, project)).json()
+    identity = uuid4()
+    receipt = RunResumeReceipt(
+        id=identity,
+        pipeline_run_id=UUID(run["id"]),
+        request_digest="hidden",
+        decision_evidence={
+            "action": "accept_plan",
+            "publication": {"state": "uncertain", "candidates": [{"commit_sha": "a" * 40}, {"commit_sha": "b" * 40}]},
+        },
+    )
+    session.add(receipt)
+    await session.commit()
+    url = f"/api/v1/pipeline-runs/{run['id']}/decision-outcomes/{identity}"
+    outcome = (await client.get(url, params={"operation": "resume"})).json()
+    assert outcome["candidate_heads"] == ["a" * 40, "b" * 40]
+    assert outcome["candidate_head"] is None
+    receipt.decision_evidence = {"workflow_answer": {"request": "question:worker-01.direction"}}
+    await session.commit()
+    outcome = (await client.get(url, params={"operation": "resume"})).json()
+    assert outcome["publication_state"] is None
+    assert "not retained" in outcome["unavailable_reason"]
+
+
+@pytest.mark.parametrize("workflow,segment", [("sdd-proposal", 0), ("sdd-spec-feature", 1)])
+def test_answer_publication_never_uses_a_later_subject(workflow, segment):
+    from app.features.project_management.sdd.answer_publication import matching_publication
+
+    data = {
+        "owner_request_id": "original",
+        "subject_context": {"workflow": "sdd-spec-feature", "segment": 0, "head_sha": "a" * 40},
+        "workflow_answer": {"request": "question:worker-01.q1"},
+        "decision_records": [
+            {
+                "id": "original",
+                "kind": "answer-envelope",
+                "operation": {"request": "question:worker-01.q1"},
+                "answers_to": "worker-01.yaml",
+                "question": "q1",
+            }
+        ],
+    }
+    progress = {
+        "head_sha": "b" * 40,
+        "answer_resolutions": [
+            {
+                "workflow": workflow,
+                "segment": segment,
+                "file": "answer-01.yaml",
+                "answers_to": "worker-01.yaml",
+                "question": "q1",
+            }
+        ],
+    }
+    assert matching_publication(data, progress) is None

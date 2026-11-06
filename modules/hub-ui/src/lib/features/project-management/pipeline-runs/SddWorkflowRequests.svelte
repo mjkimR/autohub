@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { decisionIntent, decisionBasis } from './decision-intents.svelte';
-	import { api, type components } from '$lib/api';
+	import type { components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
 	let {
@@ -44,11 +44,21 @@
 	let review = $derived(decisionIntent(run.id));
 
 	let question = $derived(current?.answer === 'envelope' || current?.id.startsWith('question:'));
+	let recordedAnswer = $derived(
+		(
+			(run.sdd_progress?.decision_records || []) as {
+				kind?: string;
+				operation?: { request?: string };
+			}[]
+		).some((r) => r.kind === 'answer-envelope' && r.operation?.request === current?.id)
+	);
 	let awaitingPublication = $derived(
 		question &&
-			!!review.outcome?.publication_state &&
-			review.outcome.publication_state !== 'published'
+			(recordedAnswer ||
+				(review.outcome?.native_channel === current?.id &&
+					review.outcome?.publication_state !== 'published'))
 	);
+
 	// Accepting or rejecting a proposal: Hub writes the decision commit itself on the head shown here.
 	let planAccept = $derived(current?.id === 'gate:plan-accept');
 	let headSha = $derived(
@@ -239,7 +249,7 @@
 				Reconcile publication inspects current repository evidence and may continue the run. It
 				grants no approval and preserves later stops.
 			</p>
-			<Button variant="outline" disabled={busy || disabled} onclick={onreconcile}
+			<Button variant="outline" disabled={busy} onclick={onreconcile}
 				>Reconcile publication</Button
 			>
 		{/if}

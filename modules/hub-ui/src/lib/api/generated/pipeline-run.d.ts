@@ -450,6 +450,11 @@ export interface components {
             native_channel?: string | null;
             /** Publication State */
             publication_state?: string | null;
+            /**
+             * Candidate Heads
+             * @default []
+             */
+            candidate_heads: string[];
             /** Candidate Head */
             candidate_head?: string | null;
             /** Resolved Envelope */

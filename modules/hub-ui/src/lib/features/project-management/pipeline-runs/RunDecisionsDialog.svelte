@@ -42,6 +42,22 @@
 	let error = $state('');
 	let busy = $state(false);
 	let decisionBusy = $state(false);
+	let recoveryOpen = $state(false);
+	let recoveryBasis = $state('');
+	let recovery = $derived(decisionIntent(run.id, true));
+	async function reviewRecovery() {
+		await load(false);
+		recoveryBasis = head;
+		recoveryOpen = true;
+	}
+	async function reconcilePublication() {
+		await recovery.submit(
+			'resume',
+			{ request_id: crypto.randomUUID(), expected_revision: revision },
+			recoveryBasis
+		);
+		await afterMutation();
+	}
 	let review = $derived(decisionIntent(run.id));
 	let head = $derived(decisionBasis(current));
 	let locked = $derived(busy || decisionBusy || review.unresolved);
@@ -245,7 +261,34 @@
 						{revision}
 						{terminal}
 						onrefresh={() => load(false)}
+						onreconcile={reviewRecovery}
 					/>
+					{#if recoveryOpen}<section
+							class="space-y-2 rounded-lg border p-3"
+							aria-label="Publication reconciliation"
+						>
+							<p>
+								Current evidence reviewed. Confirm inspection and possible continuation using a
+								separate recovery request.
+							</p>
+							<Button
+								disabled={busy ||
+									terminal ||
+									head !== recoveryBasis ||
+									recovery.unresolved ||
+									!['paused', 'blocked'].includes(current.state)}
+								onclick={() => perform(reconcilePublication)}
+								>Confirm publication reconciliation</Button
+							>
+							<DecisionOutcome
+								recovery={true}
+								runId={run.id}
+								{head}
+								{revision}
+								{terminal}
+								onrefresh={() => load(false)}
+							/>
+						</section>{/if}
 					{#if current.pause_reason}
 						<div class="rounded-xl border bg-muted/40 p-4">
 							<p
@@ -312,7 +355,7 @@
 						<SddRunPanel
 							showOutcome={false}
 							onreconcile={async () => {
-								await perform(() => resume());
+								await perform(reviewRecovery);
 							}}
 							run={current}
 							disabled={locked || !ready || offset !== 0}

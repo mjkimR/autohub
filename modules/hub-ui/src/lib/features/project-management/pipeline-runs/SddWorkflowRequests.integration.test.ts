@@ -201,3 +201,23 @@ test('missing exact request never substitutes another request', () => {
 	render(SddWorkflowRequests, { run, selectedRequestId: 'missing', onchange: vi.fn() });
 	expect(screen.queryByRole('button', { name: 'Confirm choice' })).toBeNull();
 });
+
+test('persisted pending worker answer prevents duplicate submission after reload and failed outcome reads', async () => {
+	api.POST.mockResolvedValue({ data: questionRun });
+	const persisted = {
+		...questionRun,
+		sdd_progress: {
+			...questionRun.sdd_progress,
+			decision_records: [
+				{ kind: 'answer-envelope', operation: { request: 'question:worker-01.q1' } }
+			]
+		}
+	};
+	session.logout();
+	render(SddWorkflowRequests, { run: persisted, onchange: vi.fn() });
+	await userEvent.setup().type(screen.getByLabelText(/Decision/), 'Do not duplicate');
+	expect(
+		(screen.getByRole('button', { name: 'Record answer' }) as HTMLButtonElement).disabled
+	).toBe(true);
+	expect(api.POST).not.toHaveBeenCalled();
+});

@@ -26,6 +26,7 @@ class DecisionOutcome(BaseModel):
     delivery_at: datetime | None = None
     native_channel: str | None = None
     publication_state: str | None = None
+    candidate_heads: list[str] = []
     candidate_head: str | None = None
     resolved_envelope: str | None = None
     inspected_head: str | None = None

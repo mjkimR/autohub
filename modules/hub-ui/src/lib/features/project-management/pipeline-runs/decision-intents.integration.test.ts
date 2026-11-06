@@ -38,3 +38,39 @@ describe('immutable decision continuation', () => {
 		expect(api.POST).toHaveBeenCalledTimes(1);
 	});
 });
+
+it('distinguishes definitive rejection from publication-in-progress and keeps history subject separate', async () => {
+	const review = decisionIntent('rejected-run');
+	vi.mocked(api.POST).mockResolvedValueOnce({
+		error: { code: 'INVALID_REQUEST' },
+		response: { status: 422 }
+	} as never);
+	await expect(
+		review.submit('resume', { request_id: 'bad', expected_revision: 1 }, 'head')
+	).rejects.toThrow();
+	expect(review.intent?.rejected).toBe(true);
+	review.releaseRejection();
+	vi.mocked(api.POST).mockResolvedValueOnce({
+		error: { code: 'SDD_DECISION_IN_PROGRESS' },
+		response: { status: 409 }
+	} as never);
+	await expect(
+		review.submit('resume', { request_id: 'pending', expected_revision: 2 }, 'head')
+	).rejects.toThrow();
+	expect(review.unresolved).toBe(true);
+	expect(review.intent?.rejected).not.toBe(true);
+	vi.mocked(api.GET).mockResolvedValue({
+		data: { request_id: 'history', operation: 'answer', record_state: 'recorded' }
+	} as never);
+	await review.check('answer', 'history');
+	expect(review.subject).toEqual({ operation: 'answer', requestId: 'history' });
+	expect(review.intent?.requestId).toBe('pending');
+	expect(review.displayingIntent).toBe(false);
+	await review.check();
+	expect(vi.mocked(api.GET).mock.lastCall?.[1]).toMatchObject({
+		params: { path: { request_id: 'history' }, query: { operation: 'answer' } }
+	});
+	const recovery = decisionIntent('rejected-run', true);
+	expect(recovery.unresolved).toBe(false);
+	expect(recovery).not.toBe(review);
+});

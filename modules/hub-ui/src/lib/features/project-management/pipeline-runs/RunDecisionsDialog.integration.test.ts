@@ -318,3 +318,46 @@ test('acknowledged inbox dismissal refreshes the list without re-reviewing the r
 	);
 	expect(screen.queryByRole('alert')).toBeNull();
 });
+
+test('lost proposal response offers separately reviewed reconciliation after request disappears', async () => {
+	const { decisionIntent, decisionBasis } = await import('./decision-intents.svelte');
+	const native = {
+		...run,
+		state: 'blocked' as const,
+		sdd_snapshot: { provider: 'devkit-spec', spec_dir: 'docs/proposals/PROP-demo' },
+		sdd_progress: { head_sha: 'a'.repeat(40), current: { requests: [] } }
+	};
+	api.POST.mockRejectedValueOnce(new Error('lost response'));
+	await expect(
+		decisionIntent(run.id).submit(
+			'resume',
+			{
+				request_id: 'original-proposal',
+				expected_revision: run.revision,
+				decision: 'accept_plan',
+				head_sha: 'a'.repeat(40)
+			},
+			decisionBasis(native)
+		)
+	).rejects.toThrow();
+	api.GET.mockImplementation(async (path: string) => ({
+		data: path.endsWith('/questions')
+			? { items: [], total_count: 0, run_revision: run.revision }
+			: native
+	}));
+	api.POST.mockResolvedValue({ data: native });
+	render(RunDecisionsDialog, { run: native, onclose: vi.fn(), onchange: vi.fn() });
+	const user = userEvent.setup();
+	await user.click(
+		await screen.findByRole('button', { name: 'Review publication reconciliation' })
+	);
+	await user.click(
+		await screen.findByRole('button', { name: 'Confirm publication reconciliation' })
+	);
+	await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(2));
+	const recoveryBody = api.POST.mock.calls[1][1].body;
+	expect(recoveryBody.request_id).not.toBe('original-proposal');
+	expect(recoveryBody.expected_revision).toBe(run.revision);
+	expect(recoveryBody.decision).toBeUndefined();
+	expect(decisionIntent(run.id).intent?.requestId).toBe('original-proposal');
+});

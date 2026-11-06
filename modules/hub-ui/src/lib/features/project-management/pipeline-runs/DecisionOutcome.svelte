@@ -6,15 +6,19 @@
 		head,
 		revision,
 		terminal = false,
-		onrefresh
+		onrefresh,
+		recovery = false,
+		onreconcile
 	}: {
 		runId: string;
 		head: string;
 		revision: number;
 		terminal?: boolean;
 		onrefresh: () => void | Promise<void>;
+		recovery?: boolean;
+		onreconcile?: () => void | Promise<void>;
 	} = $props();
-	let review = $derived(decisionIntent(runId));
+	let review = $derived(decisionIntent(runId, recovery));
 	let outcome = $derived(review.outcome);
 	let changed = $derived(
 		!!review.intent &&
@@ -39,22 +43,22 @@
 
 <section class="space-y-2 rounded-lg border p-3 text-sm" aria-label="Decision outcome">
 	<p class="font-medium">Decision outcome</p>
-	{#if review.intent || outcome}
+	{#if review.subject || review.intent || outcome}
 		<p>
-			Request <code>{review.intent?.requestId || outcome?.request_id}</code> · {review.intent
-				?.operation || outcome?.operation}
+			Request <code>{review.subject?.requestId}</code> · {review.subject?.operation}
 		</p>
 		<p>
-			{review.intent?.acknowledged
+			{review.displayingIntent && review.intent?.acknowledged
 				? 'Recorded'
 				: outcome?.record_state === 'recorded'
 					? 'Recorded evidence found'
 					: 'Outcome unknown'}
 		</p>
-		{#if review.intent?.operation === 'answer' && review.intent?.acknowledged}<p>
+		{#if review.displayingIntent && review.intent?.operation === 'answer' && review.intent?.acknowledged}<p
+			>
 				Answer saved. The run remains stopped until explicit resume.
 			</p>{/if}
-		{#if review.intent?.operation === 'answer' && 'answer' in review.intent.body}<p
+		{#if review.displayingIntent && review.intent?.operation === 'answer' && 'answer' in review.intent.body}<p
 				class="whitespace-pre-wrap"
 			>
 				{review.intent.body.answer}
@@ -69,6 +73,9 @@
 					? 'Answer recorded — publication pending'
 					: `Publication: ${outcome.publication_state}`}
 			</p>{/if}
+		{#if outcome?.candidate_heads?.length}<p>
+				Retained candidates: {outcome.candidate_heads.join(', ')}
+			</p>{/if}
 		{#if outcome?.resolved_envelope}<p>Published envelope: {outcome.resolved_envelope}</p>{/if}
 		{#if outcome}<p>
 				Current run: {outcome.run_state}. Authority: {outcome.current_authority
@@ -77,7 +84,10 @@
 			</p>{/if}
 		{#if changed}<p>Context changed. Review current context before another action.</p>{/if}
 		<Button size="sm" variant="outline" disabled={review.busy} onclick={read}>Check outcome</Button>
-		{#if review.unresolved}<Button
+		{#if review.unresolved && !review.intent?.rejected}<p>
+				Original unresolved request: {review.intent?.requestId}
+			</p>
+			<Button
 				size="sm"
 				variant="outline"
 				disabled={review.busy || terminal || changed}
@@ -88,6 +98,22 @@
 			After a browser reload, unacknowledged submission intent is unavailable. Review durable owner
 			history; an absent record leaves the outcome unknown.
 		</p>
+	{/if}
+	{#if review.intent?.rejected}<Button
+			variant="outline"
+			onclick={async () => {
+				await onrefresh();
+				review.releaseRejection();
+			}}>Review current context to correct input</Button
+		>{/if}
+	{#if onreconcile && !terminal && ((review.intent?.body as { decision?: string })?.decision === 'accept_plan' || (review.intent?.body as { decision?: string })?.decision === 'reject_plan' || ['accept_plan', 'reject_plan'].includes(outcome?.native_channel || ''))}
+		<p>
+			Reconcile publication inspects current evidence and may continue this run. It grants no
+			approval and preserves later stops.
+		</p>
+		<Button variant="outline" disabled={review.busy} onclick={onreconcile}
+			>Review publication reconciliation</Button
+		>
 	{/if}
 	{#if review.error}<p role="status">{review.error}</p>{/if}
 </section>

@@ -7,7 +7,7 @@ class DecisionOutcomeService:
     def __init__(self):
         self.repo = DecisionOutcomeRepository()
 
-    async def evidence(self, session, run, request_id, operation):
+    async def evidence(self, session, run, request_id, operation) -> dict:
         row, question = await self.repo.record(session, run.id, request_id, operation)
         if row is None:
             return {"record_state": "unknown", "unavailable_reason": "No retained record for this request and owner"}
@@ -25,37 +25,32 @@ class DecisionOutcomeService:
             workflow = data.get("workflow_answer") or {}
             publication = data.get("publication") or {}
             plan = data.get("plan_decision") or {}
+            candidates = list(
+                dict.fromkeys(
+                    c["commit_sha"]
+                    for c in publication.get("candidates") or []
+                    if isinstance(c, dict) and isinstance(c.get("commit_sha"), str)
+                )
+            )
+            result["candidate_heads"] = candidates
             result.update(
                 native_channel=workflow.get("request") or data.get("action"),
                 publication_state=publication.get("state"),
-                candidate_head=plan.get("commit_sha") or publication.get("candidate_sha"),
+                candidate_head=plan.get("commit_sha") or (candidates[0] if len(candidates) == 1 else None),
             )
             if workflow.get("request", "").startswith("question:"):
                 result["publication_state"] = "pending"
                 # The receipt's exact request identifies both source question envelope and question ID.
-                progress = run.sdd_progress or {}
-                context = progress.get("current") or {}
-                record = next(
-                    (
-                        item
-                        for item in data.get("decision_records") or []
-                        if item.get("kind") == "answer-envelope"
-                        and str(item.get("id")) == str(request_id)
-                        and (item.get("operation") or {}).get("request") == workflow["request"]
-                    ),
-                    None,
+                from app.features.project_management.sdd.answer_publication import matching_publication
+
+                proof = data.get("answer_publication") or matching_publication(
+                    {**data, "owner_request_id": str(request_id)}, run.sdd_progress or {}
                 )
-                for resolution in progress.get("answer_resolutions") or []:
-                    if (
-                        record
-                        and resolution.get("answers_to") == record.get("answers_to")
-                        and resolution.get("question") == record.get("question")
-                        and resolution.get("workflow") == context.get("workflow")
-                        and resolution.get("segment") == context.get("segment")
-                        and progress.get("head_sha")
-                    ):
-                        result.update(publication_state="published", resolved_envelope=resolution.get("file"))
-                        break
+                if proof:
+                    result.update(publication_state="published", resolved_envelope=proof.get("file"))
+                elif not data.get("subject_context"):
+                    result["publication_state"] = None
+                    result["unavailable_reason"] = "Original worker question context was not retained"
         attempt, delivery = await self.repo.attempt(session, run.id, attempt_id)
         if attempt:
             result.update(
