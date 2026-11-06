@@ -63,7 +63,7 @@ def same_request(row, actor: str, digest: str) -> None:
         raise ProjectError(409, "Request identity already binds a different actor or payload")
 
 
-def graph_drift(original, current, nodes, selected):
+def graph_drift(original, current, nodes, selected, resolutions=None):
     """Status may advance; identity/adjacency changes need exact canonical repair evidence."""
 
     def key(edge):
@@ -78,6 +78,28 @@ def graph_drift(original, current, nodes, selected):
         if source in completed or (source_member and source_member.state == "succeeded" and source_member.spec_anchor):
             removed.remove(edge)
             continue
+        resolved = (resolutions or {}).get(requested)
+        if (
+            requested.startswith("PROP-")
+            and resolved
+            and resolved.get("kind") == "spec"
+            and resolved.get("status") == "completed"
+        ):
+            replacement = next(
+                (
+                    e
+                    for e in added
+                    if e[0] == source
+                    and e[1] in (requested, resolved["id"])
+                    and e[2] == resolved["id"]
+                    and e[3] == resolved["path"]
+                ),
+                None,
+            )
+            if replacement:
+                removed.remove(edge)
+                added.remove(replacement)
+                continue
         predecessor = selected.get(canonical or requested)
         target = (predecessor.spec_anchor or {}).get("id") if predecessor else None
         if not target or predecessor is None or predecessor.state != "succeeded" or not predecessor.outcome:

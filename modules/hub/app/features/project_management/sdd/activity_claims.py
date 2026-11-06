@@ -100,6 +100,7 @@ class ActivityClaims:
                 expected_base_sha=cp.get("expected_sha"),
                 checkpoint=checkpoint,
                 saved=cp,
+                admission=(claim_id, lease),
             )
             async with AsyncTransaction() as session:
                 await self.projects.get(session, project_id, lock=True)
@@ -175,3 +176,40 @@ async def settle_individual_claims(projects, *, limit=20):
                 },
             }
             row.settled = True
+
+
+async def bind_enrollment(session, project, run, admission):
+    """Bind the reserved owner in enrollment's transaction, before a response can be lost."""
+    from app.features.project_management.branches import activity_branch
+
+    claim_id, lease = admission
+    row = await session.get(SddActivityClaim, claim_id, with_for_update=True)
+    if (
+        row is None
+        or row.project_id != project.id
+        or row.run_id is not None
+        or row.settled
+        or row.checkpoint.get("lease") != lease
+        or not lease_valid(row.checkpoint)
+        or row.checkpoint.get("project") != project_basis(project)
+    ):
+        raise ProjectError(409, "Native enrollment admission owner changed")
+    cp = row.checkpoint
+    enrollment = cp.get("enrollment_request") or {}
+    snapshot = run.sdd_snapshot or {}
+    if (
+        enrollment.get("pull_number") != run.pull_number
+        or enrollment.get("spec_dir") != row.unit
+        or enrollment.get("activity_effort") != snapshot.get("activity_effort")
+        or snapshot.get("spec_dir") != row.unit
+        or bool(snapshot.get("handoff_pending")) != (row.activity == "dev")
+        or run.branch != activity_branch(row.activity, row.unit.rsplit("PROP-", 1)[1])
+        or cp.get("branch") != run.branch
+        or cp.get("pull_number") != run.pull_number
+        or cp.get("initial_sha") != (run.pull_snapshot or {}).get("head_sha")
+        or run.github_repository != cp["project"]["repository"]
+        or str(run.github_connector_id) != cp["project"]["connector_id"]
+    ):
+        raise ProjectError(409, "Native enrollment does not match the reserved exact artifacts")
+    row.run_id = run.id
+    row.checkpoint = {**cp, "run_id": str(run.id)}

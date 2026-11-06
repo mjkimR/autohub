@@ -3,6 +3,7 @@
 import hashlib
 import json
 
+import yaml
 from app.features.project_management.pipeline_runs.requests import request_digest
 
 from .milestone_graph import metadata
@@ -101,3 +102,39 @@ async def accepted_proposal(observer, project, ref, path, merge_sha):
     async with checkout(project.github_repository, merge_sha, merge_sha, token) as root:
         basis = content_basis(root, {"id": metadata(root, path).get("id"), "path": path})
         return basis if basis["status"] == "accepted" else None
+
+
+async def remote_head(observer, project, ref):
+    from app.features.project_management.pipelines import services as pipeline_services
+    from app.features.project_management.work_plans.github import WorkGitHub
+
+    from .milestones import _basis
+
+    token = await observer.get_token(project.github_connector_id, "github")
+    async with pipeline_services.create_github_client(token) as client:
+        return await _basis(WorkGitHub(client), project.github_repository, ref)
+
+
+async def canonical_resolutions(root, identities):
+    from app.features.project_management.projects.errors import ProjectError
+
+    from .milestone_graph import LIMITS, is_anchor
+
+    if len(set(identities)) > LIMITS["anchors"]:
+        raise ProjectError(422, "Retained canonical resolution budget exceeded")
+    result = {}
+    for identity in sorted(set(identities)):
+        try:
+            response = await cli(root, "docs", "resolve", identity)
+            rows = response.get("documents", [])
+            if response.get("errors") or len(rows) != 1:
+                continue
+            row = rows[0]
+            if row.get("kind") == "spec" and row.get("status") == "completed" and is_anchor(row):
+                meta = metadata(root, row["path"])
+                if meta.get("id") == row["id"] and meta.get("status") == "completed":
+                    result[identity] = {"id": row["id"], "path": row["path"], "kind": "spec", "status": "completed"}
+        except (ProjectError, OSError, ValueError, KeyError, TypeError, yaml.YAMLError):
+            # Missing legacy anchors remain a hold unless a separate exact published repair is proven.
+            continue
+    return result

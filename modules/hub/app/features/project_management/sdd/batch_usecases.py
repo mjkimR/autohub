@@ -101,6 +101,10 @@ class SddBatchUseCase:
                 raise ProjectError(409, "Project changed while selection was evaluated")
             if await self.repo.active(session, project_id):
                 raise ProjectError(409, "An unsettled batch already excludes another selection")
+            from .batch_evidence import remote_head
+
+            if await remote_head(self.sdd.observer, current, request.ref) != preview["resolved_sha"]:
+                raise ProjectError(409, "Selected base moved before batch creation committed")
             basis = {
                 "project": identity,
                 "ref": request.ref,
@@ -122,6 +126,15 @@ class SddBatchUseCase:
                 ),
             )
             for position, member in enumerate(ordered):
+                prefs = member["preferences"]
+                member["effective_preferences"] = {
+                    "planning_effort": prefs.get("planning_effort") or member.get("planning_effort") or "medium",
+                    "dev_effort": prefs.get("dev_effort") or member.get("dev_effort") or "medium",
+                    "planning_catalog": prefs.get("planning_catalog")
+                    or preview.get("default_catalog")
+                    or "personal-codex",
+                    "dev_catalog": prefs.get("dev_catalog") or preview.get("default_catalog") or "personal-codex",
+                }
                 await self.repo.save(
                     session,
                     SddBatchMember(

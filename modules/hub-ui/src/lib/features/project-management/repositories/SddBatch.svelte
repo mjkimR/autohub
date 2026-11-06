@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import {
@@ -19,7 +20,8 @@
 	const ordered = $derived(executionOrder(preview, selected));
 	let confirm = $state<'create' | 'stop' | null>(null);
 	$effect(() => {
-		batches.reset(projectId);
+		const project = projectId;
+		untrack(() => batches.reset(project));
 	});
 	$effect(() => {
 		void preview?.resolved_sha;
@@ -28,6 +30,9 @@
 		executionOpen = false;
 		confirm = null;
 	});
+	function inheritedEffort(id: string, key: 'planning_effort' | 'dev_effort') {
+		return preview?.members.find((row) => row.id === id)?.[key] ?? 'medium';
+	}
 	function toggle(member: Preview['members'][number], checked: boolean) {
 		if (!selectable(member) || !member.activity_kind || batches.pending) return;
 		selected = checked
@@ -138,6 +143,16 @@
 									>
 								)?.dev_catalog ?? 'inherited project default'
 							)}
+						</p>
+						<p>
+							Effective retained preferences: {Object.entries(
+								((member.initial as Record<string, unknown>).effective_preferences as Record<
+									string,
+									unknown
+								>) ?? {}
+							)
+								.map(([key, value]) => `${key.replaceAll('_', ' ')}: ${String(value)}`)
+								.join(' · ')}
 						</p>
 						{#each (member.claims ?? []) as Record<string, unknown>[] as claim (String(claim.id))}
 							<p>
@@ -257,8 +272,8 @@
 				<ol>
 					{#each ordered as row (row.id)}<li>
 							{row.id} · {row.activity} · Planning effort: {row.planning_effort ??
-								'inherited proposal default'} · Development effort: {row.dev_effort ??
-								'inherited proposal default'} · Planning catalog: {row.planning_catalog ??
+								`inherited ${inheritedEffort(row.id, 'planning_effort')}`} · Development effort: {row.dev_effort ??
+								`inherited ${inheritedEffort(row.id, 'dev_effort')}`} · Planning catalog: {row.planning_catalog ??
 								'inherited project default'} · Development catalog: {row.dev_catalog ??
 								'inherited project default'}
 							<p>

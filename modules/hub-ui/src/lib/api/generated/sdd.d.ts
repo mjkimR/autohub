@@ -318,6 +318,10 @@ export interface components {
         };
         /** MilestoneMember */
         MilestoneMember: {
+            /** Planning Effort */
+            planning_effort?: ("low" | "medium" | "high") | null;
+            /** Dev Effort */
+            dev_effort?: ("low" | "medium" | "high") | null;
             /** Id */
             id: string;
             /** Path */
@@ -363,6 +367,8 @@ export interface components {
         };
         /** MilestonePreview */
         MilestonePreview: {
+            /** Default Catalog */
+            default_catalog?: string | null;
             /** Project Id */
             project_id: string;
             /** Repository */

@@ -1,5 +1,6 @@
 import { cleanup, render, screen, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
+import { tick } from 'svelte';
 import { afterEach, expect, it, vi } from 'vitest';
 import SddBatch from './SddBatch.svelte';
 import { api } from '$lib/api';
@@ -110,4 +111,37 @@ it('shows immutable topological confirmation after reverse member selection', as
 		{ body: { members: { id: string }[] } }
 	][];
 	expect(calls.at(-1)?.[1].body.members.map((row) => row.id)).toEqual(['PROP-a', 'PROP-b']);
+	await tick();
+	expect(screen.getByText(/created · running · revision 1/)).toBeTruthy();
+});
+
+it('retains acknowledged pause and stop receipts after component effects settle', async () => {
+	const value: Batch = {
+		id: 'batch',
+		project_id: 'p',
+		state: 'running',
+		revision: 1,
+		exclusion: true,
+		detail: null,
+		basis: {},
+		evaluation: {},
+		members: []
+	};
+	vi.mocked(api.GET).mockResolvedValue({ data: [value] } as never);
+	render(SddBatch, { projectId: 'p' });
+	const user = userEvent.setup();
+	await user.click(screen.getByRole('button', { name: 'Load retained batches' }));
+	vi.mocked(api.POST).mockResolvedValueOnce({
+		data: { ...value, state: 'paused', revision: 2 }
+	} as never);
+	await user.click(await screen.findByRole('button', { name: 'Pause future admission' }));
+	await tick();
+	expect(screen.getByText(/batch · paused · revision 2/)).toBeTruthy();
+	vi.mocked(api.POST).mockResolvedValueOnce({
+		data: { ...value, state: 'stopped', revision: 3 }
+	} as never);
+	await user.click(screen.getByRole('button', { name: 'Stop future admission' }));
+	await user.click(screen.getByRole('button', { name: 'Confirm stop' }));
+	await tick();
+	expect(screen.getByText(/batch · stopped · revision 3/)).toBeTruthy();
 });

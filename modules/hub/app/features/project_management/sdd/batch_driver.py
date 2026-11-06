@@ -30,6 +30,13 @@ class BatchDriver:
             if active is None:
                 return
             member_id = active.id
+            if active.state in ("failed", "canceled", "rejected"):
+                return await self._hold(
+                    project_id,
+                    batch_id,
+                    revision,
+                    "Terminal native outcome requires Stop or a separately reviewed new selection",
+                )
             claims = await self.repo.claims(session, member_id)
             current_claim = next((c for c in claims if not c.settled), None)
             claim_id = current_claim.id if current_claim else None
@@ -63,7 +70,14 @@ class BatchDriver:
         request = MilestonePreviewRequest(
             ref=basis["ref"], milestone_id=basis["milestone"]["id"], milestone_path=basis["milestone"]["path"]
         )
-        preview = await preview_milestone(self.sdd.observer, project, request, runs_for, capture=True)
+        preview = await preview_milestone(
+            self.sdd.observer,
+            project,
+            request,
+            runs_for,
+            capture=True,
+            retained_dependencies=[edge["requested_id"] for edge in basis["edges"]],
+        )
         from .batch_evidence import confirmed_ancestry
 
         if not await confirmed_ancestry(self.sdd.observer, project, basis["sha"], preview["resolved_sha"]):
@@ -96,6 +110,12 @@ class BatchDriver:
             member = next(m for m in await self.repo.members(session, batch_id) if m.id == member_id)
             if any(not c.settled for c in await self.repo.claims(session, member_id)):
                 return
+            from .batch_evidence import remote_head
+
+            if await remote_head(self.sdd.observer, current_project, basis["ref"]) != preview["resolved_sha"]:
+                row.detail = "Base moved before claim; discard this evaluation and retry fresh on the next bounded tick"
+                row.revision += 1
+                return
             phase = member.phase
             claim_request = activity_request(member.initial["preferences"], phase, uuid4(), basis["ref"])
             reservations = ActivityClaims(self.uc.projects, self.sdd.observer, self.sdd.run_use_case)
@@ -113,7 +133,14 @@ class BatchDriver:
             member.state = "admitted"
             row.revision += 1
             row.detail = "One native owner admitted; its gates and merge remain separate"
-            row.evaluation = {"sha": preview["resolved_sha"], "observed_at": preview["observed_at"]}
+            row.evaluation = {
+                **row.evaluation,
+                "sha": preview["resolved_sha"],
+                "observed_at": preview["observed_at"],
+                "original_edges": basis["edges"],
+                "observed_edges": preview["edges"],
+                "canonical_resolutions": preview["batch_basis"].get("canonical_resolutions", {}),
+            }
         return await reservations.execute(project_id, claim_id)
 
     async def _compare(self, project_id, batch_id, revision, basis, preview):
@@ -129,7 +156,9 @@ class BatchDriver:
             return "Milestone membership expanded; immutable selection cannot adopt it"
         async with AsyncTransaction() as session:
             selected = {m.anchor_id: m for m in await self.repo.members(session, batch_id)}
-            reason = graph_drift(basis["edges"], preview["edges"], preview["nodes"], selected)
+            reason = graph_drift(
+                basis["edges"], preview["edges"], preview["nodes"], selected, fresh.get("canonical_resolutions", {})
+            )
             if reason:
                 return reason
             old_milestone = old.get("milestone")
@@ -168,6 +197,23 @@ class BatchDriver:
                     if len(removed) != len(added):
                         return f"Dependency graph changed: {key}"
                     for dep in removed:
+                        resolved = fresh.get("canonical_resolutions", {}).get(dep)
+                        if (
+                            dep.startswith("PROP-")
+                            and resolved
+                            and resolved.get("kind") == "spec"
+                            and resolved.get("status") == "completed"
+                        ):
+                            target = resolved["id"]
+                            edge = new_edges.get(target)
+                            if (
+                                target in added
+                                and edge
+                                and edge["canonical_id"] == target
+                                and edge["path"] == resolved["path"]
+                                and edge["status"] == "completed"
+                            ):
+                                continue
                         predecessor = selected.get(dep)
                         target = (predecessor.spec_anchor or {}).get("id") if predecessor else None
                         edge = new_edges.get(target)
@@ -190,9 +236,20 @@ class BatchDriver:
             run = await session.get(PipelineRun, run_id)
             if run is None or run.project_id != project.id or run.github_repository != basis["project"]["repository"]:
                 return await self._hold(project.id, batch_id, revision, "Exact native run ownership unavailable")
-            if run.state in ("failed", "canceled", "blocked"):
+            failure = None
+            if run.state in ("failed", "canceled"):
+                failure = {
+                    "state": run.state,
+                    "run_state": run.state,
+                    "revision": run.revision,
+                    "run_id": str(run.id),
+                    "pull_number": run.pull_number,
+                    "pull_url": run.pull_url,
+                    "branch": run.branch,
+                }
+            if run.state == "blocked":
                 return await self._hold(project.id, batch_id, revision, "Native owner requires operator inspection")
-            if run.state != "completed":
+            if run.state != "completed" and failure is None:
                 return
             snapshot, progress, pull_number, branch = (
                 run.sdd_snapshot or {},
@@ -200,6 +257,8 @@ class BatchDriver:
                 run.pull_number,
                 run.branch,
             )
+        if failure:
+            return await self._terminal(project.id, batch_id, member_id, claim_id, run_id, revision, failure)
         pull = await self.sdd.observer.get_pull_request(
             project.github_connector_id, project.github_repository, pull_number
         )
@@ -212,6 +271,17 @@ class BatchDriver:
             return await self._hold(
                 project.id, batch_id, revision, "Owner-confirmed merge evidence is pending", attention=False
             )
+        if progress.get("unit_status") == "rejected":
+            failure = {
+                "state": "rejected",
+                "run_state": "completed",
+                "revision": run.revision,
+                "run_id": str(run_id),
+                "pull_number": pull_number,
+                "pull_url": run.pull_url,
+                "branch": branch,
+            }
+            return await self._terminal(project.id, batch_id, member_id, claim_id, run_id, revision, failure)
         accepted = None
         if not snapshot.get("handoff_from"):
             from .batch_evidence import accepted_proposal
@@ -289,4 +359,42 @@ class BatchDriver:
                     row.state = "attention"
                 row.revision += 1
                 if preview:
-                    row.evaluation = {"sha": preview["resolved_sha"], "observed_at": preview["observed_at"]}
+                    row.evaluation = {
+                        **row.evaluation,
+                        "sha": preview["resolved_sha"],
+                        "observed_at": preview["observed_at"],
+                        "original_edges": row.basis["edges"],
+                        "observed_edges": preview["edges"],
+                        "canonical_resolutions": preview.get("batch_basis", {}).get("canonical_resolutions", {}),
+                    }
+
+    async def _terminal(self, project_id, batch_id, member_id, claim_id, run_id, revision, failure):
+        async with AsyncTransaction() as session:
+            await self.uc.projects.get(session, project_id, lock=True)
+            row = await self.repo.get(session, project_id, batch_id, lock=True)
+            if row is None or row.revision != revision:
+                return
+            run = await session.get(PipelineRun, run_id)
+            if (
+                run is None
+                or run.project_id != project_id
+                or run.revision != failure["revision"]
+                or run.state != failure["run_state"]
+            ):
+                return
+            if failure["state"] == "rejected" and (run.sdd_progress or {}).get("unit_status") != "rejected":
+                return
+            member = next(m for m in await self.repo.members(session, batch_id) if m.id == member_id)
+            claim = next(c for c in await self.repo.claims(session, member_id) if c.id == claim_id)
+            if claim.run_id != run_id:
+                return
+            member.state = failure["state"]
+            member.outcome = {**(member.outcome or {}), "terminal_owner": failure}
+            claim.checkpoint = {**claim.checkpoint, "outcome": failure}
+            claim.settled = True
+            row.detail = "Native owner ended without success; no automatic replacement or next member"
+            if row.state == "stopped":
+                row.exclusion = False
+            elif row.state == "running":
+                row.state = "attention"
+            row.revision += 1

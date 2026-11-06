@@ -133,6 +133,7 @@ class ActivityStarter:
         expected_base_sha=None,
         checkpoint=None,
         saved=None,
+        admission=None,
     ) -> PipelineRunRead:
         if activity not in ACTIVITIES:
             raise ProjectError(422, "Activity must be plan or dev")
@@ -279,13 +280,21 @@ class ActivityStarter:
             value = _frontmatter_value(anchor or "", "planning_effort" if activity == "plan" else "dev_effort")
             if value in ("low", "medium", "high"):
                 request = request.model_copy(update={"activity_effort": value})
-        return await self.runs.enroll(
-            project.id,
-            EnrollPullRequest(
-                pull_number=number,
-                spec_dir=unit,
-                activity_effort=request.activity_effort,
-                catalog=request.catalog,
-                handoff=activity == "dev",
-            ),
+        enrollment = EnrollPullRequest(
+            pull_number=number,
+            spec_dir=unit,
+            activity_effort=request.activity_effort,
+            catalog=request.catalog,
+            handoff=activity == "dev",
         )
+        if saved and saved.get("enrollment_request"):
+            enrollment = EnrollPullRequest.model_validate(saved["enrollment_request"])
+            if (
+                enrollment.pull_number != number
+                or enrollment.spec_dir != unit
+                or enrollment.handoff != (activity == "dev")
+            ):
+                raise ProjectError(409, "Saved native enrollment intent does not match exact artifacts")
+        elif checkpoint:
+            await checkpoint(enrollment_request=enrollment.model_dump(mode="json"))
+        return await self.runs.enroll(project.id, enrollment, **({"admission": admission} if admission else {}))

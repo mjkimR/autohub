@@ -21,9 +21,9 @@ from app.features.project_management.sdd.usecases import SddUseCase
 from app_layer_base.core.database.transaction import AsyncTransaction
 from sqlalchemy import select
 
-from tests.integration.features.project_management.sdd.test_batches import github, payload, preview, project
+from tests.integration.features.project_management.sdd.test_batches import batch_head, github, payload, preview, project
 
-__all__ = ["github", "project"]
+__all__ = ["batch_head", "github", "project"]
 pytestmark = [pytest.mark.integration, pytest.mark.real_commit]
 
 
@@ -73,7 +73,10 @@ async def test_exact_owner_phases_and_canonical_repair_release_only_next_member(
         async with AsyncTransaction() as session:
             claim = await session.scalar(
                 select(SddActivityClaim).where(
-                    SddActivityClaim.project_id == project_id, SddActivityClaim.activity == phase
+                    SddActivityClaim.project_id == project_id,
+                    SddActivityClaim.activity == phase,
+                    ~SddActivityClaim.settled,
+                    SddActivityClaim.unit == snapshot.get("handoff_from", snapshot.get("spec_dir")),
                 )
             )
             assert claim

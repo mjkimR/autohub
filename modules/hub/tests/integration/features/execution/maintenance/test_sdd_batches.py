@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -82,3 +83,91 @@ async def test_unresolved_claim_protects_run_until_final_owner_tombstone(session
     await session.refresh(claim)
     assert claim.run_id is None and claim.checkpoint["outcome"]["run_id"] == str(run.id)
     assert await session.scalar(select(SddActivityClaim.id).where(SddActivityClaim.id == claim.id)) == claim.id
+
+
+@pytest.mark.parametrize("batch_state", ["running", "stopped"])
+@pytest.mark.parametrize("terminal_state", ["failed", "canceled", "rejected"])
+async def test_terminal_owner_tombstone_releases_stopped_batch_without_replacement(
+    session, monkeypatch, batch_state, terminal_state
+):
+    from types import SimpleNamespace
+    from typing import cast
+
+    from app.features.project_management.sdd.batch_models import SddBatchMember
+    from app.features.project_management.sdd.batch_policy import project_basis
+    from app.features.project_management.sdd.batch_usecases import SddBatchUseCase
+    from app.features.project_management.sdd.usecases import SddUseCase
+    from app_layer_base.core.database.transaction import AsyncTransaction
+
+    run = await make_run(session, state="completed" if terminal_state == "rejected" else terminal_state)
+    if terminal_state == "rejected":
+        run.sdd_progress = {"unit_status": "rejected"}
+    p = await session.get(Project, run.project_id)
+    assert p
+    batch = SddBatch(
+        project_id=p.id,
+        request_id=uuid4(),
+        request_digest="0" * 64,
+        actor="user:operator",
+        state=batch_state,
+        basis={"project": project_basis(p), "ref": "main"},
+        evaluation={},
+    )
+    session.add(batch)
+    await session.flush()
+    member = SddBatchMember(
+        batch_id=batch.id,
+        position=0,
+        anchor_id="PROP-demo",
+        path="docs/proposals/PROP-demo/proposal.md",
+        initial={},
+        phase="dev",
+        state="admitted",
+    )
+    session.add(member)
+    await session.flush()
+    claim = SddActivityClaim(
+        project_id=p.id,
+        member_id=member.id,
+        request_id=uuid4(),
+        actor="user:operator",
+        request_digest="0" * 64,
+        unit="docs/proposals/PROP-demo",
+        activity="dev",
+        checkpoint={},
+        run_id=run.id,
+    )
+    session.add(claim)
+    await session.commit()
+    observer = SimpleNamespace(
+        get_pull_request=AsyncMock(
+            return_value={
+                "merged": True,
+                "merge_commit_sha": "e" * 40,
+                "head": {"ref": run.branch},
+                "base": {"ref": "main"},
+            }
+        )
+    )
+    driver = BatchDriver(
+        SddBatchUseCase(
+            ProjectService(ProjectRepository()), cast(SddUseCase, SimpleNamespace(observer=observer, run_use_case=None))
+        )
+    )
+    await driver.tick(p.id, batch.id)
+    await session.refresh(batch)
+    await session.refresh(member)
+    await session.refresh(claim)
+    assert member.state == terminal_state and claim.settled
+    assert member.outcome is not None
+    assert member.outcome["terminal_owner"]["run_id"] == str(run.id)
+    assert batch.exclusion is (batch_state != "stopped")
+    if batch_state == "running":
+        assert batch.state == "attention"
+        async with AsyncTransaction() as tx:
+            row = await tx.get(SddBatch, batch.id)
+            assert row
+            row.state = "running"  # Explicit Resume still cannot authorize replacement after terminal failure.
+        await driver.tick(p.id, batch.id)
+        await session.refresh(batch)
+        assert batch.state == "attention"

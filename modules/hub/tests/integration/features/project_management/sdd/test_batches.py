@@ -19,6 +19,15 @@ project = scenarios.project
 pytestmark = [pytest.mark.integration, pytest.mark.real_commit]
 
 
+@pytest.fixture(autouse=True)
+def batch_head(monkeypatch):
+    from app.features.project_management.sdd import batch_evidence
+
+    reader = AsyncMock(return_value="a" * 40)
+    monkeypatch.setattr(batch_evidence, "remote_head", reader)
+    return reader
+
+
 def preview(project_id):
     return {
         "project_id": project_id,
@@ -82,6 +91,7 @@ async def test_durable_order_replay_and_controls_preserve_later_stop(client, pro
     batch = response.json()
     assert [m["anchor_id"] for m in batch["members"]] == ["PROP-a", "PROP-b"]
     assert batch["state"] == "running"
+    assert batch["members"][0]["initial"]["effective_preferences"]["dev_effort"] == "medium"
     replay = await client.post(path, json=body)
     assert replay.json()["id"] == batch["id"]
     assert evaluator.await_count == 1
@@ -422,3 +432,163 @@ async def test_postgres_cross_entry_and_control_races(client, project, monkeypat
         claims = list(await tx.scalars(select(SddActivityClaim).where(SddActivityClaim.project_id == project_id)))
         assert len(claims) == (0 if winner == "stop" else 1)
         assert len(calls) <= 1
+
+
+@pytest.mark.parametrize("stage", ["create", "claim"])
+async def test_remote_head_movement_before_commit_refuses_stale_state(client, project, monkeypatch, batch_head, stage):
+    from types import SimpleNamespace
+    from uuid import UUID
+
+    from app.features.project_management.projects.repos import ProjectRepository
+    from app.features.project_management.projects.services import ProjectService
+    from app.features.project_management.sdd.activity_claims import ActivityClaims
+    from app.features.project_management.sdd.batch_driver import BatchDriver
+    from app.features.project_management.sdd.batch_usecases import SddBatchUseCase
+
+    await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    value = preview(project["id"])
+    monkeypatch.setattr(milestones, "preview_milestone", AsyncMock(return_value=value))
+    path = f"/api/v1/projects/{project['id']}/sdd/batches"
+    if stage == "create":
+        batch_head.return_value = "b" * 40
+        assert (await client.post(path, json=payload())).status_code == 409
+        assert not (await client.get(path)).json()
+    else:
+        batch = (await client.post(path, json=payload())).json()
+        batch_head.return_value = "b" * 40
+        execute = AsyncMock()
+        monkeypatch.setattr(ActivityClaims, "execute", execute)
+        driver = BatchDriver(
+            SddBatchUseCase(
+                ProjectService(ProjectRepository()), cast(SddUseCase, SimpleNamespace(observer=None, run_use_case=None))
+            )
+        )
+        await driver.tick(UUID(project["id"]), UUID(batch["id"]))
+        current = (await client.get(path + f"/{batch['id']}")).json()
+        assert not current["members"][0]["claims"] and "Base moved" in current["detail"]
+        execute.assert_not_called()
+
+
+@pytest.mark.parametrize("rewrite", [False, True])
+async def test_external_exact_canonical_alias_and_edge_only_repair_are_accepted(client, project, monkeypatch, rewrite):
+    from types import SimpleNamespace
+    from uuid import UUID
+
+    from app.features.project_management.projects.repos import ProjectRepository
+    from app.features.project_management.projects.services import ProjectService
+    from app.features.project_management.sdd.batch_driver import BatchDriver
+    from app.features.project_management.sdd.batch_usecases import SddBatchUseCase
+
+    await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    value = preview(project["id"])
+    old_edge = {
+        "source": "PROP-b",
+        "requested_id": "PROP-external",
+        "canonical_id": "PROP-external",
+        "path": "docs/proposals/PROP-external/proposal.md",
+        "status": "accepted",
+    }
+    value["edges"] = [old_edge]
+    value["batch_basis"]["members"] = [
+        {
+            "id": "PROP-b",
+            "path": value["members"][1]["path"],
+            "status": "accepted",
+            "content_digest": "unchanged",
+            "depends_on": ["PROP-external"],
+        }
+    ]
+    monkeypatch.setattr(milestones, "preview_milestone", AsyncMock(return_value=value))
+    path = f"/api/v1/projects/{project['id']}/sdd/batches"
+    batch = (await client.post(path, json=payload())).json()
+    fresh = deepcopy(value)
+    resolved = {
+        "id": "SPEC-external",
+        "kind": "spec",
+        "status": "completed",
+        "path": "specs/2026-11/20261106-external/spec.md",
+    }
+    fresh["nodes"] = [resolved]
+    fresh["batch_basis"]["canonical_resolutions"] = {"PROP-external": resolved}
+    fresh["edges"] = [
+        {
+            "source": "PROP-b",
+            "requested_id": "SPEC-external" if rewrite else "PROP-external",
+            "canonical_id": "SPEC-external",
+            "path": resolved["path"],
+            "status": "completed",
+        }
+    ]
+    if rewrite:
+        fresh["batch_basis"]["members"][0]["depends_on"] = ["SPEC-external"]
+    driver = BatchDriver(
+        SddBatchUseCase(
+            ProjectService(ProjectRepository()), cast(SddUseCase, SimpleNamespace(observer=None, run_use_case=None))
+        )
+    )
+    assert (
+        await driver._compare(UUID(project["id"]), UUID(batch["id"]), batch["revision"], batch["basis"], fresh) is None
+    )
+    fresh["batch_basis"]["canonical_resolutions"] = {}
+    assert await driver._compare(UUID(project["id"]), UUID(batch["id"]), batch["revision"], batch["basis"], fresh)
+
+
+async def test_refusal_resume_acknowledgement_survives_wait_then_admission(client, project, monkeypatch):
+    from types import SimpleNamespace
+    from uuid import UUID
+
+    from app.features.project_management.projects.repos import ProjectRepository
+    from app.features.project_management.projects.services import ProjectService
+    from app.features.project_management.sdd.activity_claims import ActivityClaims
+    from app.features.project_management.sdd.batch_driver import BatchDriver
+    from app.features.project_management.sdd.batch_models import SddActivityClaim
+    from app.features.project_management.sdd.batch_usecases import SddBatchUseCase
+    from app_layer_base.core.database.transaction import AsyncTransaction
+
+    await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    value = preview(project["id"])
+    monkeypatch.setattr(milestones, "preview_milestone", AsyncMock(side_effect=lambda *args, **kwargs: deepcopy(value)))
+    path = f"/api/v1/projects/{project['id']}/sdd/batches"
+    batch = (await client.post(path, json=payload())).json()
+    async with AsyncTransaction() as tx:
+        claim = SddActivityClaim(
+            project_id=UUID(project["id"]),
+            member_id=UUID(batch["members"][0]["id"]),
+            request_id=uuid4(),
+            actor="user:operator",
+            request_digest="0" * 64,
+            unit="docs/proposals/PROP-a",
+            activity="dev",
+            settled=True,
+            checkpoint={"refusal": {"status": 409, "detail": "Fresh basis required"}},
+        )
+        tx.add(claim)
+    driver = BatchDriver(
+        SddBatchUseCase(
+            ProjectService(ProjectRepository()), cast(SddUseCase, SimpleNamespace(observer=None, run_use_case=None))
+        )
+    )
+    await driver.tick(UUID(project["id"]), UUID(batch["id"]))
+    current = (await client.get(path + f"/{batch['id']}")).json()
+    assert current["state"] == "attention"
+    response = await client.post(
+        path + f"/{batch['id']}/controls",
+        json={"request_id": str(uuid4()), "expected_revision": current["revision"], "action": "resume"},
+    )
+    assert response.status_code == 200
+    value["members"][0].update(eligibility="held", scheduling="held", reasons=["Prerequisite remains waiting"])
+    await driver.tick(UUID(project["id"]), UUID(batch["id"]))
+    await driver.tick(UUID(project["id"]), UUID(batch["id"]))
+    current = (await client.get(path + f"/{batch['id']}")).json()
+    assert current["state"] == "running" and current["evaluation"]["reviewed_refusal"] == str(claim.id)
+    execute = AsyncMock()
+    monkeypatch.setattr(ActivityClaims, "execute", execute)
+    value["members"][0].update(eligibility="eligible_now", scheduling="pass", reasons=[])
+    await driver.tick(UUID(project["id"]), UUID(batch["id"]))
+    execute.assert_awaited_once()
