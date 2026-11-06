@@ -3,7 +3,7 @@ id: PROP-operator-decision-inbox-target
 title: Living Spec targets for PROP-operator-decision-inbox
 summary: "Candidate contract and interface updates for find pending delivery decisions across projects."
 status: draft
-proposal: PROP-operator-decision-inbox
+proposal: SPEC-operator-decision-inbox
 created_at: 2026-11-05
 targets:
   - file: docs/capabilities/delivery/CAP-PR-operator-decisions.md
@@ -28,7 +28,7 @@ implemented guarantees; Planning settles the final scope and screen drafts.
 
 ## 1. System Capabilities Plan
 
-Extend `CAP-PR-operator-decisions` with ordinary pending discovery and save/application labels. Extend `CAP-SDD-native-delivery` and `CAP-SDD-workflow-control` with native discovery, exact subject identity and mandatory refreshed owner inspection. Existing mutation authority remains owned by those contracts. Reconcile `PADR-decision-inbox-read-projection` into the retained decision and its component mapping in `ARCH-05-2-components`.
+Extend `CAP-PR-operator-decisions` with ordinary pending discovery and save/application labels. Extend `CAP-SDD-native-delivery` and `CAP-SDD-workflow-control` with native discovery, exact subject identity and mandatory refreshed owner inspection. Existing mutation authority remains owned by those contracts. Reconcile `ADR-decision-inbox-read-projection` into the retained decision and its component mapping in `ARCH-05-2-components`.
 
 ## 2. Use Cases and Interface Plan
 

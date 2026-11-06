@@ -11,7 +11,7 @@ planning_effort: high
 dev_effort: high
 milestone: MS-operator-decisions
 depends_on:
-  - PROP-operator-decision-inbox
+  - SPEC-operator-decision-inbox
 boundaries:
   owns:
     - modules/hub-ui/src/lib/api/
@@ -43,7 +43,7 @@ Existing contracts intentionally separate saving an answer, applying it, publish
 
 ### Source anchors
 
-`CAP-PR-operator-decisions` requires explicit saved-answer selection for resume. `UX-sdd-workflow-request` states that a recorded worker answer remains open until its envelope is published. `PROP-operator-decision-inbox` supplies the common discovery and navigation entry point this work completes.
+`CAP-PR-operator-decisions` requires explicit saved-answer selection for resume. `UX-sdd-workflow-request` states that a recorded worker answer remains open until its envelope is published. `SPEC-operator-decision-inbox` supplies the common discovery and navigation entry point this work completes.
 
 ## 2. Technical Spike Questions
 
@@ -106,15 +106,15 @@ Development adds integration tests for scoped exact lookup, unknown/not-visible/
 
 The user authorized routine design choices and requested separate UX review. B and the owner-modal arrangement are assumptions within that scope; no business choice blocks this turn. High Development effort remains appropriate because replay, external publication and authority disclosure span persisted owner boundaries.
 
-`PROP-operator-decision-inbox` is accepted but not implemented/completed in this worktree. Its exact-subject selection, first-observed native age, refreshed inspection and CAS persistence are provisional prerequisites, reused without duplication. Before Development or handoff, compare the landed predecessor's exact completed spec and implementation with this bundle, replace the dependency anchor through the normal process, and revise any mismatched fields/routes/UI boundaries. Recheck touched owner tests, generated types and active branch overlap; do not treat this branch's checks as evidence for the eventual landed head.
+`SPEC-operator-decision-inbox` is accepted but not implemented/completed in this worktree. Its exact-subject selection, first-observed native age, refreshed inspection and CAS persistence are provisional prerequisites, reused without duplication. Before Development or handoff, compare the landed predecessor's exact completed spec and implementation with this bundle, replace the dependency anchor through the normal process, and revise any mismatched fields/routes/UI boundaries. Recheck touched owner tests, generated types and active branch overlap; do not treat this branch's checks as evidence for the eventual landed head.
 
 ## 4. Lifecycle & Retirement Criteria
 
-User plan-intent authorizes this high-effort Planning turn. ORDER OVERRIDE: Planning may precede completion of `PROP-operator-decision-inbox`; this exception authorizes Planning only. The accepted inbox design is a provisional dependency, not implemented evidence. No plan-accept or Development handoff authority is supplied. Planning resolves the spike
+User plan-intent authorizes this high-effort Planning turn. ORDER OVERRIDE: Planning may precede completion of `SPEC-operator-decision-inbox`; this exception authorizes Planning only. The accepted inbox design is a provisional dependency, not implemented evidence. No plan-accept or Development handoff authority is supplied. Planning resolves the spike
 questions, evaluates the recommended design and drafts affected interactions
 before code. The milestone frames the theme without binding the final scope.
 
-The direct prerequisite is `PROP-operator-decision-inbox`. It supplies the shared foundation described above. Eligibility requires its exact completed spec anchor after handoff; update the edge through the normal handoff reference process.
+The direct prerequisite is `SPEC-operator-decision-inbox`. It supplies the shared foundation described above. Eligibility requires its exact completed spec anchor after handoff; update the edge through the normal handoff reference process.
 
 Acceptance and Development handoff follow `sdd-proposal`. Rejection retains
 the decision and reason through the proposal lifecycle. This proposal is complete

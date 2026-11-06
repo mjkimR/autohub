@@ -1,13 +1,13 @@
 ---
-id: PADR-decision-inbox-read-projection
+id: ADR-decision-inbox-read-projection
 title: Discover decisions through an owner-backed read projection
 summary: "For cross-project decision discovery, we keep a durable read projection and refresh the owning review context before acting, to bound listing cost and preserve authority, accepting snapshot lag and projection maintenance."
-proposal: PROP-operator-decision-inbox
-status: draft
+proposal: SPEC-operator-decision-inbox
+status: accepted
 created_at: 2026-11-05
 ---
 
-# [PADR-decision-inbox-read-projection] Discover decisions through an owner-backed read projection
+# [ADR-decision-inbox-read-projection] Discover decisions through an owner-backed read projection
 
 ## 1. Context & Problem Statement
 
