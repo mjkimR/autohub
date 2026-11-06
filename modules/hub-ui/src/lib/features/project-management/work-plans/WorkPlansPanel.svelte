@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import { SvelteURL } from 'svelte/reactivity';
 	import { api, type components } from '$lib/api';
 	import { allPages, responseData } from '$lib/api/pagination';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -127,7 +128,7 @@
 			error = 'Original Plan unavailable. Refresh plans to inspect retained work.';
 			return;
 		}
-		const url = new URL(window.location.href);
+		const url = new SvelteURL(window.location.href);
 		url.searchParams.set('tab', 'plans');
 		url.hash = `work-plan-${id}`;
 		window.history.replaceState(window.history.state, '', url);
