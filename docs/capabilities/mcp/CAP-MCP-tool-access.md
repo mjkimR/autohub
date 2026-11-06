@@ -71,7 +71,7 @@ each tool call additionally checks the operation's required scope.
 
 | Surface | Admission scopes | Registered operations |
 | --- | --- | --- |
-| `/mcp/` | `autohub:mcp:read` or `autohub:mcp:write` | 13 read tools and 14 work mutations |
+| `/mcp/` | `autohub:mcp:read` or `autohub:mcp:write` | 19 read tools and 20 work mutations |
 | `/ops/mcp/` | `autohub:mcp:ops` | Four operations mutations |
 
 The transport uses stateless HTTP with JSON responses. Slashless endpoint paths
@@ -182,6 +182,49 @@ notes, not its entire internal evidence map. `next_action` has this precedence:
 settlement or their bounded deadline. The implementation polls every two seconds;
 settled values return immediately and waiting holds no database connection
 between reads. Disconnecting a client does not cancel the underlying work.
+
+### Delivery decision and recovery tools
+
+The Work endpoint additionally registers six READ tools: `decisions_list`,
+`runs_decision_outcome`, `sdd_batches_list`, `sdd_batches_get`,
+`work_items_recoveries` and `work_items_replacements`. Six WRITE tools are
+`decisions_review`, `sdd_batches_control`, `work_items_recover`,
+`work_items_replacement_link`, `work_items_replacement_accept` and
+`work_items_replacement_withdraw`. `ADR-mcp-delivery-owner-adapters` records this
+bounded owner-adapter decision.
+
+- **Inspection scope**: WHEN exact decision inspection persists native evidence,
+  Hub MUST require work-write scope even though it grants no execution authority.
+- **Owner identity**: WHEN a delivery mutation runs, Hub MUST derive its actor as
+  `machine:<authenticated machine UUID>` and retain the owner's supplied request,
+  revision, replay and eligibility rules. No human impersonation, revision refresh
+  or automatic command retry occurs. Replacement acceptance satisfies only its
+  existing local Item edge; batch controls affect only future admission.
+- **Safe evidence**: WHEN these tools serialize owner results, Hub MUST return
+  allowlisted typed views excluding raw task/answer text, snapshots, recovery
+  command/prior-outcome maps and event evidence maps. Current authority and hold
+  presence are observations, never new authorization.
+- **History disclosure**: WHEN nested evidence is bounded, Hub MUST disclose
+  count/omission metadata. Candidates cap at 50, recovery/replacement event
+  collections and acceptance/link projections at 100, batch members at 50 with
+  latest claim and retained claim count. Replacement current active/consumed
+  evidence precedes optional history. Batch lists expose a latest-50 window,
+  not complete history or arbitrary pagination. Existing owners may load more
+  evidence than is returned; this contract adds no database work bound.
+- **Exact outcomes**: WHEN a request outcome is read, Hub MUST retain exact run,
+  operation and request namespaces and unknown/recorded distinction without
+  external calls. Exact inspection uses key/fingerprint and preserves owner
+  changed-subject refusals without silently selecting another subject.
+
+Checks: `modules/hub/tests/integration/mcp/test_delivery_tools.py` and
+`modules/hub/tests/unit/mcp/test_delivery_views.py`. Inputs use strict existing
+owner commands inside project/Plan/Item or project/batch identities; clients
+supply request IDs and reviewed revisions. Actor fields are not accepted.
+Discovery filters include project/kind/question state, cursor and limit 1–100.
+Recovery pages use offset/limit 1–100; replacement reads retain candidate,
+history and event paging. Inactive-history requests are served with an effective
+limit of at most99 so the independent active link fits the100link cap; advance
+using the returned `history_limit`. Read scope and write scope remain independent.
 
 ## 5. Implementation and verification
 

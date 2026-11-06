@@ -21,7 +21,7 @@ status: draft
 
 ## Decisions
 
-Promote `PADR-mcp-delivery-owner-adapters` and update its Confirmation with actual implementation/review evidence. Do not modify existing execution-owner ADR decisions.
+Promote `ADR-mcp-delivery-owner-adapters` and update its Confirmation with actual implementation/review evidence. Do not modify existing execution-owner ADR decisions.
 
 ## Screens
 

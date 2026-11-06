@@ -1,0 +1,17 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T04:55:04.592414Z'
+status: completed
+review: review-01.yaml
+summary: Applied exact suggested bounded owner page of99; full page plus next page regression failed before and passes after; fresh round2 follows.
+findings:
+- issue: Replacement projection truncation skips one historical link.
+  evidence: work_item_replacements.py passes limit100; replacement_views.py caps independent active plus history at100 while retaining history_limit100.
+  failure_condition: One active plus100 inactive links returns only99 history; advancing100 skips omitted identity.
+  suggested_action: Bound inactive-history page to99 before owner call and preserve effective history_limit; add full-page and next-page regression.
+  resolution: resolved
+  severity: P2
+checks:
+  regression: PASS failed-before then passed-after exact page identities
