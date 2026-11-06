@@ -1,0 +1,22 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T05:00:16.905007Z'
+status: completed
+summary: 'Completed all eight ACs and both tasks: twelve owner adapters, safe projections, machine replay, exact bounded history and three Living Spec reflections; code review2 and reconcile1 pass. Entrypoint derive rejected tests/broad directories and retained MCP server doorways; no scope extensions.'
+findings: []
+assumptions:
+- 'Codex isolation emulated: absolute worktree paths, individual sibling operation approvals, fixed-head read-only reviewer/status audits and committed scope inspection substitute native enforcement.'
+unverified_areas:
+- No live provider or deployment; Host integration and combined landed-head tests remain.
+checks:
+  sync_start: PASS exit=0
+  tests: PASS MCP56 owner104 PostgreSQL7
+  build: PASS just check all types and UI production build
+  lint: PASS just lint final lint-check cumulative CI rules and generated freshness
+  baseline: PASS same-head disabled31 enabled43 tools with all31 old names retained
+diff_scope:
+  base: a1ce5663a5f0c070f76f6636a7425addb09e2b89
+  head: eabc6f1e26aaa546ed712d0ecbbae0c918f1360f
+activity_effort: high
