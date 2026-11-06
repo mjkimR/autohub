@@ -72,7 +72,7 @@
 		})();
 	});
 	async function save(name: string, definition: components['schemas']['TemplateDefinition']) {
-		if (!intent) return;
+		if (!intent || loading) return;
 		await intent.submit({
 			op: editing ? 'update' : 'create',
 			target: editing?.id ?? null,
@@ -110,7 +110,7 @@
 	}
 	async function extract() {
 		const source = plans.find((p) => p.id === sourceId);
-		if (!source || !intent) return;
+		if (!source || !intent || loading) return;
 		await intent.submit({
 			op: 'from-plan',
 			target: source.id,
@@ -203,7 +203,7 @@
 		}
 	}
 	async function remove() {
-		if (!deleting || !deleteConfirmed || !intent) return;
+		if (!deleting || !deleteConfirmed || !intent || loading) return;
 		await intent.submit({
 			op: 'delete',
 			target: deleting.id,
@@ -417,7 +417,7 @@
 				history, group, schedule and external Plan dependencies are omitted. No work starts.
 			</p>
 			<Button
-				disabled={!sourceId || !sourceName.trim() || !intent || intent.locked}
+				disabled={loading || !sourceId || !sourceName.trim() || !intent || intent.locked}
 				onclick={extract}>Save source definition</Button
 			>
 		</section>
@@ -428,7 +428,7 @@
 				</p>
 				<label class="flex gap-2"
 					><input type="checkbox" bind:checked={deleteConfirmed} />I reviewed this template deletion</label
-				><Button disabled={!deleteConfirmed || !intent || intent.locked} onclick={remove}
+				><Button disabled={loading || !deleteConfirmed || !intent || intent.locked} onclick={remove}
 					>Confirm template deletion</Button
 				><Button
 					variant="ghost"

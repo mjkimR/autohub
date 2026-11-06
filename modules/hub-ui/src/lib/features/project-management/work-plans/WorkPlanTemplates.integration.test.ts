@@ -162,6 +162,9 @@ test('acknowledged outcome preserves exact template ID and original Plan navigat
 	);
 	render(WorkPlanTemplates, { project, plans: [], onclose: vi.fn(), refresh: vi.fn() });
 	await screen.findByText(/Original template:.*template/);
+	expect(
+		screen.getByRole('link', { name: 'Open original Plan' }).hasAttribute('data-sveltekit-reload')
+	).toBe(true);
 	expect(screen.getByRole('link', { name: 'Open original Plan' }).getAttribute('href')).toContain(
 		'/projects/p?tab=plans'
 	);
@@ -245,3 +248,43 @@ test('stale definition keeps unsent input until explicit current-definition relo
 		api.PUT.mock.calls[0][1].body.request_id
 	);
 });
+
+test.each(['extract', 'delete'])(
+	'pending template read disables prepared %s mutations',
+	async (operation) => {
+		setup();
+		render(WorkPlanTemplates, {
+			project,
+			plans: [{ id: 'source', title: 'Source', revision: 7 } as never],
+			onclose: vi.fn(),
+			refresh: vi.fn()
+		});
+		const user = userEvent.setup();
+		await screen.findByRole('button', { name: 'Use template' });
+		if (operation === 'extract') {
+			await user.selectOptions(screen.getByRole('combobox', { name: 'Source Plan' }), 'source');
+			await user.type(screen.getByRole('textbox', { name: 'Template name' }), 'Saved');
+		} else {
+			await user.click(screen.getByRole('button', { name: 'Delete template' }));
+			await user.click(screen.getByRole('checkbox'));
+		}
+		let finish!: (value: unknown) => void;
+		api.GET.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finish = resolve;
+				})
+		);
+		await user.click(screen.getByRole('button', { name: 'Refresh templates' }));
+		if (operation === 'delete') await user.click(screen.getByRole('checkbox'));
+		const button = screen.getByRole('button', {
+			name: operation === 'extract' ? 'Save source definition' : 'Confirm template deletion'
+		});
+		expect(button.hasAttribute('disabled')).toBe(true);
+		await user.click(button);
+		expect(api.POST).not.toHaveBeenCalled();
+		expect(api.DELETE).not.toHaveBeenCalled();
+		finish({ data: { items: [template], total_count: 1 } });
+		await screen.findByRole('button', { name: 'Use template' });
+	}
+);

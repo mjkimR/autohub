@@ -37,6 +37,7 @@
 				</p>
 				<p>Current Plan: {intent.outcome.current_plan?.state}</p>
 				<a
+					data-sveltekit-reload
 					class="underline"
 					href={`/projects/${intent.project}?tab=plans#work-plan-${intent.outcome.original_plan.id}`}
 					>Open original Plan</a
