@@ -1,16 +1,15 @@
 ---
-id: PADR-work-item-replacement-evidence
+id: ADR-work-item-replacement-evidence
 title: Accept replacement evidence for one dependency
 summary: "For replacement work, we accept confirmed merge evidence per existing Item dependency, to unblock reviewed work without rewriting outcomes, accepting explicit edge-by-edge review."
-proposal: PROP-work-item-replacement
-# supersedes: [ADR-<slug>]   # an ADR this decision replaces, wholly or in part; name the replaced clauses in Decision Outcome
-status: draft
+proposal: SPEC-work-item-replacement
+status: accepted
 created_at: 2026-11-05
 ---
 
-# [PADR-work-item-replacement-evidence] Accept replacement evidence for one dependency
+# [ADR-work-item-replacement-evidence] Accept replacement evidence for one dependency
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Date**: 2026-11-05
 
 ---

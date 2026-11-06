@@ -3,7 +3,7 @@ id: PROP-work-item-replacement-target
 title: Living Spec targets for PROP-work-item-replacement
 summary: "Candidate contract and interface updates for link replacement work to original work items."
 status: draft
-proposal: PROP-work-item-replacement
+proposal: SPEC-work-item-replacement
 created_at: 2026-11-05
 targets:
   - file: docs/capabilities/work-plans/CAP-WORK-work-plan-execution.md
@@ -87,7 +87,7 @@ admission decision, retaining merge snapshots beyond detailed Run pruning.
 Review the landed prerequisite Run/Item lock order before implementation.
 Planned checks: PostgreSQL admission/withdrawal/recovery races; activity rollback;
 migration and post-pruning integration cases. Until implemented, review only.
-`PADR-work-item-replacement-evidence` records the decision and exact restatements.
+`ADR-work-item-replacement-evidence` records the decision and exact restatements.
 
 ## 4. Development Conventions and Governance
 
