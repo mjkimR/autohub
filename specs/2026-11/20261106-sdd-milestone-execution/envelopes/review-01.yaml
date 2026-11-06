@@ -1,0 +1,75 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T00:34:40.745647Z'
+status: completed
+summary: round 1; Initial independent implementation review identifies reservation recovery, drift, lease and UI gaps; tasks remain unchecked.
+findings:
+- issue: Definitive individual refusals retain reservation forever
+  evidence: activity_claims.py:105-110; usecases.py:32-41
+  failure_condition: A rejected start prevents a fresh corrected start; successful single claims have no settlement
+  suggested_action: Retain refusal receipt and release proven pre-effect claims; settle single owners
+  resolution: open
+  severity: P1
+- issue: Saved artifacts cannot recover after base advance
+  evidence: activities.py:149-159
+  failure_condition: Saved branch or PR exists when unrelated base advances
+  suggested_action: Reconcile exact artifacts before fresh base precondition
+  resolution: open
+  severity: P1
+- issue: Last base check precedes policy evaluation
+  evidence: activities.py:204-240
+  failure_condition: Base moves during start_blocker and old branch is still created
+  suggested_action: Re-read immediately after policy and before branch effect
+  resolution: open
+  severity: P1
+- issue: Milestone and transitive graph drift escapes comparison
+  evidence: batch_evidence.py:27-36; batch_driver.py:109-170
+  failure_condition: Milestone or external prerequisite graph changes while member content stays stable
+  suggested_action: Compare normalized complete graph and milestone anchor; allow only proven canonical repairs
+  resolution: open
+  severity: P1
+- issue: Planning receipt permanently exempts later content drift
+  evidence: batch_driver.py:129-138
+  failure_condition: Unrelated scope edit after Planning merge is admitted
+  suggested_action: Capture exact accepted content checkpoint at confirmed Planning merge
+  resolution: open
+  severity: P1
+- issue: Expired claim lease can settle results
+  evidence: activity_claims.py:77-83 and97-103
+  failure_condition: Worker resumes after expiry before token replacement
+  suggested_action: Validate token and unexpired lease at each checkpoint and settlement
+  resolution: open
+  severity: P1
+- issue: Stale list overwrites newer control receipt
+  evidence: sdd-batches.svelte.ts:43-60
+  failure_condition: Old running list arrives after Stop revision
+  suggested_action: Merge list responses by identity and revision with delayed-response regression
+  resolution: open
+  severity: P1
+- issue: Confirmation displays click order instead of execution order
+  evidence: SddBatch.svelte:20-24 and190-197
+  failure_condition: Operator chooses dependent before its prerequisite
+  suggested_action: Show deterministic topological order and external holds before create
+  resolution: open
+  severity: P1
+- issue: Durable rows omit owner links and catalogs
+  evidence: SddBatch.svelte:67-102
+  failure_condition: Reopened uncertain or stopped-inflight batch has no known owner navigation or catalog disclosure
+  suggested_action: Render exact owner/artifact links and retained preferences with component tests
+  resolution: open
+  severity: P1
+- issue: PostgreSQL concurrency and remote recovery evidence absent
+  evidence: test_batches.py:144-185
+  failure_condition: Sequential mocked tests do not cover simultaneous claims or native checkpoint failures
+  suggested_action: Add barriers actual reservation recovery lineage retention and fairness tests before completion
+  resolution: open
+  severity: P2
+checks:
+  initial_backend: PASS 247 and 37 isolated CLI skips
+  initial_postgres: PASS 10
+diff_scope:
+  base: e0eb0e1991919c59801ab513e75e8581111c3767
+  head: b64d3569a144632ff0e78a1b0821f845c3fc6df7
+activity_effort: high
