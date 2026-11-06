@@ -40,7 +40,7 @@ workflow: sdd-proposal
 
 Save reusable Work Plan definitions and create fresh explicitly reviewed registrations from them. The hypothesis is that repeated maintenance or feature routines can reuse their structure while each execution retains independent identities and authority.
 
-Recommended delivery order: third, after `PROP-mcp-delivery-tools` and `SPEC-decision-notifications`. These are product priorities, not required implementation dependencies. Medium size is provisional; Planning should keep the feature to reusable Work Plan definitions and fresh registration.
+Recommended delivery order: third, after `SPEC-mcp-delivery-tools` and `SPEC-decision-notifications`. These are product priorities, not required implementation dependencies. Medium size is provisional; Planning should keep the feature to reusable Work Plan definitions and fresh registration.
 
 ## 2. Technical Spike Findings
 

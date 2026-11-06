@@ -41,7 +41,7 @@ The operator does not plan further Jules feature investment and wants the existi
 
 The official [Antigravity Remote Agents documentation](https://antigravity.google/docs/remote-agents/) describes Google-managed remote execution and the `agy --remote-agent` CLI entry point. This establishes a candidate execution surface, not compatibility with Jules APIs or a proven unattended Hub integration. Authentication, supported automation, durable identity and outcome collection remain Planning questions. No Jules shutdown date or API removal schedule is asserted by this proposal.
 
-Recommended scheduling: follow the queued MCP tools, decision notifications and Work Plan templates unless provider availability makes retirement urgent. The ordering is a product preference, not a dependency on `PROP-mcp-delivery-tools`, `SPEC-decision-notifications` or `PROP-work-plan-templates`.
+Recommended scheduling: follow the queued MCP tools, decision notifications and Work Plan templates unless provider availability makes retirement urgent. The ordering is a product preference, not a dependency on `SPEC-mcp-delivery-tools`, `SPEC-decision-notifications` or `PROP-work-plan-templates`.
 
 ## 2. Technical Spike Questions
 

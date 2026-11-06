@@ -1,11 +1,15 @@
 from app.auth import MCP_OPS, MCP_WORK_SCOPES
 from app.mcp.auth import MCPAuthentication, authenticated_context
 from app.mcp.connection_tests import register_connection_tests
+from app.mcp.decision_inbox import register_decisions
 from app.mcp.dependencies import Dependencies
 from app.mcp.interactions import register_interactions
 from app.mcp.projects import register_projects
 from app.mcp.runs import register_runs
 from app.mcp.sdd import register_sdd
+from app.mcp.sdd_batches import register_batches
+from app.mcp.work_item_recovery import register_recovery
+from app.mcp.work_item_replacements import register_replacements
 from app.mcp.work_plans import register_work_plans
 from app_mcp import ToolRegistry, create_mcp
 from starlette.middleware import Middleware
@@ -14,6 +18,10 @@ from starlette.middleware import Middleware
 def create_hub_mcp(*, ops: bool = False):
     definitions = ToolRegistry()
     deps = Dependencies()
+    register_decisions(definitions, deps)
+    register_batches(definitions, deps)
+    register_recovery(definitions, deps)
+    register_replacements(definitions, deps)
     register_projects(definitions, deps)
     register_runs(definitions, deps)
     register_sdd(definitions, deps)

@@ -23,7 +23,7 @@ Handed off from proposal PROP-decision-notifications on 2026-11-06.
 
 The operator explicitly enables selected decision notices on a trusted destination, receives minimal metadata and opens the exact authenticated owner review. The hypothesis is that this removes repeated inbox polling without making transport delivery an execution or authorization event. `docs/materials/2026-11/20261106-decision-notifications/owner-seams.md` records source inspection; no product tests or live delivery ran in Planning.
 
-Priority is second after `PROP-mcp-delivery-tools`, before `PROP-work-plan-templates`; none is a prerequisite of this feature. Parallel Planning and implementation are possible with the future file coordination below.
+Priority is second after `SPEC-mcp-delivery-tools`, before `PROP-work-plan-templates`; none is a prerequisite of this feature. Parallel Planning and implementation are possible with the future file coordination below.
 
 ## 2. User Stories
 

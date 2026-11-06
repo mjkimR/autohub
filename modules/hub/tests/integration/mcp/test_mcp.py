@@ -398,6 +398,26 @@ async def test_surfaces_expose_exact_tools_and_reject_cross_surface_calls(client
         "work_plans_control",
         "work_plans_comment",
     }
+    reads.update(
+        {
+            "decisions_list",
+            "runs_decision_outcome",
+            "sdd_batches_list",
+            "sdd_batches_get",
+            "work_items_recoveries",
+            "work_items_replacements",
+        }
+    )
+    work_writes.update(
+        {
+            "decisions_review",
+            "sdd_batches_control",
+            "work_items_recover",
+            "work_items_replacement_link",
+            "work_items_replacement_accept",
+            "work_items_replacement_withdraw",
+        }
+    )
     ops_writes = {"projects_create", "projects_update", "connection_tests_start", "connection_tests_cancel"}
     _, combined = await issue(client, [MCP_READ, MCP_WRITE, MCP_OPS])
     discovered = set()
@@ -446,7 +466,7 @@ async def test_surfaces_expose_exact_tools_and_reject_cross_surface_calls(client
                 )
             ).json()["result"]
             assert result["isError"] is True
-    assert len(discovered) == 31
+    assert len(discovered) == 43
     for removed in ("catalogs.list", "connectors.list"):
         assert removed not in discovered
         result = (await rpc(client, key, "tools/call", {"name": removed, "arguments": {}})).json()["result"]
