@@ -90,7 +90,7 @@ Existing owner history/list construction may load more than the public view; thi
 
 Use new focused MCP modules `decision_inbox.py`, `sdd_batches.py`, `work_item_recovery.py`, `work_item_replacements.py` and a split output-model module as size requires; the nearest existing parent is `modules/hub/app/mcp/`. Wire only `server.py` and explicit dependency construction in `dependencies.py`. Reuse owner calls, not direct repositories or HTTP-to-REST calls. New cross-feature edges outside already declared MCP ownership are out of scope; report a missing declaration rather than bypassing architecture checks.
 
-Add focused tests under the existing MCP integration/unit directories. Living Spec changes are limited to `CAP-MCP-tool-access` and `UC-connect-hub-tools`, plus the promoted PADR's confirmation. Owner capabilities remain unchanged because their semantics are reused. No frontend, generated UI API, migration, schema ownership, notification code or template code changes are expected. This isolates Development from `PROP-decision-notifications` and `PROP-work-plan-templates`; Host validates exact final task boundaries before parallel handoff.
+Add focused tests under the existing MCP integration/unit directories. Living Spec changes are limited to `CAP-MCP-tool-access` and `UC-connect-hub-tools`, plus the promoted PADR's confirmation. Owner capabilities remain unchanged because their semantics are reused. No frontend, generated UI API, migration, schema ownership, notification code or template code changes are expected. This isolates Development from `SPEC-decision-notifications` and `PROP-work-plan-templates`; Host validates exact final task boundaries before parallel handoff.
 
 ### Acceptance examples and verification
 

@@ -1,13 +1,13 @@
 ---
-id: PADR-decision-notice-delivery
+id: ADR-decision-notice-delivery
 title: Poll owner decisions for channel-scoped notices
 summary: "For decision notices, we poll persisted owner discovery into channel-scoped delivery receipts, to keep notification failure outside decision transactions, accepting bounded observation delay and explicit uncertain-send recovery."
-proposal: PROP-decision-notifications
-status: draft
+proposal: SPEC-decision-notifications
+status: accepted
 created_at: 2026-11-06
 ---
 
-# [PADR-decision-notice-delivery] Poll owner decisions for channel-scoped notices
+# [ADR-decision-notice-delivery] Poll owner decisions for channel-scoped notices
 
 ## 1. Context & Problem Statement
 
