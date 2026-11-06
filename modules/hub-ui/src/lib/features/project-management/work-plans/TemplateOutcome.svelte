@@ -1,7 +1,15 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import type { TemplateIntent } from './template-intent.svelte';
-	let { intent, refresh }: { intent: TemplateIntent; refresh: () => Promise<void> } = $props();
+	let {
+		intent,
+		refresh,
+		revealPlan
+	}: {
+		intent: TemplateIntent;
+		refresh: () => Promise<void>;
+		revealPlan?: (id: string) => Promise<void>;
+	} = $props();
 	let refreshError = $state('');
 	async function reload() {
 		try {
@@ -37,8 +45,20 @@
 				</p>
 				<p>Current Plan: {intent.outcome.current_plan?.state}</p>
 				<a
-					data-sveltekit-reload
 					class="underline"
+					onclick={(event) => {
+						if (
+							!revealPlan ||
+							event.button !== 0 ||
+							event.metaKey ||
+							event.ctrlKey ||
+							event.shiftKey ||
+							event.altKey
+						)
+							return;
+						event.preventDefault();
+						void revealPlan(intent.outcome!.original_plan!.id);
+					}}
 					href={`/projects/${intent.project}?tab=plans#work-plan-${intent.outcome.original_plan.id}`}
 					>Open original Plan</a
 				>{/if}

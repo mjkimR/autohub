@@ -14,12 +14,14 @@
 		project,
 		plans,
 		onclose,
-		refresh
+		refresh,
+		revealPlan
 	}: {
 		project: components['schemas']['ProjectRead'];
 		plans: Plan[];
 		onclose: () => void;
 		refresh: () => Promise<void>;
+		revealPlan?: (id: string) => Promise<void>;
 	} = $props();
 	let intent = $state<TemplateIntent | null>(null);
 	let items = $state<Template[]>([]);
@@ -236,6 +238,7 @@
 	{#if intent?.storageError}<p role="alert">{intent.error}</p>{/if}
 	{#if intent}<TemplateOutcome
 			{intent}
+			{revealPlan}
 			refresh={async () => {
 				await intent?.check();
 				await load();

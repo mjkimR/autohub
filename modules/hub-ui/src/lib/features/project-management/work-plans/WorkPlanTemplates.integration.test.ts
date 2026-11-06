@@ -162,9 +162,6 @@ test('acknowledged outcome preserves exact template ID and original Plan navigat
 	);
 	render(WorkPlanTemplates, { project, plans: [], onclose: vi.fn(), refresh: vi.fn() });
 	await screen.findByText(/Original template:.*template/);
-	expect(
-		screen.getByRole('link', { name: 'Open original Plan' }).hasAttribute('data-sveltekit-reload')
-	).toBe(true);
 	expect(screen.getByRole('link', { name: 'Open original Plan' }).getAttribute('href')).toContain(
 		'/projects/p?tab=plans'
 	);

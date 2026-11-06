@@ -116,6 +116,24 @@
 		groupEditing = undefined;
 		void load();
 	}
+	async function revealPlan(id: string) {
+		filter = 'all';
+		groupFilter = 'all';
+		templatesOpen = false;
+		if (!plans.some((plan) => plan.id === id)) await load();
+		await tick();
+		const card = document.getElementById(`work-plan-${id}`);
+		if (!card) {
+			error = 'Original Plan unavailable. Refresh plans to inspect retained work.';
+			return;
+		}
+		const url = new URL(window.location.href);
+		url.searchParams.set('tab', 'plans');
+		url.hash = `work-plan-${id}`;
+		window.history.replaceState(window.history.state, '', url);
+		card.scrollIntoView?.();
+		card.focus();
+	}
 	onMount(() => {
 		void load().then(async () => {
 			await tick();
@@ -159,6 +177,7 @@
 				{plans}
 				onclose={() => (templatesOpen = false)}
 				refresh={load}
+				{revealPlan}
 			/>{/key}{/if}
 	{#if creating || editing}<WorkPlanForm
 			projectId={project.id}
