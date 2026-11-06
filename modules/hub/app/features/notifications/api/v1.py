@@ -42,3 +42,8 @@ async def delete_notification_channel(channel_id: UUID, usecase: Annotated[Notif
 async def test_notification_channel(channel_id: UUID, usecase: Annotated[NotificationChannelUseCase, Depends()]):
     """Send a test notice through one channel, enabled or not, and report whether Telegram accepted it."""
     return await usecase.send_test(channel_id)
+
+
+from app.features.notifications.decision_api import router as decisions_router  # noqa: E402
+
+router.include_router(decisions_router)

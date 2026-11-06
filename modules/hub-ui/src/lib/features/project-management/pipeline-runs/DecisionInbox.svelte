@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import { noticeSelection, clearNoticeReturn } from '$lib/features/auth/login/notice-return';
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
 	import { Button } from '$lib/components/ui/button';
@@ -25,6 +26,8 @@
 	let next = $state<string | null>(null);
 	let busy = $state(false);
 	let error = $state('');
+	let landing = $state(false);
+	let noticeError = $state('');
 	let selected = $state<{ entry: Entry; run: Run } | null>(null);
 	let origin = $state('');
 	let originIndex = $state(0);
@@ -95,8 +98,46 @@
 			buttons[Math.min(originIndex, buttons.length - 1)]
 		)?.focus();
 	}
+	async function openNotice() {
+		const url = new URL(window.location.href);
+		if (!url.searchParams.has('decision_key') && !url.searchParams.has('decision_fingerprint'))
+			return;
+		const selection = noticeSelection(url);
+		if (!selection) {
+			noticeError = 'This decision link is malformed. Open the current inbox.';
+			return;
+		}
+		landing = true;
+		noticeError = '';
+		try {
+			const entry = responseData(
+				await api.GET('/api/v1/pipeline-runs/decisions/selection', {
+					params: { query: selection }
+				}),
+				'This decision is unavailable or changed'
+			);
+			const run = responseData(
+				await api.POST('/api/v1/pipeline-runs/decisions/review', { body: selection }),
+				'Decision inspection failed; retry review explicitly'
+			);
+			selected = { entry, run };
+		} catch (e) {
+			noticeError = e instanceof Error ? e.message : 'Decision unavailable';
+		} finally {
+			landing = false;
+		}
+	}
+	function openInbox() {
+		clearNoticeReturn();
+		noticeError = '';
+		const url = new URL(window.location.href);
+		url.searchParams.delete('decision_key');
+		url.searchParams.delete('decision_fingerprint');
+		window.history.replaceState(window.history.state, '', url);
+		void load(true);
+	}
 	onMount(() => {
-		void load();
+		void load().then(openNotice);
 		void api.GET('/api/v1/projects', { params: { query: { limit: 100 } } }).then((result) => {
 			if (result.data) projects = result.data.items;
 		});
@@ -104,6 +145,14 @@
 </script>
 
 <div class="space-y-5" bind:this={rows}>
+	{#if landing}<p role="status">Inspecting the exact decision from this notice…</p>{/if}
+	{#if noticeError}<div role="alert">
+			<p>{noticeError}</p>
+			<Button disabled={landing} onclick={openNotice}>Retry review</Button><Button
+				variant="outline"
+				onclick={openInbox}>Open inbox</Button
+			>
+		</div>{/if}
 	<div>
 		<h1 class="text-2xl font-semibold">Decisions</h1>
 		<p class="text-sm text-muted-foreground">

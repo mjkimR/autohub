@@ -35,6 +35,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pipeline-runs/decisions/selection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Decision Selection */
+        get: operations["decision_selection_api_v1_pipeline_runs_decisions_selection_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pipeline-runs/decisions/review": {
         parameters: {
             query?: never;
@@ -868,6 +885,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DecisionPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decision_selection_api_v1_pipeline_runs_decisions_selection_get: {
+        parameters: {
+            query: {
+                key: string;
+                fingerprint: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionEntryRead"];
                 };
             };
             /** @description Validation Error */

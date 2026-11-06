@@ -1,6 +1,9 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, expect, test, vi } from 'vitest';
 import GoogleLogin from './GoogleLogin.svelte';
+import { retainNoticeReturn } from './notice-return';
+const { goto } = vi.hoisted(() => ({ goto: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('$app/navigation', () => ({ goto }));
 
 const { api, session } = vi.hoisted(() => ({
 	api: { POST: vi.fn(), GET: vi.fn() },
@@ -49,4 +52,25 @@ test('an existing email collision requires the existing login', async () => {
 	expect(await screen.findByText(/not linked automatically/)).toBeTruthy();
 	expect(api.POST).not.toHaveBeenCalled();
 	expect(session.setTokens).not.toHaveBeenCalled();
+});
+
+test('approved Google completion restores only the retained exact notice', async () => {
+	window.history.replaceState(
+		{},
+		'',
+		'/decisions?decision_key=notice&decision_fingerprint=' + 'a'.repeat(64)
+	);
+	retainNoticeReturn();
+	window.history.replaceState({}, '', '/?google=complete');
+	api.POST.mockResolvedValue({
+		data: { status: 'approved', email: 'member@example.com', tokens: { access_token: 'token' } }
+	});
+	goto.mockResolvedValue(undefined);
+	render(GoogleLogin);
+	await waitFor(() =>
+		expect(goto).toHaveBeenCalledWith(
+			'/decisions?decision_key=notice&decision_fingerprint=' + 'a'.repeat(64),
+			{ replaceState: true }
+		)
+	);
 });

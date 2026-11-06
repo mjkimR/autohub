@@ -3,7 +3,7 @@ from typing import ClassVar
 
 from app.common.database import JSON_VARIANT
 from app_layer_base.base.models.mixin import Base, TimestampMixin, UUIDMixin
-from sqlalchemy import Boolean, DateTime, LargeBinary, String, Text
+from sqlalchemy import Boolean, DateTime, Integer, LargeBinary, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 NOTIFICATION_KIND_TELEGRAM = "telegram"
@@ -25,6 +25,11 @@ class NotificationChannel(Base, UUIDMixin, TimestampMixin):
     credentials_ciphertext: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     credentials_nonce: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     credential_key_version: Mapped[str] = mapped_column(String(255), nullable=False)
+    destination_generation: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Why the most recent delivery failed; cleared by the next one that succeeds.
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+# Import retained decision tables for ordinary application metadata discovery.
+from . import decision_models as decision_models  # noqa: E402

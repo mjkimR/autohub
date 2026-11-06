@@ -37,3 +37,13 @@ class DecisionDiscoveryRepository:
 
     async def entry(self, session, key):
         return await session.get(DecisionEntry, key, populate_existing=True)
+
+    async def selection(self, session, key):
+        return (
+            await session.execute(
+                select(DecisionEntry, PipelineRun)
+                .join(PipelineRun, PipelineRun.id == DecisionEntry.run_id)
+                .join(Project, Project.id == DecisionEntry.project_id)
+                .where(DecisionEntry.key == key, PipelineRun.state.not_in(FINAL_RUN_STATES))
+            )
+        ).first()

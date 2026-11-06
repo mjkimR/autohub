@@ -2,7 +2,7 @@
 id: SPEC-decision-notifications
 title: Notify operators about actionable delivery decisions
 summary: "Deliver decision-focused notices with exact owner links, project and kind subscriptions, and bounded digests while preserving current decision authority."
-status: planned
+status: in-progress
 created: 2026-11-06
 related_capabilities: [CAP-NOTIFY-operator-notifications, CAP-PR-operator-decisions]
 related_usecases: [UC-resolve-run-question]
