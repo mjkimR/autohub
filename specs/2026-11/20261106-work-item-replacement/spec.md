@@ -2,12 +2,14 @@
 id: SPEC-work-item-replacement
 title: Link replacement work to original Work Items
 summary: Record explicit replacement relationships and dependency satisfaction decisions without rewriting original Work Plan outcomes.
-status: in-progress
+status: completed
 created: 2026-11-06
 depends_on:
   - SPEC-work-item-retry
-related_capabilities: []
-related_usecases: []
+related_capabilities:
+  - CAP-WORK-work-plan-execution
+related_usecases:
+  - UC-execute-work-plan
 workflow: sdd-spec-feature
 ---
 

@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-work-item-replacement
-status: pending
+status: resolved
 targets:
   - file: docs/capabilities/work-plans/CAP-WORK-work-plan-execution.md
     resolution: modified
