@@ -10,6 +10,8 @@ from tests.integration.migrations.test_default_ai_catalogs import scripts
 async def test_work_plan_migration_roundtrip_matches_metadata(session):
     def roundtrip(sync_connection):
         with Operations.context(MigrationContext.configure(sync_connection)):
+            replacements = scripts().get_revision("f36a539dc10e").module
+            replacements.downgrade()
             recovery = scripts().get_revision("c03d206a98ad").module
             recovery.downgrade()
             assert "work_item_recoveries" not in inspect(sync_connection).get_table_names()
@@ -34,6 +36,7 @@ async def test_work_plan_migration_roundtrip_matches_metadata(session):
             groups.upgrade()
             branches.upgrade()
             recovery.upgrade()
+            replacements.upgrade()
         context = MigrationContext.configure(
             sync_connection,
             opts={
