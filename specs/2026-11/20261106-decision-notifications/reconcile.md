@@ -53,3 +53,9 @@ No explicitly linked open feedback or concrete deferred deliverable remains in t
 ## Entrypoints and boundaries
 
 Selected notification decision API, exact discovery UseCase and login component doorways. Generated types, tests, migrations, helpers and unrelated feature candidates were rejected as entrypoints. Existing owner UCs received navigation wording only and retain their doorways. Task boundary markup was normalized so the CLI reads the originally admitted notifications directory; no scope was added. The exact promoted ADR Confirmation path was separately admitted by the Host's initial payload and is included in Task3.
+
+## Reconcile round1 fix batch
+
+Original save revision, destination generation and settings are rendered as immutable fields. Original resend notice and attempt IDs are separate from current subscription/attempt observation. No raw payload dump is rendered. Missing selected-project rejection carries an owner-proven refusal code; generic404 remains uncertain. Approved bounds, timing, example link and sign-in/content disclosures appear before Save. The timing rule explicitly excludes reviewed resend, and the selector document describes the loaded first100 accessible choices.
+
+Fail-before evidence: new component regressions failed for absent original save/resend details and settings disclosures; API regression failed on UNAVAILABLE rather than definitive refusal. After fixes, SQLite15 passed1skipped and notificationUI11 passed. Required type/build check passed.

@@ -11,6 +11,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { decisionNoticeState } from './decision-notices.svelte';
+	import DecisionNoticeReceipt from './DecisionNoticeReceipt.svelte';
 	let { channelId }: { channelId: string } = $props();
 	const notices = untrack(() => decisionNoticeState(channelId));
 	type Settings = components['schemas']['SubscriptionSettings'];
@@ -138,10 +139,7 @@
 								? 'Request refused'
 								: 'Outcome unknown'} — {notices.intent.operation} — {notices.intent.body.request_id}
 					</p>
-					{#if notices.outcome}<p>
-							Original receipt: {notices.outcome.record_state}; current revision {notices.outcome
-								.current.revision}. {notices.outcome.attempt?.state ?? ''}
-						</p>{/if}
+					{#if notices.outcome}<DecisionNoticeReceipt outcome={notices.outcome} />{/if}
 					<Button
 						size="sm"
 						variant="outline"
@@ -230,6 +228,27 @@
 							'the chosen origin'}. Saving or changing filters may include currently observed
 						pending work. Disable stops future admissions; an admitted message may finish.
 					</p>
+					<div class="space-y-1 text-xs">
+						<p>
+							Messages contain at most 10 entries and 3,500 characters. Omitted entries remain
+							pending.
+						</p>
+						<p>
+							Immediate delivery becomes eligible on the next maintenance pass. Digest becomes
+							eligible after 15 minutes and a later pass. Neither mode guarantees a delivery
+							deadline.
+						</p>
+						<p>
+							Hub sign-in is required to review an exact decision. Question and answer bodies are
+							omitted.
+						</p>
+						<p class="break-all">
+							Example review link (illustrative identity only): {form.review_origin ||
+								'https://hub.example'}/decisions?decision_key=example&amp;decision_fingerprint={'0'.repeat(
+								64
+							)}
+						</p>
+					</div>
 					<label class="flex gap-2"
 						><input type="checkbox" bind:checked={confirmed} />I reviewed these settings and trust
 						this destination for the selected project metadata.</label

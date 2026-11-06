@@ -22,7 +22,7 @@ Save which observed decisions this trusted channel may disclose and when. Facts 
 The settings form is primary above its disclosure and Save/Cancel controls.
 
 - Notification channel: read-only name/chat, enabled flag and minimum severity.
-- Decision subscription: enabled toggle (initial off); selected project IDs input or explicit All current and future projects; six decision-kind choices; immediate or 15-minute digest; adjacent helper explains Immediate becomes eligible on the next shared-maintenance pass, digest after15minutes on a subsequent pass, and neither guarantees a delivery deadline; Hub origin field and constructed example link.
+- Decision subscription: enabled toggle (initial off); multiple-selection chooser containing the first100 accessible projects or explicit All current and future projects; six decision-kind choices; immediate or 15-minute digest; adjacent helper explains Immediate becomes eligible on the next shared-maintenance pass, digest after15minutes on a subsequent pass, and neither guarantees a delivery deadline; Hub origin field and constructed example link.
 - Effective outcome: current disabled/severity blocker, observed-not-live wording, existing matching pending decisions become eligible on enable/filter expansion, a 10-entry/3,500-character batch cap and the same next-maintenance/no-deadline timing summary before Save.
 - Trust confirmation when enabling or changing destination/scope: The chat is trusted for selected project names, run/PR identities and decision metadata. Participants still need Hub sign-in to review. No question/answer content is sent.
 - Future-admission disclosure: stopping or changing notices cannot recall an admitted external message.

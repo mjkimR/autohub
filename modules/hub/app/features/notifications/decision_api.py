@@ -25,7 +25,7 @@ async def command_result(operation):
             "DECISION_NOTICE_IDENTITY_CONFLICT"
             if error.code == "DECISION_NOTICE_IDENTITY_CONFLICT"
             else "DECISION_NOTICE_REFUSED"
-            if error.status in (409, 422)
+            if error.code == "DECISION_NOTICE_REFUSED" or error.status in (409, 422)
             else "DECISION_NOTICE_UNAVAILABLE"
         )
         return JSONResponse(status_code=error.status, content={"detail": error.detail, "code": code})

@@ -132,3 +132,33 @@ test('pre-handler validation refusal allows explicitly corrected fresh request',
 	expect(state.status).toBe('recorded');
 	expect(api.PUT).toHaveBeenCalledTimes(2);
 });
+
+test('owner-proven missing-project refusal permits fresh correction while unavailable404 stays unknown', async () => {
+	const state = new DecisionNoticeState('missing-project');
+	api.PUT.mockResolvedValueOnce({
+		error: { code: 'DECISION_NOTICE_REFUSED', detail: 'Selected project not found' },
+		response: { status: 404 }
+	});
+	await state.save(body);
+	expect(state.status).toBe('refused');
+	state.dismiss();
+	api.PUT.mockResolvedValueOnce({
+		data: {
+			record_state: 'recorded',
+			operation: 'subscription',
+			request_id: 'corrected',
+			result: { revision: 1 },
+			current
+		}
+	});
+	await state.save({ ...body, request_id: 'corrected' });
+	expect(state.status).toBe('recorded');
+	expect(api.PUT.mock.calls[1][1].body.request_id).toBe('corrected');
+	const uncertain = new DecisionNoticeState('missing-channel');
+	api.PUT.mockResolvedValueOnce({
+		error: { code: 'DECISION_NOTICE_UNAVAILABLE' },
+		response: { status: 404 }
+	});
+	await uncertain.save(body);
+	expect(uncertain.unresolved).toBe(true);
+});

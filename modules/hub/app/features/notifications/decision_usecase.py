@@ -77,7 +77,7 @@ class DecisionNoticeUseCase:
             else:
                 self.service.validate_basis(channel, sub, data)
                 if not await self.repo.projects_exist(session, data.project_ids):
-                    raise ProjectError(404, "Selected project not found")
+                    raise ProjectError(404, "Selected project not found", code="DECISION_NOTICE_REFUSED")
                 if sub is None:
                     sub = DecisionSubscription(channel_id=channel_id, revision=0, enabled=False, settings={})
                     session.add(sub)

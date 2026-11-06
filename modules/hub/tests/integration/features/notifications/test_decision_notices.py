@@ -317,3 +317,17 @@ async def test_pending_digest_generation_recovers_after_filter_restoration(
     restored = settings(expected_revision=2, mode="immediate")
     assert (await client.put(root + "/decision-subscription", json=restored)).status_code == 200
     assert await worker.collect(UUID(channel["id"])) is not None
+
+
+async def test_missing_selected_project_is_definite_refusal_then_fresh_correction(client, channel):
+    root = f"{ROOT}/{channel['id']}"
+    command = settings(project_scope="selected", project_ids=[str(uuid4())])
+    refused = await client.put(root + "/decision-subscription", json=command)
+    assert refused.status_code == 404
+    assert refused.json()["code"] == "DECISION_NOTICE_REFUSED"
+    proof = await client.get(root + f"/decision-requests/{command['request_id']}", params={"operation": "subscription"})
+    assert proof.json()["record_state"] == "unknown"
+    assert proof.json()["current"]["revision"] == 0
+    corrected = await client.put(root + "/decision-subscription", json=settings())
+    assert corrected.status_code == 200
+    assert corrected.json()["result"]["revision"] == 1
