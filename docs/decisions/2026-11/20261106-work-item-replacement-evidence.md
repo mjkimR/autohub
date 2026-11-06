@@ -62,8 +62,6 @@ be revalidated against its landed completed spec before handoff.
 
 ## 6. Confirmation
 
-Review only in Planning. Development adds migration, integration and PostgreSQL
-race coverage under the proposal's declared boundaries. Checks must preserve the
-existing no-acceptance replacement regression and verify `REPL-01`–`REPL-07`.
-The target capability and architecture restatements live in
-`PROP-work-item-replacement-target` until reconciliation.
+`CAP-WORK-work-plan-execution` rules 37–45 and `ARCH-06-execution` replacement evidence structure restate the decision. `test_replacements.py` enforces exact-edge release, immutable replay, retained endpoint roles, merge identity, other admission gates, activity rollback and PostgreSQL control/withdrawal/admission races. `test_work_replacements.py` checks the additive migration. `WorkItemReplacement.integration.test.ts` verifies explicit review, persisted exact retry and paged retained history.
+
+`SPEC-work-item-replacement` retains code-review, reconciliation and executed check results. The descriptive no-acceptance regression remains enforced. Controlled fixtures and PostgreSQL tests do not establish live provider or deployment behavior.

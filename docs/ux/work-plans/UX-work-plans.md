@@ -1,7 +1,7 @@
 ---
 id: UX-work-plans
 title: Project Work Plans
-summary: "Inspect Work Plans and Items, control unstarted work and recover eligible unchanged failures through an inline disclosure. Current holds, prior outcomes and retained execution links remain visible."
+summary: "Inspect Work Plans, recover unchanged failures and explicitly review replacement evidence for one local edge. Inline disclosures retain original outcomes, current holds and paged decision history."
 area: work-plans
 element: panel
 status: active
@@ -28,6 +28,9 @@ The filtered Plan list is primary. New/edit controls precede it; each card group
 - Work Plan (summary card): title, saved group, revision, target branch, scheduled start, state and predecessor Plans.
   - Work Item (expandable row): key, title, branch/state, waiting reason, specification, acceptance and dependencies.
   - Work Item (recovery disclosure): original failure/target, eligibility and next action; reason, confirm/cancel, accepted/hold/reconciliation status and paged recovery history are subordinate to the Item. Successful sibling outcomes remain visible.
+  - Work Item replacement link (inline comparison): original/replacement IDs, specifications, acceptance texts, repository/target, Plan/evidence revisions and reason. Candidate lookup uses the exact replacement Work Item ID. The current edge remains primary; history is subordinate.
+  - Work Item dependency acceptance (single-edge review): selected dependent, both specification digests, confirmed PR/merge/execution/completion-time evidence and explicit acknowledgement. Linking or merge alone does not release work.
+  - Work Item replacement link (paged history): actor/reason/time, retained acceptance and consumed dependent; active evidence stays visible across inactive link pages, with further event loading.
   - Work Item (execution links): PR, Issue and `UX-pipeline-runs`; expired Run history is distinguished from retained completion evidence.
   - Work Plan (mirror status): Issue link, pending/error state separate from execution.
   - Work Plan (activity/comment region): author/time/revision, change details, comments filter and further-page loading.
@@ -55,6 +58,12 @@ Filters include All, Next work, Needs a decision, Execution requested, On hold/p
 - **history-loading**: keep Item context visible while status/history loads.
 - **response-uncertain**: preserve the immutable request identity across remounts; check the original request or refresh history instead of submitting another command.
 
+- **replacement-review**: compare exact loaded specifications and select one existing edge; a candidate/evidence refresh invalidates unsubmitted confirmation. Confirm with a reason and acknowledgement, or cancel.
+- **replacement-uncertain**: retain original operation, endpoint and payload in browser session storage across remount/reload; retry that same request or read current history. Other replacement mutations remain disabled.
+- **replacement-recorded**: show recorded operation separately from current Item/Plan state; a failed subsequent refresh does not relabel the write as failed.
+- **replacement-consumed**: show the admitted dependent and keep withdrawal unavailable; inspect retained evidence.
+- **replacement-refused**: an authoritative owner refusal requires refreshed explicit review. Authentication/access, identity conflicts and unknown outcomes keep the unresolved original request available for exact replay.
+
 ## 4. Interactions
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
@@ -73,6 +82,13 @@ Filters include All, Next work, Needs a decision, Execution requested, On hold/p
 | Inspect recovery history / Load more | `UC-execute-work-plan` 7 | populated, history-empty | populated | | `CAP-WORK-work-plan-execution` | Paged prior outcomes, actor/reason/time, ordered events and retained execution links remain distinguishable. |
 | Cancel recovery disclosure | `UC-execute-work-plan` 4c, `UC-execute-work-plan` 5c | confirming | populated | close | `CAP-WORK-work-plan-execution` | Return to the Item without sending a command. |
 
+| Inspect replacement evidence / Review replacement | `UC-execute-work-plan` 5d, `UC-execute-work-plan` 5e | populated, replacement-refused | replacement-review | | `CAP-WORK-work-plan-execution` | Load exact candidate and original evidence; show errors without a new command. |
+| Link replacement / Review edge acceptance / Confirm replacement decision | `UC-execute-work-plan` 5d, `UC-execute-work-plan` 6c | replacement-review | replacement-recorded, replacement-refused, replacement-uncertain | | `CAP-WORK-work-plan-execution` | Submit only explicitly acknowledged loaded evidence; preserve original outcomes and remaining holds. |
+| Withdraw link / Withdraw edge acceptance / Confirm replacement decision | `UC-execute-work-plan` 6d | replacement-review, replacement-recorded | replacement-recorded, replacement-refused | | `CAP-WORK-work-plan-execution` | Consumed evidence cannot be withdrawn; history remains. |
+| Retry same request | `UC-execute-work-plan` *b | replacement-uncertain | replacement-recorded, replacement-refused, replacement-uncertain | | `CAP-WORK-work-plan-execution` | Replay the original stored endpoint and immutable payload; auth/access failure keeps it unresolved. |
+| Previous/Next replacement links / Load more replacement events | `UC-execute-work-plan` 7 | populated, replacement-recorded, replacement-consumed | populated | | `CAP-WORK-work-plan-execution` | Read bounded history while retaining current active evidence and prior event context. |
+| Cancel replacement decision | `UC-execute-work-plan` 5d, `UC-execute-work-plan` 6c, `UC-execute-work-plan` 6d | replacement-review | populated | close | `CAP-WORK-work-plan-execution` | Close the review without a mutation; the selected Item remains visible. |
+
 ## 5. Evidence
 
 Source inspection:
@@ -81,6 +97,7 @@ Source inspection:
 - `modules/hub-ui/src/lib/features/project-management/work-plans/WorkItemRecovery.integration.test.ts`
 - `modules/hub-ui/src/lib/features/project-management/work-plans/WorkPlanGroup.svelte`
 - `modules/hub-ui/src/lib/features/project-management/work-plans/WorkPlanActivity.svelte`
+- `modules/hub-ui/src/lib/features/project-management/work-plans/WorkItemReplacement.svelte` and its integration tests; executed checks are retained by `SPEC-work-item-replacement`.
 
 The content and transitions are derived from source inspection. Executed UI interaction checks are recorded in `docs/materials/2026-11/20261105-work-item-retry/development-checks.md`. This document
 does not assert a browser walkthrough or live GitHub/provider verification.
