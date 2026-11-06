@@ -19,6 +19,6 @@ plan: PLAN-operator-decision-inbox
   - **Verification**: Listing/provider-call bounds and refreshed inspection CAS tests; regenerate typed API.
 
 - [x] **Task 3**: Build Decisions navigation and exact owner review with UI interaction tests
-  - **_Boundary**: `modules/hub-ui/src/lib/features/project-management/pipeline-runs/`, `modules/hub-ui/src/lib/components/`, `modules/hub-ui/src/routes/`, `modules/hub-ui/src/lib/api/`, `docs/ux/sdd/UX-sdd-workflow-request.md` (Host-authorized exact selection reflection), `docs/ux/sdd/UX-sdd-run.md` (Host-authorized exact selection reflection)
+  - **_Boundary**: `modules/hub-ui/src/lib/features/project-management/pipeline-runs/`, `modules/hub-ui/src/lib/components/`, `modules/hub-ui/src/routes/`, `modules/hub-ui/src/lib/api/`, `docs/ux/sdd/UX-sdd-workflow-request.md` (Host-authorized exact selection reflection), `docs/ux/sdd/UX-sdd-run.md` (Host-authorized exact selection reflection), `docs/decisions/2026-11/20261106-decision-inbox-read-projection.md` (Host-authorized Confirmation wording and evidence only)
   - _Requirements: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06, AC-07, AC-08_
   - **Verification**: UI tests cover filtering, paging, exact request review, failure, changed generations and focus restoration; `just lint` and `just check`.

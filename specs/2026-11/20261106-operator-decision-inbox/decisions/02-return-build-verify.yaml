@@ -1,0 +1,8 @@
+request: return:build-verify
+kind: return
+action: accept
+workflow: sdd-spec-feature
+stage: build-verify
+note: Reconcile review found accepted screen facts missing from implementation; add
+  current PR link/state metadata.
+at: '2026-11-05T23:31:35.471543Z'

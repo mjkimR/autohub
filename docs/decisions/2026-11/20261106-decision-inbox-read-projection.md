@@ -40,4 +40,6 @@ The migration bootstraps older native subjects with an explicitly labeled observ
 
 ## 6. Confirmation
 
-Development verifies bounded SQL/page size, no repository calls during listing/backfill, transactional invalidation, migration and current-owner filtering on both supported databases. UI integration checks verify exact subject routing, freshness failure and preserved owner mutation APIs. Review only until these checks exist; this PADR is preliminary and does not amend the current contracts.
+`SPEC-operator-decision-inbox` implements the rebuildable projection, transaction-bound maintenance, bounded joined listing and exact owner review. `CAP-PR-operator-decisions` and `CAP-SDD-workflow-control` restate its guarantees.
+
+Executed persistence, generation, authority/CAS and migration assertions are in `modules/hub/tests/integration/features/project_management/pipeline_runs/test_discovery.py` and `modules/hub/tests/integration/migrations/test_decision_discovery.py`. These passed with SQLite and disposable PostgreSQL. UI interaction tests, repository lint and types/production build passed on the source branch; final branch evidence is retained in the spec envelopes. This establishes no live deployment, external-provider result or measured performance improvement.

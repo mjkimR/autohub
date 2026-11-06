@@ -23,6 +23,9 @@ async def test_discovery_question_lifecycle_and_exact_owner(client, project, git
     page = (await client.get(URL)).json()
     entry = page["items"][0]
     assert entry["kind"] == "run-question"
+    assert entry["pull_number"] == 7
+    assert entry["pull_url"] == run["pull_url"]
+    assert entry["run_state"] == "blocked"
     assert entry["subject_id"] == question["id"]
     assert entry["question_state"] == "open"
     assert not github.paths
@@ -266,6 +269,7 @@ async def test_native_hub_question_tracks_inspected_generation(client, project, 
     await ask(client, f"/api/v1/pipeline-runs/{enrolled['id']}")
     run = await session.get(PipelineRun, UUID(enrolled["id"]))
     from datetime import UTC, datetime
+
     from app.features.project_management.pipeline_runs import discovery_projection
 
     clock = [datetime(2026, 11, 3, tzinfo=UTC)]

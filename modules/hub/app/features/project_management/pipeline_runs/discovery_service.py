@@ -32,9 +32,27 @@ def page_result(rows, limit, filters):
     more = len(rows) > limit
     cursor = None
     if more:
-        row = items[-1]
+        row = items[-1][0]
         stamp = row.waiting_since.replace(tzinfo=UTC) if row.waiting_since.tzinfo is None else row.waiting_since
         cursor = base64.urlsafe_b64encode(
             json.dumps({"filters": request_digest(filters), "waiting": stamp.isoformat(), "key": row.key}).encode()
         ).decode()
-    return DecisionPage(items=[DecisionEntryRead.model_validate(r) for r in items], has_more=more, next_cursor=cursor)
+    return DecisionPage(
+        items=[
+            DecisionEntryRead.model_validate(
+                {
+                    **{
+                        name: getattr(entry, name)
+                        for name in DecisionEntryRead.model_fields
+                        if name not in ("run_state", "pull_number", "pull_url")
+                    },
+                    "run_state": run.state,
+                    "pull_number": run.pull_number,
+                    "pull_url": run.pull_url,
+                }
+            )
+            for entry, run in items
+        ],
+        has_more=more,
+        next_cursor=cursor,
+    )

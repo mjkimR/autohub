@@ -16,6 +16,9 @@ DecisionKind = Literal[
 
 class DecisionEntryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+    run_state: str
+    pull_number: int
+    pull_url: str
     key: str
     run_id: UUID
     project_id: UUID

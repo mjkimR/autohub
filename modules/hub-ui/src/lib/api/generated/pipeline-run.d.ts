@@ -336,6 +336,12 @@ export interface components {
         };
         /** DecisionEntryRead */
         DecisionEntryRead: {
+            /** Run State */
+            run_state: string;
+            /** Pull Number */
+            pull_number: number;
+            /** Pull Url */
+            pull_url: string;
             /** Key */
             key: string;
             /**

@@ -2,6 +2,8 @@
 reconcile_id: REC-operator-decision-inbox
 status: pending
 targets:
+  - file: docs/decisions/2026-11/20261106-decision-inbox-read-projection.md
+    resolution: modified
   - file: docs/capabilities/delivery/CAP-PR-operator-decisions.md
     resolution: modified
   - file: docs/capabilities/sdd/CAP-SDD-native-delivery.md

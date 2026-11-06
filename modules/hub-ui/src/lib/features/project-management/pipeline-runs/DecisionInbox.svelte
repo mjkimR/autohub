@@ -163,6 +163,12 @@
 			<div class="min-w-0 space-y-1">
 				<p class="font-medium break-words">{entry.title}</p>
 				<p class="text-sm">
+					<a class="underline" href={entry.pull_url} target="_blank" rel="noreferrer"
+						>PR #{entry.pull_number}</a
+					>
+					· {entry.run_state.replaceAll('_', ' ')}
+				</p>
+				<p class="text-sm">
 					{projects.find((p) => p.id === entry.project_id)?.name ?? entry.project_id} · {entry.kind.replaceAll(
 						'-',
 						' '

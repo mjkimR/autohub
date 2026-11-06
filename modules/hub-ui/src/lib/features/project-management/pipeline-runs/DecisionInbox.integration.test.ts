@@ -6,6 +6,9 @@ const { api } = vi.hoisted(() => ({ api: { GET: vi.fn(), POST: vi.fn() } }));
 vi.mock('$lib/api', () => ({ api }));
 const entry = {
 	key: 'row',
+	run_state: 'blocked',
+	pull_number: 7,
+	pull_url: 'https://github.com/owner/app/pull/7',
 	run_id: 'run',
 	project_id: 'project',
 	kind: 'run-question',
@@ -76,6 +79,10 @@ test('filters reset paging and pages use the retained cursor', async () => {
 	const user = userEvent.setup();
 	render(DecisionInbox);
 	await screen.findByText('Choose behavior');
+	expect(screen.getByRole('link', { name: 'PR #7' }).getAttribute('href')).toBe(
+		'https://github.com/owner/app/pull/7'
+	);
+	expect(screen.getByText(/blocked/)).toBeTruthy();
 	await user.selectOptions(screen.getByLabelText('Kind'), 'run-question');
 	await waitFor(() =>
 		expect(api.GET).toHaveBeenLastCalledWith('/api/v1/pipeline-runs/decisions', {
@@ -100,7 +107,10 @@ test('closing exact owner review retains filters and returns row focus', async (
 	await screen.findByRole('dialog');
 	await waitFor(() =>
 		expect(api.POST).toHaveBeenCalledWith('/api/v1/pipeline-runs/decisions/review', {
-			body: { key: 'row', fingerprint: 'fp' }
+			body: {
+				key: 'row',
+				fingerprint: 'fp'
+			}
 		})
 	);
 	await user.keyboard('{Escape}');
