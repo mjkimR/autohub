@@ -64,10 +64,10 @@ All tools are registered only on `/mcp/`. Existing tools and names remain compat
 | `sdd_batches_control` | WRITE | `SddBatchUseCase.control`; owner `ControlBatch`, request ID and expected revision, pause/resume/stop affect future admission only |
 | `work_items_recoveries` | READ | `WorkPlanUseCase.recoveries`; exact project/Plan/Item, offset >=0 and limit 1–100 |
 | `work_items_recover` | WRITE | `WorkPlanUseCase.recover`; unchanged strict owner request and authenticated machine actor |
-| `work_items_replacements` | READ | `ReplacementUseCase.read`; exact project/Plan/Item, optional candidate and owner history/event paging |
-| `work_items_replacement_link` | WRITE | Existing `ReplacementUseCase.link` command, unchanged revisions/identities |
-| `work_items_replacement_accept` | WRITE | Existing `ReplacementUseCase.accept` command for one existing local edge; no general approval authority |
-| `work_items_replacement_withdraw` | WRITE | Existing `ReplacementUseCase.withdraw`; consumed evidence remains protected |
+| `work_items_replacements` | READ | `ReplacementUseCase.get`; exact project/Plan/Item, optional candidate and owner history/event paging |
+| `work_items_replacement_link` | WRITE | `ReplacementUseCase.mutate(operation="link")`, unchanged revisions/identities |
+| `work_items_replacement_accept` | WRITE | `ReplacementUseCase.mutate(operation="accept")` for one existing local edge; no general approval authority |
+| `work_items_replacement_withdraw` | WRITE | `ReplacementUseCase.mutate(operation="withdraw")`; consumed evidence remains protected |
 
 READ means `autohub:mcp:read`, WRITE means `autohub:mcp:write`. The registry checks scopes before the handler; discovery itself grants none. Transport revocation and endpoint separation retain `CAP-MCP-tool-access` semantics. A write-only key does not implicitly gain read scope.
 
