@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-sdd-milestone-execution
-status: pending
+status: resolved
 targets:
   - file: docs/capabilities/sdd/CAP-SDD-native-delivery.md
     resolution: modified
@@ -38,7 +38,7 @@ The retained batch path is reflected in its native delivery, workflow, isolation
 
 No required work is deferred. Deployment, live GitHub/provider verification, SDK changes and a second executor remain excluded. Before/after is behavioral: the baseline registers individual activities and keeps preview subsets local; the head retains exact sequential future intent. Historical-module probes demonstrate the review fixes failing before and passing after without checking out the base. No performance claim or missing quantitative baseline applies.
 
-Independent reconciliation is pending. Executed checks are retained in reverify envelopes; document test citations identify enforcement evidence, not additional live execution.
+Independent high reconciliation round 2 passed after all five round 1 wording findings were corrected. Executed checks are retained in reverify envelopes; document test citations identify enforcement evidence, not additional live execution.
 
 Entrypoints retain focused API/use-case/driver and UI doorways. Broad feature/test/migration candidates were rejected; runtime/workflow and completion documents retain their existing doorways because those additions explain owner boundaries rather than introduce another entry path.
 
