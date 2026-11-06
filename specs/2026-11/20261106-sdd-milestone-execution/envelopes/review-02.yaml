@@ -1,0 +1,43 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T01:00:17.092232Z'
+status: completed
+summary: round 2; Prior targeted fixes confirmed; four new P1 gaps and one P2 require a full fix batch.
+findings:
+- issue: Reactive project reset clears successful receipts
+  evidence: SddBatch.svelte:21-23; sdd-batches.svelte.ts:36-43; own reviewer probe effect-reset.integration.test.ts
+  failure_condition: Pending changes retrigger reset and clear acknowledged create/control batch state
+  suggested_action: Track only project identity with untrack and test settled component effects
+  resolution: open
+  severity: P1
+- issue: Lost enrollment response cannot recover its committed run
+  evidence: activity_claims.py:98-121; activities.py:282-290; pipeline_runs/usecases/lifecycle.py:169-170
+  failure_condition: Enrollment commits then response is lost and retry receives ACTIVE_RUN_CONFLICT
+  suggested_action: Bind exact claim and run atomically within enrollment with ownership and lease fences
+  resolution: open
+  severity: P1
+- issue: External exact canonical aliases are over-refused
+  evidence: batch_policy.py:81-84; batch_driver.py:170-183
+  failure_condition: External PROP canonically resolves to completed SPEC without selected-member ledger entry
+  suggested_action: Validate authoritative exact canonical resolution separately and retain old/new edge evidence
+  resolution: open
+  severity: P1
+- issue: Creation and claim commits omit final remote head check
+  evidence: batch_usecases.py:90-103; batch_driver.py:66-116
+  failure_condition: Base advances after evaluation but stale creation or claim still commits
+  suggested_action: Re-read selected remote head immediately before creation/claim and refuse or re-evaluate stale basis
+  resolution: open
+  severity: P1
+- issue: Waiting observations drop reviewed refusal acknowledgement
+  evidence: batch_usecases.py:160-166; batch_driver.py:291-292
+  failure_condition: Resume acknowledges refusal then dependency wait overwrites evaluation and same refusal becomes attention again
+  suggested_action: Preserve recovery/control acknowledgements while updating observation evidence
+  resolution: open
+  severity: P2
+checks: {}
+diff_scope:
+  base: b64d3569a144632ff0e78a1b0821f845c3fc6df7
+  head: 508997c498e197a176a4aba0255e2d3cb535075e
+activity_effort: high
