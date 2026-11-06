@@ -1,0 +1,22 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T02:40:05.149981Z'
+status: completed
+summary: Implemented explicit retained replacement links, exact-edge merge acceptance, atomic consumed evidence, replay/role/edit/admission fences and explicit review/recovery UI. Three tasks and eight ACs implemented; code review3 passed; seven Living Spec targets resolved after independent reconciliation and two exact minor text fixes.
+findings: []
+assumptions:
+- Emulated worker/reviewer isolation uses absolute worktree paths, per-operation escalation and fixed-head audits, not native enforcement.
+- No production source changes after passing code review3; subsequent changes are Living Spec and workflow records.
+unverified_areas:
+- No live provider or deployment verification; Host integration and landed batch checks remain.
+checks:
+  tests: PASS SQLite replacement22 plus 5 PG-only skips; PostgreSQL27; WorkPlan UI42; initial owner/migration152 plus12SQLite skips; PG migration roundtrip pass
+  build: PASS just check backend/SDK types Svelte types and production UI build
+  lint: PASS just lint; final lint-check; cumulative CI rules0errors0warnings; generated stale0; whitespace clean
+  baseline: PASS same fixture linking releases0 edges, exact acceptance releases1 selected edge; original outcome unchanged
+diff_scope:
+  base: 43e3341d010e3a79749f291d7a3b8beeefae40b6
+  head: 13d408d29148d58b6cd92577fa72dcbb022c8fb7
+activity_effort: high
