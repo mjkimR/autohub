@@ -2,6 +2,8 @@
 reconcile_id: REC-decision-continuation
 status: pending
 targets:
+  - file: docs/ux/sdd/UX-sdd-decision-history.md
+    resolution: modified
   - file: docs/capabilities/delivery/CAP-PR-operator-decisions.md
     resolution: modified
   - file: docs/capabilities/sdd/CAP-SDD-workflow-control.md

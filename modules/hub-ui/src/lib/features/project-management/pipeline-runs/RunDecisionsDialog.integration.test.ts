@@ -361,3 +361,13 @@ test('lost proposal response offers separately reviewed reconciliation after req
 	expect(recoveryBody.decision).toBeUndefined();
 	expect(decisionIntent(run.id).intent?.requestId).toBe('original-proposal');
 });
+
+test('retains last successful observation time after a failed refresh', async () => {
+	render(RunDecisionsDialog, { run, onclose: vi.fn(), onchange: vi.fn() });
+	const observed = await screen.findByText(/Last loaded:/);
+	const prior = observed.textContent;
+	api.GET.mockRejectedValueOnce(new Error('refresh unavailable'));
+	await userEvent.setup().click(screen.getByRole('button', { name: 'Refresh decisions' }));
+	await screen.findByRole('alert');
+	expect(screen.getByText(/Last loaded:/).textContent).toBe(prior);
+});

@@ -62,6 +62,7 @@
 	let head = $derived(decisionBasis(current));
 	let locked = $derived(busy || decisionBusy || review.unresolved || recovery.unresolved);
 	let ready = $state(false);
+	let loadedAt = $state('');
 	let saved = $state('');
 	let pending = $derived(
 		questions.find(
@@ -111,6 +112,7 @@
 		total = data.total_count;
 		revision = data.run_revision;
 		current = latest;
+		loadedAt = new Date().toLocaleString();
 		ready = !selection || inspectSelection || (selection.kind === 'run-question' && !!pending);
 	}
 	async function afterMutation() {
@@ -221,6 +223,7 @@
 			<DialogDescription
 				>Review the evidence and choose the next step for this run.</DialogDescription
 			>
+			{#if loadedAt}<p class="mt-2 text-xs text-muted-foreground">Last loaded: {loadedAt}</p>{/if}
 			<div class="mt-3 flex flex-wrap items-center gap-2">
 				<Button variant="outline" size="sm" href={run.pull_url} target="_blank" rel="noreferrer"
 					><ExternalLink class="size-3.5" />Inspect pull request</Button

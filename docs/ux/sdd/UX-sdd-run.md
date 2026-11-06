@@ -77,10 +77,10 @@ The selected decision outcome is retained beside its owner controls. It identifi
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Check outcome / Check saved answer outcome / Check request outcome | `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d | uncertain | saved, applied, uncertain | | `CAP-PR-operator-decisions` | Exact selected request is read; missing records/read errors remain unknown. |
+| Check outcome | `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d | uncertain | saved, applied, uncertain | | `CAP-PR-operator-decisions` | Exact selected request is read; missing records/read errors remain unknown. |
 | Retry same request | `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 5b | uncertain | applied, uncertain, changed | | `CAP-SDD-workflow-control` | Original request and payload replay only; current owner guards remain authoritative. |
-| Review publication reconciliation / Confirm publication reconciliation | `UC-decide-sdd-proposal` 5b, `UC-decide-sdd-proposal` 6a, `UC-decide-sdd-proposal` 6b | uncertain | changed, applied, uncertain | `UX-run-decisions` | `CAP-SDD-native-delivery` | Parent review explains possible continuation and uses a separate stable recovery request. |
-| Back to owner review | global: leave supporting outcome context | populated | populated | back | | Current owner review remains accessible. |
+
+Embedded panels retain the visible parent context and its Close exit; they add no Back button. Native history owns Check request outcome and sends its exact read subject to the parent outcome region.
 
 ## 5. Evidence
 
