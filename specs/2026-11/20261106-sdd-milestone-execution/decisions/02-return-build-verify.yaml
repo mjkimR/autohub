@@ -1,0 +1,8 @@
+request: return:build-verify
+kind: return
+action: accept
+workflow: sdd-spec-feature
+stage: build-verify
+note: Fix new round 2 component receipt, atomic enrollment recovery, canonical mapping
+  and final remote-head fences
+at: '2026-11-06T01:00:18.119653Z'
