@@ -8,6 +8,9 @@ supporting_actors: []
 status: active
 capabilities:
   - CAP-ACCESS-authentication-authorization
+entrypoints:
+  - modules/hub-ui/src/lib/features/auth/login/GoogleLogin.svelte
+  - modules/hub-ui/src/lib/features/auth/login/LoginView.svelte
 ---
 
 # [UC-access-hub] Access Hub with a human browser session
@@ -32,6 +35,8 @@ capabilities:
    automatic API exchange with no separate control or completion message.
 5. The operator signs out and Hub revokes the browser session
    (`CAP-ACCESS-authentication-authorization`, `UX-app-shell`, `UX-sign-in`).
+
+An optional exact notice entry follows `UC-receive-decision-notice`. Password sign-in preserves the requested query. Before Google departure, the UI retains only a validated key/fingerprint and timestamp for thirty minutes in tab sessionStorage. Approved completion consumes it once and navigates only to same-origin `/decisions`. Authentication policy and owner action authority stay unchanged.
 
 ## 3. Extensions
 
@@ -112,3 +117,11 @@ Inspected checks: `modules/hub/tests/integration/auth/test_auth_api.py`,
 `modules/hub-ui/src/lib/api/client.test.ts` and
 `modules/hub-ui/src/lib/stores/session.test.ts`. Scenarios describe the inspected
 contract, not a new recorded execution or live identity-provider verification.
+
+### Scenario: Recover exact notice navigation after admission
+
+- **Covers**: optional notice entry.
+- **Given**: A valid exact notice link and successful approved sign-in.
+- **When**: Password or Google admission completes.
+- **Then**: The exact identity reaches authenticated Decisions; expired/malformed/denied storage offers conditional reopen guidance, and cancellation or pending/rejected exchange opens no owner review.
+- **Test**: `modules/hub-ui/src/lib/features/auth/login/notice-return.integration.test.ts`, `GoogleLogin.integration.test.ts` and `LoginView.integration.test.ts` in the same directory. Controlled admission responses; no live OAuth claim.

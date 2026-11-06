@@ -1,78 +1,113 @@
 ---
-id: PROP-decision-notifications
+id: SPEC-decision-notifications
 title: Notify operators about actionable delivery decisions
 summary: "Deliver decision-focused notices with exact owner links, project and kind subscriptions, and bounded digests while preserving current decision authority."
-status: accepted
-created_at: 2026-11-06
-target_area: capabilities/notifications/
-priority: medium
-size: L
-planning_effort: high
-dev_effort: high
-boundaries:
-  owns:
-  - modules/hub/app/features/notifications/
-  - modules/hub/app/features/execution/tasks/domains/maintenance/task.py
-  - modules/hub/app/features/execution/tasks/domains/maintenance/
-  - modules/hub/migrations/versions/
-  - modules/hub/tests/integration/features/notifications/
-  - modules/hub/tests/integration/features/execution/maintenance/
-  - modules/hub/tests/integration/migrations/
-  - modules/hub-ui/src/lib/features/configuration/notifications/
-  - modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.svelte
-  - modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.integration.test.ts
-  - modules/hub-ui/src/lib/api/generated/notification-channel.d.ts
-  - modules/hub-ui/src/lib/api/generated/pipeline-run.d.ts
-  - modules/hub-ui/src/lib/api/generated/index.d.ts
-  - docs/capabilities/notifications/
-  - docs/usecases/notifications/
-  - docs/usecases/delivery/UC-resolve-run-question.md
-  - docs/usecases/sdd/UC-decide-sdd-proposal.md
-  - docs/usecases/sdd/UC-complete-sdd-workflow.md
-  - docs/ux/settings/UX-notifications.md
-  - docs/ux/settings/
-  - docs/ux/delivery/UX-decision-inbox.md
-  - docs/steering/ux-objects.md
-  - docs/steering/glossary.md
-  - docs/architecture/ARCH-06-execution.md
-  - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
-  - modules/hub/app/features/project_management/pipeline_runs/usecases/discovery.py
-  - modules/hub/app/features/project_management/pipeline_runs/discovery_repo.py
-  - modules/hub/tests/integration/features/project_management/pipeline_runs/test_discovery.py
-  - modules/hub-ui/src/lib/features/auth/login/GoogleLogin.svelte
-  - modules/hub-ui/src/lib/features/auth/login/GoogleLogin.integration.test.ts
-  - modules/hub-ui/src/lib/features/auth/login/LoginView.svelte
-  - modules/hub-ui/src/lib/features/auth/login/LoginView.integration.test.ts
-  - modules/hub-ui/src/lib/features/auth/login/
-  - docs/usecases/access/UC-access-hub.md
-  - docs/ux/access/UX-sign-in.md
-  - docs/capabilities/delivery/CAP-PR-operator-decisions.md
-  excludes:
-  - docs/operations/
-  - .github/
-  - packages/sdk/
-task_kind: feature
-workflow: sdd-proposal
+status: completed
+created: 2026-11-06
+related_capabilities: [CAP-NOTIFY-operator-notifications, CAP-PR-operator-decisions]
+related_usecases: [UC-resolve-run-question]
+workflow: sdd-spec-feature
 ---
 
-# [PROP-decision-notifications] Notify operators about actionable delivery decisions
+# [SPEC-decision-notifications] Notify operators about actionable delivery decisions
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-decision-notifications on 2026-11-06.
+- **Preserved Materials**: `docs/materials/2026-11/20261106-decision-notifications`
+- Target Docs Blueprint: `PROP-decision-notifications-target` (Living Spec targets for this plan and reconcile.md)
+
+### 1. Background & Hypothesis
 
 `CAP-NOTIFY-operator-notifications` supplies global operator-owned Telegram channels. `CAP-PR-operator-decisions` supplies a transactional, indexed decision discovery projection. Neither capability promises that a Telegram chat participant is a Hub account. Current authenticated human accounts share project visibility; this feature preserves that model rather than inventing project ACLs or per-chat recipient identity.
 
-The operator explicitly enables selected decision notices on a trusted destination, receives minimal metadata and opens the exact authenticated owner review. The hypothesis is that this removes repeated inbox polling without making transport delivery an execution or authorization event. `materials/owner-seams.md` records source inspection; no product tests or live delivery ran in Planning.
+The operator explicitly enables selected decision notices on a trusted destination, receives minimal metadata and opens the exact authenticated owner review. The hypothesis is that this removes repeated inbox polling without making transport delivery an execution or authorization event. `docs/materials/2026-11/20261106-decision-notifications/owner-seams.md` records source inspection; no product tests or live delivery ran in Planning.
 
 Priority is second after `SPEC-mcp-delivery-tools`, before `PROP-work-plan-templates`; none is a prerequisite of this feature. Parallel Planning and implementation are possible with the future file coordination below.
 
-## 2. Technical Spike Questions
+## 2. User Stories
+
+- As an operator, subscribe a trusted destination to relevant pending decisions and open the exact authenticated review.
+- As an operator, distinguish accepted, refused and unknown notice delivery and explicitly recover uncertain commands.
+
+## 3. Non-Goals
+
+- **Scope Excluded**: inbound Telegram decisions, implicit approval/resume, new project ACLs, automatic uncertain resend, Jules/SDK work, monitoring and deployment.
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] Disabled defaults
+
+- **Given** a migrated or never-configured channel.
+- **When** read or maintained.
+- **Then** decision notices remain disabled and legacy behavior is unchanged.
+
+### [AC-02] Subscription gates
+
+- **Given** trusted project/kind settings and destination generation.
+- **When** saving or admitting.
+- **Then** current severity/project/channel gates and exact actor-bound replay apply; stale destination changes refuse.
+
+### [AC-03] Atomic admission
+
+- **Given** concurrent workers inspect one generation.
+- **When** admitting send.
+- **Then** one durable leased attempt wins and channel generations deduplicate independently.
+
+### [AC-04] Bounded digest
+
+- **Given** more than ten eligible rows or long metadata.
+- **When** formatting and sending.
+- **Then** at most ten complete links fit 3500 characters and omitted rows remain pending.
+
+### [AC-05] Uncertain delivery
+
+- **Given** timeout, expired lease or acknowledgement persistence failure.
+- **When** maintenance repeats.
+- **Then** sending becomes unknown without automatic resend; explicit resend is reviewed and request-idempotent.
+
+### [AC-06] Exact navigation
+
+- **Given** a notice selection outside current inbox pages.
+- **When** opening after authentication.
+- **Then** an indexed exact lookup then existing owner review selects only matching key/fingerprint; stale/missing targets never substitute.
+
+### [AC-07] Destination rotation
+
+- **Given** credential/chat or subscription changes race admission.
+- **When** saving or ticking.
+- **Then** destination generation is checked even at revision zero; future admissions stop and admitted sends may finish.
+
+### [AC-08] Fair retention
+
+- **Given** old accepted/unknown generations and many subscriptions.
+- **When** compacting and rotating.
+- **Then** dedupe remains and bounded cursor progress lets other subscriptions advance.
+
+### [AC-09] Command recovery
+
+- **Given** lost save/resend responses or another actor.
+- **When** reading or replaying exact request.
+- **Then** original result stays separate from current state; missing proof stays unknown and wrong actor receives404.
+
+### [AC-10] Login restoration
+
+- **Given** password/Google completion, cancellation, TTL expiry or denied storage.
+- **When** returning from sign-in.
+- **Then** only successful approved authentication restores one validated same-origin selection; no payload/credentials or arbitrary redirect is stored.
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### 2. Technical Spike Questions
 
 - **Q1 resolved**: Use persisted `DecisionEntry.key` plus `fingerprint`, not run revision or title, as the generation identity. Notice admission requires the exact row still actionable and owner run nonterminal. Native state is last-observed evidence, never a fresh remote evaluation.
 - **Q2 resolved**: One optional revisioned decision subscription belongs to each existing global Notification channel. Explicitly choose project IDs or All current and future projects, nonempty decision kinds and a trusted destination confirmation. Existing channels default to decision notices off. Human authentication and project existence follow existing policy; no Telegram recipient ACL is claimed.
 - **Q3 resolved**: Use bounded polling plus separate notice/attempt records. Immediate means next eligible maintenance pass. Digest uses a fixed 15-minute interval. Confirmed transport acceptance deduplicates; unknown send outcomes require explicit resend review and may duplicate remotely.
 - **Q4 resolved**: Link to the configured Hub origin at `/decisions?decision_key=<encoded>&decision_fingerprint=<encoded>`. Preserve the exact identity through password and Google sign-in as specified below. Only after authentication resolve the exact entry and use the existing owner review operation; its native observation/CAS effects and errors remain unchanged.
 
-### Compared alternatives
+#### Compared alternatives
 
 | Option | Advantage | Cost / risk | Disposition |
 | --- | --- | --- | --- |
@@ -80,11 +115,11 @@ Priority is second after `SPEC-mcp-delivery-tools`, before `PROP-work-plan-templ
 | B: enqueue notice events inside every owner mutation transaction | Captures transient generations and tighter creation correlation | Wider coupling to every owner path; transport is still nontransactional | Rejected for this scope |
 | C: add only deep links to existing run-stop broadcasts | Smallest change | No project/kind subscription, digest or generation dedupe | Insufficient |
 
-`PADR-decision-notice-delivery` records A. No business-only question remains. Limits/defaults and channel-level trust are Host-choice assumptions within the requested feature; their exact consequences go to plan-accept.
+`ADR-decision-notice-delivery` records A. No business-only question remains. Limits/defaults and channel-level trust are Host-choice assumptions within the requested feature; their exact consequences go to plan-accept.
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
-### Subscription and compatibility
+#### Subscription and compatibility
 
 Add strict `DecisionSubscription` settings per channel: `revision`, `enabled` (default false), `project_scope` (`selected` or `all`), distinct existing project UUIDs for selected scope, a nonempty subset of the six `DecisionKind` values, `mode` (`immediate` or `digest`), and a validated `review_origin`. Empty selected projects is invalid when enabling. All scope explicitly covers future projects. `review_origin` is an HTTPS origin with no credentials, path, query or fragment; loopback HTTP is allowed for local use. It is only used to construct links; Hub never fetches it. Display the resulting destination origin before enablement. Existing settings APIs, legacy notices and explicit channel tests retain their behavior.
 
@@ -92,7 +127,7 @@ Candidate authenticated routes under `/api/v1/notification-channels/{channel_id}
 
 Channels stay global under existing signed-in-user policy. Saving a subscription confirms this chat is trusted for the selected project metadata; it grants no execution authority. Add a destination generation incremented only when chat ID or bot credential changes. Such a change disables decision notices until explicit review/re-enable; the generation increments on the channel even when no subscription row exists. Every enabling/editing PUT and reviewed resend carries the displayed expected destination generation. After exact replay handling, compare it under the same channel/subscription admission locks; mismatch returns409 without enabling or sending, and the UI reloads the actual destination and clears trust confirmation. Legacy generic notices remain governed by current channel settings. Channel enablement and `min_level` still apply: decision notices have warning severity, so error-only channels receive none. The UI discloses both effective gates before save.
 
-### Bounded discovery and admission
+#### Bounded discovery and admission
 
 Use the current `DecisionDiscoveryRepository` bounded query through a notification-owned adapter; do not call `DecisionDiscoveryUseCase.review` during background work. This intentionally reads persisted observation only. No provider, GitHub, token or repository calls occur while collecting/formatting notices.
 
@@ -102,7 +137,7 @@ One decision notice identity is `(channel_id,destination_generation,decision_key
 
 A digest window starts when the first eligible unnotified entry is retained, and becomes due 15 minutes later. Discovery and send rechecks use current filters, not stale text. Immediate batches are due on the next eligible pass. Build at most 10 entries and a 3,500-character message including warning prefix and links, below Telegram's 4,096-character boundary; never rely on transport truncation. Entries that do not fit remain pending for later batches, not acknowledged. Each message contains only decision kind, project name, PR number/run identity, ordinary waiting time or native First observed time, observation time and exact review links. Omit question/answer text, request payloads, credentials and unbounded provider errors. A link from this minimal notice still requires Hub authentication.
 
-### Delivery evidence and uncertain outcomes
+#### Delivery evidence and uncertain outcomes
 
 Persist immutable message membership/payload and a `sending` attempt with a token and 60-second lease before network I/O. A compare-and-set under channel/subscription locks prevents overlapping workers admitting the same generation. Network work happens outside DB locks and uses the existing 10-second Telegram timeout. Revalidate the unexpired token before committing a result. An expired sending attempt becomes `unknown` and cannot be automatically resent. The original worker may not overwrite a later state after lease loss.
 
@@ -110,7 +145,7 @@ A structured transport result distinguishes `accepted`, proven pre-send/Telegram
 
 Subscription disablement, deletion and filter/destination edits govern future send admissions. A message already durably admitted may finish; show that limit in the UI. Deleting a channel stops future sends and removes its subscription/notice state with existing channel lifetime. Within a retained destination generation, keep minimal dedupe evidence for the channel lifetime; pruning delivery history must not make accepted or unknown generations eligible again. Keep the latest 100 attempt histories per channel with bounded pagination; older attempts may be compacted to generation state plus last outcome/time. No decision/Run retention is extended by notification records; deleted owner records become unavailable rather than recreated.
 
-### Exact navigation and owner boundary
+#### Exact navigation and owner boundary
 
 The inbox reads one URL selection after session restoration without depending on its current list page or filters. Add authenticated, read-only `GET /api/v1/pipeline-runs/decisions/selection?key&fingerprint`, returning the current matching `DecisionEntryRead` joined to its nonterminal run/current project. Use a direct indexed key lookup, never a scan through inbox pages or a decoded guess from the hashed key. Validate key length at most255 and a64hex fingerprint; missing/inaccessible owner/project is404 and a changed fingerprint is409. This query performs no remote call or inspection mutation. It uses the same current visibility policy as discovery. Reuse the existing response schema; expose the new route in generated pipeline-run types.
 
@@ -118,7 +153,7 @@ After lookup, call existing authenticated `POST /pipeline-runs/decisions/review`
 
 The link never conveys an actor, answer, approval or a resumable command. Missing/changed/inaccessible links display a generic unavailable/changed state with Refresh inbox; no replacement subject is opened automatically. Malformed selections are rejected locally without a mutation. Keep a landing status while inspecting; after a failed inspection, offer explicit Retry review and Open inbox. Keep native last-observed metadata distinct from fresh owner inspection.
 
-### Acceptance examples and Development verification
+#### Acceptance examples and Development verification
 
 - **NOTICE-01**: Given a migrated existing channel, when read or ticked before explicit subscription enablement, then decision notices remain off and generic notice behavior is unchanged.
 - **NOTICE-02**: Given a trusted subscription with project/kind and severity gates, when current exact actionable rows match, then only those rows can be admitted; changed filters, disabled channels and foreign/missing projects cannot leak content.
@@ -133,15 +168,16 @@ The link never conveys an actor, answer, approval or a resumable command. Missin
 
 Development adds owner-reuse/API tests, PostgreSQL barriers, refusal/timeout/lost-commit lease cases, migration upgrade/downgrade, count and actual rendered-text limits, fair cursor wrap and stale-link/focus/login restoration UI assertions. Preserve legacy notification tests. Run backend initialization, typed API generation, relevant backend/PostgreSQL/UI checks, `just lint` and `just check`. Baseline is the same fixture with decision subscriptions disabled: zero decision-specific notices; enabling one matching subscription admits one selected generation. No numerical speed or delivery-latency claim is made.
 
-### Non-goals
+#### Non-goals
 
 - **Scope Excluded**: Telegram inbound approval/reply commands, bulk approval, automatic resume, per-chat recipient authentication, new per-project ACLs, new transport providers, Jules work and SDK machine approvals.
 - **Scope Excluded**: enqueueing in owner mutation transactions, guaranteed notification of every transient event, automatic resend of uncertain sends, health dashboards, monitoring, production verification and CI changes.
 
-### Future write coordination
+#### Future write coordination
 
 Owner behavior remains unchanged except the minimal exact discovery lookup. Auth semantics stay unchanged; exact return selection is an auth-UI navigation seam only. Production writes stay in notifications-owned modules, one shared maintenance call site/new helper, one additive migration, notification settings UI, exact inbox URL-selection seam, the exact discovery query/API/test paths and Google/password sign-in UI return hooks/helper/tests. Generated API output should change only notification and pipeline-run type resources plus any index output actually generated; list the latter before handoff. No MCP or Work Plan feature files, session store or logout cleanup are needed. Shared steering/architecture and migration head ordering require Host integration sequencing; future scope overlap alone does not serialize this Planning turn. No new feature dependency edge may be added without updating the repository's actual architecture declaration if its enforcing check requires one.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
 
 High Planning compares A/B/C with required Scout and Challenger; separate UX review is user-authorized on the drafted screens. High Development remains appropriate for persisted delivery evidence, migration and external-effect uncertainty. The subscription defaults, trusted-global-destination model and explicit uncertain resend are recommended assumptions within the requested scope, not completed authority. Host presents them and all remaining review findings at plan-accept. This turn does not accept, hand off, implement or test the product. `target-docs.md` carries the final proposed contract/screen ledger; retiring this proposal requires the ordinary accepted handoff.
+

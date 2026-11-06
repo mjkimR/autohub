@@ -1,0 +1,18 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T05:21:55.639981Z'
+status: completed
+review: review-02.yaml
+summary: 'Applied exact wording-only suggested_action at named guidance constant, updated expired and ordinary-login assertions. Minor-fix batch meets review-loop section2: same named locations, exact suggestion, no contract change, focused tests pass.'
+findings:
+- issue: Ordinary Google sign-in falsely reports a lost original notice.
+  evidence: GoogleLogin.svelte:37-41; notice-return.ts:69; GoogleLogin.integration.test.ts:40-45
+  failure_condition: Approved ordinary Google login without retained notice state claims a prior notice-return identity existed.
+  suggested_action: 'Replace noticeRecoveryGuidance with exactly: Signed in. If you arrived from a decision notice, reopen its original link to review the exact decision. Update expired-return assertion and ordinary approved-login assertion; preserve behavior.'
+  resolution: resolved
+  severity: P2
+checks:
+  wording: PASS exact conditional guidance; detection/authentication unchanged; Google6 and storage7 tests passed
+activity_effort: high

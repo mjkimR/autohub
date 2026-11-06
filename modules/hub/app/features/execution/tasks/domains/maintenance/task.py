@@ -97,5 +97,11 @@ async def maintain_task(payload: MaintenancePayload) -> None:
             workers.create_task(consume("tests", pending_tests, advance_test))
         for _ in range(min(len(pending_catalogs), 2 if pending_tests else 4)):
             workers.create_task(consume("catalogs", pending_catalogs, sync_catalog))
+    try:
+        from app.features.notifications.decision_worker import DecisionNoticeWorker
+
+        await DecisionNoticeWorker().tick()
+    except Exception:
+        logger.exception("Decision notices will retry bounded maintenance")
     if failures:
         raise RuntimeError(f"System maintenance failed for {len(failures)} item(s); pending work will retry")

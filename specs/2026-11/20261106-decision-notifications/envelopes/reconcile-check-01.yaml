@@ -1,0 +1,46 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T05:29:31.852457Z'
+status: completed
+summary: round 1; All17 targets covered; three implementation P1 gaps and two wording P2 findings require full fix batch.
+findings:
+- issue: Recovered original command results are retained but not displayed.
+  evidence: DecisionNotices.svelte original-receipt panel; UX-decision-subscription recovery
+  failure_condition: Original result differs from current settings but original revision/settings/attempt identities are absent.
+  suggested_action: Render immutable original result and separately current subscription/attempt evidence; test differing results.
+  resolution: open
+  severity: P1
+- issue: Deleted-project refusal cannot reach correction flow.
+  evidence: decision_usecase.py:79-80; decision_api.py:24-29; configure extension5a
+  failure_condition: Missing selected project404 creates no receipt but UI remains unknown.
+  suggested_action: Expose exact owner pre-admission refusal code, test no receipt and fresh corrected request; preserve ambiguity.
+  resolution: open
+  severity: P1
+- issue: Retained settings disclosures are absent.
+  evidence: DecisionNotices.svelte settings branch; UX-decision-subscription:25-27
+  failure_condition: Review lacks examplelink, bound, no deadline, sign-in and omitted question-content disclosure.
+  suggested_action: Add approved disclosures before Save and component regression.
+  resolution: open
+  severity: P1
+- issue: Timing rule omits explicit resend exception.
+  evidence: CAP-NOTIFY-operator-notifications rule17
+  failure_condition: Literal automatic timing rule contradicts direct explicit resend.
+  suggested_action: Qualify rule17 automatic collection; explicit reviewed resend follows rule22 independently.
+  resolution: open
+  severity: P2
+- issue: Project selector wording differs.
+  evidence: UX-decision-subscription:25
+  failure_condition: Actual multiselect first100 differs from IDsinput wording.
+  suggested_action: Replace with multiple-selection chooser containing the first100 accessible projects.
+  resolution: open
+  severity: P2
+assumptions:
+- Emulated fixedHEAD/status isolation; no reviewer writes or outside reads.
+checks:
+  coverage: PASS 17targets; reciprocal links and bounded ownership inspected
+diff_scope:
+  base: f0697e4e4182bd0d6ab8eab2e67c570df28de533
+  head: 9cebd4ccac614f175cd0430641581696cf3671b3
+activity_effort: high

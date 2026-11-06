@@ -3,6 +3,7 @@ from uuid import UUID
 
 from app.auth import CurrentUser
 from app.features.project_management.pipeline_runs.discovery_schemas import (
+    DecisionEntryRead,
     DecisionKind,
     DecisionPage,
     DecisionReviewRequest,
@@ -63,6 +64,15 @@ async def list_decisions(
     limit: int = Query(20, ge=1, le=100),
 ):
     return await use_case.list(project_id, kind, question_state, cursor, limit)
+
+
+@router.get("/decisions/selection", response_model=DecisionEntryRead)
+async def decision_selection(
+    use_case: Annotated[DecisionDiscoveryUseCase, Depends()],
+    key: str = Query(min_length=1, max_length=255),
+    fingerprint: str = Query(pattern="^[a-f0-9]{64}$"),
+):
+    return await use_case.selection(key, fingerprint)
 
 
 @router.post("/decisions/review", response_model=PipelineRunRead)

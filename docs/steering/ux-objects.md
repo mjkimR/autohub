@@ -29,8 +29,9 @@ summary: "Read before describing or changing Auto Hub interfaces; maps shared do
 | Native SDD activity | Operator | Decision inbox row/filter and exact owner subject, Workflow stage/request panel, evidence, exact retained outcome, approval/publication status, decision history | Answer request, approve integration, request revision, revoke approval, reject, Check outcome, Retry same request, Review publication reconciliation ; Review exact decision, filter pending work |
 | Repository viewer | Operator | Branch selector, tree, file content, unit execution links, milestone selector and captured preview basis | Switch branch, browse file, refresh, preview milestone, open related run/PR |
 | Webhook delivery | Operator | Event/outcome row, retained delivery identifiers | Filter noteworthy/status, page, refresh, inspect outcome |
-| Notification channel | Operator | Destination card, credential/configuration form, delivery status | Add, edit, enable/disable, send test, delete |
-| Operator notice | Operator | Delivery result, last-error or last-sent indicator | Inspect delivery feedback |
+| Notification channel | Operator | Destination card, credential/configuration form, delivery status, decision effective gates and destination context | Add, edit, enable/disable, send test, delete, open Decision notices, inspect Notice history |
+| Operator notice | Operator | Exact observed subject link, immutable message membership, accepted/failed/unknown history | Inspect delivery, open exact review, review Send again, check outcome, retry same resend |
+| Decision subscription | Operator | Project/kind selection, timing, revision and trust disclosure | Review/save, enable/disable, check save outcome, retry same save |
 | System configuration | Operator | Read-only JSON record card | Refresh, inspect value |
 
 Domain definitions and exclusions belong in [the glossary](glossary.md).

@@ -1,4 +1,11 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
+	import {
+		consumeNoticeReturnOutcome,
+		noticeRecoveryGuidance,
+		retainNoticeReturn
+	} from './notice-return';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api';
 	import { session } from '$lib/stores/session.svelte';
@@ -27,6 +34,13 @@
 					session.rememberEmail(data.email);
 					if (data.status === 'approved' && data.tokens) {
 						session.setTokens(data.tokens);
+						const returned = consumeNoticeReturnOutcome(true);
+						const returnPath = returned.path;
+						if (returned.reason) {
+							message = noticeRecoveryGuidance;
+							toast.info(noticeRecoveryGuidance);
+						}
+						if (returnPath) void goto(returnPath, { replaceState: true }).catch(() => {});
 						return;
 					}
 					message =
@@ -62,7 +76,12 @@
 {#if busy}
 	<p role="status" class="mb-4 text-sm text-muted-foreground">Completing Google sign-in…</p>
 {:else if enabled}
-	<Button variant="outline" class="mb-4 w-full" href={`${apiBaseUrl()}/api/v1/auth/google/start`}>
+	<Button
+		variant="outline"
+		class="mb-4 w-full"
+		href={`${apiBaseUrl()}/api/v1/auth/google/start`}
+		onclick={retainNoticeReturn}
+	>
 		Continue with Google
 	</Button>
 	<p class="mb-5 text-center text-xs text-muted-foreground">

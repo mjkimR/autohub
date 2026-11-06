@@ -35,6 +35,25 @@ class DecisionDiscoveryUseCase:
             rows = await self.repo.page(session, project_id, kind, question_state, after, limit)
             return page_result(rows, limit, filters)
 
+    async def selection(self, key, fingerprint):
+        from app.features.project_management.pipeline_runs.discovery_schemas import DecisionEntryRead
+
+        async with AsyncTransaction() as session:
+            row = await self.repo.selection(session, key)
+            if not row:
+                raise ProjectError(404, "Decision owner is unavailable")
+            entry, run = row
+            if entry.fingerprint != fingerprint:
+                raise ProjectError(409, "Decision changed; reopen the current inbox")
+            return DecisionEntryRead.model_validate(
+                {
+                    **{name: getattr(entry, name) for name in DecisionEntryRead.model_fields if hasattr(entry, name)},
+                    "run_state": run.state,
+                    "pull_number": run.pull_number,
+                    "pull_url": run.pull_url,
+                }
+            )
+
     async def review(self, request, observer):
         runs, projects = PipelineRunRepository(), ProjectRepository()
         async with AsyncTransaction() as session:

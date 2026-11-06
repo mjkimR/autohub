@@ -1,0 +1,20 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T05:36:03.097518Z'
+status: completed
+review: review-03.yaml
+summary: 'Applied exact two-line suggested_action in named save/resend methods. Both new-unknown regressions failed before fix and pass after; retry/check remain unchanged. Whole batch meets minor-fix section2: same named locations, exact suggestion plus tests, no public contract/API change.'
+findings:
+- issue: A new command can display the previous command's recorded result.
+  evidence: decision-notices.svelte.ts:72-80 and DecisionNotices.svelte:133-142; reviewer isolated probe failed subscription and resend cases.
+  failure_condition: After a settled save, a fresh unknown save or resend retains the old outcome under the new request identity.
+  suggested_action: Set this.outcome = null in save() and resend() immediately before replacing this.intent. Preserve outcome during identical retry/check. Add parameterized settled-to-new-unknown regressions.
+  resolution: resolved
+  severity: P1
+assumptions:
+- New intent clears only its previous outcome; identical request recovery retains original UUID/payload semantics.
+checks:
+  tests: PASS notification UI13 including fresh subscription/resend receipt isolation and existing identical retry/check coverage
+activity_effort: high

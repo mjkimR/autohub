@@ -9,6 +9,8 @@ supporting_actors:
 status: active
 capabilities:
   - CAP-NOTIFY-operator-notifications
+entrypoints:
+  - modules/hub/app/features/notifications/decision_api.py
 ---
 
 # [UC-configure-operator-notifications] Configure operator notifications
@@ -34,6 +36,11 @@ capabilities:
 4. Hub sends the test, records the accepted delivery and returns its result
    (`CAP-NOTIFY-operator-notifications`). Screen: `UX-notifications`.
 
+5. The operator selects the channel's Decision subscription projects, kinds, timing and Hub origin (`CAP-NOTIFY-operator-notifications`). Screen: `UX-notifications`, `UX-decision-subscription`.
+6. The operator reviews the trusted destination and effective gates, then saves the subscription (`CAP-NOTIFY-operator-notifications`). Screen: `UX-decision-subscription`, `UX-notifications`.
+
+The channel test remains available independently; saving a Decision subscription does not require live Telegram acceptance.
+
 ## 3. Extensions
 
 - **1a.** Duplicate name: Hub returns HTTP 409 without creating another channel;
@@ -46,6 +53,11 @@ capabilities:
   `delivered=false` with the available failure detail and records the channel
   error. The operator can repair the channel and resume at step 3; successful
   configuration remains unverified until the test succeeds. Screen: `UX-notifications`, `UX-notification-editor`.
+
+- **5a.** Invalid or deleted project selection is refused; the operator corrects settings and resumes at step5. Screen: `UX-decision-subscription`.
+- **6a.** Stale subscription revision is refused; retained edits await explicit refreshed review before a fresh save. Screen: `UX-decision-subscription`.
+- **6b.** The save response is uncertain; retain the exact request and Check save outcome or Retry same save. Current settings alone do not settle the request. An acknowledged save with failed refresh remains acknowledged. Screen: `UX-decision-subscription`.
+- **6c.** Destination generation changed; the subscription is disabled and old-generation save is refused, including revision zero. The operator reviews the destination and resumes at step5. Screen: `UX-decision-subscription`.
 
 ## 4. Postconditions
 
@@ -114,3 +126,19 @@ testing and delivery outcomes from `CAP-NOTIFY-operator-notifications`.
 
 The named tests were inspected and mock Telegram transport. They do not establish
 live bot access or receipt by the operator, and this use case records no new run.
+
+### Scenario: Correct a refused subscription
+
+- **Covers**: 5a, 6a, 6c.
+- **Given**: Invalid project settings or stale revision/destination evidence.
+- **When**: The operator saves the reviewed subscription.
+- **Then**: No stale command is admitted; the operator explicitly corrects or refreshes the basis and uses a fresh request.
+- **Test**: `modules/hub/tests/integration/features/notifications/test_decision_notices.py`; `modules/hub-ui/src/lib/features/configuration/notifications/decision-notices.integration.test.ts`.
+
+### Scenario: Recover the original save independently of current state
+
+- **Covers**: 6b.
+- **Given**: A save response was lost and another operator changed current settings.
+- **When**: The original actor checks or identically retries the original request.
+- **Then**: Original receipt and current settings appear separately; missing proof stays unknown and changed input stays blocked until definite refusal or acknowledgement.
+- **Test**: `modules/hub/tests/integration/features/notifications/test_decision_notices.py`; `modules/hub-ui/src/lib/features/configuration/notifications/decision-notices.integration.test.ts`.

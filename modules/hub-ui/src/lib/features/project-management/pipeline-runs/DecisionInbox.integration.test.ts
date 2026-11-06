@@ -120,3 +120,21 @@ test('closing exact owner review retains filters and returns row focus', async (
 	);
 	expect((screen.getByLabelText('Kind') as HTMLSelectElement).value).toBe('run-question');
 });
+
+test('notice selection uses exact lookup outside loaded pages then owner review', async () => {
+	const fp = 'a'.repeat(64);
+	window.history.replaceState({}, '', '/decisions?decision_key=outside&decision_fingerprint=' + fp);
+	const previous = api.GET.getMockImplementation();
+	api.GET.mockImplementation(async (path: string, ...args: unknown[]) =>
+		path.endsWith('/decisions/selection')
+			? { data: { ...entry, key: 'outside', fingerprint: fp } }
+			: previous?.(path, ...args)
+	);
+	render(DecisionInbox);
+	await waitFor(() =>
+		expect(api.POST).toHaveBeenCalledWith('/api/v1/pipeline-runs/decisions/review', {
+			body: { key: 'outside', fingerprint: fp }
+		})
+	);
+	window.history.replaceState({}, '', '/');
+});

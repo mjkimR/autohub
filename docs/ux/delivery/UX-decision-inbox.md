@@ -6,6 +6,7 @@ area: delivery
 element: screen
 status: active
 usecases:
+  - UC-receive-decision-notice
   - UC-resolve-run-question
   - UC-decide-sdd-proposal
   - UC-complete-sdd-workflow
@@ -59,8 +60,25 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
 | Refresh / Retry / Clear filters | global: recover discovery | error, empty, populated | loading | | | First page reloads with selected filters or cleared filters. |
 | Close owner dialog | global: return from inspection | reviewing, changed | populated | close | | Filters/page persist; focus returns to row or nearest remaining neighbor. |
 | Leave Decisions | global: navigate to another task | populated, empty, error | populated | `UX-app-shell` | | Selected destination opens. |
+| Follow authenticated notice link | `UC-receive-decision-notice` 1, `UC-receive-decision-notice` 2 | populated | link-reviewing | | `CAP-PR-operator-decisions` | Exact review identity loads even outside the first page. |
+| Exact owner review succeeds | `UC-receive-decision-notice` 3 | link-reviewing | reviewing | `UX-run-decisions` | `CAP-PR-operator-decisions` | Only the selected question/request opens with existing native panels as appropriate. |
+| Retry review | `UC-receive-decision-notice` 2b | link-error | link-reviewing | | `CAP-PR-operator-decisions` | Repeats exact authenticated inspection, not a decision mutation. |
+| Open/Refresh inbox | `UC-receive-decision-notice` 1a, `UC-receive-decision-notice` 2a | link-invalid, link-changed, link-error | loading | | | Clears obsolete selection and shows current discovery without automatically opening a replacement. |
+| Close owner review / leave Decisions | global: return from exact inspection | reviewing, populated | populated | close | | Keeps ordinary list context and restores focus to landing action when no originating row exists. |
 
 ## 5. Evidence
 
 Source: `modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.svelte`.
 Interaction assertions: `DecisionInbox.integration.test.ts` covers filters, cursor pages and focus restoration. This source-derived contract claims no live repository walkthrough or deployment.
+
+## 6. Exact notice landing
+
+### Content
+
+Keep the current filtered worklist primary. An exact link adds a visible landing-status region while authenticated owner review runs, independent of list pagination/filter state. Show key/kind provenance and observed basis without question text before owner authorization. Password sign-in retains the original encoded query in place. Google sign-in uses the bounded exact-key/fingerprint return helper specified above, without an arbitrary redirect target. Lookup returns the exact server-bound Entry before existing owner review returns its Run; no paginated list scan or inferred subject is allowed. After exact success, the existing owner dialog is the primary decision surface. The link does not save answers, grant approval or resume work.
+
+### States
+
+Keep existing states; add **link-reviewing** with inspection status and Open inbox; **link-changed** for missing/replaced/inaccessible evidence with Refresh inbox; **link-error** with Retry review/Open inbox; **link-invalid** with no request and Open inbox. Automatic initial link review runs once per exact URL identity; rerendering or owner-dialog dismissal does not loop inspection. Failed/dismissed inspection requires explicit Retry review. Ordinary/native head/generation changes never select another subject automatically.
+
+### Interactions

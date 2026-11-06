@@ -1,4 +1,5 @@
 <script lang="ts">
+	import DecisionNotices from './DecisionNotices.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
 	import { onMount } from 'svelte';
 	import { Badge } from '$lib/components/ui/badge';
@@ -159,6 +160,7 @@
 							>
 							<Button variant="outline" size="sm" onclick={() => remove(channel)}>Delete</Button>
 						</div>
+						<DecisionNotices channelId={channel.id} />
 					</CardContent>
 				</Card>
 			{/each}

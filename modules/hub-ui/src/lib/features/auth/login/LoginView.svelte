@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { consumeNoticeReturnOutcome, noticeRecoveryGuidance } from './notice-return';
 	import GoogleLogin from './GoogleLogin.svelte';
 	import { session } from '$lib/stores/session.svelte';
 	import { api } from '$lib/api';
@@ -51,6 +53,10 @@
 			} else {
 				session.rememberEmail(email.trim());
 				session.setTokens(res.data);
+				const returned = consumeNoticeReturnOutcome();
+				const returnPath = returned.path;
+				if (returned.reason) toast.info(noticeRecoveryGuidance);
+				if (returnPath) void goto(returnPath, { replaceState: true }).catch(() => {});
 				password = '';
 				toast.success('Signed in');
 			}

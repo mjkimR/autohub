@@ -61,6 +61,24 @@ class NotificationChannelService:
             channel.enabled = data.enabled
         if data.min_level is not None:
             channel.min_level = data.min_level
+        credential_changed = False
+        if data.bot_token is not None:
+            try:
+                credential_changed = data.bot_token.strip() != await self.bot_token(channel)
+            except ValueError:
+                credential_changed = True
+        destination_changed = (
+            data.chat_id is not None and data.chat_id.strip() != (channel.config or {}).get("chat_id")
+        ) or credential_changed
+        if destination_changed:
+            channel.destination_generation += 1
+            from .decision_models import DecisionSubscription
+
+            subscription = await session.get(DecisionSubscription, channel_id)
+            if subscription:
+                subscription.enabled = False
+                subscription.revision += 1
+                subscription.settings = {**subscription.settings, "enabled": False, "trusted_destination": False}
         if data.chat_id is not None:
             channel.config = {**(channel.config or {}), "chat_id": data.chat_id.strip()}
         if data.bot_token is not None:
