@@ -1,65 +1,63 @@
 ---
-id: PROP-sdd-milestone-execution
+id: SPEC-sdd-milestone-execution
 title: Execute selected SDD milestone work sequentially
-summary: "Progress a durable selection of native SDD units sequentially while preserving dependency checks, approval boundaries and recoverable controls."
-status: accepted
-created_at: 2026-11-05
-target_area: capabilities/sdd/
-priority: high
-size: L
-planning_effort: high
-dev_effort: high
-milestone: MS-native-sdd-execution
+summary: Progress a durable selection of native SDD units sequentially while preserving dependency checks, approval boundaries and recoverable controls.
+status: planned
+created: 2026-11-06
 depends_on:
   - SPEC-sdd-milestone-readiness
-boundaries:
-  owns:
-    - modules/hub-ui/src/lib/api/
-    - modules/hub/app/features/project_management/sdd/
-    - modules/hub/app/features/project_management/pipeline_runs/
-    - modules/hub/app/features/execution/tasks/domains/maintenance/
-    - modules/hub/migrations/
-    - modules/hub/tests/integration/migrations/
-    - modules/hub/tests/integration/features/execution/maintenance/
-    - modules/hub/tests/integration/features/project_management/sdd/
-    - modules/hub/tests/unit/features/project_management/sdd/
-    - modules/hub-ui/src/lib/features/project-management/repositories/
-    - modules/hub-ui/src/lib/features/project-management/pipeline-runs/
-    - docs/capabilities/sdd/
-    - docs/capabilities/execution/
-    - docs/usecases/sdd/
-    - docs/ux/sdd/
-    - docs/steering/
-    - docs/architecture/
-  excludes:
-    - docs/operations/
-    - .github/
-    - packages/sdk/
-task_kind: feature
-workflow: sdd-proposal
+related_capabilities: []
+related_usecases: []
+workflow: sdd-spec-feature
 ---
+<!-- devkit:skeleton -->
 
-# [PROP-sdd-milestone-execution] Execute selected SDD milestone work sequentially
+# [SPEC-sdd-milestone-execution] Execute selected SDD milestone work sequentially
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-sdd-milestone-execution on 2026-11-06.
+- **Preserved Materials**: `docs/materials/2026-11/20261106-sdd-milestone-execution`
+- Target Docs Blueprint: `PROP-sdd-milestone-execution-target` (Living Spec targets for this plan and reconcile.md)
+
+### 1. Background & Hypothesis
 
 A project operator needs a durable selection that can advance successive native SDD units after closing the browser. `CAP-SDD-native-delivery` starts individual activities; it deliberately excludes milestone execution. `SPEC-sdd-milestone-readiness` supplies a bounded, pinned observation rather than execution authority. This proposal adds execution coordination while retaining existing per-activity PR owners.
 
-### Source anchors and prerequisite assumptions
+#### Source anchors and prerequisite assumptions
 
 `MAT-sdd-milestone-execution` records source inspection, incoming references and the option comparison. The original proposal of `SPEC-sdd-milestone-readiness` was accepted but unimplemented at the Planning base. The user authorized prerequisite order override for Planning only. Before Development/handoff, compare this design with its landed completed SPEC and replace the prerequisite through the normal canonical reference process. Acceptance of its proposal is not prerequisite completion. Do not invent the SPEC ID.
 
-## 2. Technical Spike Findings
+## 2. User Stories
+
+- **US-1**: As a developer/agent, I want to implement Execute selected SDD milestone work sequentially so that system capabilities are extended.
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: <what this change will not do>
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] <scenario>
+- **Given** <precondition>
+- **When** <action>
+- **Then** <expected result>
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### 2. Technical Spike Findings
 
 - **Q1 resolved**: Retain an immutable execution selection and separate current evaluations. Pin creation to project/repository, base ref/full SHA, milestone ID/path, complete discovery and exact member/dependency anchors. A preview response is no authority token.
 - **Q2 resolved**: One selected member retains the sequential slot through Planning, its decision/merge, handoff-first Development and final owner-confirmed merge/completed SPEC. Every transition retains existing approvals and fresh native admission. Rejected, canceled or failed work stops automatic progression pending operator inspection.
 - **Q3 resolved**: Persist admission intent before remote effects. Serialize claim and control under revision fences. Recover the same branch/PR/run using exact ownership evidence. Unknown outcomes retain the slot; they never permit replacement work.
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
-### Planning decisions
+#### Planning decisions
 
-`PADR-sdd-batch-ledger` records the ledger/owner boundary. Development effort remains high for persisted state and concurrency.
+`ADR-sdd-batch-ledger` records the ledger/owner boundary. Development effort remains high for persisted state and concurrency.
 
 1. **Explicit chain selection**: Add an execution-specific selection beside the preview. It may contain complete, supported direct draft/accepted proposal members whose only current scheduling hold is an unfinished exact prerequisite. This is explicit future intent, not eligibility. Eligible-only batches would prevent selecting a milestone chain; that alternative is not recommended. Preserve the predecessor's read-only eligible-only subset unchanged. Clearly label waiting entries and missing external prerequisites. Never silently include prerequisite members. Exclude reviewing/rejected, existing activity, unsupported, workflow-held, unknown or incomplete rows from new batch selection. A selected chain may wait on external prerequisites; disclose them before confirmation.
 2. **Creation**: `POST /api/v1/projects/{project_id}/sdd/batches` accepts UUID request identity, expected preview SHA, milestone identity/path, exact selected member IDs/paths, proposed initial activity kinds, explicit through-Development intent and optional per-activity effort/catalog preferences. The server recomputes complete discovery/evidence at the current selected ref. Any SHA change between preview and creation refuses with HTTP 409; incomplete, ambiguous, cyclic, malformed or unsafe input refuses before admission. Bound selection to the predecessor's 50 members/200 anchors/500 edges and request budget. Persist the deterministic topological order with canonical-ID tie breaking. Empty selection is invalid. Matching request/actor/payload replays current state; changed actor/payload conflicts. Creation persists intent and does not itself approve any gate.
@@ -72,7 +70,7 @@ A project operator needs a durable selection that can advance successive native 
 9. **Recovery**: Retain branch, initial commit, activity marker, PR number and enrollment receipt as each becomes known. Crash before branch effect retries the same claim after reconciliation. Branch exists without PR: resume only when the recorded initial commit and exact owned branch match; create the missing PR once. PR exists without run: reconcile marker/repository/base/head plus saved claim, then use existing idempotent enrollment. Lost enrollment result reconciles its exact project/PR run before another call. An ambiguous or unavailable remote result holds `recovering`; no later member starts. Partial effects are visible and retained. Never force-push, overwrite unrelated branches, delete artifacts or claim exactly-once remote effects. Apply the same durable reservation path to individual starts where needed to close the cross-entry race, preserving their API/admission behavior.
 10. **Controls and driver**: List/get batch endpoints expose evidence and read-only owner links. `POST .../batches/{id}/controls` accepts UUID request identity, expected revision and one of pause/resume/stop. HTTP 409 covers stale revision or receipt mismatch; HTTP 422 covers invalid controls/selection. Pause/stop that commits before claim prevents it. If claim commits first, that activity is admitted and may still create external artifacts after the control response; show it as in flight. Controls do not cancel, resume or approve that native run. Resume re-evaluates waits and future admission; stop is terminal for future claims. Matching receipts return current state without undoing a later stop. Maintenance selects a bounded page of due batches with persisted fair cursor, one reconciliation/admission transition per selected batch per tick, within its existing timeout. Reuse PR-owner observation, never CI/merge logic. Retry transport uncertainty by reconciliation of the same claim; terminal native failure requires operator inspection, not automatic replacement. Protect unresolved batch links/outcomes from run retention until a durable completion tombstone is recorded; active, paused and uncertain work must remain inspectable.
 
-### Acceptance criteria for Development
+#### Acceptance criteria for Development
 
 - **ME-01**: Given complete pinned preview evidence with A and dependency-held B, when explicitly selected, then a durable ordered selection contains exactly A/B with their future-intent labels. No work/gates are approved by selection. Incomplete/unknown/over-limit input and stale SHA cause zero admission calls. Include 50/51, 200/201 and 500/501 boundary fixtures.
 - **ME-02**: Given done/dropped milestone prerequisites and exact completed SPEC prerequisites, when the next entry is evaluated, then they pass without reopening completed history. Accepted/rejected PROP, missing/ambiguous/cyclic anchors and guessed same-slug lineage hold. Test canonical handoff repair and missing deleted PROP separately; assert dependency evaluation invokes no publication collaborator.
@@ -85,17 +83,18 @@ A project operator needs a durable selection that can advance successive native 
 - **ME-09**: Given pending batches and retention/maintenance work, when bounded ticks/pruning run, then fair bounded progress and failure isolation hold; unresolved PR/run links survive pruning or retain an explicit durable outcome tombstone after settlement. No new scheduler/merge owner is created.
 - **ME-10**: Given unauthorized/non-SDD/rebound projects or unsafe paths, when create/get/control runs, then existing access/lifecycle/runtime restrictions apply before effects. Individual starts, proposal decisions and native CI/merge regression tests remain green.
 
-### Implementation and verification outline
+#### Implementation and verification outline
 
 Keep Router → UseCase → Service → Repository. Add persistence/migrations and coordination in the existing SDD feature, an expected-base admission seam, shared same-activity reservation, maintenance hook and typed API/client/UI components. Keep feature dependencies within declared project-management/execution ownership; any needed new architecture declaration must be surfaced before Development rather than silently widening scope.
 
 Initialize the backend environment, regenerate the API client with `just gen-ui-api`, run focused SDD activity/lineage/approval/recovery suites, PostgreSQL locking and migration round-trip coverage, UI selection/control integration tests, `just lint` and `just check`. Planning verifies documents only; no product test execution or deployed result is claimed. No timing improvement is claimed. For count assertions, Development measures its head with the batch feature disabled as the baseline; workers never check out another head.
 
-### Non-goals
+#### Non-goals
 
 - **Scope Excluded**: Parallel batches, parallel selected members, implicit gates, a second CI/merge owner, Work Plan/specification copies, inferred dependencies, automatic failed-work replacement and silently expanding selection.
 - **Scope Excluded**: Existing independent-spec enrollment from the preview, modifying devkit semantics, vendor UI changes, SDK flows, pilot operation, deployment, production verification, monitoring and CI trigger changes.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
 
 This turn recommends explicit future-intent chain selection and a separate immutable execution ledger. It records no plan-accept or handoff. The Host must compare the provisional readiness contract with its landed exact completed SPEC before Development/handoff and present the execution-selection extension at plan-accept. `SPEC-sdd-milestone-readiness` remains a true prerequisite; Planning order override does not weaken it. Challenger round 1 returned two P2 clarifications, folded by its concrete wording actions and closed by reverify. The separate UX reviewer returned one preference-visibility finding; its exact content/edit/confirmation action is folded into the screen draft. The original UX finding remains open for presentation at plan-accept under the Planning UX procedure. Required findings and checks are retained in this bundle. No unresolved business choice requires a question round.
+
