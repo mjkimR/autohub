@@ -142,7 +142,7 @@ for inspecting maintenance and retained history.
 ## 6. SDD batch maintenance
 
 1. **Bounded batch progress**: WHEN maintenance advances SDD batches, Hub MUST attempt at most four batches per invocation and at most one bounded transition per batch, rotating a persisted UUID cursor across eligible batches. Check: `modules/hub/tests/integration/features/execution/maintenance/test_sdd_batches.py`.
-2. **Batch failure isolation**: IF a selected batch raises, THEN maintenance MUST attempt the remaining selected batches before reporting aggregate failure. Check: the same maintenance suite.
+2. **Batch failure isolation**: IF a selected batch raises, THEN maintenance MUST log that isolated failure and attempt the remaining selected batches; a later maintenance invocation retries the retained admission. Check: the same maintenance suite.
 3. **Unresolved admission retention**: WHILE an SDD activity claim is unresolved, maintenance MUST preserve its linked run and recovery evidence. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_claims.py`.
 4. **Settled admission tombstones**: WHEN a settled activity's run becomes eligible for pruning, maintenance MUST retain its settled claim identity and remove only its run link so replay cannot create replacement activity artifacts. Check: the same claim suite.
 

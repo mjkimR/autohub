@@ -41,3 +41,5 @@ No required work is deferred. Deployment, live GitHub/provider verification, SDK
 Independent reconciliation is pending. Executed checks are retained in reverify envelopes; document test citations identify enforcement evidence, not additional live execution.
 
 Entrypoints retain focused API/use-case/driver and UI doorways. Broad feature/test/migration candidates were rejected; runtime/workflow and completion documents retain their existing doorways because those additions explain owner boundaries rather than introduce another entry path.
+
+Round 1 corrections apply the reviewer's concrete wording actions: exact plural controls route, creation/admission SHA distinction, nontransferable competing reservations, isolated batch-error logging, and adjacent-preview/native-owner content attribution with GET-only refresh. No production implementation or accepted authority boundary changes.
