@@ -53,6 +53,13 @@ capabilities:
   holding all scopes; the operator configures the other endpoint and resumes at
   step 3.
 
+- **5d.** Current owner evidence changed or the command is ineligible: retain the
+  owner conflict/error and require explicit fresh review; no replacement command
+  is issued. The use case resumes at step 5 after that review.
+- **5e.** A command response is lost: read exact retained evidence or explicitly
+  retry the same immutable request identity and payload; unknown evidence remains
+  uncertain and never grants fresh authority. Resume at step 5.
+
 ## 4. Postconditions
 
 - **Success guarantee**: the agent received a result from a tool registered on
@@ -123,11 +130,30 @@ endpoint separation, tool scopes and typed arguments from `CAP-MCP-tool-access`.
 - **When**: it calls an operations tool on the work endpoint.
 - **Then**: the call is rejected because the tool is not registered there.
 
+### Scenario: Inspect exact decisions without granting authority
+
+- **Covers**: main success scenario and 5d.
+- **Given**: a machine has read scope and an observed pending decision.
+- **When**: it reads discovery/outcome evidence and requests exact inspection.
+- **Then**: reads retain safe exact identity; inspection requires write scope and
+  current owner evidence, and never applies an answer or approves execution.
+
+### Scenario: Replay an uncertain owner command
+
+- **Covers**: 5e.
+- **Given**: a batch control, Work Item recovery or replacement command response
+  was lost.
+- **When**: the same machine retries the exact request identity and payload.
+- **Then**: owner replay returns retained evidence without duplicating work;
+  changed actor/content conflicts and unknown outcomes remain uncertain.
+
 ## 6. Evidence
 
 Inspected checks: `modules/hub/tests/integration/auth/test_auth_api.py`,
 `modules/hub/tests/integration/mcp/test_mcp.py`,
-`modules/hub/tests/integration/mcp/test_work_decisions.py` and
+`modules/hub/tests/integration/mcp/test_work_decisions.py`,
+`modules/hub/tests/integration/mcp/test_delivery_tools.py`,
+`modules/hub/tests/unit/mcp/test_delivery_views.py` and
 `modules/hub/tests/unit/mcp/test_registration.py`. They use local application and
 mocked provider boundaries. This document records inspected contracts, not a
 new remote connection or a fresh execution of those suites.

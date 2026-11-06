@@ -45,4 +45,9 @@ Focused adapter/schema modules add mapping maintenance. The limited surface excl
 
 ## 6. Confirmation
 
-Planning review only. Development adds transport scope/identity tests, real owner replay/refusal tests and allowlist serialization tests under `modules/hub/tests/integration/mcp/`; existing MCP compatibility tests and architecture rules remain checks. Reconcile the outcome with `CAP-MCP-tool-access` and `UC-connect-hub-tools`. No product execution or deployment is established by this draft.
+Implemented by the focused adapters in `modules/hub/app/mcp/`. Scope and machine
+identity/replay checks are in `modules/hub/tests/integration/mcp/test_delivery_tools.py`;
+allowlist/bounds probes are in `modules/hub/tests/unit/mcp/test_delivery_views.py`.
+`CAP-MCP-tool-access` restates delivery tool rules and `UC-connect-hub-tools`
+retains the operator flow. These controlled checks establish no live deployment
+or external provider execution.
