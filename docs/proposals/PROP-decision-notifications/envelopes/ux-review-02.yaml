@@ -1,0 +1,18 @@
+kind: ux-review
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-06T04:30:39.487393Z'
+status: completed
+summary: round 2; PASS both round1 findings addressed; UX-notifications, UX-decision-subscription, UX-decision-notice-history and UX-decision-inbox each R1-R6=2; timing, exact login, refresh/cancel and receipt paths walked
+findings: []
+assumptions:
+- Text drafts; emulated role fixed head/tree verified; no outside reads/writes
+unverified_areas:
+- No browser walkthrough or live Google/Telegram execution
+checks:
+  walkthrough: PASS configuration5-6/5a/6a-6c and receive1-4/1a/2a/2b/4a-4c
+  existing_surface_rules: PASS docs/ux and docs/usecases zero errors/warnings
+diff_scope:
+  base: 72cb8e3b30524f7b54907b5f1eae8a5c26db3f2d
+  head: 0ecdbda27fd556635827279ad3973e735389bb90

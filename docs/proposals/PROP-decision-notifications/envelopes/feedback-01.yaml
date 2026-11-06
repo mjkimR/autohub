@@ -1,0 +1,10 @@
+kind: feedback
+stage: collect-feedback
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-06T04:30:39.617331Z'
+status: completed
+summary: Swept this Planning turn and reviewer folds; no unrecorded repository-tool observations require capture; no unrelated feedback work started
+findings: []
+checks:
+  swept: PASS recorded=0 duplicates=0

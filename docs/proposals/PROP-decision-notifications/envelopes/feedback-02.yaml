@@ -1,0 +1,10 @@
+kind: feedback
+stage: collect-feedback
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-06T04:31:13.112118Z'
+status: completed
+summary: Final Planning sweep includes reviewer folds and exact generated-file boundary clarification; no unrecorded repository-tool observations
+findings: []
+checks:
+  swept: PASS recorded=0 duplicates=0

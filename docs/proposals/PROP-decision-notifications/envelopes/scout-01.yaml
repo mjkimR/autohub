@@ -1,0 +1,17 @@
+kind: scout
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-06T04:18:52.392632Z'
+status: completed
+summary: Persisted discovery is the bounded read seam; channels and projects use global authenticated operator visibility; exact links require inbox URL selection. Polling avoids cross-owner mutation coupling.
+findings: []
+assumptions:
+- Codex isolation emulated; fixed HEAD, absolute read roots and temporary-index snapshots substituted for native confinement; no outside-worktree reads reported
+unverified_areas:
+- No product test execution, external Telegram delivery or operational tick cadence measurement; detailed evidence in materials/owner-seams.md
+checks:
+  scope: PASS identical before/after tree d7fd910de502cda58c083df24f42b320b63d302f
+diff_scope:
+  base: 4db099a979619cf105a8be7a137fc12a67ff2496
+  head: 4db099a979619cf105a8be7a137fc12a67ff2496
