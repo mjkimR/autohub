@@ -1,0 +1,56 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-05T23:56:29.093938Z'
+status: completed
+review: review-01.yaml
+summary: Fixed full round1 batch with explicit rejection review, separate displayed subject and recovery intent, immutable original worker context/publication proof, persisted duplicate guard and candidate disclosure; fresh round required for schema changes
+findings:
+- issue: Definitive validation failures block corrected submissions
+  evidence: decision-intents.svelte.ts submit/retry
+  failure_condition: Owner definitively rejects invalid input
+  suggested_action: Preserve HTTP status and release definitive rejection after review
+  resolution: resolved
+  severity: P1
+- issue: Displayed history outcome mixes identities with retained intent
+  evidence: decision-intents.svelte.ts check and DecisionOutcome.svelte
+  failure_condition: History request differs from active intent
+  suggested_action: Track displayed subject separately from original intent
+  resolution: resolved
+  severity: P1
+- issue: Native publication lacks original workflow and segment correlation
+  evidence: outcome_service.py and sdd/control.py
+  failure_condition: Later segment reuses worker and question IDs
+  suggested_action: Retain immutable original subject and exact publication evidence
+  resolution: resolved
+  severity: P1
+- issue: Duplicate worker answer guard depends on transient reads
+  evidence: SddWorkflowRequests.svelte awaitingPublication
+  failure_condition: Reload or failed outcome read after recorded answer
+  suggested_action: Derive duplicate guard from exact persisted decision record
+  resolution: resolved
+  severity: P1
+- issue: Reconcile publication inaccessible during uncertainty
+  evidence: SddWorkflowRequests.svelte and RunDecisionsDialog.svelte
+  failure_condition: Original proposal intent unresolved or request disappeared
+  suggested_action: Use independently retained reviewed recovery intent
+  resolution: resolved
+  severity: P1
+- issue: Prepared candidate head omitted
+  evidence: outcome_service.py candidate_sha
+  failure_condition: Prepared candidates without final plan_decision
+  suggested_action: Expose persisted candidates without selecting ambiguous authority
+  resolution: resolved
+  severity: P1
+- issue: Required frontend lint fails
+  evidence: Required lint output four findings
+  failure_condition: Lint current head
+  suggested_action: Remove unused imports and use SvelteMap
+  resolution: resolved
+  severity: P2
+checks:
+  tests: PASS SQLite230 owner regressions plus focused6, PostgreSQL4, UI52
+diff_scope:
+  base: 02af3b367bea478c56b51b864b51b2cf51531c72
+  head: 665d721a2cf59bc3244981f46b4e8d4c803fbfea

@@ -1,3 +1,4 @@
+import { session } from '$lib/stores/session.svelte';
 import { cleanup, render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -32,6 +33,7 @@ beforeEach(() => {
 	}));
 });
 afterEach(() => {
+	session.logout();
 	cleanup();
 	document.body.innerHTML = '';
 	document.body.removeAttribute('style');
@@ -64,7 +66,7 @@ test('saves an answer separately and explicitly resumes with the new revision', 
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
-	await user.type(screen.getByLabelText('Your answer'), 'Yes');
+	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
 	expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).value).toBe('Yes');
 	expect((screen.getByRole('button', { name: 'Save answer' }) as HTMLButtonElement).disabled).toBe(
 		false
@@ -91,10 +93,10 @@ test('retries a lost answer response with the same request identity', async () =
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
-	await user.type(screen.getByLabelText('Your answer'), 'Yes');
+	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
 	await user.click(screen.getByRole('button', { name: 'Save answer' }));
 	await screen.findByRole('alert');
-	await user.click(screen.getByRole('button', { name: 'Save answer' }));
+	await user.click(screen.getByRole('button', { name: 'Retry same request' }));
 	expect(api.POST.mock.calls[1]).toEqual(api.POST.mock.calls[0]);
 });
 
@@ -125,24 +127,24 @@ test('keeps the answer request identity after response loss and a revision refre
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
-	await user.type(screen.getByLabelText('Your answer'), 'Yes');
+	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
 	await user.click(screen.getByRole('button', { name: 'Save answer' }));
 	await screen.findByRole('alert');
 	const original = api.POST.mock.calls[0][1].body.request_id;
 	await user.click(screen.getByRole('button', { name: 'Refresh decisions' }));
 	await screen.findByRole('button', { name: 'Resume with this answer' });
-	await user.click(screen.getByRole('button', { name: 'Save answer' }));
-	await screen.findByText('Answer saved. The run remains stopped until you resume.');
+	await user.click(screen.getByRole('button', { name: 'Retry same request' }));
+	await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(2));
 	expect(api.POST.mock.calls[1][1].body).toEqual({
 		request_id: original,
-		expected_revision: 3,
+		expected_revision: 2,
 		answer: 'Yes'
 	});
 	// A confirmed submission ends the retry identity; a later intentional answer is new.
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
-	await user.type(screen.getByLabelText('Your answer'), 'Yes');
+	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
 	await user.click(screen.getByRole('button', { name: 'Save answer' }));
 	expect(api.POST.mock.calls[2][1].body.request_id).not.toBe(original);
 });
@@ -315,4 +317,57 @@ test('acknowledged inbox dismissal refreshes the list without re-reviewing the r
 		1
 	);
 	expect(screen.queryByRole('alert')).toBeNull();
+});
+
+test('lost proposal response offers separately reviewed reconciliation after request disappears', async () => {
+	const { decisionIntent, decisionBasis } = await import('./decision-intents.svelte');
+	const native = {
+		...run,
+		state: 'blocked' as const,
+		sdd_snapshot: { provider: 'devkit-spec', spec_dir: 'docs/proposals/PROP-demo' },
+		sdd_progress: { head_sha: 'a'.repeat(40), current: { requests: [] } }
+	};
+	api.POST.mockRejectedValueOnce(new Error('lost response'));
+	await expect(
+		decisionIntent(run.id).submit(
+			'resume',
+			{
+				request_id: 'original-proposal',
+				expected_revision: run.revision,
+				decision: 'accept_plan',
+				head_sha: 'a'.repeat(40)
+			},
+			decisionBasis(native)
+		)
+	).rejects.toThrow();
+	api.GET.mockImplementation(async (path: string) => ({
+		data: path.endsWith('/questions')
+			? { items: [], total_count: 0, run_revision: run.revision }
+			: native
+	}));
+	api.POST.mockResolvedValue({ data: native });
+	render(RunDecisionsDialog, { run: native, onclose: vi.fn(), onchange: vi.fn() });
+	const user = userEvent.setup();
+	await user.click(
+		await screen.findByRole('button', { name: 'Review publication reconciliation' })
+	);
+	await user.click(
+		await screen.findByRole('button', { name: 'Confirm publication reconciliation' })
+	);
+	await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(2));
+	const recoveryBody = api.POST.mock.calls[1][1].body;
+	expect(recoveryBody.request_id).not.toBe('original-proposal');
+	expect(recoveryBody.expected_revision).toBe(run.revision);
+	expect(recoveryBody.decision).toBeUndefined();
+	expect(decisionIntent(run.id).intent?.requestId).toBe('original-proposal');
+});
+
+test('retains last successful observation time after a failed refresh', async () => {
+	render(RunDecisionsDialog, { run, onclose: vi.fn(), onchange: vi.fn() });
+	const observed = await screen.findByText(/Last loaded:/);
+	const prior = observed.textContent;
+	api.GET.mockRejectedValueOnce(new Error('refresh unavailable'));
+	await userEvent.setup().click(screen.getByRole('button', { name: 'Refresh decisions' }));
+	await screen.findByRole('alert');
+	expect(screen.getByText(/Last loaded:/).textContent).toBe(prior);
 });

@@ -141,10 +141,12 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
 - **\*b.** A matching decision receipt is replayed: Hub returns current run state
   without repeating the earlier transition or undoing a later stop; the invocation
   ends with the recorded outcome.
-   Interface: `UX-sdd-decision-history`.
+   Interface: `UX-run-decisions`, `UX-sdd-run`, `UX-sdd-workflow-request`, `UX-sdd-decision-history`.
 
 - **4z.** The inbox subject resolved, changed generation or failed inspection: controls remain disabled and the operator refreshes the list and explicitly reviews the current subject; resumes at step 4.
    Interface: `UX-decision-inbox`, `UX-run-decisions`.
+
+The retained owner review keeps the exact selected decision outcome after its pending request disappears. Check outcome reads the selected durable owner request; Retry same request retains its original input through refresh and temporary close. A reload explains that unacknowledged in-memory intent is unavailable. Recorded authority, matched worker publication, proposal candidates and current Run state remain separate facts in `UX-run-decisions`, `UX-sdd-workflow-request` and `UX-sdd-run`.
 
 ## 4. Postconditions
 
@@ -315,3 +317,10 @@ validation/path matrix and some runtime-failure combinations remain source-inspe
 - **Then** the exact owner subject loads and native controls wait for persisted inspection; an obsolete selection stays disabled until explicit reinspection.
 - **Covers**: 4z and the discovery entry.
 
+
+### CONTINUE-01: Follow recorded native direction without inferring completion
+
+- **Covers**: *b, 3b, 4e.
+- **Given** recorded native direction with uncertain publication or a later stop,
+- **When** the operator checks its exact outcome or explicitly reviews publication reconciliation,
+- **Then** missing proof remains unknown/pending, historical direction does not restore current authority, and separately identified recovery preserves the original intent and later stop guards.

@@ -10,6 +10,7 @@ from app.features.project_management.pipeline_runs.repos import PipelineRunRepos
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.repos import ProjectRepository
+from app.features.project_management.sdd.answer_publication import retain_publications
 from app.features.project_management.sdd.progress import authority_revocation, carry_decisions
 from app.features.project_management.sdd.services import SddService
 from app_layer_base.core.database.transaction import AsyncTransaction
@@ -104,6 +105,7 @@ class DecisionDiscoveryUseCase:
                 != (run.revision, run.epoch, project.revision, project.github_connector_id, project.github_repository)
             ):
                 raise ProjectError(409, "Owner changed during inspection; retry Review")
+            await retain_publications(session, run.id, evidence)
             run.sdd_progress = evidence
             if revocation:
                 run.state, run.pause_reason = "blocked", revocation

@@ -9,6 +9,7 @@ from app.features.project_management.pipeline_runs.discovery_schemas import (
 )
 from app.features.project_management.pipeline_runs.interaction_schemas import ResumeRunRequest
 from app.features.project_management.pipeline_runs.models import PipelineRunState
+from app.features.project_management.pipeline_runs.outcome_schemas import DecisionOutcome, Operation
 from app.features.project_management.pipeline_runs.schemas import (
     AttachPRRequest,
     CompleteAttemptRequest,
@@ -27,6 +28,7 @@ from app.features.project_management.pipeline_runs.schemas import (
 )
 from app.features.project_management.pipeline_runs.usecases.discovery import DecisionDiscoveryUseCase
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
+from app.features.project_management.pipeline_runs.usecases.outcomes import DecisionOutcomeUseCase
 from app.features.project_management.pipeline_runs.usecases.queries import PipelineRunQueries
 from app.features.project_management.pipelines.deps import get_pipeline_observer
 from app.features.project_management.pipelines.services import PipelineObservationService
@@ -70,6 +72,16 @@ async def review_decision(
     observer: Annotated[PipelineObservationService, Depends(get_pipeline_observer)],
 ):
     return await use_case.review(request, observer)
+
+
+@router.get("/{run_id}/decision-outcomes/{request_id}", response_model=DecisionOutcome)
+async def decision_outcome(
+    run_id: UUID,
+    request_id: UUID,
+    operation: Operation,
+    use_case: Annotated[DecisionOutcomeUseCase, Depends()],
+):
+    return await use_case.get(run_id, request_id, operation)
 
 
 @router.get("/{run_id}", response_model=PipelineRunRead)

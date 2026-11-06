@@ -1,3 +1,4 @@
+import { session } from '$lib/stores/session.svelte';
 import { cleanup, render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -7,6 +8,7 @@ import SddWorkflowRequests from './SddWorkflowRequests.svelte';
 const { api } = vi.hoisted(() => ({ api: { POST: vi.fn() } }));
 vi.mock('$lib/api', () => ({ api }));
 afterEach(() => {
+	session.logout();
 	cleanup();
 	api.POST.mockReset();
 });
@@ -54,7 +56,7 @@ test('only eligible choices can be accepted and retries preserve the receipt ide
 		expected_revision: 5,
 		workflow_answer: { request: 'handoff', action: 'accept', value: 'direct' }
 	});
-	await user.click(confirm);
+	await user.click(screen.getByRole('button', { name: 'Retry same request' }));
 	expect(api.POST.mock.calls[1][1].body.request_id).toBe(first.request_id);
 });
 
@@ -198,4 +200,39 @@ test('an exact non-first request is reviewed without substituting the first', as
 test('missing exact request never substitutes another request', () => {
 	render(SddWorkflowRequests, { run, selectedRequestId: 'missing', onchange: vi.fn() });
 	expect(screen.queryByRole('button', { name: 'Confirm choice' })).toBeNull();
+});
+
+test('persisted pending worker answer prevents duplicate submission after reload and failed outcome reads', async () => {
+	api.POST.mockResolvedValue({ data: questionRun });
+	const persisted = {
+		...questionRun,
+		sdd_progress: {
+			...questionRun.sdd_progress,
+			decision_records: [
+				{ kind: 'answer-envelope', operation: { request: 'question:worker-01.q1' } }
+			]
+		}
+	};
+	session.logout();
+	render(SddWorkflowRequests, { run: persisted, onchange: vi.fn() });
+	await userEvent.setup().type(screen.getByLabelText(/Decision/), 'Do not duplicate');
+	expect(
+		(screen.getByRole('button', { name: 'Record answer' }) as HTMLButtonElement).disabled
+	).toBe(true);
+	expect(api.POST).not.toHaveBeenCalled();
+});
+
+test('acknowledged worker answer remains guarded when outcome and owner refresh both fail', async () => {
+	api.POST.mockResolvedValue({ data: questionRun });
+	render(SddWorkflowRequests, {
+		run: questionRun,
+		onchange: vi.fn().mockRejectedValue(new Error('owner refresh failed'))
+	});
+	const user = userEvent.setup();
+	await user.type(screen.getByLabelText(/Decision/), 'Record once only');
+	await user.click(screen.getByRole('button', { name: 'Record answer' }));
+	await screen.findByRole('alert');
+	expect(
+		(screen.getByRole('button', { name: 'Record answer' }) as HTMLButtonElement).disabled
+	).toBe(true);
 });

@@ -29,7 +29,7 @@ capabilities:
 The current wait and Run question form are primary. Native SDD evidence and
 actions occupy linked panels; question/approval histories sit beside them.
 
-- PR run (PR title, state, current revision, wait reason and terminal notice).
+- PR run (PR title, state, current revision, last successful local load time, wait reason and terminal notice).
 - Run question (pending text, saved answer list, application state).
   - Run question (Your answer editor and Save answer action).
   - Run question (reasoned dismissal; inside a disclosure).
@@ -44,6 +44,8 @@ Saving an answer does not resume; selecting a saved answer is a separate action.
 
 Inbox entry supplies an exact question/request identity. Native inspection persists current evidence before controls enable. A changed or resolved selection cannot inherit editors or authority. After an acknowledged mutation the inbox reloads its current cursor page before owner reload; a resolved selection remains disabled. Closing restores the originating row or nearest remaining row and retains filters.
 
+The selected decision outcome is retained beside its owner controls. It identifies the exact displayed request, saved answer text, applied attempt and independent delivery/publication evidence. Current Run/authority/hold remains distinct. Another history selection changes the displayed read subject without replacing an unresolved mutation intent. Parent review owns PR navigation and Close.
+
 ## 3. States
 
 - **populated**: Current decisions are loaded; select the applicable answer or action.
@@ -52,6 +54,13 @@ Inbox entry supplies an exact question/request identity. Native inspection persi
 - **error**: An inline alert explains the failure; Refresh decisions reloads current evidence.
 - **busy**: A save/resume/native decision locks competing actions until it settles.
 - **terminal**: Ended runs retain evidence and history; inspect the PR and register replacement work when needed.
+
+- **saved**: Saved text/identity remains visible; applying a saved answer requires explicit selection.
+- **applied**: The retained attempt is shown separately from delivery and current pause/terminal state.
+- **uncertain**: Outcome unknown offers Check outcome and eligible Retry same request; replacement submission is disabled while original intent exists.
+- **changed**: Changed basis disables old continuation; refresh current context before another action.
+- **acknowledged-refresh-error**: Recorded identity/text survives failed refresh; retry reads rather than replacing the mutation.
+- **publication-pending**: Exact worker answer remains recorded; duplicate answer controls stay disabled without matched publication proof.
 
 ## 4. Interactions
 
@@ -65,6 +74,18 @@ Inbox entry supplies an exact question/request identity. Native inspection persi
 | Resume after inspection | global: recover a stopped run without granting native integration authority | empty | busy |  | `CAP-PR-pull-request-delivery` | The current run is reloaded; no integration approval is implied. |
 | Previous / Next questions | global: inspect retained question history without changing execution | populated | loading |  | `CAP-PR-operator-decisions` | The selected history page loads; older-page actions are disabled. |
 | Close | global: leave decision inspection without submitting further direction | populated | populated | close |  | The underlying PR run list remains visible. |
+
+Last loaded identifies the last successful consistent Run/question read. A failed refresh keeps that prior observation time. Outcome API observation and persisted record times are separate facts.
+
+### Retained outcome actions
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
+| Check outcome / Check saved answer outcome | `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d | uncertain | saved, applied, uncertain | | `CAP-PR-operator-decisions` | Exact selected request is read; missing records/read errors remain unknown. |
+| Retry same request | `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 5b | uncertain | applied, uncertain, changed | | `CAP-SDD-workflow-control` | Original request and payload replay only; current owner guards remain authoritative. |
+| Review publication reconciliation / Confirm publication reconciliation | `UC-decide-sdd-proposal` 5b, `UC-decide-sdd-proposal` 6a, `UC-decide-sdd-proposal` 6b | uncertain | changed, applied, uncertain | `UX-run-decisions` | `CAP-SDD-native-delivery` | Parent review explains possible continuation and uses a separate stable recovery request. |
+
+Embedded panels retain the visible parent context and its Close exit; they add no Back button. Native history owns Check request outcome and sends its exact read subject to the parent outcome region.
 
 ## 5. Evidence
 

@@ -36,6 +36,8 @@ unconfirmed. Human saved requests can expose reconciliation; automatic policy
 decisions instead direct the operator to resume inspection. A published result
 with applied false explicitly states that approval was not applied.
 
+The Check request outcome action selects that exact historical resume request in the parent retained outcome region. Selection changes the displayed read identity without replacing any unresolved mutation intent.
+
 ## 3. States
 
 - **populated**: Inspect recorded decisions, expand history or reveal inspected revisions.
@@ -52,6 +54,12 @@ with applied false explicitly states that approval was not applied.
 | Reconcile decision | `UC-decide-sdd-proposal` 5b, `UC-decide-sdd-proposal` 6a | populated | busy |  | `CAP-SDD-native-delivery` | The exact saved request is retried; history and parent run evidence refresh. |
 | Show all / fewer decisions | global: inspect bounded native approval history | populated | populated |  | `CAP-SDD-workflow-control` | The visible row count changes. |
 | Inspected revision | global: inspect the evidence basis of a retained decision | populated | populated |  | `CAP-SDD-workflow-control` | The decision’s head/base values are disclosed. |
+
+### Retained request outcome
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
+| Check request outcome | `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d | populated | populated | `UX-run-decisions` | `CAP-SDD-workflow-control` | Parent shows the exact historical request outcome; the action performs no continuation. |
 
 ## 5. Evidence
 

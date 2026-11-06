@@ -43,6 +43,8 @@ operator confirms the specific action.
 
 Inbox entry supplies the exact integration/request identity through the parent review. Refreshed persisted evidence is required before controls enable. Existing hold, revision and authority checks remain applicable.
 
+The selected decision outcome is retained beside its owner controls. It identifies the exact displayed request, saved answer text, applied attempt and independent delivery/publication evidence. Current Run/authority/hold remains distinct. Another history selection changes the displayed read subject without replacing an unresolved mutation intent. Parent review owns PR navigation and Close.
+
 ## 3. States
 
 - **populated**: Inspect evidence and use the action offered for the current wait.
@@ -52,6 +54,13 @@ Inbox entry supplies the exact integration/request identity through the parent r
 - **busy**: A decision is applying; competing controls are disabled.
 - **error**: The inline decision error retains the inspected context; refresh through the parent before changing the basis.
 - **terminal**: The completed/failed/canceled execution remains inspectable with no active integration controls.
+
+- **saved**: Saved text/identity remains visible; applying a saved answer requires explicit selection.
+- **applied**: The retained attempt is shown separately from delivery and current pause/terminal state.
+- **uncertain**: Outcome unknown offers Check outcome and eligible Retry same request; replacement submission is disabled while original intent exists.
+- **changed**: Changed basis disables old continuation; refresh current context before another action.
+- **acknowledged-refresh-error**: Recorded identity/text survives failed refresh; retry reads rather than replacing the mutation.
+- **publication-pending**: Exact worker answer remains recorded; duplicate answer controls stay disabled without matched publication proof.
 
 ## 4. Interactions
 
@@ -63,6 +72,15 @@ Inbox entry supplies the exact integration/request identity through the parent r
 | Withdraw approval / Revoke approval | `UC-complete-sdd-workflow` 4c | populated | editing |  | `CAP-SDD-workflow-control` | The editor names withdrawal; refreshed evidence shows the resulting authority. |
 | Stop run / Reject and stop | `UC-complete-sdd-workflow` 4d | populated | editing |  | `CAP-SDD-workflow-control` | The editor warns that already dispatched work may continue; the resulting run state is loaded. |
 | Cancel editor | global: abandon an unsubmitted native decision | editing | populated |  | `CAP-SDD-workflow-control` | The editor closes and its unsubmitted feedback clears. |
+
+### Retained outcome actions
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
+| Check outcome | `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 3d | uncertain | saved, applied, uncertain | | `CAP-PR-operator-decisions` | Exact selected request is read; missing records/read errors remain unknown. |
+| Retry same request | `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 5b | uncertain | applied, uncertain, changed | | `CAP-SDD-workflow-control` | Original request and payload replay only; current owner guards remain authoritative. |
+
+Embedded panels retain the visible parent context and its Close exit; they add no Back button. Native history owns Check request outcome and sends its exact read subject to the parent outcome region.
 
 ## 5. Evidence
 

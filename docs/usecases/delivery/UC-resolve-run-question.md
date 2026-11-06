@@ -14,6 +14,7 @@ entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/api/interactions.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/control.py
   - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
+  - modules/hub/app/features/project_management/pipeline_runs/usecases/outcomes.py
 ---
 
 # [UC-resolve-run-question] Resolve a Run Question
@@ -62,8 +63,7 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
   appending an answer; resumes at step 1 after reinspection.
    Interface: `UX-run-decisions`.
 
-- **2b.** A save response is lost: Hub returns the same answer for an identical
-  request replay; resumes at step 4.
+- **2b.** A save response is lost: the owner review retains its immutable request and shows Outcome unknown. Check outcome reads that request; an explicit Retry same request preserves the original payload. The confirmed saved result resumes at step 4.
    Interface: `UX-run-decisions`.
 
 - **2c.** A recorded request ID is reused for different text: Hub refuses the
@@ -204,3 +204,10 @@ baseline for Auto Hub.
 - **Then** the exact owner subject loads and native controls wait for persisted inspection; an obsolete selection stays disabled until explicit reinspection.
 - **Covers**: 1z and the discovery entry.
 
+
+### CONTINUE-01: Retain explicit outcome and original retry
+
+- **Covers**: 2b, 4d, 5a.
+- **Given** a saved answer or prepared application whose response or refresh failed,
+- **When** the operator checks its original outcome or explicitly retries that request,
+- **Then** the original identity/payload stays bound, a missing record remains unknown, saved text/application remain separate from delivery and a later pause remains current.

@@ -9,6 +9,7 @@ from app.features.project_management.pipeline_runs.requests import build_impleme
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from app.features.project_management.pipeline_runs.usecases.transitions import as_utc, finish_closed_pull
 from app.features.project_management.projects.errors import ProjectError
+from app.features.project_management.sdd.answer_publication import retain_publications
 
 from .decisions import publication_instructions
 from .evidence import in_context
@@ -349,6 +350,7 @@ class SddProgress:
                         else {}
                     ),
                 }
+            await retain_publications(session, run.id, evidence)
             run.sdd_progress = evidence
             plan = evidence.get("plan_decision")
             if plan and evidence["head_sha"] == plan.get("commit_sha"):

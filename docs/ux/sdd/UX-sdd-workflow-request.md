@@ -39,12 +39,21 @@ and Defer with text explaining that these leave the request open.
 
 An inbox selection names the exact request, including a non-first request. Missing requests do not substitute the first request. The parent disables controls until native inspection succeeds; acknowledged submission reloads the inbox before owner reload.
 
+The selected decision outcome is retained beside its owner controls. It identifies the exact displayed request, saved answer text, applied attempt and independent delivery/publication evidence. Current Run/authority/hold remains distinct. Another history selection changes the displayed read subject without replacing an unresolved mutation intent. Parent review owns PR navigation and Close.
+
 ## 3. States
 
 - **populated**: Review the current request and choose an eligible answer.
 - **empty**: No applicable request is rendered; inspect the parent’s next-action panel.
 - **busy**: Recording disables the request controls; wait for refreshed evidence.
 - **error**: The action error remains visible; inspect/refresh the current request before retrying.
+
+- **saved**: Saved text/identity remains visible; applying a saved answer requires explicit selection.
+- **applied**: The retained attempt is shown separately from delivery and current pause/terminal state.
+- **uncertain**: Outcome unknown offers Check outcome and eligible Retry same request; replacement submission is disabled while original intent exists.
+- **changed**: Changed basis disables old continuation; refresh current context before another action.
+- **acknowledged-refresh-error**: Recorded identity/text survives failed refresh; retry reads rather than replacing the mutation.
+- **publication-pending**: Exact worker answer remains recorded; duplicate answer controls stay disabled without matched publication proof.
 
 ## 4. Interactions
 
@@ -55,6 +64,15 @@ An inbox selection names the exact request, including a non-first request. Missi
 | Record answer | `UC-complete-sdd-workflow` 3b | populated | busy |  | `CAP-SDD-workflow-control` | The UI explains that the worker question remains open until the agent publishes its answer envelope. |
 | Confirm choice / Approve | `UC-complete-sdd-workflow` 3c | populated | busy |  | `CAP-SDD-workflow-control` | The selected workflow direction is retained and refreshed evidence is shown. |
 | Decline / Defer decision | `UC-complete-sdd-workflow` 3c | populated | busy |  | `CAP-SDD-workflow-control` | The request remains open; these actions do not stop the run or withdraw integration authority. |
+
+### Retained outcome actions
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
+| Retry same request | `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 5b | uncertain | applied, uncertain, changed | | `CAP-SDD-workflow-control` | Original request and payload replay only; current owner guards remain authoritative. |
+| Reconcile publication | `UC-decide-sdd-proposal` 5b, `UC-decide-sdd-proposal` 6a, `UC-decide-sdd-proposal` 6b | uncertain | changed, applied, uncertain | `UX-run-decisions` | `CAP-SDD-native-delivery` | Opens the parent recovery review; confirmation and the separate stable request belong to `UX-run-decisions`. |
+
+Embedded panels retain the visible parent context and its Close exit; they add no Back button. Native history owns Check request outcome and sends its exact read subject to the parent outcome region.
 
 ## 5. Evidence
 

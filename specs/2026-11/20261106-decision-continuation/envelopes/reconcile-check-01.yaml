@@ -1,0 +1,30 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T00:08:00.223690Z'
+status: completed
+summary: round 1; REVISE missing native-history UX target, observation-time disclosure and surface interaction ownership
+findings:
+- issue: Missing native history outcome UX target
+  evidence: SddDecisionHistory.svelte112-122 and reconcile.md
+  failure_condition: Selecting historical native outcome lacks owning UX reflection
+  suggested_action: Update UX-sdd-decision-history and add reconcile target
+  resolution: open
+  severity: P1
+- issue: Retained screen draft observation time is absent
+  evidence: spec.md206 and RunDecisionsDialog.svelte
+  failure_condition: Current run context has no last-loaded disclosure
+  suggested_action: Record/render local timestamp only after consistent successful load; preserve on failure and add test
+  resolution: open
+  severity: P1
+- issue: Repeated interaction tables claim controls outside their rendered surfaces
+  evidence: UX-run-decisions,UX-sdd-run,UX-sdd-workflow-request
+  failure_condition: Reader cannot locate copied control in panel
+  suggested_action: Tailor tables; parent owns confirmation and embedded panels retain parent context/Close
+  resolution: open
+  severity: P2
+checks: {}
+diff_scope:
+  base: 7035c33e67105c2ca5646e46db12960bf5913156
+  head: fb0fd23dfaf66a46f4e307f6b652d639efde949c

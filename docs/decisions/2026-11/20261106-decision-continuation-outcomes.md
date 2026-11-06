@@ -1,16 +1,15 @@
 ---
-id: PADR-decision-continuation-outcomes
+id: ADR-decision-continuation-outcomes
 title: Expose owner outcomes beside explicit continuation
 summary: "For decision follow-through, we expose owner-backed outcomes beside explicit continuation, to preserve authority and retry identity, accepting a typed read-model extension."
-proposal: PROP-decision-continuation
-# supersedes: [ADR-<slug>]   # an ADR this decision replaces, wholly or in part; name the replaced clauses in Decision Outcome
-status: draft
+proposal: SPEC-decision-continuation
+status: accepted
 created_at: 2026-11-05
 ---
 
-# [PADR-decision-continuation-outcomes] Expose owner outcomes beside explicit continuation
+# [ADR-decision-continuation-outcomes] Expose owner outcomes beside explicit continuation
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Date**: 2026-11-05
 
 ---
@@ -44,4 +43,4 @@ The interface can retain a selected result after its pending row disappears. A m
 
 ## 6. Confirmation
 
-Review only during Planning. Development verifies proposal E1–E11 with exact-request API, owner concurrency/publication and UI recovery tests, and reconciles the restating capability sections before acceptance of implementation. No application checks or deployed behavior are claimed here.
+`CAP-PR-operator-decisions` exact owner outcomes, `CAP-SDD-workflow-control` outcome disclosure and `CAP-SDD-native-delivery` decision recovery restate this decision. `modules/hub/tests/integration/features/project_management/pipeline_runs/test_outcomes.py` checks exact scoped lookup, historical publication and candidate evidence. The owner UI integration tests check immutable replay, independent recovery identity and acknowledged refresh errors. These controlled tests do not establish live provider/deployment behavior.

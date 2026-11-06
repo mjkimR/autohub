@@ -1,3 +1,4 @@
+import { session } from '$lib/stores/session.svelte';
 import { cleanup, render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -26,7 +27,10 @@ beforeEach(() => {
 	api.POST.mockReset();
 	api.GET.mockReset().mockResolvedValue({ data: [] });
 });
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	session.logout();
+});
 
 test('withheld automatic Planning requires an explicit proposal approval', async () => {
 	const user = userEvent.setup();
@@ -168,7 +172,7 @@ test('approval binds the inspected run revision and reuses identity after a lost
 	const first = api.POST.mock.calls[0][1].body;
 	expect(first).toMatchObject({ expected_revision: 3, decision: 'approve' });
 	await screen.findByRole('alert');
-	await user.click(screen.getByRole('button', { name: 'Approve integration' }));
+	await user.click(screen.getByRole('button', { name: 'Retry same request' }));
 	expect(api.POST.mock.calls[1][1].body.request_id).toBe(first.request_id);
 	expect(screen.getByRole('link').getAttribute('href')).toContain(`/tree/${'a'.repeat(40)}/specs/`);
 });

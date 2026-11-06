@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { SvelteMap } from 'svelte/reactivity';
+	import DecisionOutcome from './DecisionOutcome.svelte';
+	import { decisionIntent, decisionBasis } from './decision-intents.svelte';
 	import SddRunPanel from './SddRunPanel.svelte';
 	import SddDecisionHistory from './SddDecisionHistory.svelte';
 	import DecisionQuestion from './DecisionQuestion.svelte';
@@ -40,8 +42,27 @@
 	let error = $state('');
 	let busy = $state(false);
 	let decisionBusy = $state(false);
-	let locked = $derived(busy || decisionBusy);
+	let recoveryOpen = $state(false);
+	let recoveryBasis = $state('');
+	let recovery = $derived(decisionIntent(run.id, true));
+	async function reviewRecovery() {
+		await load(false);
+		recoveryBasis = head;
+		recoveryOpen = true;
+	}
+	async function reconcilePublication() {
+		await recovery.submit(
+			'resume',
+			{ request_id: crypto.randomUUID(), expected_revision: revision },
+			recoveryBasis
+		);
+		await afterMutation();
+	}
+	let review = $derived(decisionIntent(run.id));
+	let head = $derived(decisionBasis(current));
+	let locked = $derived(busy || decisionBusy || review.unresolved || recovery.unresolved);
 	let ready = $state(false);
+	let loadedAt = $state('');
 	let saved = $state('');
 	let pending = $derived(
 		questions.find(
@@ -87,25 +108,29 @@
 				'Selected question is unavailable'
 			);
 			if (!questions.some((q) => q.id === selected.id)) questions = [selected, ...questions];
-			if (!['open', 'answered'].includes(selected.state))
-				throw new Error('Selected question has resolved. Review the current list.');
 		}
 		total = data.total_count;
 		revision = data.run_revision;
 		current = latest;
+		loadedAt = new Date().toLocaleString();
 		ready = !selection || inspectSelection || (selection.kind === 'run-question' && !!pending);
 	}
 	async function afterMutation() {
 		onchange();
 		if (!selection) {
-			await load();
+			try {
+				await load();
+			} catch {
+				ready = false;
+				error = 'Recorded. Refresh failed; retry read.';
+			}
 			return;
 		}
 		try {
 			await load(false);
 		} catch {
 			ready = false;
-			saved ||= 'Decision recorded. Refresh the inbox to review its current subject.';
+			saved ||= 'Decision recorded. Refresh failed. Retry read to review its current subject.';
 		}
 	}
 	async function perform(action: () => Promise<void>) {
@@ -131,41 +156,29 @@
 			request_id: requestId(key),
 			expected_revision: revision
 		};
-		if (pending) {
-			responseData(
-				await api.POST('/api/v1/pipeline-runs/{run_id}/questions/{question_id}/answers', {
-					params: { path: { run_id: run.id, question_id: pending.id } },
-					body: { ...request, answer: text }
-				}),
-				'Unable to save answer'
-			);
-			saved = 'Answer saved. The run remains stopped until you resume.';
-		} else {
-			responseData(
-				await api.POST('/api/v1/pipeline-runs/{run_id}/questions', {
-					params: { path: { run_id: run.id } },
-					body: { ...request, question: text }
-				}),
-				'Unable to record question'
-			);
-			saved = 'Question recorded. Hub progression is blocked.';
-		}
+		await review.submit(
+			pending ? 'answer' : 'question',
+			pending ? { ...request, answer: text } : { ...request, question: text },
+			head,
+			pending?.id
+		);
+		saved = pending
+			? 'Answer saved. The run remains stopped until you resume.'
+			: 'Question recorded. Hub progression is blocked.';
 		requests.delete(key);
 		text = '';
 		await afterMutation();
 	}
 	async function resume(answerId?: string) {
 		if (decisionBusy || !ready || offset !== 0) return;
-		responseData(
-			await api.POST('/api/v1/pipeline-runs/{run_id}/resume', {
-				params: { path: { run_id: run.id } },
-				body: {
-					request_id: requestId(`resume:${revision}:${answerId ?? ''}`),
-					expected_revision: revision,
-					answer_id: answerId
-				}
-			}),
-			'Unable to resume; refresh and inspect the current run before changing your request'
+		await review.submit(
+			'resume',
+			{
+				request_id: crypto.randomUUID(),
+				expected_revision: revision,
+				answer_id: answerId
+			},
+			head
 		);
 		await afterMutation();
 		saved = 'Resume recorded. Agent delivery may still be pending.';
@@ -210,11 +223,16 @@
 			<DialogDescription
 				>Review the evidence and choose the next step for this run.</DialogDescription
 			>
+			{#if loadedAt}<p class="mt-2 text-xs text-muted-foreground">Last loaded: {loadedAt}</p>{/if}
 			<div class="mt-3 flex flex-wrap items-center gap-2">
 				<Button variant="outline" size="sm" href={run.pull_url} target="_blank" rel="noreferrer"
 					><ExternalLink class="size-3.5" />Inspect pull request</Button
 				>
-				<Button variant="ghost" size="sm" disabled={locked} onclick={() => perform(() => load())}
+				<Button
+					variant="ghost"
+					size="sm"
+					disabled={busy || decisionBusy}
+					onclick={() => perform(() => load())}
 					><RefreshCw class={busy ? 'size-3.5 animate-spin' : 'size-3.5'} />Refresh decisions</Button
 				>
 			</div>
@@ -240,6 +258,40 @@
 				</p>{/if}
 			<div class="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_280px]">
 				<div class="min-w-0 space-y-5">
+					<DecisionOutcome
+						runId={run.id}
+						{head}
+						{revision}
+						{terminal}
+						onrefresh={() => load(false)}
+						onreconcile={reviewRecovery}
+					/>
+					{#if recoveryOpen}<section
+							class="space-y-2 rounded-lg border p-3"
+							aria-label="Publication reconciliation"
+						>
+							<p>
+								Current evidence reviewed. Confirm inspection and possible continuation using a
+								separate recovery request.
+							</p>
+							<Button
+								disabled={busy ||
+									terminal ||
+									head !== recoveryBasis ||
+									recovery.unresolved ||
+									!['paused', 'blocked'].includes(current.state)}
+								onclick={() => perform(reconcilePublication)}
+								>Confirm publication reconciliation</Button
+							>
+							<DecisionOutcome
+								recovery={true}
+								runId={run.id}
+								{head}
+								{revision}
+								{terminal}
+								onrefresh={() => load(false)}
+							/>
+						</section>{/if}
 					{#if current.pause_reason}
 						<div class="rounded-xl border bg-muted/40 p-4">
 							<p
@@ -261,6 +313,7 @@
 							question={pending}
 							actionable={!terminal && offset === 0}
 							disabled={locked || !ready}
+							onoutcome={(id) => void perform(() => review.check('answer', id))}
 							onresume={(id) => void perform(() => resume(id))}
 						/>
 					{/if}
@@ -303,6 +356,10 @@
 					{/if}
 					{#if current.sdd_snapshot}
 						<SddRunPanel
+							showOutcome={false}
+							onreconcile={async () => {
+								await perform(reviewRecovery);
+							}}
 							run={current}
 							disabled={locked || !ready || offset !== 0}
 							questionPending={!!pending}
@@ -371,7 +428,13 @@
 								<summary class="cursor-pointer text-sm leading-relaxed break-words"
 									>{question.question}</summary
 								>
-								<div class="mt-3"><DecisionQuestion {question} onresume={() => {}} /></div>
+								<div class="mt-3">
+									<DecisionQuestion
+										{question}
+										onresume={() => {}}
+										onoutcome={(id) => void perform(() => review.check('answer', id))}
+									/>
+								</div>
 							</details>{/each}
 						{#if total > 20}<div class="flex items-center justify-between gap-2">
 								<Button

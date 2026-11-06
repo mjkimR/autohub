@@ -7,12 +7,14 @@
 		question,
 		actionable = false,
 		disabled = false,
-		onresume
+		onresume,
+		onoutcome = () => {}
 	}: {
 		question: components['schemas']['QuestionRead'];
 		actionable?: boolean;
 		disabled?: boolean;
 		onresume: (id: string) => void;
+		onoutcome?: (id: string) => void;
 	} = $props();
 </script>
 
@@ -36,6 +38,9 @@
 				<p class="text-xs text-muted-foreground">
 					{answer.actor} · {new Date(answer.created_at).toLocaleString()}
 				</p>
+				<Button size="sm" variant="ghost" onclick={() => onoutcome(answer.id)}
+					>Check saved answer outcome</Button
+				>
 				{#if answer.applied_attempt_id}
 					<span class="flex items-center gap-1 text-xs text-muted-foreground"
 						><Check class="size-3" />Applied to an execution attempt</span

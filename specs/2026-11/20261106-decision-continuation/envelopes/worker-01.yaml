@@ -1,0 +1,23 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T00:12:39.087786Z'
+status: completed
+summary: Completed both tasks and AC01-11; exact owner outcome lookup, immutable session-bound intent, retained publication correlation and reviewed recovery implemented; code review4/reconcile2 pass;12targets resolved. Ready for Host integration
+findings: []
+assumptions:
+- Codex isolation emulated with absolute worktree paths, fixed refs, per-operation escalations and committed-range audit
+unverified_areas:
+- 38 isolated native CLI tests skipped without dedicated runtime; no browser/live deployment verification
+checks:
+  sync_start: PASS exit=0
+  tests: PASS affected SQLite230; focused SQLite6/PostgreSQL6; pipelineUI56;38 isolated CLI skips
+  build: PASS just check backend/SDK/Svelte and production build
+  lint: PASS just lint; cumulative rules0errors/warnings and generated freshness
+  scope: PASS declared owner paths plus Host-authorized exact ADR Confirmation
+  outcome: PASS exact receipt and history recovery available after change; no timing claim or separate baseline measurement needed for functional scenarios
+diff_scope:
+  base: a182d046a9e98938d6f82d83c20479357c8c9991
+  head: 484d241675e9eeac994392527cdf0d4a2865cb76
+activity_effort: high

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { decisionIntent } from './decision-intents.svelte';
 	import { api } from '$lib/api';
 	import { Button } from '$lib/components/ui/button';
 	import { History, RefreshCw } from '@lucide/svelte';
@@ -108,6 +109,17 @@
 							: String(row.actor || 'Actor unavailable')}
 					</p>
 					<time class="block text-xs text-muted-foreground">{date(row.created_at)}</time>
+					<Button
+						size="sm"
+						variant="ghost"
+						onclick={async () => {
+							try {
+								await decisionIntent(runId).check('resume', String(row.id));
+							} catch {
+								/* outcome error retained */
+							}
+						}}>Check request outcome</Button
+					>
 					<SddPublicationStatus
 						{row}
 						{runId}

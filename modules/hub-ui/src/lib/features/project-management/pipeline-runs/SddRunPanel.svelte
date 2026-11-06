@@ -1,6 +1,8 @@
 <script lang="ts">
+	import DecisionOutcome from './DecisionOutcome.svelte';
+	import { decisionIntent, decisionBasis } from './decision-intents.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
-	import { api, type components } from '$lib/api';
+	import type { components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -20,6 +22,8 @@
 	let {
 		run,
 		onchange,
+		showOutcome = true,
+		onreconcile = () => {},
 		disabled = false,
 		questionPending = false,
 		selectedRequestId,
@@ -27,6 +31,8 @@
 	}: {
 		run: components['schemas']['PipelineRunRead'];
 		onchange: () => void | Promise<void>;
+		showOutcome?: boolean;
+		onreconcile?: () => void | Promise<void>;
 		disabled?: boolean;
 		questionPending?: boolean;
 		selectedRequestId?: string;
@@ -91,22 +97,31 @@
 	}
 	const ids = new SvelteMap<string, string>();
 	async function decide(decision: 'approve' | 'revise' | 'reject' | 'revoke') {
-		if (busy || disabled || questionPending) return;
+		if (
+			busy ||
+			disabled ||
+			decisionIntent(run.id).competingUnresolved ||
+			questionPending ||
+			decisionIntent(run.id).unresolved
+		)
+			return;
 		const intent = JSON.stringify([run.id, run.revision, decision, feedback]);
 		if (!ids.has(intent)) ids.set(intent, crypto.randomUUID());
 		busy = true;
 		onbusychange(true);
 		error = '';
 		try {
-			const result = await api.POST('/api/v1/pipeline-runs/{run_id}/resume', {
-				params: { path: { run_id: run.id } },
-				body: {
+			await decisionIntent(run.id).submit(
+				'resume',
+				{
 					request_id: ids.get(intent)!,
 					expected_revision: run.revision,
 					decision,
 					feedback
-				}
-			});
+				},
+				decisionBasis(run)
+			);
+			const result = { error: null };
 			if (result.error) throw new Error(apiErrorMessage(result.error, 'Decision was not applied'));
 			await onchange();
 			mode = null;
@@ -120,9 +135,17 @@
 	}
 </script>
 
+{#if showOutcome}<DecisionOutcome
+		runId={run.id}
+		head={decisionBasis(run)}
+		revision={run.revision}
+		{terminal}
+		onrefresh={onchange}
+	/>{/if}
 <SddNextAction {run} />
 {#if spec.startsWith('docs/proposals/PROP-')}<SddPlanningEvidence {progress} {evidenceUrl} />{/if}
 <SddWorkflowRequests
+	{onreconcile}
 	{selectedRequestId}
 	{run}
 	{onchange}
@@ -290,7 +313,10 @@
 							class="min-h-24 w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm leading-relaxed focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
 							maxlength="8000"
 							bind:value={feedback}
-							disabled={busy || disabled || questionPending}
+							disabled={busy ||
+								disabled ||
+								decisionIntent(run.id).competingUnresolved ||
+								questionPending}
 							placeholder={mode === 'revise'
 								? 'Describe the changes and what should stay the same.'
 								: 'Add context for the decision history.'}></textarea></label
@@ -323,7 +349,10 @@
 			{:else}
 				<div class="flex flex-wrap gap-2">
 					{#if canApprove}<Button
-							disabled={busy || disabled || questionPending}
+							disabled={busy ||
+								disabled ||
+								decisionIntent(run.id).competingUnresolved ||
+								questionPending}
 							onclick={() => void decide('approve')}
 							><ShieldCheck class="size-4" />{busy
 								? 'Approving…'
@@ -333,7 +362,10 @@
 						>{/if}
 					{#if waiting}<Button
 							variant="outline"
-							disabled={busy || disabled || questionPending}
+							disabled={busy ||
+								disabled ||
+								decisionIntent(run.id).competingUnresolved ||
+								questionPending}
 							onclick={() => void choose('revise')}>Request changes</Button
 						>{/if}
 				</div>
@@ -344,12 +376,18 @@
 								size="sm"
 								variant="ghost"
 								class="text-destructive"
-								disabled={busy || disabled || questionPending}
+								disabled={busy ||
+									disabled ||
+									decisionIntent(run.id).competingUnresolved ||
+									questionPending}
 								onclick={() => void choose('reject')}>Stop run</Button
 							>{/if}{#if approval.actor}<Button
 								size="sm"
 								variant="outline"
-								disabled={busy || disabled || questionPending}
+								disabled={busy ||
+									disabled ||
+									decisionIntent(run.id).competingUnresolved ||
+									questionPending}
 								onclick={() => void choose('revoke')}>Withdraw approval</Button
 							>{/if}
 					</div>

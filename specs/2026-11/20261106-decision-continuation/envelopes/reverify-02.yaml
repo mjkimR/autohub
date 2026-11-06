@@ -1,0 +1,32 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-06T00:02:01.908637Z'
+status: completed
+review: review-02.yaml
+summary: Reproduced and fixed timeout422 classification, recovery concurrency and acknowledged worker guard failures; fresh review required
+findings:
+- issue: Generic HTTP 4xx can follow uncertain proposal publication
+  evidence: decision-intents.svelte.ts and plan_decisions.py runner timeout422
+  failure_condition: Push timeout after candidate preparation
+  suggested_action: Classify only proven pre-effect validation as definitive
+  resolution: resolved
+  severity: P1
+- issue: Unresolved recovery fails to block original submissions
+  evidence: RunDecisionsDialog.svelte locked and DecisionIntent.submit
+  failure_condition: Lost recovery response after durable history selection without original intent
+  suggested_action: Shared run/session mutation guard across original and recovery intents
+  resolution: resolved
+  severity: P1
+- issue: Standalone worker answer ignores acknowledged intent when both reads fail
+  evidence: SddWorkflowRequests.svelte awaitingPublication
+  failure_condition: Successful answer POST then failed outcome and owner refresh
+  suggested_action: Include exact acknowledged worker-answer intent in pending guard
+  resolution: resolved
+  severity: P2
+checks:
+  tests: PASS 55UI; focused red tests reproduced before fixes
+diff_scope:
+  base: 88733bff973b60f0f0f1cf09f9084326a08bb363
+  head: 6322fe371c74e0a626f25e37a165a8df71a0fc09
