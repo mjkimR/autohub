@@ -2,7 +2,7 @@
 id: SPEC-work-item-replacement
 title: Link replacement work to original Work Items
 summary: Record explicit replacement relationships and dependency satisfaction decisions without rewriting original Work Plan outcomes.
-status: planned
+status: in-progress
 created: 2026-11-06
 depends_on:
   - SPEC-work-item-retry
