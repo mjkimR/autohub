@@ -2,27 +2,17 @@
 id: PLAN-mcp-delivery-tools
 spec: SPEC-mcp-delivery-tools
 ---
-<!-- devkit:skeleton -->
 
-# Technical Plan: `SPEC-mcp-delivery-tools` Expose delivery decisions and recovery through MCP
+# Technical plan: `SPEC-mcp-delivery-tools`
 
 ## 1. Architecture Overview & Impact
-- Target Area: capabilities/mcp/
-- Target Docs Blueprint: `PROP-mcp-delivery-tools-target` (Living Spec targets for this plan and reconcile.md)
+
+Explicit MCP adapters call existing UseCases using machine actor identity. No new owner transactions or persistence. `ADR-mcp-delivery-owner-adapters` supplies the decision; `PROP-mcp-delivery-tools-target` supplies contract targets.
 
 ## 2. Component Breakdown & Interface Contracts
 
-### Planned Boundaries:
-- `modules/hub/app/mcp/`
-- `modules/hub/tests/integration/mcp/`
-- `modules/hub/tests/unit/mcp/`
-- `docs/capabilities/mcp/CAP-MCP-tool-access.md`
-- `docs/usecases/mcp/UC-connect-hub-tools.md`
-
-### Excluded Boundaries:
-- `docs/operations/`
-- `.github/`
-- `packages/sdk/`
+Separate decision, batch, recovery and replacement adapters with typed allowlisted views. Registration uses existing scope/risk enforcement. Reuse strict command models. No raw owner maps cross the output boundary. Bounded nested results disclose counts and omissions.
 
 ## 3. Verification & Test Plan
-- <commands and checks that verify the acceptance criteria>
+
+Real handler MCP tests cover scopes, machine replay, exact lookup and owner refusals. Unit serialization probes inject private raw fields and oversized collections. Existing MCP/auth and owner regression suites, `just lint` and `just check` preserve compatibility. Baseline uses current head with the new registrations omitted; existing tool inventory remains unchanged.

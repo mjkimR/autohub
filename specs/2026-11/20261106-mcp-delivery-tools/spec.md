@@ -1,14 +1,14 @@
 ---
 id: SPEC-mcp-delivery-tools
 title: Expose delivery decisions and recovery through MCP
-summary: Expose decision discovery, request outcomes, SDD batch controls and Work Item recovery through scoped MCP tools that reuse their existing business owners.
+summary: "Expose decision discovery, request outcomes, SDD batch controls and Work Item recovery through scoped MCP tools that reuse their existing business owners."
 status: planned
 created: 2026-11-06
-related_capabilities: []
-related_usecases: []
+related_capabilities: [CAP-MCP-tool-access]
+related_usecases: [UC-connect-hub-tools]
 workflow: sdd-spec-feature
 ---
-<!-- devkit:skeleton -->
+
 
 # [SPEC-mcp-delivery-tools] Expose delivery decisions and recovery through MCP
 
@@ -26,18 +26,62 @@ Expose those owners through a deliberately bounded machine surface. Source inspe
 
 ## 2. User Stories
 
-- **US-1**: As a developer/agent, I want to implement Expose delivery decisions and recovery through MCP so that system capabilities are extended.
+- **US-1**: As a conversational operator, discover exact decisions and inspect safe owner evidence.
+- **US-2**: As an authenticated machine, invoke existing batch/recovery/replacement commands without bypassing owner authority.
 
 ## 3. Non-Goals
 
-1. **Scope Excluded**: <what this change will not do>
+1. **Scope Excluded**: new approval/batch-creation tools, owner semantics, persistence, frontend, provider and SDK changes.
 
 ## 4. Acceptance Criteria & Behavioral Contracts
 
-### [AC-01] <scenario>
-- **Given** <precondition>
-- **When** <action>
-- **Then** <expected result>
+### [AC-01] Scopes and compatibility
+
+- **Given** read-only, write-only, revoked and wrong-endpoint credentials.
+- **When** new and old tools are discovered or invoked.
+- **Then** existing transport/endpoint rules hold; inspection requires WRITE; refused handlers have no effects.
+
+### [AC-02] Exact review
+
+- **Given** exact key/fingerprint and changing owner basis.
+- **When** review runs.
+- **Then** owner CAS/refusals hold and no replacement subject or authority is submitted.
+
+### [AC-03] Exact outcome
+
+- **Given** different run/operation request namespaces or missing evidence.
+- **When** outcomes are read.
+- **Then** identity never aliases, unknown remains unknown and reads make no external calls.
+
+### [AC-04] Replay identity
+
+- **Given** lost command responses.
+- **When** same or changed machine/identity/payload replays.
+- **Then** same requests return retained owner evidence; changed requests conflict without duplicate execution.
+
+### [AC-05] Batch ownership
+
+- **Given** stale revisions, retired or unsettled claims and stopped work.
+- **When** future admission is controlled.
+- **Then** owner fences hold and admitted work is not canceled or approved.
+
+### [AC-06] Recovery and replacement
+
+- **Given** ineligible recovery or replacement role/binding/merge/consumption guards.
+- **When** a machine invokes a command.
+- **Then** owner results and exact edge semantics remain authoritative.
+
+### [AC-07] Bounded disclosure
+
+- **Given** raw owner snapshots containing private text and oversized collections.
+- **When** views serialize.
+- **Then** only allowlisted fields with count/omission disclosure appear.
+
+### [AC-08] Prior tools
+
+- **Given** existing MCP clients.
+- **When** prior tools are called.
+- **Then** names schemas scope requirements and structured owner error behavior remain compatible.
 
 ## 5. Carried Proposal Notes
 
