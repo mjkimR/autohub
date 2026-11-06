@@ -19,13 +19,16 @@ targets:
   - file: docs/steering/ux-objects.md
   - file: docs/steering/glossary.md
   - file: docs/architecture/ARCH-06-execution.md
+  - file: docs/capabilities/delivery/CAP-PR-operator-decisions.md
+  - file: docs/usecases/access/UC-access-hub.md
+  - file: docs/ux/access/UX-sign-in.md
 ---
 
 # [Blueprint] Decision notifications
 
 ## 1. Capability and decision plan
 
-Extend `CAP-NOTIFY-operator-notifications` with opt-in channel-owned Decision subscriptions, severity/project/kind composition, bounded discovery and digest construction, immutable message membership, per-generation deduplication and accepted/refused/unknown transport evidence. Narrow its existing durable-queue exclusion to retain the legacy generic notice behavior while allowing only these decision-specific receipts. `PADR-decision-notice-delivery` is the proposed cross-feature decision. Owner mutation/approval contracts remain unchanged.
+Extend `CAP-NOTIFY-operator-notifications` with opt-in channel-owned Decision subscriptions, severity/project/kind composition, bounded discovery and digest construction, immutable message membership, per-generation deduplication and accepted/refused/unknown transport evidence. Narrow its existing durable-queue exclusion to retain the legacy generic notice behavior while allowing only these decision-specific receipts. `PADR-decision-notice-delivery` is the proposed cross-feature decision. Owner mutation/approval contracts remain unchanged. Extend `CAP-PR-operator-decisions` only with the bounded exact key/fingerprint selection read; existing review/inspection/CAS remains authoritative. Extend `UC-access-hub` and `UX-sign-in` only with the validated notice-return navigation, not authentication policy.
 
 `ARCH-06-execution` places bounded fair notification work inside shared maintenance and isolates transport failures from existing execution work. The notification feature reads existing owner discovery and adds no evaluator/controller. Add Decision subscription to the glossary as opt-in project/kind/delivery settings for one global Notification channel; it excludes the owner decision and authenticated identity of Telegram chat participants.
 
@@ -36,12 +39,12 @@ Extend `UC-configure-operator-notifications` after its existing channel save/tes
 5. The operator opens Decision notices for a channel and selects project scope, kinds, immediate or 15-minute digest, and the Hub origin. Screen: UX-decision-subscription.
 6. The operator reviews effective channel severity/enablement and trusted-destination disclosure, then saves the subscription. Screen: UX-decision-subscription; parent `UX-notifications` shows the persisted summary.
 
-Add extensions 5a unavailable/deleted project, 6a stale revision, 6b unknown save response, and 6c destination change requiring review/re-enable. Invalid/stale requests preserve editable settings and never silently adopt new revisions. An uncertain save retains request UUID/payload in the open editor; Check saved settings reads current data, and Retry same save reuses the original command. Acknowledged save plus refresh failure stays acknowledged with a Refresh failed disclosure. Saving does not require a live Telegram test.
+Add extensions 5a unavailable/deleted project, 6a stale revision, 6b unknown save response, and 6c destination change requiring review/re-enable. Invalid/stale requests preserve editable settings and never silently adopt new revisions. An uncertain save retains request UUID/payload in the open editor; Check save outcome reads the exact actor-bound channel/operation/request receipt and shows original result separately from current settings; current settings alone do not prove the old request result, and Retry same save reuses the original command. Acknowledged save plus refresh failure stays acknowledged with a Refresh failed disclosure. Saving does not require a live Telegram test.
 
 Add UC-receive-decision-notice, with capabilities `CAP-NOTIFY-operator-notifications`, `CAP-PR-operator-decisions`, `CAP-SDD-native-delivery` and `CAP-SDD-workflow-control` as applicable. Reciprocal capability usecase links are required when creating this use case.
 
-1. The operator receives a minimal observed decision notice at the trusted destination and follows its exact review link. Screen: `UX-decision-inbox` after existing `UX-sign-in` if required.
-2. Hub authenticates, validates the selection and performs exact owner review, with the native inspection/CAS effects already owned by existing decision capabilities. Screen: `UX-decision-inbox`.
+1. The operator receives a minimal observed decision notice at the trusted destination and follows its exact review link. Screen: `UX-decision-inbox` after existing `UX-sign-in` if required. Password flow retains the query; the Google departure retains only a validated key/fingerprint for30minutes in tab sessionStorage, consumed on approved login and restored only to same-origin `/decisions`. Cancellation/pending/rejection/failed exchange cannot open review; expired or unavailable storage offers Reopen original notice.
+2. Hub authenticates, resolves the exact projection entry by key/fingerprint without pagination scans, then performs exact owner review, with the native inspection/CAS effects already owned by existing decision capabilities. Screen: `UX-decision-inbox`.
 3. The operator sees the selected owner review and chooses an explicit permitted next action under its existing use case. Screens: `UX-run-decisions`, `UX-sdd-workflow-request`, `UX-sdd-run` as appropriate; their controls and authority remain unchanged.
 4. The operator can inspect notice delivery evidence separately and explicitly review a failed/unknown resend. Screen: UX-decision-notice-history.
 
@@ -70,7 +73,7 @@ Maintain trusted destinations and see whether decision notices are effectively e
 #### Content
 
 - Notification channel: retain existing name, chat, severity, enabled state, Send test/Edit/Enable/Delete.
-- Decision subscription summary below channel facts: Off by default; selected-project count or All current and future projects; kind selection; immediate or 15-minute digest; last loaded time.
+- Decision subscription summary below channel facts: Off by default; selected-project count or All current and future projects; kind selection; immediate or 15-minute digest; last loaded time. Immediate eligibility is next maintenance; digest eligibility is after15minutes and a later pass, with no delivery deadline.
 - Effective delivery: Channel disabled or Severity excludes warning if those gates block the enabled subscription. Credential/chat changes show Review destination before re-enabling.
 - Decision notices: opens subscription dialog.
 - Notice history: opens history dialog with accepted/failed/unknown count from bounded current read, not a claim about every historical record.
@@ -101,11 +104,11 @@ Save which observed decisions this trusted channel may disclose and when. Facts 
 The settings form is primary above its disclosure and Save/Cancel controls.
 
 - Notification channel: read-only name/chat, enabled flag and minimum severity.
-- Decision subscription: enabled toggle (initial off); selected projects chooser or explicit All current and future projects; six decision-kind choices; immediate or 15-minute digest; Hub origin field and constructed example link.
-- Effective outcome: current disabled/severity blocker, observed-not-live wording, existing matching pending decisions become eligible on enable/filter expansion, and a 10-entry/3,500-character batch cap.
+- Decision subscription: enabled toggle (initial off); selected projects chooser or explicit All current and future projects; six decision-kind choices; immediate or 15-minute digest; adjacent helper explains Immediate becomes eligible on the next shared-maintenance pass, digest after15minutes on a subsequent pass, and neither guarantees a delivery deadline; Hub origin field and constructed example link.
+- Effective outcome: current disabled/severity blocker, observed-not-live wording, existing matching pending decisions become eligible on enable/filter expansion, a 10-entry/3,500-character batch cap and the same next-maintenance/no-deadline timing summary before Save.
 - Trust confirmation when enabling or changing destination/scope: The chat is trusted for selected project names, run/PR identities and decision metadata. Participants still need Hub sign-in to review. No question/answer content is sent.
 - Future-admission disclosure: stopping or changing notices cannot recall an admitted external message.
-- Save status: saved revision/time; unknown save request ID and Check saved settings / Retry same save when applicable.
+- Save status: saved revision/time and reviewed destination generation; unknown save request ID and Check save outcome / Retry same save when applicable.
 
 #### States
 
@@ -113,7 +116,7 @@ The settings form is primary above its disclosure and Save/Cancel controls.
 - **populated**: edit settings, review disclosure, Save or Cancel.
 - **saving**: lock mutation controls for this request; retain immutable UUID/payload until acknowledgement.
 - **conflict**: retain edits and show changed revision; Refresh for review clears confirmation before fresh save.
-- **unknown**: retain original request and disable changed-input save; Check saved settings or Retry same save; Close preserves unresolved intent in the active settings session. A full reload cannot claim recovery of an unacknowledged local payload; read saved settings before a new reviewed command.
+- **unknown**: retain original request and disable changed-input save; Check save outcome or Retry same save; Close preserves unresolved intent in the active settings session. A full reload cannot claim recovery of an unacknowledged local payload; read saved settings before a new reviewed command.
 - **error**: validation refusal identifies correction without implying transport delivery; Cancel or correct/review/save.
 - **saved-refresh-error**: acknowledged save stays visible with Refresh failed; no replacement save is substituted.
 
@@ -123,9 +126,9 @@ The settings form is primary above its disclosure and Save/Cancel controls.
 | --- | --- | --- | --- | --- | --- | --- |
 | Change project/kind/destination scope | `UC-configure-operator-notifications` 5 | populated | populated | | `CAP-NOTIFY-operator-notifications` | Effective summary updates; prior trust confirmation clears. |
 | Save reviewed subscription | `UC-configure-operator-notifications` 6 | populated | saving | `UX-notifications` | `CAP-NOTIFY-operator-notifications` | Acknowledged settings and revision appear; failure retains form. |
-| Refresh for review | `UC-configure-operator-notifications` 6a | conflict | populated | | `CAP-NOTIFY-operator-notifications` | Shows current settings and clears old confirmation. |
-| Check saved settings / Retry same save | `UC-configure-operator-notifications` 6b | unknown | unknown, populated | | `CAP-NOTIFY-operator-notifications` | Reads current settings or replays exact original command; read alone does not prove an absent request failed. |
-| Review changed destination | `UC-configure-operator-notifications` 6c | populated | populated | | `CAP-NOTIFY-operator-notifications` | Reveals current chat/origin and requires fresh trust confirmation. |
+| Refresh for review | `UC-configure-operator-notifications` 6a | conflict | populated | | `CAP-NOTIFY-operator-notifications` | Shows current settings plus destination generation and clears old confirmation. |
+| Check save outcome / Retry same save | `UC-configure-operator-notifications` 6b | unknown | unknown, populated | | `CAP-NOTIFY-operator-notifications` | Reads exact actor-bound original request evidence separately from current settings, or replays the original command; absent receipt stays unknown. |
+| Review changed destination | `UC-configure-operator-notifications` 6c | populated | populated | | `CAP-NOTIFY-operator-notifications` | Reveals current chat/origin/generation and requires fresh trust confirmation; an old generation is refused even from default subscription revision0. |
 | Cancel or close | global: return without another save | populated, unknown, error | populated | close | | Parent remains; unresolved session intent is retained. |
 
 ### UX-decision-notice-history — Decision notice delivery history (modal draft)
@@ -166,9 +169,11 @@ A bounded newest-first attempt list is primary, with filters/channel context abo
 | Review Send again | UC-receive-decision-notice 4 | populated | reviewing-resend | | `CAP-NOTIFY-operator-notifications` | Current destination/generation and possible duplicate are disclosed. |
 | Confirm send again | UC-receive-decision-notice 4, UC-receive-decision-notice 4a | reviewing-resend | sending | | `CAP-NOTIFY-operator-notifications` | One durable resend attempt is admitted; receipt shown independently of owner progress. |
 | Refresh / page | global: browse bounded transport evidence | populated, error | loading | | | Current page and time reload; no send occurs. |
-| Changed/superseded evidence | UC-receive-decision-notice 4b, UC-receive-decision-notice 4c | changed | populated | `UX-decision-inbox` | | Open inbox offers fresh review; no replacement generation is silently selected. |
+| Refresh for review | UC-receive-decision-notice 4c | changed | populated | | `CAP-NOTIFY-operator-notifications` | Reloads current subscription/destination/generation in this modal and clears duplicate acknowledgement. |
+| Open inbox | UC-receive-decision-notice 4b | changed | populated | `UX-decision-inbox` | | Opens current discovery without selecting a replacement. |
 | Check outcome / Retry same resend | UC-receive-decision-notice 4a | unknown-resend | unknown-resend, populated | | `CAP-NOTIFY-operator-notifications` | Reads retained command evidence or replays its identical UUID/payload. |
-| Cancel review / Close | global: leave without another attempt | reviewing-resend, populated, unknown-resend, empty, error | populated | close | | Parent remains; uncertain session intent is not silently replaced. |
+| Cancel review | global: return to this history list without another attempt | reviewing-resend | populated | | | Discards only resend confirmation; retained uncertain request stays intact. |
+| Close | global: leave history without another attempt | populated, unknown-resend, empty, error | populated | close | | Parent remains; uncertain session intent is not silently replaced. |
 
 ### UX-decision-inbox — Exact notice link landing (screen draft extension)
 
@@ -176,7 +181,7 @@ A bounded newest-first attempt list is primary, with filters/channel context abo
 
 #### Purpose and content
 
-Keep the current filtered worklist primary. An exact link adds a visible landing-status region while authenticated owner review runs, independent of list pagination/filter state. Show key/kind provenance and observed basis without question text before owner authorization. Sign-in happens through existing `UX-sign-in` rendered in place; retain the original encoded query. After exact success, the existing owner dialog is the primary decision surface. The link does not save answers, grant approval or resume work.
+Keep the current filtered worklist primary. An exact link adds a visible landing-status region while authenticated owner review runs, independent of list pagination/filter state. Show key/kind provenance and observed basis without question text before owner authorization. Password sign-in retains the original encoded query in place. Google sign-in uses the bounded exact-key/fingerprint return helper specified above, without an arbitrary redirect target. Lookup returns the exact server-bound Entry before existing owner review returns its Run; no paginated list scan or inferred subject is allowed. After exact success, the existing owner dialog is the primary decision surface. The link does not save answers, grant approval or resume work.
 
 #### States
 
@@ -197,12 +202,14 @@ Keep existing states; add **link-reviewing** with inspection status and Open inb
 | Object | Role | Representations | Calls to action |
 | --- | --- | --- | --- |
 | Notification channel | Operator | Decision notice effective-gate summary and trusted destination context | Open Decision notices, inspect Notice history |
-| Decision subscription | Operator | Project/kind selection, immediate/digest preference, revision and trust disclosure | Review/save settings, enable/disable, check saved settings, retry same save |
+| Decision subscription | Operator | Project/kind selection, immediate/digest preference, revision and trust disclosure | Review/save settings, enable/disable, check save outcome, retry same save |
 | Operator notice | Operator | Exact observed subject links, immutable admitted membership, accepted/failed/unknown attempt history | Inspect delivery, open exact review, review Send again, check outcome, retry same resend |
 | PR run / Run question / Native SDD activity | Operator | Exact authenticated notice-link landing status | Review exact owner, refresh inbox |
 
 ## 5. Future file coordination and evidence
 
-New notification files are expected under the existing notifications parent: `decision_models.py`, `decision_schemas.py`, `decision_repo.py`, `decision_service.py`, `decision_usecase.py` and `decision_delivery.py`; the final task decomposition settles their names. Existing exact seam edits are `notifications/api/v1.py`, `notifications/models.py`, `notifications/services.py`, `notifications/telegram.py`, maintenance `task.py`, notifications UI `NotificationsView.svelte` and its state helper, plus `DecisionInbox.svelte` and its adjacent tests. New maintenance helper and tests remain notification-specific.
+Exact request receipts remain channel/operation/UUID/actor-bound for channel lifetime, independent of attempt-history compaction. Their read endpoint distinguishes original command result from current state and returns unknown when the request is absent.
 
-One new migration must use the landed latest head at implementation/integration; do not edit sibling Work Plan migration files or generated type resources. Shared generated index output, steering rows and `ARCH-06-execution` require Host sequencing if changed by another unit. No write to MCP or Work Plan feature owners is planned. Baseline and enforcement examples are in the proposal, and source inspection is retained in `materials/owner-seams.md`.
+New notification files are expected under the existing notifications parent: `decision_models.py`, `decision_schemas.py`, `decision_repo.py`, `decision_service.py`, `decision_usecase.py` and `decision_delivery.py`; the final task decomposition settles their names. Existing exact seam edits are `notifications/api/v1.py`, `notifications/models.py`, `notifications/services.py`, `notifications/telegram.py`, maintenance `task.py`, notifications UI `NotificationsView.svelte` and its state helper, plus `DecisionInbox.svelte` and its adjacent tests. Minimal exact-lookup writes are `pipeline_runs/api/v1.py`, `pipeline_runs/usecases/discovery.py`, `pipeline_runs/discovery_repo.py` and their existing `test_discovery.py`. Auth return writes are exact `auth/login/GoogleLogin.svelte`, `LoginView.svelte`, their existing integration tests, and one new notice-return helper/test under that parent; no shared session store or logout file changes. New maintenance helper and tests remain notification-specific.
+
+One new migration must use the landed latest head at implementation/integration; do not edit sibling Work Plan migration files or generated `work-plan.d.ts`; this feature may regenerate notification and pipeline-run API resources plus the required generated index. Shared generated index output, steering rows and `ARCH-06-execution` require Host sequencing if changed by another unit. No write to MCP or Work Plan feature owners is planned. Baseline and enforcement examples are in the proposal, and source inspection is retained in `materials/owner-seams.md`.

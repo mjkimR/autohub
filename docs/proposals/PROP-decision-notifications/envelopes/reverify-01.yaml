@@ -1,0 +1,38 @@
+kind: reverify
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-06T04:28:27.984233Z'
+status: completed
+review: challenger-01.yaml
+summary: 'round1 fixes folded: exact-entry query and typed response, actor-bound retained request reads/replay, destination-generation CAS from revision0, bounded Google/password exact return. Decisions expanded, so fresh round2 required.'
+findings:
+- issue: Exact notice links cannot reconstruct the selected owner subject using the proposed existing response.
+  evidence: proposal.md Exact navigation; discovery.py returns PipelineRunRead without kind/subject_id; DecisionInbox.svelte requires Entry plus Run; discovery key hashes subject.
+  failure_condition: A later-page notice selection cannot reconstruct its exact subject without scanning or guessing, violating NOTICE-06.
+  suggested_action: Add bounded authenticated exact-entry lookup bound to key/fingerprint; admit backend/schema/test/generated paths and cover multiple questions on one run outside the loaded page.
+  resolution: resolved
+  severity: P1
+- issue: Check outcome controls lack an exact durable command-receipt read contract.
+  evidence: proposal.md subscription routes list only current GET/PUT, paged notices and resend; target-docs promises uncertain-command Check outcome; receipt scope says project despite global channels.
+  failure_condition: A committed response is lost, current settings later change or history compacts, and current settings/pages cannot prove the original request result.
+  suggested_action: Add actor-visible channel/operation/request UUID receipt lookup, original result versus current state, independent receipt retention and replay-before-current-revision ordering; test changed actors/settings/compaction.
+  resolution: resolved
+  severity: P1
+- issue: Subscription enablement does not bind confirmation to the reviewed destination generation.
+  evidence: proposal.md requires subscription revision only; destination can change while an unconfigured subscription still returns revision0; target-docs confirms displayed destination.
+  failure_condition: A user confirms chatA revision0, another edits destination toB, and the first PUT enables disclosure toB with the old confirmation.
+  suggested_action: Bind enabling PUT and resend to expected destination generation under the admission lock after replay; reject mismatch and clear confirmation, including no-subscription-row race.
+  resolution: resolved
+  severity: P1
+- issue: Preserving the exact selection through Google sign-in is assumed rather than designed.
+  evidence: proposal.md and target-docs rely on in-place sign-in; +layout.svelte does not mount Decisions unauthenticated; GoogleLogin.svelte navigates away and root callback has no selection.
+  failure_condition: An unauthenticated user follows a notice and chooses Google; the callback loses the exact selection.
+  suggested_action: Add bounded same-origin return-selection retention of exact identity only, restore after successful auth, handle cancel/pending states, admit exact auth UI/test scope and test password versus Google flows.
+  resolution: resolved
+  severity: P1
+checks:
+  docs: PASS zero violations
+diff_scope:
+  base: ''
+  head: 72cb8e3b30524f7b54907b5f1eae8a5c26db3f2d
