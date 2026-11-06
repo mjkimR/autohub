@@ -31,13 +31,13 @@ async def _basis(github, repository: str, ref: str) -> str:
     return row["sha"]
 
 
-async def activity_pulls(github, repository: str, branch: str) -> list[dict]:
+async def activity_pulls(github, repository: str, branch: str, *, state="open") -> list[dict]:
     """Read every matching page or explicitly refuse complete ownership evidence."""
     rows = []
     for page in range(1, LIMITS["pull_pages"] + 1):
         found = await github.reader._get_list(
             f"/repos/{repository}/pulls",
-            {"head": f"{repository.split('/')[0]}:{branch}", "state": "open", "per_page": 100, "page": page},
+            {"head": f"{repository.split('/')[0]}:{branch}", "state": state, "per_page": 100, "page": page},
         )
         rows.extend(found)
         if len(found) < 100:

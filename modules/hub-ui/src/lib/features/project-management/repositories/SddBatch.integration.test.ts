@@ -145,3 +145,47 @@ it('retains acknowledged pause and stop receipts after component effects settle'
 	await tick();
 	expect(screen.getByText(/batch · stopped · revision 3/)).toBeTruthy();
 });
+
+it('shows persisted admission uncertainty with retained artifact inspection', async () => {
+	const value: Batch = {
+		id: 'batch',
+		project_id: 'p',
+		state: 'running',
+		revision: 2,
+		exclusion: true,
+		detail: null,
+		basis: { project: { repository: 'owner/app' } },
+		evaluation: {},
+		members: [
+			{
+				anchor_id: 'PROP-a',
+				phase: 'dev',
+				state: 'admitted',
+				initial: { preferences: {} },
+				claims: [
+					{
+						id: 'claim',
+						activity: 'dev',
+						settled: false,
+						uncertain: true,
+						uncertainty_reason: 'Native result unknown after timeout',
+						uncertainty_observed_at: '2026-11-06T00:00:00Z',
+						branch: 'dev-a',
+						initial_sha: 'candidate',
+						pull_number: 42
+					}
+				]
+			}
+		]
+	};
+	vi.mocked(api.GET).mockResolvedValue({ data: [value] } as never);
+	render(SddBatch, { projectId: 'p' });
+	const user = userEvent.setup();
+	await user.click(screen.getByRole('button', { name: 'Load retained batches' }));
+	await user.click(await screen.findByText('Inspect retained evidence and preferences'));
+	expect(screen.getByText(/Outcome unknown — reconciliation required/)).toBeTruthy();
+	expect(screen.getByRole('status').textContent).toContain('Native result unknown after timeout');
+	expect(screen.getByRole('link', { name: 'PR #42' }).getAttribute('href')).toContain(
+		'/owner/app/pull/42'
+	);
+});

@@ -153,10 +153,48 @@ class ActivityStarter:
             base_sha = base["object"]["sha"]
             saved = saved or {}
             existing = await github.optional(f"{root}/git/ref/heads/{quote(branch, safe='')}")
-            pulls = await github.reader._get_list(
-                f"{root}/pulls", {"head": f"{repository.split('/')[0]}:{branch}", "state": "open", "per_page": 100}
-            )
-            pull = next((p for p in pulls if p.get("head", {}).get("ref") == branch), None)
+            known_pr = saved.get("pull_number") if checkpoint else None
+            initial = saved.get("initial_sha") if checkpoint else None
+            if known_pr is not None:
+                pull = await github.optional(f"{root}/pulls/{known_pr}")
+                if pull is None or pull.get("state") != "open":
+                    raise ProjectError(
+                        409,
+                        "Recorded native pull request is missing or closed; retain its exact identity without replacement",
+                    )
+            else:
+                from .milestones import activity_pulls
+
+                pulls = await activity_pulls(github, repository, branch, state="all" if initial else "open")
+                if checkpoint and initial:
+                    owned = {
+                        p["number"]: p
+                        for p in pulls
+                        if (p.get("head") or {}).get("ref") == branch
+                        and (p.get("head") or {}).get("sha") == initial
+                        and ((p.get("head") or {}).get("repo") or {}).get("full_name") == repository
+                        and (p.get("base") or {}).get("ref") == request.base_branch
+                        and ((p.get("base") or {}).get("repo") or {}).get("full_name") == repository
+                        and marker(activity, slug) in (p.get("body") or "")
+                    }
+                    if len(owned) > 1:
+                        raise ProjectError(
+                            409, "Native pull request outcome is ambiguous; preserve the exact candidate"
+                        )
+                    pull = next(iter(owned.values()), None)
+                    if pull:
+                        await checkpoint(pull_number=pull["number"])
+                        if pull.get("state") != "open":
+                            raise ProjectError(
+                                409, "Recorded native candidate already has a closed pull request; no replacement"
+                            )
+                else:
+                    pull = next((p for p in pulls if (p.get("head") or {}).get("ref") == branch), None)
+            if checkpoint and existing is None and (initial or known_pr is not None):
+                raise ProjectError(
+                    409,
+                    "Recorded native branch is absent; reconcile the saved candidate without creating replacement artifacts",
+                )
 
             async def candidate_checkpoint(**values):
                 assert checkpoint is not None
@@ -173,7 +211,9 @@ class ActivityStarter:
                 if pull is not None and (
                     (known_pr is not None and pull["number"] != known_pr)
                     or (pull.get("base") or {}).get("ref") != request.base_branch
-                    or (known_pr is None and (pull.get("head") or {}).get("sha") != initial)
+                    or (pull.get("head") or {}).get("sha") != initial
+                    or ((pull.get("head") or {}).get("repo") or {}).get("full_name") != repository
+                    or ((pull.get("base") or {}).get("repo") or {}).get("full_name") != repository
                 ):
                     raise ProjectError(409, "Native PR does not match the saved admission claim")
                 if pull is None:
@@ -200,6 +240,8 @@ class ActivityStarter:
                 number = pull["number"]  # Hub's own start whose response was lost: enroll it again
                 anchor = _text(await github.optional(f"{root}/contents/{unit}/proposal.md", {"ref": base_sha}))
             else:
+                if checkpoint and pull is not None:
+                    raise ProjectError(409, "An existing pull request is not owned by this fresh admission claim")
                 if expected_base_sha and base_sha != expected_base_sha:
                     raise ProjectError(409, "Native admission base SHA changed; re-evaluate before claiming")
                 if checkpoint:

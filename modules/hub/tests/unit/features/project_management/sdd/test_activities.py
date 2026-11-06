@@ -38,8 +38,28 @@ class FakeGitHub:
             return httpx.Response(200, json={"encoding": "base64", "content": content})
         if path == "/contents/docs/proposals/PROP-demo/decisions":
             return httpx.Response(200, json=[{"name": name} for name in self.records])
+
+        def normalized(pull):
+            return {
+                **pull,
+                "state": pull.get("state", "open"),
+                "head": {"repo": {"full_name": "owner/app"}, **pull.get("head", {})},
+                "base": {"repo": {"full_name": "owner/app"}, **pull.get("base", {})},
+            }
+
         if path == "/pulls" and request.method == "GET":
-            return httpx.Response(200, json=self.pulls)
+            return httpx.Response(
+                200,
+                json=[
+                    normalized(p)
+                    for p in self.pulls
+                    if request.url.params.get("state") == "all" or p.get("state", "open") == "open"
+                ],
+            )
+        if path.startswith("/pulls/") and request.method == "GET":
+            number = int(path.rsplit("/", 1)[1])
+            pull = next((p for p in self.pulls if p["number"] == number), None)
+            return httpx.Response(200, json=normalized(pull)) if pull else httpx.Response(404)
         if path == "/pulls" and request.method == "POST":
             body = json.loads(request.content)
             self.created.append(body)

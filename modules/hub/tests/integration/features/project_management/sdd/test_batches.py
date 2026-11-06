@@ -592,3 +592,43 @@ async def test_refusal_resume_acknowledgement_survives_wait_then_admission(clien
     value["members"][0].update(eligibility="eligible_now", scheduling="pass", reasons=[])
     await driver.tick(UUID(project["id"]), UUID(batch["id"]))
     execute.assert_awaited_once()
+
+
+async def test_retained_claim_read_exposes_safe_uncertainty_with_exact_artifacts(client, project, monkeypatch):
+    from uuid import UUID
+
+    from app.features.project_management.sdd.batch_models import SddActivityClaim
+    from app_layer_base.core.database.transaction import AsyncTransaction
+
+    await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    monkeypatch.setattr(milestones, "preview_milestone", AsyncMock(return_value=preview(project["id"])))
+    path = f"/api/v1/projects/{project['id']}/sdd/batches"
+    batch = (await client.post(path, json=payload())).json()
+    async with AsyncTransaction() as tx:
+        tx.add(
+            SddActivityClaim(
+                project_id=UUID(project["id"]),
+                member_id=UUID(batch["members"][0]["id"]),
+                request_id=uuid4(),
+                actor="user:operator",
+                request_digest="0" * 64,
+                unit="docs/proposals/PROP-a",
+                activity="dev",
+                checkpoint={
+                    "uncertain": True,
+                    "last_error": "Native result unknown after timeout",
+                    "uncertainty_observed_at": "2026-11-06T00:00:00Z",
+                    "branch": "dev-a",
+                    "initial_sha": "b" * 40,
+                    "pull_number": 42,
+                    "lease": "private-fence",
+                },
+            )
+        )
+    current = (await client.get(path + f"/{batch['id']}")).json()
+    claim = current["members"][0]["claims"][0]
+    assert claim["uncertain"] and claim["uncertainty_reason"] == "Native result unknown after timeout"
+    assert claim["pull_number"] == 42 and claim["branch"] == "dev-a"
+    assert "lease" not in claim and "request_digest" not in claim

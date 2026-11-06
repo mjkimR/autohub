@@ -117,7 +117,12 @@ class BatchDriver:
                 row.revision += 1
                 return
             phase = member.phase
-            claim_request = activity_request(member.initial["preferences"], phase, uuid4(), basis["ref"])
+            preferences = dict(member.initial["preferences"])
+            effective = member.initial.get("effective_preferences", {})
+            for key in ("planning_effort", "dev_effort"):
+                if effective.get(key):
+                    preferences[key] = effective[key]
+            claim_request = activity_request(preferences, phase, uuid4(), basis["ref"])
             reservations = ActivityClaims(self.uc.projects, self.sdd.observer, self.sdd.run_use_case)
             claim = await reservations.reserve(
                 session,

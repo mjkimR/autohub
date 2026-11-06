@@ -105,3 +105,94 @@ async def test_base_move_during_local_candidate_prevents_remote_branch_publicati
             saved={},
         )
     assert not branches and not enrolled
+
+
+@pytest.mark.parametrize("artifact", ["missing_branch", "missing_pr", "closed_pr"])
+async def test_recorded_artifact_absence_or_closure_never_creates_replacement(started, monkeypatch, artifact):
+    github, branches, enrolled, project, starter = started
+    saved: dict[str, str | int] = {"initial_sha": "b" * 40}
+    if artifact != "missing_branch":
+        github.refs["plan-demo"] = "b" * 40
+        saved["pull_number"] = 42
+    if artifact == "closed_pr":
+        github.pulls = [
+            {
+                "number": 42,
+                "state": "closed",
+                "head": {"ref": "plan-demo", "sha": "b" * 40},
+                "base": {"ref": "main"},
+                "body": activities.marker("plan", "demo"),
+            }
+        ]
+
+    async def branch(*args, checkpoint, **kwargs):
+        await checkpoint(initial_sha="d" * 40, branch="plan-demo", base_sha=BASE)
+        branches.append("replacement")
+        return "d" * 40
+
+    monkeypatch.setattr(activities, "start_branch", branch)
+    with pytest.raises(ProjectError):
+        await starter.start(
+            project,
+            "plan",
+            "demo",
+            request(),
+            "user:operator",
+            expected_base_sha=BASE,
+            checkpoint=AsyncMock(),
+            saved=saved,
+        )
+    assert not branches and not github.created and not enrolled
+
+
+async def test_saved_pr_number_is_recovered_even_when_other_base_pr_sorts_first(started):
+    github, branches, enrolled, project, starter = started
+    github.refs["plan-demo"] = "b" * 40
+    github.pulls = [
+        {
+            "number": number,
+            "head": {"ref": "plan-demo", "sha": "b" * 40},
+            "base": {"ref": base},
+            "body": activities.marker("plan", "demo"),
+        }
+        for number, base in [(43, "other"), (42, "main")]
+    ]
+    await starter.start(
+        project,
+        "plan",
+        "demo",
+        request(),
+        "user:operator",
+        expected_base_sha=BASE,
+        checkpoint=AsyncMock(),
+        saved={"initial_sha": "b" * 40, "pull_number": 42},
+    )
+    assert not branches and not github.created and enrolled[0].pull_number == 42
+
+
+async def test_lost_pr_result_that_is_now_closed_holds_exact_artifact(started):
+    github, branches, enrolled, project, starter = started
+    github.refs["plan-demo"] = "b" * 40
+    github.pulls = [
+        {
+            "number": 42,
+            "state": "closed",
+            "head": {"ref": "plan-demo", "sha": "b" * 40},
+            "base": {"ref": "main"},
+            "body": activities.marker("plan", "demo"),
+        }
+    ]
+    checkpoint = AsyncMock()
+    with pytest.raises(ProjectError, match="closed"):
+        await starter.start(
+            project,
+            "plan",
+            "demo",
+            request(),
+            "user:operator",
+            expected_base_sha=BASE,
+            checkpoint=checkpoint,
+            saved={"initial_sha": "b" * 40},
+        )
+    assert not branches and not github.created and not enrolled
+    checkpoint.assert_awaited_once_with(pull_number=42)

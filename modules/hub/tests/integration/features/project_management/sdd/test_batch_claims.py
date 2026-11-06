@@ -135,6 +135,7 @@ async def test_enrollment_commit_response_loss_recovers_atomic_exact_run(client,
     async with AsyncTransaction() as tx:
         row = await tx.get(SddActivityClaim, claim_id)
         assert row and row.run_id is not None
+        assert row.checkpoint["uncertain"] and row.checkpoint["uncertainty_observed_at"]
         run_id = row.run_id
     recovered = await claims.execute(UUID(project["id"]), claim_id)
     assert recovered.id == run_id and starts == 1
@@ -145,3 +146,23 @@ async def test_enrollment_commit_response_loss_recovers_atomic_exact_run(client,
             )
             == 1
         )
+
+    from datetime import timedelta
+
+    from app.features.execution.tasks.domains.maintenance.history import HistoryRetentionRepository
+    from app.features.project_management.sdd.activity_claims import settle_individual_claims
+    from sqlalchemy import update
+
+    now = get_current_utc_time()
+    async with AsyncTransaction() as tx:
+        await tx.execute(
+            update(PipelineRun)
+            .where(PipelineRun.id == run_id)
+            .values(state="completed", updated_at=now - timedelta(days=40))
+        )
+    await settle_individual_claims(projects)
+    async with AsyncTransaction() as tx:
+        assert await HistoryRetentionRepository().delete_runs(tx, before=now - timedelta(days=30), now=now) == 1
+    with pytest.raises(ProjectError):
+        await claims.execute(UUID(project["id"]), claim_id)
+    assert starts == 1, "Retired settled original receipt must never re-enter remote admission"

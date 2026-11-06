@@ -62,10 +62,16 @@ class ActivityClaims:
             if claim is None or claim.project_id != project_id:
                 raise ProjectError(404, "Native activity claim not found")
             if claim.run_id:
+                claim.checkpoint = {**claim.checkpoint, "uncertain": False}
                 return await self.runs.get(claim.run_id)
             cp = dict(claim.checkpoint)
             if cp.get("refusal"):
                 raise ProjectError(cp["refusal"]["status"], cp["refusal"]["detail"])
+            if claim.settled:
+                raise ProjectError(
+                    409,
+                    "Native activity already settled; its detailed run was retired. Inspect the retained outcome; replay creates no new activity",
+                )
             expires = cp.get("lease_expires_at")
             if expires and datetime.fromisoformat(expires) > get_current_utc_time():
                 raise ProjectError(409, "Native activity reconciliation is already in flight")
@@ -108,7 +114,12 @@ class ActivityClaims:
                 if row is None or row.checkpoint.get("lease") != lease or not lease_valid(row.checkpoint):
                     raise ProjectError(409, "Native enrollment result requires reconciliation")
                 row.run_id = result.id
-                row.checkpoint = {**row.checkpoint, "lease_expires_at": None, "run_id": str(result.id)}
+                row.checkpoint = {
+                    **row.checkpoint,
+                    "lease_expires_at": None,
+                    "run_id": str(result.id),
+                    "uncertain": False,
+                }
             return result
         except BaseException as exc:
             # Preserve every remote checkpoint; another invocation reconciles the same claim.
@@ -126,6 +137,12 @@ class ActivityClaims:
                         **row.checkpoint,
                         "lease_expires_at": None,
                         "uncertain": not no_effect,
+                        "uncertainty_observed_at": get_current_utc_time().isoformat(),
+                        "last_error": exc.detail
+                        if isinstance(exc, ProjectError)
+                        else "Native admission response was uncertain after retained artifacts ("
+                        + type(exc).__name__
+                        + ")",
                         **({"refusal": refusal} if no_effect else {}),
                     }
                     if no_effect:

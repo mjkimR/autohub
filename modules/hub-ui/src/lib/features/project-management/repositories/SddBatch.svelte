@@ -155,8 +155,18 @@
 								.join(' · ')}
 						</p>
 						{#each (member.claims ?? []) as Record<string, unknown>[] as claim (String(claim.id))}
-							<p>
-								{String(claim.activity)} · {claim.settled ? 'Settled' : 'In flight or recovering'}
+							<div class="space-y-1">
+								{String(claim.activity)} · {claim.settled
+									? 'Settled'
+									: claim.uncertain
+										? 'Outcome unknown — reconciliation required'
+										: 'In flight'}
+								{#if claim.uncertain}<p role="status">
+										{String(
+											claim.uncertainty_reason ??
+												'Native admission response is uncertain. Retain this exact request.'
+										)} · observed {String(claim.uncertainty_observed_at ?? 'time unavailable')}
+									</p>{/if}
 								{#if claim.run_id}<a
 										class="underline"
 										href={`/projects/runs?run=${encodeURIComponent(String(claim.run_id))}&view=decisions`}
@@ -172,7 +182,7 @@
 											claim.initial_sha ?? 'not yet confirmed'
 										)}</span
 									>{/if}
-							</p>
+							</div>
 						{/each}
 					</details>
 				</li>{/each}

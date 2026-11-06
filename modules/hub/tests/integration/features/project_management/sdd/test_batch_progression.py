@@ -32,7 +32,7 @@ async def test_exact_owner_phases_and_canonical_repair_release_only_next_member(
         f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
     )
     value = preview(project["id"])
-    value["members"][0].update(status="draft", activity_kind="plan")
+    value["members"][0].update(status="draft", activity_kind="plan", dev_effort="high")
     edge = value["edges"][0]
     edge.update(path="docs/proposals/PROP-a/proposal.md", status="draft")
     a = {
@@ -80,6 +80,8 @@ async def test_exact_owner_phases_and_canonical_repair_release_only_next_member(
                 )
             )
             assert claim
+            if phase == "dev" and claim.unit == "docs/proposals/PROP-a":
+                assert claim.checkpoint["request"]["activity_effort"] == "high"
             run_id = uuid4()
             p = await session.get(Project, project_id)
             assert p
@@ -127,7 +129,7 @@ async def test_exact_owner_phases_and_canonical_repair_release_only_next_member(
         "base": {"ref": "main"},
     }
     await driver.tick(project_id, batch_id)
-    value["members"][0].update(status="accepted", activity_kind="dev")
+    value["members"][0].update(status="accepted", activity_kind="dev", dev_effort="low")
     value["batch_basis"]["members"][0] = accepted
     await driver.tick(project_id, batch_id)
     assert execute.await_count == 2  # Same member's Development; B is still waiting.

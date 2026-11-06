@@ -44,6 +44,11 @@ class SddBatchUseCase:
                             "id": str(c.id),
                             "activity": c.activity,
                             "settled": c.settled,
+                            "uncertain": bool(c.checkpoint.get("uncertain")),
+                            "uncertainty_reason": c.checkpoint.get("last_error")
+                            if c.checkpoint.get("uncertain")
+                            else None,
+                            "uncertainty_observed_at": c.checkpoint.get("uncertainty_observed_at"),
                             "branch": c.checkpoint.get("branch"),
                             "initial_sha": c.checkpoint.get("initial_sha"),
                             "pull_number": c.checkpoint.get("pull_number"),
