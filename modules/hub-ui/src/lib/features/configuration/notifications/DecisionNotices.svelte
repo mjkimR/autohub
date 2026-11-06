@@ -248,9 +248,9 @@
 						<p>
 							Project scope: {notices.current.settings.project_scope === 'all'
 								? 'All current and future projects'
-								: notices.current.settings.project_ids.join(', ')}
+								: (notices.current.settings.project_ids ?? []).join(', ')}
 						</p>
-						<p>Decision kinds: {notices.current.settings.kinds.join(', ')}</p>
+						<p>Decision kinds: {(notices.current.settings.kinds ?? []).join(', ')}</p>
 						<p>
 							Channel {notices.current.channel_enabled ? 'enabled' : 'disabled'} · warning {notices
 								.current.severity_enabled
