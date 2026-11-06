@@ -262,3 +262,20 @@ test('locks other decision controls until a native approval and refresh finish',
 		(screen.getByRole('button', { name: 'Refresh decisions' }) as HTMLButtonElement).disabled
 	).toBe(false);
 });
+
+test('failed inbox inspection leaves every mutation disabled', async () => {
+	api.POST.mockResolvedValue({ error: { detail: 'Subject changed' } });
+	const selection = {
+		key: 'entry',
+		fingerprint: 'old',
+		subject_id: 'question-1',
+		kind: 'run-question'
+	} as components['schemas']['DecisionEntryRead'];
+	render(RunDecisionsDialog, { run, selection, onclose: vi.fn(), onchange: vi.fn() });
+	await screen.findByRole('alert');
+	expect(screen.queryByRole('button', { name: 'Save answer' })).toBeNull();
+	expect(api.GET).not.toHaveBeenCalled();
+	expect(api.POST).toHaveBeenCalledWith('/api/v1/pipeline-runs/decisions/review', {
+		body: { key: 'entry', fingerprint: 'old' }
+	});
+});

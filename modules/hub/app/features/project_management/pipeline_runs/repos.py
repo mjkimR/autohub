@@ -5,7 +5,10 @@ from uuid import UUID
 
 from app.features.ai_catalogs.models import AICatalog
 from app.features.ai_catalogs.repos import AICatalogRepository
-from app.features.project_management.pipeline_runs import transition_log  # noqa: F401  (registers the listeners)
+from app.features.project_management.pipeline_runs import (  # noqa: F401  (registers the listeners)
+    discovery_projection,
+    transition_log,
+)
 from app.features.project_management.pipeline_runs.models import (
     ACTIVE_RUN_STATES,
     ATTENTION_RUN_STATES,

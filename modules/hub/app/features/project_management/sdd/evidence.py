@@ -82,3 +82,26 @@ def review_gaps(rows: list[dict], context: dict) -> list[str]:
             if not any(r["kind"] == kind for r in matching):
                 gaps.append(f"{worker['file']}: {effort} effort has no {kind} record in this workflow segment")
     return gaps
+
+
+def answer_resolutions(envelopes: dict, context: dict) -> list[dict]:
+    """Retain exact validated answer identities, separately from presentation reports."""
+    resolutions = []
+    for row in envelopes.get("envelopes", []):
+        if row.get("kind") != "answer" or row.get("status") != "completed" or not in_context(row, context):
+            continue
+        source = row.get("answers_to")
+        if not isinstance(source, str) or "/" in source or not source.endswith(".yaml"):
+            continue
+        for answer in row.get("answers") or []:
+            if isinstance(answer.get("question"), str):
+                resolutions.append(
+                    {
+                        "file": row["file"],
+                        "answers_to": source,
+                        "question": answer["question"],
+                        "workflow": row.get("workflow"),
+                        "segment": row.get("segment"),
+                    }
+                )
+    return resolutions

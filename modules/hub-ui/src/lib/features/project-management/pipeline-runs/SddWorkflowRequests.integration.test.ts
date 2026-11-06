@@ -167,3 +167,35 @@ test('a proposal decision is sent with the confirmed head and never relayed as a
 		feedback: 'Too broad'
 	});
 });
+
+test('an exact non-first request is reviewed without substituting the first', async () => {
+	const other = structuredClone(run);
+	other.sdd_progress = {
+		current: {
+			requests: [
+				{
+					id: 'first',
+					kind: 'confirm',
+					title: 'Wrong subject',
+					prompt: 'First request',
+					options: []
+				},
+				{
+					id: 'second',
+					kind: 'confirm',
+					title: 'Selected subject',
+					prompt: 'Second request',
+					options: []
+				}
+			]
+		}
+	};
+	render(SddWorkflowRequests, { run: other, selectedRequestId: 'second', onchange: vi.fn() });
+	expect(screen.queryByText('Wrong subject')).toBeNull();
+	expect(screen.getByText('Selected subject')).toBeTruthy();
+});
+
+test('missing exact request never substitutes another request', () => {
+	render(SddWorkflowRequests, { run, selectedRequestId: 'missing', onchange: vi.fn() });
+	expect(screen.queryByRole('button', { name: 'Confirm choice' })).toBeNull();
+});

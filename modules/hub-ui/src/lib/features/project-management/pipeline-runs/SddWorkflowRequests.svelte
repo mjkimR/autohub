@@ -5,11 +5,13 @@
 	let {
 		run,
 		disabled = false,
+		selectedRequestId,
 		onchange,
 		onbusychange = () => {}
 	}: {
 		run: components['schemas']['PipelineRunRead'];
 		disabled?: boolean;
+		selectedRequestId?: string;
 		onchange: () => void | Promise<void>;
 		onbusychange?: (value: boolean) => void;
 	} = $props();
@@ -33,7 +35,9 @@
 	let busy = $state(false);
 	let error = $state('');
 	let retry = $state<{ intent: string; id: string } | null>(null);
-	let current = $derived(requests[0]);
+	let current = $derived(
+		selectedRequestId ? requests.find((r) => r.id === selectedRequestId) : requests[0]
+	);
 	let question = $derived(current?.answer === 'envelope' || current?.id.startsWith('question:'));
 	// Accepting or rejecting a proposal: Hub writes the decision commit itself on the head shown here.
 	let planAccept = $derived(current?.id === 'gate:plan-accept');

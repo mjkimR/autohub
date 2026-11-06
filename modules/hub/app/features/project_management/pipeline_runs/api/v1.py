@@ -1,7 +1,12 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from app.auth import CurrentUser
+from app.features.project_management.pipeline_runs.discovery_schemas import (
+    DecisionKind,
+    DecisionPage,
+    DecisionReviewRequest,
+)
 from app.features.project_management.pipeline_runs.interaction_schemas import ResumeRunRequest
 from app.features.project_management.pipeline_runs.models import PipelineRunState
 from app.features.project_management.pipeline_runs.schemas import (
@@ -20,6 +25,7 @@ from app.features.project_management.pipeline_runs.schemas import (
     PreparedImplementationAttempt,
     PrepareImplementationAttempt,
 )
+from app.features.project_management.pipeline_runs.usecases.discovery import DecisionDiscoveryUseCase
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.pipeline_runs.usecases.queries import PipelineRunQueries
 from app.features.project_management.pipelines.deps import get_pipeline_observer
@@ -43,6 +49,27 @@ async def list_pipeline_runs(
     group_key: GroupFilter = None,
 ):
     return await use_case.list_runs(project_id, offset, limit, state, search, pull_number, group_key)
+
+
+@router.get("/decisions", response_model=DecisionPage)
+async def list_decisions(
+    use_case: Annotated[DecisionDiscoveryUseCase, Depends()],
+    project_id: UUID | None = None,
+    kind: DecisionKind | None = None,
+    question_state: Literal["open", "answered"] | None = None,
+    cursor: str | None = Query(None, max_length=4096),
+    limit: int = Query(20, ge=1, le=100),
+):
+    return await use_case.list(project_id, kind, question_state, cursor, limit)
+
+
+@router.post("/decisions/review", response_model=PipelineRunRead)
+async def review_decision(
+    request: DecisionReviewRequest,
+    use_case: Annotated[DecisionDiscoveryUseCase, Depends()],
+    observer: Annotated[PipelineObservationService, Depends(get_pipeline_observer)],
+):
+    return await use_case.review(request, observer)
 
 
 @router.get("/{run_id}", response_model=PipelineRunRead)

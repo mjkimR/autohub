@@ -202,3 +202,27 @@ class RunResumeReceipt(Base, UUIDMixin, TimestampMixin):
     decision_evidence: Mapped[dict | None] = mapped_column(JSON_VARIANT, nullable=True)
     request_digest: Mapped[str] = mapped_column(String(64))
     execution_attempt_id: Mapped[UUID | None] = mapped_column(ForeignKey("execution_attempts.id", ondelete="SET NULL"))
+
+
+class DecisionEntry(Base):
+    """Rebuildable discovery only; the run and question remain authoritative."""
+
+    __tablename__ = "run_decision_entries"
+    __table_args__ = (
+        Index("ix_run_decisions_waiting", "waiting_since", "key"),
+        Index("ix_run_decisions_project_waiting", "project_id", "waiting_since", "key"),
+        Index("ix_run_decisions_kind_waiting", "kind", "waiting_since", "key"),
+    )
+    key: Mapped[str] = mapped_column(String(255), primary_key=True)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("pipeline_runs.id", ondelete="CASCADE"), index=True)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(40))
+    subject_id: Mapped[str] = mapped_column(String(255))
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(Text)
+    question_state: Mapped[str | None] = mapped_column(String(30))
+    actionable: Mapped[bool] = mapped_column(default=True)
+    waiting_since: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revision: Mapped[int] = mapped_column(Integer)
+    head_sha: Mapped[str | None] = mapped_column(String(64))

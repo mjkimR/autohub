@@ -2,7 +2,7 @@
 id: SPEC-operator-decision-inbox
 title: Find pending delivery decisions across projects
 summary: Aggregate actionable PR questions and native SDD decisions with links to current owner-specific review and decision surfaces.
-status: planned
+status: in-progress
 created: 2026-11-06
 related_capabilities: [CAP-PR-operator-decisions, CAP-SDD-native-delivery, CAP-SDD-workflow-control]
 related_usecases: [UC-resolve-run-question, UC-decide-sdd-proposal, UC-complete-sdd-workflow]

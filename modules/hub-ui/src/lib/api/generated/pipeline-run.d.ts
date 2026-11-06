@@ -18,6 +18,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pipeline-runs/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Decisions */
+        get: operations["list_decisions_api_v1_pipeline_runs_decisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline-runs/decisions/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review Decision */
+        post: operations["review_decision_api_v1_pipeline_runs_decisions_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pipeline-runs/{run_id}": {
         parameters: {
             query?: never;
@@ -299,6 +333,66 @@ export interface components {
             failure_code?: string | null;
             /** Failure Detail */
             failure_detail?: string | null;
+        };
+        /** DecisionEntryRead */
+        DecisionEntryRead: {
+            /** Key */
+            key: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "run-question" | "native-hub-question" | "native-worker-question" | "native-workflow" | "native-proposal" | "native-integration";
+            /** Subject Id */
+            subject_id: string;
+            /** Fingerprint */
+            fingerprint: string;
+            /** Title */
+            title: string;
+            /** Question State */
+            question_state: string | null;
+            /** Actionable */
+            actionable: boolean;
+            /**
+             * Waiting Since
+             * Format: date-time
+             */
+            waiting_since: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Revision */
+            revision: number;
+            /** Head Sha */
+            head_sha: string | null;
+        };
+        /** DecisionPage */
+        DecisionPage: {
+            /** Items */
+            items: components["schemas"]["DecisionEntryRead"][];
+            /** Has More */
+            has_more: boolean;
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** DecisionReviewRequest */
+        DecisionReviewRequest: {
+            /** Key */
+            key: string;
+            /** Fingerprint */
+            fingerprint: string;
         };
         /**
          * ExecutionAttemptKind
@@ -643,6 +737,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PipelineRunList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_decisions_api_v1_pipeline_runs_decisions_get: {
+        parameters: {
+            query?: {
+                project_id?: string | null;
+                kind?: ("run-question" | "native-hub-question" | "native-worker-question" | "native-workflow" | "native-proposal" | "native-integration") | null;
+                question_state?: ("open" | "answered") | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_decision_api_v1_pipeline_runs_decisions_review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineRunRead"];
                 };
             };
             /** @description Validation Error */

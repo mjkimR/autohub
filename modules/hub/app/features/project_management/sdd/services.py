@@ -10,7 +10,7 @@ from app.features.project_management.projects.errors import ProjectError
 
 from .checkout import SddCommandError, checkout, command
 from .contracts import workflow_hash
-from .evidence import anchor_metadata, proposal_metadata, reports, review_gaps
+from .evidence import anchor_metadata, answer_resolutions, proposal_metadata, reports, review_gaps
 from .gates import INTEGRATION_GATE
 from .isolation import isolation_runner
 from .policy import base_policy
@@ -251,6 +251,7 @@ class SddService:
             "lint_diagnostic": lint_diagnostic,
             "lint_blocked": lint_blocked,
             "reports": report_rows,
+            "answer_resolutions": answer_resolutions(envelopes, report_context),
             "report_context": report_context,
             "review_gaps": review_gaps(report_rows, report_context) if is_proposal(spec_dir) else [],
             "proposal": proposal_metadata(root, spec_dir) if is_proposal(spec_dir) else {},

@@ -19,8 +19,17 @@
 	} from '$lib/components/ui/dialog';
 	type Run = components['schemas']['PipelineRunRead'];
 	type Question = components['schemas']['QuestionRead'];
-	let { run, onclose, onchange }: { run: Run; onclose: () => void; onchange: () => void } =
-		$props();
+	let {
+		run,
+		onclose,
+		onchange,
+		selection
+	}: {
+		run: Run;
+		onclose: () => void;
+		onchange: () => void;
+		selection?: components['schemas']['DecisionEntryRead'];
+	} = $props();
 	let current = $state(untrack(() => run));
 	let questions = $state<Question[]>([]);
 	let total = $state(0);
@@ -34,7 +43,13 @@
 	let locked = $derived(busy || decisionBusy);
 	let ready = $state(false);
 	let saved = $state('');
-	let pending = $derived(questions.find((q) => q.state === 'open' || q.state === 'answered'));
+	let pending = $derived(
+		questions.find(
+			(q) =>
+				(!selection || q.id === selection.subject_id) &&
+				(q.state === 'open' || q.state === 'answered')
+		)
+	);
 	let terminal = $derived(['completed', 'failed', 'canceled'].includes(current.state));
 	let pastQuestions = $derived(questions.filter((q) => q.id !== pending?.id));
 	const requests = new SvelteMap<string, string>();
@@ -44,6 +59,14 @@
 	}
 	async function load() {
 		ready = false;
+		if (selection) {
+			responseData(
+				await api.POST('/api/v1/pipeline-runs/decisions/review', {
+					body: { key: selection.key, fingerprint: selection.fingerprint }
+				}),
+				'Subject changed or inspection failed. Close, refresh and Review again.'
+			);
+		}
 		const [q, r] = await Promise.all([
 			api.GET('/api/v1/pipeline-runs/{run_id}/questions', {
 				params: { path: { run_id: run.id }, query: { offset, limit: 20 } }
@@ -56,6 +79,17 @@
 			throw new Error('Run changed while loading decisions. Refresh before making a decision.');
 		}
 		questions = data.items;
+		if (selection && ['run-question', 'native-hub-question'].includes(selection.kind)) {
+			const selected = responseData(
+				await api.GET('/api/v1/pipeline-runs/{run_id}/questions/{question_id}', {
+					params: { path: { run_id: run.id, question_id: selection.subject_id } }
+				}),
+				'Selected question is unavailable'
+			);
+			if (!questions.some((q) => q.id === selected.id)) questions = [selected, ...questions];
+			if (!['open', 'answered'].includes(selected.state))
+				throw new Error('Selected question has resolved. Review the current list.');
+		}
 		total = data.total_count;
 		revision = data.run_revision;
 		current = latest;
@@ -262,6 +296,10 @@
 							run={current}
 							disabled={locked || !ready || offset !== 0}
 							questionPending={!!pending}
+							selectedRequestId={selection &&
+							!['run-question', 'native-hub-question'].includes(selection.kind)
+								? selection.subject_id
+								: undefined}
 							onbusychange={(value) => {
 								decisionBusy = value;
 							}}
