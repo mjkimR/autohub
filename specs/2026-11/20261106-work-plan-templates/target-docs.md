@@ -3,7 +3,7 @@ id: PROP-work-plan-templates-target
 title: Living Spec targets for Work Plan templates
 summary: "Draft template lifecycle, fresh-registration use case and project-local management/review screens."
 status: draft
-proposal: PROP-work-plan-templates
+proposal: SPEC-work-plan-templates
 created_at: 2026-11-06
 targets:
   - file: docs/capabilities/work-plans/CAP-WORK-work-plan-execution.md
