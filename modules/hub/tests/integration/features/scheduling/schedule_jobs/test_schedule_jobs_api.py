@@ -7,7 +7,7 @@ from app.features.scheduling.schedule_jobs.models import ScheduleJob, ScheduleJo
 from app.features.scheduling.schedule_jobs.repos import ScheduleJobRepository
 from app.features.scheduling.schedule_jobs.schemas import ScheduleJobCreate, ScheduleJobRead
 from app_testing_base import utc_now
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from tests.utils.assertions import (
     assert_json_contains,

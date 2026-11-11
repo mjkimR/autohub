@@ -1,4 +1,4 @@
-import httpx
+import httpx2
 
 TELEGRAM_API_BASE_URL = "https://api.telegram.org"
 # Telegram rejects a longer message outright; a cut notice still reaches the operator.
@@ -9,7 +9,7 @@ class TelegramError(Exception):
     pass
 
 
-async def send_telegram_message(client: httpx.AsyncClient, bot_token: str, chat_id: str, text: str) -> None:
+async def send_telegram_message(client: httpx2.AsyncClient, bot_token: str, chat_id: str, text: str) -> None:
     """Post one plain-text message. The error never carries the URL, which holds the bot token."""
     try:
         response = await client.post(
@@ -18,7 +18,7 @@ async def send_telegram_message(client: httpx.AsyncClient, bot_token: str, chat_
             timeout=10,
             follow_redirects=False,
         )
-    except httpx.RequestError:
+    except httpx2.RequestError:
         raise TelegramError("Telegram request failed") from None
     if response.status_code != 200:
         description = None

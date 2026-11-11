@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 
-import httpx
+import httpx2
 import pytest
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.sdd import activities, policy, services
@@ -22,22 +22,22 @@ class FakeGitHub:
         self.proposal, self.records, self.pulls, self.created = proposal, list(records), [], []
         self.approach, self.unmet, self.errors, self.checkouts = "sdd", [], [], []
 
-    def respond(self, request: httpx.Request) -> httpx.Response:
+    def respond(self, request: httpx2.Request) -> httpx2.Response:
         path = request.url.path.removeprefix("/repos/owner/app")
         if path.startswith("/git/ref/heads/"):
             ref = path.removeprefix("/git/ref/heads/")
             return (
-                httpx.Response(200, json={"object": {"sha": self.refs[ref]}})
+                httpx2.Response(200, json={"object": {"sha": self.refs[ref]}})
                 if ref in self.refs
-                else httpx.Response(404)
+                else httpx2.Response(404)
             )
         if path == "/contents/docs/proposals/PROP-demo/proposal.md":
             if self.proposal is None:
-                return httpx.Response(404)
+                return httpx2.Response(404)
             content = base64.b64encode(self.proposal.encode()).decode()
-            return httpx.Response(200, json={"encoding": "base64", "content": content})
+            return httpx2.Response(200, json={"encoding": "base64", "content": content})
         if path == "/contents/docs/proposals/PROP-demo/decisions":
-            return httpx.Response(200, json=[{"name": name} for name in self.records])
+            return httpx2.Response(200, json=[{"name": name} for name in self.records])
 
         def normalized(pull):
             return {
@@ -48,7 +48,7 @@ class FakeGitHub:
             }
 
         if path == "/pulls" and request.method == "GET":
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 json=[
                     normalized(p)
@@ -59,11 +59,11 @@ class FakeGitHub:
         if path.startswith("/pulls/") and request.method == "GET":
             number = int(path.rsplit("/", 1)[1])
             pull = next((p for p in self.pulls if p["number"] == number), None)
-            return httpx.Response(200, json=normalized(pull)) if pull else httpx.Response(404)
+            return httpx2.Response(200, json=normalized(pull)) if pull else httpx2.Response(404)
         if path == "/pulls" and request.method == "POST":
             body = json.loads(request.content)
             self.created.append(body)
-            return httpx.Response(201, json={"number": 42, **body})
+            return httpx2.Response(201, json={"number": 42, **body})
         raise AssertionError(f"Unexpected {request.method} {path}")
 
 
@@ -73,8 +73,8 @@ def started(monkeypatch):
     monkeypatch.setattr(
         activities.pipeline_services,
         "create_github_client",
-        lambda token: httpx.AsyncClient(
-            base_url="https://api.github.com", transport=httpx.MockTransport(github.respond)
+        lambda token: httpx2.AsyncClient(
+            base_url="https://api.github.com", transport=httpx2.MockTransport(github.respond)
         ),
     )
 

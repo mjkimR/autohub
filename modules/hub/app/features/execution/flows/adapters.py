@@ -6,7 +6,7 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
 
-import httpx
+import httpx2
 from app_http_client import get_http_client
 from autohub_sdk import ReleaseSpec, TaskRef, content_digest
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -155,4 +155,4 @@ class WorkerAdapter:
         return result
 
 
-RECOVERABLE_ERRORS = (httpx.HTTPError, FlowError, ValueError)
+RECOVERABLE_ERRORS = (httpx2.HTTPError, FlowError, ValueError)

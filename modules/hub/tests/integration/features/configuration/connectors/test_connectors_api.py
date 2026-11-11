@@ -3,7 +3,7 @@ import uuid
 import pytest
 from app.features.configuration.connectors.models import Connector
 from app.features.configuration.connectors.schemas import ConnectorRead
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.utils.assertions import assert_paginated_response, assert_status_code

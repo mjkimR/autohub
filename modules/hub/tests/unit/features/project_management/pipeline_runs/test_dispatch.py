@@ -1,6 +1,6 @@
 import json
 
-import httpx
+import httpx2
 import pytest
 from app.features.project_management.pipeline_runs.dispatch import build_codex_mention_comment, is_codex_quota_reply
 from app.features.project_management.pipeline_runs.github import linked_issue_numbers
@@ -151,10 +151,10 @@ class TestGitHubMentionDelivery:
     async def test_reconciliation_uses_only_the_connector_accounts_marker(self):
         marker = f"{MARKER} kind=implementation delivery=1"
 
-        def respond(request: httpx.Request) -> httpx.Response:
+        def respond(request: httpx2.Request) -> httpx2.Response:
             assert request.method == "GET"
             assert request.url.path == "/repos/owner/repository/issues/7/comments"
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 json=[
                     {"id": 1, "body": f"<!-- {marker} -->", "user": {"login": "other-user"}},
@@ -162,8 +162,8 @@ class TestGitHubMentionDelivery:
                 ],
             )
 
-        async with httpx.AsyncClient(
-            base_url="https://api.github.com", transport=httpx.MockTransport(respond)
+        async with httpx2.AsyncClient(
+            base_url="https://api.github.com", transport=httpx2.MockTransport(respond)
         ) as client:
             comment = await GitHubActionsReader(client).reconcile_issue_comment(
                 "owner/repository", 7, marker, "connector-user"
@@ -173,11 +173,11 @@ class TestGitHubMentionDelivery:
         assert comment["id"] == 2
 
     async def test_posting_sanitizes_upstream_errors(self):
-        async def respond(_: httpx.Request) -> httpx.Response:
-            return httpx.Response(403, json={"message": "credential details must not escape"})
+        async def respond(_: httpx2.Request) -> httpx2.Response:
+            return httpx2.Response(403, json={"message": "credential details must not escape"})
 
-        async with httpx.AsyncClient(
-            base_url="https://api.github.com", transport=httpx.MockTransport(respond)
+        async with httpx2.AsyncClient(
+            base_url="https://api.github.com", transport=httpx2.MockTransport(respond)
         ) as client:
             with pytest.raises(GitHubObservationError, match="HTTP 403") as exc:
                 await GitHubActionsReader(client).post_issue_comment("owner/repository", 7, "@codex task")
@@ -185,14 +185,14 @@ class TestGitHubMentionDelivery:
         assert "credential" not in str(exc.value)
 
     async def test_merge_uses_the_verified_head_sha(self):
-        def respond(request: httpx.Request) -> httpx.Response:
+        def respond(request: httpx2.Request) -> httpx2.Response:
             assert request.method == "PUT"
             assert request.url.path == "/repos/owner/repository/pulls/7/merge"
             assert json.loads(request.content) == {"sha": HEAD, "merge_method": "squash"}
-            return httpx.Response(200, json={"merged": True, "sha": "d" * 40})
+            return httpx2.Response(200, json={"merged": True, "sha": "d" * 40})
 
-        async with httpx.AsyncClient(
-            base_url="https://api.github.com", transport=httpx.MockTransport(respond)
+        async with httpx2.AsyncClient(
+            base_url="https://api.github.com", transport=httpx2.MockTransport(respond)
         ) as client:
             result = await GitHubActionsReader(client).merge_pull_request("owner/repository", 7, HEAD)
 
@@ -201,20 +201,20 @@ class TestGitHubMentionDelivery:
     async def test_failed_job_log_is_bounded_and_redacted(self):
         log = "line\n" + "tail\n" * 1_000 + "Authorization: Bearer secret-token\n"
 
-        def respond(request: httpx.Request) -> httpx.Response:
+        def respond(request: httpx2.Request) -> httpx2.Response:
             if request.url.host == "api.github.com":
                 assert request.url.path == "/repos/owner/repository/actions/jobs/8/logs"
                 assert request.headers["authorization"] == "Bearer github-test-token"
-                return httpx.Response(302, headers={"location": "https://logs.githubusercontent.com/job.txt"})
+                return httpx2.Response(302, headers={"location": "https://logs.githubusercontent.com/job.txt"})
             assert request.url.host == "logs.githubusercontent.com"
             assert "authorization" not in request.headers
             assert "cookie" not in request.headers
-            return httpx.Response(200, text=log)
+            return httpx2.Response(200, text=log)
 
-        async with httpx.AsyncClient(
+        async with httpx2.AsyncClient(
             base_url="https://api.github.com",
             headers={"authorization": "Bearer github-test-token", "cookie": "session=test"},
-            transport=httpx.MockTransport(respond),
+            transport=httpx2.MockTransport(respond),
         ) as client:
             excerpt = await GitHubActionsReader(client).job_log_excerpt("owner/repository", 8, max_chars=100)
 
@@ -228,10 +228,10 @@ class TestGitHubMentionDelivery:
 async def test_plain_text_job_logs_support_direct_and_redirected_responses(status):
     def respond(request):
         if request.url.host == "api.github.com" and status == 302:
-            return httpx.Response(302, headers={"location": "https://logs.githubusercontent.com/job.txt"})
-        return httpx.Response(200, text="AssertionError: expected 200, got 500")
+            return httpx2.Response(302, headers={"location": "https://logs.githubusercontent.com/job.txt"})
+        return httpx2.Response(200, text="AssertionError: expected 200, got 500")
 
-    async with httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(respond)) as client:
+    async with httpx2.AsyncClient(base_url="https://api.github.com", transport=httpx2.MockTransport(respond)) as client:
         excerpt = await GitHubActionsReader(client).job_log_excerpt("owner/app", 1)
     assert excerpt == "AssertionError: expected 200, got 500"
 
@@ -244,16 +244,16 @@ async def test_job_log_redirect_rejects_unsafe_urls(location):
 
     def respond(request):
         requests.append(request)
-        return httpx.Response(302, headers={"location": location})
+        return httpx2.Response(302, headers={"location": location})
 
-    async with httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(respond)) as client:
+    async with httpx2.AsyncClient(base_url="https://api.github.com", transport=httpx2.MockTransport(respond)) as client:
         with pytest.raises(GitHubObservationError, match="invalid download URL"):
             await GitHubActionsReader(client).job_log_excerpt("owner/app", 1)
     assert len(requests) == 1
 
 
 async def test_job_log_stream_stops_at_the_size_limit():
-    class LogStream(httpx.AsyncByteStream):
+    class LogStream(httpx2.AsyncByteStream):
         chunks_read = 0
 
         async def __aiter__(self):
@@ -262,9 +262,9 @@ async def test_job_log_stream_stops_at_the_size_limit():
                 yield b"x" * 1_000_000
 
     stream = LogStream()
-    async with httpx.AsyncClient(
+    async with httpx2.AsyncClient(
         base_url="https://api.github.com",
-        transport=httpx.MockTransport(lambda request: httpx.Response(200, stream=stream)),
+        transport=httpx2.MockTransport(lambda request: httpx2.Response(200, stream=stream)),
     ) as client:
         with pytest.raises(GitHubObservationError, match="size limit"):
             await GitHubActionsReader(client).job_log_excerpt("owner/app", 1)

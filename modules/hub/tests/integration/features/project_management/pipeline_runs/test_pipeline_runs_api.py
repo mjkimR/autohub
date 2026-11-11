@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from uuid import UUID, uuid4
 
-import httpx
+import httpx2
 import pytest
 from app.features.project_management.pipeline_runs.models import PipelineRun, PipelineRunState
 from app.features.project_management.pipeline_runs.usecases import delivery as run_delivery
@@ -51,7 +51,7 @@ class PullRequestScenario:
         self.issues = {3: issue(3)}
         self.paths: list[str] = []
 
-    def respond(self, request: httpx.Request) -> httpx.Response:
+    def respond(self, request: httpx2.Request) -> httpx2.Response:
         assert request.method == "GET", "Enrollment must never mutate GitHub"
         path = request.url.path
         self.paths.append(path)
@@ -61,8 +61,8 @@ class PullRequestScenario:
             raise AssertionError(f"Unexpected GitHub request: {path}")
         item = store.get(int(number))
         if item is None:
-            return httpx.Response(404, json={"message": "upstream-sensitive-body"})
-        return httpx.Response(200, json=item)
+            return httpx2.Response(404, json={"message": "upstream-sensitive-body"})
+        return httpx2.Response(200, json=item)
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def github(monkeypatch) -> PullRequestScenario:
 
     def create_client(token):
         assert token == "github-test-token"
-        return httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(scenario.respond))
+        return httpx2.AsyncClient(base_url="https://api.github.com", transport=httpx2.MockTransport(scenario.respond))
 
     monkeypatch.setattr(services, "create_github_client", create_client)
     return scenario
@@ -97,7 +97,7 @@ async def project(client, github) -> dict:
     return response.json()
 
 
-async def enroll(client, project: dict, number: int = 7) -> httpx.Response:
+async def enroll(client, project: dict, number: int = 7) -> httpx2.Response:
     return await client.post(f"/api/v1/projects/{project['id']}/runs", json={"pull_number": number})
 
 
@@ -485,9 +485,9 @@ class TestRunRecovery:
 
         def respond(request):
             if request.url.path == "/repos/owner/app/pulls/7":
-                return httpx.Response(200, json=github.pulls[7])
+                return httpx2.Response(200, json=github.pulls[7])
             if request.url.path == "/user":
-                return httpx.Response(200, json={"login": "connector-user", "type": "User"})
+                return httpx2.Response(200, json={"login": "connector-user", "type": "User"})
             if request.url.path.endswith("/comments"):
                 if request.method == "POST":
                     comments.append(
@@ -497,8 +497,8 @@ class TestRunRecovery:
                             "created_at": utc_now().isoformat(),
                         }
                     )
-                    return httpx.Response(201, json=comments[-1])
-                return httpx.Response(200, json=comments)
+                    return httpx2.Response(201, json=comments[-1])
+                return httpx2.Response(200, json=comments)
             raise AssertionError(f"Unexpected request: {request.method} {request.url.path}")
 
         monkeypatch.setattr(github, "respond", respond)
@@ -672,7 +672,7 @@ async def add_catalog(session, key: str, kind: str, adapter: str, *, enabled: bo
     return catalog_id
 
 
-async def enroll_with(client, project: dict, catalog: str, number: int = 7) -> httpx.Response:
+async def enroll_with(client, project: dict, catalog: str, number: int = 7) -> httpx2.Response:
     return await client.post(f"/api/v1/projects/{project['id']}/runs", json={"pull_number": number, "catalog": catalog})
 
 
@@ -862,9 +862,9 @@ def mention_github(github, monkeypatch):
 
     def respond(request):
         if request.url.path == "/user":
-            return httpx.Response(200, json={"login": "connector-user", "type": "User"})
+            return httpx2.Response(200, json={"login": "connector-user", "type": "User"})
         if request.url.path.endswith("/actions/workflows/ci.yml/runs"):
-            return httpx.Response(200, json={"total_count": 0, "workflow_runs": []})
+            return httpx2.Response(200, json={"total_count": 0, "workflow_runs": []})
         if request.url.path.endswith("/comments"):
             if request.method == "POST":
                 comments.append(
@@ -875,8 +875,8 @@ def mention_github(github, monkeypatch):
                         "user": {"login": "connector-user"},
                     }
                 )
-                return httpx.Response(201, json=comments[-1])
-            return httpx.Response(200, json=comments)
+                return httpx2.Response(201, json=comments[-1])
+            return httpx2.Response(200, json=comments)
         return original(request)
 
     monkeypatch.setattr(github, "respond", respond)

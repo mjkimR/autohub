@@ -60,7 +60,7 @@ async def test_two_real_branch_snapshots_pin_global_package_archive_and_dependen
     from unittest.mock import AsyncMock
     from uuid import uuid4
 
-    import httpx
+    import httpx2
     from app.features.project_management.sdd import milestones
     from app.features.project_management.sdd.schemas import MilestonePreviewRequest
 
@@ -149,16 +149,16 @@ async def test_two_real_branch_snapshots_pin_global_package_archive_and_dependen
             sha = git("rev-parse", ref)
             if ref == "feature":
                 git("update-ref", "refs/heads/feature", second)  # remote moves after the SHA was captured
-            return httpx.Response(200, json={"sha": sha})
+            return httpx2.Response(200, json={"sha": sha})
         if "/git/ref/heads/" in request.url.path:
-            return httpx.Response(404)
+            return httpx2.Response(404)
         raise AssertionError(request.url.path)
 
     monkeypatch.setattr(milestones, "checkout", pinned)
     monkeypatch.setattr(
         milestones.pipeline_services,
         "create_github_client",
-        lambda token: httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(respond)),
+        lambda token: httpx2.AsyncClient(base_url="https://api.github.com", transport=httpx2.MockTransport(respond)),
     )
     project = SimpleNamespace(id=uuid4(), github_repository="owner/repo", github_connector_id=uuid4())
     observer = SimpleNamespace(get_token=AsyncMock(return_value="token"))

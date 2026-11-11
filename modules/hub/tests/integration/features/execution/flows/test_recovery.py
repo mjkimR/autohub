@@ -3,7 +3,7 @@ import json
 import socket
 from uuid import UUID, uuid4
 
-import httpx
+import httpx2
 import pytest
 import uvicorn
 from app.features.execution.flows.adapters import WorkerBindings, get_worker_bindings
@@ -95,7 +95,7 @@ async def test_fresh_engine_app_and_worker_resume_file_database(tmp_path, monkey
                     tables=[table for table in Base.metadata.sorted_tables if table.name.startswith("sdk_flow_")],
                 )
             )
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://host") as client:
+        async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app), base_url="http://host") as client:
             receipt = await setup(client)
             run = await start(client)
             run = await drive(client, run, clock)
@@ -104,7 +104,7 @@ async def test_fresh_engine_app_and_worker_resume_file_database(tmp_path, monkey
         await engine.dispose()
     engine, maker, fresh_app = await create()
     try:
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(fresh_app), base_url="http://restarted") as client:
+        async with httpx2.AsyncClient(transport=httpx2.ASGITransport(fresh_app), base_url="http://restarted") as client:
             restored = await get(client, run)
             assert restored == run
             assert restored["release_digest"] == receipt["digest"]
@@ -150,15 +150,15 @@ async def test_http_adapter_lost_response_and_cancel_tombstone(client, owner, cl
             store[identity] = {"attempt_id": identity, "status": "completed", "output": body["inputs"]}
             if first:
                 first = False
-                raise httpx.ReadTimeout("effect succeeded, response lost")
-            return httpx.Response(200, json=store[identity])
+                raise httpx2.ReadTimeout("effect succeeded, response lost")
+            return httpx2.Response(200, json=store[identity])
         identity = request.url.path.rsplit("/", 1)[-1]
         if request.method == "DELETE":
             store[identity] = {"attempt_id": identity, "status": "canceled"}
-        return httpx.Response(200, json=store[identity])
+        return httpx2.Response(200, json=store[identity])
 
     # Dedicated transport fixture; production adapter uses the shared getter.
-    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+    async with httpx2.AsyncClient(transport=httpx2.MockTransport(respond)) as transport:
         monkeypatch.setattr("app.features.execution.flows.adapters.get_http_client", lambda: transport)
         run = await start(client)
         await FlowWorker(WorkerAdapter()).advance(UUID(run["run_id"]))
@@ -188,10 +188,10 @@ async def test_unstructured_404_does_not_authorize_redispatch(client, owner, clo
     def respond(request):
         calls.append(request.method)
         if request.method == "POST":
-            raise httpx.ReadTimeout("unknown acceptance")
-        return httpx.Response(404, json={"detail": "upstream route is unavailable"})
+            raise httpx2.ReadTimeout("unknown acceptance")
+        return httpx2.Response(404, json={"detail": "upstream route is unavailable"})
 
-    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+    async with httpx2.AsyncClient(transport=httpx2.MockTransport(respond)) as transport:
         monkeypatch.setattr("app.features.execution.flows.adapters.get_http_client", lambda: transport)
         run = await start(client)
         await FlowWorker().advance(UUID(run["run_id"]))

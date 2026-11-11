@@ -2,7 +2,7 @@ from copy import deepcopy
 from datetime import timedelta
 from uuid import UUID
 
-import httpx
+import httpx2
 import pytest
 from app.features import tasks
 from app.features.execution.tasks.domains.pipeline import task as pipeline_task
@@ -46,40 +46,40 @@ class GitHubScenario:
             }
         ]
         self.jobs = [{"name": name, "status": "completed", "conclusion": "success"} for name in ("lint", "test")]
-        self.requests: list[httpx.Request] = []
+        self.requests: list[httpx2.Request] = []
         self.error_status: int | None = None
         self.change_pr = False
         self.change_attempt = False
         self.invalid_response = False
 
-    def respond(self, request: httpx.Request) -> httpx.Response:
+    def respond(self, request: httpx2.Request) -> httpx2.Response:
         assert request.method == "GET", "The observer must never mutate GitHub"
         self.requests.append(request)
         if self.error_status:
-            return httpx.Response(self.error_status, json={"message": "upstream-sensitive-body"})
+            return httpx2.Response(self.error_status, json={"message": "upstream-sensitive-body"})
         if self.invalid_response:
-            return httpx.Response(200, json={"unexpected": True})
+            return httpx2.Response(200, json={"unexpected": True})
         path = request.url.path
         if path == "/repos/owner/app/pulls/42":
             pr = deepcopy(self.pr)
             count = sum(r.url.path == path for r in self.requests)
             if self.change_pr and count > 1:
                 pr["head"]["sha"] = "c" * 40
-            return httpx.Response(200, json=pr)
+            return httpx2.Response(200, json=pr)
         if path == "/repos/owner/app/actions/workflows/ci.yml/runs":
             assert request.url.params["head_sha"] == HEAD
             assert request.url.params["event"] == "pull_request"
             page = int(request.url.params["page"])
-            return httpx.Response(200, json={"workflow_runs": self.runs[(page - 1) * 100 : page * 100]})
+            return httpx2.Response(200, json={"workflow_runs": self.runs[(page - 1) * 100 : page * 100]})
         if path.endswith("/jobs"):
             assert request.url.params["filter"] == "latest"
             page = int(request.url.params["page"])
-            return httpx.Response(200, json={"jobs": self.jobs[(page - 1) * 100 : page * 100]})
+            return httpx2.Response(200, json={"jobs": self.jobs[(page - 1) * 100 : page * 100]})
         if "/actions/runs/" in path:
             run = deepcopy(next(run for run in self.runs if run["id"] == int(path.rsplit("/", 1)[1])))
             if self.change_attempt:
                 run["run_attempt"] += 1
-            return httpx.Response(200, json=run)
+            return httpx2.Response(200, json=run)
         raise AssertionError(f"Unexpected GitHub request: {path}")
 
 
@@ -89,7 +89,7 @@ def github_scenario(monkeypatch, credential_key_provider):
 
     def create_client(token):
         assert token == "github-test-token"
-        return httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(scenario.respond))
+        return httpx2.AsyncClient(base_url="https://api.github.com", transport=httpx2.MockTransport(scenario.respond))
 
     monkeypatch.setattr(services, "create_github_client", create_client)
     monkeypatch.setattr(pipeline_task, "get_credential_key_provider", lambda: credential_key_provider)

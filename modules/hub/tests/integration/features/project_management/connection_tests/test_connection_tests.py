@@ -4,7 +4,7 @@ from copy import deepcopy
 from datetime import timedelta
 from uuid import UUID, uuid4
 
-import httpx
+import httpx2
 import pytest
 from app.features.execution.tasks.domains.pipeline import connection_probe
 from app.features.project_management.connection_tests.models import ConnectionTest
@@ -49,28 +49,28 @@ class ProbeGitHub:
             self.writes.append((method, path, body))
         assert not path.endswith("/merge"), "A connection test must never invoke GitHub merge"
         if path == "/user":
-            return httpx.Response(200, json={"login": "owner", "type": "User"})
+            return httpx2.Response(200, json={"login": "owner", "type": "User"})
         if path == "/repos/owner/app":
-            return httpx.Response(200, json={"default_branch": "main", "full_name": "owner/app"})
+            return httpx2.Response(200, json={"default_branch": "main", "full_name": "owner/app"})
         if "/labels" in path:
             if "/issues/" in path and self.pr:
                 self.pr["labels"] = [{"name": label} for label in body["labels"]]
-            return httpx.Response(200, json={"name": "autohub-connection-test"})
+            return httpx2.Response(200, json={"name": "autohub-connection-test"})
         if "/git/ref/heads/" in path:
             if path.endswith("/main") or self.branch:
-                return httpx.Response(200, json={"object": {"sha": self.head}})
-            return httpx.Response(404)
+                return httpx2.Response(200, json={"object": {"sha": self.head}})
+            return httpx2.Response(404)
         if path.endswith("/git/refs") and method == "POST":
             self.branch = body["ref"].removeprefix("refs/heads/")
-            return httpx.Response(201, json={})
+            return httpx2.Response(201, json={})
         if "/contents/" in path:
             if method == "PUT":
                 self.content = body["content"]
-                return httpx.Response(201, json={})
+                return httpx2.Response(201, json={})
             return (
-                httpx.Response(200, json={"encoding": "base64", "content": self.content})
+                httpx2.Response(200, json={"encoding": "base64", "content": self.content})
                 if self.content
-                else httpx.Response(404)
+                else httpx2.Response(404)
             )
         if path.endswith("/pulls"):
             if method == "POST":
@@ -85,15 +85,15 @@ class ProbeGitHub:
                     "base": {"ref": "main", "sha": "b" * 40},
                     "html_url": "https://github.com/owner/app/pull/42",
                 }
-                return httpx.Response(201, json=self.pr)
-            return httpx.Response(200, json=[self.pr] if self.pr else [])
+                return httpx2.Response(201, json=self.pr)
+            return httpx2.Response(200, json=[self.pr] if self.pr else [])
         if path.endswith("/pulls/42"):
             assert self.pr is not None
             if method == "PATCH":
                 if self.fail_cleanup:
-                    return httpx.Response(503)
+                    return httpx2.Response(503)
                 self.pr.update(body)
-            return httpx.Response(200, json=deepcopy(self.pr))
+            return httpx2.Response(200, json=deepcopy(self.pr))
         if path.endswith("/comments"):
             if method == "POST":
                 comment = {
@@ -105,9 +105,9 @@ class ProbeGitHub:
                 self.comments.append(comment)
                 if self.lose_comment_response:
                     self.lose_comment_response = False
-                    raise httpx.ReadTimeout("response lost", request=request)
-                return httpx.Response(201, json=comment)
-            return httpx.Response(200, json=self.comments)
+                    raise httpx2.ReadTimeout("response lost", request=request)
+                return httpx2.Response(201, json=comment)
+            return httpx2.Response(200, json=self.comments)
         run = {
             "id": 10,
             "run_number": 1,
@@ -123,14 +123,14 @@ class ProbeGitHub:
             "updated_at": "2026-09-22T00:00:00Z",
         }
         if path.endswith("/actions/workflows/ci.yml/runs"):
-            return httpx.Response(200, json={"workflow_runs": [run]})
+            return httpx2.Response(200, json={"workflow_runs": [run]})
         if path.endswith("/actions/runs/10/jobs"):
-            return httpx.Response(200, json={"jobs": [{"name": "test", "status": "completed", "conclusion": self.ci}]})
+            return httpx2.Response(200, json={"jobs": [{"name": "test", "status": "completed", "conclusion": self.ci}]})
         if path.endswith("/actions/runs/10"):
-            return httpx.Response(200, json=run)
+            return httpx2.Response(200, json=run)
         if "/git/refs/heads/" in path and method == "DELETE":
             self.branch = None
-            return httpx.Response(204)
+            return httpx2.Response(204)
         raise AssertionError(f"Unexpected {method} {path}")
 
     def push(self, test_id, correct=True):
@@ -146,8 +146,8 @@ def github(monkeypatch):
     monkeypatch.setattr(
         services,
         "create_github_client",
-        lambda token: httpx.AsyncClient(
-            base_url="https://api.github.com", transport=httpx.MockTransport(scenario.respond)
+        lambda token: httpx2.AsyncClient(
+            base_url="https://api.github.com", transport=httpx2.MockTransport(scenario.respond)
         ),
     )
     return scenario
@@ -322,7 +322,7 @@ class ProbeJules:
     def respond(self, request):
         path, method = request.url.path, request.method
         if path.endswith("/sources"):
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 json={
                     "sources": [{"name": "sources/opaque-app-id", "githubRepo": {"owner": "owner", "repo": "app"}}]
@@ -341,12 +341,12 @@ class ProbeJules:
                 "outputs": [],
             }
             if self.lose_response:
-                raise httpx.ReadTimeout("response lost", request=request)
-            return httpx.Response(200, json=self.remote)
+                raise httpx2.ReadTimeout("response lost", request=request)
+            return httpx2.Response(200, json=self.remote)
         if path.endswith("/sessions"):
-            return httpx.Response(200, json={"sessions": [self.remote] if self.remote and self.visible else []})
+            return httpx2.Response(200, json={"sessions": [self.remote] if self.remote and self.visible else []})
         if path.endswith("/sessions/probe"):
-            return httpx.Response(200, json=self.remote)
+            return httpx2.Response(200, json=self.remote)
         raise AssertionError(f"Unexpected Jules {method} {path}")
 
     def complete(self, test_id):
@@ -391,15 +391,15 @@ async def jules(client, session, github, monkeypatch):
     monkeypatch.setattr(
         jules_client,
         "create_jules_client",
-        lambda token: httpx.AsyncClient(
-            base_url=jules_client.JULES_API_BASE_URL, transport=httpx.MockTransport(scenario.respond)
+        lambda token: httpx2.AsyncClient(
+            base_url=jules_client.JULES_API_BASE_URL, transport=httpx2.MockTransport(scenario.respond)
         ),
     )
     original = github.respond
 
     def respond(request):
         if "/compare/" in request.url.path:
-            return httpx.Response(200, json={"status": "ahead"})
+            return httpx2.Response(200, json={"status": "ahead"})
         return original(request)
 
     github.respond = respond
@@ -877,7 +877,7 @@ async def test_all_jules_outputs_are_recorded_and_closed_when_provider_returns_e
         if request.url.path.endswith("/pulls/43"):
             if request.method == "PATCH":
                 extra.update(json.loads(request.content))
-            return httpx.Response(200, json=deepcopy(extra))
+            return httpx2.Response(200, json=deepcopy(extra))
         return original(request)
 
     github.respond = respond
@@ -898,7 +898,7 @@ async def test_lost_draft_creation_response_reconciles_preparation_before_dispat
         response = original(request)
         if request.method == "POST" and request.url.path.endswith("/pulls") and lose_response:
             lose_response = False
-            raise httpx.ReadTimeout("Draft PR response lost", request=request)
+            raise httpx2.ReadTimeout("Draft PR response lost", request=request)
         return response
 
     github.respond = respond

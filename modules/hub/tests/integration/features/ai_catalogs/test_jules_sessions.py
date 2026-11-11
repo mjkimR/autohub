@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-import httpx
+import httpx2
 import pytest
 from app.features.ai_catalogs.models import (
     AICatalog,
@@ -39,21 +39,21 @@ pytestmark = pytest.mark.integration
 class FakeJules:
     def __init__(self) -> None:
         self.responses: dict[tuple[str, str], tuple[int, dict]] = {}
-        self.requests: list[httpx.Request] = []
+        self.requests: list[httpx2.Request] = []
 
-    def handle(self, request: httpx.Request) -> httpx.Response:
+    def handle(self, request: httpx2.Request) -> httpx2.Response:
         self.requests.append(request)
         if (
             request.method == "GET"
             and request.url.path == "/v1alpha/sources"
             and ("GET", "/v1alpha/sources") not in self.responses
         ):
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 json={"sources": [{"name": "sources/opaque-app-id", "githubRepo": {"owner": "owner", "repo": "app"}}]},
             )
         status, body = self.responses[(request.method, request.url.path)]
-        return httpx.Response(status, json=body)
+        return httpx2.Response(status, json=body)
 
 
 @pytest.fixture
@@ -62,10 +62,10 @@ def jules(monkeypatch) -> FakeJules:
     monkeypatch.setattr(
         jules_service,
         "create_jules_client",
-        lambda api_key: httpx.AsyncClient(
+        lambda api_key: httpx2.AsyncClient(
             base_url=JULES_API_BASE_URL,
             headers={"X-Goog-Api-Key": api_key},
-            transport=httpx.MockTransport(fake.handle),
+            transport=httpx2.MockTransport(fake.handle),
         ),
     )
     return fake
@@ -123,12 +123,12 @@ def github(monkeypatch) -> list[str]:
     """A GitHub API that serves the pull request a Jules session opened and records what was read."""
     paths: list[str] = []
 
-    def respond(request: httpx.Request) -> httpx.Response:
+    def respond(request: httpx2.Request) -> httpx2.Response:
         assert request.method == "GET", "Adoption must never mutate GitHub"
         paths.append(request.url.path)
         if request.url.path != f"/repos/owner/app/pulls/{PULL_REQUEST_NUMBER}":
-            return httpx.Response(404, json={"message": "not found"})
-        return httpx.Response(
+            return httpx2.Response(404, json={"message": "not found"})
+        return httpx2.Response(
             200,
             json={
                 "number": PULL_REQUEST_NUMBER,
@@ -144,7 +144,7 @@ def github(monkeypatch) -> list[str]:
     monkeypatch.setattr(
         pipeline_services,
         "create_github_client",
-        lambda token: httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(respond)),
+        lambda token: httpx2.AsyncClient(base_url="https://api.github.com", transport=httpx2.MockTransport(respond)),
     )
     return paths
 

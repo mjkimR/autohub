@@ -4,7 +4,7 @@ import pytest
 from app.features.scheduling.schedule_configs.models import ScheduleConfig
 from app.features.scheduling.schedule_configs.repos import ScheduleConfigRepository
 from app.features.scheduling.schedule_configs.schemas import ScheduleConfigCreate, ScheduleConfigRead
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from tests.utils.assertions import (
     assert_json_contains,

@@ -2,7 +2,7 @@ import asyncio
 from typing import Literal
 from uuid import UUID, uuid4
 
-import httpx
+import httpx2
 import pytest
 from app.features.execution.flows.adapters import (
     WorkerAdapter,
@@ -293,7 +293,7 @@ async def test_authoritative_absence_resubmits_same_intent(client, owner, clock,
 
     # Fail before acceptance, preserving an unknown intent.
     async def unavailable(action):
-        raise httpx.ConnectError("test disconnect")
+        raise httpx2.ConnectError("test disconnect")
 
     original = adapter.execute
     adapter.execute = unavailable

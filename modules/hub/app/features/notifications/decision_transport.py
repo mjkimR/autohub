@@ -1,4 +1,4 @@
-import httpx
+import httpx2
 from app.features.notifications.telegram import TELEGRAM_API_BASE_URL
 
 
@@ -14,7 +14,7 @@ async def send_decision_message(client, token, chat_id, text):
             follow_redirects=False,
         )
         body = response.json()
-    except (httpx.RequestError, ValueError):
+    except (httpx2.RequestError, ValueError):
         return "unknown", "transport-unconfirmed"
     if response.status_code == 200 and isinstance(body, dict) and body.get("ok") is True:
         return "accepted", None

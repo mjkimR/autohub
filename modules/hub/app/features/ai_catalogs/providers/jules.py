@@ -3,7 +3,7 @@
 import re
 from typing import Any
 
-import httpx
+import httpx2
 from app.features.ai_catalogs.providers.errors import ProviderRequestError
 
 JULES_API_BASE_URL = "https://jules.googleapis.com/v1alpha/"
@@ -18,24 +18,24 @@ class JulesApiError(ProviderRequestError):
     """Sanitized Jules failure: no response body, credentials, or request headers."""
 
 
-def create_jules_client(api_key: str) -> httpx.AsyncClient:
-    return httpx.AsyncClient(  # arch: ignore[RULE-app-http-client-construction] -- catalog-scoped API key; caller owns async-with cleanup
+def create_jules_client(api_key: str) -> httpx2.AsyncClient:
+    return httpx2.AsyncClient(  # arch: ignore[RULE-app-http-client-construction] -- catalog-scoped API key; caller owns async-with cleanup
         base_url=JULES_API_BASE_URL, headers={"X-Goog-Api-Key": api_key}, timeout=30
     )
 
 
 class JulesClient:
-    def __init__(self, client: httpx.AsyncClient):
+    def __init__(self, client: httpx2.AsyncClient):
         self.client = client
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
         try:
             response = await self.client.request(method, path, **kwargs)
             response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             status = exc.response.status_code
             raise JulesApiError(f"Jules API returned HTTP {status}", status) from None
-        except httpx.RequestError:
+        except httpx2.RequestError:
             raise JulesApiError("Jules API request failed") from None
         try:
             value = response.json()

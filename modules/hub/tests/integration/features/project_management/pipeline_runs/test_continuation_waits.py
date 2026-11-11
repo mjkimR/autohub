@@ -4,7 +4,7 @@ import asyncio
 import json
 from uuid import UUID, uuid4
 
-import httpx
+import httpx2
 import pytest
 from app.common.config import get_github_webhook_config
 from app.features.ai_catalogs.models import AICatalog
@@ -65,12 +65,12 @@ async def test_capacity_released_in_observation_allows_repair_this_tick(
 
     def respond(request):
         if request.url.path.endswith("/pulls/8"):
-            return httpx.Response(200, json={**github.pull(), "number": 8})
+            return httpx2.Response(200, json={**github.pull(), "number": 8})
         return github.respond(request)
 
     monkeypatch.setattr(
         "app.features.project_management.pipelines.services.create_github_client",
-        lambda token: httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(respond)),
+        lambda token: httpx2.AsyncClient(base_url="https://api.github.com", transport=httpx2.MockTransport(respond)),
     )
     second = await client.post(
         f"/api/v1/projects/{run['project_id']}/runs", json={"pull_number": 8, "implemented": True}

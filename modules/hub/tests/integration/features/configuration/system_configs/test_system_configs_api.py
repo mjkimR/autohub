@@ -4,7 +4,7 @@ import pytest
 from app.features.configuration.system_configs.models import SystemConfig
 from app.features.configuration.system_configs.repos import SystemConfigRepository
 from app.features.configuration.system_configs.schemas import SystemConfigCreate, SystemConfigRead
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from tests.utils.assertions import (
     assert_json_contains,

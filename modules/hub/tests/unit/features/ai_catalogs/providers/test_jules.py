@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-import httpx
+import httpx2
 import pytest
 from app.features.ai_catalogs.providers.jules import JulesApiError, JulesClient
 
@@ -12,9 +12,9 @@ async def test_source_resolution_follows_pages_and_uses_opaque_name():
     def respond(request):
         requests.append(request)
         if "pageToken" not in request.url.params:
-            return httpx.Response(200, json={"sources": [], "nextPageToken": "next"})
+            return httpx2.Response(200, json={"sources": [], "nextPageToken": "next"})
         assert request.url.params["pageToken"] == "next"
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={
                 "sources": [
@@ -26,17 +26,17 @@ async def test_source_resolution_follows_pages_and_uses_opaque_name():
             },
         )
 
-    async with httpx.AsyncClient(
-        base_url="https://jules.googleapis.com/v1alpha/", transport=httpx.MockTransport(respond)
+    async with httpx2.AsyncClient(
+        base_url="https://jules.googleapis.com/v1alpha/", transport=httpx2.MockTransport(respond)
     ) as http:
         assert await JulesClient(http).resolve_source("owner/app") == "sources/opaque-resource"
     assert len(requests) == 2
 
 
 async def test_missing_source_never_fabricates_a_resource_name():
-    async with httpx.AsyncClient(
+    async with httpx2.AsyncClient(
         base_url="https://jules.googleapis.com/v1alpha/",
-        transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"sources": []})),
+        transport=httpx2.MockTransport(lambda request: httpx2.Response(200, json={"sources": []})),
     ) as http:
         with pytest.raises(JulesApiError, match="Connect this repository") as error:
             await JulesClient(http).resolve_source("owner/app")

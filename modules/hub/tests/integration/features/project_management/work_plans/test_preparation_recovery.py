@@ -1,7 +1,7 @@
 from datetime import timedelta
 from uuid import UUID
 
-import httpx
+import httpx2
 import pytest
 from app.features.project_management.pipeline_runs.usecases.transitions import as_utc
 from app.features.project_management.work_plans.models import WorkItem
@@ -23,7 +23,7 @@ async def test_uncertain_pr_recovers_after_temporary_lookup_404(client, setup_wo
 
     def missing_permission(request):
         if request.method == "GET" and request.url.path == "/repos/owner/app/pulls":
-            return httpx.Response(404, json={"message": "Not Found"})
+            return httpx2.Response(404, json={"message": "Not Found"})
         return original(request)
 
     with monkeypatch.context() as patch:
@@ -46,7 +46,7 @@ async def test_temporary_pr_creation_422_recovers(client, setup_work, session, m
 
     def temporary_rejection(request):
         if request.method == "POST" and request.url.path == "/repos/owner/app/pulls":
-            return httpx.Response(
+            return httpx2.Response(
                 422, headers=headers, json={"message": "Validation failed, or the endpoint has been spammed."}
             )
         return original(request)
@@ -78,9 +78,9 @@ async def test_private_ref_404_without_readable_listing_remains_retryable(
 
     def unreadable_refs(request):
         if request.url.path == "/repos/owner/app/git/ref/heads/main":
-            return httpx.Response(404)
+            return httpx2.Response(404)
         if "/git/matching-refs/" in request.url.path:
-            return httpx.Response(lookup_status)
+            return httpx2.Response(lookup_status)
         return original(request)
 
     with monkeypatch.context() as patch:
@@ -100,7 +100,7 @@ async def test_exact_ref_in_successful_listing_recovers_initial_404(client, setu
 
     def missing_single_ref(request):
         if request.url.path == "/repos/owner/app/git/ref/heads/main":
-            return httpx.Response(404)
+            return httpx2.Response(404)
         return original(request)
 
     with monkeypatch.context() as patch:

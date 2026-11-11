@@ -2,7 +2,7 @@ import base64
 from types import SimpleNamespace
 from uuid import uuid4
 
-import httpx
+import httpx2
 import pytest
 from app.features.project_management.sdd import proposals
 
@@ -110,28 +110,28 @@ async def test_listing_reads_base_proposals_branches_and_pulls(monkeypatch):
     def respond(request):
         path = request.url.path.removeprefix("/repos/owner/app")
         if path == "/git/ref/heads/main":
-            return httpx.Response(200, json={"object": {"sha": "b" * 40}})
+            return httpx2.Response(200, json={"object": {"sha": "b" * 40}})
         if path == "/contents/docs/proposals":
             names = ["PROP-alpha", "PROP-beta", "README.md", "PROP-Bad"]
-            return httpx.Response(
+            return httpx2.Response(
                 200, json=[{"name": n, "type": "file" if n.endswith(".md") else "dir"} for n in names]
             )
         if path == "/git/matching-refs/heads/plan-":
-            return httpx.Response(200, json=[{"ref": "refs/heads/plan-alpha"}])
+            return httpx2.Response(200, json=[{"ref": "refs/heads/plan-alpha"}])
         if path == "/git/matching-refs/heads/dev-":
-            return httpx.Response(200, json=[])
+            return httpx2.Response(200, json=[])
         if path == "/pulls":
-            return httpx.Response(200, json=[{"number": 5, "head": {"ref": "plan-alpha"}}])
+            return httpx2.Response(200, json=[{"number": 5, "head": {"ref": "plan-alpha"}}])
         if path == "/contents/docs/proposals/PROP-alpha/proposal.md":
-            return httpx.Response(200, json=content(anchor("draft")))
+            return httpx2.Response(200, json=content(anchor("draft")))
         if path == "/contents/docs/proposals/PROP-beta/proposal.md":
-            return httpx.Response(200, json=content(anchor("accepted")))
+            return httpx2.Response(200, json=content(anchor("accepted")))
         raise AssertionError(path)
 
     monkeypatch.setattr(
         proposals.pipeline_services,
         "create_github_client",
-        lambda token: httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(respond)),
+        lambda token: httpx2.AsyncClient(base_url="https://api.github.com", transport=httpx2.MockTransport(respond)),
     )
 
     class Observer:

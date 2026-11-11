@@ -2,7 +2,7 @@ from copy import deepcopy
 from datetime import timedelta
 from uuid import UUID
 
-import httpx
+import httpx2
 import pytest
 from app.features.ai_catalogs.models import AICatalog
 from app.features.configuration.connectors.models import Connector
@@ -97,9 +97,9 @@ async def test_cleanup_discovery_pages_across_bases_without_touching_unrelated_p
             assert "base" not in request.url.params
             assert request.url.params["sort"] == "created"
             pages.append(request.url.params["page"])
-            return httpx.Response(200, json=[unrelated] * 100 if pages[-1] == "1" else [github.pr, older])
+            return httpx2.Response(200, json=[unrelated] * 100 if pages[-1] == "1" else [github.pr, older])
         if "/compare/" in request.url.path and request.url.path.endswith("d" * 40):
-            return httpx.Response(200, json={"status": "diverged"})
+            return httpx2.Response(200, json={"status": "diverged"})
         assert not request.url.path.endswith("/pulls/99")
         return original(request)
 
@@ -127,7 +127,7 @@ async def test_incomplete_github_discovery_cannot_retire_protection(
 
     def respond(request):
         if "/compare/" in request.url.path:
-            return httpx.Response(503)
+            return httpx2.Response(503)
         return original(request)
 
     github.respond = respond

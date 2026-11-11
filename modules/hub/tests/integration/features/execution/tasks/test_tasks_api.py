@@ -1,6 +1,6 @@
 import pytest
 from app.features import tasks
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from tests.utils.assertions import assert_status_code
 

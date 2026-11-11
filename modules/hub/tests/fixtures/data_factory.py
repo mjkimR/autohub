@@ -14,7 +14,7 @@ import pytest
 from app_layer_base.base.models.mixin import Base
 from app_layer_base.base.repos.base import BaseRepository
 from app_testing_base import random_string, resolve_dependency, utc_now
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 from pydantic import BaseModel
 from pydantic_core import PydanticUndefined
 from sqlalchemy.ext.asyncio import AsyncSession

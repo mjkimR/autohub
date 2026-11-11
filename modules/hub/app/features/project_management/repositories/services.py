@@ -1,7 +1,7 @@
 import base64
 from typing import Any
 
-import httpx
+import httpx2
 from app.features.project_management.pipelines.github import (
     GitHubObservationError,
     create_github_client,
@@ -123,16 +123,16 @@ class RepositoryService:
 
     async def _get(
         self,
-        client: httpx.AsyncClient,
+        client: httpx2.AsyncClient,
         path: str,
         params: dict[str, str | int] | None = None,
     ) -> Any:
         try:
             response = await client.get(path, params=params)
             response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             raise github_http_error("repository browsing", exc.response) from None
-        except httpx.RequestError:
+        except httpx2.RequestError:
             raise GitHubObservationError("GitHub repository request failed") from None
         try:
             return response.json()

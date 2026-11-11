@@ -5,7 +5,7 @@ from app.features.ai_catalogs.models import AICatalog, AICatalogKind, AICatalogS
 from app.features.configuration.connectors.models import Connector
 from app.features.scheduling.schedule_configs.models import ScheduleConfig
 from app_testing_base import hours_ago, hours_later
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.utils.assertions import assert_status_code

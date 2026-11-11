@@ -3,7 +3,7 @@ from copy import deepcopy
 from datetime import timedelta
 from uuid import UUID, uuid4
 
-import httpx
+import httpx2
 import pytest
 from app.features.project_management.connection_tests.catalogs import prepare_dispatch
 from app.features.project_management.connection_tests.models import ConnectionTest
@@ -58,18 +58,18 @@ async def test_default_branch_inheriting_test_commit_never_grants_cleanup_owners
         path = request.url.path
         if request.method == "DELETE" and "/git/refs/heads/" in path:
             deleted.append(path)
-            return httpx.Response(204)
+            return httpx2.Response(204)
         if path.endswith("/git/ref/heads/main"):
-            return httpx.Response(200, json={"object": {"sha": "e" * 40}})
+            return httpx2.Response(200, json={"object": {"sha": "e" * 40}})
         if "/compare/" in path:
             assert path.split("/compare/")[1].split("...")[0] == test["evidence"]["initial_sha"]
-            return httpx.Response(200, json={"status": "ahead"})
+            return httpx2.Response(200, json={"status": "ahead"})
         if path.endswith("/pulls") and request.method == "GET":
-            return httpx.Response(200, json=[ordinary, github.pr])
+            return httpx2.Response(200, json=[ordinary, github.pr])
         if path.endswith("/pulls/43"):
             if request.method == "PATCH":
                 ordinary["state"] = json.loads(request.content)["state"]
-            return httpx.Response(200, json=deepcopy(ordinary))
+            return httpx2.Response(200, json=deepcopy(ordinary))
         return original(request)
 
     github.respond = respond
@@ -211,7 +211,7 @@ async def test_label_permission_failure_does_not_prevent_owned_pr_cleanup(client
 
     def respond(request):
         if "/labels" in request.url.path:
-            return httpx.Response(403)
+            return httpx2.Response(403)
         return original(request)
 
     github.respond = respond

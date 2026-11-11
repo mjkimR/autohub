@@ -17,7 +17,7 @@ from app.features.scheduling.schedule_configs.system import MAINTENANCE_ID, ensu
 from app.features.scheduling.schedule_jobs.models import ScheduleJob, ScheduleJobStatus
 from app.features.scheduling.schedule_jobs.repos import ScheduleJobRepository
 from app_testing_base import hours_later, utc_now
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.utils.assertions import assert_json_contains, assert_status_code

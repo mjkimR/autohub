@@ -3,7 +3,7 @@
 import json
 from uuid import UUID, uuid4
 
-import httpx
+import httpx2
 import pytest
 from app.features.execution.tasks.core.context import task_context
 from app.features.execution.tasks.domains.pipeline.task import dispatch_project_task
@@ -37,8 +37,8 @@ async def test_tick_prepares_and_dispatches_new_work_and_merged_dependents(
                         "user": {"login": "operator"},
                     }
                 )
-                return httpx.Response(201, json=thread[-1])
-            return httpx.Response(200, json=thread)
+                return httpx2.Response(201, json=thread[-1])
+            return httpx2.Response(200, json=thread)
         return original(request)
 
     monkeypatch.setattr(github, "respond", respond)

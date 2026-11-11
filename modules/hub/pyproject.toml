@@ -21,7 +21,7 @@ dependencies = [
     "google-api-python-client>=2.198.0",
     "google-auth>=2.55.2",
     "google-cloud-secret-manager>=2.24.0",
-    "httpx>=0.28.1",
+    "httpx2>=2.13.1",
     "loguru>=0.7.3",
     "orjson>=3.11.7",
     "pydantic-settings>=2.12.0",
@@ -32,12 +32,12 @@ dependencies = [
 
 [tool.uv.sources]
 autohub-sdk = { workspace = true }
-app-mcp = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/transports/app-mcp", rev = "96fb2fa7116813cf7e71538943a45ca20ccb7232" }
-app-prebuilt-auth = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-auth", rev = "96fb2fa7116813cf7e71538943a45ca20ccb7232" }
-app-http-client = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/adapters/app-http-client", rev = "96fb2fa7116813cf7e71538943a45ca20ccb7232" }
-app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "96fb2fa7116813cf7e71538943a45ca20ccb7232" }
-app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "96fb2fa7116813cf7e71538943a45ca20ccb7232" }
-app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "96fb2fa7116813cf7e71538943a45ca20ccb7232" }
+app-mcp = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/transports/app-mcp", rev = "728ac62ef1db816947204500d0470e6b6ac28896" }
+app-prebuilt-auth = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/prebuilt/app-prebuilt-auth", rev = "728ac62ef1db816947204500d0470e6b6ac28896" }
+app-http-client = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/adapters/app-http-client", rev = "728ac62ef1db816947204500d0470e6b6ac28896" }
+app-layer-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-layer-base", rev = "728ac62ef1db816947204500d0470e6b6ac28896" }
+app-testing-base = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "packages/base/app-testing-base", rev = "728ac62ef1db816947204500d0470e6b6ac28896" }
+app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "728ac62ef1db816947204500d0470e6b6ac28896" }
 
 [dependency-groups]
 dev = [

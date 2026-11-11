@@ -4,7 +4,7 @@ import json
 import time
 from unittest.mock import AsyncMock
 
-import httpx
+import httpx2
 import pytest
 from app.common.config import GitHubWebhookConfig, get_github_webhook_config
 from app.features.project_management.github_webhooks import tasks
@@ -44,16 +44,16 @@ def test_task_signature_is_bound_to_the_delivery_and_expires():
 @pytest.fixture
 def cloud(monkeypatch):
     """Metadata server and Cloud Tasks API; `status` sets the task creation response."""
-    requests: list[httpx.Request] = []
+    requests: list[httpx2.Request] = []
 
-    def respond(request: httpx.Request) -> httpx.Response:
+    def respond(request: httpx2.Request) -> httpx2.Response:
         requests.append(request)
         if request.url.host == "metadata.google.internal":
-            return httpx.Response(200, json={"access_token": "sa-token", "expires_in": 3599})
-        return httpx.Response(respond.status, json={})
+            return httpx2.Response(200, json={"access_token": "sa-token", "expires_in": 3599})
+        return httpx2.Response(respond.status, json={})
 
     respond.status = 200  # type: ignore[attr-defined]
-    client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    client = httpx2.AsyncClient(transport=httpx2.MockTransport(respond))
     monkeypatch.setattr(tasks, "get_http_client", lambda: client)
     monkeypatch.setattr(tasks, "_token", None)
     return respond, requests

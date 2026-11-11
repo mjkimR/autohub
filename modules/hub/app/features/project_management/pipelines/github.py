@@ -4,7 +4,7 @@ import time
 from typing import Any
 from urllib.parse import quote
 
-import httpx
+import httpx2
 from app.features.project_management.pipelines.gate import evaluate_verification
 from app.features.project_management.pipelines.logs import failure_log_excerpt
 from app.features.project_management.pipelines.schemas import (
@@ -48,7 +48,7 @@ class GitHubObservationError(RuntimeError):
         self.retry_after = retry_after
 
 
-def github_http_error(context: str, response: httpx.Response, now: float | None = None) -> GitHubObservationError:
+def github_http_error(context: str, response: httpx2.Response, now: float | None = None) -> GitHubObservationError:
     """Classify a failed response from its status and rate-limit headers, never from its body."""
     status = response.status_code
     headers = response.headers
@@ -70,8 +70,8 @@ def github_http_error(context: str, response: httpx.Response, now: float | None 
     return GitHubObservationError(message, status)
 
 
-def create_github_client(token: str) -> httpx.AsyncClient:
-    return httpx.AsyncClient(  # arch: ignore[RULE-app-http-client-construction] -- connector-scoped PAT and cookies; caller owns async-with cleanup
+def create_github_client(token: str) -> httpx2.AsyncClient:
+    return httpx2.AsyncClient(  # arch: ignore[RULE-app-http-client-construction] -- connector-scoped PAT and cookies; caller owns async-with cleanup
         base_url="https://api.github.com",
         headers={
             "Authorization": f"Bearer {token}",
@@ -84,16 +84,16 @@ def create_github_client(token: str) -> httpx.AsyncClient:
 
 
 class GitHubActionsReader:
-    def __init__(self, client: httpx.AsyncClient):
+    def __init__(self, client: httpx2.AsyncClient):
         self.client = client
 
     async def _get(self, path: str, params: dict[str, str | int] | None = None) -> dict[str, Any]:
         try:
             response = await self.client.get(path, params=params)
             response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             raise github_http_error("observation", exc.response) from None
-        except httpx.RequestError:
+        except httpx2.RequestError:
             raise GitHubObservationError("GitHub observation request failed") from None
         try:
             value = response.json()
@@ -107,9 +107,9 @@ class GitHubActionsReader:
         try:
             response = await self.client.get(path, params=params)
             response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             raise github_http_error("observation", exc.response) from None
-        except httpx.RequestError:
+        except httpx2.RequestError:
             raise GitHubObservationError("GitHub observation request failed") from None
         try:
             value = response.json()
@@ -128,7 +128,7 @@ class GitHubActionsReader:
             request = self.client.build_request("GET", f"/repos/{repository}/actions/jobs/{job_id}/logs")
             response = await self.client.send(request, stream=True, follow_redirects=False)
             if response.status_code == 302:
-                location = httpx.URL(response.headers.get("location", ""))
+                location = httpx2.URL(response.headers.get("location", ""))
                 if location.scheme != "https" or not location.host or location.username or location.password:
                     raise GitHubObservationError("GitHub job log returned an invalid download URL")
                 await response.aclose()
@@ -144,11 +144,11 @@ class GitHubActionsReader:
                     raise GitHubObservationError("GitHub job log exceeded its size limit")
                 content.extend(chunk)
             return failure_log_excerpt(content.decode("utf-8", errors="replace"), max_chars)
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             raise github_http_error("job log", exc.response) from None
-        except httpx.RequestError:
+        except httpx2.RequestError:
             raise GitHubObservationError("GitHub job log request failed") from None
-        except httpx.InvalidURL:
+        except httpx2.InvalidURL:
             raise GitHubObservationError("GitHub job log returned an invalid download URL") from None
         finally:
             if response is not None:
@@ -191,9 +191,9 @@ class GitHubActionsReader:
         try:
             response = await self.client.post(f"/repos/{repository}/issues/{pull_number}/comments", json={"body": body})
             response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             raise github_http_error("mention delivery", exc.response) from None
-        except httpx.RequestError:
+        except httpx2.RequestError:
             raise GitHubObservationError("GitHub mention delivery request failed") from None
         try:
             value = response.json()
@@ -223,9 +223,9 @@ class GitHubActionsReader:
         try:
             response = await self.client.put(f"/repos/{repository}/pulls/{pull_number}/merge", json=payload)
             response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             raise github_http_error("merge", exc.response) from None
-        except httpx.RequestError:
+        except httpx2.RequestError:
             raise GitHubObservationError("GitHub merge request failed") from None
         try:
             value = response.json()

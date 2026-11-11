@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
-import httpx
+import httpx2
 import pytest
 import yaml
 from app.features.project_management.projects.errors import ProjectError
@@ -77,21 +77,21 @@ def preview(tmp_path, monkeypatch):
         assert request.method == "GET", "Preview must never write GitHub"
         path = request.url.path.removeprefix("/repos/owner/repo")
         if path == "/commits/feature":
-            return httpx.Response(200, json={"sha": SHA})
+            return httpx2.Response(200, json={"sha": SHA})
         if path.startswith("/git/ref/heads/"):
             return (
-                httpx.Response(200, json={"object": {"sha": "b" * 40}})
+                httpx2.Response(200, json={"object": {"sha": "b" * 40}})
                 if refs.get(path.split("/")[-1])
-                else httpx.Response(404)
+                else httpx2.Response(404)
             )
         if path == "/pulls":
-            return httpx.Response(200, json=pulls)
+            return httpx2.Response(200, json=pulls)
         raise AssertionError(path)
 
     monkeypatch.setattr(
         milestones.pipeline_services,
         "create_github_client",
-        lambda token: httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(respond)),
+        lambda token: httpx2.AsyncClient(base_url="https://api.github.com", transport=httpx2.MockTransport(respond)),
     )
     forbidden = AsyncMock(side_effect=AssertionError("Execution collaborator called"))
     monkeypatch.setattr(activities, "start_branch", forbidden)

@@ -3,7 +3,7 @@ import re
 from datetime import timedelta
 from uuid import UUID, uuid4
 
-import httpx
+import httpx2
 import pytest
 from app.auth import MCP_OPS, MCP_READ, MCP_WRITE
 from app.features.project_management.pipeline_runs.models import ExecutionAttempt
@@ -161,11 +161,11 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
     def github(request):
         assert request.method == "GET"
         if request.url.path == "/repos/owner/app":
-            return httpx.Response(200, json={"default_branch": "main"})
+            return httpx2.Response(200, json={"default_branch": "main"})
         if request.url.path == "/repos/owner/app/pulls":
-            return httpx.Response(200, json=[])
+            return httpx2.Response(200, json=[])
         assert request.url.path == "/repos/owner/app/pulls/7"
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={
                 "number": 7,
@@ -181,7 +181,7 @@ async def test_project_enrollment_and_outcomes_reuse_business_rules(client, key,
     monkeypatch.setattr(
         services,
         "create_github_client",
-        lambda token: httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(github)),
+        lambda token: httpx2.AsyncClient(base_url="https://api.github.com", transport=httpx2.MockTransport(github)),
     )
     connector = await client.post(
         "/api/v1/connectors",

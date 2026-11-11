@@ -1,4 +1,4 @@
-import httpx
+import httpx2
 import pytest
 
 from tests.integration.features.project_management.pipeline_runs.test_merge_stage import (
@@ -24,7 +24,7 @@ async def test_ci_fix_uses_failure_context_and_log_access_is_best_effort(client,
 
     def respond(request):
         if request.url.path.endswith("/actions/jobs/1/logs"):
-            return httpx.Response(log_status, text=log)
+            return httpx2.Response(log_status, text=log)
         return original(request)
 
     monkeypatch.setattr(github, "respond", respond)

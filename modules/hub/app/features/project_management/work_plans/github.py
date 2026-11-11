@@ -3,7 +3,7 @@
 import base64
 from urllib.parse import quote
 
-import httpx
+import httpx2
 from app.features.project_management.pipelines.github import (
     GitHubActionsReader,
     GitHubObservationError,
@@ -32,7 +32,7 @@ class AttachedBranchMissing(PreparationRefused):
 
 
 class WorkGitHub:
-    def __init__(self, client: httpx.AsyncClient):
+    def __init__(self, client: httpx2.AsyncClient):
         self.client, self.reader = client, GitHubActionsReader(client)
 
     async def write(self, method: str, path: str, data: dict) -> dict:
@@ -40,9 +40,9 @@ class WorkGitHub:
             response = await self.client.request(method, path, json=data)
             response.raise_for_status()
             return response.json() if response.content else {}
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             raise github_http_error("work synchronization", exc.response) from None
-        except (httpx.RequestError, ValueError):
+        except (httpx2.RequestError, ValueError):
             raise GitHubObservationError("GitHub work request was not confirmed; reconciling before retry") from None
 
     async def optional(self, path: str, params=None):

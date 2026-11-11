@@ -1,7 +1,7 @@
 import json
 from collections.abc import AsyncIterator
 
-import httpx
+import httpx2
 import pytest
 from app.features.notifications import notifier
 
@@ -9,12 +9,12 @@ from app.features.notifications import notifier
 class FakeTelegram:
     def __init__(self) -> None:
         self.response: tuple[int, dict] = (200, {"ok": True})
-        self.requests: list[httpx.Request] = []
+        self.requests: list[httpx2.Request] = []
 
-    def handle(self, request: httpx.Request) -> httpx.Response:
+    def handle(self, request: httpx2.Request) -> httpx2.Response:
         self.requests.append(request)
         status, body = self.response
-        return httpx.Response(status, json=body)
+        return httpx2.Response(status, json=body)
 
     @property
     def texts(self) -> list[str]:
@@ -24,7 +24,7 @@ class FakeTelegram:
 @pytest.fixture
 async def telegram(monkeypatch) -> AsyncIterator[FakeTelegram]:
     fake = FakeTelegram()
-    async with httpx.AsyncClient(transport=httpx.MockTransport(fake.handle)) as http:
+    async with httpx2.AsyncClient(transport=httpx2.MockTransport(fake.handle)) as http:
         monkeypatch.setattr(notifier, "get_http_client", lambda: http)
         yield fake
 

@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from uuid import UUID, uuid4
 
-import httpx
+import httpx2
 import pytest
 import uvicorn
 from app.features.execution.flows.adapters import WorkerBindings, get_worker_bindings
@@ -79,7 +79,7 @@ async def test_planhub_application_sdk_runs_actual_native_host(
                 stdout=log,
                 stderr=log,
             )
-            async with httpx.AsyncClient(
+            async with httpx2.AsyncClient(
                 base_url=plan_url, headers={"X-PlanHub-Key": env["PLANHUB_DELIVERY_API_KEY"]}, timeout=10
             ) as consumer:
                 for _ in range(300):
@@ -88,7 +88,7 @@ async def test_planhub_application_sdk_runs_actual_native_host(
                     try:
                         if (await consumer.get("/api/health", timeout=0.2)).is_success:
                             break
-                    except httpx.HTTPError:
+                    except httpx2.HTTPError:
                         pass
                     await asyncio.sleep(0.02)
                 activated = await consumer.post("/api/v1/delivery/release", json={"expected_revision": 0})

@@ -4,7 +4,7 @@ import base64
 from datetime import timedelta
 from urllib.parse import quote
 
-import httpx
+import httpx2
 from app.features.project_management.connection_tests.models import TEST_BRANCH_PREFIX, ConnectionTest
 from app.features.project_management.connection_tests.ownership import TEST_LABEL, marker
 from app.features.project_management.pipeline_runs.usecases.transitions import as_utc
@@ -18,7 +18,7 @@ from app_layer_base.utils.time_util import get_current_utc_time
 
 
 class ConnectionTestGitHub:
-    def __init__(self, client: httpx.AsyncClient):
+    def __init__(self, client: httpx2.AsyncClient):
         self.client = client
         self.reader = GitHubActionsReader(client)
 
@@ -27,9 +27,9 @@ class ConnectionTestGitHub:
             response = await self.client.request(method, path, json=body)
             response.raise_for_status()
             return response.json() if response.content else {}
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             raise github_http_error("connection test", exc.response) from None
-        except (httpx.RequestError, ValueError):
+        except (httpx2.RequestError, ValueError):
             raise GitHubObservationError("GitHub connection test request failed; reconcile on the next tick") from None
 
     async def optional(self, path: str, params: dict | None = None) -> dict | None:

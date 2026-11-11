@@ -2,7 +2,7 @@
 
 import json
 
-import httpx
+import httpx2
 import pytest
 from app.features.project_management.pipelines import services
 from app.features.project_management.pipelines.github import (
@@ -30,7 +30,7 @@ class MergeScenario:
         self.has_ci = True
         # The state GitHub reports once a merge was refused; defaults to the state before it.
         self.state_after_refusal: str | None = None
-        self.merge_response = httpx.Response(200, json={"merged": True, "sha": "e" * 40})
+        self.merge_response = httpx2.Response(200, json={"merged": True, "sha": "e" * 40})
         self.merge_requests = 0
         self.comments = []
 
@@ -47,10 +47,10 @@ class MergeScenario:
             "mergeable_state": self.mergeable_state,
         }
 
-    def respond(self, request: httpx.Request) -> httpx.Response:
+    def respond(self, request: httpx2.Request) -> httpx2.Response:
         path = request.url.path.removeprefix(ROOT)
         if path == "/user":
-            return httpx.Response(200, json={"login": "connector-user", "type": "User"})
+            return httpx2.Response(200, json={"login": "connector-user", "type": "User"})
         if path == "/issues/7/comments":
             if request.method == "POST":
                 self.comments.append(
@@ -61,8 +61,8 @@ class MergeScenario:
                         "user": {"login": "connector-user"},
                     }
                 )
-                return httpx.Response(201, json=self.comments[-1])
-            return httpx.Response(200, json=self.comments)
+                return httpx2.Response(201, json=self.comments[-1])
+            return httpx2.Response(200, json=self.comments)
         ci_head = self.ci_head_sha or self.head_sha
         workflow_run = {
             "id": 1,
@@ -85,17 +85,17 @@ class MergeScenario:
             return self.merge_response
         assert request.method == "GET", f"Unexpected GitHub write: {request.method} {path}"
         if path == "/pulls/7":
-            return httpx.Response(200, json=self.pull())
+            return httpx2.Response(200, json=self.pull())
         if path == "/actions/workflows/ci.yml/runs":
             runs = [workflow_run] if self.has_ci else []
-            return httpx.Response(200, json={"total_count": len(runs), "workflow_runs": runs})
+            return httpx2.Response(200, json={"total_count": len(runs), "workflow_runs": runs})
         if path == "/actions/runs/1/jobs":
             job = {"id": 1, "name": "lint", "status": "completed", "conclusion": self.ci_conclusion, "html_url": None}
-            return httpx.Response(200, json={"total_count": 1, "jobs": [job]})
+            return httpx2.Response(200, json={"total_count": 1, "jobs": [job]})
         if path == "/actions/runs/1":
-            return httpx.Response(200, json=workflow_run)
+            return httpx2.Response(200, json=workflow_run)
         if path == "/actions/jobs/1/logs":
-            return httpx.Response(200, text="lint failed")
+            return httpx2.Response(200, text="lint failed")
         raise AssertionError(f"Unexpected GitHub request: {path}")
 
 
@@ -105,8 +105,8 @@ def github(monkeypatch) -> MergeScenario:
     monkeypatch.setattr(
         services,
         "create_github_client",
-        lambda token: httpx.AsyncClient(
-            base_url="https://api.github.com", transport=httpx.MockTransport(scenario.respond)
+        lambda token: httpx2.AsyncClient(
+            base_url="https://api.github.com", transport=httpx2.MockTransport(scenario.respond)
         ),
     )
     return scenario
@@ -237,7 +237,7 @@ async def test_draft_conversion_after_recheck_waits_without_a_conflict_fix(clien
         if request.method == "PUT":
             github.draft = True
             github.mergeable_state = "dirty"
-            github.merge_response = httpx.Response(status, json={"message": "Pull request is a draft"})
+            github.merge_response = httpx2.Response(status, json={"message": "Pull request is a draft"})
         return respond(request)
 
     monkeypatch.setattr(github, "respond", convert_before_merge)
@@ -281,7 +281,7 @@ async def test_a_refused_merge_is_a_conflict_only_when_github_says_so(client, ru
     # GitHub had not computed mergeability yet, accepted the request, then refused it for a missing review.
     github.mergeable_state = None
     github.state_after_refusal = "blocked"
-    github.merge_response = httpx.Response(405, json={"message": "At least 1 approving review is required"})
+    github.merge_response = httpx2.Response(405, json={"message": "At least 1 approving review is required"})
 
     advanced = await advance(client, run)
 
@@ -309,15 +309,15 @@ async def test_a_refused_merge_is_a_conflict_only_when_github_says_so(client, ru
     ],
 )
 def test_github_failures_are_classified_from_status_and_headers(status, headers, kind, retry_after):
-    error = github_http_error("observation", httpx.Response(status, headers=headers), now=1_000_000)
+    error = github_http_error("observation", httpx2.Response(status, headers=headers), now=1_000_000)
 
     assert (error.kind, error.retry_after, error.status_code) == (kind, retry_after, status)
     assert str(error) == f"GitHub observation returned HTTP {status}"
 
 
 async def test_a_rate_limited_read_carries_its_delay():
-    transport = httpx.MockTransport(lambda request: httpx.Response(403, headers={"retry-after": "90"}))
-    async with httpx.AsyncClient(base_url="https://api.github.com", transport=transport) as client:
+    transport = httpx2.MockTransport(lambda request: httpx2.Response(403, headers={"retry-after": "90"}))
+    async with httpx2.AsyncClient(base_url="https://api.github.com", transport=transport) as client:
         with pytest.raises(GitHubObservationError) as raised:
             await GitHubActionsReader(client).list_issue_comments("owner/app", 7)
     assert (raised.value.kind, raised.value.retry_after) == ("rate_limited", 90)

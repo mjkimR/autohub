@@ -1,7 +1,7 @@
 from datetime import timedelta
 from uuid import UUID, uuid4
 
-import httpx
+import httpx2
 import pytest
 from app.features.notifications.decision_models import DecisionNoticeAttempt
 from app.features.notifications.decision_repo import DecisionNoticeRepository
@@ -170,9 +170,9 @@ async def test_exact_selection_late_page_and_no_provider_calls(client, project, 
 
 @pytest.mark.parametrize("response,expected", [(200, "accepted"), (400, "failed"), (500, "unknown")])
 async def test_transport_classification_is_safe(response, expected):
-    async with httpx.AsyncClient(
-        transport=httpx.MockTransport(
-            lambda req: httpx.Response(response, json={"ok": response == 200, "description": "secret"})
+    async with httpx2.AsyncClient(
+        transport=httpx2.MockTransport(
+            lambda req: httpx2.Response(response, json={"ok": response == 200, "description": "secret"})
         )
     ) as client:
         state, detail = await send_decision_message(client, "token-secret", "chat", "text")

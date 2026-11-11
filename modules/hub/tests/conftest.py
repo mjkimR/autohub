@@ -30,9 +30,9 @@ os.environ["APP_API_KEY_ROOT_KEY"] = "root-test-credential-at-least-32-character
 os.environ["CALENDAR_BACKEND"] = "fake"
 os.environ["GOOGLE_AUTH_ENABLED"] = "false"
 
-# Configure logging - reduce noise from SQLAlchemy and httpx
+# Configure logging - reduce noise from SQLAlchemy and httpx2
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpx2").setLevel(logging.WARNING)
 
 
 def pytest_configure(config):

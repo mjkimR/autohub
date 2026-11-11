@@ -2,7 +2,7 @@ import asyncio
 import json
 from types import SimpleNamespace
 
-import httpx
+import httpx2
 import pytest
 from app.features.project_management.pipelines import services
 from app.features.project_management.work_plans import issue_sync
@@ -47,10 +47,10 @@ class GitHubWorkScenario:
         method, path = request.method, request.url.path.removeprefix("/repos/owner/app")
         body = json.loads(request.content) if request.content else {}
         if path == "/user":
-            return httpx.Response(200, json={"login": "operator", "type": "User"})
+            return httpx2.Response(200, json={"login": "operator", "type": "User"})
         if path.startswith("/issues"):
             if self.fail_issues:
-                return httpx.Response(self.issue_failure_status, headers={"retry-after": "60"})
+                return httpx2.Response(self.issue_failure_status, headers={"retry-after": "60"})
             if path == "/issues":
                 if method == "POST":
                     n = len(self.issues) + 1
@@ -62,23 +62,25 @@ class GitHubWorkScenario:
                     }
                     if self.lose_issue_response:
                         self.lose_issue_response = False
-                        raise httpx.ReadTimeout("response lost")
-                    return httpx.Response(201, json=self.issues[n])
-                return httpx.Response(200, json=list(self.issues.values()))
+                        raise httpx2.ReadTimeout("response lost")
+                    return httpx2.Response(201, json=self.issues[n])
+                return httpx2.Response(200, json=list(self.issues.values()))
             parts = path.split("/")
             n = int(parts[2])
             if len(parts) == 4 and parts[3] == "parent":
                 return (
-                    httpx.Response(200, json={"number": self.parents[n]}) if n in self.parents else httpx.Response(404)
+                    httpx2.Response(200, json={"number": self.parents[n]})
+                    if n in self.parents
+                    else httpx2.Response(404)
                 )
             if len(parts) == 4 and parts[3] == "sub_issues":
                 self.parents[body["sub_issue_id"] - 1000] = n
-                return httpx.Response(201, json={})
+                return httpx2.Response(201, json={})
             self.issues[n].update(body)
-            return httpx.Response(200, json=self.issues[n])
+            return httpx2.Response(200, json=self.issues[n])
         if path.startswith("/git/matching-refs/heads/"):
             prefix = path.removeprefix("/git/matching-refs/heads/")
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 json=[
                     {"ref": f"refs/heads/{name}", "object": {"sha": sha}}
@@ -89,25 +91,25 @@ class GitHubWorkScenario:
         if path.startswith("/git/ref/heads/"):
             ref = path.removeprefix("/git/ref/heads/")
             return (
-                httpx.Response(200, json={"object": {"sha": self.refs[ref]}})
+                httpx2.Response(200, json={"object": {"sha": self.refs[ref]}})
                 if ref in self.refs
-                else httpx.Response(404)
+                else httpx2.Response(404)
             )
         if path == "/git/refs":
             self.refs[body["ref"].removeprefix("refs/heads/")] = body["sha"]
-            return httpx.Response(201, json={})
+            return httpx2.Response(201, json={})
         if path.startswith("/contents/"):
             branch = body.get("branch") or request.url.params.get("ref")
             key = (branch, path)
             if method == "PUT":
                 self.files.add(key)
                 self.refs[branch] = "b" * 40
-                return httpx.Response(201, json={})
-            return httpx.Response(200, json={}) if key in self.files else httpx.Response(404)
+                return httpx2.Response(201, json={})
+            return httpx2.Response(200, json={}) if key in self.files else httpx2.Response(404)
         if path == "/pulls":
             if method == "GET":
                 branch = request.url.params["head"].split(":", 1)[1]
-                return httpx.Response(200, json=[p for p in self.pulls.values() if p["head"]["ref"] == branch])
+                return httpx2.Response(200, json=[p for p in self.pulls.values() if p["head"]["ref"] == branch])
             n = len(self.pulls) + 100
             self.pulls[n] = {
                 **body,
@@ -120,10 +122,10 @@ class GitHubWorkScenario:
             }
             if self.lose_pull_response:
                 self.lose_pull_response = False
-                raise httpx.ReadTimeout("response lost")
-            return httpx.Response(201, json=self.pulls[n])
+                raise httpx2.ReadTimeout("response lost")
+            return httpx2.Response(201, json=self.pulls[n])
         if path.startswith("/pulls/"):
-            return httpx.Response(200, json=self.pulls[int(path.split("/")[2])])
+            return httpx2.Response(200, json=self.pulls[int(path.split("/")[2])])
         raise AssertionError(f"Unexpected {method} {path}")
 
     def merge(self, number):
@@ -140,9 +142,9 @@ async def setup_work(client, monkeypatch):
     monkeypatch.setattr(
         services,
         "create_github_client",
-        lambda token: httpx.AsyncClient(
+        lambda token: httpx2.AsyncClient(
             base_url="https://api.github.com",
-            transport=httpx.MockTransport(github.respond),
+            transport=httpx2.MockTransport(github.respond),
         ),
     )
     connector = await client.post(
