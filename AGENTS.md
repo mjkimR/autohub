@@ -67,16 +67,11 @@ See [README](README.md) and [documentation guide](docs/README.md) for scope.
 <!-- DEVKIT:START -->
 ## devkit
 
-This repository installs agent assets with `devkit`. `.devkit/config.toml` selects
-bundles; `.devkit/installation.json` records what is deployed.
-
-- Before work that touches a bundle's assets, run `uv run devkit get-context <bundle>` once per bundle in the current agent context. Installed bundles: `advisory`, `app-common`, `command-design`, `devkit`, `docs`, `harness`, `maintenance`, `spec`.
-- Entry skill `devkit-playbook`: find and run an operational playbook the user invokes or confirms.
-- Entry skill `devkit-workflow`: diagnose and follow the delivery workflow stage of a work unit.
+- Before using a bundle's assets, run `uv run devkit get-context <bundle>` once per agent context. Installed: `advisory`, `app-common`, `command-design`, `devkit`, `docs`, `harness`, `maintenance`, `spec`.
 - Never edit `.devkit/managed/` or projected agent files; change the source bundle or use `devkit override`.
 - app-common packages: read the `app-common` skill before changing code that uses them; its architecture rules run in `devkit rules check`, and `devkit app guide list` lists the topics for this project.
-- Before document work, run `uv run devkit get-context docs` once per agent context and follow its writing instructions. Read the listed steering documents when their summaries concern the decision.
-- Inspect `uv run devkit config show`: for sdd, run `uv run devkit get-context spec`. Start work with `/spec <intent>`; each new task intake runs its intake step first. `/spec-next` resumes SDD. For adaptive-dev, use its guidance and independent checks without SDD records.
+- Before document work, run `uv run devkit get-context docs`.
+- Read `uv run devkit config show`: under sdd, run `uv run devkit get-context spec` and start work with `/spec <intent>`; each new task intake runs its intake step first. For adaptive-dev, use its guidance and independent checks without SDD records.
 
-This block is managed by `devkit sync`; edit outside the markers only.
+Managed by `devkit sync`; edit outside the markers only.
 <!-- DEVKIT:END -->

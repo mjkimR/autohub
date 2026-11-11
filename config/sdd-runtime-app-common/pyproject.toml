@@ -8,13 +8,13 @@ dependencies = ["devkit-spec", "devkit-agt", "devkit-advisory", "app-tools"]
 package = false
 # app-tools pins its development toolchain; this isolated profile reviews the newer runtime together.
 override-dependencies = [
-    "devkit-dist @ git+https://github.com/mjkimR/devkit@b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#subdirectory=packages/devkit-dist",
-    "devkit-agt @ git+https://github.com/mjkimR/devkit@b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#subdirectory=packages/devkit",
-    "devkit-advisory @ git+https://github.com/mjkimR/devkit@b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#subdirectory=packages/devkit-advisory",
+    "devkit-dist @ git+https://github.com/mjkimR/devkit@a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#subdirectory=packages/devkit-dist",
+    "devkit-agt @ git+https://github.com/mjkimR/devkit@a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#subdirectory=packages/devkit",
+    "devkit-advisory @ git+https://github.com/mjkimR/devkit@a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#subdirectory=packages/devkit-advisory",
 ]
 
 [tool.uv.sources]
-devkit-spec = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-spec", rev = "b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
-devkit-agt = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit", rev = "b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
-devkit-advisory = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-advisory", rev = "b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
-app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "96fb2fa7116813cf7e71538943a45ca20ccb7232" }
+devkit-spec = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-spec", rev = "a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
+devkit-agt = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit", rev = "a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
+devkit-advisory = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-advisory", rev = "a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
+app-tools = { git = "https://github.com/mjkimR/app-common.git", subdirectory = "tools/app-tools", rev = "2837f847231f442e6dcd9de7b89c962bc59866a0" }

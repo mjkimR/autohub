@@ -12,16 +12,16 @@ members = [
     "scheduler-mgr",
 ]
 overrides = [
-    { name = "devkit-advisory", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" },
-    { name = "devkit-agt", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" },
-    { name = "devkit-dist", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-dist&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" },
+    { name = "devkit-advisory", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" },
+    { name = "devkit-agt", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" },
+    { name = "devkit-dist", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-dist&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" },
 ]
 
 [manifest.dependency-groups]
 dev = [
-    { name = "devkit-advisory", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" },
-    { name = "devkit-catalog", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-catalog&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" },
-    { name = "devkit-spec", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-spec&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" },
+    { name = "devkit-advisory", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" },
+    { name = "devkit-catalog", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-catalog&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" },
+    { name = "devkit-spec", git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-spec&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" },
     { name = "pyright", specifier = ">=1.1.409" },
 ]
 
@@ -94,7 +94,7 @@ wheels = [
 [[package]]
 name = "app-http-client"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fadapters%2Fapp-http-client&rev=728ac62ef1db816947204500d0470e6b6ac28896#728ac62ef1db816947204500d0470e6b6ac28896" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fadapters%2Fapp-http-client&rev=2837f847231f442e6dcd9de7b89c962bc59866a0#2837f847231f442e6dcd9de7b89c962bc59866a0" }
 dependencies = [
     { name = "dotenv" },
     { name = "httpx2" },
@@ -106,7 +106,7 @@ dependencies = [
 [[package]]
 name = "app-layer-base"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-layer-base&rev=728ac62ef1db816947204500d0470e6b6ac28896#728ac62ef1db816947204500d0470e6b6ac28896" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-layer-base&rev=2837f847231f442e6dcd9de7b89c962bc59866a0#2837f847231f442e6dcd9de7b89c962bc59866a0" }
 dependencies = [
     { name = "devkit-advisory" },
     { name = "dotenv" },
@@ -122,7 +122,7 @@ dependencies = [
 [[package]]
 name = "app-mcp"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Ftransports%2Fapp-mcp&rev=728ac62ef1db816947204500d0470e6b6ac28896#728ac62ef1db816947204500d0470e6b6ac28896" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Ftransports%2Fapp-mcp&rev=2837f847231f442e6dcd9de7b89c962bc59866a0#2837f847231f442e6dcd9de7b89c962bc59866a0" }
 dependencies = [
     { name = "devkit-advisory" },
     { name = "fastmcp" },
@@ -132,7 +132,7 @@ dependencies = [
 [[package]]
 name = "app-prebuilt-auth"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fprebuilt%2Fapp-prebuilt-auth&rev=728ac62ef1db816947204500d0470e6b6ac28896#728ac62ef1db816947204500d0470e6b6ac28896" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fprebuilt%2Fapp-prebuilt-auth&rev=2837f847231f442e6dcd9de7b89c962bc59866a0#2837f847231f442e6dcd9de7b89c962bc59866a0" }
 dependencies = [
     { name = "app-http-client" },
     { name = "app-layer-base" },
@@ -148,7 +148,7 @@ dependencies = [
 [[package]]
 name = "app-testing-base"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=728ac62ef1db816947204500d0470e6b6ac28896#728ac62ef1db816947204500d0470e6b6ac28896" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=2837f847231f442e6dcd9de7b89c962bc59866a0#2837f847231f442e6dcd9de7b89c962bc59866a0" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "app-layer-base" },
@@ -164,7 +164,7 @@ dependencies = [
 [[package]]
 name = "app-tools"
 version = "0.1.0"
-source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=728ac62ef1db816947204500d0470e6b6ac28896#728ac62ef1db816947204500d0470e6b6ac28896" }
+source = { git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=2837f847231f442e6dcd9de7b89c962bc59866a0#2837f847231f442e6dcd9de7b89c962bc59866a0" }
 dependencies = [
     { name = "click" },
     { name = "devkit-agt" },
@@ -676,12 +676,12 @@ wheels = [
 [[package]]
 name = "devkit-advisory"
 version = "0.1.6"
-source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-advisory&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
 
 [[package]]
 name = "devkit-agt"
 version = "0.1.6"
-source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
 dependencies = [
     { name = "click" },
     { name = "devkit-advisory" },
@@ -694,12 +694,12 @@ dependencies = [
 [[package]]
 name = "devkit-catalog"
 version = "0.1.6"
-source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-catalog&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-catalog&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
 
 [[package]]
 name = "devkit-cli"
 version = "0.1.6"
-source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-cli&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-cli&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
 dependencies = [
     { name = "click" },
     { name = "devkit-advisory" },
@@ -708,7 +708,7 @@ dependencies = [
 [[package]]
 name = "devkit-core"
 version = "0.1.6"
-source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-core&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-core&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
 dependencies = [
     { name = "devkit-advisory" },
     { name = "pyyaml" },
@@ -717,7 +717,7 @@ dependencies = [
 [[package]]
 name = "devkit-dist"
 version = "0.1.6"
-source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-dist&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-dist&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
 dependencies = [
     { name = "click" },
     { name = "devkit-advisory" },
@@ -731,7 +731,7 @@ dependencies = [
 [[package]]
 name = "devkit-docs"
 version = "0.1.6"
-source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-docs&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-docs&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
 dependencies = [
     { name = "click" },
     { name = "devkit-agt" },
@@ -741,7 +741,7 @@ dependencies = [
 [[package]]
 name = "devkit-spec"
 version = "0.1.6"
-source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-spec&rev=b151a10bb4ab9433c1dbaeb6c316917c959b6ba0#b151a10bb4ab9433c1dbaeb6c316917c959b6ba0" }
+source = { git = "https://github.com/mjkimR/devkit?subdirectory=packages%2Fdevkit-spec&rev=a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
 dependencies = [
     { name = "click" },
     { name = "devkit-agt" },
@@ -2225,10 +2225,10 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.18.3" },
-    { name = "app-http-client", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fadapters%2Fapp-http-client&rev=728ac62ef1db816947204500d0470e6b6ac28896" },
-    { name = "app-layer-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-layer-base&rev=728ac62ef1db816947204500d0470e6b6ac28896" },
-    { name = "app-mcp", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Ftransports%2Fapp-mcp&rev=728ac62ef1db816947204500d0470e6b6ac28896" },
-    { name = "app-prebuilt-auth", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fprebuilt%2Fapp-prebuilt-auth&rev=728ac62ef1db816947204500d0470e6b6ac28896" },
+    { name = "app-http-client", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fadapters%2Fapp-http-client&rev=2837f847231f442e6dcd9de7b89c962bc59866a0" },
+    { name = "app-layer-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-layer-base&rev=2837f847231f442e6dcd9de7b89c962bc59866a0" },
+    { name = "app-mcp", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Ftransports%2Fapp-mcp&rev=2837f847231f442e6dcd9de7b89c962bc59866a0" },
+    { name = "app-prebuilt-auth", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fprebuilt%2Fapp-prebuilt-auth&rev=2837f847231f442e6dcd9de7b89c962bc59866a0" },
     { name = "autohub-sdk", editable = "packages/sdk" },
     { name = "cachetools", specifier = ">=7.0.0" },
     { name = "croniter", specifier = ">=6.0.0" },
@@ -2252,8 +2252,8 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "aiosqlite" },
-    { name = "app-testing-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=728ac62ef1db816947204500d0470e6b6ac28896" },
-    { name = "app-tools", git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=728ac62ef1db816947204500d0470e6b6ac28896" },
+    { name = "app-testing-base", git = "https://github.com/mjkimR/app-common.git?subdirectory=packages%2Fbase%2Fapp-testing-base&rev=2837f847231f442e6dcd9de7b89c962bc59866a0" },
+    { name = "app-tools", git = "https://github.com/mjkimR/app-common.git?subdirectory=tools%2Fapp-tools&rev=2837f847231f442e6dcd9de7b89c962bc59866a0" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
     { name = "pytest-mock", specifier = ">=3.14.0" },

@@ -6,7 +6,7 @@ root [`pyproject.toml`](../../../pyproject.toml) `[tool.uv.sources]`. Rebuild it
 package, so this nested package is distributed as a committed artifact. `package-lock.json` pins the artifact's
 npm integrity. The repository view passes its own `repositoryDataSource`; the library adds no autohub API call.
 The frontend library retains its independent npm version `0.1.0`; the root devkit pin identifies its source.
-This artifact was built from devkit 0.1.6, commit `b151a10bb4ab9433c1dbaeb6c316917c959b6ba0`.
+This artifact was built from devkit 0.1.6, commit `a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef`.
 The machine-readable [source receipt](devkit-viewer.source.json) records the reviewed source commit, devkit release
 version and artifact SHA-256. `just check-devkit` compares it with all three Python environments and the tarball's
 npm integrity; the viewer's npm version remains independent of the devkit release version.
