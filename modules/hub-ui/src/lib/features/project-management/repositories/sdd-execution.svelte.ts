@@ -4,8 +4,9 @@ import { apiErrorMessage } from '$lib/api/errors';
 type Readiness = components['schemas']['SddReadiness'];
 
 export class SddExecutionState {
-	spec = $state('');
-	pull = $state<number>(1);
+	private selectedSpec = $state('');
+	private selectedPull = $state<number>(1);
+	private selectedProject = '';
 	effort = $state<'low' | 'medium' | 'high'>('medium');
 	busy = $state(false);
 	message = $state('');
@@ -19,6 +20,43 @@ export class SddExecutionState {
 	private generation = 0;
 
 	constructor(private projectId: () => string) {}
+
+	get spec() {
+		return this.selectedSpec;
+	}
+
+	set spec(value: string) {
+		if (value === this.selectedSpec) return;
+		this.selectedSpec = value;
+		this.invalidateSelection();
+	}
+
+	get pull() {
+		return this.selectedPull;
+	}
+
+	set pull(value: number) {
+		if (value === this.selectedPull) return;
+		this.selectedPull = value;
+		this.invalidateSelection();
+	}
+
+	selectProject(value: string) {
+		if (value === this.selectedProject) return;
+		this.selectedProject = value;
+		this.invalidateSelection();
+		this.runtime = '';
+		this.runtimeError = '';
+	}
+
+	private invalidateSelection() {
+		++this.generation;
+		this.inspection = null;
+		this.resultKey = '';
+		this.error = '';
+		this.message = '';
+		this.busy = false;
+	}
 
 	key() {
 		return JSON.stringify([this.projectId(), this.spec, this.pull]);
@@ -42,6 +80,7 @@ export class SddExecutionState {
 
 	async checkRuntime() {
 		const project = this.projectId();
+		const generation = ++this.generation;
 		this.busy = true;
 		this.runtime = '';
 		this.runtimeError = '';
@@ -49,7 +88,7 @@ export class SddExecutionState {
 			const result = await api.GET('/api/v1/projects/{project_id}/sdd/runtime', {
 				params: { path: { project_id: project } }
 			});
-			if (project !== this.projectId()) return;
+			if (generation !== this.generation || project !== this.projectId()) return;
 			if (result.error)
 				throw new Error(apiErrorMessage(result.error, 'Unable to check the runtime'));
 			const status = result.data;
@@ -59,10 +98,10 @@ export class SddExecutionState {
 				this.runtime = `${summary} · profile ${status.profile ?? 'default'} · bundles: ${(status.bundles ?? []).join(', ') || 'unknown'}`;
 			else this.runtimeError = `${summary}. ${status.detail ?? ''}`.trim();
 		} catch (error) {
-			if (project === this.projectId())
+			if (generation === this.generation && project === this.projectId())
 				this.runtimeError = error instanceof Error ? error.message : 'Runtime check failed';
 		} finally {
-			this.busy = false;
+			if (generation === this.generation) this.busy = false;
 		}
 	}
 
@@ -94,6 +133,7 @@ export class SddExecutionState {
 	async start() {
 		if (!this.canStart) return;
 		const requestedKey = this.key();
+		const generation = ++this.generation;
 		this.busy = true;
 		this.error = '';
 		this.resultKey = requestedKey;
@@ -110,15 +150,16 @@ export class SddExecutionState {
 			});
 			if (result.error)
 				throw new Error(apiErrorMessage(result.error, 'Unable to start spec execution'));
+			if (generation !== this.generation || requestedKey !== this.key()) return;
 			this.runId = result.data?.id || '';
 			this.startedKey = requestedKey;
-			if (requestedKey === this.key())
+			if (generation === this.generation && requestedKey === this.key())
 				this.message = 'Execution registered. Follow its stages and decisions in Pipeline Runs.';
 		} catch (error) {
-			if (requestedKey === this.key())
+			if (generation === this.generation && requestedKey === this.key())
 				this.error = error instanceof Error ? error.message : 'Could not start execution';
 		} finally {
-			this.busy = false;
+			if (generation === this.generation) this.busy = false;
 		}
 	}
 }

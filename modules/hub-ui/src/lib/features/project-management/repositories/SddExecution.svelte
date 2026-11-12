@@ -4,6 +4,7 @@
 	import SddDiagnostics from '../pipeline-runs/SddDiagnostics.svelte';
 	import { SddExecutionState } from './sdd-execution.svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { untrack } from 'svelte';
 	let {
 		projectId,
 		selectedSpec = '',
@@ -11,7 +12,12 @@
 	}: { projectId: string; selectedSpec?: string; repository?: string } = $props();
 	const state = new SddExecutionState(() => projectId);
 	$effect(() => {
-		if (selectedSpec) state.spec = selectedSpec;
+		const project = projectId;
+		const spec = selectedSpec;
+		untrack(() => {
+			state.selectProject(project);
+			if (spec) state.spec = spec;
+		});
 	});
 </script>
 

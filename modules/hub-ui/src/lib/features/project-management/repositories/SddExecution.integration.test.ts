@@ -240,3 +240,144 @@ test.each(['success', 'refusal', 'error'])(
 		).toBe(true);
 	}
 );
+
+test.each(['project', 'unit', 'pull'])(
+	'cached readiness is invalidated by a %s selection round trip',
+	async (selection) => {
+		const user = userEvent.setup();
+		const props = { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' };
+		api.POST.mockResolvedValueOnce({
+			data: { ready: true, head_sha: 'a'.repeat(40), current: { stage: { name: 'Old stage' } } }
+		}).mockResolvedValueOnce({
+			data: { ready: true, head_sha: 'b'.repeat(40), current: { stage: { name: 'Fresh stage' } } }
+		});
+		const view = render(SddExecution, props);
+		await user.click(screen.getByRole('button', { name: 'Check readiness' }));
+		expect(await screen.findByText('Old stage')).toBeTruthy();
+		if (selection === 'pull') {
+			const pull = screen.getByRole('spinbutton', { name: 'Pull request' });
+			await user.clear(pull);
+			await user.type(pull, '2');
+			await user.clear(pull);
+			await user.type(pull, '1');
+		} else {
+			await view.rerender(
+				selection === 'project'
+					? { ...props, projectId: 'other' }
+					: { ...props, selectedSpec: 'specs/2026-10/20261010-other' }
+			);
+			await view.rerender(props);
+		}
+		expect(screen.queryByText('Old stage')).toBeNull();
+		expect(
+			(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
+		).toBe(true);
+		await user.click(screen.getByRole('button', { name: 'Check readiness' }));
+		expect(await screen.findByText('Fresh stage')).toBeTruthy();
+		expect(
+			(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
+		).toBe(false);
+	}
+);
+
+test.each(['success', 'refusal', 'error'])(
+	'pending %s readiness is invalidated by a selection round trip',
+	async (outcome) => {
+		const user = userEvent.setup();
+		const props = { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' };
+		let finish!: (result: unknown) => void;
+		api.POST.mockReturnValueOnce(
+			new Promise((resolve) => {
+				finish = resolve;
+			})
+		);
+		const view = render(SddExecution, props);
+		await user.click(screen.getByRole('button', { name: 'Check readiness' }));
+		await view.rerender({ ...props, selectedSpec: 'specs/2026-10/20261010-other' });
+		await view.rerender(props);
+		finish(
+			outcome === 'success'
+				? {
+						data: {
+							ready: true,
+							head_sha: 'a'.repeat(40),
+							current: { stage: { name: 'Old stage' } }
+						}
+					}
+				: outcome === 'refusal'
+					? { data: { ready: false, reason: 'Old refusal' } }
+					: { error: { detail: 'Old error' } }
+		);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(screen.queryByText('Old stage')).toBeNull();
+		expect(screen.queryByText('Old refusal')).toBeNull();
+		expect(screen.queryByText('Old error')).toBeNull();
+		expect(
+			(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
+		).toBe(true);
+	}
+);
+
+test('a discarded inspection cannot finish a newer inspection after a round trip', async () => {
+	const user = userEvent.setup();
+	const props = { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' };
+	let oldFinish!: (result: unknown) => void;
+	let freshFinish!: (result: unknown) => void;
+	api.POST.mockReturnValueOnce(
+		new Promise((resolve) => {
+			oldFinish = resolve;
+		})
+	).mockReturnValueOnce(
+		new Promise((resolve) => {
+			freshFinish = resolve;
+		})
+	);
+	const view = render(SddExecution, props);
+	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
+	await view.rerender({ ...props, selectedSpec: 'specs/2026-10/20261010-other' });
+	await view.rerender(props);
+	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
+	oldFinish({ data: { ready: true, current: { stage: { name: 'Old stage' } } } });
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(
+		(screen.getByRole('button', { name: 'Check readiness' }) as HTMLButtonElement).disabled
+	).toBe(true);
+	expect(screen.queryByText('Old stage')).toBeNull();
+	freshFinish({ data: { ready: true, current: { stage: { name: 'Fresh stage' } } } });
+	expect(await screen.findByText('Fresh stage')).toBeTruthy();
+	expect(
+		(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
+	).toBe(false);
+});
+
+test('a late start response cannot replace a registration for a newer selection', async () => {
+	const user = userEvent.setup();
+	const props = { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' };
+	let oldFinish!: (result: unknown) => void;
+	api.POST.mockImplementation((path: string, options: { body: { spec_dir: string } }) => {
+		if (path.endsWith('/sdd/readiness'))
+			return Promise.resolve({ data: { ready: true, current: { stage: { name: 'Build' } } } });
+		if (options.body.spec_dir === props.selectedSpec)
+			return new Promise((resolve) => {
+				oldFinish = resolve;
+			});
+		return Promise.resolve({ data: { id: 'new-selection-run' } });
+	});
+	const view = render(SddExecution, props);
+	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
+	await user.click(screen.getByRole('button', { name: 'Start execution' }));
+	await view.rerender({ ...props, selectedSpec: 'specs/2026-10/20261010-other' });
+	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
+	await user.click(screen.getByRole('button', { name: 'Start execution' }));
+	expect(
+		(await screen.findByRole('link', { name: 'Open execution & decisions' })).getAttribute('href')
+	).toContain('new-selection-run');
+	oldFinish({ data: { id: 'old-selection-run' } });
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(
+		screen.getByRole('link', { name: 'Open execution & decisions' }).getAttribute('href')
+	).toContain('new-selection-run');
+	expect(
+		(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
+	).toBe(true);
+});
