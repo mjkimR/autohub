@@ -319,6 +319,35 @@
       ]
     },
     {
+      "bundle": "app-uiux-improve",
+      "id": "app-uiux-improve",
+      "kind": "skill",
+      "paths": [
+        ".agents/skills/app-uiux-improve/SKILL.md",
+        ".agents/skills/app-uiux-improve/agents/openai.yaml",
+        ".agents/skills/app-uiux-improve/references/design-guidance.md",
+        ".agents/skills/app-uiux-improve/references/orchestration.md",
+        ".agents/skills/app-uiux-improve/roles/critic.md",
+        ".agents/skills/app-uiux-improve/roles/designer.md",
+        ".agents/skills/app-uiux-improve/roles/reference-researcher.md",
+        ".agents/skills/app-uiux-improve/roles/unconventional-designer.md",
+        ".claude/skills/app-uiux-improve/SKILL.md",
+        ".claude/skills/app-uiux-improve/references/design-guidance.md",
+        ".claude/skills/app-uiux-improve/references/orchestration.md",
+        ".claude/skills/app-uiux-improve/roles/critic.md",
+        ".claude/skills/app-uiux-improve/roles/designer.md",
+        ".claude/skills/app-uiux-improve/roles/reference-researcher.md",
+        ".claude/skills/app-uiux-improve/roles/unconventional-designer.md",
+        ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/SKILL.md",
+        ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/references/design-guidance.md",
+        ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/references/orchestration.md",
+        ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/roles/critic.md",
+        ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/roles/designer.md",
+        ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/roles/reference-researcher.md",
+        ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/roles/unconventional-designer.md"
+      ]
+    },
+    {
       "bundle": "command-design",
       "id": "command-design",
       "kind": "instruction",
@@ -1368,6 +1397,38 @@
       "mode": 420,
       "sha256": "39383ac07dd7a4ce283eaa3b3ce18fb429f1daf9169f1f2858e777834e2ccf12"
     },
+    ".agents/skills/app-uiux-improve/SKILL.md": {
+      "mode": 420,
+      "sha256": "b5733e11bc651270e1f016f4f08cf6b47ea01d13a13d7940ea4bdbb2ac7c8268"
+    },
+    ".agents/skills/app-uiux-improve/agents/openai.yaml": {
+      "mode": 420,
+      "sha256": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94"
+    },
+    ".agents/skills/app-uiux-improve/references/design-guidance.md": {
+      "mode": 420,
+      "sha256": "74f7c4c8146c372966419703159357cff061f14d31b3aeb4506e6f41c2bd0e88"
+    },
+    ".agents/skills/app-uiux-improve/references/orchestration.md": {
+      "mode": 420,
+      "sha256": "cd28f22a72dd834bc58d4d4903b72aba85651ff4f5c4cbd4de1aa1ba8077a68f"
+    },
+    ".agents/skills/app-uiux-improve/roles/critic.md": {
+      "mode": 420,
+      "sha256": "4efe96bcbe91e519bb1bd01999ab12e6d5186996a09ddfb209804837a1419f17"
+    },
+    ".agents/skills/app-uiux-improve/roles/designer.md": {
+      "mode": 420,
+      "sha256": "43e250960577d6b134f428f735a247ff98a586b7874dca4cdfb116319df6d719"
+    },
+    ".agents/skills/app-uiux-improve/roles/reference-researcher.md": {
+      "mode": 420,
+      "sha256": "ecc766a86e66c7144743ea6a7f17c56f109427054ec59322b09e3c261bebf599"
+    },
+    ".agents/skills/app-uiux-improve/roles/unconventional-designer.md": {
+      "mode": 420,
+      "sha256": "0b65d87f51d5ce85143408d259be975ce57463dcbaf6afa389ea654ae53d892f"
+    },
     ".agents/skills/devkit-playbook/SKILL.md": {
       "mode": 420,
       "sha256": "e16a1d53e1c49821f6ebc5c241a71239ddc22319c647d3fb33ae32a4d90b64b1"
@@ -1799,6 +1860,34 @@
     ".claude/skills/app-common/references/vector/setup.md": {
       "mode": 420,
       "sha256": "39383ac07dd7a4ce283eaa3b3ce18fb429f1daf9169f1f2858e777834e2ccf12"
+    },
+    ".claude/skills/app-uiux-improve/SKILL.md": {
+      "mode": 420,
+      "sha256": "6788f3dd199527c7eb17a9e5f7f93297c089b3cb212d2030df0f8d1e8f8c4e6f"
+    },
+    ".claude/skills/app-uiux-improve/references/design-guidance.md": {
+      "mode": 420,
+      "sha256": "74f7c4c8146c372966419703159357cff061f14d31b3aeb4506e6f41c2bd0e88"
+    },
+    ".claude/skills/app-uiux-improve/references/orchestration.md": {
+      "mode": 420,
+      "sha256": "cd28f22a72dd834bc58d4d4903b72aba85651ff4f5c4cbd4de1aa1ba8077a68f"
+    },
+    ".claude/skills/app-uiux-improve/roles/critic.md": {
+      "mode": 420,
+      "sha256": "4efe96bcbe91e519bb1bd01999ab12e6d5186996a09ddfb209804837a1419f17"
+    },
+    ".claude/skills/app-uiux-improve/roles/designer.md": {
+      "mode": 420,
+      "sha256": "43e250960577d6b134f428f735a247ff98a586b7874dca4cdfb116319df6d719"
+    },
+    ".claude/skills/app-uiux-improve/roles/reference-researcher.md": {
+      "mode": 420,
+      "sha256": "ecc766a86e66c7144743ea6a7f17c56f109427054ec59322b09e3c261bebf599"
+    },
+    ".claude/skills/app-uiux-improve/roles/unconventional-designer.md": {
+      "mode": 420,
+      "sha256": "0b65d87f51d5ce85143408d259be975ce57463dcbaf6afa389ea654ae53d892f"
     },
     ".claude/skills/devkit-playbook/SKILL.md": {
       "mode": 420,
@@ -2460,6 +2549,38 @@
       "mode": 420,
       "sha256": "39383ac07dd7a4ce283eaa3b3ce18fb429f1daf9169f1f2858e777834e2ccf12"
     },
+    ".devkit/managed/app-uiux-improve/bundle.toml": {
+      "mode": 420,
+      "sha256": "761b9be4bdf67903c2a08f2f51b2f0359c2a6481f70f89c16fe640da57f063fc"
+    },
+    ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/SKILL.md": {
+      "mode": 420,
+      "sha256": "b5733e11bc651270e1f016f4f08cf6b47ea01d13a13d7940ea4bdbb2ac7c8268"
+    },
+    ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/references/design-guidance.md": {
+      "mode": 420,
+      "sha256": "74f7c4c8146c372966419703159357cff061f14d31b3aeb4506e6f41c2bd0e88"
+    },
+    ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/references/orchestration.md": {
+      "mode": 420,
+      "sha256": "cd28f22a72dd834bc58d4d4903b72aba85651ff4f5c4cbd4de1aa1ba8077a68f"
+    },
+    ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/roles/critic.md": {
+      "mode": 420,
+      "sha256": "4efe96bcbe91e519bb1bd01999ab12e6d5186996a09ddfb209804837a1419f17"
+    },
+    ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/roles/designer.md": {
+      "mode": 420,
+      "sha256": "43e250960577d6b134f428f735a247ff98a586b7874dca4cdfb116319df6d719"
+    },
+    ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/roles/reference-researcher.md": {
+      "mode": 420,
+      "sha256": "ecc766a86e66c7144743ea6a7f17c56f109427054ec59322b09e3c261bebf599"
+    },
+    ".devkit/managed/app-uiux-improve/skills/app-uiux-improve/roles/unconventional-designer.md": {
+      "mode": 420,
+      "sha256": "0b65d87f51d5ce85143408d259be975ce57463dcbaf6afa389ea654ae53d892f"
+    },
     ".devkit/managed/command-design/bundle.toml": {
       "mode": 420,
       "sha256": "c5a47fb17ad9861c923188363964804361c026778dcccf62afb48df5d392a32b"
@@ -3109,7 +3230,7 @@
       "sha256": "918ff775e776b5fb5def06456a6235f3cf740b987592c4fbd59ce4bf3e37d242"
     }
   },
-  "guidance_block": "277a79334be6d760603f25300bec86b89bb1dd73e6ee37a044f6809b553e061c",
+  "guidance_block": "389871a1c29da5007c0318af11aae48fdae87d369a262646bb867ed897f4ea0b",
   "packages": [
     {
       "bundle": "advisory",
@@ -3122,6 +3243,12 @@
       "bundle_version": "0.1.0",
       "package": "app-tools",
       "package_version": "0.1.0"
+    },
+    {
+      "bundle": "app-uiux-improve",
+      "bundle_version": "0.1.6",
+      "package": "devkit-catalog",
+      "package_version": "0.1.6"
     },
     {
       "bundle": "command-design",
@@ -3174,6 +3301,9 @@
       ],
       "app-common": [
         "all"
+      ],
+      "app-uiux-improve": [
+        "core"
       ],
       "command-design": [
         "core"

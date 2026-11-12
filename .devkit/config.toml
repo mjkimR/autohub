@@ -20,6 +20,7 @@ docs = "core"
 spec = "core"
 command-design = "core"
 maintenance = "upkeep"
+app-uiux-improve = "core"
 
 [development]
 approach = "sdd"
