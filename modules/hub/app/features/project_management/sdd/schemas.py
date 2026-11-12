@@ -66,6 +66,18 @@ class SddWarning(BaseModel):
     detail: str
 
 
+class SddDiagnostic(BaseModel):
+    """Hub-owned guidance selected by a recognized devkit code, never raw repository output."""
+
+    code: str
+    severity: Literal["error", "warning", "info"]
+    category: Literal["repository", "runtime", "decision"]
+    message: str
+    action: str
+    retry: Literal["after_fix", "safe", "never"]
+    target_files: list[str] = Field(default_factory=list)
+
+
 class SddRuntimeStatus(BaseModel):
     """The host's SDD runtime: its pin and whether devkit starts inside the sandbox (the new-host canary)."""
 
@@ -88,6 +100,8 @@ class SddReadiness(BaseModel):
     workflow: dict = Field(default_factory=dict)
     current: dict = Field(default_factory=dict)
     warnings: list[SddWarning] = Field(default_factory=list)
+    diagnostics: list[SddDiagnostic] = Field(default_factory=list)
+    policy: dict = Field(default_factory=dict)
 
 
 class MilestonePreviewRequest(BaseModel):

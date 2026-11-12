@@ -11,9 +11,10 @@ from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 from fastapi import Depends
 
+from .diagnostics import failure
 from .profiles import runtime_scope
 from .repos import SddRepository
-from .schemas import ProposalList, SddReadiness, SddRuntimeStatus
+from .schemas import ProposalList, SddDiagnostic, SddReadiness, SddRuntimeStatus
 from .services import SddService
 
 
@@ -122,9 +123,13 @@ class SddUseCase:
                 workflow=evidence["workflow"],
                 current=evidence["current"],
                 warnings=evidence.get("warnings", []),
+                diagnostics=evidence.get("diagnostics", []),
+                policy=evidence["snapshot"].get("policy", {}),
             )
         except ProjectError as exc:
-            return SddReadiness(ready=False, reason=str(exc))
+            return SddReadiness(
+                ready=False, reason=str(exc), diagnostics=[SddDiagnostic.model_validate(row) for row in failure(exc)]
+            )
 
     async def decisions(self, run_id):
         async with AsyncTransaction() as session:

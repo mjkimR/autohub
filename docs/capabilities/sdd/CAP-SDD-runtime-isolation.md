@@ -1,7 +1,7 @@
 ---
 id: CAP-SDD-runtime-isolation
 title: Repository SDD runtime isolation and identity
-summary: "Auto Hub evaluates repository workflow content in a server-selected isolated runtime and preserves the committed configuration and execution identity across restoration. Runtime, bundle, receipt and workflow failures remain distinct from repairable rule violations."
+summary: "Auto Hub evaluates repository workflow content in a server-selected isolated runtime and preserves the committed configuration and execution identity across restoration. Bounded Hub-authored diagnostics distinguish repository, runtime and decision recovery without exposing arbitrary upstream text."
 area: sdd
 status: active
 usecases:
@@ -94,10 +94,15 @@ runtime and effective workflow define the identity retained by an admitted run.
 14. **Sanitized CLI failure**: WHEN a CLI command fails, Hub MUST expose an allowlisted
     structured failure code and host-authored recovery text rather than repository
     stderr or free-form messages.
-    Source: [checkout.py](../../../modules/hub/app/features/project_management/sdd/checkout.py), `_command` and `CLI_FIXES`; inspected CLI failures in [test_cli.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_cli.py).
+    Check: [test_diagnostics.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_diagnostics.py), `test_error_diagnostics_never_leak_upstream_values` and `test_host_failures_have_safe_actionable_diagnostics`.
 15. **Serving-host probe**: WHEN runtime status is requested, Hub MUST probe the
     selected runtime inside isolation without requiring a PR or starting a run.
     Check: [test_cli.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_cli.py), `test_runtime_status_starts_devkit_inside_the_sandbox`.
+
+16. **Notice projection**: WHEN isolated evaluation returns JSON notices, Hub MUST retain at most 20 distinct Hub-authored diagnostic records across that evaluation's nested reads, including successful commands and later failures.
+    Check: [test_diagnostics.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_diagnostics.py), `test_notices_only_select_catalog_values_and_are_bounded`, `test_successful_subprocess_notices_are_collected_without_stderr`, `test_diagnostic_capture_is_task_local_and_nested_reads_share_one_evaluation`; [test_services.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_services.py), `test_prior_warnings_are_retained_when_a_later_cli_call_fails`.
+17. **Diagnostic identity boundary**: WHEN notices change without an effective policy or workflow change, Hub MUST exclude those notices from semantic execution identity rather than refuse continuation solely for diagnostic metadata.
+    Check: [test_services.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_services.py), `test_policy_notices_are_projected_but_do_not_change_execution_authority`; [test_profiles.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_profiles.py).
 
 ## 4. Interfaces & Data Contracts
 
@@ -117,7 +122,7 @@ The pin stores `provider: devkit-spec`, `lock_sha256`, package versions, Python
 prefix, available bundles and, when recorded, exact Git revisions. CLI identity
 is `devkit-spec:<lock_sha256>`. Workflow identity hashes semantic JSON while
 excluding checkout/binding metadata. The run snapshot retains configuration digest,
-unit, provider, CLI identity, workflow ID/hash and policy.
+unit, provider, CLI identity, workflow ID/hash and effective policy without diagnostic notices.
 
 Native evaluation requires regular `.devkit/config.toml` and `.devkit/installation.json`
 files and an existing unit anchor. The fetch uses exact lowercase 40-character
@@ -138,12 +143,17 @@ devkit packages. A missing, symlinked, malformed or larger-than-8-MiB root `uv.l
 an old pin without revisions or a nonexact reference supplies no mismatch signal.
 No warning is proof that the agent's installed runtime matches Hub.
 
+Readiness and retained native run evidence expose `diagnostics` beside compatible legacy `warnings`. Each diagnostic contains `code`, `severity` (`error`, `warning`, `info`), `category` (`repository`, `runtime`, `decision`), `message`, `action`, `retry` (`after_fix`, `safe`, `never`) and `target_files`. The projection selects displayed values from Hub-owned mappings. Unknown notice codes become `DEVKIT_NOTICE`; unknown failures become `COMMAND_FAILED`. Repository messages, advisory fixes, arbitrary paths and stderr are not copied into these records. Guidance does not execute a command, retry work or grant authority.
+
+Readiness failures caused by evaluated runtime/CLI errors retain safe diagnostics with `ready: false`. The run's blocked observation retains safe failure guidance. Notices remain separate from snapshot policy and workflow hashes. Historical warning records remain readable.
+
 ## 5. Source and Verification Boundary
 
 The contract derives from [runtime.py](../../../modules/hub/app/features/project_management/sdd/runtime.py),
 [profiles.py](../../../modules/hub/app/features/project_management/sdd/profiles.py),
 [services.py](../../../modules/hub/app/features/project_management/sdd/services.py),
 [contracts.py](../../../modules/hub/app/features/project_management/sdd/contracts.py),
+[diagnostics.py](../../../modules/hub/app/features/project_management/sdd/diagnostics.py),
 [checkout.py](../../../modules/hub/app/features/project_management/sdd/checkout.py)
 and [isolation.py](../../../modules/hub/app/features/project_management/sdd/isolation.py).
 The cited tests identify inspected evidence. Symlink rejection and the complete

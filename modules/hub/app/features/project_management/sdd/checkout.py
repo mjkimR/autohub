@@ -12,44 +12,13 @@ from tempfile import TemporaryDirectory
 
 from app.features.project_management.projects.errors import ProjectError
 
-CLI_FIXES = {
-    "RULES_VIOLATIONS": "Fix the reported rule violations and run the final checks again.",
-    "RULES_SNAPSHOT_FAILED": "Verify the Git history and isolated Git runtime.",
-    "RULES_RUN_FAILED": "Inspect the rule runtime; evaluation could not finish.",
-    "RECEIPT_STALE": "Update and commit the receipt with the supported runtime before enrolling.",
-    "SYNC_CONFLICT": "Resolve the file conflict devkit sync reported in the repository and commit the result.",
-    "OVERRIDE_DRIFT": "Review the override drift devkit sync reported and commit the resolved overrides.",
-    "RULES_LOAD_FAILED": "Commit the receipt produced by the reviewed runtime; the recorded rules did not load.",
-    "SELECTION_INVALID": "Provision the project's selected bundles in the reviewed runtime profile.",
-    "WORKFLOW_DRIFT": "Review the workflow change and explicitly rebind the spec.",
-    "DECISION_RECORD_INVALID": "Repair the invalid decision record before resuming.",
-    "ENVELOPE_INVALID": "Repair the invalid report before resuming.",
-    "SPEC_PROPOSAL_ACCEPT_REFUSED": "Inspect the proposal status and binding before requesting acceptance again.",
-    "SPEC_PROPOSAL_NOT_ELIGIBLE": "Complete the proposal's required Planning checks before accepting it.",
-    "SPEC_PROPOSAL_GATE_NOT_OPEN": "Complete Planning and answer pending questions before accepting the proposal.",
-    "SPEC_PROPOSAL_WRONG_WORKTREE": "Accept the proposal on its own plan-<slug> branch.",
-    "SPEC_PROPOSAL_POLICY_NOT_AUTO": (
-        "The owning base's plan-accept policy is not auto: accept the proposal as the user, or set "
-        'plan-accept = "auto" in [workflow.approvals] of the base\'s .devkit/config.toml.'
-    ),
-    "SPEC_LIFECYCLE_INACTIVE": (
-        "The repository's [development] approach is adaptive-dev, which disables proposal acceptance and handoff; "
-        'set approach = "sdd" in .devkit/config.toml to use the SDD lifecycle.'
-    ),
-    "DEVELOPMENT_CONFIG_INVALID": (
-        'Set [development] to only approach = "sdd" or "adaptive-dev" in .devkit/config.toml and commit it.'
-    ),
-    "SPEC_CONFIG_INVALID": (
-        "Correct the devkit-spec configuration in .devkit/config.toml ([tool.spec], or [workflow.approvals] and "
-        "[worktree] for an acceptance) and commit it."
-    ),
-    "COMMAND_FAILED": "Inspect the isolated runtime and repository contract.",
-}
+from .diagnostics import CLI_FIXES, collect, diagnostic
 
 
 class SddCommandError(ProjectError):
     def __init__(self, cli_code: str, detail: str):
         self.cli_code = cli_code
+        self.diagnostics = [diagnostic(cli_code)]
         super().__init__(422, detail, code=f"SDD_{cli_code}")
 
 
@@ -165,7 +134,8 @@ async def _command(*args: str, cwd: Path, env: dict | None, allow_failure: bool,
             except (ValueError, KeyError, IndexError, AttributeError, TypeError):
                 code = "COMMAND_FAILED"
             # Repository messages and stderr are not trusted for display (may contain secrets/paths).
-            fix = CLI_FIXES.get(code, CLI_FIXES["COMMAND_FAILED"])
+            code = code if isinstance(code, str) and code in CLI_FIXES else "COMMAND_FAILED"
+            fix = CLI_FIXES[code]
             raise SddCommandError(
                 code if code in CLI_FIXES else "COMMAND_FAILED",
                 f"SDD evaluation failed ({code if code in CLI_FIXES else 'COMMAND_FAILED'}). {fix}",
@@ -175,6 +145,10 @@ async def _command(*args: str, cwd: Path, env: dict | None, allow_failure: bool,
             "Git checkout failed; check repository access and the requested commits",
             code="SDD_CHECKOUT_FAILED",
         )
+    if devkit and not process.returncode:
+        # Version and Git output are not JSON diagnostic results.
+        with suppress(ValueError, TypeError):
+            collect(json.loads(stdout))
     return stdout.decode() if not process.returncode else ""
 
 

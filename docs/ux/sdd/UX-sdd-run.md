@@ -1,7 +1,7 @@
 ---
 id: UX-sdd-run
 title: Native SDD Run
-summary: "The native run panel presents inspected workflow evidence, holds and integration authority separately from PR readiness and ordinary resume. Supports exact pending-decision navigation."
+summary: "The native run panel presents inspected workflow evidence, holds and integration authority separately from PR readiness and ordinary resume. Safe diagnostic classifications explain recovery without executing advice. Supports exact pending-decision navigation."
 area: sdd
 element: panel
 status: active
@@ -32,10 +32,13 @@ behind Other actions or an explicit feedback editor.
 - SDD unit (bound path and head/base evidence link).
 - Native SDD activity (Planning evidence/reports for proposal units; execution
   reports for spec units).
-- Native SDD activity (worker problems, pending questions and runtime diagnostics).
+- Native SDD activity (worker problems and pending questions).
+- Native SDD activity (Devkit diagnostics with code/severity, responsibility category, summary, next step, static file targets and read-only retry guidance; unmatched historical warnings remain visible).
 - Native SDD activity (integration authority and PR-draft status shown separately).
 - `UX-sdd-workflow-request` (current request before integration decisions).
 - `UX-sdd-decision-history` (approval/publication history in the parent dialog).
+
+Diagnostic guidance is read-only. Reinspect after repair describes a recovery condition, not an automatic retry or another decision action. Safe generic guidance represents unknown diagnostics; the panel does not display raw stderr through diagnostic records.
 
 Pending Hub questions disable integration decisions. Request changes requires
 nonblank feedback. Stop run and Withdraw approval expose their effect before the
@@ -85,6 +88,7 @@ Embedded panels retain the visible parent context and its Close exit; they add n
 ## 5. Evidence
 
 - [SddRunPanel.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/SddRunPanel.svelte).
+- [SddDiagnostics.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/SddDiagnostics.svelte).
 - [SddNextAction.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/SddNextAction.svelte).
 - [SddPlanningEvidence.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/SddPlanningEvidence.svelte).
 - [SddReports.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/SddReports.svelte).

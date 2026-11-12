@@ -282,3 +282,38 @@ test('shows best-effort runtime warnings from the inspected evidence as text', (
 	expect(screen.getByText('<b>Receipt</b> differs from the reviewed runtime')).toBeTruthy();
 	expect(screen.getByRole('button', { name: 'Approve integration' })).toBeTruthy();
 });
+
+test('run diagnostics retain recovery context alongside historical warnings', () => {
+	render(SddRunPanel, {
+		run: {
+			...run,
+			sdd_progress: {
+				...run.sdd_progress,
+				diagnostics: [
+					{
+						code: 'SPEC_APPROVAL_KEY_IGNORED',
+						severity: 'warning',
+						category: 'repository',
+						message: 'An approval setting is retired.',
+						action: 'Remove the retired approval setting.',
+						retry: 'after_fix',
+						target_files: ['.devkit/config.toml']
+					}
+				],
+				warnings: [
+					{ code: 'SPEC_APPROVAL_KEY_IGNORED', detail: 'Duplicate warning' },
+					{ code: 'RECEIPT_STALE', detail: 'Historical receipt warning' }
+				]
+			}
+		},
+		onchange: vi.fn()
+	});
+	const diagnostics = screen.getByRole('region', { name: 'Devkit diagnostics' });
+	expect(diagnostics.textContent).toContain('SPEC_APPROVAL_KEY_IGNORED');
+	expect(diagnostics.textContent).toContain('Repository change');
+	expect(diagnostics.textContent).toContain('Remove the retired approval setting.');
+	expect(diagnostics.textContent).toContain('.devkit/config.toml');
+	expect(diagnostics.textContent).toContain('Historical receipt warning');
+	expect(screen.queryByText('Duplicate warning')).toBeNull();
+	expect(diagnostics.querySelector('button')).toBeNull();
+});

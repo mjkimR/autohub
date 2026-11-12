@@ -97,3 +97,13 @@ def test_workflow_pin_is_stable_across_checkouts_but_covers_effective_semantics(
     assert workflow_hash({**definition, "path": "/tmp/two/workflow.md", "ok": True, "errors": []}) == expected
     assert workflow_hash({**definition, "approvals": {"integration": "auto"}}) != expected
     assert workflow_hash({**definition, "stages": [{"id": "review", "exit": []}]}) != expected
+
+
+def test_workflow_notices_do_not_change_the_existing_semantic_hash():
+    from app.features.project_management.sdd.contracts import workflow_hash
+
+    definition = {"id": "workflow", "stages": [{"id": "review", "exit": ["checked"]}]}
+    expected = workflow_hash(definition)
+    assert workflow_hash({**definition, "notices": []}) == expected
+    assert workflow_hash({**definition, "notices": [{"message": "volatile warning"}]}) == expected
+    assert workflow_hash({**definition, "stages": []}) != expected

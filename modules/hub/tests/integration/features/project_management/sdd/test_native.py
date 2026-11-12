@@ -594,3 +594,59 @@ async def test_a_rejected_proposal_is_not_enrolled(client, project, github, prop
         f"/api/v1/projects/{project['id']}/sdd/readiness", json={"pull_number": 7, "spec_dir": PROPOSAL}
     )
     assert ready.status_code == 200 and not ready.json()["ready"] and "Rejected" in ready.json()["reason"]
+
+
+async def test_readiness_exposes_safe_diagnostics_policy_and_waits_without_creating_a_run(
+    client, project, inspector, unit_branch, monkeypatch
+):
+    from app.features.project_management.sdd.diagnostics import diagnostic
+
+    await client.patch(
+        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+    )
+    original = native.SddService.inspect
+
+    async def inspected(self, *args, **kwargs):
+        value = await original(self, *args, **kwargs)
+        value["diagnostics"] = [diagnostic("SPEC_APPROVAL_KEY_IGNORED", severity="warning")]
+        value["current"]["pending_questions"] = [{"file": "worker-01.yaml", "id": "q1", "title": "Storage choice"}]
+        return value
+
+    monkeypatch.setattr(native.SddService, "inspect", inspected)
+    response = await client.post(
+        f"/api/v1/projects/{project['id']}/sdd/readiness", json={"pull_number": 7, "spec_dir": SPEC}
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["ready"] is True  # admissible to enroll, not a claim that no question or approval is pending
+    assert data["diagnostics"][0]["code"] == "SPEC_APPROVAL_KEY_IGNORED"
+    assert data["diagnostics"][0]["retry"] == "never"
+    assert data["policy"]["approvals"]["dev-integration"]["policy"] == "ask"
+    assert data["current"]["stage"]["human_gate"] == "dev-integration"
+    assert data["current"]["pending_questions"][0]["title"] == "Storage choice"
+    runs = (await client.get("/api/v1/pipeline-runs", params={"project_id": project["id"]})).json()
+    assert runs["total_count"] == 0
+
+
+async def test_cli_error_diagnostics_reach_readiness_and_persisted_run_without_approving(
+    client, run, project, github, monkeypatch
+):
+    from app.features.project_management.sdd.checkout import SddCommandError
+
+    async def refused(*args, **kwargs):
+        raise SddCommandError("RULES_RUN_FAILED", "SDD evaluation failed (RULES_RUN_FAILED).")
+
+    monkeypatch.setattr(native.SddService, "inspect", refused)
+    response = await client.post(
+        f"/api/v1/projects/{project['id']}/sdd/readiness", json={"pull_number": 7, "spec_dir": SPEC}
+    )
+    assert response.status_code == 200 and response.json()["ready"] is False
+    diagnostic = response.json()["diagnostics"][0]
+    assert diagnostic["code"] == "RULES_RUN_FAILED" and diagnostic["category"] == "runtime"
+    assert diagnostic["severity"] == "error" and diagnostic["retry"] == "after_fix"
+    blocked = await merge.advance(client, run)
+    assert blocked["state"] == "blocked"
+    assert blocked["sdd_progress"]["diagnostics"] == [diagnostic]
+    assert not blocked["sdd_progress"].get("approval") and github.merge_requests == 0
+    retained = (await client.get(f"/api/v1/pipeline-runs/{run['id']}")).json()
+    assert retained["sdd_progress"]["diagnostics"] == [diagnostic]

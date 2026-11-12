@@ -11,6 +11,7 @@ from app_layer_base.utils.time_util import get_current_utc_time
 
 from .checkout import SddCommandError, checkout, command
 from .contracts import workflow_hash
+from .diagnostics import SddEvaluationError, capture, collect, diagnostic, failure, merge, remember
 from .evidence import anchor_metadata, answer_resolutions, proposal_metadata, reports, review_gaps
 from .gates import INTEGRATION_GATE
 from .isolation import isolation_runner
@@ -31,7 +32,9 @@ STALE_HINT = (
 
 async def cli(root: Path, *args: str):
     try:
-        return json.loads(await command("devkit", *args, "--format", "json", cwd=root))
+        result = json.loads(await command("devkit", *args, "--format", "json", cwd=root))
+        collect(result)
+        return result
     except (ValueError, TypeError):
         raise ProjectError(422, "Unsupported sdd JSON output") from None
 
@@ -139,6 +142,19 @@ class SddService:
             raise ProjectError(422, "SDD runner unavailable or timed out; provision Git and the pinned CLI") from None
 
     async def evaluate(self, root, spec_dir, head, base, snapshot, approved):
+        with capture() as diagnostics:
+            try:
+                result = await self._evaluate(root, spec_dir, head, base, snapshot, approved)
+            except SddCommandError as exc:
+                exc.diagnostics = merge(diagnostics, failure(exc))
+                raise
+            except ProjectError as exc:
+                raise SddEvaluationError(exc, merge(diagnostics, failure(exc))) from exc
+            warning_rows = [diagnostic(row["code"], severity="warning") for row in result.get("warnings", [])]
+            result["diagnostics"] = merge(diagnostics, warning_rows, result.get("diagnostics", []))
+            return result
+
+    async def _evaluate(self, root, spec_dir, head, base, snapshot, approved):
         handoff = bool(snapshot and snapshot.get("handoff_pending"))
         if snapshot and "cli_version" not in snapshot:
             snapshot = None  # enrollment of a handoff-first run: no contract to compare yet
@@ -161,6 +177,7 @@ class SddService:
         committed = committed_configuration(root)
         # The repository's lock is parsed in this process (never executed); keep that work off the event loop.
         warnings = [*await restore(root), *await asyncio.to_thread(revision_warnings, root)]
+        remember([diagnostic(row["code"], severity="warning") for row in warnings])
         stale = any(item["code"] == "RECEIPT_STALE" for item in warnings)
         try:
             return await self.evaluate_workflow(
@@ -170,7 +187,9 @@ class SddService:
             if not stale:
                 raise
             # A later refusal (workflow drift, invalid evidence) must not hide its likely cause.
-            raise SddCommandError(exc.cli_code, exc.detail + STALE_HINT) from exc
+            wrapped = SddCommandError(exc.cli_code, exc.detail + STALE_HINT)
+            wrapped.diagnostics = failure(exc)
+            raise wrapped from exc
         except ProjectError as exc:
             if not stale:
                 raise
@@ -183,7 +202,10 @@ class SddService:
         checks = await cli(root, "workflow", "checks")
         if not isinstance(policy.get("approvals"), dict) or not isinstance(checks.get("checks"), list):
             raise ProjectError(422, "Unsupported sdd policy or check schema")
-        keys = policy
+        for payload in (policy, workflow, checks):
+            collect(payload)
+        workflow = {key: value for key, value in workflow.items() if key != "notices"}
+        keys = {key: value for key, value in policy.items() if key != "notices"}
         contract = {
             "mode": "sdd",
             "provider": "devkit-spec",
@@ -198,6 +220,8 @@ class SddService:
             "policy": keys,
         }
         pinned = dict(snapshot or contract)
+        if isinstance(pinned.get("policy"), dict):
+            pinned["policy"] = {key: value for key, value in pinned["policy"].items() if key != "notices"}
         if snapshot and any(
             w.get("workflow_id") == contract["workflow_id"] and w.get("workflow_hash") == contract["workflow_hash"]
             for w in snapshot.get("authorized_workflows", [])
@@ -207,17 +231,21 @@ class SddService:
             raise ProjectError(409, "SDD workflow or policy changed; inspect and enroll a new execution")
         given = ["--given", INTEGRATION_GATE] if approved else []
         current = await cli(root, "workflow", "next", "--unit", spec_dir, *given)
+        collect(current)
+        current = {key: value for key, value in current.items() if key != "notices"}
         if not current.get("bound") or current.get("drift") or current.get("errors"):
             raise ProjectError(422, "SDD binding drift or invalid envelope; repair the repository evidence")
         hold = read_hold(current)
         held = hold["blocked"] or bool(hold["pending_questions"])
         # The default envelope check omits summaries/checks; approval cards need the validated report bodies.
         envelopes = await cli(root, "workflow", "envelope", "check", "--unit", spec_dir, "--details")
+        collect(envelopes)
         report_rows = reports(envelopes)
         history = anchor_metadata(root, spec_dir).get("workflow_history") or []
         report_context = {"workflow": workflow["id"], "segment": len(history) if isinstance(history, list) else 0}
         integrated = False
         lint_diagnostic = None
+        lint_diagnostics = []
         lint_blocked = False
         stage = current.get("stage") or {}
         # devkit passes no gate while the unit is held, and its integration guard refuses the merge; so does Hub.
@@ -227,6 +255,7 @@ class SddService:
                 try:
                     await command("devkit", "rules", "check", "--ci", "--base", base, "--format", "json", cwd=root)
                 except SddCommandError as exc:
+                    lint_diagnostics = failure(exc)
                     if exc.cli_code == "RULES_VIOLATIONS":
                         lint_diagnostic = exc.detail
                     elif stale and exc.cli_code == "RULES_LOAD_FAILED":
@@ -240,6 +269,9 @@ class SddService:
                     current = await cli(
                         root, "workflow", "next", "--unit", spec_dir, *given, "--given", "lint-ci-clean"
                     )
+        base_keys = await base_policy(root, base, head, policy) if is_proposal(spec_dir) else {}
+        collect(base_keys)
+        base_keys = {key: value for key, value in base_keys.items() if key != "notices"}
         evidence = request_digest({"head": head, "base": base, "contract": contract, "current": current})
         return {
             "snapshot": contract,
@@ -257,7 +289,8 @@ class SddService:
             "report_context": report_context,
             "review_gaps": review_gaps(report_rows, report_context) if is_proposal(spec_dir) else [],
             "proposal": proposal_metadata(root, spec_dir) if is_proposal(spec_dir) else {},
-            "base_policy": await base_policy(root, base, head, policy) if is_proposal(spec_dir) else {},
+            "base_policy": base_keys,
+            "diagnostics": lint_diagnostics,
             "warnings": warnings,
             "hold": hold,
             "unit_status": read_status(root, spec_dir) if is_proposal(spec_dir) else None,

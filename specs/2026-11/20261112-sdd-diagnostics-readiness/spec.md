@@ -2,7 +2,7 @@
 id: SPEC-sdd-diagnostics-readiness
 title: Expose SDD diagnostics and readiness context
 summary: "Preserve safe devkit diagnostics and preview the initial workflow state before enrolling a PR."
-status: planned
+status: in-progress
 created: 2026-11-12
 related_capabilities:
   - CAP-SDD-runtime-isolation
@@ -73,9 +73,9 @@ An operator inspecting native execution sees receipt/revision warnings but canno
 
 **Purpose**: Inspect the selected SDD unit and PR before registration (`UC-complete-sdd-workflow` step 1).
 
-**Content**: Keep existing inputs and readiness/start controls primary. Place a read-only Execution preview below inspection feedback. Show eligibility separately from a current wait. Secondary details contain inspected commit/version, next stage, question/problem/request summaries, approval policy and diagnostic guidance. Use the existing SDD unit and Native SDD activity representations in the UX object register; extend their readiness/evidence representations without adding an action type.
+**Content**: Keep existing inputs and readiness/start controls primary. Place a read-only Execution preview below inspection feedback. Show eligibility separately from a current wait. Secondary details contain inspected commit/version, next stage, question/problem/request summaries, approval policy and diagnostic guidance. Approval policy alone never labels an active approval wait; the current request or gate supplies that wait. A missing stage states that no next stage was reported, or that the workflow is complete when the result says so. Use the existing SDD unit and Native SDD activity representations in the UX object register; extend their readiness/evidence representations without adding an action type.
 
-**States**: populated offers Check readiness; loading disables competing controls; eligible offers Start execution with the preview; eligible-with-wait also explains why advancement will wait; failed inspection shows safe diagnostics and offers another inspection; changed selection removes the old preview; registered offers the existing execution link.
+**States**: populated offers Check readiness; loading disables competing controls; eligible offers Start execution with the preview; eligible-with-wait retains Start execution and also explains why advancement will wait; failed inspection shows safe diagnostics and offers another inspection; changed selection removes the old preview; registered offers the existing execution link.
 
 | Trigger | Step | From | To | Target | Feedback |
 | --- | --- | --- | --- | --- | --- |
@@ -89,7 +89,7 @@ An operator inspecting native execution sees receipt/revision warnings but canno
 
 **Content**: Place structured diagnostic code/severity, responsibility category, static summary/action and retry guidance beside current stage feedback. Keep operator decision controls and current authority unchanged. Legacy warnings remain readable when no structured counterpart exists.
 
-**States**: populated shows known diagnostics; empty adds no diagnostic noise; error retains safe generic guidance when the failure is unknown. Guidance remains read-only and invokes no action.
+**States**: populated shows known diagnostics; empty adds no diagnostic noise; error retains safe generic guidance when the failure is unknown. Guidance remains read-only and invokes no action. Retry classification describes whether reinspection is appropriate after repair; it offers no Retry now control.
 
 | Trigger | Step | From | To | Target | Feedback |
 | --- | --- | --- | --- | --- | --- |
