@@ -74,10 +74,11 @@
 		if (!open) onclose();
 	}}
 >
-	<DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
+	<!-- eslint-disable-next-line shadcn/no-arbitrary-values -- viewport-relative dialog height cap has no scale equivalent -->
+	<DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-150">
 		<DialogHeader>
-			<DialogTitle class="flex items-center gap-2">
-				<Activity class="size-5 text-primary" />
+			<DialogTitle class="flex items-center">
+				<Activity class="mr-2 size-5 text-primary" />
 				Connection & CI Check
 			</DialogTitle>
 			<DialogDescription>
@@ -107,7 +108,7 @@
 								disabled={isChecking}
 							/>
 						</div>
-						<Button size="sm" onclick={runConnectionCheck} disabled={isChecking} class="gap-1.5">
+						<Button size="sm" onclick={runConnectionCheck} disabled={isChecking}>
 							<RefreshCw class="size-3.5 {isChecking ? 'animate-spin' : ''}" />
 							{isChecking ? 'Checking...' : 'Run Check'}
 						</Button>
@@ -119,8 +120,8 @@
 				<!-- Overall status -->
 				<div
 					class="flex items-center justify-between rounded-lg border p-3 {checkResult.ready
-						? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-						: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'}"
+						? 'border-success/30 bg-success/10 text-success'
+						: 'border-warning/30 bg-warning/10 text-warning'}"
 				>
 					<div class="flex items-center gap-2">
 						{#if checkResult.ready}
@@ -150,23 +151,17 @@
 								</div>
 								<div>
 									{#if check.status === 'passed'}
-										<Badge
-											variant="default"
-											class="gap-1 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 dark:text-emerald-400"
-										>
+										<Badge variant="success">
 											<CheckCircle2 class="size-3" />
 											Passed
 										</Badge>
 									{:else if check.status === 'failed'}
-										<Badge
-											variant="destructive"
-											class="gap-1 bg-rose-500/15 text-rose-600 hover:bg-rose-500/25 dark:text-rose-400"
-										>
+										<Badge variant="destructive">
 											<XCircle class="size-3" />
 											Failed
 										</Badge>
 									{:else}
-										<Badge variant="secondary" class="gap-1 text-muted-foreground">
+										<Badge variant="secondary">
 											<MinusCircle class="size-3" />
 											Skipped
 										</Badge>

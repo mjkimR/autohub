@@ -226,11 +226,11 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-3">
-			<Button variant="outline" size="sm" onclick={loadConnectors} disabled={loading} class="gap-2">
+			<Button variant="outline" size="sm" onclick={loadConnectors} disabled={loading}>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
 			</Button>
-			<Button size="sm" onclick={() => (isCreateOpen = true)} class="gap-2">
+			<Button size="sm" onclick={() => (isCreateOpen = true)}>
 				<Plus class="size-4" />
 				New Connector
 			</Button>
@@ -252,12 +252,12 @@
 		<Table>
 			<TableHeader>
 				<TableRow>
-					<TableHead class="w-[240px]">Connector Name</TableHead>
-					<TableHead class="w-[140px]">Provider</TableHead>
-					<TableHead class="w-[160px]">Credentials</TableHead>
-					<TableHead class="w-[120px]">Status</TableHead>
-					<TableHead class="w-[180px]">Created</TableHead>
-					<TableHead class="w-[100px] text-right">Actions</TableHead>
+					<TableHead class="w-60">Connector Name</TableHead>
+					<TableHead class="w-35">Provider</TableHead>
+					<TableHead class="w-40">Credentials</TableHead>
+					<TableHead class="w-30">Status</TableHead>
+					<TableHead class="w-45">Created</TableHead>
+					<TableHead class="w-25 text-right">Actions</TableHead>
 				</TableRow>
 			</TableHeader>
 			<TableBody>
@@ -280,32 +280,29 @@
 					</TableRow>
 				{:else}
 					{#each filteredConnectors as connector (connector.id)}
-						<TableRow class="transition-colors hover:bg-muted/40">
+						<TableRow>
 							<TableCell>
 								<div class="flex flex-col gap-0.5">
 									<span class="font-semibold text-foreground">{connector.name}</span>
-									<span class="font-mono text-[11px] text-muted-foreground">{connector.id}</span>
+									<span class="font-mono text-xs text-muted-foreground">{connector.id}</span>
 								</div>
 							</TableCell>
 							<TableCell>
 								{#if connector.provider === 'github'}
-									<Badge
-										variant="outline"
-										class="gap-1.5 border-primary/20 bg-primary/5 text-primary"
-									>
+									<Badge variant="info">
 										<GitBranch class="size-3" />
 										GitHub
 									</Badge>
 								{:else if connector.provider === 'jules'}
-									<Badge variant="outline" class="gap-1.5">Jules</Badge>
+									<Badge variant="outline">Jules</Badge>
 								{:else}
 									<Badge variant="secondary">{connector.provider}</Badge>
 								{/if}
 							</TableCell>
 							<TableCell>
 								{#if connector.has_credentials}
-									<Badge variant="secondary" class="gap-1 text-xs">
-										<Lock class="size-3 text-emerald-500" />
+									<Badge variant="secondary">
+										<Lock class="size-3 text-success" />
 										Encrypted Secret
 									</Badge>
 								{:else}
@@ -314,15 +311,12 @@
 							</TableCell>
 							<TableCell>
 								{#if connector.enabled}
-									<Badge
-										variant="default"
-										class="gap-1 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
-									>
+									<Badge variant="success">
 										<CheckCircle2 class="size-3" />
 										Active
 									</Badge>
 								{:else}
-									<Badge variant="secondary" class="gap-1 text-muted-foreground">
+									<Badge variant="secondary">
 										<XCircle class="size-3" />
 										Disabled
 									</Badge>
@@ -334,20 +328,18 @@
 							<TableCell class="text-right">
 								<div class="flex items-center justify-end gap-1">
 									<Button
-										variant="ghost"
+										variant="subtle"
 										size="icon"
 										onclick={() => openEdit(connector)}
-										class="size-8 text-muted-foreground hover:text-foreground"
 										title="Edit Connector"
 										aria-label="Edit Connector"
 									>
 										<Settings2 class="size-4" />
 									</Button>
 									<Button
-										variant="ghost"
+										variant="subtle-destructive"
 										size="icon"
 										onclick={() => handleDelete(connector.id)}
-										class="size-8 text-muted-foreground hover:text-destructive"
 										title="Delete Connector"
 										aria-label="Delete Connector"
 									>
@@ -364,7 +356,7 @@
 
 	<!-- Create Connector Dialog -->
 	<Dialog bind:open={isCreateOpen}>
-		<DialogContent class="sm:max-w-[450px]">
+		<DialogContent class="sm:max-w-112.5">
 			<DialogHeader>
 				<DialogTitle>Register New Connector</DialogTitle>
 				<DialogDescription>
@@ -435,7 +427,7 @@
 
 	<!-- Edit Connector Dialog -->
 	<Dialog bind:open={isEditOpen}>
-		<DialogContent class="sm:max-w-[450px]">
+		<DialogContent class="sm:max-w-112.5">
 			<DialogHeader>
 				<DialogTitle>Edit Connector</DialogTitle>
 				<DialogDescription>

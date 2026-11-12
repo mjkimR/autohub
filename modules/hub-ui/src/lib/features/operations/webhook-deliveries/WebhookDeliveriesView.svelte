@@ -77,13 +77,7 @@
 				Payloads are not kept. Deliveries are deleted after 90 days.
 			</p>
 		</div>
-		<Button
-			variant="outline"
-			size="sm"
-			onclick={() => load(offset)}
-			disabled={loading}
-			class="gap-2"
-		>
+		<Button variant="outline" size="sm" onclick={() => load(offset)} disabled={loading}>
 			<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" /> Refresh
 		</Button>
 	</div>
@@ -113,10 +107,10 @@
 		<Table>
 			<TableHeader>
 				<TableRow>
-					<TableHead class="w-[170px]">Received</TableHead>
-					<TableHead class="w-[150px]">Event</TableHead>
+					<TableHead class="w-42.5">Received</TableHead>
+					<TableHead class="w-37.5">Event</TableHead>
 					<TableHead>Pull request</TableHead>
-					<TableHead class="w-[110px]">Status</TableHead>
+					<TableHead class="w-27.5">Status</TableHead>
 					<TableHead>Outcome</TableHead>
 				</TableRow>
 			</TableHeader>
@@ -160,7 +154,7 @@
 											: 'outline'}>{delivery.status}</Badge
 								>
 								{#if delivery.attempts > 1}
-									<span class="ml-1 text-[10px] text-muted-foreground">×{delivery.attempts}</span>
+									<span class="ml-1 text-xs text-muted-foreground">×{delivery.attempts}</span>
 								{/if}
 							</TableCell>
 							<TableCell class="text-xs whitespace-normal text-muted-foreground"

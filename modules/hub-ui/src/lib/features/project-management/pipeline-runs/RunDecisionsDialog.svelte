@@ -6,7 +6,7 @@
 	import SddDecisionHistory from './SddDecisionHistory.svelte';
 	import DecisionQuestion from './DecisionQuestion.svelte';
 	import { Badge } from '$lib/components/ui/badge';
-	import { getStateBadgeClass } from './presentation';
+	import { getStateBadgeVariant } from './presentation';
 	import { RefreshCw, ExternalLink, CircleHelp, CircleCheck, History } from '@lucide/svelte';
 	import { onMount, untrack } from 'svelte';
 	import { api, type components } from '$lib/api';
@@ -206,37 +206,41 @@
 		if (!open) onclose();
 	}}
 >
+	<!-- eslint-disable shadcn/no-arbitrary-values -- viewport-relative height has no scale equivalent -->
 	<DialogContent
-		class="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1040px]"
+		class="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-260"
 	>
-		<DialogHeader class="shrink-0 border-b px-5 py-5 sm:px-7">
-			<div class="mb-2 flex items-center gap-2 pr-8">
-				<Badge variant="outline">PR #{run.pull_number}</Badge>
-				<Badge variant="outline" class={getStateBadgeClass(current.state)}
-					>{current.state.replaceAll('_', ' ')}</Badge
+		<!-- eslint-enable shadcn/no-arbitrary-values -->
+		<div class="shrink-0 border-b">
+			<DialogHeader class="px-5 py-5 sm:px-7">
+				<div class="mb-2 flex items-center gap-2 pr-8">
+					<Badge variant="outline">PR #{run.pull_number}</Badge>
+					<Badge variant={getStateBadgeVariant(current.state)}
+						>{current.state.replaceAll('_', ' ')}</Badge
+					>
+					{#if current.sdd_snapshot}<span class="text-xs text-muted-foreground">sdd</span>{/if}
+				</div>
+				<DialogTitle class="text-xl leading-snug break-words"
+					>{current.pull_snapshot.title}</DialogTitle
 				>
-				{#if current.sdd_snapshot}<span class="text-xs text-muted-foreground">sdd</span>{/if}
-			</div>
-			<DialogTitle class="text-xl leading-snug break-words"
-				>{current.pull_snapshot.title}</DialogTitle
-			>
-			<DialogDescription
-				>Review the evidence and choose the next step for this run.</DialogDescription
-			>
-			{#if loadedAt}<p class="mt-2 text-xs text-muted-foreground">Last loaded: {loadedAt}</p>{/if}
-			<div class="mt-3 flex flex-wrap items-center gap-2">
-				<Button variant="outline" size="sm" href={run.pull_url} target="_blank" rel="noreferrer"
-					><ExternalLink class="size-3.5" />Inspect pull request</Button
+				<DialogDescription
+					>Review the evidence and choose the next step for this run.</DialogDescription
 				>
-				<Button
-					variant="ghost"
-					size="sm"
-					disabled={busy || decisionBusy}
-					onclick={() => perform(() => load())}
-					><RefreshCw class={busy ? 'size-3.5 animate-spin' : 'size-3.5'} />Refresh decisions</Button
-				>
-			</div>
-		</DialogHeader>
+				{#if loadedAt}<p class="mt-2 text-xs text-muted-foreground">Last loaded: {loadedAt}</p>{/if}
+				<div class="mt-3 flex flex-wrap items-center gap-2">
+					<Button variant="outline" size="sm" href={run.pull_url} target="_blank" rel="noreferrer"
+						><ExternalLink class="size-3.5" />Inspect pull request</Button
+					>
+					<Button
+						variant="ghost"
+						size="sm"
+						disabled={busy || decisionBusy}
+						onclick={() => perform(() => load())}
+						><RefreshCw class={busy ? 'size-3.5 animate-spin' : 'size-3.5'} />Refresh decisions</Button
+					>
+				</div>
+			</DialogHeader>
+		</div>
 		<div class="min-h-0 overflow-y-auto px-5 py-5 sm:px-7">
 			{#if error}<div
 					role="alert"
@@ -256,8 +260,8 @@
 				>
 					Loading the latest decisions…
 				</p>{/if}
-			<div class="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_280px]">
-				<div class="min-w-0 space-y-5">
+			<div class="flex flex-col gap-6 md:flex-row md:items-start">
+				<div class="min-w-0 flex-1 space-y-5">
 					<DecisionOutcome
 						runId={run.id}
 						{head}
@@ -406,7 +410,10 @@
 						</details>
 					{/if}
 				</div>
-				<aside class="min-w-0 space-y-5 md:border-l md:pl-5" aria-label="Decision history">
+				<aside
+					class="min-w-0 space-y-5 md:w-70 md:shrink-0 md:border-l md:pl-5"
+					aria-label="Decision history"
+				>
 					{#if current.sdd_snapshot}<SddDecisionHistory
 							runId={run.id}
 							{revision}

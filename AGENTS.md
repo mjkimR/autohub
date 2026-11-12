@@ -30,6 +30,9 @@ See [README](README.md) and [documentation guide](docs/README.md) for scope.
 
 - Use Svelte 5 runes, SvelteKit 2 SPA, TypeScript, Tailwind v4, and shadcn-svelte.
   Style through `src/routes/layout.css` and its OKLCH tokens; themes use mode-watcher.
+- Keep `shadcn/*` lint warnings at zero in code you touch. Use theme tokens and component
+  variants instead of raw palette colors, arbitrary values or restyled components; see the
+  [UI README](modules/hub-ui/README.md#design-system-lint) for the contracts.
 - Consume typed API resources through `$lib/api`; see the [UI README](modules/hub-ui/README.md).
 - The shared size preset fails above 500 counted Svelte lines, 400 TypeScript lines,
   and 200 route lines. Split by responsibility first. Exceptions require an exact

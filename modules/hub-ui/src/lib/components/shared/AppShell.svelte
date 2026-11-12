@@ -149,7 +149,7 @@
 			</div>
 			<div>
 				<div class="font-bold tracking-tight text-sidebar-foreground">Autohub</div>
-				<div class="text-[11px] font-medium text-muted-foreground">Scheduler Manager</div>
+				<div class="text-xs font-medium text-muted-foreground">Scheduler Manager</div>
 			</div>
 		</div>
 
@@ -158,7 +158,7 @@
 			{#each navSections as section (section.label)}
 				<div>
 					<p
-						class="px-3 pb-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase"
+						class="px-3 pb-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
 					>
 						{section.label}
 					</p>
@@ -201,7 +201,7 @@
 			<div class="flex items-center justify-between px-2">
 				<div class="flex items-center gap-2 text-xs">
 					{#if isOnline}
-						<span class="flex size-2 rounded-full bg-emerald-500"></span>
+						<span class="flex size-2 rounded-full bg-success"></span>
 						<span class="text-muted-foreground">Core Online</span>
 					{:else}
 						<span class="flex size-2 rounded-full bg-destructive"></span>
@@ -217,14 +217,14 @@
 					<div class="flex items-center gap-1.5">
 						{#if session.isAuthenticated}
 							<span
-								class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+								class="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success"
 							>
-								<span class="size-1.5 rounded-full bg-emerald-500"></span>
+								<span class="size-1.5 rounded-full bg-success"></span>
 								Active
 							</span>
 						{:else}
 							<span
-								class="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+								class="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
 							>
 								<span class="size-1.5 rounded-full bg-muted-foreground/50"></span>
 								No Session
@@ -233,11 +233,10 @@
 					</div>
 				</div>
 				<Button
-					variant="ghost"
+					variant="subtle-destructive"
 					size="icon"
 					onclick={() =>
 						logoutSession().catch(() => toast.error('Sign-out failed. Please try again.'))}
-					class="size-8 text-muted-foreground hover:text-destructive"
 					title="Logout"
 					aria-label="Logout"
 				>
@@ -274,7 +273,7 @@
 		</header>
 
 		<!-- Page Content Container -->
-		<div class="mx-auto max-w-7xl min-w-0 p-3 [overflow-wrap:anywhere] sm:p-6 lg:p-8">
+		<div class="mx-auto max-w-7xl min-w-0 p-3 wrap-anywhere sm:p-6 lg:p-8">
 			{@render children()}
 		</div>
 	</main>

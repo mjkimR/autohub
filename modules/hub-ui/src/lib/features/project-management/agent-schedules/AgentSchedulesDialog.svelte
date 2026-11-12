@@ -362,7 +362,7 @@
 								{#each item.recent_sessions ?? [] as session (session.id)}
 									<li class="flex flex-wrap items-center gap-2">
 										<span>{new Date(session.created_at).toLocaleString()}</span>
-										<Badge variant="outline" class="text-[10px]"
+										<Badge variant="outline" class="text-xs"
 											>{session.state.replaceAll('_', ' ')}</Badge
 										>
 										{#if session.pull_request_url}

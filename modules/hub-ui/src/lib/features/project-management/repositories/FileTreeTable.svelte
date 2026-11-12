@@ -62,7 +62,7 @@
 						class="col-span-8 flex items-center gap-3 truncate text-left sm:col-span-9"
 					>
 						{#if item.type === 'dir'}
-							<Folder class="h-4 w-4 shrink-0 text-amber-500/90 dark:text-amber-400" />
+							<Folder class="h-4 w-4 shrink-0 text-warning/90" />
 							<span class="truncate font-medium text-foreground hover:underline">
 								{item.name}
 							</span>

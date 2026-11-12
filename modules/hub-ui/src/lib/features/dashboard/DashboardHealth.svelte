@@ -28,15 +28,12 @@
 			</div>
 		</div>
 		{#if healthStatus === 'online'}
-			<Badge
-				variant="default"
-				class="gap-1.5 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
-			>
+			<Badge variant="success">
 				<CheckCircle2 class="size-3.5" />
 				Operational
 			</Badge>
 		{:else}
-			<Badge variant="destructive" class="gap-1.5">
+			<Badge variant="destructive">
 				<AlertCircle class="size-3.5" />
 				Unavailable
 			</Badge>
@@ -58,15 +55,12 @@
 			</div>
 		</div>
 		{#if dbStatus === 'connected'}
-			<Badge
-				variant="default"
-				class="gap-1.5 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
-			>
+			<Badge variant="success">
 				<CheckCircle2 class="size-3.5" />
 				Connected
 			</Badge>
 		{:else}
-			<Badge variant="destructive" class="gap-1.5">
+			<Badge variant="destructive">
 				<AlertCircle class="size-3.5" />
 				Disconnected
 			</Badge>
@@ -92,20 +86,17 @@
 			</div>
 		</div>
 		{#if triggerStatus === 'ok'}
-			<Badge
-				variant="default"
-				class="gap-1.5 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
-			>
+			<Badge variant="success">
 				<CheckCircle2 class="size-3.5" />
 				Firing
 			</Badge>
 		{:else if triggerStatus === 'stale'}
-			<Badge variant="destructive" class="gap-1.5">
+			<Badge variant="destructive">
 				<AlertCircle class="size-3.5" />
 				Stopped
 			</Badge>
 		{:else}
-			<Badge variant="secondary" class="gap-1.5">
+			<Badge variant="secondary">
 				{triggerStatus === 'never' ? 'Never fired' : 'Unknown'}
 			</Badge>
 		{/if}

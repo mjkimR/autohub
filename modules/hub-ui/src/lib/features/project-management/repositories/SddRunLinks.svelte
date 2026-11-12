@@ -2,7 +2,7 @@
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
 	import { Badge } from '$lib/components/ui/badge';
-	import { getStateBadgeClass } from '../pipeline-runs/presentation';
+	import { getStateBadgeVariant } from '../pipeline-runs/presentation';
 	let {
 		projectId,
 		specDir,
@@ -72,7 +72,7 @@
 							href={`/projects/runs?run=${run.id}&view=decisions`}
 						>
 							<span class="font-medium">PR #{run.pull_number}</span>
-							<Badge variant="outline" class={getStateBadgeClass(run.state)}
+							<Badge variant={getStateBadgeVariant(run.state)}
 								>{run.state.replaceAll('_', ' ')}</Badge
 							>
 							<span class="min-w-0 break-words">{run.pull_snapshot.title}</span>

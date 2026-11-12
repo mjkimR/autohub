@@ -83,7 +83,8 @@
 		if (!open) onclose();
 	}}
 >
-	<DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
+	<!-- eslint-disable-next-line shadcn/no-arbitrary-values -- viewport-relative height has no scale equivalent -->
+	<DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-140">
 		<DialogHeader>
 			<DialogTitle
 				>{editor.mode === 'edit'
@@ -127,12 +128,7 @@
 					class="text-xs font-semibold text-muted-foreground uppercase">Target Task</label
 				>
 				{#if editor.mode === 'edit'}
-					<Input
-						id="editScTask"
-						value={draft.taskFunc}
-						disabled
-						class="bg-muted font-mono text-xs"
-					/>
+					<Input id="editScTask" value={draft.taskFunc} disabled class="font-mono text-xs" />
 				{:else}
 					<select
 						id="scTask"
@@ -147,7 +143,7 @@
 					</select>
 				{/if}
 				{#if selectedTaskSpec?.description}
-					<p class="text-[11px] text-muted-foreground italic">{selectedTaskSpec.description}</p>
+					<p class="text-xs text-muted-foreground italic">{selectedTaskSpec.description}</p>
 				{/if}
 			</div>
 
@@ -160,7 +156,7 @@
 						size="sm"
 						variant={draft.scheduleType === 'cron' ? 'default' : 'outline'}
 						onclick={() => (draft.scheduleType = 'cron')}
-						class="flex-1 gap-1.5"
+						class="flex-1"
 					>
 						<CalendarClock class="size-3.5" />
 						Cron Expression
@@ -170,7 +166,7 @@
 						size="sm"
 						variant={draft.scheduleType === 'interval' ? 'default' : 'outline'}
 						onclick={() => (draft.scheduleType = 'interval')}
-						class="flex-1 gap-1.5"
+						class="flex-1"
 					>
 						<Clock class="size-3.5" />
 						Interval Seconds
@@ -191,7 +187,7 @@
 						class="font-mono text-xs"
 						required
 					/>
-					<p class="text-[11px] text-muted-foreground">Standard 5-field cron syntax</p>
+					<p class="text-xs text-muted-foreground">Standard 5-field cron syntax</p>
 				</div>
 			{:else}
 				<div class="space-y-1.5">
@@ -207,7 +203,7 @@
 						class="font-mono text-xs"
 						required
 					/>
-					<p class="text-[11px] text-muted-foreground">Repeats every N seconds</p>
+					<p class="text-xs text-muted-foreground">Repeats every N seconds</p>
 				</div>
 			{/if}
 
@@ -230,7 +226,7 @@
 					<input
 						type="checkbox"
 						bind:checked={draft.enabled}
-						class="size-4 rounded border-gray-300 text-primary focus:ring-primary"
+						class="size-4 rounded border-border text-primary focus:ring-primary"
 					/>
 				</div>
 			{/if}

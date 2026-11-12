@@ -58,7 +58,7 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-3">
-			<Button variant="outline" size="sm" onclick={loadSpecs} disabled={loading} class="gap-2">
+			<Button variant="outline" size="sm" onclick={loadSpecs} disabled={loading}>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
 			</Button>
@@ -94,7 +94,7 @@
 	{:else}
 		<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
 			{#each filteredSpecs as spec (spec.name)}
-				<Card class="border-border/80 bg-card/60 backdrop-blur-sm">
+				<Card>
 					<CardHeader class="pb-3">
 						<div class="flex items-start justify-between gap-2">
 							<div class="flex items-center gap-2">
@@ -107,7 +107,7 @@
 									<CardTitle class="font-mono text-sm font-semibold">{spec.name}</CardTitle>
 								</div>
 							</div>
-							<Badge variant="secondary" class="font-mono text-[10px]">task</Badge>
+							<Badge variant="secondary" class="font-mono text-xs">task</Badge>
 						</div>
 					</CardHeader>
 					<CardContent class="space-y-3">
@@ -118,11 +118,11 @@
 						{#if spec.payload_schema}
 							<div class="rounded-lg bg-muted/50 p-3">
 								<div
-									class="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase"
+									class="mb-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
 								>
 									Payload Schema
 								</div>
-								<pre class="overflow-x-auto font-mono text-[11px] text-muted-foreground">
+								<pre class="overflow-x-auto font-mono text-xs text-muted-foreground">
 									{JSON.stringify(spec.payload_schema, null, 2)}
 								</pre>
 							</div>

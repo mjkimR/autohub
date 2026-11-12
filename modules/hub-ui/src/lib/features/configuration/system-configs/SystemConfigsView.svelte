@@ -47,7 +47,7 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-3">
-			<Button variant="outline" size="sm" onclick={loadConfigs} disabled={loading} class="gap-2">
+			<Button variant="outline" size="sm" onclick={loadConfigs} disabled={loading}>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
 			</Button>
@@ -71,7 +71,7 @@
 	{:else}
 		<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
 			{#each configs as cfg (cfg.id)}
-				<Card class="border-border/80 bg-card/60 backdrop-blur-sm">
+				<Card>
 					<CardHeader class="pb-3">
 						<div class="flex items-center gap-2.5">
 							<div
@@ -88,9 +88,9 @@
 								{JSON.stringify(cfg.data, null, 2)}
 							</pre>
 						</div>
-						<div class="flex items-center justify-between text-[11px] text-muted-foreground">
+						<div class="flex items-center justify-between text-xs text-muted-foreground">
 							<span>Updated: {new Date(cfg.updated_at).toLocaleDateString()}</span>
-							<span class="font-mono text-[10px] opacity-70">ID: {cfg.id.slice(0, 8)}...</span>
+							<span class="font-mono opacity-70">ID: {cfg.id.slice(0, 8)}...</span>
 						</div>
 					</CardContent>
 				</Card>

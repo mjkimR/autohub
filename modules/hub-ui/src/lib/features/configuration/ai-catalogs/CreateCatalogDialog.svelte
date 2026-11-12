@@ -56,6 +56,7 @@
 </script>
 
 <Dialog bind:open>
+	<!-- eslint-disable-next-line shadcn/no-arbitrary-values -- viewport-relative height has no scale equivalent -->
 	<DialogContent class="max-h-[90dvh] overflow-y-auto">
 		<DialogHeader>
 			<DialogTitle>Add AI catalog</DialogTitle>

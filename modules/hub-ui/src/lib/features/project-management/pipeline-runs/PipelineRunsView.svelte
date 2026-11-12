@@ -250,7 +250,7 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-3">
-			<Button variant="default" size="sm" onclick={() => (isAcquireOpen = true)} class="gap-1.5">
+			<Button variant="default" size="sm" onclick={() => (isAcquireOpen = true)}>
 				<Plus class="size-4" />
 				Enroll PR
 			</Button>
@@ -263,7 +263,7 @@
 					loadCatalogs();
 				}}
 				disabled={loading}
-				class="min-h-11 gap-2 sm:min-h-0"
+				class="min-h-11 sm:min-h-0"
 			>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
@@ -333,13 +333,13 @@
 		<Table class="block md:table">
 			<TableHeader class="hidden md:table-header-group">
 				<TableRow>
-					<TableHead class="w-[180px]">Pull Request</TableHead>
-					<TableHead class="w-[160px]">Project</TableHead>
-					<TableHead class="w-[130px]">State</TableHead>
+					<TableHead class="w-45">Pull Request</TableHead>
+					<TableHead class="w-40">Project</TableHead>
+					<TableHead class="w-32.5">State</TableHead>
 					<TableHead>Branch & Pull Request</TableHead>
-					<TableHead class="w-[160px]">Lease Status</TableHead>
-					<TableHead class="w-[140px]">Created</TableHead>
-					<TableHead class="w-[90px] text-right">Attempts</TableHead>
+					<TableHead class="w-40">Lease Status</TableHead>
+					<TableHead class="w-35">Created</TableHead>
+					<TableHead class="w-22.5 text-right">Attempts</TableHead>
 				</TableRow>
 			</TableHeader>
 			<TableBody class="block md:table-row-group">

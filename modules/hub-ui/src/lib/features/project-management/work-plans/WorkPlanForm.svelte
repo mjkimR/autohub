@@ -294,8 +294,8 @@
 	{#each items as item, index (item)}
 		<fieldset class="space-y-4 rounded-lg border p-4">
 			<legend class="px-1 text-sm font-medium">Task {index + 1}</legend>
-			<div class="grid gap-4 sm:grid-cols-[10rem_1fr]">
-				<label class="space-y-2 text-sm"
+			<div class="flex flex-col gap-4 sm:flex-row">
+				<label class="space-y-2 text-sm sm:w-40 sm:shrink-0"
 					>Key<Input
 						required
 						readonly={!flexible}
@@ -304,7 +304,7 @@
 						oninput={(event) => renameItem(item, event.currentTarget.value)}
 					/></label
 				>
-				<label class="space-y-2 text-sm"
+				<label class="space-y-2 text-sm sm:flex-1"
 					>Title<Input required={!draft} maxlength={200} bind:value={item.title} /></label
 				>
 			</div>

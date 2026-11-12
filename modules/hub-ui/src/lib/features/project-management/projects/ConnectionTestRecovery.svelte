@@ -66,7 +66,7 @@
 </script>
 
 {#if Object.keys(candidates).length}
-	<div class="space-y-2 rounded-lg border border-amber-500/40 p-3 text-sm">
+	<div class="space-y-2 rounded-lg border border-warning/40 p-3 text-sm">
 		<p class="font-medium">PR ownership needs review</p>
 		<p>
 			These PRs share test history. AutoHub blocks their merge but does not mark, close, or delete

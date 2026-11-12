@@ -109,12 +109,10 @@
 		if (!open) onclose();
 	}}
 >
-	<DialogContent class="sm:max-w-[500px]">
+	<DialogContent class="sm:max-w-125">
 		<DialogHeader>
 			<div class="flex items-center gap-2">
-				<div
-					class="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500"
-				>
+				<div class="flex size-8 items-center justify-center rounded-lg bg-success/10 text-success">
 					<CalendarClock class="size-4" />
 				</div>
 				<div>
@@ -145,7 +143,7 @@
 							<Sparkles class="size-3.5 text-primary" />
 							Auto-Dispatch
 						</div>
-						<p class="text-[11px] leading-snug text-muted-foreground">
+						<p class="text-xs leading-snug text-muted-foreground">
 							Picks actionable tasks, creates runs & progresses CI automatically.
 						</p>
 					</button>
@@ -162,7 +160,7 @@
 							<Activity class="size-3.5 text-primary" />
 							Observe CI
 						</div>
-						<p class="text-[11px] leading-snug text-muted-foreground">
+						<p class="text-xs leading-snug text-muted-foreground">
 							Polls GitHub Actions jobs for specified PRs and records latest status.
 						</p>
 					</button>
@@ -181,9 +179,7 @@
 						bind:value={scheduleObservationPulls}
 						required
 					/>
-					<p class="text-[11px] text-muted-foreground">
-						Specify up to 10 active PR numbers to track.
-					</p>
+					<p class="text-xs text-muted-foreground">Specify up to 10 active PR numbers to track.</p>
 				</div>
 			{/if}
 
@@ -239,7 +235,7 @@
 								type="button"
 								size="sm"
 								variant={scheduleIntervalSeconds === '60' ? 'default' : 'outline'}
-								class="flex-1 text-xs"
+								class="flex-1"
 								onclick={() => (scheduleIntervalSeconds = '60')}
 							>
 								1m
@@ -248,7 +244,7 @@
 								type="button"
 								size="sm"
 								variant={scheduleIntervalSeconds === '300' ? 'default' : 'outline'}
-								class="flex-1 text-xs"
+								class="flex-1"
 								onclick={() => (scheduleIntervalSeconds = '300')}
 							>
 								5m
@@ -257,7 +253,7 @@
 								type="button"
 								size="sm"
 								variant={scheduleIntervalSeconds === '900' ? 'default' : 'outline'}
-								class="flex-1 text-xs"
+								class="flex-1"
 								onclick={() => (scheduleIntervalSeconds = '900')}
 							>
 								15m
@@ -266,7 +262,7 @@
 								type="button"
 								size="sm"
 								variant={scheduleIntervalSeconds === '3600' ? 'default' : 'outline'}
-								class="flex-1 text-xs"
+								class="flex-1"
 								onclick={() => (scheduleIntervalSeconds = '3600')}
 							>
 								1h
@@ -291,7 +287,7 @@
 							class="font-mono text-sm"
 							required
 						/>
-						<p class="text-[11px] text-muted-foreground">Standard 5-field cron syntax (UTC).</p>
+						<p class="text-xs text-muted-foreground">Standard 5-field cron syntax (UTC).</p>
 					</div>
 				{/if}
 			</div>

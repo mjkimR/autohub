@@ -73,11 +73,10 @@
 				size="sm"
 				onclick={() => channels.load()}
 				disabled={channels.loading}
-				class="gap-2"
 			>
 				<RefreshCw class="size-4 {channels.loading ? 'animate-spin' : ''}" /> Refresh
 			</Button>
-			<Button size="sm" onclick={openCreate} class="gap-2">
+			<Button size="sm" onclick={openCreate}>
 				<Plus class="size-4" /> Add Telegram channel
 			</Button>
 		</div>
@@ -90,23 +89,26 @@
 			Loading notification channels…
 		</div>
 	{:else if channels.items.length === 0}
-		<Card class="border-border/80 bg-card/60">
-			<CardContent class="space-y-2 p-6 text-sm text-muted-foreground">
-				<p class="font-medium text-foreground">No channel yet: the hub stops silently.</p>
-				<ol class="list-decimal space-y-1 pl-5">
-					<li>In Telegram, message @BotFather, send /newbot, and copy the bot token.</li>
-					<li>Send any message to your new bot so it may write to you.</li>
-					<li>
-						Open https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates and copy <code>chat.id</code>.
-					</li>
-					<li>Add the channel here and send a test.</li>
-				</ol>
+		<Card>
+			<CardContent class="p-6">
+				<div class="space-y-2 text-muted-foreground">
+					<p class="font-medium text-foreground">No channel yet: the hub stops silently.</p>
+					<ol class="list-decimal space-y-1 pl-5">
+						<li>In Telegram, message @BotFather, send /newbot, and copy the bot token.</li>
+						<li>Send any message to your new bot so it may write to you.</li>
+						<li>
+							Open https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates and copy <code>chat.id</code
+							>.
+						</li>
+						<li>Add the channel here and send a test.</li>
+					</ol>
+				</div>
 			</CardContent>
 		</Card>
 	{:else}
 		<div class="grid gap-5 lg:grid-cols-2">
 			{#each channels.items as channel (channel.id)}
-				<Card class="border-border/80 bg-card/60">
+				<Card>
 					<CardHeader class="pb-3">
 						<div class="flex items-start justify-between gap-4">
 							<div class="flex gap-3">
@@ -123,7 +125,7 @@
 								</div>
 							</div>
 							<div class="flex items-center gap-1.5">
-								<Badge variant="outline" class="font-mono text-[10px] uppercase">
+								<Badge variant="outline" class="font-mono text-xs uppercase">
 									{channel.min_level}
 								</Badge>
 								<Badge variant={channel.enabled ? 'default' : 'secondary'}
@@ -132,7 +134,7 @@
 							</div>
 						</div>
 					</CardHeader>
-					<CardContent class="space-y-3 text-sm">
+					<CardContent class="space-y-3">
 						<p class="text-xs text-muted-foreground">
 							{channel.last_sent_at
 								? `Last delivered ${new Date(channel.last_sent_at).toLocaleString()}`
@@ -145,7 +147,6 @@
 							<Button
 								variant="outline"
 								size="sm"
-								class="gap-2"
 								disabled={channels.testingId === channel.id}
 								onclick={() => channels.sendTest(channel.id)}
 							>

@@ -19,7 +19,7 @@
 		· Development <strong>{String(proposal.dev_effort || 'unspecified')}</strong>
 	</p>
 	{#if gaps.length}
-		<div class="space-y-2 rounded-lg border border-amber-500/30 p-3 text-sm" role="status">
+		<div class="space-y-2 rounded-lg border border-warning/30 p-3 text-sm" role="status">
 			<p class="font-medium">Planning review gaps</p>
 			{#each gaps as gap, index (index)}<p class="text-xs break-words">{String(gap)}</p>{/each}
 			<p class="text-xs text-muted-foreground">

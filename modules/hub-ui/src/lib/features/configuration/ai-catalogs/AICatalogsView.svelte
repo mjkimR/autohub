@@ -70,7 +70,6 @@
 				size="sm"
 				onclick={() => catalogs.load()}
 				disabled={catalogs.loading}
-				class="gap-2"
 			>
 				<RefreshCw class="size-4 {catalogs.loading ? 'animate-spin' : ''}" /> Refresh
 			</Button>
@@ -87,7 +86,7 @@
 		<div class="grid gap-5 lg:grid-cols-2">
 			{#each catalogs.items as catalog (catalog.id)}
 				{@const kindUi = catalogKinds[catalog.kind]}
-				<Card class="min-w-0 border-border/80 bg-card/60">
+				<Card class="min-w-0">
 					<CardHeader class="px-4 pb-3 sm:px-6">
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div class="flex min-w-0 gap-3">
@@ -108,7 +107,7 @@
 							>
 						</div>
 					</CardHeader>
-					<CardContent class="space-y-4 px-4 text-sm sm:px-6">
+					<CardContent class="space-y-4 px-4 sm:px-6">
 						<div class="rounded-lg bg-muted/50 p-3">
 							<div class="flex items-center gap-2 font-medium">
 								<Clock3 class="size-4" />
