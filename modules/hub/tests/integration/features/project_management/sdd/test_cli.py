@@ -385,30 +385,15 @@ PROPOSAL = "docs/proposals/PROP-demo"
 
 
 def reviewing_proposal(root, automatic=False):
-    """A proposal past plan-intent and in review, committed on the fixture's branch."""
+    """A proposal eligible for Planning and in review, committed on the fixture's branch."""
     from app.features.project_management.sdd import units
 
     run(root, "git", "checkout", "-q", "-b", "plan-demo")
     if automatic:
         config = root / ".devkit/config.toml"
-        config.write_text(config.read_text() + '\n[workflow.approvals]\nplan-intent = "auto"\nplan-accept = "auto"\n')
+        config.write_text(config.read_text() + '\n[workflow.approvals]\nplan-accept = "auto"\n')
         run(root, devkit_binary(), "sync")
     run(root, devkit_binary(), "spec", "proposal", "new", "demo", "--title", "Demo", "--task-kind", "feature")
-    if not automatic:
-        run(
-            root,
-            devkit_binary(),
-            "workflow",
-            "answer",
-            "--unit",
-            PROPOSAL,
-            "--request",
-            "gate:plan-intent",
-            "--action",
-            "accept",
-            "--by",
-            "user:fixture",
-        )
     units.set_status(root, PROPOSAL, "draft", "reviewing")
     # Current proposal workflows require a feedback sweep before asking plan-accept.
     run(
@@ -475,15 +460,15 @@ async def test_policy_acceptance_authors_a_decision_commit_even_after_agent_acce
     assert "Autohub-Decision: auto-accept" in run(bare, "git", "log", "-1", "--format=%B", plan["commit_sha"])
 
 
-async def test_auto_plan_intent_starts_without_a_decision_filename(checkout, tmp_path, monkeypatch):
+async def test_planning_starts_without_a_retired_intent_decision(checkout, tmp_path, monkeypatch):
     from app.features.project_management.sdd.policy import start_blocker
 
     root, _ = checkout
-    reviewing_proposal(root, automatic=True)
+    reviewing_proposal(root)
     from app.features.project_management.sdd.units import set_status
 
     set_status(root, PROPOSAL, "reviewing", "draft")
-    head = commit(root, "Backlog draft with delegated intent")
+    head = commit(root, "Backlog draft with eligible task scope")
     bare_remote(root, tmp_path, head, monkeypatch)
     assert not list((root / PROPOSAL / "decisions").glob("*gate-plan-intent*"))
     assert await start_blocker("owner/app", head, "token", PROPOSAL, "plan") is None
@@ -522,7 +507,7 @@ async def test_legacy_development_configuration_reports_migration_hint(checkout)
     assert '"sdd" or "adaptive-dev"' in refused.value.detail
 
 
-async def test_xl_draft_reports_the_size_gate_instead_of_plan_intent(checkout, tmp_path, monkeypatch):
+async def test_xl_draft_reports_the_size_gate_before_planning(checkout, tmp_path, monkeypatch):
     from app.features.project_management.sdd.policy import start_blocker
 
     root, _ = checkout
@@ -583,8 +568,8 @@ async def test_acceptance_is_one_commit_on_the_confirmed_head_pushed_under_a_lea
     message = run(bare, "git", "log", "-1", "--format=%B", plan["commit_sha"])
     assert message.startswith("Accept proposal PROP-demo") and "Decided-by: user:fixture" in message
     changed = run(bare, "git", "diff", "--name-only", head, plan["commit_sha"]).splitlines()
-    assert sorted(changed) == [f"{PROPOSAL}/decisions/02-gate-plan-accept.yaml", f"{PROPOSAL}/proposal.md"]
-    decision = run(bare, "git", "show", f"{plan['commit_sha']}:{PROPOSAL}/decisions/02-gate-plan-accept.yaml")
+    assert sorted(changed) == [f"{PROPOSAL}/decisions/01-gate-plan-accept.yaml", f"{PROPOSAL}/proposal.md"]
+    decision = run(bare, "git", "show", f"{plan['commit_sha']}:{PROPOSAL}/decisions/01-gate-plan-accept.yaml")
     assert "by: user" in decision and "Decided-by: user:fixture" in decision
     # The fixture checkout did not move; evaluate the pushed commit from a fresh clone of the remote.
     verify = (tmp_path / "verify").resolve()
@@ -760,4 +745,4 @@ async def test_handoff_first_run_follows_the_new_spec_after_the_handoff(checkout
     assert after["rebound"] and after["snapshot"]["handoff_from"] == PROPOSAL
     assert after["snapshot"]["spec_dir"].startswith("specs/") and after["snapshot"]["spec_dir"].endswith("-demo")
     assert after["snapshot"]["workflow_id"] == "sdd-spec-feature"
-    assert after["current"]["stage"]["id"] == "specify"  # plan-intent carried over from the proposal
+    assert after["current"]["stage"]["id"] == "specify"  # handoff opens the spec workflow after its task-scope checks

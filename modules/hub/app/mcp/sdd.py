@@ -46,7 +46,7 @@ def register_sdd(registry: ToolRegistry, deps: Dependencies) -> None:
     register(
         registry,
         "sdd_start_planning",
-        "Start Planning of a draft proposal (PROP-<slug> with plan-intent recorded and size S, M or L; decompose an XL draft first) in the cloud: Hub creates plan-<slug> from base_branch with a start commit that sets status reviewing, opens the pull request and enrolls the run; the first attempt is the Planning worker. An existing remote plan-<slug> refuses the start unless it carries Hub's own open pull request. Check the local branches before calling.",
+        "Start Planning of a draft proposal (PROP-<slug> explicitly requested and eligible under devkit, with size S, M, L or absent; decompose an XL draft first) in the cloud: Hub creates plan-<slug> from base_branch with a start commit that sets status reviewing, opens the pull request and enrolls the run; the first attempt is the Planning worker. An existing remote plan-<slug> refuses the start unless it carries Hub's own open pull request. Check the local branches before calling.",
         StartActivity,
         RunView,
         start_planning,

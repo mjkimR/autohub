@@ -29,6 +29,5 @@ setup = "uv sync --no-active --locked --all-packages"
 
 [workflow.approvals]
 dev-integration = "auto"
-plan-intent = "auto"
 proposal-handoff = "auto"
 

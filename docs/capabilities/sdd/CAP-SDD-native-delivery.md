@@ -49,8 +49,9 @@ CI observation and merge control.
    `SDD_LIFECYCLE_INACTIVE` before creating a branch or PR.
    Check: [test_activities.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_activities.py), `test_adaptive_dev_base_refuses_starts_before_creating_branches`.
 3. **Planning eligibility**: WHEN a new Planning branch is needed, Hub MUST require a draft
-   proposal with no decomposition requirement, size S/M/L or absent, and plan-intent
-   satisfied by devkit's base evaluation before starting its branch.
+   proposal explicitly requested for Planning, with no decomposition requirement,
+   size S/M/L or absent, and eligibility satisfied by devkit's base evaluation
+   before starting its branch.
    Check: [test_activities.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_activities.py), `test_start_refuses_a_proposal_in_the_wrong_state`, `test_planning_starts_for_every_size_the_gate_allows`, `test_planning_refusal_reports_what_the_base_evaluation_found`.
 4. **Planning artifacts**: WHEN an eligible Planning start has no existing activity
    branch, Hub MUST create `plan-<slug>` with the proposal changed to `reviewing`

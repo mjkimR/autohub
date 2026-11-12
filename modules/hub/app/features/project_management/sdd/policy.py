@@ -42,7 +42,7 @@ async def base_policy(root: Path, base: str, head: str, head_policy: dict) -> di
 
 
 def planning_blocker(current: dict, slug: str) -> str | None:
-    """Why ``workflow next`` on the base does not let the draft start Planning, or ``None`` when plan-intent is done."""
+    """Why ``workflow next`` on the base does not let the draft start Planning, or ``None`` when eligibility passes."""
     if current.get("errors"):
         code = str((current["errors"][0] or {}).get("code") or "an invalid record")
         return f"PROP-{slug} has invalid workflow evidence on the base ({code}); repair it in Backlog before Planning"
@@ -53,7 +53,7 @@ def planning_blocker(current: dict, slug: str) -> str | None:
         if name.startswith("frontmatter(proposal.md size") and not check.get("satisfied"):
             detail = str(check.get("detail") or "size outside S, M or L")
             return f"PROP-{slug} fails the size gate ({detail}); decompose it in Backlog before Planning"
-    return f"Record plan-intent for PROP-{slug} in Backlog before Planning"
+    return f"Resolve the workflow eligibility checks for PROP-{slug} in Backlog before Planning"
 
 
 async def start_blocker(repository: str, base: str, token: str, unit: str, activity: str) -> str | None:

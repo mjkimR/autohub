@@ -314,7 +314,7 @@ async def test_native_observation_age_changes_only_after_inspection(client, proj
     progress = {
         "head_sha": "c" * 40,
         "observed_at": "2026-11-01T00:00:00+00:00",
-        "current": {"requests": [{"id": "gate:plan-intent", "kind": "approve", "title": "Start"}]},
+        "current": {"requests": [{"id": "gate:plan-accept", "kind": "approve", "title": "Accept direction"}]},
     }
     run.sdd_progress = progress
     await session.commit()

@@ -104,7 +104,7 @@ Development handoff; it is not a prerequisite for successful registration.
 
 - **Covers**: main success scenario.
 - **Given**: An enabled SDD project and a draft proposal with allowed size and
-  satisfied plan-intent on the selected base.
+  eligibility satisfied on the selected base.
 - **When**: The operator starts Planning with an effort override.
 - **Then**: A ready activity PR and bound run are returned, the branch's proposal
   is reviewing and the explicit effort is retained.

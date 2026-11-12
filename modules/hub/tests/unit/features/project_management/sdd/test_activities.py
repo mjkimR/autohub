@@ -17,9 +17,10 @@ DRAFT = "---\nid: PROP-demo\nstatus: draft\ntask_kind: feature\n---\n# Demo\n"
 
 
 class FakeGitHub:
-    def __init__(self, proposal=DRAFT, records=("01-gate-plan-intent.yaml",)):
+    def __init__(self, proposal=DRAFT):
         self.refs = {"main": BASE}
-        self.proposal, self.records, self.pulls, self.created = proposal, list(records), [], []
+        self.proposal, self.pulls, self.created = proposal, [], []
+        self.eligible = True
         self.approach, self.unmet, self.errors, self.checkouts = "sdd", [], [], []
 
     def respond(self, request: httpx2.Request) -> httpx2.Response:
@@ -36,8 +37,6 @@ class FakeGitHub:
                 return httpx2.Response(404)
             content = base64.b64encode(self.proposal.encode()).decode()
             return httpx2.Response(200, json={"encoding": "base64", "content": content})
-        if path == "/contents/docs/proposals/PROP-demo/decisions":
-            return httpx2.Response(200, json=[{"name": name} for name in self.records])
 
         def normalized(pull):
             return {
@@ -97,7 +96,7 @@ def started(monkeypatch):
         if args == ("spec", "policy"):
             return {"approvals": {}, "development": {"approach": github.approach, "source": "default"}}
         assert args[:2] == ("workflow", "next")
-        done = ["intent-proposal"] if github.records else []
+        done = ["intent-proposal"] if github.eligible else []
         return {"done": done, "unmet": github.unmet, "errors": github.errors}
 
     monkeypatch.setattr(policy, "checkout", checkout)
@@ -166,25 +165,23 @@ async def test_activity_effort_uses_the_proposal_hint_unless_overridden(
 
 
 @pytest.mark.parametrize(
-    ("activity", "proposal", "records", "match"),
+    ("activity", "proposal", "match"),
     [
-        ("plan", DRAFT.replace("draft", "reviewing", 1), ("01-gate-plan-intent.yaml",), "starts from a draft"),
-        ("plan", DRAFT, (), "Record plan-intent"),
+        ("plan", DRAFT.replace("draft", "reviewing", 1), "starts from a draft"),
         (
             "plan",
             DRAFT.replace("task_kind", "needs_decompose: true\ntask_kind"),
-            ("01-gate-plan-intent.yaml",),
             "decomposition",
         ),
-        ("plan", DRAFT.replace("task_kind", "size: XL\ntask_kind"), ("01-gate-plan-intent.yaml",), "size XL"),
-        ("plan", None, (), "is not on main"),
-        ("dev", DRAFT, (), "accepted proposal"),
-        ("dev", DRAFT.replace("draft", "rejected", 1), (), "accepted proposal"),
+        ("plan", DRAFT.replace("task_kind", "size: XL\ntask_kind"), "size XL"),
+        ("plan", None, "is not on main"),
+        ("dev", DRAFT, "accepted proposal"),
+        ("dev", DRAFT.replace("draft", "rejected", 1), "accepted proposal"),
     ],
 )
-async def test_start_refuses_a_proposal_in_the_wrong_state(started, activity, proposal, records, match):
+async def test_start_refuses_a_proposal_in_the_wrong_state(started, activity, proposal, match):
     github, branches, _, project, starter = started
-    github.proposal, github.records = proposal, list(records)
+    github.proposal = proposal
     with pytest.raises(ProjectError, match=match):
         await starter.start(project, activity, "demo", request(), "user:mj")
     assert not branches and not github.created
@@ -219,7 +216,7 @@ async def test_xl_draft_is_refused_before_any_checkout_or_branch(started):
     github.proposal = DRAFT.replace("task_kind", "size: XL  # decompose\ntask_kind")
     with pytest.raises(ProjectError, match="decompose it in Backlog") as refused:
         await starter.start(project, "plan", "demo", request(), "user:mj")
-    assert refused.value.status == 409 and "plan-intent" not in refused.value.detail
+    assert refused.value.status == 409
     assert not github.checkouts and not branches and not github.created
 
 
@@ -236,12 +233,12 @@ async def test_xl_draft_is_refused_before_any_checkout_or_branch(started):
             [{"code": "ENVELOPE_INVALID", "message": "secret"}],
             r"invalid workflow evidence on the base \(ENVELOPE_INVALID\)",
         ),
-        ([], [], "Record plan-intent"),
+        ([], [], "Resolve the workflow eligibility checks"),
     ],
 )
 async def test_planning_refusal_reports_what_the_base_evaluation_found(started, unmet, errors, match):
     github, branches, _, project, starter = started
-    github.records, github.unmet, github.errors = [], unmet, errors
+    github.eligible, github.unmet, github.errors = False, unmet, errors
     with pytest.raises(ProjectError, match=match) as refused:
         await starter.start(project, "plan", "demo", request(), "user:mj")
     assert refused.value.status == 409 and "secret" not in refused.value.detail
