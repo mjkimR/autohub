@@ -1,0 +1,23 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-11T23:19:02.271069Z'
+status: completed
+summary: Independent code review passed; supplemental contract review found one selection-invalidation mismatch.
+findings:
+- issue: Changing selection hides cached readiness but does not invalidate it.
+  evidence: modules/hub-ui/src/lib/features/project-management/repositories/sdd-execution.svelte.ts:27; SPEC-sdd-diagnostics-readiness AC-05
+  failure_condition: Returning from selection B to previously inspected A restores its old preview; the same transition can accept an old in-flight response.
+  suggested_action: Invalidate readiness and in-flight request generations on every selection change and test cached and pending ABA transitions.
+  resolution: open
+  severity: P2
+assumptions:
+- Emulated isolated code and reconcile reviewers inspected committed 21a9cc2 without writes; the finding is from reconcile_review.
+checks:
+  tests: PASS backend 1424, UI 324, native contracts 138; final focused backend 202
+  lint: PASS lint, types, UI build, API freshness and committed rules check
+diff_scope:
+  base: 3c247b13823e9f91cabe3fcd1270b49ff08e1d48
+  head: 21a9cc2b872982c606e041abd6f4348813965021
+activity_effort: medium

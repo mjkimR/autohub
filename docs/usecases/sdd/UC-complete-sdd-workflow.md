@@ -1,7 +1,7 @@
 ---
 id: UC-complete-sdd-workflow
 title: Complete a bound native SDD workflow
-summary: "A project operator discovers exact pending native decisions and advances a bound spec PR through worker evidence, workflow direction and integration authority. Holds and revisioned decisions remain effective across retries."
+summary: "A project operator previews initial workflow waits, inspects safe diagnostics and advances a bound spec PR through worker evidence and integration authority. Holds and revisioned decisions remain effective across retries."
 area: sdd
 primary_actor: Project operator
 supporting_actors:
@@ -30,8 +30,8 @@ entrypoints:
 
 ## 2. Main Success Scenario
 
-1. The operator selects the spec PR for native execution
-   (`CAP-SDD-workflow-control`, rule 1).
+1. The operator inspects the selected spec PR's initial workflow context before registering native execution
+   (`CAP-SDD-workflow-control`, rules 1, 22–23).
    Interface: `UX-sdd-execution`.
 
 2. Hub checks the binding/runtime and retains the evaluated execution identity
@@ -62,8 +62,11 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
 ## 3. Extensions
 
 - **2a.** Binding/runtime admission fails: Hub reports failed readiness or refuses
-  enrollment with the capability-defined invalid request/runtime error; the use
+  enrollment with the capability-defined invalid request/runtime error and safe diagnostic guidance; the use
   case ends without successful native enrollment.
+   Interface: `UX-sdd-execution`.
+
+- **2b.** Registration is eligible but the inspected workflow already waits for input: the operator can register with that wait disclosed; resumes at step 3 with the existing hold or decision channel unchanged.
    Interface: `UX-sdd-execution`.
 
 - **3a.** A worker problem or malformed envelope holds the unit: Hub blocks and
@@ -121,7 +124,7 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
    Interface: `UX-sdd-run`.
 
 - **5c.** Runtime/configuration drift or final recorded-rule loading prevents
-  evaluation: Hub blocks with the runtime contract's remediation rather than
+  evaluation: Hub blocks with the runtime contract's structured remediation rather than
   dispatching repair for that setup failure; the invocation ends pending recovery.
    Interface: `UX-sdd-run`.
 
@@ -301,6 +304,27 @@ owns the evaluated runtime and configuration identity.
 - **Given**: A successful decision receipt exists and the run was subsequently stopped.
 - **When**: The identical request is replayed.
 - **Then**: Hub returns current state without repeating approval/publication or undoing the stop.
+
+### SDD-COMPLETE-21: Preview a registered workflow wait
+
+- **Covers**: 2b and step 1.
+- **Given**: An eligible spec PR has a reported stage, pending question or approval request.
+- **When**: The operator checks readiness.
+- **Then**: The preview distinguishes registration eligibility from that existing wait and shows effective approval policy without answering or approving it.
+
+### SDD-COMPLETE-22: Retain safe diagnostic guidance
+
+- **Covers**: 2a and 5c.
+- **Given**: Runtime evaluation returns a recognized notice or fails with a recognized error.
+- **When**: The operator inspects readiness or the retained native run.
+- **Then**: Hub-authored code, responsibility and recovery guidance appear without copying arbitrary upstream message, path, command or stderr into the diagnostic record.
+
+### SDD-COMPLETE-23: Reinspect a changed registration selection
+
+- **Covers**: step 1.
+- **Given**: Readiness was inspected for one unit and PR.
+- **When**: The operator changes that selection or an older request completes.
+- **Then**: The previous preview cannot enable registration for the changed combination; a matching inspection is required.
 
 ## 6. Source and Verification Boundary
 

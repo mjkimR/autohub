@@ -12,6 +12,7 @@ from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.sdd.answer_publication import retain_publications
 
 from .decisions import publication_instructions
+from .diagnostics import failure
 from .evidence import in_context
 from .gates import INTEGRATION_GATE, PLAN_ACCEPT_REQUEST
 from .services import SddService
@@ -236,7 +237,12 @@ class SddProgress:
                 }
             return {"pull": pull, "evidence": evidence}
         except ProjectError as exc:
-            return {"pull": pull, "error": str(exc), "publication_request_id": publication_request_id}
+            return {
+                "pull": pull,
+                "error": str(exc),
+                "diagnostics": failure(exc),
+                "publication_request_id": publication_request_id,
+            }
 
     async def dispatch(self, session, run, evidence, now, feedback=""):
         stage = evidence.get("current", {}).get("stage") or {}
@@ -313,6 +319,7 @@ class SddProgress:
         elif observed.get("error"):
             progress = dict(run.sdd_progress or {})
             progress["error"] = observed["error"]
+            progress["diagnostics"] = observed.get("diagnostics", [])
             if observed.get("revoke"):
                 progress.pop("approval", None)
                 progress["integrated"] = False

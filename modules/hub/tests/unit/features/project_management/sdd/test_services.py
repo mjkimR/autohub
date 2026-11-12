@@ -199,3 +199,33 @@ async def test_runtime_status_reports_the_pin_and_an_isolated_start(monkeypatch,
     monkeypatch.setenv("AUTOHUB_SDD_HOME", str(tmp_path / "absent"))
     status = await services.SddService().runtime_status()
     assert status["ok"] is False and "install-sdd" in status["detail"]
+
+
+async def test_policy_notices_are_projected_but_do_not_change_execution_authority(repo, monkeypatch):
+    evaluation(monkeypatch, stale=False)
+    initial = services.cli
+    payload = [{"code": "SPEC_APPROVAL_KEY_IGNORED", "level": "WARNING", "message": "secret-token"}]
+
+    async def cli(root, *args):
+        result = await initial(root, *args)
+        return {**result, "notices": payload}
+
+    monkeypatch.setattr(services, "cli", cli)
+    result = await evaluate(repo, approved=False)
+    assert [row["code"] for row in result["diagnostics"]] == ["SPEC_APPROVAL_KEY_IGNORED"]
+    assert "notices" not in result["snapshot"]["policy"]
+    assert "notices" not in result["workflow"] and "notices" not in result["current"]
+    snapshot = {**result["snapshot"], "policy": {**result["snapshot"]["policy"], "notices": payload}}
+    payload.clear()  # a legacy snapshot's nonsemantic notices do not become a drift check
+    again = await services.SddService().evaluate(repo, SPEC, HEAD, BASE, snapshot, False)
+    assert again["snapshot"] == result["snapshot"]
+    changed = {**snapshot, "policy": {"approvals": {"dev-integration": {"policy": "auto"}}}}
+    with pytest.raises(ProjectError, match="workflow or policy"):
+        await services.SddService().evaluate(repo, SPEC, HEAD, BASE, changed, False)
+
+
+async def test_prior_warnings_are_retained_when_a_later_cli_call_fails(repo, monkeypatch):
+    evaluation(monkeypatch, stale=True, show_error=SddCommandError("WORKFLOW_DRIFT", "refused"))
+    with pytest.raises(SddCommandError) as result:
+        await evaluate(repo, approved=False)
+    assert {row["code"] for row in result.value.diagnostics} == {"RECEIPT_STALE", "WORKFLOW_DRIFT"}

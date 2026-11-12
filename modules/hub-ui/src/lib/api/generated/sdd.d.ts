@@ -492,6 +492,35 @@ export interface components {
             note?: string | null;
         };
         PullRequestSnapshot: CommonComponents["schemas"]["PullRequestSnapshot"];
+        /**
+         * SddDiagnostic
+         * @description Hub-owned guidance selected by a recognized devkit code, never raw repository output.
+         */
+        SddDiagnostic: {
+            /** Code */
+            code: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "error" | "warning" | "info";
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "repository" | "runtime" | "decision";
+            /** Message */
+            message: string;
+            /** Action */
+            action: string;
+            /**
+             * Retry
+             * @enum {string}
+             */
+            retry: "after_fix" | "safe" | "never";
+            /** Target Files */
+            target_files?: string[];
+        };
         /** SddInspectionRequest */
         SddInspectionRequest: {
             /** Pull Number */
@@ -521,6 +550,12 @@ export interface components {
             };
             /** Warnings */
             warnings?: components["schemas"]["SddWarning"][];
+            /** Diagnostics */
+            diagnostics?: components["schemas"]["SddDiagnostic"][];
+            /** Policy */
+            policy?: {
+                [key: string]: unknown;
+            };
         };
         /**
          * SddRuntimeStatus

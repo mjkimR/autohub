@@ -1,7 +1,7 @@
 ---
 id: CAP-SDD-workflow-control
 title: Native SDD workflow control and integration authority
-summary: "Control native SDD workflow decisions, worker questions and integration authority. Cross-project discovery opens exact subjects through persisted inspection CAS while preserving holds, revocation and publication evidence."
+summary: "Control native SDD workflow decisions, worker questions and integration authority. Registration previews disclose the initial stage and existing waits without authority; cross-project discovery preserves exact subjects, holds and publication evidence."
 area: sdd
 status: active
 usecases:
@@ -117,6 +117,11 @@ records. `UC-complete-sdd-workflow` follows a bound spec through that process.
     rather than introduce a second merge controller.
     Check: [test_native.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_native.py), `test_single_owner_approval_to_ci_merge_and_idempotent_receipt`.
 
+22. **Registration preview**: WHEN native readiness succeeds for a selected project, unit and PR, Hub MUST expose the evaluated stage, existing worker/workflow waits and effective approval policy as read-only context without answering, resolving or approving them.
+    Check: [SddExecution.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddExecution.integration.test.ts), `eligible registration previews waits and policy without answering them`, `automatic policy is separate from an active approval wait`.
+23. **Selection-scoped readiness**: WHEN the selected project, unit or PR changes, Hub MUST invalidate that combination's registration preview and prevent stale asynchronous results from enabling registration for another combination.
+    Check: [SddExecution.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddExecution.integration.test.ts), `changing the selected unit hides its earlier preview and requires a new inspection`.
+
 ### Exact native decision discovery
 
 WHEN listing native decisions, Hub MUST derive supported worker, workflow, proposal and integration subjects from persisted devkit-spec owner evidence. Unsupported snapshots/kinds are excluded. Held requests do not create competing actionable gates; existing approval or proposal publication excludes a duplicate integration/proposal action. Recorded worker answers remain nonactionable publication-pending subjects until validated answer-envelope evidence resolves that exact worker/question. Check: [discovery.py](../../../modules/hub/app/features/project_management/sdd/discovery.py) and `test_native_generation_and_publication_pending` in [test_discovery.py](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_discovery.py).
@@ -138,6 +143,8 @@ WHILE the exact worker answer is recorded without resolved publication, its cont
 WHEN showing a historical integration receipt, Hub MUST disclose current authority and holds separately. Neither generic resume nor a successful receipt grants fresh authority. The shared owner lookup is defined by `CAP-PR-operator-decisions`; `UX-sdd-run` shows these independent facts.
 
 ## 4. Interfaces & Data Contracts
+
+`POST /api/v1/projects/{project_id}/sdd/readiness` exposes registration eligibility (`ready`), inspected head/base and CLI identity, `workflow`, `current`, effective `policy`, compatible `warnings` and safe `diagnostics`. Eligibility does not imply that the unit can advance immediately: current problems, questions or approval requests remain visible and effective after registration. Policy is supporting context; an active approval wait comes from the current request or gate, not an `ask` setting alone. `CAP-SDD-runtime-isolation` owns diagnostic projection and identity boundaries.
 
 Native enrollment uses `POST /api/v1/projects/{project_id}/runs` with an existing
 `pull_number` and `spec_dir`; optional `activity_effort` is `low`, `medium` or

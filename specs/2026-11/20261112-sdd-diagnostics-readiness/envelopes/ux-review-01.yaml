@@ -1,0 +1,13 @@
+kind: ux-review
+stage: specify
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-11T23:10:36.803605Z'
+status: completed
+summary: The read-only preview fits the existing registration panel. Clarified eligibility versus waits, request-derived approval waits, absent stage text and read-only retry guidance.
+findings: []
+unverified_areas:
+- No browser walkthrough of an implemented screen was performed during draft review.
+checks:
+  screens-review: PASS reviewed by ux_review subagent; no structural redesign needed
+activity_effort: medium

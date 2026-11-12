@@ -19,6 +19,7 @@
 	import SddReports from './SddReports.svelte';
 	import SddPlanningEvidence from './SddPlanningEvidence.svelte';
 	import SddNextAction from './SddNextAction.svelte';
+	import SddDiagnostics from './SddDiagnostics.svelte';
 	let {
 		run,
 		onchange,
@@ -58,7 +59,6 @@
 	let current = $derived(record(progress.current));
 	let stage = $derived(record(current.stage));
 	let approval = $derived(record(progress.approval));
-	let warnings = $derived(Array.isArray(progress.warnings) ? progress.warnings.map(record) : []);
 	let hold = $derived(record(progress.hold));
 	let problems = $derived(Array.isArray(hold.problems) ? hold.problems.map(record) : []);
 	let pendingQuestions = $derived(
@@ -261,11 +261,7 @@
 				</p>
 			</div>
 		{/if}
-		{#each warnings as warning, index (index)}<p
-				class="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
-			>
-				{String(warning.detail || warning.code)}
-			</p>{/each}
+		<SddDiagnostics diagnostics={progress.diagnostics} warnings={progress.warnings} />
 		{#if Array.isArray(current.done) && current.done.length}
 			<details class="text-xs">
 				<summary class="cursor-pointer text-muted-foreground"

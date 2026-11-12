@@ -746,3 +746,18 @@ async def test_handoff_first_run_follows_the_new_spec_after_the_handoff(checkout
     assert after["snapshot"]["spec_dir"].startswith("specs/") and after["snapshot"]["spec_dir"].endswith("-demo")
     assert after["snapshot"]["workflow_id"] == "sdd-spec-feature"
     assert after["current"]["stage"]["id"] == "specify"  # handoff opens the spec workflow after its task-scope checks
+
+
+async def test_retired_approval_notice_is_safe_evidence_not_workflow_authority(checkout):
+    root, _ = checkout
+    config = root / ".devkit/config.toml"
+    config.write_text(config.read_text() + '\n[workflow.approvals]\nplan-intent = "auto"\n')
+    run(root, devkit_binary(), "sync")
+    head = commit(root, "Fixture with a retired approval setting")
+    result = await SddService().evaluate(root, SPEC, head, head, None, False)
+    notice = next(row for row in result["diagnostics"] if row["code"] == "SPEC_APPROVAL_KEY_IGNORED")
+    assert notice["severity"] == "warning" and notice["category"] == "repository"
+    assert notice["target_files"] == [".devkit/config.toml"] and notice["retry"] == "never"
+    assert "plan-intent" not in result["snapshot"]["policy"]["approvals"]
+    assert "notices" not in result["snapshot"]["policy"]
+    assert result["current"]["stage"]["human_gate"] == "dev-integration" and not result["integrated"]

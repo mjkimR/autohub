@@ -13,5 +13,9 @@ def workflow_hash(definition: dict) -> str:
     if not isinstance(definition.get("id"), str) or not isinstance(definition.get("stages"), list):
         raise ProjectError(422, "Unsupported sdd workflow definition")
     return request_digest(
-        {key: value for key, value in definition.items() if key not in {"path", "binding", "ok", "errors", "hash"}}
+        {
+            key: value
+            for key, value in definition.items()
+            if key not in {"path", "binding", "ok", "errors", "hash", "notices"}
+        }
     )

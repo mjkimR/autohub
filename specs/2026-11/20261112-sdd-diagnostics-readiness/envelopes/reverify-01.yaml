@@ -1,0 +1,23 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-11T23:21:43.719601Z'
+status: completed
+review: review-01.yaml
+summary: Selection revisions invalidate cached and in-flight readiness across ABA transitions; stale registration responses cannot replace newer receipts.
+findings:
+- issue: Changing selection hides cached readiness but does not invalidate it.
+  evidence: modules/hub-ui/src/lib/features/project-management/repositories/sdd-execution.svelte.ts:27; SPEC-sdd-diagnostics-readiness AC-05
+  failure_condition: Returning from selection B to previously inspected A restores its old preview; the same transition can accept an old in-flight response.
+  suggested_action: Invalidate readiness and in-flight request generations on every selection change and test cached and pending ABA transitions.
+  resolution: resolved
+  severity: P2
+assumptions:
+- Implementer and Host verified the scoped fix; independent reconciliation recheck follows.
+checks:
+  tests: PASS focused UI 31; full UI 332; ABA success/refusal/error and out-of-order registration regressions
+  lint: PASS scoped ESLint, svelte-check and committed rules check
+diff_scope:
+  base: 3c247b13823e9f91cabe3fcd1270b49ff08e1d48
+  head: 53b8cc97e6804aa14fb4dfc31b4ee3fbeb74092a
