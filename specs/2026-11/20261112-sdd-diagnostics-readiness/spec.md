@@ -2,7 +2,7 @@
 id: SPEC-sdd-diagnostics-readiness
 title: Expose SDD diagnostics and readiness context
 summary: "Preserve safe devkit diagnostics and preview the initial workflow state before enrolling a PR."
-status: in-progress
+status: completed
 created: 2026-11-12
 related_capabilities:
   - CAP-SDD-runtime-isolation

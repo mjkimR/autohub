@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-sdd-diagnostics-readiness
-status: pending
+status: resolved
 targets:
   - file: docs/capabilities/sdd/CAP-SDD-runtime-isolation.md
     resolution: modified
