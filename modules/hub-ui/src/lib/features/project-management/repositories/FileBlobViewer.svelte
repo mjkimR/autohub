@@ -77,9 +77,9 @@
 				</div>
 			{/if}
 
-			<Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs" onclick={copyContent}>
+			<Button variant="outline" size="sm" class="h-8" onclick={copyContent}>
 				{#if copied}
-					<Check class="h-3.5 w-3.5 text-emerald-500" />
+					<Check class="h-3.5 w-3.5 text-success" />
 					Copied
 				{:else}
 					<Copy class="h-3.5 w-3.5" />
@@ -102,7 +102,7 @@
 			</div>
 		</div>
 	{:else}
-		<div class="max-h-[700px] overflow-auto bg-muted/10 font-mono text-xs">
+		<div class="max-h-175 overflow-auto bg-muted/10 font-mono text-xs">
 			<table class="w-full border-collapse">
 				<tbody>
 					{#each lines as line, idx (idx)}

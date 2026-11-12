@@ -64,7 +64,7 @@
 		if (!open) onclose();
 	}}
 >
-	<DialogContent class="sm:max-w-[450px]">
+	<DialogContent class="sm:max-w-112.5">
 		<DialogHeader>
 			<div class="flex items-center gap-2">
 				<div class="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">

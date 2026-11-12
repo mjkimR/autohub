@@ -189,21 +189,15 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-2">
-			<Button variant="outline" size="sm" onclick={refresh} disabled={loading} class="gap-2">
+			<Button variant="outline" size="sm" onclick={refresh} disabled={loading}>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
 			</Button>
-			<Button
-				variant="secondary"
-				size="sm"
-				onclick={triggerDispatcher}
-				disabled={isTriggering}
-				class="gap-2"
-			>
+			<Button variant="secondary" size="sm" onclick={triggerDispatcher} disabled={isTriggering}>
 				<Play class="size-3.5" />
 				Trigger Dispatcher
 			</Button>
-			<Button size="sm" onclick={() => (editor = { mode: 'create' })} class="gap-2">
+			<Button size="sm" onclick={() => (editor = { mode: 'create' })}>
 				<Plus class="size-4" />
 				New Schedule
 			</Button>
@@ -269,15 +263,12 @@
 					</TableRow>
 				{:else}
 					{#each configs as config (config.id)}
-						<TableRow class="transition-colors hover:bg-muted/40">
+						<TableRow>
 							<TableCell>
 								<div class="flex items-center gap-2">
 									<span class="font-semibold text-foreground">{config.name}</span>
 									{#if config.task_func === 'system.maintain' || isProjectManaged(config)}
-										<Badge
-											variant="outline"
-											class="border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-600 dark:text-blue-400"
-										>
+										<Badge variant="info">
 											{config.task_func === 'system.maintain'
 												? 'System Managed'
 												: 'Project Managed'}
@@ -306,15 +297,12 @@
 							</TableCell>
 							<TableCell>
 								{#if config.enabled}
-									<Badge
-										variant="default"
-										class="gap-1 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
-									>
+									<Badge variant="success">
 										<CheckCircle2 class="size-3" />
 										Active
 									</Badge>
 								{:else}
-									<Badge variant="secondary" class="gap-1 text-muted-foreground">
+									<Badge variant="secondary">
 										<PauseCircle class="size-3" />
 										Paused
 									</Badge>
@@ -340,27 +328,20 @@
 									<span class="text-xs text-muted-foreground">Manage in project Connections</span>
 								{:else}
 									<div class="flex items-center justify-end gap-1.5">
-										<Button
-											variant="outline"
-											size="sm"
-											onclick={() => toggleEnable(config)}
-											class="h-8 text-xs"
-										>
+										<Button variant="outline" onclick={() => toggleEnable(config)}>
 											{config.enabled ? 'Pause' : 'Resume'}
 										</Button>
 										<Button
-											variant="outline"
+											variant="subtle"
 											size="icon"
-											class="size-8 text-muted-foreground hover:text-foreground"
 											onclick={() => openEdit(config)}
 											title="Edit Schedule"
 										>
 											<Pencil class="size-3.5" />
 										</Button>
 										<Button
-											variant="outline"
+											variant="subtle-destructive"
 											size="icon"
-											class="size-8 text-muted-foreground hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
 											onclick={() => openDelete(config)}
 											title="Delete Schedule"
 										>
@@ -396,11 +377,13 @@
 
 	<!-- Delete Schedule Confirmation Dialog -->
 	<Dialog bind:open={isDeleteDialogOpen}>
-		<DialogContent class="sm:max-w-[440px]">
+		<DialogContent class="sm:max-w-110">
 			<DialogHeader>
-				<DialogTitle class="flex items-center gap-2 text-destructive">
-					<AlertTriangle class="size-5" />
-					Delete Schedule Configuration
+				<DialogTitle>
+					<span class="flex items-center gap-2 text-destructive">
+						<AlertTriangle class="size-5" />
+						Delete Schedule Configuration
+					</span>
 				</DialogTitle>
 			</DialogHeader>
 
@@ -411,9 +394,7 @@
 					>?
 				</p>
 				{#if deletingConfig && isProjectManaged(deletingConfig)}
-					<div
-						class="rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-600 dark:text-amber-400"
-					>
+					<div class="rounded-md border border-warning/20 bg-warning/10 p-3 text-xs text-warning">
 						<strong>Warning:</strong> This schedule is automatically managed for a project. Deleting it
 						will stop automated background dispatching for this project.
 					</div>

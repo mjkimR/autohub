@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { components } from '$lib/api';
-	import { getStateBadgeClass } from './presentation';
+	import { getStateBadgeVariant } from './presentation';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { TableRow, TableCell } from '$lib/components/ui/table';
@@ -48,15 +48,12 @@
 </script>
 
 <TableRow
-	class="grid min-w-0 gap-1 p-3 transition-colors hover:bg-muted/40 md:table-row md:p-0 [&>td]:min-w-0 [&>td]:whitespace-normal"
+	class="grid min-w-0 gap-1 p-3 md:table-row md:p-0 [&>td]:min-w-0 [&>td]:whitespace-normal"
 >
 	<TableCell>
 		<div class="space-y-1">
 			<div class="flex items-center gap-1.5">
-				<Badge
-					variant="outline"
-					class="border-primary/30 bg-primary/10 font-mono text-xs text-primary"
-				>
+				<Badge variant="info" class="font-mono text-xs">
 					PR #{run.pull_number}
 				</Badge>
 				{#if run.pull_url}
@@ -80,12 +77,12 @@
 	<TableCell>
 		<div class="flex flex-col gap-0.5">
 			<span class="text-sm font-semibold text-foreground">{projectName}</span>
-			<span class="font-mono text-[10px] text-muted-foreground">run rev {run.revision}</span>
+			<span class="font-mono text-xs text-muted-foreground">run rev {run.revision}</span>
 		</div>
 	</TableCell>
 
 	<TableCell>
-		<Badge variant="outline" class="gap-1.5 font-medium {getStateBadgeClass(run.state)}">
+		<Badge variant={getStateBadgeVariant(run.state)}>
 			{#if run.state === 'implementing' || run.state === 'dispatching'}
 				<span class="size-1.5 animate-pulse rounded-full bg-current"></span>
 			{:else if run.state === 'completed'}
@@ -118,7 +115,7 @@
 					</a>
 				</div>
 			{:else}
-				<span class="text-[11px] text-muted-foreground/60">No PR yet</span>
+				<span class="text-xs text-muted-foreground/60">No PR yet</span>
 			{/if}
 		</div>
 	</TableCell>
@@ -127,11 +124,11 @@
 		{#if run.lease_owner}
 			<div class="space-y-0.5 text-xs">
 				<div class="flex items-center gap-1 text-foreground">
-					<ShieldCheck class="size-3 text-emerald-500" />
+					<ShieldCheck class="size-3 text-success" />
 					<span class="truncate">{run.lease_owner}</span>
 				</div>
 				{#if run.lease_expires_at}
-					<div class="font-mono text-[10px] text-muted-foreground">
+					<div class="font-mono text-xs text-muted-foreground">
 						expires {new Date(run.lease_expires_at).toLocaleTimeString()}
 					</div>
 				{/if}
@@ -156,73 +153,77 @@
 						size="icon"
 						onclick={() => onresume(run)}
 						disabled={operating}
-						class="size-11 text-amber-500 hover:text-amber-600 md:size-8"
+						class="size-11 md:size-8"
 						title="Resume Run"
 						aria-label="Resume Run"
 					>
-						<Play class="size-4" />
+						<Play class="size-4 text-warning" />
 					</Button>
 				{:else}
 					<Button
-						variant="ghost"
+						variant="subtle"
 						size="icon"
 						onclick={() => onpause(run.id)}
 						disabled={operating}
-						class="size-11 text-muted-foreground hover:text-amber-500 md:size-8"
+						class="size-11 md:size-8"
 						title="Pause Run"
 						aria-label="Pause Run"
 					>
-						<Pause class="size-4" />
+						<Pause class="size-4 group-hover/button:text-warning" />
 					</Button>
 				{/if}
 
 				{#if !run.pull_number}
 					<Button
-						variant="ghost"
+						variant="subtle"
 						size="icon"
 						onclick={() => onattach(run)}
-						class="size-11 text-muted-foreground hover:text-primary md:size-8"
+						class="size-11 md:size-8"
 						title="Attach Pull Request"
 						aria-label="Attach Pull Request"
 					>
-						<Link2 class="size-4" />
+						<Link2 class="size-4 group-hover/button:text-primary" />
 					</Button>
 				{/if}
 
 				<Button
-					variant="ghost"
+					variant="subtle"
 					size="icon"
 					onclick={() => onadvance(run.id)}
 					disabled={operating}
-					class="size-11 text-muted-foreground hover:text-emerald-500 md:size-8"
+					class="size-11 md:size-8"
 					title="Advance / Sync Run Status"
 					aria-label="Advance Run"
 				>
-					<RefreshCw class="size-4 {operating ? 'animate-spin' : ''}" />
+					<RefreshCw
+						class="size-4 group-hover/button:text-success {operating ? 'animate-spin' : ''}"
+					/>
 				</Button>
 
 				<Button
-					variant="ghost"
+					variant="subtle"
 					size="icon"
 					onclick={() => oncancel(run.id)}
 					disabled={operating}
-					class="size-11 text-muted-foreground hover:text-rose-500 md:size-8"
+					class="size-11 md:size-8"
 					title="Cancel Run"
 					aria-label="Cancel Run"
 				>
-					<XCircle class="size-4" />
+					<XCircle class="size-4 group-hover/button:text-destructive" />
 				</Button>
 			{/if}
 
 			<Button
-				variant="ghost"
+				variant="subtle"
 				size="icon"
 				onclick={() => onhistory(run)}
-				class="min-h-11 w-auto gap-2 px-3 text-muted-foreground hover:text-foreground md:size-8 md:min-h-0 md:p-0"
+				class="min-h-11 w-auto md:size-8 md:min-h-0"
 				title="View Attempt History"
 				aria-label="View Attempt History"
 			>
-				<History class="size-4" /><span class="md:hidden">Attempts &amp; errors</span>
+				<History class="ml-3 size-4 md:ml-0" /><span class="mr-3 ml-2 md:hidden"
+					>Attempts &amp; errors</span
+				>
 			</Button>
 		</div>
 	</TableCell>

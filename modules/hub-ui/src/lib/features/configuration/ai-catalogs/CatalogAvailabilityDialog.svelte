@@ -42,7 +42,8 @@
 		if (!open) onclose();
 	}}
 >
-	<DialogContent class="max-h-[calc(100dvh-2rem)] min-w-0 overflow-y-auto [overflow-wrap:anywhere]">
+	<!-- eslint-disable-next-line shadcn/no-arbitrary-values -- viewport-relative height has no scale equivalent -->
+	<DialogContent class="max-h-[calc(100dvh-2rem)] min-w-0 overflow-y-auto wrap-anywhere">
 		<DialogHeader>
 			<DialogTitle>Set catalog refresh time</DialogTitle>
 			<DialogDescription

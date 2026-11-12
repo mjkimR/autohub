@@ -86,9 +86,7 @@
 	</div>
 
 	<!-- Login Card -->
-	<Card
-		class="relative z-10 w-full max-w-md border-border/80 bg-card/80 shadow-xl backdrop-blur-xl"
-	>
+	<Card class="relative z-10 w-full max-w-md">
 		<CardHeader class="space-y-3 text-center">
 			<div
 				class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25"
@@ -96,9 +94,7 @@
 				<Server class="size-7" />
 			</div>
 			<CardTitle class="text-2xl font-bold tracking-tight">Autohub Manager</CardTitle>
-			<CardDescription class="text-sm text-muted-foreground">
-				Sign in to access the orchestrator
-			</CardDescription>
+			<CardDescription>Sign in to access the orchestrator</CardDescription>
 		</CardHeader>
 
 		<CardContent>
@@ -158,11 +154,7 @@
 					</div>
 				</div>
 
-				<Button
-					type="submit"
-					class="h-11 w-full gap-2 font-semibold shadow-md"
-					disabled={isValidating}
-				>
+				<Button type="submit" class="h-11 w-full" disabled={isValidating}>
 					{#if isValidating}
 						<Loader2 class="size-4 animate-spin" />
 						Signing in...

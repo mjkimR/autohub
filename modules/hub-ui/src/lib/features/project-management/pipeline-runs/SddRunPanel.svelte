@@ -185,9 +185,7 @@
 							: 'In progress'}</Badge
 			>
 		</div>
-		{#if questionPending}<p
-				class="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
-			>
+		{#if questionPending}<p class="rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm">
 				Answer or dismiss the pending question above before making an integration decision.
 			</p>
 		{:else if progress.approval_withheld}<p class="text-sm leading-relaxed text-muted-foreground">
@@ -239,11 +237,11 @@
 				reports={progress.reports}
 				{evidenceUrl}
 			/>{/if}
-		{#if progress.lint_diagnostic}<p class="rounded-lg border border-amber-500/30 p-3 text-sm">
+		{#if progress.lint_diagnostic}<p class="rounded-lg border border-warning/30 p-3 text-sm">
 				{String(progress.lint_diagnostic)}
 			</p>{/if}
 		{#if hold.blocked || pendingQuestions.length}
-			<div class="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+			<div class="space-y-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm">
 				<p class="font-medium">
 					{hold.blocked ? 'Held by a worker problem' : 'Waiting for answers to worker questions'}
 				</p>
@@ -269,9 +267,7 @@
 				>
 				<ul class="mt-3 grid gap-2 sm:grid-cols-2">
 					{#each current.done as done (String(done))}<li class="flex items-start gap-2">
-							<Check class="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />{stageName(
-								done
-							)}
+							<Check class="size-3.5 shrink-0 text-success" />{stageName(done)}
 						</li>{/each}
 				</ul>
 			</details>
@@ -370,8 +366,7 @@
 					<div class="mt-3 flex flex-wrap gap-2">
 						{#if waiting}<Button
 								size="sm"
-								variant="ghost"
-								class="text-destructive"
+								variant="destructive"
 								disabled={busy ||
 									disabled ||
 									decisionIntent(run.id).competingUnresolved ||

@@ -73,12 +73,11 @@
 		if (!open) onclose();
 	}}
 >
-	<DialogContent
-		class="max-h-[calc(100dvh-2rem)] overflow-y-auto [overflow-wrap:anywhere] sm:max-w-[650px]"
-	>
+	<!-- eslint-disable-next-line shadcn/no-arbitrary-values -- viewport-relative height has no scale equivalent -->
+	<DialogContent class="max-h-[calc(100dvh-2rem)] overflow-y-auto wrap-anywhere sm:max-w-162.5">
 		<DialogHeader>
-			<DialogTitle class="flex flex-wrap items-center gap-2">
-				<History class="size-5 text-primary" />
+			<DialogTitle class="flex flex-wrap items-center">
+				<History class="mr-2 size-5 text-primary" />
 				Execution Attempts
 			</DialogTitle>
 			<DialogDescription>
@@ -153,7 +152,7 @@
 							<p class="text-sm font-medium">{formatElapsed(runSummary.elapsed_seconds)}</p>
 						</div>
 						{#if runSummary.quota_limit_replies > 0}
-							<p class="text-amber-600 sm:col-span-3 dark:text-amber-400">
+							<p class="text-warning sm:col-span-3">
 								The agent reported its usage limit {runSummary.quota_limit_replies} time(s).
 							</p>
 						{/if}
@@ -184,7 +183,7 @@
 								</div>
 								<div class="flex min-w-0 flex-wrap items-center gap-1.5 text-muted-foreground">
 									<span>Digest:</span>
-									<span class="font-mono text-[11px] text-foreground"
+									<span class="font-mono text-xs text-foreground"
 										>{attempt.request_digest.slice(0, 16)}...</span
 									>
 								</div>
@@ -203,7 +202,7 @@
 								{/if}
 								{#if attempt.failure_code || attempt.failure_detail}
 									<div
-										class="mt-2 rounded-md border border-rose-500/30 bg-rose-500/10 p-2 text-rose-600 dark:text-rose-400"
+										class="mt-2 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-destructive"
 									>
 										<div class="font-semibold">{attempt.failure_code || 'Execution Error'}</div>
 										<div class="text-sm whitespace-pre-wrap">{attempt.failure_detail}</div>
@@ -228,7 +227,7 @@
 							</div>
 
 							<div
-								class="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-2 text-[10px] text-muted-foreground"
+								class="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-2 text-xs text-muted-foreground"
 							>
 								<span>Created: {new Date(attempt.created_at).toLocaleString()}</span>
 								{#if attempt.finished_at}

@@ -186,12 +186,11 @@
 					loadConnectors();
 				}}
 				disabled={loading}
-				class="gap-2"
 			>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
 			</Button>
-			<Button size="sm" onclick={() => (isCreateOpen = true)} class="gap-2">
+			<Button size="sm" onclick={() => (isCreateOpen = true)}>
 				<Plus class="size-4" />
 				New Project
 			</Button>
@@ -221,11 +220,11 @@
 		<Table>
 			<TableHeader>
 				<TableRow>
-					<TableHead class="w-[200px]">Project Name</TableHead>
+					<TableHead class="w-50">Project Name</TableHead>
 					<TableHead>Providers & Verification</TableHead>
-					<TableHead class="w-[140px]">Last CI Check</TableHead>
-					<TableHead class="w-[100px]">Status</TableHead>
-					<TableHead class="w-[180px] text-right">Actions</TableHead>
+					<TableHead class="w-35">Last CI Check</TableHead>
+					<TableHead class="w-25">Status</TableHead>
+					<TableHead class="w-45 text-right">Actions</TableHead>
 				</TableRow>
 			</TableHeader>
 			<TableBody>
@@ -248,7 +247,7 @@
 					</TableRow>
 				{:else}
 					{#each projects as project (project.id)}
-						<TableRow class="transition-colors hover:bg-muted/40">
+						<TableRow>
 							<TableCell class="font-semibold text-foreground">
 								<div class="flex flex-col gap-0.5">
 									<div class="flex items-center gap-1.5">
@@ -256,30 +255,21 @@
 											>{project.name}</a
 										>
 										{#if project.project_type === 'sdd'}
-											<Badge
-												variant="outline"
-												class="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-500"
-											>
-												sdd
-											</Badge>
+											<Badge variant="warning">sdd</Badge>
 										{/if}
 									</div>
-									<span class="font-mono text-[11px] text-muted-foreground"
-										>rev {project.revision}</span
+									<span class="font-mono text-xs text-muted-foreground">rev {project.revision}</span
 									>
 								</div>
 							</TableCell>
 							<TableCell class="text-xs">
 								<div class="flex flex-wrap items-center gap-1.5">
 									{#if project.github}
-										<Badge
-											variant="outline"
-											class="gap-1.5 border-primary/20 bg-primary/5 font-mono text-primary"
-										>
+										<Badge variant="info" class="font-mono">
 											<GitBranch class="size-3" />
 											{project.github.repository}
 										</Badge>
-										<Badge variant="secondary" class="font-mono text-[10px]">
+										<Badge variant="secondary" class="font-mono">
 											{project.github.verification.workflow}
 										</Badge>
 									{:else}
@@ -290,23 +280,29 @@
 							<TableCell>
 								{#if project.last_check}
 									{#if project.last_check.ready}
-										<Badge
-											variant="default"
-											class="cursor-pointer gap-1 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 dark:text-emerald-400"
+										<button
+											type="button"
+											class="rounded-4xl transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
 											onclick={() => openCheck(project)}
+											aria-label="Open connection check"
 										>
-											<CheckCircle2 class="size-3" />
-											Access OK
-										</Badge>
+											<Badge variant="success">
+												<CheckCircle2 class="size-3" />
+												Access OK
+											</Badge>
+										</button>
 									{:else}
-										<Badge
-											variant="secondary"
-											class="cursor-pointer gap-1 bg-amber-500/15 text-amber-600 hover:bg-amber-500/25 dark:text-amber-400"
+										<button
+											type="button"
+											class="rounded-4xl transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
 											onclick={() => openCheck(project)}
+											aria-label="Open connection check"
 										>
-											<AlertCircle class="size-3" />
-											Issue
-										</Badge>
+											<Badge variant="warning">
+												<AlertCircle class="size-3" />
+												Issue
+											</Badge>
+										</button>
 									{/if}
 								{:else}
 									<span class="text-xs text-muted-foreground">Unchecked</span>
@@ -314,15 +310,12 @@
 							</TableCell>
 							<TableCell>
 								{#if project.enabled}
-									<Badge
-										variant="default"
-										class="gap-1 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
-									>
+									<Badge variant="success">
 										<CheckCircle2 class="size-3" />
 										Active
 									</Badge>
 								{:else}
-									<Badge variant="secondary" class="gap-1 text-muted-foreground">
+									<Badge variant="secondary">
 										<XCircle class="size-3" />
 										Disabled
 									</Badge>
@@ -341,50 +334,45 @@
 											class="mt-2 flex flex-wrap justify-end gap-1 rounded-lg border bg-popover p-2 shadow-md"
 										>
 											<Button
-												variant="ghost"
+												variant="subtle"
 												size="icon"
 												onclick={() => openCheck(project)}
-												class="size-8 text-muted-foreground hover:text-primary"
 												title="Connection Check"
 												aria-label="Connection Check"
 											>
 												<Activity class="size-4" />
 											</Button>
 											<Button
-												variant="ghost"
+												variant="subtle"
 												size="icon"
 												onclick={() => openSchedule(project)}
-												class="size-8 text-muted-foreground hover:text-emerald-500"
 												title="Create Scheduled Automation"
 												aria-label="Create Schedule"
 											>
 												<CalendarClock class="size-4" />
 											</Button>
 											<Button
-												variant="ghost"
+												variant="subtle"
 												size="icon"
 												onclick={() => (schedulesProject = project)}
-												class="size-8 text-muted-foreground hover:text-foreground"
 												title="Agent Schedules"
 												aria-label="Agent Schedules"
 											>
 												<CalendarClock class="size-4" />
 											</Button>
 											<Button
-												variant="ghost"
+												variant="subtle"
 												size="icon"
 												onclick={() => openEdit(project)}
-												class="size-8 text-muted-foreground hover:text-foreground"
 												title="Configure Project"
 												aria-label="Configure Project"
 											>
 												<Settings2 class="size-4" />
 											</Button>
 											<Button
-												variant="ghost"
+												variant="subtle-destructive"
 												size="icon"
 												onclick={() => handleDelete(project.id)}
-												class="size-8 text-muted-foreground hover:text-destructive"
 												title="Delete Project"
 												aria-label="Delete Project"
 											>
@@ -420,7 +408,7 @@
 
 	<!-- Create Project Dialog -->
 	<Dialog bind:open={isCreateOpen}>
-		<DialogContent class="sm:max-w-[425px]">
+		<DialogContent class="sm:max-w-106.25">
 			<DialogHeader>
 				<DialogTitle>Register New Project</DialogTitle>
 				<DialogDescription>

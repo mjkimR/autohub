@@ -40,6 +40,27 @@ just lint hub-ui
 npm --prefix modules/hub-ui run format
 ```
 
+### Design-system lint
+
+`eslint.config.js` runs [`@shadcn/lint`](https://github.com/shadcn-ui/lint) on authored
+Svelte and TypeScript files. Its rules report warnings, so they do not fail `just lint`;
+keep the count at zero in files you change.
+Generated primitives in `src/lib/components/ui/` are excluded because they define the variants.
+
+- **Colors**: use tokens from `src/routes/layout.css`, not the raw Tailwind palette.
+  Status colors are `success`, `warning`, `info` and `destructive`, each with light and dark values.
+- **Badges and buttons**: choose a variant instead of adding color or size classes.
+  Badge adds `success`, `warning` and `info`.
+  Button adds `subtle` for muted icon and toolbar actions and `subtle-destructive` for quiet delete or sign-out actions.
+- **Component classes**: every component accepts layout classes. The contracts in
+  `eslint.config.js` also allow spacing on structural slots (cards, dialogs, tabs, table rows),
+  typography on text slots and badges, and content color on table cells.
+- **Values**: use the Tailwind scale (`w-50`, `text-xs`) instead of arbitrary values.
+  If no scale value exists, disable `shadcn/no-arbitrary-values` on that line with a reason.
+
+To add a status color or variant, declare it in `layout.css` or the primitive's `tv()` variants
+rather than restyling call sites.
+
 ### OpenAPI Client Generation
 
 Regenerates tag-based declarations in `src/lib/api/generated/` from the FastAPI backend schema:

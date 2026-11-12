@@ -96,24 +96,12 @@
 		</div>
 		<div class="flex items-center gap-1.5">
 			{#if isRawMode}
-				<Button
-					type="button"
-					variant="outline"
-					size="sm"
-					class="h-7 gap-1.5 text-xs"
-					onclick={enableFormMode}
-				>
+				<Button type="button" variant="outline" size="sm" onclick={enableFormMode}>
 					<SlidersHorizontal class="size-3" />
 					Form View
 				</Button>
 			{:else}
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					class="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-					onclick={enableRawMode}
-				>
+				<Button type="button" variant="subtle" size="sm" onclick={enableRawMode}>
 					<Code2 class="size-3" />
 					Raw JSON
 				</Button>
@@ -131,7 +119,7 @@
 				</div>
 			{/if}
 			<textarea
-				class="min-h-[160px] w-full rounded-lg border border-border bg-muted/40 p-3 font-mono text-xs focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+				class="min-h-40 w-full rounded-lg border border-border bg-muted/40 p-3 font-mono text-xs focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
 				value={rawJson}
 				oninput={handleRawChange}
 				{disabled}
@@ -153,14 +141,14 @@
 							{#if isRequired}
 								<span class="text-destructive">*</span>
 							{/if}
-							<Badge variant="secondary" class="px-1 py-0 font-mono text-[9px] uppercase">
+							<Badge variant="secondary" class="font-mono text-xs uppercase">
 								{prop.type || 'any'}
 							</Badge>
 						</label>
 					</div>
 
 					{#if prop.description}
-						<p class="text-[11px] leading-snug text-muted-foreground">
+						<p class="text-xs leading-snug text-muted-foreground">
 							{prop.description}
 						</p>
 					{/if}

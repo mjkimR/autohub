@@ -4,8 +4,14 @@
 	import { DashboardState } from './dashboard.svelte';
 	import DashboardHealth from './DashboardHealth.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
-	import { getStateBadgeClass } from '$lib/features/project-management/pipeline-runs/presentation';
-	import { Card, CardHeader, CardTitle, CardContent } from '$lib/components/ui/card';
+	import { getStateBadgeVariant } from '$lib/features/project-management/pipeline-runs/presentation';
+	import {
+		Card,
+		CardHeader,
+		CardTitle,
+		CardDescription,
+		CardContent
+	} from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import {
@@ -71,7 +77,7 @@
 				<div class="flex items-center gap-1.5 font-medium text-muted-foreground">
 					<Radio
 						class="size-3.5 {refreshIntervalSec > 0
-							? 'animate-pulse text-emerald-500'
+							? 'animate-pulse text-success'
 							: 'text-muted-foreground'}"
 					/>
 					<span>Sync:</span>
@@ -112,7 +118,7 @@
 				>
 					30s
 				</button>
-				<span class="pl-1 font-mono text-[10px] text-muted-foreground/70">
+				<span class="pl-1 font-mono text-xs text-muted-foreground/70">
 					{dashboard.lastRefreshedAt?.toLocaleTimeString([], {
 						hour: '2-digit',
 						minute: '2-digit',
@@ -126,7 +132,6 @@
 				size="sm"
 				onclick={() => loadDashboardData(false)}
 				disabled={dashboard.loading}
-				class="gap-2"
 			>
 				<RefreshCw class="size-4 {dashboard.loading ? 'animate-spin' : ''}" />
 				Refresh
@@ -142,21 +147,14 @@
 	/>
 
 	<!-- Pipeline Runs Observability Card (High-Impact Hero Banner) -->
-	<Card
-		class="overflow-hidden border-primary/20 bg-linear-to-br from-card via-card to-primary/5 shadow-sm"
-	>
+	<Card class="overflow-hidden">
 		<CardHeader class="pb-3">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
 					<Workflow class="size-5 text-primary" />
 					<CardTitle class="text-base font-semibold">Pipeline Runs Orchestration</CardTitle>
 				</div>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={() => goto('/projects/runs')}
-					class="gap-1.5 text-xs text-primary hover:text-primary"
-				>
+				<Button variant="link" size="xs" onclick={() => goto('/projects/runs')}>
 					View All Runs
 					<ArrowRight class="size-3.5" />
 				</Button>
@@ -167,43 +165,35 @@
 				<div class="rounded-lg border border-border/70 bg-background/50 p-3">
 					<div class="text-xs font-semibold text-muted-foreground uppercase">Total Runs</div>
 					<div class="mt-1 text-2xl font-bold">{dashboard.totalRuns}</div>
-					<p class="mt-0.5 text-[11px] text-muted-foreground">All time lifecycle</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">All time lifecycle</p>
 				</div>
-				<div class="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3">
-					<div class="text-xs font-semibold text-indigo-600 uppercase dark:text-indigo-400">
-						Active Work
-					</div>
-					<div class="mt-1 text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+				<div class="rounded-lg border border-info/20 bg-info/5 p-3">
+					<div class="text-xs font-semibold text-info uppercase">Active Work</div>
+					<div class="mt-1 text-2xl font-bold text-info">
 						{dashboard.activeRuns}
 					</div>
-					<p class="mt-0.5 text-[11px] text-muted-foreground">Dispatch / Implementing</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">Dispatch / Implementing</p>
 				</div>
-				<div class="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-					<div class="text-xs font-semibold text-amber-600 uppercase dark:text-amber-400">
-						Awaiting CI
-					</div>
-					<div class="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
+				<div class="rounded-lg border border-warning/20 bg-warning/5 p-3">
+					<div class="text-xs font-semibold text-warning uppercase">Awaiting CI</div>
+					<div class="mt-1 text-2xl font-bold text-warning">
 						{dashboard.awaitingCiRuns}
 					</div>
-					<p class="mt-0.5 text-[11px] text-muted-foreground">PR verification check</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">PR verification check</p>
 				</div>
-				<div class="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-					<div class="text-xs font-semibold text-emerald-600 uppercase dark:text-emerald-400">
-						Completed
-					</div>
-					<div class="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+				<div class="rounded-lg border border-success/20 bg-success/5 p-3">
+					<div class="text-xs font-semibold text-success uppercase">Completed</div>
+					<div class="mt-1 text-2xl font-bold text-success">
 						{dashboard.completedRuns}
 					</div>
-					<p class="mt-0.5 text-[11px] text-muted-foreground">Passed CI verification</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">Passed CI verification</p>
 				</div>
-				<div class="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
-					<div class="text-xs font-semibold text-rose-600 uppercase dark:text-rose-400">
-						Needs you
-					</div>
-					<div class="mt-1 text-2xl font-bold text-rose-600 dark:text-rose-400">
+				<div class="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+					<div class="text-xs font-semibold text-destructive uppercase">Needs you</div>
+					<div class="mt-1 text-2xl font-bold text-destructive">
 						{dashboard.failedRuns}
 					</div>
-					<p class="mt-0.5 text-[11px] text-muted-foreground">Failed, paused, or blocked</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">Failed, paused, or blocked</p>
 				</div>
 			</div>
 		</CardContent>
@@ -213,11 +203,11 @@
 	<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
 		<!-- Projects Metric -->
 		<Card
-			class="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+			class="cursor-pointer transition-shadow hover:shadow-md"
 			onclick={() => goto('/projects')}
 		>
 			<CardHeader class="flex flex-row items-center justify-between pb-2">
-				<CardTitle class="text-sm font-medium text-muted-foreground">Managed Projects</CardTitle>
+				<CardDescription class="font-medium">Managed Projects</CardDescription>
 				<FolderKanban class="size-4 text-muted-foreground" />
 			</CardHeader>
 			<CardContent>
@@ -228,11 +218,11 @@
 
 		<!-- Connectors Metric -->
 		<Card
-			class="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+			class="cursor-pointer transition-shadow hover:shadow-md"
 			onclick={() => goto('/settings/connectors')}
 		>
 			<CardHeader class="flex flex-row items-center justify-between pb-2">
-				<CardTitle class="text-sm font-medium text-muted-foreground">Integrations</CardTitle>
+				<CardDescription class="font-medium">Integrations</CardDescription>
 				<KeyRound class="size-4 text-muted-foreground" />
 			</CardHeader>
 			<CardContent>
@@ -245,11 +235,11 @@
 
 		<!-- Schedules Metric -->
 		<Card
-			class="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+			class="cursor-pointer transition-shadow hover:shadow-md"
 			onclick={() => goto('/schedules/configs')}
 		>
 			<CardHeader class="flex flex-row items-center justify-between pb-2">
-				<CardTitle class="text-sm font-medium text-muted-foreground">Schedule Configs</CardTitle>
+				<CardDescription class="font-medium">Schedule Configs</CardDescription>
 				<CalendarClock class="size-4 text-muted-foreground" />
 			</CardHeader>
 			<CardContent>
@@ -260,11 +250,11 @@
 
 		<!-- Active Runs Metric -->
 		<Card
-			class="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+			class="cursor-pointer transition-shadow hover:shadow-md"
 			onclick={() => goto('/projects/runs')}
 		>
 			<CardHeader class="flex flex-row items-center justify-between pb-2">
-				<CardTitle class="text-sm font-medium text-muted-foreground">Active Runs</CardTitle>
+				<CardDescription class="font-medium">Active Runs</CardDescription>
 				<Activity class="size-4 text-primary" />
 			</CardHeader>
 			<CardContent>
@@ -283,14 +273,7 @@
 					<Workflow class="size-4 text-primary" />
 					<h2 class="text-sm font-semibold tracking-tight">Recent Pipeline Runs</h2>
 				</div>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={() => goto('/projects/runs')}
-					class="text-xs text-muted-foreground hover:text-foreground"
-				>
-					View All
-				</Button>
+				<Button variant="subtle" size="xs" onclick={() => goto('/projects/runs')}>View All</Button>
 			</div>
 
 			{#if dashboard.error && dashboard.recentRuns.length === 0}
@@ -310,12 +293,10 @@
 										{run.pull_snapshot?.title || `PR #${run.pull_number}`}
 									</span>
 								</div>
-								<div
-									class="mt-0.5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground"
-								>
+								<div class="mt-0.5 flex items-center gap-2 font-mono text-xs text-muted-foreground">
 									<div class="flex items-center gap-1">
 										<GitBranch class="size-3" />
-										<span class="max-w-[140px] truncate">{run.branch}</span>
+										<span class="max-w-35 truncate">{run.branch}</span>
 									</div>
 									{#if run.pull_url}
 										<a
@@ -330,10 +311,7 @@
 								</div>
 							</div>
 							<div class="flex items-center gap-2">
-								<Badge
-									variant="outline"
-									class="text-[10px] capitalize {getStateBadgeClass(run.state)}"
-								>
+								<Badge variant={getStateBadgeVariant(run.state)} class="capitalize">
 									{run.state.replace('_', ' ')}
 								</Badge>
 							</div>
@@ -350,14 +328,7 @@
 					<History class="size-4 text-primary" />
 					<h2 class="text-sm font-semibold tracking-tight">Recent Schedule Executions</h2>
 				</div>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={() => goto('/schedules/jobs')}
-					class="text-xs text-muted-foreground hover:text-foreground"
-				>
-					View All
-				</Button>
+				<Button variant="subtle" size="xs" onclick={() => goto('/schedules/jobs')}>View All</Button>
 			</div>
 
 			{#if dashboard.error && dashboard.recentJobs.length === 0}
@@ -374,26 +345,21 @@
 								<div class="font-medium text-foreground">
 									{job.name}
 								</div>
-								<div class="mt-0.5 font-mono text-[11px] text-muted-foreground">
+								<div class="mt-0.5 font-mono text-xs text-muted-foreground">
 									run: {job.dispatcher_run_id || 'manual'}
 								</div>
 							</div>
 							<div class="flex items-center gap-2">
 								{#if job.status === 'success'}
-									<Badge
-										variant="default"
-										class="bg-emerald-500/15 text-[10px] text-emerald-600 dark:text-emerald-400"
-									>
-										Success
-									</Badge>
+									<Badge variant="success">Success</Badge>
 								{:else if job.status === 'failure'}
-									<Badge variant="destructive" class="text-[10px]">Failure</Badge>
+									<Badge variant="destructive">Failure</Badge>
 								{:else}
-									<Badge variant="outline" class="text-[10px] capitalize">
+									<Badge variant="outline" class="capitalize">
 										{job.status}
 									</Badge>
 								{/if}
-								<span class="font-mono text-[10px] text-muted-foreground">
+								<span class="font-mono text-xs text-muted-foreground">
 									{new Date(job.created_at).toLocaleTimeString([], {
 										hour: '2-digit',
 										minute: '2-digit'
@@ -414,23 +380,23 @@
 			Direct shortcuts to frequent orchestrator actions
 		</p>
 		<div class="flex flex-wrap gap-3">
-			<Button onclick={() => goto('/projects/runs')} class="gap-2">
+			<Button onclick={() => goto('/projects/runs')}>
 				<Workflow class="size-4" />
 				Pipeline Runs
 			</Button>
-			<Button variant="secondary" onclick={() => goto('/projects')} class="gap-2">
+			<Button variant="secondary" onclick={() => goto('/projects')}>
 				<FolderKanban class="size-4" />
 				Manage Projects
 			</Button>
-			<Button variant="secondary" onclick={() => goto('/settings/connectors')} class="gap-2">
+			<Button variant="secondary" onclick={() => goto('/settings/connectors')}>
 				<KeyRound class="size-4" />
 				Manage Connectors
 			</Button>
-			<Button variant="secondary" onclick={() => goto('/schedules/configs')} class="gap-2">
+			<Button variant="secondary" onclick={() => goto('/schedules/configs')}>
 				<CalendarClock class="size-4" />
 				View Schedules
 			</Button>
-			<Button variant="outline" onclick={() => goto('/schedules/jobs')} class="gap-2">
+			<Button variant="outline" onclick={() => goto('/schedules/jobs')}>
 				<History class="size-4" />
 				Job History
 			</Button>

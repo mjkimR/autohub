@@ -235,7 +235,11 @@
 							onclick={() => (userSelectedMode = 'sdd')}
 							class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'sdd' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
 						>
-							<Sparkles class="h-3.5 w-3.5 text-amber-300 dark:text-amber-400" />
+							<Sparkles
+								class="h-3.5 w-3.5 {viewerMode === 'sdd'
+									? 'text-primary-foreground'
+									: 'text-warning'}"
+							/>
 							Sdd View
 						</button>
 						<button
@@ -252,7 +256,7 @@
 				<Button
 					variant="outline"
 					size="sm"
-					class="h-8 gap-1.5 text-xs"
+					class="h-8"
 					onclick={() =>
 						viewerMode === 'sdd'
 							? refreshSdd()

@@ -205,7 +205,7 @@
 				<div class="space-y-3 pt-2">
 					{#if section !== 'automation'}
 						<div class="space-y-1">
-							<label for="ghRepo" class="text-[11px] font-semibold text-muted-foreground uppercase">
+							<label for="ghRepo" class="text-xs font-semibold text-muted-foreground uppercase">
 								Repository (owner/repo)
 							</label>
 							<Input
@@ -217,7 +217,7 @@
 						</div>
 
 						<div class="space-y-1">
-							<label for="ghConn" class="text-[11px] font-semibold text-muted-foreground uppercase">
+							<label for="ghConn" class="text-xs font-semibold text-muted-foreground uppercase">
 								GitHub Connector
 							</label>
 							{#if githubConnectors.length > 0}
@@ -237,7 +237,7 @@
 									bind:value={githubConnectorId}
 									required={hasGithub}
 								/>
-								<span class="text-[11px] text-amber-500"
+								<span class="text-xs text-warning"
 									>No GitHub connectors found. Please create one in Connectors.</span
 								>
 							{/if}
@@ -245,7 +245,7 @@
 
 						<div class="grid grid-cols-2 gap-2">
 							<div class="space-y-1">
-								<label for="ghWf" class="text-[11px] font-semibold text-muted-foreground uppercase">
+								<label for="ghWf" class="text-xs font-semibold text-muted-foreground uppercase">
 									Workflow File
 								</label>
 								<Input
@@ -256,10 +256,7 @@
 								/>
 							</div>
 							<div class="space-y-1">
-								<label
-									for="ghJobs"
-									class="text-[11px] font-semibold text-muted-foreground uppercase"
-								>
+								<label for="ghJobs" class="text-xs font-semibold text-muted-foreground uppercase">
 									Required Jobs
 								</label>
 								<Input
@@ -300,7 +297,7 @@
 									<div class="space-y-1">
 										<label
 											for="mergeMethod"
-											class="text-[11px] font-semibold text-muted-foreground uppercase"
+											class="text-xs font-semibold text-muted-foreground uppercase"
 											>Merge method</label
 										>
 										<select
@@ -317,7 +314,7 @@
 									<div class="space-y-1">
 										<label
 											for="dispatchInterval"
-											class="text-[11px] font-semibold text-muted-foreground uppercase"
+											class="text-xs font-semibold text-muted-foreground uppercase"
 											>Dispatch interval (seconds)</label
 										>
 										<Input
@@ -331,7 +328,7 @@
 									<div class="space-y-1">
 										<label
 											for="maxInFlightRuns"
-											class="text-[11px] font-semibold text-muted-foreground uppercase"
+											class="text-xs font-semibold text-muted-foreground uppercase"
 											>Max runs in flight</label
 										>
 										<Input
@@ -348,8 +345,7 @@
 								<div class="space-y-1">
 									<label
 										for="aiCatalog"
-										class="text-[11px] font-semibold text-muted-foreground uppercase"
-										>AI catalog</label
+										class="text-xs font-semibold text-muted-foreground uppercase">AI catalog</label
 									>
 									<select
 										id="aiCatalog"

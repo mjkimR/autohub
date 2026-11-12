@@ -233,7 +233,7 @@
 							>{new Date(test.created_at).toLocaleString()}</span
 						>
 					</div>
-					{#if !test.configuration_current}<span class="text-xs text-amber-600"
+					{#if !test.configuration_current}<span class="text-xs text-warning"
 							>Configuration changed — retest recommended</span
 						>{/if}
 				</div>

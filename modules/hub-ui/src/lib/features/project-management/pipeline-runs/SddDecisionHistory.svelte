@@ -98,7 +98,7 @@
 		<ol class="space-y-4 border-l pl-4">
 			{#each visibleRows as row (row.id)}
 				<li
-					class="relative space-y-1.5 before:absolute before:top-1.5 before:-left-[21px] before:size-2 before:rounded-full before:border-2 before:border-background before:bg-muted-foreground"
+					class="relative space-y-1.5 before:absolute before:top-1.5 before:-left-5.25 before:size-2 before:rounded-full before:border-2 before:border-background before:bg-muted-foreground"
 				>
 					<p class="text-xs font-semibold">
 						{labels[String(row.action)] || String(row.action || 'Decision')}

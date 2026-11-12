@@ -85,7 +85,7 @@
 				size="sm"
 				onclick={() => loadJobs()}
 				disabled={loading}
-				class="min-h-11 gap-2 sm:min-h-0"
+				class="min-h-11 sm:min-h-0"
 			>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
@@ -122,11 +122,11 @@
 		<Table class="block md:table">
 			<TableHeader class="hidden md:table-header-group">
 				<TableRow>
-					<TableHead class="w-[200px]">Job Name</TableHead>
+					<TableHead class="w-50">Job Name</TableHead>
 					<TableHead>Status</TableHead>
-					<TableHead class="w-[180px]">Started At</TableHead>
-					<TableHead class="w-[180px]">Finished At</TableHead>
-					<TableHead class="w-[300px]">Dispatcher Run ID</TableHead>
+					<TableHead class="w-45">Started At</TableHead>
+					<TableHead class="w-45">Finished At</TableHead>
+					<TableHead class="w-75">Dispatcher Run ID</TableHead>
 				</TableRow>
 			</TableHeader>
 			<TableBody class="block md:table-row-group">
@@ -151,7 +151,7 @@
 					{#each jobs as job (job.id)}
 						{@const st = getStatusVariant(job.status)}
 						<TableRow
-							class="grid min-w-0 gap-1 p-3 transition-colors hover:bg-muted/40 md:table-row md:p-0 [&>td]:min-w-0 [&>td]:whitespace-normal"
+							class="grid min-w-0 gap-1 p-3 md:table-row md:p-0 [&>td]:min-w-0 [&>td]:whitespace-normal"
 						>
 							<TableCell class="font-semibold text-foreground">
 								{job.name}

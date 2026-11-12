@@ -115,6 +115,7 @@
 		}}>Notice history</Button
 	>
 	<Dialog bind:open={dialogOpen}>
+		<!-- eslint-disable-next-line shadcn/no-arbitrary-values -- viewport-relative height has no scale equivalent -->
 		<DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
 			<DialogHeader
 				><DialogTitle

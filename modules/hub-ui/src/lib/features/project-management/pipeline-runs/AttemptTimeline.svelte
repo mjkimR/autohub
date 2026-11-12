@@ -55,18 +55,16 @@
 </script>
 
 {#if loading}
-	<p class="text-[11px] text-muted-foreground">Loading requests and replies…</p>
+	<p class="text-xs text-muted-foreground">Loading requests and replies…</p>
 {:else if failed}
-	<p class="text-[11px] text-destructive">Failed to load requests and replies.</p>
+	<p class="text-xs text-destructive">Failed to load requests and replies.</p>
 {:else if entries.length === 0}
-	<p class="text-[11px] text-muted-foreground">
+	<p class="text-xs text-muted-foreground">
 		Nothing was sent for this attempt (the pull request was implemented outside the pipeline, or the
 		request is still planned).
 	</p>
 {:else}
-	<ol
-		class="space-y-1.5 border-l border-border/70 pl-3 text-sm [overflow-wrap:anywhere] sm:text-xs"
-	>
+	<ol class="space-y-1.5 border-l border-border/70 pl-3 text-sm wrap-anywhere sm:text-xs">
 		{#each entries as entry (entry.kind === 'request' ? entry.delivery.id : entry.reply.id)}
 			<li>
 				{#if entry.kind === 'request'}
@@ -79,7 +77,7 @@
 					<span class="font-semibold">Reply from {entry.reply.author}</span>
 					<span class="text-muted-foreground">· {new Date(entry.at).toLocaleString()}</span>
 					{#if entry.reply.is_quota_limit}
-						<span class="font-semibold text-amber-600 dark:text-amber-400">· usage limit</span>
+						<span class="font-semibold text-warning">· usage limit</span>
 					{/if}
 					{#if entry.reply.excerpt}
 						<p class="mt-0.5 whitespace-pre-wrap text-muted-foreground">{entry.reply.excerpt}</p>

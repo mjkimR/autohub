@@ -29,7 +29,8 @@
 		if (!open) onclose();
 	}}
 >
-	<DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-[700px]">
+	<!-- eslint-disable-next-line shadcn/no-arbitrary-values -- viewport-relative dialog height cap has no scale equivalent -->
+	<DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-175">
 		<DialogHeader
 			><DialogTitle>Project Settings</DialogTitle><DialogDescription
 				>Configure this project.</DialogDescription
