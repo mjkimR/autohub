@@ -6,6 +6,7 @@ from uuid import UUID
 import pytest
 from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 from app.features.project_management.work_plans.replacement_models import ReplacementLink
+from tests.integration.common.test_timestamps import clock as clock
 from tests.integration.common.test_timestamps import utc
 from tests.integration.features.project_management.owed_items.test_owed_items import items as owed_items
 from tests.integration.features.project_management.work_plans import test_replacements as replacements

@@ -2,7 +2,7 @@
 id: SPEC-updated-at-maintenance
 title: Maintain updated_at on every owner write
 summary: Maintain updated_at for Hub ORM and SQLAlchemy Core writes, preserve explicit owner exceptions, and correct last-write readers without reconstructing historical timestamps.
-status: planned
+status: in-progress
 created: 2026-11-13
 related_capabilities: [CAP-PR-owed-items, CAP-EXEC-scheduling-maintenance, CAP-WORK-work-plan-execution]
 related_usecases: []
@@ -58,6 +58,11 @@ Hub timestamp-bearing models inherit a server-onupdate marker without an UPDATE 
 - **Given** a preexisting row with historical timestamps
 - **When** it is read or flushed unchanged
 - **Then** its timestamps remain unchanged until its next non-exempt write; no backfill or trigger is installed.
+
+### [AC-07] Mutation replay read consistency
+- **Given** retired SDD run acknowledgment and its exact replay
+- **When** maintained timestamps are returned on SQLite or PostgreSQL
+- **Then** first response and replay preserve identical persisted timestamp serialization without restarting execution.
 
 ## Source feedback
 

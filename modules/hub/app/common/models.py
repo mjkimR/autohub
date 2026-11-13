@@ -12,6 +12,7 @@ class TimestampMixin(FrameworkTimestampMixin):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
+        server_onupdate=func.now(),
         onupdate=get_current_utc_time,
         nullable=False,
     )

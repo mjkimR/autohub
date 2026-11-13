@@ -11,7 +11,9 @@ No invariant change. Preserve `ARCH-02-constraints` transaction ownership and SD
 
 ## 2. Architecture Overview & Impact
 
-A Hub-owned TimestampMixin subclasses the pinned framework mixin and overrides only updated_at with its existing UTC column/default shape plus callable onupdate. Every Hub model imports that policy. Repositories preserve the accepted bookkeeping exceptions explicitly; lease release keeps its caller clock for observation fairness. No new dependency edge is introduced.
+A Hub-owned TimestampMixin subclasses the pinned framework mixin and overrides only updated_at with its existing UTC column/default shape plus callable onupdate. Every Hub model imports that policy. Repositories preserve the accepted bookkeeping exceptions explicitly; lease release keeps its caller clock for observation fairness. No new dependency edge is introduced. Retain the inherited server-onupdate marker alongside the callable.
+
+AC-07 preserves existing SDD acknowledgment replay consistency: refresh the changed run after flush before serializing, so SQLite uses the same persisted timestamp representation on first response and replay. The Host explicitly authorized this necessary owner-read repair after full-suite evidence; it adds no timestamp representation redesign.
 
 ## 4. Storage & State Management
 

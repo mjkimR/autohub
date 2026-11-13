@@ -11,6 +11,7 @@ from app.features.project_management.pipeline_runs.repos import PipelineRunRepos
 from app.features.project_management.pipeline_runs.usecases.queries import PipelineRunQueries
 
 from tests.integration.common.test_timestamps import OLD, utc
+from tests.integration.common.test_timestamps import clock as clock
 from tests.integration.features.notifications.test_tick_housekeeping import make_run
 from tests.integration.features.project_management.owed_items import test_owed_items as owed
 
