@@ -103,7 +103,8 @@ async def test_source_build_hook_cannot_reach_the_network_or_credentials(tmp_pat
     (source / "hatch_build.py").write_text(HOOK)
     venv = staged / ".venv"
     run(staged, runtime_install.uv_binary(), "venv", "-q", "--python", str(runtime_install.interpreter()), str(venv))
-    await runtime_install.build_sources({"probe": source}, staged, venv)
+    (venv / ".tmp").mkdir()
+    await runtime_install.build_sources({"probe": source}, staged, venv, runtime_install._identity(venv))
     observed = (source / "observed.txt").read_text()
     assert "'network': 'blocked'" in observed and "host-secret" not in observed
     assert "'venv': 'denied'" in observed and not (venv / "planted.pth").exists()

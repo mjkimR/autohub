@@ -1,0 +1,11 @@
+kind: resolution
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T02:43:25.346039Z'
+status: completed
+summary: 'Host recovery: after the first sandbox step the Hub acts on no path below .venv (scratch created before any package, uv --no-cache), checks use creation-time identities; one further fresh review round follows'
+findings: []
+checks: {}
+resolves: worker-01.yaml
+activity_effort: high

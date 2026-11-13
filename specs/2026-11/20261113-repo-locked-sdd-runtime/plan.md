@@ -100,12 +100,15 @@ writes the staging root, `pin.json` and the rename; sandboxes write `work/` (bui
    `credential_env(token)` into `work/src/`; check out the revision.
 2. Hub process: `uv venv` with the image interpreter, then
    `uv pip install --no-deps --only-binary :all: --require-hashes -r registry.txt` (wheels only: no package code
-   runs). This is the last Hub-process use of the venv's interpreter.
+   runs). This is the last Hub-process use of the venv's interpreter. The Hub creates `.venv/.tmp` (scratch for
+   later sandboxes, kept in the entry) and records the identities of `work/` and `.venv`.
 3. Sandbox per Git package, writable `work/` only: `uv build --wheel --offline --no-build-isolation --python
    /opt/sdd-build/.venv/bin/python --out-dir work/wheels <source>`; network unshared, environment limited to
    `PATH`, `HOME`, `TMPDIR`, `LANG`, `UV_OFFLINE=1`, `UV_CACHE_DIR`.
 4. Hub process: check that `work/` is still the directory it created and that every built wheel is a regular file.
-   Sandbox, writable `.venv` only: `uv pip install --offline --no-deps --no-index <wheels>`; then check `.venv`.
+   Sandbox, writable `.venv` only: `uv pip install --offline --no-deps --no-index --no-cache <wheels>`; then check
+   `.venv` against its creation-time identity. After the first sandbox step the Hub never acts on a path below
+   `.venv`, and removes `work/` only symlink-safely.
 5. Sandbox, writable `.venv` only: inventory probe (bundles, versions); check `.venv`. The Hub writes `pin.json`
    (`O_NOFOLLOW`, `O_EXCL`) with its own `python_prefix`, removes `work/` and scratch, renames the staging
    directory to `entry(identity)` and runs `evict` in a thread.

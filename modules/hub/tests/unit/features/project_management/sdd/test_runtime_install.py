@@ -40,11 +40,19 @@ def fake(tmp_path, monkeypatch):
     monkeypatch.setattr(
         runtime_install, "isolated_build", lambda writable, py, uv, args: ["SANDBOX", str(writable), *args]
     )
-    monkeypatch.setattr(runtime_install, "isolated_python", lambda writable, py, prefix, code: ["SANDBOX-PY", code])
-    monkeypatch.setattr(
-        runtime_install, "sandboxed", lambda writable, readable, invocation: ["SANDBOX", str(writable), *invocation]
-    )
     hooks = {}
+    paths = {"probe": [], "install": []}
+
+    def isolated_python(writable, py, prefix, code):
+        paths["probe"].append(Path(writable))
+        return ["SANDBOX-PY", code]
+
+    def sandboxed(writable, readable, invocation):
+        paths["install"].append((Path(writable), [Path(item) for item in readable]))
+        return ["SANDBOX", str(writable), *invocation]
+
+    monkeypatch.setattr(runtime_install, "isolated_python", isolated_python)
+    monkeypatch.setattr(runtime_install, "sandboxed", sandboxed)
 
     async def run(args, *, cwd, env, timeout, code, group=False):
         calls.append({"args": [str(a) for a in args], "env": env, "code": code, "cwd": cwd})
@@ -69,6 +77,7 @@ def fake(tmp_path, monkeypatch):
 
     monkeypatch.setattr(runtime_install, "run", run)
     probe["hooks"] = hooks
+    probe["paths"] = paths
     return calls, failures, probe
 
 
@@ -213,3 +222,31 @@ async def test_later_sandboxes_cannot_write_the_staging_root(fake, selection):
     await runtime_install.build(selection, TOKEN)
     writable = [Path(call["args"][1]).name for call in calls if call["args"][0] == "SANDBOX"]
     assert set(writable) == {runtime_install.WORK, ".venv"}
+
+
+async def test_probe_and_install_write_only_the_venv_and_read_the_hub_prefix(fake, selection):
+    from app.features.project_management.sdd.lock_runtime import interpreter_prefix
+
+    _, _, probe = fake
+    await runtime_install.build(selection, TOKEN)
+    assert [path.name for path in probe["paths"]["probe"]] == [".venv"]
+    ((writable, readable),) = probe["paths"]["install"]
+    assert writable.name == ".venv" and Path(interpreter_prefix()) in readable
+
+
+async def test_hub_never_acts_below_the_venv_after_a_late_swap(fake, selection, tmp_path, monkeypatch):
+    """A lingering macOS sandbox process swapping .venv after the last check steers no Hub file action."""
+    import shutil
+
+    outside = tmp_path / "outside"
+    (outside / ".tmp").mkdir(parents=True)
+    original = runtime_install._clean
+
+    def swap_then_clean(staged):
+        shutil.rmtree(staged / ".venv")
+        (staged / ".venv").symlink_to(outside)
+        original(staged)
+
+    monkeypatch.setattr(runtime_install, "_clean", swap_then_clean)
+    await runtime_install.build(selection, TOKEN)
+    assert (outside / ".tmp").is_dir()  # untouched by the Hub
