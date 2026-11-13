@@ -25,12 +25,18 @@ capabilities:
 ## 2. Content
 
 The PR run list is the primary region. Filters stay above it; row actions belong
-to their PR run. The same view can be scoped to one Project connection in its
+to their PR run. The dashboard's Needs-you tile in `UX-dashboard` opens this screen
+with default filters. The same view can be scoped to one Project connection in its
 detail screen. The route `/projects/runs` also accepts a run deep link.
 
 - Project connection (project filter; fixed in a scoped view).
 - PR run (searchable and paginated row): PR number/title, branch, state, revision,
-  wait reason, lease holder/expiry and creation time.
+  wait reason, lease holder/expiry and creation time. The state is the PR run state
+  badge: a label plus a decorative icon, ranked as failure (failed), attention
+  (paused, blocked), quiet progress (dispatching, implementing), quiet success
+  (completed) or neutral (queued, awaiting CI, canceled), per
+  `docs/steering/visual-style.md`. The pause reason stays below the badge. Row
+  controls such as Pause Run and Resume Run are ink with no status hue.
   - `UX-run-decisions` (modal; opened for an inspected row).
   - `UX-attempt-history` (modal; opened for the row's Execution attempts).
   - `UX-attach-pull-request` (modal; offered only when no PR number is attached).
@@ -46,7 +52,7 @@ GitHub, not by a ready toggle on this screen.
 - **empty**: No rows match; change filters, refresh or enroll a PR.
 - **loading**: The table announces loading; wait for the requested page.
 - **error**: The list is unavailable and exposes retry; failed actions show a toast.
-- **operating**: The affected row disables mutation controls until its request settles; inspect the resulting state afterward.
+- **operating**: The affected row disables mutation controls and keeps its state badge until its request settles and the refreshed state arrives; inspect the resulting state afterward.
 
 ## 4. Interactions
 
@@ -67,6 +73,7 @@ GitHub, not by a ready toggle on this screen.
 
 - [PipelineRunsView.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/PipelineRunsView.svelte).
 - [PipelineRunRow.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/PipelineRunRow.svelte).
+- [RunStateBadge.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunStateBadge.svelte) and [presentation.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/presentation.ts), with [presentation.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/presentation.test.ts) covering every run state.
 - [PipelineRunsView.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/PipelineRunsView.integration.test.ts); test assertions were inspected.
 
 This description is derived from source inspection. It does not claim a browser

@@ -41,7 +41,7 @@ entrypoints:
    Interface: `UX-run-decisions`.
 
 4. The operator explicitly selects that saved answer to resume the Run (`CAP-PR-operator-decisions`).
-   Interface: `UX-run-decisions`.
+   Interface: `UX-decision-inbox`, `UX-run-decisions`.
 
 5. Hub verifies the current context and records the answer's application to one prepared attempt (`CAP-PR-operator-decisions`).
    Interface: `UX-run-decisions`.
