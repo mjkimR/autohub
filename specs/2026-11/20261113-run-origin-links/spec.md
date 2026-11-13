@@ -1,44 +1,24 @@
 ---
-id: PROP-run-origin-links
+id: SPEC-run-origin-links
 title: Run origin links and subject deep links
-summary: "Expose where a PR run came from (Work Item, Work Plan, SDD batch, provider session, enrollment source) on the run read, and make the run page and Attention links open their exact subject, including an SDD unit or batch on the project Repository tab."
-status: accepted                     # draft | reviewing | accepted | rejected
-created_at: 2026-11-13
-target_area: capabilities/delivery/
-priority: medium                      # critical | high | medium | low
-size: L                               # S | M | L | XL (XL: would need two or more specs or task kinds; decompose before Planning)
-planning_effort: medium               # low | medium | high (hint for Planning)
-dev_effort: medium                    # low | medium | high (hint for Development)
-boundaries:
-  owns:
-    - capabilities/delivery/
-    - capabilities/repository/
-    - capabilities/sdd/
-    - usecases/delivery/
-    - usecases/repository/
-    - usecases/sdd/
-    - docs/steering/ux-objects.md
-    - ux/delivery/
-    - ux/repository/
-    - ux/sdd/
-    - modules/hub/app/features/project_management/
-    - modules/hub/tests/
-    - modules/hub-ui/src/lib/api/
-    - modules/hub-ui/src/lib/features/attention/
-    - modules/hub-ui/src/lib/features/project-management/pipeline-runs/
-    - modules/hub-ui/src/lib/features/project-management/repositories/
-    - modules/hub-ui/src/lib/features/project-management/projects/
-    - modules/hub-ui/src/routes/projects/
-  excludes:
-    - docs/decisions/
-    - modules/hub-ui/src/lib/features/project-management/work-plans/
-task_kind: feature                    # feature | bugfix: the spec follows sdd-spec-<task_kind>
-workflow: sdd-proposal
+summary: Expose where a PR run came from (Work Item, Work Plan, SDD batch, provider session, enrollment source) on the run read, and make the run page and Attention links open their exact subject, including an SDD unit or batch on the project Repository tab.
+status: planned
+created: 2026-11-13
+related_capabilities: []
+related_usecases: []
+workflow: sdd-spec-feature
 ---
+<!-- devkit:skeleton -->
 
-# [PROP-run-origin-links] Run origin links and subject deep links
+# [SPEC-run-origin-links] Run origin links and subject deep links
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-run-origin-links on 2026-11-13.
+- **Preserved Materials**: `docs/materials/2026-11/20261113-run-origin-links`
+- Target Docs Blueprint: `PROP-run-origin-links-target` (Living Spec targets for this plan and reconcile.md)
+
+### 1. Background & Hypothesis
 
 Split off from the original proposal of `SPEC-owed-item-contract` on the user's decision in its Planning: run origin
 fields serve the run page, not the owed-item contract, whose subject needs only type, ID and project.
@@ -81,13 +61,32 @@ relationships without frontend derivation. Native batch links are historical-onl
 under `ADR-repository-owned-sdd-execution`; this proposal creates no replacement
 batch control or readiness surface.
 
-## Source feedback
+## 2. User Stories
+
+- **US-1**: As a developer/agent, I want to implement Run origin links and subject deep links so that system capabilities are extended.
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: <what this change will not do>
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] <scenario>
+- **Given** <precondition>
+- **When** <action>
+- **Then** <expected result>
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### Source feedback
 
 - `FB-attention-sdd-batch-deep-link`: received in full. The Attention "Inspect batch" action names the batch, and the
   Repository tab opens with that batch loaded and visible; `owed-links.test.ts` and a Repository tab integration
   test cover it, and the `UX-attention` "Inspect batch" row is updated.
 
-## 2. Planning decisions
+### 2. Planning decisions
 
 The recommendation is evidence-derived related origins with URL-addressable Repository subjects. No schema migration
 or enrollment behavior change is needed. Evidence is pinned to `e1a50a8064597d65fd44906f1b65c01ad93c2425` in
@@ -102,7 +101,7 @@ or enrollment behavior change is needed. Evidence is pinned to `e1a50a8064597d65
 | Q4: addressing | Keep `?tab=repository&unit=<encoded unit directory>`, add optional `&ref=<encoded branch>` for run links and `&batch=<UUID>`. Query parameters survive reloads and viewer switches. They are selection requests, not permission to execute. | Hash-only addressing supplies a scroll target but cannot initialize a unit or fetch a retained batch. |
 | Q5: selection | A validated unit selects the SDD viewer document and descriptive activity panel together. A batch address fetches the exact project-scoped batch detail directly; it does not depend on the latest-50 list. | Loading the bounded list first can omit an older addressed batch. |
 
-### Read contract
+#### Read contract
 
 The Development spec settles exact DTO names around this shape: related Work Item references include Work Plan ID;
 Provider session references include catalog ID, retained session ID and its existing external session URL when
@@ -128,7 +127,7 @@ opened inside serialization and no concurrent database fan-out is introduced. De
 statement bound on one-row and multi-row pages, alongside one checked-out connection per request. New schema fields
 are additive and the generated UI client is regenerated with `just gen-ui-api`.
 
-### Subject links
+#### Subject links
 
 - Work Plan and Work Item links reuse the Plans tab's existing `#work-plan-<id>` and `#work-item-<id>` addresses.
 - Provider session links use the retained exact external session URL. When that URL is absent, show the retained
@@ -158,7 +157,7 @@ are additive and the generated UI client is regenerated with `just gen-ui-api`.
   batch as if it were the requested one. Network errors offer Retry. Older responses cannot overwrite a later
   project or address. Opening any address sends no start/create/control mutation.
 
-### Acceptance examples
+#### Acceptance examples
 
 - **ORIGIN-01**: Given a run with a Work Item, when list/get reads return it, then the same Work Item and Work Plan IDs
   appear; a run with multiple session/claim links retains every distinct related reference without duplicating runs.
@@ -182,7 +181,7 @@ are additive and the generated UI client is regenerated with `just gen-ui-api`.
   addressed selection, then the exact selected history loads without any batch
   create/resume/control request or inferred execution authority.
 
-### Scope and delivery
+#### Scope and delivery
 
 Keep one `size: L`, `task_kind: feature` spec for this read-and-link guarantee. The existing SDD-unit link gap is a
 required destination integration case of the feature; it does not add another independently delivered task kind.
@@ -205,14 +204,15 @@ Non-goals:
 4. **Scope Excluded**: new owed kinds, pending-decision semantics, unrelated owed links, Repository layout redesign or
    global changes to repository ref policy beyond honoring an explicitly addressed browse branch.
 
-### Review fold
+#### Review fold
 
 The Challenger round identified the unmerged-unit branch gap and a missing UX register boundary; both are folded
 into this recommendation. The UX review identified ambiguous pending batch-control ownership and an extension-key
 collision; the drafts now name the retained request's subject and reserve `UC-execute-sdd-batch` 4d for the new
 unavailable-address case. No acceptance or implementation effect is recorded by this Planning turn.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
+
 <!--
 - Preliminary decisions: devkit spec proposal padr run-origin-links "<title>" --summary "<Y-statement: For <context>, we <decision>, to <quality>, accepting <downside>.>" records a PADR in decisions/.
 - Research: collect benchmarks and references in materials/ (created with its first file).
@@ -222,3 +222,4 @@ unavailable-address case. No acceptance or implementation effect is recorded by 
 - On rejection: change only status: rejected, with the user's decision and reason as a decision sentence in the
   commit message (no quote); a later hygiene pass writes the rejection ADR and deletes the proposal directory.
 -->
+

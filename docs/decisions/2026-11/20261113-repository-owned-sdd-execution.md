@@ -82,7 +82,7 @@ Hub's own contributor workflow.
 
 The open-proposal inventory in `SPEC-optimistic-sdd-orchestration` has no proposal
 whose sole outcome is embedded SDD evaluation. Keep unrelated outcomes; adjust
-live native-control assumptions in `PROP-run-origin-links` and deleted-write
+live native-control assumptions in `SPEC-run-origin-links` and deleted-write
 examples in `SPEC-updated-at-maintenance`. This decision rejects the embedded
 runtime/evaluator design, not those independent read/metadata improvements.
 
