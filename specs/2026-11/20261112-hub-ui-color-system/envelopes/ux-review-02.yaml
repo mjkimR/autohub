@@ -1,0 +1,59 @@
+kind: ux-review
+stage: build-verify
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-12T23:20:31.604124Z'
+status: completed
+summary: 'Closes round 1 (envelopes/ux-review-01.yaml) against the implementation: six findings resolved in code and tests, deliberate-pause waived as accepted rationale, delta-drafts coverage needs no change.'
+findings:
+- issue: 'answer-saved-reads-finished: UC-resolve-run-question 4: ''Answer saved'' as quiet success+Check reads as done, but the operator still has to resume the Run (walkthrough question 1)'
+  evidence: modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.svelte (attention badge, CornerDownRight, 'Answer saved — resume pending', left rule); DecisionInbox.integration.test.ts; spec.md AC-07
+  failure_condition: A row whose Run question is answered but not applied looks finished, so the operator skips the resume step
+  suggested_action: 'Treat answered-not-resumed as operator work: attention badge with a resume-pending label, a distinct icon and the left rule'
+  resolution: resolved
+- issue: 'nothing-waiting-overclaims: the zero-count label ''Nothing waiting'' claims no pending work while the tile counts only failed, paused and blocked runs'
+  evidence: modules/hub-ui/src/lib/features/dashboard/DashboardView.svelte ('No failed or held runs'); DashboardView.integration.test.ts; spec.md AC-05
+  failure_condition: Pending decisions exist while no run is failed, paused or blocked; the dashboard says nothing is waiting
+  suggested_action: Use a label limited to what the count measures, such as 'No failed or held runs'
+  resolution: resolved
+- issue: 'tile-not-interactive: the emphasized Needs-you tile offers no next action (R3)'
+  evidence: modules/hub-ui/src/lib/features/dashboard/DashboardView.svelte (link to /projects/runs above zero); DashboardView.integration.test.ts; spec.md AC-12
+  failure_condition: The operator sees a non-zero attention count and has no direct path to the runs it counts
+  suggested_action: Link the tile to Pipeline Runs when the count is above zero, filtered if the route already supports it
+  resolution: resolved
+- issue: 'failed-grouped-with-held: the Needs-you tile merges failed with paused and blocked, weakening US-2'
+  evidence: modules/hub-ui/src/lib/features/dashboard/dashboard.svelte.ts (needsYouBreakdown); DashboardView.integration.test.ts ('1 failed · 2 paused · 1 blocked'); spec.md AC-05
+  failure_condition: An operator cannot tell from the dashboard whether the count holds failures or held runs
+  suggested_action: Show a per-state breakdown caption, such as '1 failed · 2 paused · 1 blocked'
+  resolution: resolved
+- issue: 'label-term-mismatch: the row says ''Needs decision'' while UX-decision-inbox and the filter say ''Needs answer'' (R5)'
+  evidence: modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.svelte (row badge and Question state filter both 'Needs decision'); DecisionInbox.integration.test.ts; spec.md AC-07 (spec-sync copies the labels into UX-decision-inbox)
+  failure_condition: The same state carries two labels across the filter, the row and the Living Spec
+  suggested_action: Settle one label set in the spec so spec-sync copies it
+  resolution: resolved
+- issue: 'static-loader-reads-stalled: a static Loader glyph for dispatching/implementing reads as a frozen spinner'
+  evidence: modules/hub-ui/src/lib/features/project-management/pipeline-runs/presentation.ts (Hammer for dispatching and implementing); presentation.test.ts; spec.md AC-04
+  failure_condition: A run in progress looks stuck because its loading glyph does not move
+  suggested_action: Use a non-loading work-in-progress glyph that does not clash with Play/Resume
+  resolution: resolved
+- issue: 'deliberate-pause-amber-noise: a run paused on purpose shows attention like an unexpected hold'
+  evidence: spec.md AC-04 (paused -> attention); spec.md section 6 Accepted rationale; docs/steering/visual-style.md Attention
+  failure_condition: Operators who pause runs deliberately see amber for work they chose to hold
+  suggested_action: 'Accepted as designed: resuming always needs the operator; record the rationale, no change'
+  resolution: waived
+  waiver: 'Accepted as designed: resuming a paused run always needs the operator, and no API field distinguishes an intended pause; recorded in spec.md section 6 and docs/steering/visual-style.md'
+- issue: 'delta-drafts-ux-coverage: link check (reviewer judgment) the Screens drafts are deltas, so RULE-ux-links and RULE-ux-coverage cannot read full drafts'
+  evidence: spec.md Screens (delta drafts)
+  failure_condition: A coverage gap in an unchanged row would not be visible in the draft
+  suggested_action: 'No change: unchanged rows stay in docs/ux, where the rules run at spec-sync'
+  resolution: waived
+  waiver: 'No change needed: unchanged rows stay in docs/ux, where RULE-ux-links and RULE-ux-coverage run at spec-sync'
+assumptions:
+- Closing record written by the implementer per spec-ux-review; no new walkthrough round was run
+checks:
+  tests: PASS just test-ui 406/406
+  lint: PASS just lint
+  build: PASS just check
+diff_scope:
+  base: 1341b8d1767cbc6cdea18b24a9c0fdd5e9911f80
+  head: aa223b0b993b1d71823635e181b565155dc2bdfd
