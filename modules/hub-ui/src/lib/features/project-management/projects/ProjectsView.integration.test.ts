@@ -269,7 +269,6 @@ test('inside the shell, an unknown shared count stays a neutral dash', async () 
 	expect(countsCalls()).toHaveLength(0);
 });
 
-
 test('a shared counts failure keeps the reason in both neutral tooltip copies without another read', async () => {
 	withCounts(async () => ({ error: { detail: 'Database busy' } }));
 	const store = new OwedCountsStore();
