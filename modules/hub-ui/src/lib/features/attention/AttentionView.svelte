@@ -10,7 +10,7 @@
 	import OwedGroupSection from './OwedGroupSection.svelte';
 	import { groupOwedItems } from './owed-kinds';
 	import { useOwedCounts } from './owed-counts.svelte';
-	import { attentionHref } from './owed-links';
+	import { attentionHref, type OwedKind } from './owed-links';
 
 	const attention = new AttentionState();
 	// `?project=<id>` is the filter, so project screens can link to their own slice of the landing.
@@ -34,13 +34,13 @@
 	const known = $derived(
 		!attention.projectId && counts?.value.status === 'known' ? counts.value : null
 	);
+	const empty = $derived(attention.loaded && owedGroups.length === 0 && !attention.hasMore);
 	const summary = $derived.by(() => {
-		if (known) {
-			if (known.total === 0) return '';
-			return known.total === 1 ? '1 item needs you.' : `${known.total} items need you.`;
-		}
-		return '';
+		if (!known || known.total === 0 || empty) return '';
+		return known.total === 1 ? '1 item needs you.' : `${known.total} items need you.`;
 	});
+	// With every page loaded the rows are the whole answer; counts only size a partial list.
+	const groupTotal = (kind: OwedKind) => (attention.hasMore ? known?.byKind[kind] : undefined);
 	// Read once per render so every row ages from the same moment.
 	const now = $derived(attention.loaded ? Date.now() : 0);
 
@@ -50,6 +50,9 @@
 	}
 
 	onMount(() => {
+		// One fresh counts read past the navigation throttle so groups and summary agree with the
+		// rows; the store stays single-flight, so a shell read already in flight is reused.
+		void counts?.refresh();
 		void attention.load();
 		void attention.loadProjects();
 	});
@@ -123,7 +126,7 @@
 			</div>
 		{/if}
 	{:else}
-		{#if owedGroups.length === 0 && !attention.hasMore}
+		{#if empty}
 			<section
 				aria-labelledby="owed-empty"
 				class="flex flex-col items-start gap-3 rounded-xl border border-border bg-card px-5 py-6 sm:flex-row sm:items-center"
@@ -156,7 +159,7 @@
 		{#each owedGroups as group (group.kind)}
 			<OwedGroupSection
 				{group}
-				total={known?.byKind[group.kind]}
+				total={groupTotal(group.kind)}
 				projectName={(id) => attention.projectName(id)}
 				{now}
 			/>
@@ -180,7 +183,7 @@
 		{#each quietGroups as group (group.kind)}
 			<OwedGroupSection
 				{group}
-				total={known?.byKind[group.kind]}
+				total={groupTotal(group.kind)}
 				projectName={(id) => attention.projectName(id)}
 				{now}
 			/>

@@ -284,7 +284,8 @@ Local development can leave queue settings unset and use background processing.
 ## 7. Post-Deployment Verification & Integration
 
 1. **Verify Web Browser Access**
-   - Navigate to `${SERVICE_URL}/` and verify that the Hub UI dashboard loads properly.
+   - Navigate to `${SERVICE_URL}/` and verify that the Hub UI loads; `/` is the Attention landing. Service health
+     is on System › Health (`${SERVICE_URL}/system/health`).
    - Sign in with the email and password given to `just setup-secrets`.
 2. **Verify Swagger Docs**
    - Access `${SERVICE_URL}/docs` and verify the OpenAPI interactive documentation responds.

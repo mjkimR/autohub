@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Badge } from '$lib/components/ui/badge';
 	import OwedRow from './OwedRow.svelte';
+	import { owedKindCount } from './owed-links';
 	import type { OwedGroup } from './owed-kinds';
 
 	let {
@@ -40,7 +41,8 @@
 		>
 			{#if !group.quiet}<span aria-hidden="true" class="size-1.5 rounded-full bg-attention-text"
 				></span>{/if}
-			{count}
+			<span aria-hidden="true">{count}</span>
+			<span class="sr-only">{owedKindCount(group.kind, count)}</span>
 		</Badge>
 		{#if partial}
 			<span class="text-xs text-muted-foreground">{group.items.length} shown</span>

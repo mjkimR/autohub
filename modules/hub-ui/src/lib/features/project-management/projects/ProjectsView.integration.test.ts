@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { toast } from 'svelte-sonner';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import ProjectsView from './ProjectsView.svelte';
+import { OWED_COUNTS_CONTEXT, OwedCountsStore } from '$lib/features/attention/owed-counts.svelte';
 
 const { api } = vi.hoisted(() => ({
 	api: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), DELETE: vi.fn() }
@@ -185,7 +186,7 @@ function twoProjects() {
 	);
 }
 
-test('Needs you shows counted items per project from one counts read per load', async () => {
+test('outside the shell, Needs you falls back to one local counts read per load', async () => {
 	twoProjects();
 	withCounts(async () => ({ data: { total: 3, by_kind: {}, by_project: { p1: 3 } } }));
 	const user = userEvent.setup();
@@ -237,4 +238,33 @@ test('a failed counts read is a dash with the reason, not zero', async () => {
 	expect(document.querySelector('[data-owed-count]')).toBeNull();
 	// The list itself still loads.
 	expect(screen.queryByRole('alert')).toBeNull();
+});
+
+test('inside the shell, Needs you reuses the shared counts store without its own read', async () => {
+	twoProjects();
+	withCounts(async () => ({ data: { total: 2, by_kind: {}, by_project: { p2: 2 } } }));
+	const store = new OwedCountsStore();
+	store.value = { status: 'known', total: 3, byKind: {}, byProject: { p1: 3 } };
+	const user = userEvent.setup();
+	render(ProjectsView, { context: new Map([[OWED_COUNTS_CONTEXT, store]]) });
+	const links = await screen.findAllByRole('link', { name: 'Application: 3 items need you' });
+	expect(links).toHaveLength(2);
+	// The shell already read the counts; mounting the list adds no duplicate request.
+	expect(countsCalls()).toHaveLength(0);
+
+	// Refresh goes through the shared store, so the shell badge moves with the list.
+	await user.click(screen.getByRole('button', { name: /Refresh/ }));
+	await waitFor(() => expect(countsCalls()).toHaveLength(1));
+	expect(await screen.findAllByRole('link', { name: 'Library: 2 items need you' })).toHaveLength(2);
+	expect(store.value).toMatchObject({ status: 'known', total: 2 });
+	expect(screen.queryByRole('link', { name: 'Application: 3 items need you' })).toBeNull();
+});
+
+test('inside the shell, an unknown shared count stays a neutral dash', async () => {
+	const store = new OwedCountsStore();
+	render(ProjectsView, { context: new Map([[OWED_COUNTS_CONTEXT, store]]) });
+	const row = (await screen.findByText('Application')).closest('tr') as HTMLElement;
+	expect(row.querySelector('[data-owed-unknown]')?.textContent).toContain('—');
+	expect(row.querySelector('[data-owed-count]')).toBeNull();
+	expect(countsCalls()).toHaveLength(0);
 });

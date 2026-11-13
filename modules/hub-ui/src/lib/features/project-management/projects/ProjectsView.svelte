@@ -7,6 +7,7 @@
 	import { responseData } from '$lib/api/pagination';
 	import ListPagination from '$lib/components/shared/ListPagination.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
+	import { useOwedCounts } from '$lib/features/attention/owed-counts.svelte';
 
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
@@ -58,11 +59,17 @@
 
 	let checkingProject = $state<Project | null>(null);
 
-	// Counted owed items per project: one counts read per list load, never one per row.
-	// Search and paging reuse it; Refresh, creation and an access check read it again.
-	let needsYou = $state<Record<string, number> | null>(null);
-	let needsYouError = $state('');
+	// Counted owed items per project come from the shell's shared counts store, never one read
+	// per row. Search and paging reuse it; Refresh, creation and an access check refresh it.
+	// Outside the shell (no store) a local read stands in.
+	const shared = useOwedCounts();
+	let localNeedsYou = $state<Record<string, number> | null>(null);
+	let localNeedsYouError = $state('');
 	let needsYouRequest = 0;
+	const needsYou = $derived(
+		shared ? (shared.value.status === 'known' ? shared.value.byProject : null) : localNeedsYou
+	);
+	const needsYouError = $derived(shared ? '' : localNeedsYouError);
 
 	async function loadNeedsYou() {
 		const current = ++needsYouRequest;
@@ -72,16 +79,21 @@
 				'Needs-you counts are unavailable'
 			);
 			if (current !== needsYouRequest) return;
-			needsYou = counts.by_project ?? {};
-			needsYouError = '';
+			localNeedsYou = counts.by_project ?? {};
+			localNeedsYouError = '';
 		} catch (e) {
 			if (current !== needsYouRequest) return;
-			needsYouError = e instanceof Error ? e.message : 'Needs-you counts are unavailable';
+			localNeedsYouError = e instanceof Error ? e.message : 'Needs-you counts are unavailable';
 		}
 	}
 
+	function refreshNeedsYou() {
+		if (shared) void shared.refresh();
+		else void loadNeedsYou();
+	}
+
 	function reloadAll() {
-		void loadNeedsYou();
+		refreshNeedsYou();
 		void loadProjects();
 	}
 
@@ -131,7 +143,9 @@
 	}
 
 	onMount(() => {
-		reloadAll();
+		// The shell already reads counts on mount and navigation; only the fallback reads here.
+		if (!shared) void loadNeedsYou();
+		void loadProjects();
 	});
 </script>
 

@@ -269,20 +269,58 @@ test("the project strip's View in Attention link round-trips to the filtered lan
 	);
 });
 
-test('shell counts size the groups and summary without another read', async () => {
+test('the landing reads shell counts once on mount and sizes a partial list with them', async () => {
+	const store = new OwedCountsStore();
+	let answer!: (value: unknown) => void;
+	const counts = vi.fn(() => new Promise((resolve) => (answer = resolve)));
+	const listing = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation(async (path: string, init?: { params?: { query?: object } }) =>
+		path === '/api/v1/owed-items/counts' ? counts() : listing(path, init)
+	);
+	pages = async () => pageOf([owedItem('decision', { context: { run_id: RUN } })], 'c2');
+	render(AttentionView, { context: new Map([[OWED_COUNTS_CONTEXT, store]]) });
+	await waitFor(() => expect(groupOrder()).toEqual(['decision']));
+	// One fresh read on mount past the navigation throttle; it stays single-flight.
+	expect(counts).toHaveBeenCalledTimes(1);
+	void store.refresh();
+	expect(counts).toHaveBeenCalledTimes(1);
+	answer({
+		data: { total: 12, by_kind: { decision: 5, 'failed-run': 3 }, by_project: { [PROJECT]: 12 } }
+	});
+	await waitFor(() =>
+		expect(group('decision').querySelector('[data-owed-count]')?.textContent).toContain('5')
+	);
+	expect(within(group('decision')).getByText('1 shown')).toBeTruthy();
+	expect(within(group('decision')).getByText('5 decisions')).toBeTruthy();
+	expect(screen.getByText('12 items need you.')).toBeTruthy();
+	expect(counts).toHaveBeenCalledTimes(1);
+});
+
+test('with every page loaded, group counts are the loaded rows', async () => {
 	const store = new OwedCountsStore();
 	store.value = {
 		status: 'known',
 		total: 12,
-		byKind: { decision: 5, 'failed-run': 3 },
+		byKind: { decision: 5 },
 		byProject: { [PROJECT]: 12 }
 	};
-	pages = async () => pageOf([owedItem('decision', { context: { run_id: RUN } })], 'c2');
+	vi.spyOn(store, 'refresh').mockResolvedValue();
+	pages = async () => pageOf([owedItem('decision', { context: { run_id: RUN } })]);
 	render(AttentionView, { context: new Map([[OWED_COUNTS_CONTEXT, store]]) });
 	await waitFor(() => expect(groupOrder()).toEqual(['decision']));
-	expect(group('decision').querySelector('[data-owed-count]')?.textContent).toContain('5');
-	expect(within(group('decision')).getByText('1 shown')).toBeTruthy();
-	expect(screen.getByText('12 items need you.')).toBeTruthy();
-	expect(api.GET).not.toHaveBeenCalledWith('/api/v1/owed-items/counts', expect.anything());
-	expect(api.GET).not.toHaveBeenCalledWith('/api/v1/owed-items/counts');
+	const badge = group('decision').querySelector('[data-owed-count]')!;
+	expect(badge.textContent).toContain('1');
+	expect(badge.textContent).not.toContain('5');
+	expect(within(group('decision')).getByText('1 decision')).toBeTruthy();
+	expect(within(group('decision')).queryByText(/shown$/)).toBeNull();
+});
+
+test('the summary line hides while the empty state shows', async () => {
+	const store = new OwedCountsStore();
+	store.value = { status: 'known', total: 2, byKind: { decision: 2 }, byProject: {} };
+	vi.spyOn(store, 'refresh').mockResolvedValue();
+	pages = async () => pageOf([]);
+	render(AttentionView, { context: new Map([[OWED_COUNTS_CONTEXT, store]]) });
+	expect(await screen.findByRole('heading', { name: 'Nothing needs you' })).toBeTruthy();
+	expect(document.querySelector('[data-owed-summary]')).toBeNull();
 });

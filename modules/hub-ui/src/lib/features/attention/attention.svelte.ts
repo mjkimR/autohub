@@ -41,6 +41,8 @@ export class AttentionState {
 	async load() {
 		const generation = ++this.#generation;
 		this.loading = true;
+		// A page still in flight belongs to the previous generation and will be discarded.
+		this.loadingMore = false;
 		this.error = '';
 		try {
 			const page = await this.#read(null);
@@ -73,6 +75,7 @@ export class AttentionState {
 			if (generation === this.#generation)
 				this.error = apiErrorMessage(e, 'More owed items could not be loaded.');
 		} finally {
+			// A newer generation already reset the flag and may own a page of its own.
 			if (generation === this.#generation) this.loadingMore = false;
 		}
 	}

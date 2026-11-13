@@ -42,8 +42,11 @@ Below the `md` breakpoint the providers column is hidden and the repository is s
 Needs-you, status and row-link columns are hidden as well: the status badge (`Active` or `Disabled`, with its icon)
 and the Needs-you count move under the name, and the name opens the project.
 
-The list reads `GET /api/v1/owed-items/counts` once per list load, never once per row: on opening the screen, on
-Refresh, after creating a project and after an access check. Search and paging reuse the counts they already have.
+The Needs-you counts come from the shell's shared owed counts store (`GET /api/v1/owed-items/counts`, the same
+response behind the shell's Attention badge), never one read per row. Opening the screen adds no counts read; Refresh,
+creating a project and an access check ask the shared store to refresh, so the shell badge moves with the list. Search
+and paging reuse the counts they already have. Outside the shell, where no store exists, the screen reads the counts
+itself once per list load.
 
 The route is `/projects`.
 
@@ -54,7 +57,7 @@ The route is `/projects`.
 - **loading**: table loading message; refresh is disabled while loading.
 - **error**: load error and unavailable table; Retry requests the list again.
 - **counts unknown**: the Needs-you cells show a neutral `—` while counts load or after the counts read fails; the
-  list itself stays usable.
+  list itself stays usable. The fallback read's failure reason is the dash's tooltip.
 
 ## 4. Interactions
 
@@ -76,6 +79,7 @@ Source inspection:
 
 Inspected check: `ProjectsView.integration.test.ts` asserts the Automation and Settings link targets and that the
 list offers no configure, schedule, agent-schedule or delete action. It also asserts the Needs-you column for
-populated, zero, unknown (loading) and failed counts, its link target, and one counts read per load that search reuses
-and Refresh repeats. The content and transitions are derived from
+populated, zero, unknown (loading) and failed counts, its link target, the shared shell store with no duplicate
+counts read on mount and Refresh going through that store, and the fallback's one counts read per load that search
+reuses and Refresh repeats. The content and transitions are derived from
 source inspection. This document does not assert a browser walkthrough or live GitHub/provider verification.

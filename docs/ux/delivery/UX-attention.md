@@ -35,11 +35,12 @@ capabilities:
 
 At `/`, inside `UX-app-shell`. The owed-item groups are primary; the title, filter and Refresh sit above them. The
 list reads `GET /api/v1/owed-items` (`CAP-PR-owed-items`) in its (`waiting_since`, `key`) order, at most 100 items per
-page; it adds no per-row read. Group sizes and the summary reuse the shell's owed counts response, so the landing adds
-no counts read of its own.
+page; it adds no per-row read. Group sizes and the summary reuse the shell's owed counts store. On mount the landing
+asks that store for one fresh read past the shell's navigation throttle, so groups and summary agree with the rows;
+the read stays single-flight, so a shell read already in flight is reused rather than repeated.
 
 - Owed item (summary, beside the title): "N items need you." from the shell counts while no project is chosen; hidden
-  at zero, while unknown or under a project filter.
+  at zero, while unknown, under a project filter or while the empty state shows.
 - Project connection (filter): "All projects" or one project; the choice is the `?project=<projectId>` query, so
   project screens link to their slice of the landing (`/?project=<id>`) and the choice survives reload.
 - Owed item (groups), in order of consequence; a kind with no loaded item is left out:
@@ -48,8 +49,10 @@ no counts read of its own.
   (`sdd-batch-attention`), 8. Connection-test cleanup, and last 9. Failed PR runs (`failed-run`).
   - Group heading: the kind label and its count. Counted kinds carry the `attention` Badge; on a screen made only of
     owed items, attention marks each group once and rows stay neutral, so the list never turns into a dense amber
-    block (`docs/steering/visual-style.md`). The count is the kind's total from the shell counts when known and no
-    project is chosen, otherwise the loaded rows; "N shown" follows when fewer rows are loaded than the total.
+    block (`docs/steering/visual-style.md`). While more pages remain, the count is the kind's total from the shell
+    counts when known and no project is chosen, and "N shown" follows when fewer rows are loaded than the total. Once
+    every page is loaded, or without known counts, the count is the loaded rows and "N shown" is hidden. The badge's
+    accessible text names the kind, for example "5 decisions".
   - Failed PR runs: a quiet section after Load more, with a neutral `outline` count and "Not counted as owed. Inspect
     when convenient."; it carries no attention weight.
   - Owed item (row): the cause as the row's first line; below it the subject title when present, the project name as
@@ -92,7 +95,7 @@ no counts read of its own.
 | Inspect Work Item | `UC-execute-work-plan` 4c | populated, partial | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | The Plans tab opens at the Work Item in attention. |
 | Inspect recovery | `UC-execute-work-plan` 5c | populated, partial | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | The Plans tab opens at the recovering Work Item. |
 | Accept replacement | `UC-execute-work-plan` 6c | populated, partial | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | The Plans tab opens at the Work Item whose replacement evidence awaits acceptance. |
-| Inspect batch | `UC-execute-sdd-batch` 4c | populated, partial | populated | `UX-sdd-batch` | `CAP-SDD-workflow-control` | The project Repository tab opens where the batch's attention and cause are shown. |
+| Inspect batch | `UC-execute-sdd-batch` 4c | populated, partial | populated | `UX-sdd-batch` | `CAP-SDD-workflow-control` | The project Repository tab opens; load its retained batches to inspect the batch. A batch deep link is a follow-up (`FB-attention-sdd-batch-deep-link`). |
 | Review cleanup | `UC-verify-project-connection` 7 | populated, partial | populated | `UX-connection-tests` | `CAP-CONN-connection-verification` | The project Connections tab opens with the cleanup review. |
 | Open project | global: inspect the item's owning project | populated, partial | populated | `UX-project-detail` |  | The project detail opens. |
 | Open AI catalogs (hold context) | global: inspect the catalog that holds a run | populated, partial | populated | `UX-ai-catalogs` |  | AI catalog configuration opens. |
@@ -110,7 +113,9 @@ Implementation inspected: `modules/hub-ui/src/routes/+page.svelte`,
 covers group order with failed runs last and quiet, every kind's row (cause, subject, project link, waiting age and its
 single action target), the catalog hold on the affected row only, the inbox fallback for a decision without a run,
 partial kinds, empty, failed-runs-only, loading, error with retained data and first-load error, Load more with cursor
-and limit 100, the project filter and its URL, the `?project=` initial filter with one read, and group sizes from the
-shell counts without a counts read; `owed-links.test.ts` covers every kind's link, the project-section fallback and the
+and limit 100, the project filter and its URL, the `?project=` initial filter with one read, one single-flight counts
+read on mount sizing a partial list, loaded-row counts once every page is loaded, and the summary hidden in the empty
+state; `AttentionLoadMore.integration.test.ts` covers Refresh and a project change during Load more, after which Load
+more works and issues its request; `owed-links.test.ts` covers every kind's link, the project-section fallback and the
 count nouns; `owed-kinds.test.ts` covers order, grouping, waiting age and hold text. Mocked-API screenshots (light,
 dark, 390px; populated, empty, error) were reviewed during development; no live deployment was exercised.
