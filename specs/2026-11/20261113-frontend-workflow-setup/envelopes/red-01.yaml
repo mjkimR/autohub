@@ -1,0 +1,15 @@
+kind: red
+stage: reproduce
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:14:08.347458Z'
+status: completed
+summary: Configured setup omits assets and frontend, and fixing lint leaves frontend fixtures unrepaired.
+findings: []
+assumptions:
+- Red ran with the added uncommitted test file against unchanged production setup and lint commands.
+checks:
+  reproduced: 'PASS focused command regressions fail as characterized: 8 failed, 4 passed; setup invokes only Python and lint stops at Prettier check'
+diff_scope:
+  base: 2bd4356acf905300583ee4581f7bb9a50e032695
+  head: ''
