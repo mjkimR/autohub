@@ -6,7 +6,7 @@
 	import SddDecisionHistory from './SddDecisionHistory.svelte';
 	import DecisionQuestion from './DecisionQuestion.svelte';
 	import { Badge } from '$lib/components/ui/badge';
-	import { getStateBadgeVariant } from './presentation';
+	import RunStateBadge from './RunStateBadge.svelte';
 	import { RefreshCw, ExternalLink, CircleHelp, CircleCheck, History } from '@lucide/svelte';
 	import { onMount, untrack } from 'svelte';
 	import { api, type components } from '$lib/api';
@@ -215,9 +215,7 @@
 			<DialogHeader class="px-5 py-5 sm:px-7">
 				<div class="mb-2 flex items-center gap-2 pr-8">
 					<Badge variant="outline">PR #{run.pull_number}</Badge>
-					<Badge variant={getStateBadgeVariant(current.state)}
-						>{current.state.replaceAll('_', ' ')}</Badge
-					>
+					<RunStateBadge state={current.state} />
 					{#if current.sdd_snapshot}<span class="text-xs text-muted-foreground">sdd</span>{/if}
 				</div>
 				<DialogTitle class="text-xl leading-snug break-words"

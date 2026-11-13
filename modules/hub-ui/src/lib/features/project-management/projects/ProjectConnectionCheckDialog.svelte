@@ -78,7 +78,7 @@
 	<DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-150">
 		<DialogHeader>
 			<DialogTitle class="flex items-center">
-				<Activity class="mr-2 size-5 text-primary" />
+				<Activity class="mr-2 size-5 text-muted-foreground" />
 				Connection & CI Check
 			</DialogTitle>
 			<DialogDescription>

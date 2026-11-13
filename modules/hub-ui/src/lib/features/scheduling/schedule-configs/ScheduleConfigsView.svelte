@@ -284,7 +284,7 @@
 							</TableCell>
 							<TableCell class="font-mono text-xs">
 								{#if config.cron_expression}
-									<span class="rounded bg-primary/10 px-2 py-0.5 text-primary">
+									<span class="rounded bg-muted px-2 py-0.5 text-muted-foreground">
 										cron: {config.cron_expression}
 									</span>
 								{:else if config.interval_seconds}

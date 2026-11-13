@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
-	import { Badge } from '$lib/components/ui/badge';
-	import { getStateBadgeVariant } from '../pipeline-runs/presentation';
+	import RunStateBadge from '../pipeline-runs/RunStateBadge.svelte';
 	let {
 		projectId,
 		specDir,
@@ -72,9 +71,7 @@
 							href={`/projects/runs?run=${run.id}&view=decisions`}
 						>
 							<span class="font-medium">PR #{run.pull_number}</span>
-							<Badge variant={getStateBadgeVariant(run.state)}
-								>{run.state.replaceAll('_', ' ')}</Badge
-							>
+							<RunStateBadge state={run.state} />
 							<span class="min-w-0 break-words">{run.pull_snapshot.title}</span>
 						</a>
 						<p class="mt-1 text-xs break-all text-muted-foreground">

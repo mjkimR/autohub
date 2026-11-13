@@ -77,7 +77,7 @@
 	<DialogContent class="max-h-[calc(100dvh-2rem)] overflow-y-auto wrap-anywhere sm:max-w-162.5">
 		<DialogHeader>
 			<DialogTitle class="flex flex-wrap items-center">
-				<History class="mr-2 size-5 text-primary" />
+				<History class="mr-2 size-5 text-muted-foreground" />
 				Execution Attempts
 			</DialogTitle>
 			<DialogDescription>

@@ -4,7 +4,7 @@
 	import { DashboardState } from './dashboard.svelte';
 	import DashboardHealth from './DashboardHealth.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
-	import { getStateBadgeVariant } from '$lib/features/project-management/pipeline-runs/presentation';
+	import RunStateBadge from '$lib/features/project-management/pipeline-runs/RunStateBadge.svelte';
 	import {
 		Card,
 		CardHeader,
@@ -56,6 +56,18 @@
 		}
 	});
 </script>
+
+{#snippet summaryTile(label: string, value: number | string, caption: string)}
+	<div class="rounded-lg border border-border/70 bg-background/50 p-3">
+		<div class="text-xs font-semibold text-muted-foreground uppercase">{label}</div>
+		{#if typeof value === 'number' || value === '—'}
+			<div class="mt-1 text-2xl font-bold">{value}</div>
+		{:else}
+			<div class="mt-1 text-sm leading-8 font-medium text-muted-foreground">{value}</div>
+		{/if}
+		<p class="mt-0.5 text-xs text-muted-foreground">{caption}</p>
+	</div>
+{/snippet}
 
 <div class="space-y-6">
 	{#if dashboard.error}
@@ -146,12 +158,12 @@
 		lastTickAt={dashboard.lastTickAt}
 	/>
 
-	<!-- Pipeline Runs Observability Card (High-Impact Hero Banner) -->
+	<!-- Pipeline Runs Observability Card -->
 	<Card class="overflow-hidden">
 		<CardHeader class="pb-3">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
-					<Workflow class="size-5 text-primary" />
+					<Workflow class="size-5 text-muted-foreground" />
 					<CardTitle class="text-base font-semibold">Pipeline Runs Orchestration</CardTitle>
 				</div>
 				<Button variant="link" size="xs" onclick={() => goto('/projects/runs')}>
@@ -162,39 +174,27 @@
 		</CardHeader>
 		<CardContent>
 			<div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
-				<div class="rounded-lg border border-border/70 bg-background/50 p-3">
-					<div class="text-xs font-semibold text-muted-foreground uppercase">Total Runs</div>
-					<div class="mt-1 text-2xl font-bold">{dashboard.totalRuns}</div>
-					<p class="mt-0.5 text-xs text-muted-foreground">All time lifecycle</p>
-				</div>
-				<div class="rounded-lg border border-info/20 bg-info/5 p-3">
-					<div class="text-xs font-semibold text-info uppercase">Active Work</div>
-					<div class="mt-1 text-2xl font-bold text-info">
-						{dashboard.activeRuns}
-					</div>
-					<p class="mt-0.5 text-xs text-muted-foreground">Dispatch / Implementing</p>
-				</div>
-				<div class="rounded-lg border border-warning/20 bg-warning/5 p-3">
-					<div class="text-xs font-semibold text-warning uppercase">Awaiting CI</div>
-					<div class="mt-1 text-2xl font-bold text-warning">
-						{dashboard.awaitingCiRuns}
-					</div>
-					<p class="mt-0.5 text-xs text-muted-foreground">PR verification check</p>
-				</div>
-				<div class="rounded-lg border border-success/20 bg-success/5 p-3">
-					<div class="text-xs font-semibold text-success uppercase">Completed</div>
-					<div class="mt-1 text-2xl font-bold text-success">
-						{dashboard.completedRuns}
-					</div>
-					<p class="mt-0.5 text-xs text-muted-foreground">Passed CI verification</p>
-				</div>
-				<div class="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
-					<div class="text-xs font-semibold text-destructive uppercase">Needs you</div>
-					<div class="mt-1 text-2xl font-bold text-destructive">
-						{dashboard.failedRuns}
-					</div>
-					<p class="mt-0.5 text-xs text-muted-foreground">Failed, paused, or blocked</p>
-				</div>
+				{@render summaryTile('Total Runs', dashboard.totalRuns, 'All time lifecycle')}
+				{@render summaryTile('Active Work', dashboard.activeRuns, 'Dispatch / Implementing')}
+				{@render summaryTile('Awaiting CI', dashboard.awaitingCiRuns, 'PR verification check')}
+				{@render summaryTile('Completed', dashboard.completedRuns, 'Passed CI verification')}
+				{#if typeof dashboard.failedRuns === 'number' && dashboard.failedRuns > 0}
+					<a
+						href="/projects/runs"
+						data-attention="true"
+						class="rounded-lg border border-attention bg-attention p-3 text-attention-foreground transition-colors hover:bg-attention/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-none"
+					>
+						<div class="text-xs font-semibold uppercase">Needs you</div>
+						<div class="mt-1 text-2xl font-bold">{dashboard.failedRuns}</div>
+						<p class="mt-0.5 text-xs font-medium">{dashboard.needsYouBreakdown}</p>
+					</a>
+				{:else}
+					{@render summaryTile(
+						'Needs you',
+						dashboard.failedRuns === 0 ? 'No failed or held runs' : dashboard.failedRuns,
+						'Failed, paused, or blocked'
+					)}
+				{/if}
 			</div>
 		</CardContent>
 	</Card>
@@ -255,7 +255,7 @@
 		>
 			<CardHeader class="flex flex-row items-center justify-between pb-2">
 				<CardDescription class="font-medium">Active Runs</CardDescription>
-				<Activity class="size-4 text-primary" />
+				<Activity class="size-4 text-muted-foreground" />
 			</CardHeader>
 			<CardContent>
 				<div class="text-3xl font-bold">{dashboard.activeRuns}</div>
@@ -267,10 +267,10 @@
 	<!-- Activity Streams (Side by Side) -->
 	<div class="grid gap-6 lg:grid-cols-2">
 		<!-- Recent Pipeline Runs -->
-		<div class="rounded-xl border border-border/80 bg-card/60 p-5 backdrop-blur-xs">
+		<div class="min-w-0 rounded-xl border border-border/80 bg-card/60 p-5 backdrop-blur-xs">
 			<div class="flex items-center justify-between pb-3">
 				<div class="flex items-center gap-2">
-					<Workflow class="size-4 text-primary" />
+					<Workflow class="size-4 text-muted-foreground" />
 					<h2 class="text-sm font-semibold tracking-tight">Recent Pipeline Runs</h2>
 				</div>
 				<Button variant="subtle" size="xs" onclick={() => goto('/projects/runs')}>View All</Button>
@@ -294,8 +294,8 @@
 									</span>
 								</div>
 								<div class="mt-0.5 flex items-center gap-2 font-mono text-xs text-muted-foreground">
-									<div class="flex items-center gap-1">
-										<GitBranch class="size-3" />
+									<div class="flex min-w-0 items-center gap-1">
+										<GitBranch class="size-3 shrink-0" />
 										<span class="max-w-35 truncate">{run.branch}</span>
 									</div>
 									{#if run.pull_url}
@@ -311,9 +311,7 @@
 								</div>
 							</div>
 							<div class="flex items-center gap-2">
-								<Badge variant={getStateBadgeVariant(run.state)} class="capitalize">
-									{run.state.replace('_', ' ')}
-								</Badge>
+								<RunStateBadge state={run.state} />
 							</div>
 						</div>
 					{/each}
@@ -322,10 +320,10 @@
 		</div>
 
 		<!-- Recent Scheduled Job Executions -->
-		<div class="rounded-xl border border-border/80 bg-card/60 p-5 backdrop-blur-xs">
+		<div class="min-w-0 rounded-xl border border-border/80 bg-card/60 p-5 backdrop-blur-xs">
 			<div class="flex items-center justify-between pb-3">
 				<div class="flex items-center gap-2">
-					<History class="size-4 text-primary" />
+					<History class="size-4 text-muted-foreground" />
 					<h2 class="text-sm font-semibold tracking-tight">Recent Schedule Executions</h2>
 				</div>
 				<Button variant="subtle" size="xs" onclick={() => goto('/schedules/jobs')}>View All</Button>

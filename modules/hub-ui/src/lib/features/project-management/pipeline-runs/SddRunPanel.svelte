@@ -156,7 +156,9 @@
 <section class="overflow-hidden rounded-xl border bg-card" aria-label="SDD integration decision">
 	<div class="space-y-4 p-4 sm:p-5">
 		<div class="flex items-start gap-3">
-			<div class="rounded-lg bg-primary/10 p-2 text-primary"><ShieldCheck class="size-5" /></div>
+			<div class="rounded-lg bg-muted p-2 text-muted-foreground">
+				<ShieldCheck class="size-5" />
+			</div>
 			<div class="min-w-0 flex-1">
 				<p class="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
 					SDD workflow

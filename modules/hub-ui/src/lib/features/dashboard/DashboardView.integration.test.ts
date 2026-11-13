@@ -146,3 +146,57 @@ test('HTTP failure shows unavailable statistics instead of a zero total', async 
 	expect(await screen.findByRole('alert')).toBeTruthy();
 	expect(tile('Total Runs').textContent).toContain('—');
 });
+
+const withRunsByState = (runsByState: Record<string, number> | null) => {
+	const previous = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation(async (path: string, ...args: unknown[]) => {
+		if (path === '/api/v1/dashboard/stats') {
+			if (!runsByState) return { error: { detail: 'Unavailable' } };
+			const result = await previous(path, ...args);
+			return { data: { ...result.data, runs_by_state: runsByState } };
+		}
+		return previous(path, ...args);
+	});
+};
+
+test('runs waiting for the operator mark the Needs-you tile and link to Pipeline Runs', async () => {
+	withRunsByState({ completed: 3, failed: 1, paused: 2, blocked: 1 });
+	render(DashboardView);
+
+	const link = await screen.findByRole('link', { name: /Needs you/ });
+	expect(link.getAttribute('href')).toBe('/projects/runs');
+	expect(link.getAttribute('data-attention')).toBe('true');
+	expect(link.textContent).toContain('4');
+	expect(link.textContent).toContain('1 failed · 2 paused · 1 blocked');
+	expect(document.querySelectorAll('[data-attention="true"]')).toHaveLength(1);
+});
+
+test('the breakdown lists only the states that have runs', async () => {
+	withRunsByState({ paused: 2 });
+	render(DashboardView);
+
+	const link = await screen.findByRole('link', { name: /Needs you/ });
+	expect(link.textContent).toContain('2 paused');
+	expect(link.textContent).not.toContain('failed ·');
+	expect(link.textContent).not.toContain('blocked');
+});
+
+test('with nothing failed or held the Needs-you tile is neutral and not a link', async () => {
+	withRunsByState({ completed: 4 });
+	render(DashboardView);
+
+	await waitFor(() => expect(tile('Needs you').textContent).toContain('No failed or held runs'));
+	expect(tile('Needs you').textContent).toContain('Failed, paused, or blocked');
+	expect(screen.queryByRole('link', { name: /Needs you/ })).toBeNull();
+	expect(document.querySelector('[data-attention]')).toBeNull();
+});
+
+test('unavailable statistics keep the Needs-you tile neutral with the unknown marker', async () => {
+	withRunsByState(null);
+	render(DashboardView);
+
+	await waitFor(() => expect(tile('Needs you').textContent).toContain('—'));
+	expect(tile('Needs you').textContent).toContain('Failed, paused, or blocked');
+	expect(screen.queryByRole('link', { name: /Needs you/ })).toBeNull();
+	expect(document.querySelector('[data-attention]')).toBeNull();
+});

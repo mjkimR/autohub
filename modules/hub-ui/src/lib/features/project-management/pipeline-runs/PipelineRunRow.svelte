@@ -1,15 +1,12 @@
 <script lang="ts">
 	import type { components } from '$lib/api';
-	import { getStateBadgeVariant } from './presentation';
+	import RunStateBadge from './RunStateBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { TableRow, TableCell } from '$lib/components/ui/table';
 	import {
 		GitPullRequest,
 		GitBranch,
-		AlertCircle,
-		CheckCircle2,
-		PauseCircle,
 		ExternalLink,
 		History,
 		ShieldCheck,
@@ -82,18 +79,7 @@
 	</TableCell>
 
 	<TableCell>
-		<Badge variant={getStateBadgeVariant(run.state)}>
-			{#if run.state === 'implementing' || run.state === 'dispatching'}
-				<span class="size-1.5 animate-pulse rounded-full bg-current"></span>
-			{:else if run.state === 'completed'}
-				<CheckCircle2 class="size-3" />
-			{:else if run.state === 'failed'}
-				<AlertCircle class="size-3" />
-			{:else if run.state === 'paused' || run.state === 'blocked'}
-				<PauseCircle class="size-3" />
-			{/if}
-			<span class="capitalize">{run.state.replace('_', ' ')}</span>
-		</Badge>
+		<RunStateBadge state={run.state} />
 		{#if run.pause_reason}
 			<p class="mt-1 max-w-xs text-xs whitespace-normal text-muted-foreground">
 				{run.pause_reason}

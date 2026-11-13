@@ -138,3 +138,49 @@ test('notice selection uses exact lookup outside loaded pages then owner review'
 	);
 	window.history.replaceState({}, '', '/');
 });
+test('each row carries one labeled status and only operator work is marked for attention', async () => {
+	api.GET.mockImplementation(async (path: string) => {
+		if (path === '/api/v1/projects') return { data: { items: [] } };
+		if (path.endsWith('/decisions'))
+			return {
+				data: {
+					items: [
+						{ ...entry, key: 'open', title: 'Open question' },
+						{ ...entry, key: 'answered', title: 'Answered question', question_state: 'answered' },
+						{
+							...entry,
+							key: 'publishing',
+							title: 'Publishing answer',
+							kind: 'native-hub-question',
+							actionable: false
+						}
+					],
+					has_more: false,
+					next_cursor: null
+				}
+			};
+		return { data: run };
+	});
+	render(DecisionInbox);
+	const row = async (title: string) => (await screen.findByText(title)).closest('article')!;
+	const text = (element: Element) => element.textContent?.replace(/\s+/g, ' ') ?? '';
+
+	expect(text(await row('Open question'))).toContain('Needs decision');
+	expect(text(await row('Answered question'))).toContain('Answer saved — resume pending');
+	expect(text(await row('Publishing answer'))).toContain('Answer publication pending');
+	expect((await row('Open question')).getAttribute('data-attention')).toBe('true');
+	expect((await row('Answered question')).getAttribute('data-attention')).toBe('true');
+	expect((await row('Publishing answer')).hasAttribute('data-attention')).toBe(false);
+	expect(document.querySelectorAll('[data-attention]')).toHaveLength(2);
+	expect(screen.queryByText('Answer saved', { exact: true })).toBeNull();
+});
+test('question state filter options use the inbox status labels', async () => {
+	render(DecisionInbox);
+	await screen.findByText('Choose behavior');
+	const options = [...(screen.getByLabelText('Question state') as HTMLSelectElement).options];
+	expect(options.map((option) => [option.value, option.text])).toEqual([
+		['', 'All states'],
+		['open', 'Needs decision'],
+		['answered', 'Answer saved — resume pending']
+	]);
+});

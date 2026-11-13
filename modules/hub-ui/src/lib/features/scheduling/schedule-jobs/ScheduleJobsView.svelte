@@ -5,6 +5,7 @@
 	import { countedPage, responseData } from '$lib/api/pagination';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
+	import { Badge, type BadgeVariant } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import {
@@ -50,19 +51,17 @@
 		);
 	}
 
-	function getStatusVariant(status: string) {
+	// A pending job is routine scheduler work, not operator debt, so it stays neutral (outline).
+	function getStatusVariant(status: string): { variant: BadgeVariant; icon: typeof Clock } {
 		switch (status) {
 			case 'success':
-				return {
-					class: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-					icon: CheckCircle2
-				};
+				return { variant: 'success', icon: CheckCircle2 };
 			case 'failure':
-				return { class: 'bg-destructive/15 text-destructive', icon: XCircle };
+				return { variant: 'destructive', icon: XCircle };
 			case 'pending':
-				return { class: 'bg-amber-500/15 text-amber-600 dark:text-amber-400', icon: Clock };
+				return { variant: 'outline', icon: Clock };
 			default:
-				return { class: 'bg-secondary text-secondary-foreground', icon: AlertTriangle };
+				return { variant: 'secondary', icon: AlertTriangle };
 		}
 	}
 
@@ -157,12 +156,10 @@
 								{job.name}
 							</TableCell>
 							<TableCell>
-								<span
-									class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium {st.class}"
-								>
-									<st.icon class="size-3.5" />
-									<span class="capitalize">{job.status}</span>
-								</span>
+								<Badge variant={st.variant} class="capitalize">
+									<st.icon aria-hidden="true" />
+									{job.status}
+								</Badge>
 								{#if job.error_message}
 									<p class="mt-1 max-w-md text-xs whitespace-normal text-destructive">
 										{job.error_message}

@@ -261,15 +261,6 @@
 					{currentPageLabel()}
 				</span>
 			</div>
-
-			<div class="flex items-center gap-3 text-xs text-muted-foreground">
-				<span
-					class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 font-medium text-primary"
-				>
-					<span class="size-1.5 animate-pulse rounded-full bg-primary"></span>
-					Svelte 5 Runes
-				</span>
-			</div>
 		</header>
 
 		<!-- Page Content Container -->
