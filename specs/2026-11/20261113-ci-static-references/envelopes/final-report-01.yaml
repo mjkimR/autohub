@@ -1,0 +1,20 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T08:07:42.732061Z'
+status: completed
+summary: Bounded static CI recipe/config checks wired into backend lint; independent P2 repaired and source feedback resolved
+findings: []
+assumptions:
+- Codex boundaries are emulated using absolute cwd/path scopes, committed diff audits, separate escalations and unchanged reviewer snapshots
+unverified_areas:
+- Computed references and unsupported complex shell are explicit unverified skips; no GitHub Actions execution, publication or Host integrated-head verification performed
+checks:
+  tests: PASS Red17 before implementation; final28 CI regressions plus12 neighboring command regressions; current workflows23 supported commands0skips0errors
+  build: PASS full just check; final affected just check hub after reviewed shell-boundary repair
+  lint: PASS full just lint; final script/test Ruff, docs/hygiene and CI35 rules zero errors/warnings
+  review: PASS mandatory independent review and independent P2 fix-range reverify; two-guide self reconciliation under medium tooling-only exception
+diff_scope:
+  base: 7597d1f531cc4d0fc6aad1dd693bbf8862852894
+  head: 7280fa1a7d8069801754fe3eba59ca379c519288
