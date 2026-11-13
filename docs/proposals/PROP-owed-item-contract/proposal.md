@@ -11,9 +11,13 @@ planning_effort: medium               # low | medium | high (hint for Planning)
 dev_effort: medium                    # low | medium | high (hint for Development)
 boundaries:
   owns:
-    - capabilities/delivery/
+    - capabilities/
+    - usecases/
     - ux/
     - steering/
+    - modules/hub/app/features/
+    - modules/hub/tests/
+    - modules/hub-ui/src/lib/api/
   excludes:
     - docs/decisions/
 task_kind: feature                    # feature | bugfix: the spec follows sdd-spec-<task_kind>
@@ -36,11 +40,13 @@ Today operator debt has two partial definitions and several invisible classes:
   field or endpoint.
 - The `UX-dashboard` Needs-you tile counts failed, paused and blocked PR runs, a second definition. It shows no
   decision count and does not link to the inbox.
-- `visual-style.md` (Attention) defines operator debt as paused or blocked PR runs plus Run questions awaiting a
+- `docs/steering/visual-style.md` (Attention) defines operator debt as paused or blocked PR runs plus Run questions awaiting a
   decision or a resume. Failed runs and the classes below are outside that definition.
+- Run-stop notices (`CAP-NOTIFY-operator-notifications`) are a third definition: they announce paused, blocked and
+  failed runs and in-flight runs that hold a `pause_reason`, keyed by run revision and linking the PR.
 - These classes wait for the operator but reach no shared count or worklist:
   - Work Plans in `proposed` ("Needs a decision"; `CAP-WORK-work-plan-execution`).
-  - Work Item recovery and replacement or dependency acceptance.
+  - Work Item recovery and replacement or dependency acceptance, and Work Items in `attention`.
   - SDD batch `attention` (`UX-sdd-batch`).
   - Connection-test cleanup review (`CAP-CONN-connection-verification`).
   - AI catalog holds that block queued work (`CAP-AGENT-catalog-admission`).
@@ -168,3 +174,39 @@ pulls in the run origin fields (Q6) or several UI consumers (Q9) as separate del
 - On rejection: change only status: rejected, with the user's decision and reason as a decision sentence in the
   commit message (no quote); a later hygiene pass writes the rejection ADR and deletes the proposal directory.
 -->
+
+## 5. Planning Decisions
+
+Evidence: `materials/owed-state-inventory.md` (scout round 1) and `envelopes/challenger-01.yaml`. Decisions marked
+*open* wait for the user's answers to `envelopes/worker-01.yaml`.
+
+- **Q2 (one item per root cause)**: a general suppression rule replaces the decision-versus-run case. Each root
+  cause yields one owed item; the most specific actionable owner wins: decision > Work Item recovery or replacement >
+  SDD batch attention > Work Item `attention` > run state. The others become context on that item. A run held by a
+  decision appears only as the decision, with Answer as its primary action. A blocked run whose question was dismissed
+  has no decision row and appears as a run item. The spec gives an acceptance example for each overlapping pair.
+- **Q3 (read model)**: a query-time union over the owning tables, no persisted projection. Catalog-hold expiry and
+  `waiting_since` are time-based, and a projection would add writes to five features' transactions. The decision kind
+  reads the existing decision discovery projection. The cross-project predicates without an index today
+  (`work_plans.state`, `sdd_batches.state`, `connection_tests.cleanup_status`) may gain partial indexes in Development
+  if a measurement shows the need; the connection-test cleanup predicate needs a code-side adapter check, which the
+  spec settles (filter the SQL candidates, then apply the adapter check to that bounded set).
+- **Q4 (API shape and limits)**: one authenticated list read, filterable by project and kind, keyset-paginated by
+  (`waiting_since`, `key`) with a page limit of at most 100, and a counts read (total, by kind, by project) that issues
+  aggregates only, so the shell check stays one request at its current cadence. Acceptance criterion modeled on
+  `SPEC-pending-decision-count` AC-04: one connection, one transaction, a fixed number of statements independent of
+  row counts, no provider call, no session across external I/O. Paths and names follow the Q10 answer. MCP exposure is
+  out of scope for this proposal.
+- **Q5 (stable keys)**: `key` is `<kind>:<subject id>`; the decision kind embeds the existing `decision_key`
+  unchanged, so notice links already sent still resolve. A resolved item leaves the set and its key is not reused for
+  another subject; a cause change within the same kind and subject keeps the key.
+- **Q6 (run fields)**: *open* (scope question). Recommended: only a per-run pending-decision flag stays here (it
+  serves Q2 and the run rows' 100-row limit); run origin fields move to a sibling draft proposal.
+- **Q7 (existing count)**: `actionable_total_count` on `DecisionPage` stays as is
+  (`SPEC-pending-decision-count` Non-goal 5 allows a separate aggregate beside it). The owed count by kind for
+  decisions equals `actionable_total_count` for the same visible scope; the spec states this as an acceptance criterion.
+- **Q8 (notices)**: decision notices stay keyed on `decision_key` and fingerprint; no owed-item notices in this
+  proposal. Run-stop notices stay a separate alert channel; the capability states that they are not the owed count.
+- **Q1, Q9, Q10 and layering**: *open*, see the questions in `envelopes/worker-01.yaml`.
+- **Boundaries**: `owns` now names the backend features, backend tests, the generated typed client, use cases and the
+  other capability areas whose contracts gain an owed-kind rule (work-plans, sdd, connections, agents, notifications).
