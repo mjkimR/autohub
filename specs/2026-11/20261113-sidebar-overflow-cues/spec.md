@@ -2,7 +2,7 @@
 id: SPEC-sidebar-overflow-cues
 title: Show sidebar navigation overflow cues
 summary: "Expose hidden navigation beyond each scroll edge with decorative theme-token shadows while keeping desktop and narrow Menu destinations and controls reachable."
-status: in-progress
+status: completed
 created: 2026-11-13
 decomposed_from: PROP-hub-ui-shell-polish
 related_capabilities: []

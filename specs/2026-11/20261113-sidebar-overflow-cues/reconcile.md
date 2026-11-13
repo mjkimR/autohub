@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-sidebar-overflow-cues
-status: pending
+status: resolved
 targets:
   - file: docs/ux/navigation/UX-app-shell.md
     resolution: modified
