@@ -2,7 +2,7 @@
 id: PROP-hub-ui-shell-polish
 title: Shell counts error reason and sidebar scroll cue
 summary: "Keep the reason a shared owed-counts read failed so the Projects Needs-you tooltip can name it, and show a scroll cue when the sidebar navigation overflows."
-status: draft                         # draft | reviewing | accepted | rejected
+status: reviewing                     # draft | reviewing | accepted | rejected
 created_at: 2026-11-13
 target_area: ux/navigation/
 priority: low                         # critical | high | medium | low
