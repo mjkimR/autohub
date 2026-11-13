@@ -2,7 +2,7 @@
 id: SPEC-repo-path-runtime-sources
 title: Install repository-local path sources in the SDD runtime
 summary: SDD runtime selection accepts dependency-group path and editable sources that resolve inside the evaluated checkout, so in-repository and snapshot bundles install like Git sources instead of being refused.
-status: planned
+status: in-progress
 created: 2026-11-13
 related_capabilities:
   - CAP-SDD-runtime-isolation

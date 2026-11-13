@@ -1,0 +1,12 @@
+[project]
+name = "my-bundle"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = []
+
+[project.entry-points."devkit.bundles"]
+my-bundle = "my_bundle:bundle"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
