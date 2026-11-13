@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'svelte-sonner';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -525,3 +525,71 @@ test('resolved similar names remain distinct and failed project refresh preserve
 			.query.project_id
 	).toBe('project-1');
 });
+
+test.each(['success', 'error'] as const)(
+	'older project-options %s cannot replace latest results or selection',
+	async (outcome) => {
+		function deferred() {
+			let resolve!: (value: {
+				data?: { items: { id: string; name: string }[]; total_count: number };
+				error?: object;
+			}) => void;
+			const promise = new Promise<Parameters<typeof resolve>[0]>((done) => {
+				resolve = done;
+			});
+			return { promise, resolve };
+		}
+		const older = deferred(),
+			latest = deferred();
+		let optionReads = 0;
+		api.GET.mockImplementation(async (path) => {
+			if (path === '/api/v1/tasks/specs') return { data: [] };
+			if (path === '/api/v1/projects') {
+				optionReads += 1;
+				if (optionReads === 1)
+					return { data: { items: [{ id: 'project-1', name: 'Application' }], total_count: 1 } };
+				return optionReads === 2 ? older.promise : latest.promise;
+			}
+			return { data: { items: [config('s1', 'Nightly demo', 'hello_world')], total_count: 1 } };
+		});
+		const user = userEvent.setup();
+		render(ScheduleConfigsView);
+		await screen.findByRole('option', { name: 'Application' });
+		await fireEvent.change(screen.getByRole('combobox', { name: 'Project' }), {
+			target: { value: 'project-1' }
+		});
+		await waitFor(() =>
+			expect((screen.getByRole('button', { name: 'Refresh' }) as HTMLButtonElement).disabled).toBe(
+				false
+			)
+		);
+		await user.click(screen.getByRole('button', { name: 'Refresh' }));
+		await waitFor(() => expect(optionReads).toBe(2));
+		await waitFor(() =>
+			expect((screen.getByRole('button', { name: 'Refresh' }) as HTMLButtonElement).disabled).toBe(
+				false
+			)
+		);
+		await user.click(screen.getByRole('button', { name: 'Refresh' }));
+		await waitFor(() => expect(optionReads).toBe(3));
+		await act(() =>
+			latest.resolve({
+				data: { items: [{ id: 'project-1', name: 'Current project' }], total_count: 1 }
+			})
+		);
+		await screen.findByRole('option', { name: 'Current project' });
+		await act(() =>
+			older.resolve(
+				outcome === 'error'
+					? { error: { detail: 'obsolete failure' } }
+					: { data: { items: [{ id: 'project-1', name: 'Obsolete project' }], total_count: 1 } }
+			)
+		);
+		expect(screen.getByRole('option', { name: 'Current project' })).toBeTruthy();
+		expect(screen.queryByRole('option', { name: 'Obsolete project' })).toBeNull();
+		expect(screen.queryByText(/Failed to load project options/)).toBeNull();
+		expect((screen.getByRole('combobox', { name: 'Project' }) as HTMLSelectElement).value).toBe(
+			'project-1'
+		);
+	}
+);

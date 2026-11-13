@@ -64,6 +64,7 @@
 	let projectId = $state('');
 	let projects = $state<components['schemas']['ProjectRead'][]>([]);
 	let projectError = $state('');
+	let projectRequest = 0;
 	const projectNames = $derived(new Map(projects.map((project) => [project.id, project.name])));
 
 	function isProjectManaged(config: ScheduleConfig): boolean {
@@ -71,9 +72,10 @@
 	}
 
 	async function loadProjects() {
+		const request = ++projectRequest;
 		projectError = '';
 		try {
-			projects = await allPages(async (offset, limit) =>
+			const next = await allPages(async (offset, limit) =>
 				responseData(
 					await api.GET('/api/v1/projects', {
 						params: { query: { offset, limit, skip_count: false } }
@@ -81,8 +83,10 @@
 					'Failed to load projects'
 				)
 			);
+			if (request === projectRequest) projects = next;
 		} catch {
-			projectError = 'Failed to load project options. Retry to choose a project.';
+			if (request === projectRequest)
+				projectError = 'Failed to load project options. Retry to choose a project.';
 		}
 	}
 
