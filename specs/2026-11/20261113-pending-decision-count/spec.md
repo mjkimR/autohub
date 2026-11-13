@@ -2,7 +2,7 @@
 id: SPEC-pending-decision-count
 title: Exact pending-decision count
 summary: Expose an exact count of actionable pending decisions on the decision list and show it unbounded in the app shell signal.
-status: in-progress
+status: completed
 created: 2026-11-13
 related_capabilities:
   - CAP-PR-operator-decisions

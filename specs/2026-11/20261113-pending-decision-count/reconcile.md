@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-pending-decision-count
-status: pending
+status: resolved
 targets:
   - file: docs/capabilities/delivery/CAP-PR-operator-decisions.md
     resolution: modified
