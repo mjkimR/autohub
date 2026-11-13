@@ -2,7 +2,7 @@
 id: PROP-schedule-config-ownership
 title: Schedule configuration ownership and project filter
 summary: "Expose the owning project and owner kind on schedule configuration reads and add a project filter to the list, so the schedule list links every owned row to its owner and the project screens stop deriving ownership from payloads."
-status: draft                         # draft | reviewing | accepted | rejected
+status: reviewing                     # draft | reviewing | accepted | rejected
 created_at: 2026-11-13
 target_area: capabilities/execution/
 priority: medium                      # critical | high | medium | low
