@@ -1,0 +1,16 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:50:44.610927Z'
+status: completed
+summary: 'round 4; closes reconcile-check-03; self-verified under review-loop section 2: the trace now cites rules 1-2, UC-start 2e lists SDD_ISOLATION_UNAVAILABLE outside the recorded phrase, and the per-path test gap is recorded in reconcile.md; text-only edits at the named locations, contract meaning unchanged, diff limited to them'
+findings: []
+assumptions:
+- Self-verification by the implementer; edited text and diff agree
+checks:
+  docs: PASS just docs-check
+diff_scope:
+  base: 21ba8ec757946fdb4e5dbdf99e42b3f463f0fa97
+  head: d410c06ad98ae53229dc921f25d5a20be2aa99d3
+activity_effort: high

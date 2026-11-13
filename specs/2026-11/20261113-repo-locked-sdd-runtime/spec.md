@@ -2,7 +2,7 @@
 id: SPEC-repo-locked-sdd-runtime
 title: Install the SDD evaluation runtime from the repository lock
 summary: Auto Hub evaluates SDD work with the devkit packages pinned by the target repository's uv.lock, installed inside isolation, instead of a server profile that must contain every selected bundle. This removes per-repository provisioning.
-status: in-progress
+status: completed
 created: 2026-11-13
 related_capabilities:
   - CAP-SDD-runtime-isolation
