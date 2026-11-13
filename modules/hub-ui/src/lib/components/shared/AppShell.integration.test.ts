@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import AppShell from './AppShell.svelte';
@@ -16,6 +16,7 @@ let admin = false;
 
 beforeEach(() => {
 	admin = false;
+	localStorage.clear();
 	page.url = new URL('http://hub.test/decisions');
 	decisions = async () => ({ data: decisionPage(0) });
 	api.GET.mockReset();
@@ -127,4 +128,112 @@ test('the PR run list is labeled with the glossary term', () => {
 		'/projects/runs'
 	);
 	expect(within(nav()).queryByRole('link', { name: 'Pipeline runs' })).toBeNull();
+});
+
+const groupLabels = () =>
+	[...nav().querySelectorAll('[data-nav-group]')].map((group) =>
+		group.getAttribute('data-nav-group')
+	);
+const systemToggle = () => within(nav()).getByRole('button', { name: /^System/ });
+const systemList = () => document.getElementById('nav-group-system')!;
+
+test('destinations are grouped by operator job, administration last', async () => {
+	admin = true;
+	render(AppShell, { children });
+	await within(nav()).findByRole('link', { name: 'Account approval' });
+	expect(groupLabels()).toEqual(['attention', 'work', 'setup', 'system', 'admin']);
+	const names = (id: string) =>
+		[...document.querySelectorAll(`[data-nav-group="${id}"] a`)].map(
+			(a) => a.querySelector('span')?.textContent
+		);
+	expect(names('attention')).toEqual(['Dashboard', 'Decisions']);
+	expect(names('work')).toEqual(['Projects', 'PR runs']);
+	expect(names('setup')).toEqual(['Connectors', 'AI catalogs', 'Notifications']);
+	expect(names('system')).toEqual([
+		'Schedule configs',
+		'Schedule jobs',
+		'Webhook deliveries',
+		'Task specs',
+		'System configs'
+	]);
+	expect(within(nav()).getByRole('group', { name: 'Work' })).toBeTruthy();
+});
+
+test('System starts collapsed with an accessible disclosure button', () => {
+	page.url = new URL('http://hub.test/projects');
+	render(AppShell, { children });
+	const toggle = systemToggle();
+	expect(toggle.getAttribute('aria-expanded')).toBe('false');
+	expect(toggle.getAttribute('aria-controls')).toBe('nav-group-system');
+	expect(systemList().hidden).toBe(true);
+	expect(within(nav()).queryByRole('link', { name: 'Schedule jobs' })).toBeNull();
+	expect(document.querySelector('[data-holds-current]')).toBeNull();
+});
+
+test('a System route opens the group and marks its link active', () => {
+	page.url = new URL('http://hub.test/schedules/jobs');
+	render(AppShell, { children });
+	expect(systemToggle().getAttribute('aria-expanded')).toBe('true');
+	const link = within(nav()).getByRole('link', { name: 'Schedule jobs' });
+	expect(link.getAttribute('aria-current')).toBe('page');
+	expect(screen.getAllByText('Schedule jobs').length).toBeGreaterThan(1);
+});
+
+test('collapsing over the current page keeps it discoverable', async () => {
+	page.url = new URL('http://hub.test/operations/tasks');
+	render(AppShell, { children });
+	await fireEvent.click(systemToggle());
+	expect(systemToggle().getAttribute('aria-expanded')).toBe('false');
+	expect(systemList().hidden).toBe(true);
+	expect(systemToggle().textContent).toContain('contains the current page');
+	expect(document.querySelector('[data-holds-current]')).toBeTruthy();
+});
+
+test('the System open state is remembered per browser', async () => {
+	page.url = new URL('http://hub.test/projects');
+	render(AppShell, { children });
+	await fireEvent.click(systemToggle());
+	expect(systemToggle().getAttribute('aria-expanded')).toBe('true');
+	expect(localStorage.getItem('autohub.nav.system.open')).toBe('true');
+	cleanup();
+	render(AppShell, { children });
+	expect(systemToggle().getAttribute('aria-expanded')).toBe('true');
+	await fireEvent.click(systemToggle());
+	expect(localStorage.getItem('autohub.nav.system.open')).toBe('false');
+	cleanup();
+	render(AppShell, { children });
+	expect(systemToggle().getAttribute('aria-expanded')).toBe('false');
+});
+
+test('unavailable storage falls back to collapsed and still toggles', async () => {
+	const get = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+		throw new Error('blocked');
+	});
+	const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+		throw new Error('blocked');
+	});
+	try {
+		page.url = new URL('http://hub.test/projects');
+		render(AppShell, { children });
+		expect(systemToggle().getAttribute('aria-expanded')).toBe('false');
+		await fireEvent.click(systemToggle());
+		expect(systemToggle().getAttribute('aria-expanded')).toBe('true');
+	} finally {
+		get.mockRestore();
+		set.mockRestore();
+	}
+});
+
+test.each([
+	['/projects/p1/runs/r1', 'PR run', 'Projects'],
+	['/runs/r1', 'PR run', 'PR runs'],
+	['/projects/p1', 'Project', 'Projects'],
+	['/settings/ai-catalogs', 'AI catalogs', 'AI catalogs'],
+	['/nowhere', 'Page not found', null]
+])('%s is labeled %s in the top bar', (path, label, activeName) => {
+	page.url = new URL(`http://hub.test${path}`);
+	render(AppShell, { children });
+	expect(screen.getAllByText(label, { selector: 'header span' })).toHaveLength(2);
+	const active = nav().querySelector('[aria-current="page"]');
+	expect(active?.textContent?.trim() ?? null).toBe(activeName);
 });
