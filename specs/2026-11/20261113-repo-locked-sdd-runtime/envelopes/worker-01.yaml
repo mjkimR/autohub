@@ -1,0 +1,18 @@
+kind: worker
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T02:38:51.502194Z'
+status: failed
+summary: 'Review loop reached its cap round with the macOS P1 recurring (review-03 #1)'
+findings: []
+checks: {}
+diff_scope:
+  base: ''
+  head: 6a980a75f996dd51cbffacc58636a696c9ef9b92
+problem:
+  cause: 'On macOS sandbox-exec a lingering sandbox process can swap .venv after the Hub''s identity check; the Hub still acts on .venv/.tmp afterwards (review-03 #1, recurs review-02 #1)'
+  attempts:
+  - Round 2 confined late sandboxes to .venv and added identity checks after each step
+  recovery: 'Host recovery: the Hub never acts on any path under .venv after a sandbox step (scratch created once before any package is installed and left in the entry, uv --no-cache), identity compared with the creation-time value, then one further fresh review round'
+activity_effort: high
