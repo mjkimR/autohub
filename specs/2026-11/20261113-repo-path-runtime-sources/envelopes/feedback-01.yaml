@@ -1,0 +1,10 @@
+kind: feedback
+stage: collect-feedback
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T04:40:27.636875Z'
+status: completed
+summary: 'Session swept: no new repository feedback; duplicate FB-worktree-setup-skips-frontend-install (open; hub-ui node_modules missing in the task worktree, just init hub-ui needed before just lint).'
+findings: []
+checks:
+  swept: PASS recorded=0 duplicates=1

@@ -1,5 +1,7 @@
 """Real isolated evaluation with the runtime the fixture repository's own uv.lock selects."""
 
+import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -7,6 +9,7 @@ import pytest
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.sdd import checkout as checkout_module
 from app.features.project_management.sdd import runtime, runtime_cache, runtime_install
+from app.features.project_management.sdd.lock_runtime import select
 from app.features.project_management.sdd.services import SddService
 
 from tests.integration.features.project_management.sdd import test_cli
@@ -110,3 +113,23 @@ async def test_source_build_hook_cannot_reach_the_network_or_credentials(tmp_pat
     assert "'venv': 'denied'" in observed and not (venv / "planted.pth").exists()
     assert list((staged / runtime_install.WORK / "wheels").glob("probe-1.0-*.whl"))
     assert list(venv.glob("lib/python*/site-packages/probe-1.0.dist-info"))  # installed by the sandboxed step
+
+
+PATH_ONLY = Path(__file__).parents[4] / "unit/features/project_management/sdd/fixtures/path-only-lock"
+
+
+async def test_path_source_runtime_installs_offline_through_the_sandbox(tmp_path, monkeypatch):
+    """devkit-spec and its bundle as an in-checkout path source: captured, built and installed without network."""
+    build = Path(runtime_install.build_home())
+    if not (build / ".venv/bin/python").exists():
+        pytest.skip("requires the pinned build environment (just install-sdd .cache/sdd-build config/sdd-build)")
+    monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+    root = tmp_path / "checkout"
+    shutil.copytree(PATH_ONLY, root)
+    selection = select(root)
+    shutil.rmtree(root)  # the install builds the content captured at selection
+    assert await runtime_install.build(selection, "") is True
+    assert runtime_cache.failure(selection.identity, runtime_cache.token_scope("")) is None
+    pin = json.loads((runtime_cache.entry(selection.identity) / "pin.json").read_text())
+    assert pin["bundles"] == ["path-probe"] and pin["packages"] == {"devkit-spec": "0.0.1"}
+    assert pin["identity"] == selection.identity and pin["revisions"] == {}

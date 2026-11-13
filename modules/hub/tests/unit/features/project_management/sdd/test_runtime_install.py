@@ -1,12 +1,14 @@
 """The install pipeline keeps the connector token in Hub-process fetches and builds sources in the sandbox."""
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
-from app.features.project_management.sdd import isolation, runtime_cache, runtime_install
-from app.features.project_management.sdd.lock_runtime import GitSource, Selection
+from app.features.project_management.sdd import isolation, lock_runtime, runtime_cache, runtime_install
+from app.features.project_management.sdd.lock_runtime import GitSource, PathSource, Selection
 
+FIXTURES = Path(__file__).parent / "fixtures"
 TOKEN = "ghs_secret_connector_token"
 IDENTITY = "e" * 64
 REVISION = "a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef"
@@ -66,6 +68,8 @@ def fake(tmp_path, monkeypatch):
                 (Path(cwd) / sub).mkdir(parents=True, exist_ok=True)
                 (Path(cwd) / sub / "pyproject.toml").write_text("[project]\n")
         if args[0] == "SANDBOX" and "--out-dir" in args:
+            if hook := hooks.get("build"):
+                hook(Path(args[-1]))
             out = Path(args[args.index("--out-dir") + 1])
             out.mkdir(exist_ok=True)
             (out / f"{Path(args[-1]).name}-1.0-py3-none-any.whl").write_text("")
@@ -250,3 +254,64 @@ async def test_hub_never_acts_below_the_venv_after_a_late_swap(fake, selection, 
     monkeypatch.setattr(runtime_install, "_clean", swap_then_clean)
     await runtime_install.build(selection, TOKEN)
     assert (outside / ".tmp").is_dir()  # untouched by the Hub
+
+
+def _path_source(package="my-bundle") -> PathSource:
+    files = (
+        ("pyproject.toml", False, b"[project]\nname = 'my-bundle'\n"),
+        ("scripts/run", True, b"#!/bin/sh\n"),
+        ("src/my_bundle/__init__.py", False, b"bundle = None\n"),
+    )
+    return PathSource(package, "tools/my-bundle", lock_runtime.tree_digest(files), files)
+
+
+def _captured(tree: Path) -> tuple:
+    return lock_runtime._capture(tree, [lock_runtime.PATH_FILES_LIMIT, lock_runtime.PATH_BYTES_LIMIT])
+
+
+async def test_path_sources_are_staged_by_the_hub_and_built_in_the_sandbox(fake, selection):
+    calls, _, probe = fake
+    source = _path_source()
+    staged = {}
+
+    def capture(directory):
+        if directory.name.startswith("path-"):
+            staged["files"] = _captured(directory)
+            staged["mode"] = (directory / "scripts/run").stat().st_mode
+
+    probe["hooks"]["build"] = capture
+    with_paths = Selection(**{**selection.__dict__, "paths": (source,)})
+    assert await runtime_install.build(with_paths, TOKEN) is True
+    assert runtime_cache.complete(IDENTITY)
+    builds = [call for call in calls if call["args"][0] == "SANDBOX" and "build" in call["args"]]
+    assert len(builds) == 3  # two Git sources and the path source, all offline in the sandbox writing work/
+    assert all({"--offline", "--no-build-isolation", "--wheel"} <= set(call["args"]) for call in builds)
+    assert all(Path(call["args"][1]).name == runtime_install.WORK for call in builds)
+    assert sum("fetch" in call["args"] for call in calls if call["args"][0] == "git") == 1  # Git only
+    assert staged["files"] == source.files and staged["mode"] & 0o100
+    assert lock_runtime.tree_digest(staged["files"]) == source.digest
+
+
+async def test_path_only_runtime_needs_no_fetch_or_token(fake, selection):
+    calls, _, _ = fake
+    path_only = Selection(**{**selection.__dict__, "git": (), "paths": (_path_source("devkit-spec"),)})
+    assert await runtime_install.build(path_only, "") is True
+    assert runtime_cache.complete(IDENTITY)
+    assert not [call for call in calls if call["args"][0] == "git"]
+    assert not any(TOKEN in arg for call in calls for arg in call["args"])
+
+
+@pytest.mark.skipif(shutil.which("uv") is None, reason="uv renders the lock")
+async def test_install_uses_the_content_captured_at_selection(fake, tmp_path, monkeypatch):
+    _, _, probe = fake
+    root = tmp_path / "checkout"
+    shutil.copytree(FIXTURES / "path-only-lock", root)
+    chosen = lock_runtime.select(root)
+    shutil.rmtree(root)  # the disposable checkout is gone before the background install runs
+    staged = {}
+    probe["hooks"]["build"] = lambda directory: staged.setdefault(
+        "digest", lock_runtime.tree_digest(_captured(directory))
+    )
+    assert await runtime_install.build(chosen, "") is True
+    assert runtime_cache.complete(chosen.identity)
+    assert staged["digest"] == chosen.paths[0].digest

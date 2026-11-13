@@ -92,8 +92,9 @@ their treatment to be reconsidered.
   `uv.lock` (`ADR-repository-locked-runtime`). A changed runtime identity on a
   later head continues an admitted run; its effective workflow, policy and
   configuration identity still refuse unauthorized change. A pull request can
-  change its lock and so the devkit rules that judge it; the user accepted that
-  risk in the ADR.
+  change its lock, or an in-repository bundle it locks as a path source
+  (`ADR-repository-path-sources`), and so the devkit rules that judge it; the
+  user accepted that risk in the ADR.
 - **Consequence**: a devkit bump inside a run changes the evaluator without
   re-enrollment; a bump that changes the effective workflow still leaves the run
   unable to continue. Runs, batch selections and bridge claims admitted under

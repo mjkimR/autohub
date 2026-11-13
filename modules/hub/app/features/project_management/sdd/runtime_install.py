@@ -1,14 +1,15 @@
 """Install a lock-derived SDD runtime so that no repository code meets a credential, the network or the Hub process.
 
-The Hub process fetches GitHub sources with the project's connector token into ``work/`` and installs hashed
-registry wheels into a fresh venv (installing a wheel runs no package code, and the venv's interpreter is not run
-again outside a sandbox afterwards). Each Git source is then built offline in an OS sandbox that can write only
-``work/``, with the image's pinned build backend; the built wheels are installed offline in a sandbox, and the
-inventory is probed in one. Those later sandboxes can write only ``.venv``; the staging root, ``pin.json`` and the
-publish rename stay Hub-only. A sandbox process may outlive its step on macOS, so after the first sandbox step the
-Hub never acts on a path below ``work/`` or ``.venv`` except removing ``work/`` symlink-safely; it verifies against
-the identities recorded when it created them that they are still those directories. The Hub writes ``pin.json`` from
-values it computes itself and publishes the staging directory atomically as the cache entry.
+The Hub process fetches GitHub sources with the project's connector token into ``work/``, writes the repository path
+sources captured at selection there (no fetch, no credential) and installs hashed registry wheels into a fresh venv
+(installing a wheel runs no package code, and the venv's interpreter is not run again outside a sandbox afterwards).
+Each Git or path source is then built offline in an OS sandbox that can write only ``work/``, with the image's
+pinned build backend; the built wheels are installed offline in a sandbox, and the inventory is probed in one.
+Those later sandboxes can write only ``.venv``; the staging root, ``pin.json`` and the publish rename stay Hub-only.
+A sandbox process may outlive its step on macOS, so after the first sandbox step the Hub never acts on a path below
+``work/`` or ``.venv`` except removing ``work/`` symlink-safely; it verifies against the identities recorded when it
+created them that they are still those directories. The Hub writes ``pin.json`` from values it computes itself and
+publishes the staging directory atomically as the cache entry.
 """
 
 import asyncio
@@ -134,6 +135,22 @@ async def fetch_sources(selection: Selection, staged: Path, token: str) -> dict[
     return packages
 
 
+def stage_paths(selection: Selection, staged: Path) -> dict[str, Path]:
+    """Hub-process copy of each path source's captured content into ``work/src``, before any sandbox runs."""
+    packages: dict[str, Path] = {}
+    for index, source in enumerate(selection.paths):
+        tree = staged / WORK / "src" / f"path-{index}"
+        tree.mkdir(parents=True)
+        for name, executable, data in source.files:
+            target = tree / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            _write_bytes(target, data, 0o755 if executable else 0o644)
+        if not (tree / "pyproject.toml").is_file():
+            raise InstallFailure("SDD_RUNTIME_INSTALL_FAILED")
+        packages[source.package] = tree
+    return packages
+
+
 async def install_wheels(selection: Selection, staged: Path) -> Path:
     """Create the venv with the image interpreter and add hashed registry wheels (no package code runs).
 
@@ -247,12 +264,18 @@ def _inventory(output: str) -> dict:
     return {"packages": packages, "bundles": bundles}
 
 
+def _write_bytes(path: Path, data: bytes, mode: int) -> None:
+    """Create a new file without following a symlink; ``O_EXCL`` refuses anything already there."""
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), mode)
+    with os.fdopen(descriptor, "wb") as handle:
+        handle.write(data)
+        os.fchmod(handle.fileno(), mode)  # the captured executable bit, independent of the process umask
+
+
 def _write_new(path: Path, text: str) -> None:
     """Create ``path`` without following anything a sandbox may have planted there."""
     path.unlink(missing_ok=True)
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o644)
-    with os.fdopen(descriptor, "w") as handle:
-        handle.write(text)
+    _write_bytes(path, text.encode(), 0o644)
 
 
 async def write_pin(selection: Selection, staged: Path, venv: Path, venv_identity: tuple[int, int]) -> dict:
@@ -299,6 +322,7 @@ async def install(selection: Selection, token: str) -> Path:
     try:
         (staged / WORK).mkdir()
         packages = await fetch_sources(selection, staged, token)
+        packages.update(stage_paths(selection, staged))
         venv = await install_wheels(selection, staged)
         venv_identity = _identity(venv)  # recorded before any sandbox could reach the venv
         await build_sources(packages, staged, venv, venv_identity)

@@ -1,0 +1,19 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T04:36:33.430799Z'
+status: completed
+review: review-01.yaml
+summary: 'Finding 1 resolved by the worker (self-verified, medium effort): workspace members inside the checkout are accepted like other in-checkout editable sources; Non-Goal 5 corrected and test_workspace_members_inside_the_checkout_install_like_path_sources added (42 passed).'
+findings:
+- issue: uv workspace members inside the checkout are now accepted as editable path sources, while spec Non-Goal 5 names workspace members as an example of locks that keep SDD_RUNTIME_UNLOCKED.
+  evidence: modules/hub/app/features/project_management/sdd/lock_runtime.py:222; specs/2026-11/20261113-repo-path-runtime-sources/spec.md section 3 Non-Goal 5
+  failure_condition: A repository whose selected group includes a uv workspace member with a workspace = true source.
+  suggested_action: Correct Non-Goal 5 and the Living Spec to say in-checkout workspace members install like other in-checkout editable sources, or refuse them explicitly, with a test.
+  resolution: resolved
+  severity: P3
+checks: {}
+diff_scope:
+  base: ''
+  head: 7c87697f4ec2ddbe809e15d5a3a892e7680ac27d

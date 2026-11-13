@@ -53,7 +53,8 @@ CLI_FIXES.update(
             "Commit a root uv.lock whose project declares devkit-spec in a dependency group or its dependencies."
         ),
         "SDD_RUNTIME_SOURCE_UNSUPPORTED": (
-            "Lock devkit packages only from PyPI wheels or https://github.com Git sources."
+            "Lock devkit packages only from PyPI wheels, https://github.com Git sources or path sources inside the "
+            "repository."
         ),
         "SDD_RUNTIME_PYTHON_UNSUPPORTED": "Widen requires-python to include the Python version Hub provides.",
         "SDD_RUNTIME_PREPARING": "Hub is installing the repository's locked devkit runtime; retry shortly.",
@@ -61,7 +62,7 @@ CLI_FIXES.update(
             "Grant the project's GitHub connector read access to the Git sources its lock names, then retry."
         ),
         "SDD_RUNTIME_INSTALL_FAILED": (
-            "Check that locked registry packages provide wheels and Git sources build with hatchling, then retry."
+            "Check that locked registry packages provide wheels and Git and path sources build with hatchling, then retry."
         ),
         "SDD_RECEIPT_MISSING": "Commit the repository's devkit configuration and installation receipt before enrolling.",
     }

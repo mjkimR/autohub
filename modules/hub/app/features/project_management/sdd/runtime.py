@@ -32,7 +32,7 @@ FAILURES = {
     ),
     "SDD_RUNTIME_INSTALL_FAILED": (
         "Hub could not install the repository's locked devkit runtime; check that registry packages provide wheels "
-        "and Git sources build with the provided backend, then retry."
+        "and Git and repository path sources build with the provided backend, then retry."
     ),
     "SDD_ISOLATION_UNAVAILABLE": "SDD evaluation requires an isolated runner (bubblewrap on Linux, sandbox-exec on macOS)",
 }

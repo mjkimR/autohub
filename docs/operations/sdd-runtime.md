@@ -19,11 +19,18 @@ A connected repository is evaluable when its evaluated commit has:
   group (Hub uses the first such group) or in its main dependencies, and a
   committed root `uv.lock` that is current for it. Only that group is installed.
 - A `requires-python` range that includes the image interpreter (Python 3.13).
-- Locked packages of that group from PyPI as hashed wheels, or Git sources on
-  `https://github.com/` pinned to exact revisions. Path, URL, editable and
-  custom-index sources are refused, as are registry packages without wheels.
-- Git sources that the project's GitHub connector token can read and that build
-  with hatchling, the backend the image pins.
+- Locked packages of that group from PyPI as hashed wheels, Git sources on
+  `https://github.com/` pinned to exact revisions, or path sources inside the
+  repository (editable, non-editable or uv workspace members), such as an
+  in-repository or snapshot bundle, whose path uses only ASCII letters, digits,
+  `.`, `_` and `-`. Path sources outside the repository, reached
+  through a symlink or containing one, URL, archive and custom-index sources are
+  refused, as are registry packages without wheels.
+- Path sources of at most 10,000 files and 32 MiB in total, excluding `.git`,
+  `.venv` and `__pycache__`. Hub installs them as built wheels, so editing a
+  bundle in a later commit yields a new runtime identity and install.
+- Git sources that the project's GitHub connector token can read, and Git and
+  path sources that build with hatchling, the backend the image pins.
 - Packages providing every bundle its `.devkit/config.toml` presets and
   `.devkit/installation.json` receipt name.
 - Committed regular `.devkit/config.toml` and `.devkit/installation.json` files and
@@ -79,10 +86,10 @@ returns them as HTTP errors; a running native run blocks with them, except
 | --- | --- |
 | `SDD_RUNTIME_PREPARING` (HTTP 503) | Wait for the install and retry; a running native run keeps its state and is inspected again on later dispatcher ticks, and blocks after 45 minutes of preparing until it is resumed |
 | `SDD_RUNTIME_UNLOCKED` | Commit a root `uv.lock` current with a `pyproject.toml` that declares `devkit-spec` |
-| `SDD_RUNTIME_SOURCE_UNSUPPORTED` | Lock devkit packages only from PyPI wheels or exact `https://github.com/` revisions |
+| `SDD_RUNTIME_SOURCE_UNSUPPORTED` | Lock devkit packages only from PyPI wheels, exact `https://github.com/` revisions or symlink-free path sources inside the repository within the size limits |
 | `SDD_RUNTIME_PYTHON_UNSUPPORTED` | Widen `requires-python` to include Python 3.13 |
 | `SDD_RUNTIME_SOURCE_UNAVAILABLE` | Grant the project's GitHub connector read access to each locked Git source; a request after the 10-minute failure marker expires starts a new install |
-| `SDD_RUNTIME_INSTALL_FAILED` | Check that registry packages provide wheels and Git sources build with hatchling; a request after the 10-minute failure marker expires starts a new install |
+| `SDD_RUNTIME_INSTALL_FAILED` | Check that registry packages provide wheels and Git and path sources build with hatchling; a request after the 10-minute failure marker expires starts a new install |
 | `SDD_RUNTIME_UNAVAILABLE` | Check that the host's `uv` binary runs and the cache directory is writable, then retry |
 | `SDD_ISOLATION_UNAVAILABLE` | Run on a Linux host with bubblewrap and user namespaces and repeat the host probe |
 | `SDD_BUNDLES_MISSING` | Add the packages providing the named bundles to the locked devkit group and commit `uv.lock` |
