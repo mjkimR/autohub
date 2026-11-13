@@ -1,0 +1,18 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T08:06:31.167264Z'
+status: completed
+summary: Self-verified two contributor guide targets and source feedback against the independently reviewed root tooling; medium tooling-only exception applies
+findings: []
+assumptions:
+- 'Medium first reconcile-reviewer skipped: root contributor tooling and its own guides only, all affected documents identified and exact behavior agreement shown; no package/capability or cross-component contract change'
+- Reconcile and source disposition were uncommitted during self comparison; no source changed after independent reverify
+checks:
+  documents: PASS README recipe/hook and testing syntax/directory/error/unverified boundaries agree with checker and 28 permanent CI tests; two exact guide targets modified
+  entrypoints: PASS derive returned zero pairs; two developer guides are not entrypoint-bearing
+  source_feedback: PASS named open FB-ci-workflow-manifest-paths-unchecked fully resolved within agreed static scope; no unrelated source edited
+diff_scope:
+  base: 7597d1f531cc4d0fc6aad1dd693bbf8862852894
+  head: 13d675a95070c869b4681023d337e5659f86de55

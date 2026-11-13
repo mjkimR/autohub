@@ -95,6 +95,36 @@ recovery. They do not require a local repository checkout or devkit seed runtime
 Generic flow/HTTP worker tests use their own controlled fixtures and do not
 establish deployed worker cooperation or live CI/merge.
 
+## Static CI references
+
+`just check-ci-references` reads `.github/workflows/*.yml` and `*.yaml` run steps
+without executing their commands. Backend lint invokes the same check, so the
+default `just lint-check` and `just lint` catch missing directly named just recipes
+or literal `config/` and `./config/` path arguments. Recipe and alias names come
+from the root justfile through `just --dump`. A path may be quoted or assigned to
+an option, such as `--manifest=config/example`; it resolves relative to the step,
+job-default or workflow-default literal working directory, then repository root.
+Failures identify the workflow, job and step and return exit 1.
+
+The checker supports simple direct command lines and backslash continuations.
+It ignores comments, display-only echo/printf commands and YAML prose fields.
+Computed words, just options, shell assignments, compound commands, control-flow
+blocks, functions/grouping, heredocs and directory-changing shell blocks are unsupported skips;
+multiline compound continuations skip the whole run block. Dynamic working directories also skip their step. The printed skipped count is
+unverified coverage, not a passed reference check. Nested scripts, variable
+expansion, recipe argument schemas and external actions are not interpreted.
+Invalid YAML, quoting or just introspection fails instead of passing silently.
+
+`modules/hub/tests/unit/scripts/test_ci_references.py` runs disposable workflows
+and justfiles. It verifies missing/existing recipes and aliases, deleted and
+quoted paths, inherited directories, syntax boundaries and lint failure
+propagation. A recipe side-effect sentinel confirms introspection does not run
+recipes. Run these regressions with:
+
+```sh
+PYTEST_WORKERS=0 just test modules/hub/tests/unit/scripts/test_ci_references.py
+```
+
 ## CI configuration
 
 [.github/workflows/ci.yml](../../.github/workflows/ci.yml) declares

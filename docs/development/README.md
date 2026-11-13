@@ -54,6 +54,7 @@ because completion checks include the frontend.
 | Work | Contributor command |
 | --- | --- |
 | Format/lint | `just lint` applies Python/UI formatting and supported lint fixes; `just lint-check` checks without fixes |
+| Literal CI recipe/config references | `just check-ci-references`; included by backend `just lint-check` and `just lint` |
 | Living Spec and documentation hygiene | `just docs-check` |
 | Python/UI types and production UI build | `just check` |
 | Backend or UI tests | `just test`, `just test-ui`; see [test selection](testing.md) |

@@ -8,6 +8,10 @@ default:
 check-devkit:
     @uv run --no-active --no-sync python scripts/check-devkit.py
 
+# Check literal recipe and config references in CI run steps without executing them
+check-ci-references:
+    @uv run --no-active --no-sync python scripts/check-ci-references.py
+
 # Validate living documents, SDD records and documentation hygiene
 docs-check:
     @uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync devkit rules check docs specs AGENTS.md README.md

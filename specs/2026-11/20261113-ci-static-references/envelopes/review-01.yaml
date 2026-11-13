@@ -1,0 +1,22 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T08:03:55.712739Z'
+status: completed
+summary: Independent reviewer reproduced one P2 unsupported multiline-shell false positive
+findings:
+- issue: Unsupported multiline shell constructs leak their bodies into reference validation
+  evidence: 'scripts/check-ci-references.py:57-70. Independent probes: unused() function body and false && newline continuation each falsely report removed recipe and config/missing, exit1, despite unsupported outer syntax.'
+  failure_condition: A non-keyword function or multiline compound command contains a body that the checker treats as standalone direct commands
+  suggested_action: Conservatively skip whole unsupported function/grouping or multiline compound run blocks and add permanent regressions
+  resolution: open
+  severity: P2
+assumptions:
+- Codex isolation emulated by absolute read scopes and before/after source snapshot audits
+checks:
+  tests: PASS supplied CI23 and neighboring12 plus actual adversarial scanner probes
+  integrity: PASS reviewer HEAD and empty status preserved; no authored probe files
+diff_scope:
+  base: 7597d1f531cc4d0fc6aad1dd693bbf8862852894
+  head: e8a21965c2d9c524f5820d3a2ebd03d56f1b79fc

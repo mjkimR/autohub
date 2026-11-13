@@ -1,0 +1,14 @@
+kind: green
+stage: fix-verify
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T08:01:01.734401Z'
+status: completed
+summary: Literal CI reference validation and read-only lint integration verified
+findings: []
+checks:
+  resolved: PASS CI23 regressions plus12 neighboring command regressions pass; actual workflow23 supported commands zero skips/errors
+  preserved: PASS full just lint and just check; direct script/test ruff checks pass; workflow commands and recipes never executed by scanner
+diff_scope:
+  base: 7597d1f531cc4d0fc6aad1dd693bbf8862852894
+  head: 06fa65152056fd64c1b2f5496449120a5746851c

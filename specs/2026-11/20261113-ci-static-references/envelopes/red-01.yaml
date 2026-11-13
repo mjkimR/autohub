@@ -1,0 +1,15 @@
+kind: red
+stage: reproduce
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:57:31.480492Z'
+status: completed
+summary: Missing checker and backend lint hook reproduced before implementation
+findings: []
+assumptions:
+- Tests were uncommitted during the Red run; no production fix existed
+checks:
+  reproduced: PASS 17 permanent command regressions fail against absent checker and missing lint hook; fixture syntax corrected before this run
+diff_scope:
+  base: 7597d1f531cc4d0fc6aad1dd693bbf8862852894
+  head: ''

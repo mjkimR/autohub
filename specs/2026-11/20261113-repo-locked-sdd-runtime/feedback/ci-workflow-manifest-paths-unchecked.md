@@ -8,7 +8,7 @@ target: .github/workflows/ci.yml
 origin: agent
 severity: workaround
 recurring: false
-status: open
+status: resolved
 created_at: 2026-11-13
 ---
 
@@ -29,3 +29,8 @@ Verification coverage gap.
 - **Suggestion**: Add a check (for example in `check-devkit` or `docs-check`) that every `config/` path and `just`
   recipe argument referenced from `.github/workflows/*.yml` exists, or derive the CI provisioning steps from the same
   recipe the local `test-sdd` uses.
+
+
+## Disposition
+
+Resolved by `SPEC-ci-static-references` within the authorized direct static-reference scope. Backend lint invokes `just check-ci-references`, which checks actual root recipe/alias names and literal config arguments in simple YAML run commands. Missing recipe and deleted-path regressions fail before the fix and pass afterward; the final CI suite has 28 cases plus 12 neighboring contributor regressions. Current workflows report 23 supported commands, zero skips and zero errors. Full lint/check pass, and independent review reverified the unsupported-shell false-positive repair. Computed references and complex shell remain explicit unverified skips; no live Actions run is claimed.
