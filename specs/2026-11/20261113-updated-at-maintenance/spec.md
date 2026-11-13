@@ -60,7 +60,7 @@ Hub timestamp-bearing models inherit a server-onupdate marker without an UPDATE 
 - **Then** its timestamps remain unchanged until its next non-exempt write; no backfill or trigger is installed.
 
 ### [AC-07] Mutation replay read consistency
-- **Given** retired SDD run acknowledgment and its exact replay
+- **Given** ordinary run resume or retired SDD run acknowledgment and its exact replay
 - **When** maintained timestamps are returned on SQLite or PostgreSQL
 - **Then** first response and replay preserve identical persisted timestamp serialization without restarting execution.
 

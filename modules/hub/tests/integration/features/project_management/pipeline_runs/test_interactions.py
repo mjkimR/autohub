@@ -69,6 +69,7 @@ async def test_answer_is_saved_without_execution_then_applied_once(client, proje
     assert resumed.json()["state"] == "dispatching"
     replay = await client.post(root + "/resume", json=payload)
     assert replay.status_code == 200
+    assert replay.json() == resumed.json()
     attempts = (await client.get(root + "/attempts")).json()["items"]
     assert len(attempts) == 1
     assert "Show an empty list" in attempts[0]["request_snapshot"]["instructions"]
