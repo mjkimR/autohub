@@ -1,0 +1,23 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T07:36:30.033920Z'
+status: completed
+summary: Completed sidebar overflow Development with measured decorative gutters, bounded Menu and active/focus clearance; focused116 tests and real browser31 cases passed, independent review and reconciliation passed, final report committed
+findings: []
+assumptions:
+- Codex boundaries emulated through absolute cwd/path scope, independent snapshots, accepted-base diff and separate per-operation escalations; no native enforcement guarantee
+unverified_areas:
+- API/page data mocked for actual browser layout; no live backend/authentication/deployment evidence. Host integrated-head verification remains pending.
+checks:
+  sync_start: PASS exit=0
+  tests: PASS sidebar/shell36 and nav/contrast80; Chrome31 actual layout cases including both themes and no-ResizeObserver fallback
+  lint: PASS full just lint, final docs-check and committed CI rules zero errors/warnings
+  build: PASS full just check backend/SDK/frontend and production build
+  review: PASS independent code-reviewer and reconcile-reviewer no findings, unchanged snapshot audits
+  scope: PASS exact allowed shared components/layout.css, Unit and UX-app-shell only; no extensions
+diff_scope:
+  base: 9c16c3e0aa80ec039f2806f5b9db50b6e0f34ed8
+  head: 1ce0b1ec5795a8626ac9943eb13581474e8cfdda
+activity_effort: medium
