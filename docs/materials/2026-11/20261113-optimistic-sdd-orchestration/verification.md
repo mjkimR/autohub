@@ -37,7 +37,7 @@ screens and implementation. Component tests establish UI state/request behavior;
 no rendered-browser walkthrough was performed.
 
 Serving-image verification inspected the Dockerfile and CI definitions; no full
-Docker image build or live GitHub Actions/provider canary was performed. The four
+Docker image build or live GitHub Actions/provider canary was performed. The five
 superseded ADRs remain retained history. Related open proposals keep independent
 outcomes and no dedicated open evaluator proposal was rejected.
 

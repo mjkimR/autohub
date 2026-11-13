@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-optimistic-sdd-orchestration
-status: pending
+status: resolved
 targets:
 - file: README.md
   resolution: modified

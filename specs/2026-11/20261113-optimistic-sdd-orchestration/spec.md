@@ -2,7 +2,7 @@
 id: SPEC-optimistic-sdd-orchestration
 title: Delegate SDD execution to repositories and agents
 summary: "Remove Hub-side SDD runtime preparation and workflow evaluation, start work through ordinary PR delivery and observe repository-owned GitHub Actions checks."
-status: in-progress
+status: completed
 created: 2026-11-13
 related_capabilities: [CAP-SDD-native-delivery, CAP-SDD-workflow-control, CAP-SDD-runtime-isolation, CAP-SDK-existing-pr-bridge, CAP-PR-pull-request-delivery, CAP-PR-operator-decisions]
 related_usecases: [UC-start-sdd-activity, UC-complete-sdd-workflow, UC-decide-sdd-proposal, UC-preview-sdd-milestone, UC-execute-sdd-batch]
