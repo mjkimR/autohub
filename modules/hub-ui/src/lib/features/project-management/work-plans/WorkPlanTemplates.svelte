@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -409,10 +410,10 @@
 		<section class="space-y-2 rounded-lg border p-3">
 			<h3>Save as template</h3>
 			<label class="block"
-				>Source Plan<select class="w-full rounded border p-2" bind:value={sourceId}
+				>Source Plan<NativeSelect class="w-full" bind:value={sourceId}
 					><option value="">Select a Plan</option>{#each plans as plan (plan.id)}<option
 							value={plan.id}>{plan.title} · {plan.id} · revision {plan.revision}</option
-						>{/each}</select
+						>{/each}</NativeSelect
 				></label
 			><label class="block">Template name<Input bind:value={sourceName} maxlength={200} /></label>
 			<p class="text-sm">

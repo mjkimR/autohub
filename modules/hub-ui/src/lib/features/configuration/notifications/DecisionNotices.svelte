@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { onMount, untrack } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import {
@@ -189,21 +190,21 @@
 						><input type="checkbox" bind:checked={form.enabled} />Enable decision notices</label
 					>
 					<label class="block"
-						>Project scope <select class="rounded border p-1" bind:value={form.project_scope}
+						>Project scope <NativeSelect bind:value={form.project_scope}
 							><option value="selected">Selected projects</option><option value="all"
 								>All current and future projects</option
-							></select
+							></NativeSelect
 						></label
 					>
 					{#if form.project_scope === 'selected'}
 						<label class="block"
-							>Projects (first 100 accessible projects)<select
-								class="block rounded border p-1"
+							>Projects (first 100 accessible projects)<NativeSelect
+								class="flex"
 								multiple
 								bind:value={form.project_ids}
 								>{#each projects as project (project.id)}<option value={project.id}
 										>{project.name}</option
-									>{/each}</select
+									>{/each}</NativeSelect
 							></label
 						>
 					{/if}
@@ -212,10 +213,10 @@
 							><input type="checkbox" bind:group={form.kinds} value={kind} />{kind}</label
 						>{/each}
 					<label class="block"
-						>Delivery <select class="rounded border p-1" bind:value={form.mode}
+						>Delivery <NativeSelect bind:value={form.mode}
 							><option value="immediate">Immediate — next eligible maintenance pass</option><option
 								value="digest">Digest — 15 minutes after first pending entry</option
-							></select
+							></NativeSelect
 						></label
 					>
 					<label class="block"

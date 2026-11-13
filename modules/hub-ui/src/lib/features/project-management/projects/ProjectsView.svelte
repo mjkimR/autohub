@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import ProjectConnectionCheckDialog from './ProjectConnectionCheckDialog.svelte';
 	import ProjectScheduleDialog from './ProjectScheduleDialog.svelte';
 	import ProjectSettingsDialog from './ProjectSettingsDialog.svelte';
@@ -205,7 +206,7 @@
 				placeholder="Search projects or repositories..."
 				bind:value={searchQuery}
 				oninput={() => loadProjects(0)}
-				class="h-10 pl-9"
+				class="pl-9"
 			/>
 		</div>
 	</div>
@@ -426,14 +427,10 @@
 					<label for="pType" class="text-xs font-semibold text-muted-foreground uppercase"
 						>Project Type</label
 					>
-					<select
-						id="pType"
-						bind:value={newProjectType}
-						class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs"
-					>
+					<NativeSelect id="pType" bind:value={newProjectType} class="w-full">
 						<option value="general">General (Standard Git Repository)</option>
 						<option value="sdd">Sdd (Spec-Driven Engineering)</option>
-					</select>
+					</NativeSelect>
 				</div>
 				<DialogFooter class="pt-4">
 					<Button type="button" variant="outline" onclick={() => (isCreateOpen = false)}>

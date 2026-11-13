@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -160,14 +161,10 @@
 				<label for="editProjectType" class="text-xs font-semibold text-muted-foreground uppercase"
 					>Project Type</label
 				>
-				<select
-					id="editProjectType"
-					bind:value={editProjectType}
-					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs"
-				>
+				<NativeSelect id="editProjectType" bind:value={editProjectType} class="w-full">
 					<option value="general">General (Standard Git repository)</option>
 					<option value="sdd">SDD (devkit-spec · Living Spec)</option>
-				</select>
+				</NativeSelect>
 			</div>
 			<div class="flex items-center gap-2">
 				<input
@@ -221,15 +218,11 @@
 								GitHub Connector
 							</label>
 							{#if githubConnectors.length > 0}
-								<select
-									id="ghConn"
-									bind:value={githubConnectorId}
-									class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
-								>
+								<NativeSelect id="ghConn" bind:value={githubConnectorId} class="w-full">
 									{#each githubConnectors as conn (conn.id)}
 										<option value={conn.id}>{conn.name} ({conn.id.slice(0, 8)}...)</option>
 									{/each}
-								</select>
+								</NativeSelect>
 							{:else}
 								<Input
 									id="ghConn"
@@ -300,16 +293,16 @@
 											class="text-xs font-semibold text-muted-foreground uppercase"
 											>Merge method</label
 										>
-										<select
+										<NativeSelect
 											id="mergeMethod"
 											bind:value={mergeMethod}
 											disabled={!autoMerge}
-											class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs disabled:cursor-not-allowed disabled:opacity-50"
+											class="w-full"
 										>
 											<option value="squash">Squash</option>
 											<option value="merge">Create merge commit</option>
 											<option value="rebase">Rebase</option>
-										</select>
+										</NativeSelect>
 									</div>
 									<div class="space-y-1">
 										<label
@@ -347,16 +340,12 @@
 										for="aiCatalog"
 										class="text-xs font-semibold text-muted-foreground uppercase">AI catalog</label
 									>
-									<select
-										id="aiCatalog"
-										bind:value={aiCatalogId}
-										class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs"
-									>
+									<NativeSelect id="aiCatalog" bind:value={aiCatalogId} class="w-full">
 										<option value="">Default (Personal Codex)</option>
 										{#each pipelineCatalogs as catalog (catalog.id)}
 											<option value={catalog.id}>{catalog.name} ({catalog.kind})</option>
 										{/each}
-									</select>
+									</NativeSelect>
 								</div>
 
 								<label class="flex items-center justify-between gap-3 text-sm">

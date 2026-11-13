@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import SddBatch from './SddBatch.svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -117,11 +118,11 @@
 	<div class="flex flex-wrap items-center gap-3">
 		<label class="text-sm"
 			>Milestone
-			<select
+			<NativeSelect
 				aria-label="Milestone"
 				value={milestone}
 				disabled={listing || !milestones?.complete}
-				class="ml-2 rounded-md border bg-background p-2"
+				class="ml-2"
 				onchange={(event) => {
 					invalidate();
 					milestone = event.currentTarget.value;
@@ -133,7 +134,7 @@
 						>{String(item.id)} · {String(item.title)} · {String(item.status)}</option
 					>
 				{/each}
-			</select>
+			</NativeSelect>
 		</label>
 		<Button variant="outline" disabled={!milestone || loading} onclick={inspect}
 			>Preview milestone</Button

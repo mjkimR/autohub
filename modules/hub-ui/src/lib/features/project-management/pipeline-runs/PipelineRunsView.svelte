@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { SvelteMap } from 'svelte/reactivity';
 	import RunDecisionsDialog from './RunDecisionsDialog.svelte';
 	import RunGroupFilter from './RunGroupFilter.svelte';
@@ -263,7 +264,6 @@
 					loadCatalogs();
 				}}
 				disabled={loading}
-				class="min-h-11 sm:min-h-0"
 			>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
@@ -279,23 +279,23 @@
 				placeholder="Search PR number, title, branch..."
 				bind:value={searchQuery}
 				oninput={() => loadRuns(0)}
-				class="h-11 pl-9 text-base sm:h-10 sm:text-sm"
+				class="pl-9"
 			/>
 		</div>
 
 		<!-- Project selector -->
-		<select
+		<NativeSelect
 			aria-label="Project filter"
 			disabled={!!scopedProject}
 			bind:value={selectedProjectId}
 			onchange={() => loadRuns(0)}
-			class="h-11 max-w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
+			class="max-w-full min-w-0"
 		>
 			{#if !scopedProject}<option value="">All Projects</option>{/if}
 			{#each projects as project (project.id)}
 				<option value={project.id}>{project.name}</option>
 			{/each}
-		</select>
+		</NativeSelect>
 
 		<!-- State selector -->
 		<RunGroupFilter
@@ -304,11 +304,11 @@
 				void loadRuns(0);
 			}}
 		/>
-		<select
+		<NativeSelect
 			aria-label="Run state"
 			bind:value={selectedState}
 			onchange={() => loadRuns(0)}
-			class="h-11 max-w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
+			class="max-w-full min-w-0"
 		>
 			<option value="">All States</option>
 			<option value="queued">Queued</option>
@@ -320,7 +320,7 @@
 			<option value="paused">Paused</option>
 			<option value="blocked">Blocked</option>
 			<option value="canceled">Canceled</option>
-		</select>
+		</NativeSelect>
 	</div>
 
 	{#if list.error}

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
+	import { Input } from '$lib/components/ui/input';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -93,20 +95,16 @@
 		<h3 class="mr-auto text-sm font-semibold">Proposals</h3>
 		<label class="text-sm"
 			>Base branch
-			<input class="mt-1 block w-36 rounded border bg-background p-2" bind:value={base} />
+			<Input class="mt-1 w-36" bind:value={base} />
 		</label>
 		<label class="text-sm"
 			>Activity effort
-			<select
-				class="mt-1 block rounded border bg-background p-2"
-				bind:value={effort}
-				aria-label="Proposal activity effort"
-			>
+			<NativeSelect class="mt-1 flex" bind:value={effort} aria-label="Proposal activity effort">
 				<option value="">Use proposal recommendation</option>
 				<option value="low">low</option><option value="medium">medium</option><option value="high"
 					>high</option
 				>
-			</select>
+			</NativeSelect>
 		</label>
 		<Button variant="outline" disabled={loading} onclick={load}>Refresh</Button>
 	</div>

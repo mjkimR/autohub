@@ -214,7 +214,7 @@
 								<button
 									type="button"
 									aria-expanded={!!openTimelines[attempt.id]}
-									class="min-h-11 text-sm text-primary hover:underline"
+									class="h-8 text-sm text-primary hover:underline"
 									onclick={() => (openTimelines[attempt.id] = !openTimelines[attempt.id])}
 								>
 									{openTimelines[attempt.id] ? 'Hide' : 'Show'} requests and replies
@@ -240,7 +240,7 @@
 			{/if}
 		</div>
 
-		<DialogFooter class="[&_button]:min-h-11">
+		<DialogFooter>
 			<Button type="button" variant="outline" onclick={onclose}>Close</Button>
 		</DialogFooter>
 	</DialogContent>

@@ -21,6 +21,8 @@ or neutral grey, so an exception is the most salient element on a screen. Token 
 
 - Use ink for every action and control. A routine control, such as Resume or Pause on a run row, carries no status
   hue, because a hued control competes with the status it acts on.
+- Form controls take ink too: focus uses `ring`, and checked checkboxes and radios use `primary`. `layout.css`
+  overrides the blue defaults of `@tailwindcss/forms`.
 - Use neutral surfaces for decoration. An icon tile is `bg-muted` with `text-muted-foreground`, never a tinted
   `primary`.
 - Use the `destructive` Badge or Button variant for a failed run, a failed job or a destructive action. Do not use it

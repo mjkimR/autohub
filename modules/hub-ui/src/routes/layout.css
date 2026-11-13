@@ -149,4 +149,26 @@
 	html {
 		@apply font-sans;
 	}
+
+	/*
+	 * @tailwindcss/forms paints focus and checked states with raw blue. Its base rules are
+	 * emitted after this block at the same specificity, so the repeated :focus/:is() raises
+	 * these by one pseudo-class; utilities (component focus-visible rings) still win by layer.
+	 */
+	:is(input, select, textarea):focus:focus {
+		--tw-ring-color: color-mix(in oklch, var(--ring) 50%, transparent);
+		--tw-ring-offset-color: var(--background);
+		border-color: var(--ring);
+	}
+	/* Native checkbox/radio tinted ink: the browser keeps the mark legible on light and dark ink. */
+	input:is([type='checkbox'], [type='radio']):is([type]) {
+		appearance: auto;
+		accent-color: var(--primary);
+		background: none;
+		border: none;
+	}
+	input:is([type='checkbox'], [type='radio']):focus:focus {
+		--tw-ring-color: var(--ring);
+		--tw-ring-offset-color: var(--background);
+	}
 }

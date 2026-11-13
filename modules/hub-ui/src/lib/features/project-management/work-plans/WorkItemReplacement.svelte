@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
+	import { Input } from '$lib/components/ui/input';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -231,8 +233,8 @@
 		</p>
 		{#if !read.links.some((link) => link.active)}
 			<label class="block"
-				>Replacement Work Item ID<input
-					class="block w-full rounded border bg-background p-2"
+				>Replacement Work Item ID<Input
+					class="mt-1"
 					bind:value={candidateId}
 					oninput={invalidate}
 					disabled={busy || !!pending}
@@ -345,15 +347,15 @@
 				</p>
 				{#if reviewing.op === 'accept'}
 					<label class="block"
-						>Dependent edge<select
-							class="block rounded border bg-background p-2"
+						>Dependent edge<NativeSelect
+							class="flex"
 							bind:value={dependentId}
 							onchange={() => (confirmed = false)}
 							disabled={busy}
 							><option value="">Choose one existing edge</option
 							>{#each dependents as dependent (dependent.id)}<option value={dependent.id}
 									>{dependent.key} → {item.key}</option
-								>{/each}</select
+								>{/each}</NativeSelect
 						></label
 					>
 					<p>

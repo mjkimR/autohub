@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { Badge } from '$lib/components/ui/badge';
@@ -89,17 +90,13 @@
 		</label>
 		<label class="flex items-center gap-2 font-medium">
 			Status
-			<select
-				bind:value={status}
-				onchange={() => load(0)}
-				class="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-			>
+			<NativeSelect bind:value={status} onchange={() => load(0)}>
 				<option value="">Any</option>
 				<option value="received">Received</option>
 				<option value="retrying">Retrying</option>
 				<option value="processed">Processed</option>
 				<option value="failed">Failed</option>
-			</select>
+			</NativeSelect>
 		</label>
 	</div>
 

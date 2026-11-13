@@ -61,7 +61,7 @@
 				work.
 			</p>
 		</div>
-		<div class="flex flex-wrap gap-2 [&_button]:min-h-11 sm:[&_button]:min-h-0">
+		<div class="flex flex-wrap gap-2">
 			<Button onclick={() => (creating = true)} disabled={catalogs.loading || catalogs.saving}>
 				<Plus class="size-4" /> Add catalog
 			</Button>
@@ -133,7 +133,7 @@
 									{catalog.availability_note}
 								</p>{/if}
 						</div>
-						<div class="flex flex-wrap gap-2 [&_button]:min-h-11 sm:[&_button]:min-h-0">
+						<div class="flex flex-wrap gap-2">
 							<Button
 								size="sm"
 								onclick={() => (availabilityCatalog = catalog)}

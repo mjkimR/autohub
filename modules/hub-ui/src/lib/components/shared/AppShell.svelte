@@ -123,7 +123,6 @@
 	<header class="flex items-center gap-3 border-b border-border p-3 lg:hidden">
 		<Button
 			variant="outline"
-			class="min-h-11"
 			aria-controls="primary-navigation"
 			aria-expanded={menuOpen}
 			onclick={() => (menuChoice = { url: page.url.href, open: !menuOpen })}

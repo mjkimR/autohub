@@ -69,11 +69,7 @@
 	<div class="flex items-center gap-3">
 		<div class="relative max-w-sm flex-1">
 			<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-			<Input
-				placeholder="Search task specifications..."
-				bind:value={searchQuery}
-				class="h-10 pl-9"
-			/>
+			<Input placeholder="Search task specifications..." bind:value={searchQuery} class="pl-9" />
 		</div>
 	</div>
 

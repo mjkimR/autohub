@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		Dialog,
@@ -86,26 +87,20 @@
 				</label>
 				<label class="grid gap-1 text-sm font-medium">
 					Provider
-					<select
-						bind:value={kind}
-						class="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-					>
+					<NativeSelect bind:value={kind}>
 						<option value="codex">Codex</option>
 						<option value="jules">Jules</option>
-					</select>
+					</NativeSelect>
 				</label>
 				{#if kind === 'jules'}
 					<label class="grid gap-1 text-sm font-medium">
 						Jules connector
-						<select
-							bind:value={connectorId}
-							class="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-						>
+						<NativeSelect bind:value={connectorId}>
 							<option value="">Connect later</option>
 							{#each connectors as connector (connector.id)}
 								<option value={connector.id}>{connector.name}</option>
 							{/each}
-						</select>
+						</NativeSelect>
 					</label>
 					<p class="text-xs text-muted-foreground">
 						Register API keys in Connectors. Sessions require an enabled Jules connector.

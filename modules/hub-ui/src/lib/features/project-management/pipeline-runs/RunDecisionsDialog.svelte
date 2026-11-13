@@ -12,6 +12,7 @@
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
 	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
 	import {
 		Dialog,
 		DialogContent,
@@ -341,9 +342,8 @@
 								<summary class="cursor-pointer font-medium">Dismiss this question</summary>
 								<div class="mt-3 space-y-3">
 									<label class="block space-y-2"
-										>Reason to dismiss<input
-											class="w-full rounded-md border bg-background p-2"
-											maxlength="2000"
+										>Reason to dismiss<Input
+											maxlength={2000}
 											bind:value={reason}
 											disabled={locked}
 										/></label
