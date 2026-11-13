@@ -147,10 +147,7 @@
 			>
 				<Server class="size-5" />
 			</div>
-			<div>
-				<div class="font-bold tracking-tight text-sidebar-foreground">Autohub</div>
-				<div class="text-xs font-medium text-muted-foreground">Scheduler Manager</div>
-			</div>
+			<div class="font-bold tracking-tight text-sidebar-foreground">Autohub</div>
 		</div>
 
 		<!-- Nav Links -->

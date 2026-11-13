@@ -143,7 +143,7 @@
 						title="Resume Run"
 						aria-label="Resume Run"
 					>
-						<Play class="size-4 text-warning" />
+						<Play class="size-4" />
 					</Button>
 				{:else}
 					<Button
@@ -155,7 +155,7 @@
 						title="Pause Run"
 						aria-label="Pause Run"
 					>
-						<Pause class="size-4 group-hover/button:text-warning" />
+						<Pause class="size-4" />
 					</Button>
 				{/if}
 

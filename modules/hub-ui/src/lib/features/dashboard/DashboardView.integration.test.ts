@@ -85,7 +85,8 @@ afterEach(() => {
 	vi.clearAllMocks();
 });
 
-const tile = (label: string) => screen.getByText(label).parentElement as HTMLElement;
+const tile = (label: string) =>
+	screen.getByText(label, { selector: ':not([data-run-state])' }).parentElement as HTMLElement;
 
 test('counts runs by where they stand, including every state that waits for the operator', async () => {
 	render(DashboardView);

@@ -88,9 +88,7 @@
 			>
 				<div class="flex items-center gap-1.5 font-medium text-muted-foreground">
 					<Radio
-						class="size-3.5 {refreshIntervalSec > 0
-							? 'animate-pulse text-success'
-							: 'text-muted-foreground'}"
+						class="size-3.5 {refreshIntervalSec > 0 ? 'text-success' : 'text-muted-foreground'}"
 					/>
 					<span>Sync:</span>
 				</div>

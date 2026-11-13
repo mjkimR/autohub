@@ -6,15 +6,15 @@ import { getRunStatePresentation, getStateBadgeVariant } from './presentation';
 type RunState = components['schemas']['PipelineRunState'];
 
 const expected: [RunState, string, unknown, string][] = [
-	['queued', 'outline', CircleDashed, 'queued'],
-	['dispatching', 'info', Hammer, 'dispatching'],
-	['implementing', 'info', Hammer, 'implementing'],
-	['awaiting_ci', 'outline', Clock, 'awaiting ci'],
-	['completed', 'success', Check, 'completed'],
-	['canceled', 'secondary', Slash, 'canceled'],
-	['paused', 'attention', Pause, 'paused'],
-	['blocked', 'attention', Ban, 'blocked'],
-	['failed', 'destructive', OctagonX, 'failed']
+	['queued', 'outline', CircleDashed, 'Queued'],
+	['dispatching', 'info', Hammer, 'Dispatching'],
+	['implementing', 'info', Hammer, 'Implementing'],
+	['awaiting_ci', 'outline', Clock, 'Awaiting CI'],
+	['completed', 'success', Check, 'Completed'],
+	['canceled', 'secondary', Slash, 'Canceled'],
+	['paused', 'attention', Pause, 'Paused'],
+	['blocked', 'attention', Ban, 'Blocked'],
+	['failed', 'destructive', OctagonX, 'Failed']
 ];
 
 describe('getRunStatePresentation', () => {
@@ -32,6 +32,6 @@ describe('getRunStatePresentation', () => {
 
 	test('an unknown future state falls back to a neutral labeled badge', () => {
 		const view = getRunStatePresentation('rehydrating' as RunState);
-		expect(view).toEqual({ variant: 'secondary', icon: CircleDashed, label: 'rehydrating' });
+		expect(view).toEqual({ variant: 'secondary', icon: CircleDashed, label: 'Rehydrating' });
 	});
 });
