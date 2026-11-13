@@ -1,0 +1,19 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T00:55:56.585928Z'
+status: completed
+summary: 'round 1; reconcile-reviewer PASS with no findings: CAP-PR-operator-decisions and UX-app-shell match the implementation; no-impact claims (CAP-MCP-tool-access, UX-decision-inbox, use cases, steering, architecture) confirmed.'
+findings: []
+assumptions:
+- Isolated reconcile-reviewer subagent (claude-code native), called because the change spans hub and hub-ui; reviewer left HEAD, index and tracked tree unchanged.
+- docs/materials/2026-11/20261113-impeccable-uiux-pilot fixture mock without actionable_total_count is dated evidence material, not a Living Spec target.
+unverified_areas:
+- Inbound references under specs/ (draft proposal target docs, completed specs, feedback) were not reviewed line by line; they are history or planning records.
+checks:
+  rules: PASS devkit rules check --ci --base b40e771 (0 errors, 0 warnings)
+diff_scope:
+  base: b40e7715a30e2011e08db77726708f037f56e343
+  head: c09e68dca2640740efbe19fbdabe26b34feaf334
+activity_effort: medium

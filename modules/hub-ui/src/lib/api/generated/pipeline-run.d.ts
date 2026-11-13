@@ -499,6 +499,8 @@ export interface components {
             has_more: boolean;
             /** Next Cursor */
             next_cursor: string | null;
+            /** Actionable Total Count */
+            actionable_total_count: number;
         };
         /** DecisionReviewRequest */
         DecisionReviewRequest: {

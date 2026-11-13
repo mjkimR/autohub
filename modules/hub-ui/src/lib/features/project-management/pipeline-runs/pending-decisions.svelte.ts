@@ -1,45 +1,41 @@
 import { api } from '$lib/api';
 import { session } from '$lib/stores/session.svelte';
 
-/** Rows read per check; a larger backlog is shown as a lower bound ("50+"). */
-export const PENDING_DECISION_SAMPLE = 50;
 /** Background cadence while the tab is visible; navigation refreshes are throttled separately. */
 export const PENDING_DECISION_POLL_MS = 60_000;
 export const PENDING_DECISION_NAV_MIN_MS = 15_000;
 
 /**
  * Operator-owed decisions across visible projects: the Decision inbox rows that carry
- * attention (actionable "Needs decision" and "Answer saved — resume pending").
- * `unknown` covers loading, errors and an undecidable sample, and is always shown neutral.
+ * attention (actionable "Needs decision" and "Answer saved — resume pending"), counted
+ * exactly by the backend. `unknown` covers loading and errors and is always shown neutral.
  */
-export type PendingDecisionCount =
-	{ status: 'unknown' } | { status: 'known'; count: number; lowerBound: boolean };
+export type PendingDecisionCount = { status: 'unknown' } | { status: 'known'; count: number };
 
 export function summarizePendingDecisions(page: {
-	items: { actionable: boolean }[];
-	has_more: boolean;
+	actionable_total_count?: number;
 }): PendingDecisionCount {
-	const count = page.items.filter((item) => item.actionable).length;
-	// More rows exist but none in the sample are owed: the total is not knowable from this page.
-	if (page.has_more && count === 0) return { status: 'unknown' };
-	return { status: 'known', count, lowerBound: page.has_more };
+	const count = page.actionable_total_count;
+	// A response without a valid count (e.g. an older backend) must not look like operator debt.
+	if (count === undefined || !Number.isInteger(count) || count < 0) {
+		return { status: 'unknown' };
+	}
+	return { status: 'known', count };
 }
 
-/** Visible count text, e.g. "3" or "50+"; empty when nothing is owed or the count is unknown. */
+/** Visible count text, e.g. "3"; empty when nothing is owed or the count is unknown. */
 export function pendingDecisionText(value: PendingDecisionCount): string {
 	if (value.status !== 'known' || value.count === 0) return '';
-	return `${value.count}${value.lowerBound ? '+' : ''}`;
+	return String(value.count);
 }
 
-/** Screen-reader phrase, e.g. "3 pending decisions" or "50 or more pending decisions". */
+/** Screen-reader phrase, e.g. "3 pending decisions" or "1 pending decision". */
 export function pendingDecisionPhrase(value: PendingDecisionCount): string {
-	const text = pendingDecisionText(value);
-	if (!text || value.status !== 'known') return '';
-	const noun = value.count === 1 && !value.lowerBound ? 'decision' : 'decisions';
-	return `${value.count}${value.lowerBound ? ' or more' : ''} pending ${noun}`;
+	if (value.status !== 'known' || value.count === 0) return '';
+	return `${value.count} pending ${value.count === 1 ? 'decision' : 'decisions'}`;
 }
 
-/** Shell signal source: one bounded inbox read per minute while visible, plus throttled navigation refreshes. */
+/** Shell signal source: one minimal inbox read per minute while visible, plus throttled navigation refreshes. */
 export class PendingDecisions {
 	value = $state<PendingDecisionCount>({ status: 'unknown' });
 	#checkedAt = 0;
@@ -53,7 +49,8 @@ export class PendingDecisions {
 		let next: PendingDecisionCount = { status: 'unknown' };
 		try {
 			const { data } = await api.GET('/api/v1/pipeline-runs/decisions', {
-				params: { query: { limit: PENDING_DECISION_SAMPLE } }
+				// The count covers every row; one item is the smallest page the list accepts.
+				params: { query: { limit: 1 } }
 			});
 			if (data) next = summarizePendingDecisions(data);
 		} catch {

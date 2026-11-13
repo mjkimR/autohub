@@ -1,0 +1,19 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T00:56:49.909576Z'
+status: completed
+summary: Decision list reports exact actionable_total_count (additive DecisionPage field, one aggregate in the page transaction); shell reads limit=1 and shows the exact count; Living Spec updated; review and reconcile PASS.
+findings: []
+assumptions:
+- 'API shape: additive field on the existing list response instead of a count endpoint (PLAN-pending-decision-count); named for actionable decision-inbox rows so a later broader owed-work aggregate can be added separately.'
+- Worktree chosen under worktree=auto because another task was in flight in the primary checkout.
+- Separate session-depth docs commit 84edb07 (hub-ui README Input/Textarea restyle allowance) rides on this branch.
+checks:
+  tests: PASS just test test_discovery.py+tests/integration/mcp 37/37 (SQLite, test_discovery 10/10 after the post-review test); just test-pg test_discovery.py 10/10; just test-ui 437/437 in 56 files
+  build: PASS just check (pyright hub/sdk 0 errors, svelte-check, vite build); just check-ui-api up to date
+  lint: PASS just lint-check; devkit rules check --ci --base b40e771 0 errors 0 warnings
+diff_scope:
+  base: b40e7715a30e2011e08db77726708f037f56e343
+  head: 2364090219f86c4b32b153505dfe4a2fac59ca21

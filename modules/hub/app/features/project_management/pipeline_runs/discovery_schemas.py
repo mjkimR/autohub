@@ -38,6 +38,8 @@ class DecisionPage(BaseModel):
     items: list[DecisionEntryRead]
     has_more: bool
     next_cursor: str | None
+    # Actionable rows the filters admit, independent of cursor and limit.
+    actionable_total_count: int
 
 
 class DecisionReviewRequest(BaseModel):

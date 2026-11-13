@@ -1,6 +1,7 @@
 from uuid import UUID, uuid4
 
 import pytest
+from app.features.project_management.pipeline_runs.discovery_repo import DecisionDiscoveryRepository
 from app.features.project_management.pipeline_runs.models import DecisionEntry, PipelineRun, RunQuestion
 from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy import select
@@ -28,6 +29,7 @@ async def test_discovery_question_lifecycle_and_exact_owner(client, project, git
     assert entry["run_state"] == "blocked"
     assert entry["subject_id"] == question["id"]
     assert entry["question_state"] == "open"
+    assert page["actionable_total_count"] == 1
     assert not github.paths
     selected = await client.get(root + "/questions/" + question["id"])
     assert selected.status_code == 200
@@ -36,15 +38,18 @@ async def test_discovery_question_lifecycle_and_exact_owner(client, project, git
     assert reviewed.status_code == 200
     assert not github.paths
     await answer(client, root, question)
-    updated = (await client.get(URL)).json()["items"][0]
+    answered = (await client.get(URL)).json()
+    updated = answered["items"][0]
     assert updated["question_state"] == "answered"
+    assert updated["actionable"] is True and answered["actionable_total_count"] == 1
     assert updated["waiting_since"] == entry["waiting_since"]
     dismissed = await client.post(
         root + f"/questions/{question['id']}/dismiss",
         json={"expected_revision": (await state(client, root))["revision"], "reason": "No longer needed"},
     )
     assert dismissed.status_code == 200
-    assert (await client.get(URL)).json()["items"] == []
+    emptied = (await client.get(URL)).json()
+    assert emptied["items"] == [] and emptied["actionable_total_count"] == 0
 
 
 async def test_keyset_bounded_and_cursor_filters(client, project, github, session):
@@ -67,8 +72,36 @@ async def test_keyset_bounded_and_cursor_filters(client, project, github, sessio
     github.paths.clear()
     first = (await client.get(URL, params={"limit": 100})).json()
     assert len(first["items"]) == 100 and first["has_more"]
+    assert first["actionable_total_count"] == 105
     second = (await client.get(URL, params={"limit": 100, "cursor": first["next_cursor"]})).json()
     assert len(second["items"]) == 5 and not second["has_more"]
+    assert second["actionable_total_count"] == 105
+    single = (await client.get(URL, params={"limit": 1})).json()
+    assert len(single["items"]) == 1 and single["has_more"] and single["actionable_total_count"] == 105
+    following = (await client.get(URL, params={"limit": 1, "cursor": single["next_cursor"]})).json()
+    assert following["actionable_total_count"] == 105
+    for params, total in (
+        ({"project_id": run["project_id"]}, 105),
+        ({"kind": "run-question"}, 105),
+        ({"question_state": "open"}, 105),
+        ({"question_state": "answered"}, 0),
+        ({"kind": "native-proposal"}, 0),
+    ):
+        filtered = (await client.get(URL, params={**params, "limit": 1})).json()
+        assert filtered["actionable_total_count"] == total, params
+        assert bool(filtered["items"]) is bool(total)
+    other = await client.post(
+        "/api/v1/projects",
+        json={
+            "name": "Other",
+            "repository": "owner/other",
+            "github_connector_id": project["github_connector_id"],
+            "verification": scenarios.VERIFICATION,
+        },
+    )
+    assert other.status_code == 201
+    elsewhere = (await client.get(URL, params={"project_id": other.json()["id"]})).json()
+    assert elsewhere["items"] == [] and elsewhere["actionable_total_count"] == 0
     assert not set(r["key"] for r in first["items"]) & set(r["key"] for r in second["items"])
     assert not github.paths
     assert (await client.get(URL, params={"cursor": "broken"})).status_code == 422
@@ -91,8 +124,10 @@ async def test_native_generation_and_publication_pending(client, project, github
     run.sdd_snapshot = {"provider": "devkit-spec", "spec_dir": "specs/test", "policy": {}}
     run.sdd_progress = {"head_sha": "c" * 40, "base_sha": "d" * 40, "current": {"requests": [request]}, "workflow": {}}
     await session.commit()
-    first = (await client.get(URL)).json()["items"][0]
+    listed = (await client.get(URL)).json()
+    first = listed["items"][0]
     assert first["kind"] == "native-worker-question"
+    assert listed["actionable_total_count"] == 1
     run = await session.get(PipelineRun, run.id)
     run.sdd_progress = {**run.sdd_progress, "unrelated": "refresh"}
     run.revision += 1
@@ -119,8 +154,10 @@ async def test_native_generation_and_publication_pending(client, project, github
         ],
     }
     await session.commit()
-    pending = (await client.get(URL)).json()["items"][0]
+    publishing = (await client.get(URL)).json()
+    pending = publishing["items"][0]
     assert pending["actionable"] is False
+    assert publishing["actionable_total_count"] == 0
     run.sdd_progress = {**run.sdd_progress, "current": {"requests": []}}
     await session.commit()
     assert (await client.get(URL)).json()["items"][0]["actionable"] is False
@@ -130,6 +167,30 @@ async def test_native_generation_and_publication_pending(client, project, github
     }
     await session.commit()
     assert (await client.get(URL)).json()["items"] == []
+
+
+async def test_count_shares_the_page_transaction(client, project, github, monkeypatch):
+    run = (await enroll(client, project)).json()
+    await ask(client, f"/api/v1/pipeline-runs/{run['id']}")
+    sessions = []
+    page, count = DecisionDiscoveryRepository.page, DecisionDiscoveryRepository.count_actionable
+
+    async def record_page(self, session, *args):
+        sessions.append(("page", session))
+        return await page(self, session, *args)
+
+    async def record_count(self, session, *args):
+        sessions.append(("count", session))
+        return await count(self, session, *args)
+
+    monkeypatch.setattr(DecisionDiscoveryRepository, "page", record_page)
+    monkeypatch.setattr(DecisionDiscoveryRepository, "count_actionable", record_count)
+    github.paths.clear()
+    response = await client.get(URL, params={"limit": 1})
+    assert response.status_code == 200 and response.json()["actionable_total_count"] == 1
+    assert [name for name, _ in sessions] == ["page", "count"]
+    assert sessions[0][1] is sessions[1][1]
+    assert not github.paths
 
 
 async def test_projection_rolls_back_with_owner(client, project, github, session):
