@@ -1,0 +1,24 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:13:43.220905Z'
+status: completed
+summary: 'Development turn to the final change report: specified, implemented the owed-item read API and per-run pending-decision flag, regenerated the typed client, reflected the Living Spec, closed the code review (1 P2 and 3 P3; 3 resolved, 1 waived) and reconcile round 1 (2 P1, 2 P2, 1 P3 fixed, self-verified). Outcome measurement: no baseline named; head measured by test, list and counts each 1 statement (2 with project_id) in one transaction, identical for 1 and 3 objects per kind; base had no owed read (decision list uses 2 statements); missing base measurement left to the Host. Integration not performed: the worker contract forbids it.'
+findings: []
+checks:
+  sync_start: PASS exit=0
+  tests: PASS just test 1445/1445 (76 skipped); just test-pg full 1472 passed; owed_items pg 15 passed
+  build: PASS just check
+  lint: PASS just lint-check; devkit rules check --ci
+diff_scope:
+  base: ''
+  head: fc20721a8d485065467069b057f686b8c4b00ae6
+scope_extensions:
+- path: modules/hub/app/router.py
+  task: 1
+  reason: registers the owed-items router under the authenticated v1 API so the owed reads of AC-01 and AC-10 are reachable
+  requirements:
+  - AC-01
+  - AC-10
+activity_effort: medium

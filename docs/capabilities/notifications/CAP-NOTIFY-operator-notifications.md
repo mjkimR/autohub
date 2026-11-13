@@ -171,3 +171,8 @@ Subscription revision zero still checks destination generation. Review origin is
 Transport state `accepted` means Telegram accepted the message, not that a person read it or applied a decision. Structured rejection is `failed`; timeout, malformed outcome and expired 60-second lease are `unknown`. A resend may duplicate a remotely accepted message. History compaction retains the newest 100 detailed attempts and removes at most 100 older terminal attempts per successful completion. Generation/request evidence remains until channel deletion.
 
 Exact review links use the configured origin and `/decisions?decision_key=...&decision_fingerprint=...`. `CAP-PR-operator-decisions` owns exact indexed selection and owner review. `UC-access-hub` owns sign-in; `UC-receive-decision-notice` describes the navigation and explicit recovery goal. No notice grants approval, saves an answer or resumes execution.
+
+## Owed items
+
+Run-stop notices and decision notices are alerts, not the owed count. `CAP-PR-owed-items` defines the owed set and
+its count; Hub sends no owed-item notice, and decision notices stay keyed on `decision_key` and fingerprint.

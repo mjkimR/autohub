@@ -11,6 +11,7 @@ summary: "Read before naming product concepts or distinguishing scheduler, PR, S
 | PR run | Durable delivery of one enrolled PR through implementation, observation and merge/control outcomes. | `CAP-PR-pull-request-delivery` | job, SDK run | `PipelineRun` |
 | Execution attempt | One implementation/fix request within a PR run, with immutable request and delivery correlation. | `CAP-PR-pull-request-delivery` | scheduler attempt | `ExecutionAttempt` |
 | Run question | A request for operator input bound to a PR run and its attempt/head; a saved answer does not itself resume work. | `CAP-PR-operator-decisions` | approval, command | `RunQuestion`, `RunAnswer` |
+| Owed item | One root cause that waits for the operator across object types, with a kind, cause, subject, primary action and stable key; the counted items make up the owed count, labeled "Needs you". | `CAP-PR-owed-items` | attention item, operator debt row, exception | `OwedItemRead`, `owed-items` |
 | Work Plan | A batch of pre-PR requirements with Plan dependencies and admission controls. | `CAP-WORK-work-plan-execution` | SDD proposal | `WorkPlan` |
 | Work Plan template | Reusable project-owned definition, excluding Work Plan execution, Schedule configuration and SDK release. | `CAP-WORK-work-plan-execution` | execution clone | `WorkPlanTemplate` |
 | Work Item | One requirement within a Work Plan, linked to its admitted PR run and retained result. | `CAP-WORK-work-plan-execution` | SDK task | `WorkItem` |

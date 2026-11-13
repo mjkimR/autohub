@@ -12,6 +12,7 @@ status: active
 capabilities:
   - CAP-WORK-work-plan-execution
   - CAP-PR-pull-request-delivery
+  - CAP-PR-owed-items
 entrypoints:
   - modules/hub/app/features/project_management/work_plans/api.py
   - modules/hub/app/features/project_management/work_plans/execution.py
@@ -133,6 +134,8 @@ Reusable definition creation follows `UC-reuse-work-plan-templates`; its derived
   and preparation identities support recovery. Missing Runs, failed/canceled work
   and remote Issue state are not success evidence. Plan controls do not undo
   already sent provider requests or completed merges. Satisfied replacement edges do not mark original Items successful or Plans complete; whole-Plan dependencies remain unchanged.
+- **Owed item**: a proposed Plan, a recovery in `accepted` or `reconciling`, a replacement awaiting an edge
+  acceptance and an Item in `attention` are counted owed items (`CAP-PR-owed-items`).
 
 ## 5. Acceptance Criteria (Given / When / Then)
 

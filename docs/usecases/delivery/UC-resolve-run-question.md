@@ -10,6 +10,7 @@ supporting_actors:
 status: active
 capabilities:
   - CAP-PR-operator-decisions
+  - CAP-PR-owed-items
 entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/api/interactions.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/control.py
@@ -105,6 +106,8 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
 - **Minimal guarantee**: stale or changed input does not replace retained text;
   unanswered or head-stale questions cannot silently resume execution. Dismissal
   and old receipt replay do not restart a stopped Run.
+- **Owed item**: while the question waits, it is one counted `decision` owed item (`CAP-PR-owed-items`), and
+  its run reports `has_pending_decision`.
 
 ## 5. Acceptance Criteria (Given / When / Then)
 

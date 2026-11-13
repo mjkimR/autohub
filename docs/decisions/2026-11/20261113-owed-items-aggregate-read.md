@@ -1,23 +1,22 @@
 ---
-id: PADR-owed-items-aggregate-read
+id: ADR-owed-items-aggregate-read
 title: Read owed items through one aggregate repository
 summary: For the cross-feature owed-item list and counts under the shared 20-connection budget, we read owner models through one read-only aggregate repository with one UNION ALL keyset query and one GROUP BY count per transaction, to keep the shell check cheap, accepting coupling to other features' tables.
-proposal: PROP-owed-item-contract
-# supersedes: [ADR-<slug>]   # write Supersedes in part `ADR-<slug>`: <the replaced clauses>. in Decision Outcome
-status: draft
+proposal: SPEC-owed-item-contract
+status: accepted
 created_at: 2026-11-13
 ---
 
-# [PADR-owed-items-aggregate-read] Read owed items through one aggregate repository
+# [ADR-owed-items-aggregate-read] Read owed items through one aggregate repository
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Date**: 2026-11-13
 
 ---
 
 ## 1. Context & Problem Statement
 
-The owed-item read (`PROP-owed-item-contract`) lists and counts items from several features: PR runs and their
+The owed-item read (`SPEC-owed-item-contract`) lists and counts items from several features: PR runs and their
 decision discovery projection, Work Plans and Work Items, Work Item recoveries and replacements, SDD batches and
 connection tests. The backend layering is `Router → UseCase → Service → Repository`, and a cross-feature read would
 normally compose through each owner's service. The shell polls the count on every visible tab, and Auto Hub shares one

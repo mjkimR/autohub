@@ -308,3 +308,11 @@ PostgreSQL and skip on SQLite. The native-project `attention` branch and some
 individual schema limits above are source-inspected boundaries, not claims of
 separately executed acceptance coverage. This contract does not establish live
 GitHub execution, current deployment or Auto Hub's own SDD baseline.
+
+## Owed items
+
+These Work Plan states wait for the operator and are counted owed items in `CAP-PR-owed-items`: a Plan in `proposed`
+(`work-plan-proposed`), a recovery in `accepted` or `reconciling` (`work-item-recovery`), an active replacement link
+whose original Item has a `waiting` dependent edge without a live acceptance (`work-item-replacement`) and an Item in
+`attention` (`work-item-attention`). A recovery in `awaiting-admission` is a system hold and is not owed. A recovery or
+replacement item replaces the original's failed-run item; an `attention` item replaces its run's stopped-run item.

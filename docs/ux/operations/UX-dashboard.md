@@ -25,7 +25,7 @@ capabilities:
 At `/`, health indicators precede the primary PR run summary; supporting object counts and recent activity follow. Metric values use an unknown marker when statistics cannot be loaded.
 
 - Service health (status summary): API and database indicators, plus scheduler-trigger Firing, Stopped, Never fired or Unknown and the last recorded tick. The trigger heartbeat is distinct from the protected System maintenance schedule.
-- PR run (summary counts): Total Runs, Active Work, Awaiting CI and Completed as neutral counts of equal weight, and a Needs-you count of failed, paused or blocked PR runs. The Needs-you tile is the only emphasized tile:
+- PR run (summary counts): Total Runs, Active Work, Awaiting CI and Completed as neutral counts of equal weight, and a Needs-you count of failed, paused or blocked PR runs. The tile switches to the owed count of `CAP-PR-owed-items` together with the shell Badge; today it keeps the run-state sum. The Needs-you tile is the only emphasized tile:
   - above zero: attention emphasis, the count, a per-state breakdown caption of the non-zero counts in the order failed, paused, blocked (for example "1 failed · 2 paused · 1 blocked"), and a link to `UX-pipeline-runs`;
   - zero: neutral, "No failed or held runs", caption "Failed, paused, or blocked", not a link;
   - statistics unavailable: neutral, the unknown marker, the same caption, not a link.

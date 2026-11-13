@@ -13,6 +13,7 @@ capabilities:
   - CAP-SDD-workflow-control
   - CAP-SDD-runtime-isolation
   - CAP-EXEC-scheduling-maintenance
+  - CAP-PR-owed-items
 entrypoints:
   - modules/hub-ui/src/lib/features/project-management/repositories/SddBatch.svelte
   - modules/hub/app/features/project_management/sdd/api.py
@@ -66,6 +67,8 @@ entrypoints:
 
 - **Success guarantee**: The immutable selected members retain exact completed SPEC and confirmed owner merge evidence, or the operator's retained future-admission stop and partial results.
 - **Minimal guarantee**: Preview/selection grants no approval. A refusal creates no admission; uncertain effects keep their original claim. Pause/stop changes no already delivered native decision and authorizes no replacement.
+- **Owed item**: a batch in `attention` is a counted `sdd-batch-attention` owed item unless a claimed run's
+  decision describes it (`CAP-PR-owed-items`).
 
 ## 5. Acceptance Criteria (Given / When / Then)
 

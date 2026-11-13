@@ -1,0 +1,43 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:12:36.151761Z'
+status: completed
+summary: 'reconcile-reviewer round 1 at 365c4fc: all changed files targeted; two reflections contradicted the implementation'
+findings:
+- issue: 'One-item-per-root-cause rule overstates: failed-run is not suppressed by SDD batch attention or Work Item attention'
+  evidence: docs/capabilities/delivery/CAP-PR-owed-items.md:46-50; owed_items/repos.py:241-249
+  failure_condition: A failed claimed run of a batch in attention, or a failed run of a Work Item in attention, is listed twice
+  suggested_action: Return to build-verify and suppress failed runs under batch and Work Item attention
+  resolution: open
+  severity: P1
+- issue: work-item-replacement waiting_since uses ReplacementLink.created_at while the capability and spec say updated_at
+  evidence: owed_items/repos.py:294; CAP-PR-owed-items.md:80-81; spec.md:209-211
+  failure_condition: An updated link is ordered by its creation time
+  suggested_action: Use ReplacementLink.updated_at
+  resolution: open
+  severity: P1
+- issue: The capability states that the checks ran on SQLite and PostgreSQL without recorded evidence; Task 1.2 verification lists only SQLite
+  evidence: CAP-PR-owed-items.md:111-112; tasks.md:18
+  failure_condition: Executed runs cannot be traced to records
+  suggested_action: Record runs in envelopes and align wording
+  resolution: open
+  severity: P2
+- issue: visual-style Attention describes the Phase 2 owed set as current with no transition note
+  evidence: docs/steering/visual-style.md:40-45; UX-dashboard.md:28-29; UX-app-shell.md:47
+  failure_condition: Readers see today's dashboard emphasise failed runs contrary to the definition
+  suggested_action: Add a sentence that the Badge and tile keep current sources until the Attention landing
+  resolution: open
+  severity: P2
+- issue: waiting_since sentence omits the connection-test fallback to updated_at
+  evidence: CAP-PR-owed-items.md:80; repos.py:357
+  failure_condition: A test with null finished_at is ordered by updated_at undocumented
+  suggested_action: Add the fallback
+  resolution: open
+  severity: P3
+checks:
+  rules: PASS devkit rules check --ci --base bb227d6
+diff_scope:
+  base: bb227d633f19d79aff0252b5025cdba5edb5b1e0
+  head: 365c4fc1e14822a5cb4f7d5ae0eaec1394e8e4cb

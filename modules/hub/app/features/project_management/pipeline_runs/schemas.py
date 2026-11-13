@@ -86,6 +86,9 @@ class PipelineRunRead(UUIDSchemaMixin, TimestampSchemaMixin):
     lease_expires_at: datetime | None
     next_action_at: datetime | None
     quota_block_count: int
+    has_pending_decision: bool = Field(
+        default=False, description="The run has an actionable decision-inbox row (a Run question or Native SDD request)"
+    )
 
 
 class ExecutionAttemptRead(UUIDSchemaMixin, TimestampSchemaMixin):

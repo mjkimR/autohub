@@ -142,3 +142,9 @@ report their execution or a new live GitHub/provider check. Historical live scop
 and manual-intervention limits remain in the
 [production evidence](../../materials/2026-10/20261002-production-verification/report.md).
 Operational details are in [provider connections](../../operations/provider-connections.md).
+
+## Owed items
+
+A terminal connection test that the operator can Review cleanup for (an adapter with manual cleanup resolution, cleanup
+not `completed`, and pending output discovery or unconfirmed PRs) is a counted `connection-test-cleanup` owed item in
+`CAP-PR-owed-items`. It leaves the owed set when its cleanup completes.

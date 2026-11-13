@@ -230,3 +230,10 @@ CI/merge still require the operational canary.
 WHEN a native activity originates in an SDD batch, Hub MUST preserve the same per-run workflow decisions and integration authority as an individual activity. A batch receipt, dependency result, pause/resume or retained run link grants no approval and performs no handoff or merge. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py`.
 
 `UC-execute-sdd-batch` exposes read-only original/current anchor, claim, PR and owner evidence through `UX-sdd-batch`. The operator opens `UX-run-decisions`, `UX-sdd-run` or `UX-sdd-workflow-request` for existing owner controls. `UC-complete-sdd-workflow` continues unchanged for that exact owner. Shared start reservations and atomic exact enrollment binding belong to `CAP-SDD-native-delivery`; they do not create a second executor.
+
+## Owed items
+
+An SDD batch in `attention` is a counted `sdd-batch-attention` owed item in `CAP-PR-owed-items`, and while it is
+listed its claimed runs are not listed as stopped runs. WHEN a claimed run has a decision-inbox row, the batch is not
+listed; that run's `decision` item names the batch in `context.sdd_batch_id`, and the batch's other stopped runs stay
+listed on their own.

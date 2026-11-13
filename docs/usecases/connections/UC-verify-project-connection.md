@@ -10,6 +10,7 @@ supporting_actors:
 status: active
 capabilities:
   - CAP-CONN-connection-verification
+  - CAP-PR-owed-items
 entrypoints:
   - modules/hub/app/features/project_management/connection_tests/api.py
   - modules/hub/app/features/project_management/connection_tests/usecases.py
@@ -89,6 +90,8 @@ entrypoints:
 
 - **Success guarantee**: the test records verified marker/current-head CI evidence for its pinned connection configuration; no test PR is merged by this workflow.
 - **Minimal guarantee**: refused starts create no new test, uncertain Jules creation is not repeated, a terminal outcome survives late provider activity, and cleanup uncertainty remains visible rather than authorizing deletion of unrelated resources.
+- **Owed item**: a terminal test with reviewable cleanup is a counted `connection-test-cleanup` owed item
+  until its cleanup completes (`CAP-PR-owed-items`).
 
 ## 5. Acceptance Criteria (Given / When / Then)
 

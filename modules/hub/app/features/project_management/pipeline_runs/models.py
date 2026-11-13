@@ -5,8 +5,8 @@ from uuid import UUID
 
 from app.common.database import JSON_VARIANT
 from app_layer_base.base.models.mixin import Base, TimestampMixin, UUIDMixin
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, exists, text, true
+from sqlalchemy.orm import Mapped, column_property, mapped_column
 
 
 class PipelineRunState(StrEnum):
@@ -226,3 +226,13 @@ class DecisionEntry(Base):
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revision: Mapped[int] = mapped_column(Integer)
     head_sha: Mapped[str | None] = mapped_column(String(64))
+
+
+# Loaded with the run row, so a run read costs no extra statement. The projection hook keeps the in-session value
+# current after a flush; the projection holds rows only for non-final runs. ORM UPDATE ... RETURNING(PipelineRun) does not
+# return it, so refresh a run loaded that way before serializing it as PipelineRunRead.
+_pending = DecisionEntry.__table__.alias("pending_decision")
+PipelineRun.has_pending_decision = column_property(  # type: ignore[attr-defined]
+    exists().where(_pending.c.run_id == PipelineRun.id, _pending.c.actionable == true()).correlate_except(_pending),
+    expire_on_flush=False,
+)

@@ -121,3 +121,8 @@ and `policies/{registry.py,codex_window.py,daily_quota.py}`, together with the t
 cited above. The cited tests are existing verification coverage; this document
 reports source/test inspection, not a new execution or live provider quota test.
 Detailed operator procedures are in [provider connections](../../operations/provider-connections.md).
+
+## Owed items
+
+An AI catalog hold is a system hold that clears by itself, so it is never an owed item in `CAP-PR-owed-items`. A
+stopped run on a held catalog reports the hold in its owed item's `context.catalog_hold`.
