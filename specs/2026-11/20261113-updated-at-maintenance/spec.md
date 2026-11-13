@@ -2,7 +2,7 @@
 id: SPEC-updated-at-maintenance
 title: Maintain updated_at on every owner write
 summary: Maintain updated_at for Hub ORM and SQLAlchemy Core writes, preserve explicit owner exceptions, and correct last-write readers without reconstructing historical timestamps.
-status: in-progress
+status: completed
 created: 2026-11-13
 related_capabilities: [CAP-PR-owed-items, CAP-EXEC-scheduling-maintenance, CAP-WORK-work-plan-execution]
 related_usecases: []

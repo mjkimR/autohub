@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-updated-at-maintenance
-status: pending
+status: resolved
 targets:
   - file: docs/capabilities/delivery/CAP-PR-owed-items.md
     resolution: modified
