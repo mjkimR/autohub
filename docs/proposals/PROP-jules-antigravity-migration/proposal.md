@@ -1,8 +1,8 @@
 ---
 id: PROP-jules-antigravity-migration
 title: Migrate Jules integration to Antigravity Remote Agents
-summary: "Retire Jules integration and assess a supported Antigravity Remote Agents execution path while preserving existing session and delivery history."
-status: reviewing
+summary: "Defer Jules-to-Antigravity migration until a supported unattended Remote Agents contract is established, while preserving Jules behavior, recovery and delivery history."
+status: draft
 created_at: 2026-11-06
 target_area: capabilities/agents/
 priority: low
@@ -68,13 +68,14 @@ verification. No replacement implementation is ready for acceptance.
 
 | Option | Supported basis | Consequence |
 | --- | --- | --- |
-| **A — Defer the migration until an official Remote Agents automation contract exists (recommended)** | Remote Agents document interactive App/web/CLI starts and resume by conversation ID; the required unattended protocol is not established. | Keep this proposal as the migration destination and preserve current Jules behavior. Restart when official authentication, create identity, observation/outcome and response-loss recovery contracts can be verified together. |
+| **A — Defer the migration until an official Remote Agents automation contract exists (selected)** | Remote Agents document interactive App/web/CLI starts and resume by conversation ID; the required unattended protocol is not established. | Keep this proposal as the migration destination and preserve current Jules behavior. Restart when official authentication, create identity, observation/outcome and response-loss recovery contracts can be verified together. |
 | **B — Retire new Jules admission first; defer Antigravity integration separately** | Hub owns admission, schedules and retained history independently of a replacement provider. | Return to Backlog for decomposition into a bounded retirement child and a deferred replacement child. Retirement disables new Jules session/test work and new-work creation/configuration entry points, while preserving legacy collection, adoption, test cleanup and history until their cutover conditions hold. Connector enablement, credential repair and catalog reassignment needed for legacy recovery remain available until draining is complete. The minimal recovery implementation remains while required. |
 | **C — Use local/headless Antigravity CLI or SDK instead** | Official headless CLI/SDK documentation is separate from Remote Agents. | This changes the requested execution surface and needs a separate proposal covering workspace isolation, deployment and outcomes. It is not a supported substitute within this migration. |
 
-Option A is recommended because no urgent Jules shutdown or retirement deadline is established, and the requested
-replacement cannot yet satisfy the existing recovery guarantees. Option B is viable only if the operator chooses
-retirement independently of replacement availability. Option C is compared as a scope alternative, not selected.
+The operator selected option A: defer the full migration and preserve current Jules behavior. No urgent Jules
+shutdown or retirement deadline is established, and the requested replacement cannot yet satisfy the existing
+recovery guarantees. Option B requires a separate decision to retire Jules independently of replacement
+availability. Option C remains an unselected scope alternative.
 
 ### Preservation and cutover constraints
 
@@ -125,12 +126,30 @@ retirement independently of replacement availability. Option C is compared as a 
 
 ## 4. Lifecycle & Retirement Criteria
 
-### Open direction decision
+### Selected deferral and restart conditions
 
-Choose option A (defer the full migration) or option B (retirement first with decomposition). Option A leaves the
-migration work queued with the restart conditions above. Option B returns this proposal to Backlog with
-`needs_decompose: true`; the Host's decomposer and user decision determine the child drafts before implementation.
-No PADR is authored until that direction is selected, because an unchosen retirement policy must not be promoted
-as an accepted decision. No screen is drafted while the scope is undecided.
+Planning ended with the operator's defer decision recorded in `envelopes/answer-01.yaml`. This proposal returns to
+Backlog as `draft` and remains the restart destination for the full migration. It is not accepted for implementation,
+and no retirement-first child, PADR, screen, gate record or handoff is created.
 
-This is queued feature migration work with high Planning and Development effort. Draft size L is provisional until the supported target automation surface is established. Planning must settle feasibility, preserved behavior, legacy pending-work disposition and cutover authority; split independently deliverable removal and integration scopes if necessary. No provider replacement, service shutdown or credential removal is authorized by adding this draft. Normal direction acceptance and handoff precede implementation.
+Resume Planning when official documentation establishes all of these contracts together:
+
+1. Unattended Remote Agents authentication usable by Hub's execution environment.
+2. Supported creation with durable remote identity and repository binding.
+3. Machine-readable observation and outcome collection sufficient to map reports and PR results.
+4. Response-loss reconciliation that distinguishes existing remote work from a never-created session without an
+   unsupported retry or duplicate effect.
+
+At restart, verify those contracts against current official evidence before settling feasibility. Revisit Q1-Q5,
+legacy pending-work disposition, preserved history and cutover authority. Reassess whether replacement and retirement
+remain one bounded spec, and split independently deliverable scopes if necessary. MIGRATE-01 through MIGRATE-05
+remain candidate acceptance checks, not implemented guarantees. Direction acceptance and handoff precede
+implementation. Development then verifies the chosen preservation/cutover behavior with SQLite and PostgreSQL
+regressions and the required review before integration.
+
+While queued, preserve existing Jules admission, schedules, sessions, collection/adoption, credential repair,
+connection-test recovery and readable history. No provider replacement, service shutdown, credential removal or
+production change is authorized by this deferral. A retirement-first direction needs a new operator decision.
+
+Planning and Development effort remain `high`. Draft size `L` stays provisional until the supported target
+execution surface is established. This return records the waiting condition without declaring the migration delivered.
