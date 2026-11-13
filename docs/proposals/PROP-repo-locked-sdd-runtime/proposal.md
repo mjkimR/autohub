@@ -8,7 +8,7 @@ target_area: capabilities/sdd/
 priority: high                        # critical | high | medium | low
 size: L                               # S | M | L | XL (XL: would need two or more specs or task kinds; decompose before Planning)
 planning_effort: medium               # low | medium | high (hint for Planning)
-dev_effort: medium                    # low | medium | high (hint for Development)
+dev_effort: high                      # low | medium | high (hint for Development)
 boundaries:
   owns:
     - capabilities/sdd/
@@ -90,8 +90,9 @@ Code facts this design rests on (head of this branch):
 - The SDK bridge selects the runtime with the same `runtime_scope(repository)`
   (`execution/flows/bridge.py`).
 
-Design after challenger round 01 (`envelopes/challenger-01.yaml`). Items marked
-**(open)** wait for the user's answers under Open decisions below.
+Design after challenger round 01 (`envelopes/challenger-01.yaml`) and the
+user's answers (`envelopes/answer-01.yaml`); the decisions are recorded in
+`PADR-repository-locked-runtime` and `PADR-offline-source-build`.
 
 - **D1 Source and resolution point**: the runtime is resolved after fetch, per
   evaluated commit, from its root `pyproject.toml` and `uv.lock` (parsed, never
@@ -119,13 +120,18 @@ Design after challenger round 01 (`envelopes/challenger-01.yaml`). Items marked
   identity-only pin schema (no cache path, timestamps or ordering). Batch
   evidence stores this identity instead of the whole `runtime_pin()` and its
   `uv.lock` configuration hash narrows to the same digest. Whether a changed
-  identity on a later head refuses continuation is **(open, Q-A)**.
-- **D4 Install isolation and sources** **(open, Q-B)**: the install runs in the
+  identity on a later head continues with the new runtime, while the
+  effective workflow, policy and configuration digests keep their refusal.
+- **D4 Install isolation and sources**: the install runs in the
   OS sandbox with a writable venv and uv cache, only the manifest and lock
   visible, `/etc/resolv.conf` and CA certificates bound read-only, and a pinned
   `uv` copied into the runtime image stage. Evaluation is unchanged: no
-  network, no credentials, venv read-only. How private Git sources are fetched
-  and whether build backends run with network egress is the open decision.
+  network, no credentials, venv read-only. Private Git sources are fetched in
+  the Hub process with the project's connector token, which never enters the
+  sandbox; source builds run without network or credentials using build
+  backends pinned in the image; network, if any, serves registry downloads
+  only. If uv cannot separate download from build, the Hub process downloads
+  every artifact and the sandbox installs fully offline.
 - **D5 Install lifecycle and cache**: installation is decoupled from request
   budgets. A per-digest cross-process file lock (`fcntl`) makes one build per
   instance; an existing complete target counts as success. The build runs to
@@ -142,8 +148,8 @@ Design after challenger round 01 (`envelopes/challenger-01.yaml`). Items marked
   No on-demand interpreter downloads.
 - **D7 Retirement and probe**: remove `AUTOHUB_SDD_PROFILES`,
   `config/sdd-runtime-app-common` and repository mapping. Whether a default
-  image runtime remains as a fallback for repositories without a devkit lock is
-  **(open, Q-C)**. Stop emitting `RUNTIME_REVISION_MISMATCH` (identical by
+  image runtime remains: a repository whose root lock lacks `devkit-spec` is
+  refused with a repository diagnostic. Stop emitting `RUNTIME_REVISION_MISMATCH` (identical by
   construction) but keep its diagnostic catalog entry for historical records.
   Keep the `RECEIPT_STALE` regeneration exception. Split the runtime status
   probe: a host isolation probe (image interpreter and Git in the sandbox, no
@@ -166,32 +172,14 @@ Design after challenger round 01 (`envelopes/challenger-01.yaml`). Items marked
   `ARCH-07-deployment`, `ARCH-11-risks-and-technical-debt` and the operations
   guides for the SDD runtime and execution targets.
 
-### Open decisions for plan-accept
+### Planning decisions
 
-- **Q-A (identity on a changed head)**: when a later head of an admitted run
-  resolves a different runtime identity (a devkit bump, or a base merge that
-  changed it), either keep rule 9's refusal and require re-enrollment, or treat
-  the repository's committed lock as authority: continue with the new runtime
-  while the effective workflow, policy and configuration digests keep their
-  existing refusal. Recommendation: continue; those digests already detect
-  every contract change the runtime pin was guarding.
-- **Q-B (install trust and credentials)**: git sources such as devkit and
-  g-tools ship no wheels, so installing them runs build-backend code. Options:
-  (1) run the install in the sandbox with network egress and a dedicated
-  read-only source token; (2) fetch Git sources in the Hub process with the
-  project's GitHub connector token (as `checkout()` already does), then install
-  in the sandbox with no credentials, build steps without network using build
-  backends pinned in the image, and network only for registry artifact
-  downloads. Whether uv can separate download from build this way is a
-  Development check; if not, the fallback is an offline install from artifacts
-  the Hub process downloads. Option 1 exposes the token and the Cloud Run
-  metadata server (service-account token) to build code and needs the token
-  granted on every new private source. Recommendation: option 2.
-- **Q-C (repositories without a devkit lock)**: keep a default image runtime
-  as a fallback for repositories whose root lock has no `devkit-spec`, or
-  refuse them with a repository diagnostic. Recommendation: refuse; no known
-  consumer relies on a lockless setup, and one runtime source keeps identity
-  simple.
+- Q-A, Q-B and Q-C were answered by the user with the recommended options
+  (`envelopes/answer-01.yaml`): continue on a changed runtime identity, Hub-side
+  source fetch with offline builds, and refusal of repositories without a
+  devkit lock.
+- `PADR-repository-locked-runtime` records the runtime source, identity and
+  lifecycle; `PADR-offline-source-build` records the install trust boundary.
 
 ## 4. Lifecycle & Retirement Criteria
 
