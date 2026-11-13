@@ -138,12 +138,15 @@ provider work. Terminal history is unchanged. A new optimistic Run uses an
 explicit execution-version discriminator, not truthiness of `sdd_snapshot`.
 
 Old native resume/approval and old batch create/resume are refused with HTTP 410
-`SDD_EXECUTION_RETIRED`. Old bridge registration and execution are refused with
-HTTP 410 `SDD_BRIDGE_RETIRED`. Refusal takes place before checkout, CLI or remote
-mutation. An existing bridge delivery with a saved resume receipt may only
-observe its existing PR owner; it cannot repeat resume. An undelivered legacy
-bridge claim cannot create a new effect. Migration preserves completed flow
-results and rejects a legacy binding before claiming any undispatched step.
+`SDD_EXECUTION_RETIRED`. Synchronous legacy bridge registration/start/control
+boundaries refuse new effects with HTTP 410 `SDD_BRIDGE_RETIRED`. Undispatched
+legacy bridge steps are durably retired before claiming. Outstanding attempts
+without a saved resume receipt settle with a terminal failed `WorkerResult`
+carrying `SDD_BRIDGE_RETIRED`, rather than entering transient-unavailable retry.
+Receipt-backed deliveries retain observe-only progression of their existing PR
+owner and never repeat resume. Refusal performs no checkout, CLI or remote
+mutation. An undelivered legacy bridge claim cannot create a new effect.
+Migration preserves completed flow results.
 
 History reads retain old snapshots and immutable attempt requests. No generic
 resume implicitly converts an old Run. Starting another Run for the same PR
