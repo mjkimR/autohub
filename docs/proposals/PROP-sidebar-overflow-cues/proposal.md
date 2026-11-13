@@ -2,7 +2,7 @@
 id: PROP-sidebar-overflow-cues
 title: Show sidebar navigation overflow cues
 summary: "Show decorative theme-token cues at navigation edges with hidden content so operators can discover off-screen links on short viewports."
-status: draft
+status: reviewing
 created_at: 2026-11-13
 target_area: ux/navigation/
 priority: low
