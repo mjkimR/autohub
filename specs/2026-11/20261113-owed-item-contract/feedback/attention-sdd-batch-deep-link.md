@@ -8,7 +8,7 @@ target: modules/hub-ui/src/lib/features/attention/owed-links.ts and the project 
 origin: agent
 severity: workaround
 recurring: false
-status: open
+status: promoted
 created_at: 2026-11-13
 ---
 
@@ -36,3 +36,5 @@ Deferred from the Phase 2b review of `UX-attention` (finding R4).
 owed-links.ts: case 'sdd-batch-attention' returns projectTabHref(project_id, 'repository') without the batch id.
 AttentionView.integration.test.ts: sdd-batch-attention row expects /projects/<id>?tab=repository.
 ```
+
+- **Disposition**: PROP-run-origin-links: folded into the run origin and deep-link proposal, which receives the Repository tab batch address and the `owed-links.ts` mapping.
