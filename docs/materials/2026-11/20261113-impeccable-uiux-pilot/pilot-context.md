@@ -22,13 +22,18 @@ created; on 2026-11-13 neither existed in the main checkout. Screenshot outputs,
 
 ## Restoring the product context
 
-1. Copy `attachments/PRODUCT.md` to the repository root as `PRODUCT.md`.
-2. Keep it local: confirm `.git/info/exclude` contains `/PRODUCT.md` and `/DESIGN.md`
-   under `# Impeccable context files (local only)`. Do not commit it, even though
-   Impeccable `init` step 6 recommends committing.
-3. Linked worktrees do not receive excluded files. Pass the main checkout's absolute
-   `PRODUCT.md` path read-only in the brief, or work in place with `--no-worktree`
-   when the checkout is clean.
+The current product context is tracked in
+[docs/materials/impeccable/](../../impeccable/README.md); the attachment above is
+the pilot's dated copy and is not updated.
+
+1. Link the tracked source at the repository root as described in that folder's
+   README: `ln -s docs/materials/impeccable/PRODUCT.md PRODUCT.md`.
+2. Keep only the root link out of Git: confirm `.git/info/exclude` contains
+   `/PRODUCT.md` and `/DESIGN.md` under `# Impeccable context files (local only)`.
+   Edit and commit the source file, not the root link.
+3. Linked worktrees do not receive the excluded root link, but they do receive the
+   tracked source. Create the same link inside the worktree before running
+   Impeccable there.
 
 `PRODUCT.md` records "Autohub" as the canonical name while repository docs say
 "Auto Hub"; that discrepancy was reported, not resolved.
