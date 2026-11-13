@@ -2,7 +2,7 @@
 id: SPEC-run-origin-links
 title: Run origin links and subject deep links
 summary: "Project retained run relationships in bounded reads and open exact Repository unit, branch and batch subjects without execution effects."
-status: in-progress
+status: completed
 created: 2026-11-13
 related_capabilities: [CAP-PR-pull-request-delivery, CAP-DOC-repository-viewer, CAP-SDD-native-delivery]
 related_usecases: [UC-deliver-pull-request, UC-inspect-repository-documents, UC-execute-sdd-batch]

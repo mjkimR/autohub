@@ -60,7 +60,6 @@ visible retry path. Binary file handling belongs to the Git file renderer.
 | Refresh / Retry | `UC-inspect-repository-documents` 4 | error | loading |  | `CAP-DOC-repository-viewer` | The requested read is retried; SDD refresh reloads repository identity and remounts its viewer. |
 | Sdd View / Git Browser | global: choose a read-only repository representation | populated | populated |  | `CAP-DOC-repository-viewer` | The selected mode replaces the content surface while preserving the addressed unit and branch. |
 | Directory breadcrumb / file back | `UC-inspect-repository-documents` 3a | populated | loading |  | `CAP-DOC-repository-viewer` | The selected directory or parent listing is loaded. |
-
 | Open unit address / Retry unit | `UC-inspect-repository-documents` 1, `UC-inspect-repository-documents` 3b | populated, error, unit-unavailable | loading | | `CAP-DOC-repository-viewer` | Only the current recognized subject can reach viewer/activity selection. |
 | Open batch address | `UC-execute-sdd-batch` 1 | populated | loading | `UX-sdd-batch` | `CAP-SDD-native-delivery` | Exact retained detail loads independently of the selected unit. |
 | Browse repository | `UC-inspect-repository-documents` 3b | unit-unavailable, error | populated | | `CAP-DOC-repository-viewer` | The failed unit request is cleared and an unavailable ref resets to default. |

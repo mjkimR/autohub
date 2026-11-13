@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-run-origin-links
-status: pending
+status: resolved
 targets:
   - file: docs/capabilities/delivery/CAP-PR-pull-request-delivery.md
     resolution: modified
@@ -41,3 +41,5 @@ Source feedback FB-attention-sdd-batch-deep-link is terminal promoted and remain
 Verification evidence is in the review/reverify and final report envelopes. Document test pointers describe enforcing coverage; no live provider, deployed-service or browser walkthrough evidence is claimed.
 
 Entrypoint derivation produced broad directory, generated-client, helper and test candidates; these are rejected because they are not document doorways. Existing capability and ordinary-delivery/repository use-case entrypoints already identify the API/UI entry surfaces. Only UC-execute-sdd-batch gains its exact SDD API and SddBatch component doorways.
+
+Independent reconciliation verified every target and AC01–09. Its P3 table-continuity finding was repaired and self-verified by checking contiguous interaction rows; no contract or source change was needed.
