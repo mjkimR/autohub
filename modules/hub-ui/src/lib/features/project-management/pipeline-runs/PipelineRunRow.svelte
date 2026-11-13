@@ -139,7 +139,6 @@
 						size="icon"
 						onclick={() => onresume(run)}
 						disabled={operating}
-						class="size-11 md:size-8"
 						title="Resume Run"
 						aria-label="Resume Run"
 					>
@@ -151,7 +150,6 @@
 						size="icon"
 						onclick={() => onpause(run.id)}
 						disabled={operating}
-						class="size-11 md:size-8"
 						title="Pause Run"
 						aria-label="Pause Run"
 					>
@@ -164,7 +162,6 @@
 						variant="subtle"
 						size="icon"
 						onclick={() => onattach(run)}
-						class="size-11 md:size-8"
 						title="Attach Pull Request"
 						aria-label="Attach Pull Request"
 					>
@@ -177,7 +174,6 @@
 					size="icon"
 					onclick={() => onadvance(run.id)}
 					disabled={operating}
-					class="size-11 md:size-8"
 					title="Advance / Sync Run Status"
 					aria-label="Advance Run"
 				>
@@ -191,7 +187,6 @@
 					size="icon"
 					onclick={() => oncancel(run.id)}
 					disabled={operating}
-					class="size-11 md:size-8"
 					title="Cancel Run"
 					aria-label="Cancel Run"
 				>
@@ -203,7 +198,7 @@
 				variant="subtle"
 				size="icon"
 				onclick={() => onhistory(run)}
-				class="min-h-11 w-auto md:size-8 md:min-h-0"
+				class="w-auto md:size-8"
 				title="View Attempt History"
 				aria-label="View Attempt History"
 			>

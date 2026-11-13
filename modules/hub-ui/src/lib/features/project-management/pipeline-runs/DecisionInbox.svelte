@@ -5,6 +5,7 @@
 	import { responseData } from '$lib/api/pagination';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { cn } from '$lib/utils';
 	import { Clock, CornerDownRight } from '@lucide/svelte';
 	import RunDecisionsDialog from './RunDecisionsDialog.svelte';
@@ -165,33 +166,27 @@
 	</div>
 	<div class="flex flex-wrap items-end gap-3">
 		<label class="text-sm"
-			>Project<select
-				class="mt-1 block rounded border bg-background p-2"
-				bind:value={projectId}
-				onchange={() => load(true)}
+			>Project<NativeSelect class="mt-1 flex" bind:value={projectId} onchange={() => load(true)}
 				><option value="">All projects</option>{#each projects as project (project.id)}<option
 						value={project.id}>{project.name}</option
-					>{/each}</select
+					>{/each}</NativeSelect
 			></label
 		>
 		<label class="text-sm"
-			>Kind<select
-				class="mt-1 block rounded border bg-background p-2"
-				bind:value={kind}
-				onchange={() => load(true)}
+			>Kind<NativeSelect class="mt-1 flex" bind:value={kind} onchange={() => load(true)}
 				><option value="">All kinds</option>{#each kinds as value (value)}<option {value}
 						>{value.replaceAll('-', ' ')}</option
-					>{/each}</select
+					>{/each}</NativeSelect
 			></label
 		>
 		<label class="text-sm"
-			>Question state<select
-				class="mt-1 block rounded border bg-background p-2"
+			>Question state<NativeSelect
+				class="mt-1 flex"
 				bind:value={questionState}
 				onchange={() => load(true)}
 				><option value="">All states</option><option value="open">Needs decision</option><option
 					value="answered">Answer saved — resume pending</option
-				></select
+				></NativeSelect
 			></label
 		>
 		<Button variant="outline" disabled={busy} onclick={() => load(true)}>Refresh</Button>

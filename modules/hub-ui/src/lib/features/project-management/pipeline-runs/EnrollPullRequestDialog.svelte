@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -102,17 +103,12 @@
 				<label for="acquireProject" class="text-xs font-semibold text-muted-foreground uppercase">
 					Target Project
 				</label>
-				<select
-					id="acquireProject"
-					bind:value={acquireProjectId}
-					class="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
-					required
-				>
+				<NativeSelect id="acquireProject" bind:value={acquireProjectId} class="w-full" required>
 					<option value="" disabled>Select a project</option>
 					{#each projects as project (project.id)}
 						<option value={project.id}>{project.name}</option>
 					{/each}
-				</select>
+				</NativeSelect>
 			</div>
 
 			<div class="space-y-1.5">
@@ -142,16 +138,12 @@
 				<label for="enrollCatalog" class="text-xs font-semibold text-muted-foreground uppercase">
 					AI Catalog
 				</label>
-				<select
-					id="enrollCatalog"
-					bind:value={enrollCatalog}
-					class="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus:ring-1 focus:ring-ring"
-				>
+				<NativeSelect id="enrollCatalog" bind:value={enrollCatalog} class="w-full">
 					<option value="">Project default</option>
 					{#each pipelineCatalogs as catalog (catalog.id)}
 						<option value={catalog.key}>{catalog.name} ({catalog.kind})</option>
 					{/each}
-				</select>
+				</NativeSelect>
 				<p class="text-xs text-muted-foreground">
 					The same choice can be made in a PR body or comment with <code
 						>@auto-run:&lt;key or kind&gt;</code

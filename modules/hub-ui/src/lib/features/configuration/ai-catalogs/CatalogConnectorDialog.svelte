@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { untrack } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -40,17 +41,14 @@
 		<form onsubmit={save} class="space-y-4">
 			<label class="grid gap-1 text-sm font-medium">
 				Provider connector
-				<select
-					bind:value={connectorId}
-					class="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-				>
+				<NativeSelect bind:value={connectorId}>
 					<option value="">No connector</option>
 					{#each candidates as connector (connector.id)}
 						<option value={connector.id}
 							>{connector.name}{connector.enabled ? '' : ' (disabled)'}</option
 						>
 					{/each}
-				</select>
+				</NativeSelect>
 			</label>
 			<DialogFooter>
 				<Button type="button" variant="outline" onclick={() => (open = false)}>Cancel</Button>

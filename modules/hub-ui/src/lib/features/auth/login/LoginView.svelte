@@ -116,7 +116,7 @@
 							autocomplete="username"
 							placeholder="you@example.com"
 							bind:value={email}
-							class="h-11 pl-10"
+							class="pl-9"
 							disabled={isValidating}
 							required
 						/>
@@ -139,14 +139,14 @@
 							autocomplete="current-password"
 							placeholder="Enter password"
 							bind:value={password}
-							class="h-11 pl-10"
+							class="pl-9"
 							disabled={isValidating}
 							required
 						/>
 					</div>
 				</div>
 
-				<Button type="submit" class="h-11 w-full" disabled={isValidating}>
+				<Button type="submit" class="w-full" disabled={isValidating}>
 					{#if isValidating}
 						<Loader2 class="size-4 animate-spin" />
 						Signing in...

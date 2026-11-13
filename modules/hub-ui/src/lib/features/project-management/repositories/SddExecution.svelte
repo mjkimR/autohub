@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
+	import { Input } from '$lib/components/ui/input';
 	import SddRunLinks from './SddRunLinks.svelte';
 	import SddReadinessPreview from './SddReadinessPreview.svelte';
 	import SddDiagnostics from '../pipeline-runs/SddDiagnostics.svelte';
@@ -32,8 +34,8 @@
 	<div class="flex flex-wrap gap-3">
 		<label class="min-w-64 flex-1 text-sm"
 			>Unit directory (spec or proposal)
-			<input
-				class="mt-1 w-full rounded border bg-background p-2"
+			<Input
+				class="mt-1"
 				bind:value={state.spec}
 				placeholder="specs/2026-10/20261010-feature or docs/proposals/PROP-feature"
 				disabled={state.busy}
@@ -41,8 +43,8 @@
 		</label>
 		<label class="text-sm"
 			>Pull request
-			<input
-				class="mt-1 block w-28 rounded border bg-background p-2"
+			<Input
+				class="mt-1 w-28"
 				type="number"
 				min="1"
 				bind:value={state.pull}
@@ -51,8 +53,8 @@
 		</label>
 		<label class="text-sm"
 			>Activity effort
-			<select
-				class="mt-1 block rounded border bg-background p-2"
+			<NativeSelect
+				class="mt-1 flex"
 				bind:value={state.effort}
 				disabled={state.busy}
 				aria-label="Activity effort"
@@ -60,7 +62,7 @@
 				<option value="low">low</option>
 				<option value="medium">medium</option>
 				<option value="high">high</option>
-			</select>
+			</NativeSelect>
 		</label>
 	</div>
 	<div class="flex flex-wrap gap-2">

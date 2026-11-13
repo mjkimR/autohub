@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { untrack } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -219,12 +220,12 @@
 	{#if !editing}
 		<label class="block space-y-2 text-sm"
 			>Save as
-			<select class="w-full rounded-md border bg-background p-2" bind:value={mode}>
+			<NativeSelect class="w-full" bind:value={mode}>
 				<option value="draft">Draft — refine later</option>
 				<option value="proposed">Proposed — request a decision</option>
 				<option value="paused">Ready — keep on hold</option>
 				<option value="active">Start — request execution</option>
-			</select>
+			</NativeSelect>
 		</label>
 	{:else if editing.state === 'proposed'}
 		<p class="text-sm text-muted-foreground">

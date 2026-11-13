@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -155,9 +156,9 @@
 
 					<!-- String with Enum -->
 					{#if prop.enum && prop.enum.length > 0}
-						<select
+						<NativeSelect
 							id="field-{key}"
-							class="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs focus:border-primary focus:outline-none"
+							class="w-full"
 							value={String(currentVal || '')}
 							onchange={(e) => updateFieldValue(key, e.currentTarget.value)}
 							{disabled}
@@ -166,7 +167,7 @@
 							{#each prop.enum as opt (opt)}
 								<option value={opt}>{opt}</option>
 							{/each}
-						</select>
+						</NativeSelect>
 
 						<!-- Boolean Switch -->
 					{:else if prop.type === 'boolean'}
@@ -192,7 +193,6 @@
 							value={Number(currentVal ?? 0)}
 							oninput={(e: Event & { currentTarget: HTMLInputElement }) =>
 								updateFieldValue(key, Number(e.currentTarget.value))}
-							class="h-9 text-xs"
 							{disabled}
 						/>
 
@@ -205,7 +205,6 @@
 							value={String(currentVal ?? '')}
 							oninput={(e: Event & { currentTarget: HTMLInputElement }) =>
 								updateFieldValue(key, e.currentTarget.value)}
-							class="h-9 text-xs"
 							{disabled}
 						/>
 					{/if}

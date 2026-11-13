@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { onMount } from 'svelte';
 	import { GitBranch, FolderGit2, Sparkles, RefreshCw, Layers } from '@lucide/svelte';
 	import { SddViewer } from 'devkit-viewer';
@@ -179,21 +180,18 @@
 		>
 			<div class="flex flex-wrap items-center gap-3">
 				<!-- Branch Selector -->
-				<div
-					class="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-1.5 text-xs font-medium"
-				>
+				<div class="flex items-center gap-2 text-xs font-medium">
 					<GitBranch class="h-3.5 w-3.5 text-muted-foreground" />
 					{#if info && (info.branches ?? []).length > 0}
-						<select
+						<NativeSelect
 							value={currentRef}
 							aria-label="Repository branch"
 							onchange={(e) => handleBranchChange(e.currentTarget.value)}
-							class="cursor-pointer bg-transparent font-mono text-xs font-semibold text-foreground outline-hidden"
 						>
 							{#each info.branches ?? [] as branch (branch)}
 								<option value={branch}>{branch}</option>
 							{/each}
-						</select>
+						</NativeSelect>
 					{:else}
 						<span class="font-mono text-xs">{currentRef || 'main'}</span>
 					{/if}

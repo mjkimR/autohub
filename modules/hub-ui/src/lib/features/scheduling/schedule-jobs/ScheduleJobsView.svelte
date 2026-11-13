@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { PaginatedState } from '$lib/state/paginated.svelte';
 	import ListPagination from '$lib/components/shared/ListPagination.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
@@ -79,13 +80,7 @@
 			<p class="text-sm text-muted-foreground">Execution audit logs and real-time job run states</p>
 		</div>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button
-				variant="outline"
-				size="sm"
-				onclick={() => loadJobs()}
-				disabled={loading}
-				class="min-h-11 sm:min-h-0"
-			>
+			<Button variant="outline" size="sm" onclick={() => loadJobs()} disabled={loading}>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
 			</Button>
@@ -100,18 +95,18 @@
 				placeholder="Filter jobs by name or status..."
 				bind:value={searchQuery}
 				oninput={() => loadJobs(0)}
-				class="h-11 pl-9 text-base sm:h-10 sm:text-sm"
+				class="pl-9"
 			/>
 		</div>
-		<select
+		<NativeSelect
 			aria-label="Job status"
 			bind:value={statusFilter}
 			onchange={() => loadJobs(0)}
-			class="h-11 max-w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm"
+			class="max-w-full min-w-0"
 		>
 			<option value="">All statuses</option><option value="pending">Pending</option>
 			<option value="success">Success</option><option value="failure">Failure</option>
-		</select>
+		</NativeSelect>
 	</div>
 
 	<!-- Table Container -->

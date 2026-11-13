@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { untrack } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -64,16 +65,15 @@
 		<Button disabled={batches.busy} onclick={() => batches.retry()}>Retry same request</Button>{/if}
 	{#if batches.rows.length}
 		<label
-			>Retained batches <select
+			>Retained batches <NativeSelect
 				aria-label="Retained batches"
 				disabled={batches.busy || Boolean(batches.pending)}
-				class="rounded-md border bg-background p-2"
 				onchange={(e) => batches.refresh(e.currentTarget.value)}
 			>
 				<option value="">Choose batch</option>{#each batches.rows as row (row.id)}<option
 						value={row.id}>{row.id} · {row.state}</option
 					>{/each}
-			</select></label
+			</NativeSelect></label
 		>
 	{/if}
 	{#if batches.batch}
@@ -238,9 +238,8 @@
 							{#each ['planning', 'dev'] as phase (phase)}
 								<label
 									>{phase} effort
-									<select
+									<NativeSelect
 										aria-label={`${member.id} ${phase} effort`}
-										class="rounded-md border bg-background p-2"
 										onchange={(e) =>
 											preference(
 												member.id,
@@ -249,7 +248,7 @@
 											)}
 										><option value="">Inherit proposal default</option><option>low</option><option
 											>medium</option
-										><option>high</option></select
+										><option>high</option></NativeSelect
 									></label
 								>
 								<label

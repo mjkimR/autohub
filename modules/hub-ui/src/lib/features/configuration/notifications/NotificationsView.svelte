@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import DecisionNotices from './DecisionNotices.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
 	import { onMount } from 'svelte';
@@ -188,10 +189,7 @@
 			</label>
 			<label class="grid gap-1 text-sm font-medium">
 				Minimum notification level
-				<select
-					bind:value={form.minLevel}
-					class="h-9 rounded-md border border-input bg-transparent px-3 text-sm text-foreground"
-				>
+				<NativeSelect bind:value={form.minLevel}>
 					<option value="debug" class="bg-background text-foreground"
 						>DEBUG — all trace and raw events</option
 					>
@@ -207,7 +205,7 @@
 					<option value="critical" class="bg-background text-foreground"
 						>CRITICAL — service stoppage, fatal errors</option
 					>
-				</select>
+				</NativeSelect>
 			</label>
 			<label class="grid gap-1 text-sm font-medium">
 				Bot token

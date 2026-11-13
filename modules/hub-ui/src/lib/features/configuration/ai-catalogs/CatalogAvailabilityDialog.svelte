@@ -66,7 +66,7 @@
 				<Input
 					id="catalog-refresh-time"
 					type="datetime-local"
-					class="h-11 max-w-full min-w-0 text-base"
+					class="max-w-full min-w-0"
 					bind:value={availableAt}
 					required
 					aria-describedby="refresh-time-preview"
@@ -83,13 +83,12 @@
 				>
 				<Input
 					id="catalog-refresh-note"
-					class="h-11 text-base"
 					bind:value={note}
 					maxlength={500}
 					placeholder="Optional operator note"
 				/>
 			</div>
-			<DialogFooter class="gap-2 [&_button]:min-h-11">
+			<DialogFooter class="gap-2">
 				<Button type="button" variant="outline" onclick={onclose}>Cancel</Button>
 				<Button type="submit" disabled={catalogs.saving}
 					>{catalogs.saving ? 'Saving…' : 'Save global hold'}</Button

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { onMount, tick } from 'svelte';
 	import { SvelteURL } from 'svelte/reactivity';
 	import { api, type components } from '$lib/api';
@@ -195,27 +196,29 @@
 			onsaved={saved}
 			onclose={() => (groupEditing = undefined)}
 		/>{/if}
-	<label class="flex items-center gap-3 text-sm"
-		>Show
-		<select class="rounded-md border bg-background p-2" bind:value={filter}>
-			<option value="all">All plans</option>
-			<option value="next">Next work</option>
-			<option value="proposed">Needs a decision</option>
-			<option value="active">Execution requested</option>
-			<option value="paused">On hold / paused</option>
-			<option value="finished">Finished</option>
-		</select>
-	</label>
-	<label class="flex items-center gap-3 text-sm"
-		>Group
-		<select class="rounded-md border bg-background p-2" bind:value={groupFilter}>
-			<option value="all">All groups</option>
-			<option value="null">(null)</option>
-			{#each groupKeys as key (key)}<option value={JSON.stringify(key)}
-					>{JSON.stringify(key)}</option
-				>{/each}
-		</select>
-	</label>
+	<div class="flex flex-wrap items-center gap-4">
+		<label class="flex items-center gap-3 text-sm"
+			>Show
+			<NativeSelect bind:value={filter}>
+				<option value="all">All plans</option>
+				<option value="next">Next work</option>
+				<option value="proposed">Needs a decision</option>
+				<option value="active">Execution requested</option>
+				<option value="paused">On hold / paused</option>
+				<option value="finished">Finished</option>
+			</NativeSelect>
+		</label>
+		<label class="flex items-center gap-3 text-sm"
+			>Group
+			<NativeSelect bind:value={groupFilter}>
+				<option value="all">All groups</option>
+				<option value="null">(null)</option>
+				{#each groupKeys as key (key)}<option value={JSON.stringify(key)}
+						>{JSON.stringify(key)}</option
+					>{/each}
+			</NativeSelect>
+		</label>
+	</div>
 	{#if loading}<p class="text-sm text-muted-foreground">Loading plans…</p>
 	{:else if !plans.length && !creating}<div
 			class="rounded-xl border border-dashed p-8 text-center text-muted-foreground"

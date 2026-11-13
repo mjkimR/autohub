@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -156,18 +157,18 @@
 	</div>
 	<div class="space-y-2">
 		<label for="test-catalog" class="text-sm font-medium">Test AI catalog</label>
-		<select
+		<NativeSelect
 			id="test-catalog"
 			bind:value={catalogId}
 			disabled={busy || !!requestId}
-			class="flex h-10 w-full max-w-md rounded-md border bg-background px-3 text-sm"
+			class="w-full max-w-md"
 		>
 			{#each choices as catalog (catalog.ai_catalog_id)}
 				<option value={catalog.ai_catalog_id}
 					>{catalog.name} · {catalog.kind}{catalog.ready ? '' : ' (setup needed)'}</option
 				>
 			{/each}
-		</select>
+		</NativeSelect>
 		{#if !choices.length}<p class="text-sm text-muted-foreground">
 				No supported AI catalog is configured.
 			</p>{/if}

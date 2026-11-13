@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
 	import { responseData } from '$lib/api/pagination';
 	import { onMount } from 'svelte';
@@ -215,30 +216,21 @@
 						<label for="asCatalog" class="text-xs font-semibold text-muted-foreground uppercase"
 							>AI Catalog</label
 						>
-						<select
-							id="asCatalog"
-							bind:value={catalogId}
-							required
-							class="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs"
-						>
+						<NativeSelect id="asCatalog" bind:value={catalogId} required class="w-full">
 							{#each sessionCatalogs as catalog (catalog.id)}
 								<option value={catalog.id}>{catalog.name} ({catalog.kind})</option>
 							{/each}
-						</select>
+						</NativeSelect>
 					</div>
 					<div class="space-y-1.5">
 						<label for="asWorkType" class="text-xs font-semibold text-muted-foreground uppercase"
 							>Work type</label
 						>
-						<select
-							id="asWorkType"
-							bind:value={workType}
-							class="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs"
-						>
+						<NativeSelect id="asWorkType" bind:value={workType} class="w-full">
 							{#each workTypes as item (item)}
 								<option value={item}>{item}</option>
 							{/each}
-						</select>
+						</NativeSelect>
 					</div>
 				</div>
 				<div class="space-y-1.5">
@@ -277,14 +269,10 @@
 						<label for="asTriggerKind" class="text-xs font-semibold text-muted-foreground uppercase"
 							>Trigger</label
 						>
-						<select
-							id="asTriggerKind"
-							bind:value={triggerKind}
-							class="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs"
-						>
+						<NativeSelect id="asTriggerKind" bind:value={triggerKind} class="w-full">
 							<option value="cron">Cron</option>
 							<option value="interval">Interval</option>
-						</select>
+						</NativeSelect>
 					</div>
 					{#if triggerKind === 'cron'}
 						<div class="space-y-1.5">

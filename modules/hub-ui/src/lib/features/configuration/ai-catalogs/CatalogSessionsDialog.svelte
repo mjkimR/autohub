@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { onMount } from 'svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -60,16 +61,12 @@
 		</DialogHeader>
 		<label class="flex items-center gap-2 text-sm font-medium">
 			Show
-			<select
-				bind:value={status}
-				onchange={() => loadPage(0)}
-				class="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-			>
+			<NativeSelect bind:value={status} onchange={() => loadPage(0)}>
 				<option value="">All sessions</option>
 				<option value="open">Open</option>
 				<option value="completed">Completed</option>
 				<option value="failed">Failed</option>
-			</select>
+			</NativeSelect>
 		</label>
 		{#if loading}
 			<p class="text-sm text-muted-foreground">Loading sessions…</p>

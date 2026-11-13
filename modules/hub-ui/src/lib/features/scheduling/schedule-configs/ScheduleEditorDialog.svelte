@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -130,17 +131,12 @@
 				{#if editor.mode === 'edit'}
 					<Input id="editScTask" value={draft.taskFunc} disabled class="font-mono text-xs" />
 				{:else}
-					<select
-						id="scTask"
-						class="w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-xs focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-						bind:value={draft.taskFunc}
-						required
-					>
+					<NativeSelect id="scTask" class="w-full" bind:value={draft.taskFunc} required>
 						<option value="" disabled selected>Select a task function to execute...</option>
 						{#each taskSpecs.filter((spec) => !['system.maintain', 'pipeline.connection_test', 'pipeline.dispatch_project'].includes(spec.name)) as spec (spec.name)}
 							<option value={spec.name}>{spec.name}</option>
 						{/each}
-					</select>
+					</NativeSelect>
 				{/if}
 				{#if selectedTaskSpec?.description}
 					<p class="text-xs text-muted-foreground italic">{selectedTaskSpec.description}</p>

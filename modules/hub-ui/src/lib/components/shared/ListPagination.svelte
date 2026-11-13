@@ -19,7 +19,7 @@
 	<span aria-live="polite"
 		>{total === 0 ? 0 : offset + 1}–{Math.min(offset + limit, total)} of {total}</span
 	>
-	<div class="flex flex-wrap gap-2 [&_button]:min-h-11 sm:[&_button]:min-h-0">
+	<div class="flex flex-wrap gap-2">
 		<Button
 			variant="outline"
 			disabled={loading || offset === 0}

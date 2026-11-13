@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { PaginatedState } from '$lib/state/paginated.svelte';
 	import ListPagination from '$lib/components/shared/ListPagination.svelte';
 	import ScheduleEditorDialog from './ScheduleEditorDialog.svelte';
@@ -205,26 +206,25 @@
 	</div>
 
 	<!-- Search & Filter Bar -->
-	<div class="flex items-center gap-2">
+	<div class="flex items-center gap-3">
 		<div class="relative max-w-sm flex-1">
 			<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
 			<Input
 				placeholder="Search by schedule or task func..."
 				bind:value={searchQuery}
 				oninput={() => loadConfigs(0)}
-				class="h-9 pl-9 text-xs"
+				class="pl-9"
 			/>
 		</div>
-		<select
+		<NativeSelect
 			aria-label="Schedule status"
 			bind:value={enabledFilter}
 			onchange={() => loadConfigs(0)}
-			class="h-9 rounded-md border border-input bg-background px-3 text-xs"
 		>
 			<option value="">All statuses</option><option value="true">Active</option><option
 				value="false">Paused</option
 			>
-		</select>
+		</NativeSelect>
 	</div>
 
 	<!-- Configurations Table -->

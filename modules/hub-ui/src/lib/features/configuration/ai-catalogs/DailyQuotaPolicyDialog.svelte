@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { untrack } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
@@ -59,13 +60,10 @@
 			</label>
 			<label class="grid gap-1 text-sm font-medium">
 				Daily window
-				<select
-					bind:value={quotaWindow}
-					class="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-				>
+				<NativeSelect bind:value={quotaWindow}>
 					<option value="rolling">Rolling 24 hours</option>
 					<option value="calendar">Calendar day</option>
-				</select>
+				</NativeSelect>
 			</label>
 			{#if quotaWindow === 'calendar'}
 				<label class="grid gap-1 text-sm font-medium">
