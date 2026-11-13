@@ -2,7 +2,7 @@
 id: PROP-optimistic-sdd-orchestration
 title: Delegate SDD execution to repositories and agents
 summary: "Remove Hub-side SDD runtime preparation and workflow evaluation. Start repository work optimistically through ordinary PR delivery and observe repository-owned GitHub Actions checks."
-status: reviewing
+status: accepted
 created_at: 2026-11-13
 target_area: capabilities/sdd/
 priority: high
