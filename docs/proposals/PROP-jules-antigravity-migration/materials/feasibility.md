@@ -55,7 +55,7 @@ Collected with `uv run devkit docs refs <ID> --direction in -n 0`. All reference
 can be rerun at the selected implementation head. Completed work remains historical evidence.
 
 - `CAP-AGENT-provider-sessions`: `ARCH-05-2-components`, `ARCH-11-risks-and-technical-debt`,
-  `PROP-jules-antigravity-migration`, `PROP-schedule-config-ownership`, `SPEC-ux-documentation`,
+  `PROP-jules-antigravity-migration`, `SPEC-schedule-config-ownership`, `SPEC-ux-documentation`,
   `UC-run-agent-session`, `UX-agent-schedules`, `UX-ai-catalogs`, `UX-catalog-sessions`, `UX-project-detail`.
 - `CAP-AGENT-catalog-admission`: `ARCH-05-2-components`, `ARCH-11-risks-and-technical-debt`,
   `CAP-AGENT-provider-sessions`, `CAP-CONN-connection-verification`, `CAP-PR-agent-dispatch`, `CAP-PR-owed-items`,

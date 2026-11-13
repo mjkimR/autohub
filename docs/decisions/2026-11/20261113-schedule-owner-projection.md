@@ -1,13 +1,13 @@
 ---
-id: PADR-schedule-owner-projection
+id: ADR-schedule-owner-projection
 title: Derive schedule ownership from existing owners
 summary: "For schedule reads spanning project and scheduler owners, we derive ownership and generic mutation permissions from existing relations, to avoid duplicate write invariants, accepting bounded read-time lookups."
-proposal: PROP-schedule-config-ownership
-status: draft
+proposal: SPEC-schedule-config-ownership
+status: accepted
 created_at: 2026-11-13
 ---
 
-# [PADR-schedule-owner-projection] Derive schedule ownership from existing owners
+# [ADR-schedule-owner-projection] Derive schedule ownership from existing owners
 
 ## 1. Context & Problem Statement
 
@@ -52,7 +52,7 @@ measurement is claimed by Planning.
 
 ## 6. Confirmation
 
-OWNER-01 through OWNER-07 in `PROP-schedule-config-ownership` define the acceptance examples. Development extends
+OWNER-01 through OWNER-07 in `SPEC-schedule-config-ownership` define the acceptance examples. Development extends
 schedule-config HTTP tests and the existing dispatch/agent-schedule authority suites. It checks UUID parity and the
 query/connection budget on SQLite and PostgreSQL, then verifies both UI consumers. Planning inspected source and
 tests; it did not run these product checks. Restating clauses are drafted in `target-docs.md` for Development.
