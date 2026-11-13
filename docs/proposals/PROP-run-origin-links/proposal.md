@@ -17,6 +17,7 @@ boundaries:
     - usecases/delivery/
     - usecases/repository/
     - usecases/sdd/
+    - docs/steering/ux-objects.md
     - ux/delivery/
     - ux/repository/
     - ux/sdd/
@@ -96,7 +97,7 @@ or enrollment behavior change is needed. Evidence is pinned to `e1a50a8064597d65
 | Q1: enrollment source | Expose evidence categories and an explicit `unknown` when no category is proven. `unknown` never means manual, webhook or SDK. State that related origins are retained relationships, not an immutable account of the original enrollment channel. | Guessing the channel from an absent reverse link would mislabel old or independently enrolled runs. |
 | Q2: read cost | Enrich the paginated run result with at most three additional bulk SELECTs: Work Item joined to Work Plan; Provider sessions; SDD claims joined to members/batches. Reuse the caller's session and transaction sequentially. | Per-run lookups grow with page size and can obscure run-list ordering/counts. Row-multiplying outer joins before pagination change the result. |
 | Q3: consumers | The run page and run rows show compact related-origin links. `RunNextStep` consumes its returned Work Item/Work Plan IDs and no longer scans Work Plans; ID labels are sufficient until the destination opens. | Keeping the scan preserves unbounded browser requests and can disagree with the run read. |
-| Q4: addressing | Keep `?tab=repository&unit=<encoded unit directory>` and add `&batch=<UUID>`. Query parameters survive reloads and viewer switches. They are selection requests, not permission to execute. | Hash-only addressing supplies a scroll target but cannot initialize a unit or fetch a retained batch. |
+| Q4: addressing | Keep `?tab=repository&unit=<encoded unit directory>`, add optional `&ref=<encoded branch>` for run links and `&batch=<UUID>`. Query parameters survive reloads and viewer switches. They are selection requests, not permission to execute. | Hash-only addressing supplies a scroll target but cannot initialize a unit or fetch a retained batch. |
 | Q5: selection | A validated unit selects the SDD viewer document and execution panel together. A batch address fetches the exact project-scoped batch detail directly; it does not depend on the latest-50 list. | Loading the bounded list first can omit an older addressed batch. |
 
 ### Read contract
@@ -133,7 +134,10 @@ are additive and the generated UI client is regenerated with `just gen-ui-api`.
   catalog dialogs is excluded from this spec.
 - Unit links use the run's project and URL-encoded current unit directory. Validate recognized proposal/spec
   directory syntax and reject traversal or arbitrary file addresses before selecting the viewer or execution panel.
-  The selected repository ref remains the existing default/selected branch; the link never implies the PR head.
+  Run-generated unit URLs include `ref=<URL-encoded run.branch>` so an unmerged handoff spec opens on its recorded
+  branch. Display the browse branch explicitly. A branch name is neither immutable PR-head evidence nor execution
+  authority. Legacy URLs without `ref` keep the existing default-branch behavior. A missing/deleted branch shows an
+  unavailable explanation and Retry/Browse escape; it never silently falls back to a different branch.
 - Batch links use `/projects/<id>?tab=repository&batch=<id>`. Attention uses `context.sdd_batch_id` and the run page
   reuses the same link builder. A detail GET restores the exact batch even outside the latest-50 list. Merge the
   result into retained rows; a later **Load retained batches** action fetches the list once if not yet loaded and
@@ -144,6 +148,10 @@ are additive and the generated UI client is regenerated with `just gen-ui-api`.
 - A fresh address to an SDD project opens Sdd View. Switching to Git Browser preserves the address and selected unit;
   returning to Sdd View restores it. Browser back/forward or same-project query changes replace the requested
   selection. Changing project invalidates earlier requests, selection and cached list state.
+- If a control for batch A has an unknown outcome while navigation selects batch B, preserve a separate disclosure
+  naming batch A, its action and original request identity. **Retry same request for batch A** is explicitly scoped
+  to A; its result never replaces B's displayed selection. B mutations remain disabled while the one retained intent
+  blocks them. Navigation never retries, replaces or clears A's request.
 - Missing, malformed, non-SDD-project or inaccessible subjects show a visible explanation and **Browse repository**
   escape. Missing units do not enable readiness/start controls for that unit. A missing batch never selects another
   batch as if it were the requested one. Network errors offer Retry. Older responses cannot overwrite a later
@@ -160,7 +168,8 @@ are additive and the generated UI client is regenerated with `just gen-ui-api`.
 - **ORIGIN-04**: Given an ended Work Item run, when its page opens, then **Open Work Item recovery** targets the exact
   Work Item without a Work Plan list request. Missing/retained origin text never offers a false owner link.
 - **ORIGIN-05**: Given a valid unit address, when the Repository tab opens or browser navigation changes it, then
-  viewer document and execution selection agree; reload and viewer-mode switches preserve the request.
+  viewer document and execution selection agree; reload and viewer-mode switches preserve the request. An active
+  run's not-yet-merged spec opens from its recorded branch; a deleted branch is explained without a false fallback.
 - **ORIGIN-06**: Given an Attention item naming an old batch outside the latest 50, when **Inspect batch** opens,
   then the exact detail is fetched and visible without a batch-list prerequisite or any mutation. Later list loading
   happens once and preserves that selection.
@@ -168,6 +177,9 @@ are additive and the generated UI client is regenerated with `just gen-ui-api`.
   lookup settles, then the explanation/Retry/Browse escape remains accurate and no wrong subject is selected.
 - **ORIGIN-08**: Given simultaneous unit and batch parameters, when the SDD view opens, then both named regions are
   selected independently and no start, batch creation or control request is sent.
+- **ORIGIN-09**: Given an unknown control result for batch A, when the operator opens batch B, then B remains the
+  inspected selection, A's retry disclosure names A/action/request, B mutations are disabled and no request is
+  automatically resent. An explicit retry of A cannot replace B's displayed selection.
 
 ### Scope and delivery
 
@@ -190,7 +202,14 @@ Non-goals:
 3. **Scope Excluded**: local Provider session dialog deep links or linking a missing external session URL to another
    subject under an exact-session label.
 4. **Scope Excluded**: new owed kinds, pending-decision semantics, unrelated owed links, Repository layout redesign or
-   changes to the selected repository ref policy.
+   global changes to repository ref policy beyond honoring an explicitly addressed browse branch.
+
+### Review fold
+
+The Challenger round identified the unmerged-unit branch gap and a missing UX register boundary; both are folded
+into this recommendation. The UX review identified ambiguous pending batch-control ownership and an extension-key
+collision; the drafts now name the retained request's subject and reserve `UC-execute-sdd-batch` 4d for the new
+unavailable-address case. No acceptance or implementation effect is recorded by this Planning turn.
 
 ## 4. Lifecycle & Retirement Criteria
 <!--
