@@ -3,12 +3,10 @@ id: TASKS-sidebar-overflow-cues
 spec: SPEC-sidebar-overflow-cues
 plan: PLAN-sidebar-overflow-cues
 ---
-<!-- devkit:skeleton -->
 
-# Task Breakdown: `SPEC-sidebar-overflow-cues` Show sidebar navigation overflow cues
+# Task Breakdown: `SPEC-sidebar-overflow-cues`
 
-## Phase 1: Implementation
-- [ ] **Task 1.1**: Core Implementation
-  - **_Boundary**: ux/navigation/, modules/hub-ui/src/lib/components/shared/, modules/hub-ui/src/routes/layout.css
-  - _Requirements: AC-01_
-  - **Verification**: <command that verifies the task>
+- [ ] **Task 1**: Add measured directional cues and responsive shell integration with regression tests.
+  - **_Boundary**: `modules/hub-ui/src/lib/components/shared/`, `modules/hub-ui/src/routes/layout.css`, `docs/ux/navigation/UX-app-shell.md`
+  - _Requirements: AC-01, AC-02, AC-03, AC-04, AC-05_
+  - **Verification**: Focused SidebarNavViewport/AppShell Vitest tests, real-layout light/dark short desktop/narrow browser checks, just lint and just check.
