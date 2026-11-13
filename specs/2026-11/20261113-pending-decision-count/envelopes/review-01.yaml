@@ -1,0 +1,21 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T00:52:20.670298Z'
+status: completed
+summary: 'round 1; code-reviewer PASS with no findings: AC-01..AC-07 implemented and tested; shared _filtered builder, one aggregate count in the page transaction, no provider call, exact shell count.'
+findings: []
+assumptions:
+- Isolated code-reviewer subagent (claude-code native); reviewer left HEAD, index and tracked tree unchanged (snapshot diff empty apart from the implementer's uncommitted docs drafts).
+- Implementer added a test-only cross-project count assertion after review for the reviewer's unverified area (test_keyset_bounded_and_cursor_filters); SQLite 10/10 and PostgreSQL 10/10 pass.
+unverified_areas:
+- Count latency and query plan on a large PostgreSQL projection were not measured; indexes are a non-goal.
+checks:
+  tests: PASS just test test_discovery.py+tests/integration/mcp 37/37; just test-pg test_discovery.py 10/10; just test-ui 437/437
+  lint: PASS just lint (ruff, devkit rules, prettier, eslint)
+  build: PASS just check (pyright 0 errors, svelte-check, vite build); just check-ui-api up to date
+diff_scope:
+  base: 84edb07e23f1a7160a48e061875116dcd731b9e3
+  head: fa33fb30892dd12cfb022742544726532b13c7bd
+activity_effort: medium
