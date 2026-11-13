@@ -276,6 +276,13 @@ Successful Items retain repository/target, PR URL, merge SHA, execution identity
 and completion time after detailed Run removal. An attached Run is eligible only
 when its own last update and the Item's confirmed successful completion are each
 older than 30 days, no active lease remains and explicit merge evidence exists.
+The owner `updated_at` is maintained on ordinary ORM and mapped Core writes; explicit owner clocks still win.
+It represents last-write evidence rather than time of entry into a Plan or Item state.
+Existing historical values remain until the next non-exempt owner write, without backfill.
+Plan controls, Item observation and replacement-link writes feed the owed-read fallback in `CAP-PR-owed-items`.
+Checks: [`test_timestamp_owners.py`](../../../modules/hub/tests/integration/features/project_management/work_plans/test_timestamp_owners.py)
+and [`test_timestamps.py`](../../../modules/hub/tests/integration/common/test_timestamps.py).
+
 Pruning nulls the link and records `pipeline_run_retired_at`; unresolved failed,
 paused, blocked or missing-success work stays protected, including after Plan
 revoke. Pruning and completion use compatible Run-before-Item locking.
