@@ -34,8 +34,8 @@ label is "Needs you".
   SDD batches in `CAP-SDD-workflow-control`, connection tests in `CAP-CONN-connection-verification` and catalog holds
   in `CAP-AGENT-catalog-admission`. Notices stay in `CAP-NOTIFY-operator-notifications`.
 - **Scope Excluded**: grouping owed items into threads or workspaces, owed-item notices, MCP exposure, a persisted
-  owed projection and any action on the owed item itself. The app shell Badge still reads `actionable_total_count`;
-  the dashboard Needs-you tile still sums failed, paused and blocked runs (`UX-app-shell`, `UX-dashboard`).
+  owed projection and any action on the owed item itself. The app shell Badge reads the counts and the Attention
+  landing reads the list (`UX-app-shell`, `UX-attention`).
 
 ## 3. Business Rules & Policies
 

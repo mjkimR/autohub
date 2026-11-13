@@ -46,7 +46,7 @@ entrypoints:
    Interface: `UX-connection-tests`.
 
 7. The operator reviews the verification evidence, configuration applicability and separate cleanup result (`CAP-CONN-connection-verification`).
-   Interface: `UX-connection-tests`.
+   Interface: `UX-connection-tests`, `UX-attention`.
 
 ## 3. Extensions
 
@@ -84,7 +84,7 @@ entrypoints:
   Interface: `UX-connection-tests`.
 
 - **6b.** Failed-test delay or ambiguous Jules ownership: Hub leaves cleanup waiting and preserves protection instead of deleting unconfirmed output; resumes at step 7 with the retained terminal result and unresolved cleanup.
-  Interface: `UX-connection-tests`.
+  Interface: `UX-connection-tests`; the unresolved cleanup is listed on `UX-attention`.
 
 ## 4. Postconditions
 

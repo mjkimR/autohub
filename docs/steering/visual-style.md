@@ -42,16 +42,18 @@ or Native SDD request awaiting a decision, including an answered question whose 
 blocked PR runs not held by a decision, proposed Work Plans, Work Item recovery, replacement or attention, SDD batches
 in attention and connection-test cleanup reviews. A deliberately paused run is attention too, because only the
 operator can resume it. A failed run is a quiet owed item without count weight, and an AI catalog hold is never
-attention. Until the Attention landing ships, the shell Badge keeps counting decisions only and the dashboard
-Needs-you tile keeps its failed, paused and blocked run sum (`UX-app-shell`, `UX-dashboard`).
+attention: it is quiet context on the run it holds. The shell Badge counts this owed set and links to the Attention
+landing (`UX-app-shell`, `UX-attention`); System › Health (`UX-dashboard`) shows run-state statistics without
+attention.
 
 - Show attention only on a Badge, a summary tile, a row's left rule or the application shell's top rule (2px, while
-  pending decisions are owed; `UX-app-shell`). Never fill a full row background with it, because dense amber lists
+  any owed item is counted; `UX-app-shell`). On a screen made only of owed items, such as the Attention landing, mark
+  each group once with an `attention` Badge and keep its rows neutral; the quiet failed-run section uses a neutral
+  Badge. Never fill a full row background with it, because dense amber lists
   cause alarm fatigue and lower text contrast.
 - Keep the left rule for attention. Selected and active states, such as the active sidebar link, use ink: a 1px
   `sidebar-ring` outline with semibold text, never a hued or left-edge mark.
-- Use the `attention` fill only on an area whose text is `attention-foreground`, such as the dashboard Needs-you
-  tile.
+- Use the `attention` fill only on an area whose text is `attention-foreground`; no current screen uses it.
 - Use `attention-text` for every attention mark on a neutral surface: text, icons, dots and strokes such as the
   Decisions inbox left rule and the shell top rule. The `attention` fill is too light to meet the 3:1 UI threshold as
   a stroke on a light card.

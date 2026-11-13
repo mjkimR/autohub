@@ -22,7 +22,7 @@ capabilities:
 
 - **Primary task**: Find a pending decision and open its current review context.
 - **Facts to commit**: Project/run (both in-app links), explicit decision kind, question/request identity, saved-versus-applied state, evidence head and observation time, and waiting-age basis.
-- **Secondary items**: Decision editors and complete evidence remain in `UX-run-decisions` and its native panels; history stays with the owner.
+- **Secondary items**: Decision editors and complete evidence remain in `UX-run-decisions` and its native panels; history stays with the owner. Owed work of every other kind (held runs, Work Plans, Work Items, SDD batches, connection-test cleanup) is triaged on `UX-attention`, whose Decisions group links here when a decision names no run.
 
 ## 2. Content
 
@@ -40,7 +40,7 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
   - Native SDD activity (request kind/title/identity, First observed waiting age, evidence head, last inspected time).
   - Review (secondary-weight button; opens exact owner subject after freshness verification). The row background stays neutral, so the status badge, not the button, carries the row's emphasis.
 - Pagination (Next; loaded previous cursor pages; Refresh restarts at first page).
-- Application shell (global navigation to other screens; its pending-decision count counts the rows that carry the attention left rule here, per `UX-app-shell`).
+- Application shell (global navigation to other screens; the Decisions link's neutral count is the decision part of the owed counts and equals the rows that carry the attention left rule here, while the Attention link carries the owed total, per `UX-app-shell`).
 
 ## 3. States
 

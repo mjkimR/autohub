@@ -9,16 +9,19 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import {
-		PENDING_DECISION_NAV_MIN_MS,
-		PENDING_DECISIONS_UNKNOWN_LABEL,
-		PendingDecisions,
-		isPendingDecisionUnknown,
-		pendingDecisionPhrase,
-		pendingDecisionText
-	} from '$lib/features/project-management/pipeline-runs/pending-decisions.svelte';
+		OWED_COUNTS_NAV_MIN_MS,
+		OWED_UNKNOWN_LABEL,
+		OwedCountsStore,
+		decisionPhrase,
+		decisionText,
+		owedPhrase,
+		owedText,
+		provideOwedCounts
+	} from '$lib/features/attention/owed-counts.svelte';
 	import SidebarNavGroup from '$lib/components/shared/SidebarNavGroup.svelte';
 	import {
 		ADMIN_GROUP,
+		ATTENTION_HREF,
 		DECISIONS_HREF,
 		NAV_GROUPS,
 		activeHref,
@@ -55,20 +58,24 @@
 		}
 	}
 
-	// Operator-owed decisions light the shell; zero shows nothing, unknown shows a neutral "?".
-	const pending = new PendingDecisions();
-	const pendingText = $derived(pendingDecisionText(pending.value));
-	const pendingPhrase = $derived(pendingDecisionPhrase(pending.value));
-	const pendingUnknown = $derived(isPendingDecisionUnknown(pending.value));
+	// Owed items light the shell; zero shows nothing, unknown shows a neutral "?". The landing
+	// reuses this store, so one counts read per poll serves both.
+	const owed = provideOwedCounts(new OwedCountsStore());
+	const owedCount = $derived(owedText(owed.value));
+	const owedLabel = $derived(owedPhrase(owed.value));
+	const owedUnknown = $derived(owed.value.status === 'unknown');
+	// The decision part of the same response; neutral, because the Attention badge carries the debt.
+	const decisionCount = $derived(decisionText(owed.value));
+	const decisionLabel = $derived(decisionPhrase(owed.value));
 
 	onMount(() => {
 		checkHealth();
 		void loadProfile();
 		const interval = setInterval(checkHealth, 10000);
-		const stopPending = pending.start();
+		const stopOwed = owed.start();
 		return () => {
 			clearInterval(interval);
-			stopPending();
+			stopOwed();
 		};
 	});
 
@@ -78,7 +85,7 @@
 		const path = page.url.pathname;
 		if (path === lastPath) return;
 		lastPath = path;
-		pending.refreshIfStale(PENDING_DECISION_NAV_MIN_MS);
+		owed.refreshIfStale(OWED_COUNTS_NAV_MIN_MS);
 	});
 
 	const current = $derived(activeHref(page.url.pathname));
@@ -90,9 +97,9 @@
 	<header
 		class={[
 			'flex items-center gap-3 border-b border-border p-3 lg:hidden',
-			pendingText && 'border-t-2 border-t-attention-text'
+			owedCount && 'border-t-2 border-t-attention-text'
 		]}
-		data-pending-rule={pendingText ? 'true' : undefined}
+		data-owed-rule={owedCount ? 'true' : undefined}
 	>
 		<Button
 			variant="outline"
@@ -102,25 +109,25 @@
 			><Menu class="size-4" /> Menu</Button
 		>
 		<span class="min-w-0 flex-1 truncate text-sm font-semibold">{currentLabel}</span>
-		{#if pendingText}
+		{#if owedCount}
 			<a
-				href="/decisions"
-				aria-label="Decisions: {pendingPhrase}"
+				href={ATTENTION_HREF}
+				aria-label="Attention: {owedLabel}"
 				class="inline-flex min-h-11 items-center rounded-lg px-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 			>
 				<Badge variant="attention" class="tabular-nums">
 					<span aria-hidden="true" class="size-1.5 rounded-full bg-attention-text"></span>
-					{pendingText} pending
+					Needs you · {owedCount}
 				</Badge>
 			</a>
-		{:else if pendingUnknown}
+		{:else if owedUnknown}
 			<a
-				href="/decisions"
-				aria-label="Decisions: {PENDING_DECISIONS_UNKNOWN_LABEL}"
-				title={PENDING_DECISIONS_UNKNOWN_LABEL}
+				href={ATTENTION_HREF}
+				aria-label="Attention: {OWED_UNKNOWN_LABEL}"
+				title={OWED_UNKNOWN_LABEL}
 				class="inline-flex min-h-11 items-center rounded-lg px-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 			>
-				<Badge variant="outline" data-pending-unknown>?</Badge>
+				<Badge variant="outline" data-owed-unknown>?</Badge>
 			</a>
 		{/if}
 		<ThemeToggle />
@@ -155,19 +162,20 @@
 							active={item.href === current}
 						>
 							{#snippet trailing()}
-								{#if item.href === DECISIONS_HREF && pendingText}
-									<Badge variant="attention" class="tabular-nums" data-pending-count>
-										<span aria-hidden="true">{pendingText}</span>
-										<span class="sr-only">{pendingPhrase}</span>
+								{#if item.href === ATTENTION_HREF && owedCount}
+									<Badge variant="attention" class="tabular-nums" data-owed-count>
+										<span aria-hidden="true">{owedCount}</span>
+										<span class="sr-only">{owedLabel}</span>
 									</Badge>
-								{:else if item.href === DECISIONS_HREF && pendingUnknown}
-									<Badge
-										variant="outline"
-										title={PENDING_DECISIONS_UNKNOWN_LABEL}
-										data-pending-unknown
-									>
+								{:else if item.href === ATTENTION_HREF && owedUnknown}
+									<Badge variant="outline" title={OWED_UNKNOWN_LABEL} data-owed-unknown>
 										<span aria-hidden="true">?</span>
-										<span class="sr-only">{PENDING_DECISIONS_UNKNOWN_LABEL}</span>
+										<span class="sr-only">{OWED_UNKNOWN_LABEL}</span>
+									</Badge>
+								{:else if item.href === DECISIONS_HREF && decisionCount}
+									<Badge variant="secondary" class="tabular-nums" data-decision-count>
+										<span aria-hidden="true">{decisionCount}</span>
+										<span class="sr-only">{decisionLabel}</span>
 									</Badge>
 								{/if}
 							{/snippet}
@@ -233,9 +241,9 @@
 		<header
 			class={[
 				'sticky top-0 z-20 hidden h-16 items-center justify-between border-b border-border/80 bg-background/80 px-8 backdrop-blur-md lg:flex',
-				pendingText && 'border-t-2 border-t-attention-text'
+				owedCount && 'border-t-2 border-t-attention-text'
 			]}
-			data-pending-rule={pendingText ? 'true' : undefined}
+			data-owed-rule={owedCount ? 'true' : undefined}
 		>
 			<div class="flex items-center gap-2">
 				<span class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">

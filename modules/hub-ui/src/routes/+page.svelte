@@ -1,5 +1,5 @@
 <script lang="ts">
-	import DashboardView from '$lib/features/dashboard/DashboardView.svelte';
+	import AttentionView from '$lib/features/attention/AttentionView.svelte';
 </script>
 
-<DashboardView />
+<AttentionView />
