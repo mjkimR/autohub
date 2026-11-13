@@ -245,13 +245,13 @@
 		<Table class="block md:table">
 			<TableHeader class="hidden md:table-header-group">
 				<TableRow>
-					<TableHead class="w-45">Pull Request</TableHead>
-					<TableHead class="w-40">Project</TableHead>
-					<TableHead class="w-32.5">State</TableHead>
+					<TableHead>Pull Request</TableHead>
+					<TableHead>Project</TableHead>
+					<TableHead>State</TableHead>
 					<TableHead>Branch & Pull Request</TableHead>
-					<TableHead class="w-40">Lease Status</TableHead>
-					<TableHead class="w-35">Created</TableHead>
-					<TableHead class="w-40 text-right">Actions</TableHead>
+					<TableHead>Lease Status</TableHead>
+					<TableHead>Created</TableHead>
+					<TableHead class="text-right">Actions</TableHead>
 				</TableRow>
 			</TableHeader>
 			<TableBody class="block md:table-row-group">

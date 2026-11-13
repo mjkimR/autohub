@@ -41,13 +41,23 @@
 	let waiting = $derived(
 		decisions.status === 'known' ? decisionWaitLabel(decisionWait(decisions.entries)) : null
 	);
+	// Cells wrap in the stacked mobile row; desktop columns opt into no-wrap where needed.
+	const cell = 'min-w-0 whitespace-normal';
+	// Compact creation time for the row; the full timestamp stays in the tooltip.
+	let created = $derived(new Date(run.created_at));
+	const compact: Intl.DateTimeFormatOptions = {
+		month: 'short',
+		day: 'numeric',
+		hour: 'numeric',
+		minute: '2-digit'
+	};
 </script>
 
 <TableRow
 	data-attention={waiting ? 'true' : undefined}
-	class="grid min-w-0 gap-1 p-3 md:table-row md:p-0 [&>td]:min-w-0 [&>td]:whitespace-normal"
+	class="grid min-w-0 gap-1 p-3 md:table-row md:p-0"
 >
-	<TableCell>
+	<TableCell class="{cell} md:min-w-48">
 		<div class="space-y-1">
 			<div class="flex items-center gap-1.5">
 				<Badge variant="info" class="font-mono text-xs">
@@ -74,14 +84,16 @@
 		</div>
 	</TableCell>
 
-	<TableCell>
+	<TableCell class="{cell} break-normal md:min-w-32">
 		<div class="flex flex-col gap-0.5">
 			<span class="text-sm font-semibold text-foreground">{projectName}</span>
-			<span class="font-mono text-xs text-muted-foreground">run rev {run.revision}</span>
+			<span class="font-mono text-xs whitespace-nowrap text-muted-foreground"
+				>run rev {run.revision}</span
+			>
 		</div>
 	</TableCell>
 
-	<TableCell>
+	<TableCell class={cell}>
 		<div class="flex flex-col items-start gap-1">
 			<RunStateBadge state={run.state} />
 			{#if waiting}
@@ -95,9 +107,10 @@
 		{/if}
 	</TableCell>
 
-	<TableCell>
+	<!-- The branch column absorbs the remaining width and truncates long branch names. -->
+	<TableCell class="{cell} md:w-full md:max-w-0">
 		<div class="space-y-1 font-mono text-xs">
-			<div class="flex items-center gap-1 text-muted-foreground">
+			<div class="flex min-w-0 items-center gap-1 text-muted-foreground" title={run.branch}>
 				<GitBranch class="size-3 shrink-0" />
 				<span class="truncate">{run.branch}</span>
 			</div>
@@ -114,7 +127,7 @@
 		</div>
 	</TableCell>
 
-	<TableCell>
+	<TableCell class={cell}>
 		{#if run.lease_owner}
 			<div class="space-y-0.5 text-xs">
 				<div class="flex items-center gap-1 text-foreground">
@@ -132,12 +145,14 @@
 		{/if}
 	</TableCell>
 
-	<TableCell class="text-xs text-muted-foreground"
+	<TableCell class="{cell} text-xs text-muted-foreground md:whitespace-nowrap"
 		><span class="mr-1 md:hidden">Created:</span>
-		{new Date(run.created_at).toLocaleString()}
+		<time datetime={run.created_at} title={created.toLocaleString()}
+			>{created.toLocaleString([], compact)}</time
+		>
 	</TableCell>
 
-	<TableCell class="text-right">
+	<TableCell class="{cell} text-right md:whitespace-nowrap">
 		<RunActions
 			{run}
 			{decisions}

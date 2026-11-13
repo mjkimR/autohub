@@ -154,7 +154,7 @@ export class SddExecutionState {
 			this.runId = result.data?.id || '';
 			this.startedKey = requestedKey;
 			if (generation === this.generation && requestedKey === this.key())
-				this.message = 'Execution registered. Follow its stages and decisions in Pipeline Runs.';
+				this.message = 'Execution registered. Follow its stages and decisions on its PR run page.';
 		} catch (error) {
 			if (generation === this.generation && requestedKey === this.key())
 				this.error = error instanceof Error ? error.message : 'Could not start execution';
