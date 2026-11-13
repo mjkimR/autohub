@@ -1,0 +1,8 @@
+request: gate:plan-accept
+kind: approve
+action: accept
+workflow: sdd-spec-bugfix
+stage: direction-handoff
+note: PROP-owed-counts-error-reason
+by: user
+at: '2026-11-13T07:10:58.215402Z'

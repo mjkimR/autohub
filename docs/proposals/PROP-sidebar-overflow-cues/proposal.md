@@ -75,7 +75,7 @@ Use existing sidebar surface/ink tokens through `layout.css`; add a named semant
   then the correct cues are visible and decorative, the navigation scrolls within the available viewport, and Menu and session controls remain reachable. Mocked dimensions may supplement that evidence.
 
 Use the established UI integration harness and a real browser layout check, followed by `just lint`, `just check`
-and document rules. The sibling `PROP-owed-counts-error-reason` is behaviorally independent; serialize Development
+and document rules. The sibling `SPEC-owed-counts-error-reason` is behaviorally independent; serialize Development
 writes, handoff and integration when their `AppShell.integration.test.ts` scope overlaps.
 
 ### Non-goals

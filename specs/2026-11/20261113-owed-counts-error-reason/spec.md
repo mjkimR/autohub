@@ -1,47 +1,58 @@
 ---
-id: PROP-owed-counts-error-reason
+id: SPEC-owed-counts-error-reason
 title: Preserve shared owed-counts failure reasons
-summary: "Restore the Projects Needs-you failure tooltip through the shared counts store while preserving neutral count presentation and the existing request cadence."
-status: accepted
-created_at: 2026-11-13
-target_area: ux/projects/
-priority: low
-size: S
-planning_effort: low
-dev_effort: medium
-boundaries:
-  owns:
-    - ux/projects/
-    - modules/hub-ui/src/lib/features/attention/owed-counts.svelte.ts
-    - modules/hub-ui/src/lib/features/attention/owed-counts.test.ts
-    - modules/hub-ui/src/lib/features/project-management/projects/ProjectsView.svelte
-    - modules/hub-ui/src/lib/features/project-management/projects/ProjectsView.integration.test.ts
-    - modules/hub-ui/src/lib/components/shared/AppShell.integration.test.ts
-  excludes:
-    - docs/decisions/
-    - modules/hub/
-    - modules/hub-ui/src/lib/api/
-    - modules/hub-ui/src/routes/layout.css
-task_kind: bugfix
+summary: Restore the Projects Needs-you failure tooltip through the shared counts store while preserving neutral count presentation and the existing request cadence.
+status: planned
+created: 2026-11-13
 decomposed_from: PROP-hub-ui-shell-polish
-workflow: sdd-proposal
+related_capabilities: []
+related_usecases: []
+workflow: sdd-spec-bugfix
 ---
+<!-- devkit:skeleton -->
 
-# [PROP-owed-counts-error-reason] Preserve shared owed-counts failure reasons
+# [SPEC-owed-counts-error-reason] Preserve shared owed-counts failure reasons
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-owed-counts-error-reason on 2026-11-13.
+- **Preserved Materials**: `docs/materials/2026-11/20261113-owed-counts-error-reason`
+
+### 1. Background & Hypothesis
 
 `UX-projects` promises a reason in the tooltip when a Needs-you count read fails. The shared shell store discards
 the reason, and `ProjectsView.svelte` supplies an empty reason whenever that store exists. The fallback read already
 names API failures, so the normal in-shell path violates the existing contract.
 
 This bugfix is split from ~~`PROP-hub-ui-shell-polish`~~ at `d9cf2ae7ed792ecb8582c07d9f09979f544e26db`.
-Inherited source and test inspection is retained in `materials/counts-evidence.md`. No reproduction test has run.
+Inherited source and test inspection is retained in `docs/materials/2026-11/20261113-owed-counts-error-reason/counts-evidence.md`. No reproduction test has run.
 
-## 2. Planning Decisions
+## 2. Defect Characterization
+
+- **Current behavior**: <trigger, environment and the observed wrong result, with evidence>
+- **Expected behavior and its basis**: <the result the existing contract requires, citing its capability, use case, ADR or test>
+- **Behavior to preserve**: <call paths, input boundaries and contracts that must keep working, with their tests>
+- **Reproduction conditions**: <the command, data and environment that reproduce the defect>
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: <what this change will not do>
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] <scenario>
+- **Given** <precondition>
+- **When** <action>
+- **Then** <expected result>
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### 2. Planning Decisions
 
 Source and test inspection was refreshed at `7e780ab7e45757bdf44e6edd330767f62ffd41dc`.
-The evidence in `materials/counts-evidence.md` confirms the shared-path defect and the existing API message
+The evidence in `docs/materials/2026-11/20261113-owed-counts-error-reason/counts-evidence.md` confirms the shared-path defect and the existing API message
 convention. This Planning turn ran document checks, not a reproduction test or live service check.
 
 | Question | Settled direction | Consequence |
@@ -59,7 +70,7 @@ the store already does; this repair adds no separate loading transition or retri
 The direction restores an existing tooltip contract and requires no PADR or user product choice. Planning effort
 remains `low`. Development remains `medium` for shared reactive state, recovery and independent code review.
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
 1. Add the separate error metadata in `OwedCountsStore` and apply it with `value` inside the existing session fence.
 2. Replace the shared branch's empty `needsYouError` in `ProjectsView.svelte` with that field. Reuse the existing
@@ -72,7 +83,7 @@ remains `low`. Development remains `medium` for shared reactive state, recovery 
 behavior, so no capability, use-case, UX object-register or architecture change is intended. No alternative screen
 or new interaction is selected; the unavailable-count tooltip and Refresh behavior already exist.
 
-### Acceptance and verification
+#### Acceptance and verification
 
 - **COUNT-01**: Given Projects inside a real shared counts context, when `OwedCountsStore.refresh` returns an API
   error, then the unavailable count tooltip names the existing API message. Add this regression Red before the fix.
@@ -98,16 +109,23 @@ checks have run or that the fix is delivered.
 The sibling `PROP-sidebar-overflow-cues` is behaviorally independent. Both may touch `AppShell.integration.test.ts`,
 so serialize their Development writes, handoff and integration when that current scope overlaps.
 
-### Non-goals
+#### Non-goals
 
 1. **Scope Excluded**: changing count polling cadence, throttling or the read itself.
 2. **Scope Excluded**: sidebar group redesign, ordering or diagnostic disclosure behavior.
 3. **Scope Excluded**: displaying failure reasons where a count is available, or changing shell/Attention presentation.
 4. **Scope Excluded**: backend, typed API and sidebar overflow-cue changes.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
 
 The S bugfix direction is ready for Host review and `plan-accept`. This Planning turn grants no acceptance,
 handoff or implementation authority. Retire the proposal through normal acceptance and handoff after review.
 No PADR, milestone, inherited answer or open source feedback requires transfer. No product work is deferred beyond
 COUNT-01 through COUNT-04. Source evidence remains inspection only until Development records Red and Green.
+
+### Target Area & Boundaries
+
+- Target Area: ux/projects/
+- Planned Boundaries: `ux/projects/`, `modules/hub-ui/src/lib/features/attention/owed-counts.svelte.ts`, `modules/hub-ui/src/lib/features/attention/owed-counts.test.ts`, `modules/hub-ui/src/lib/features/project-management/projects/ProjectsView.svelte`, `modules/hub-ui/src/lib/features/project-management/projects/ProjectsView.integration.test.ts`, `modules/hub-ui/src/lib/components/shared/AppShell.integration.test.ts`
+- Excluded Boundaries: `docs/decisions/`, `modules/hub/`, `modules/hub-ui/src/lib/api/`, `modules/hub-ui/src/routes/layout.css`
+

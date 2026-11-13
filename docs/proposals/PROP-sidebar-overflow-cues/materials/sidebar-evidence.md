@@ -11,7 +11,7 @@ tests do not establish overflow-state coverage.
 The feature preserves that navigation behavior and adds decorative theme-token cues. Verification must cover
 no overflow, top/middle/bottom positions, resize, System disclosure and administrative-link arrival. A real-layout
 browser check in both themes and short desktop/narrow Menu states must establish visibility; mocked dimensions
-alone cannot establish that outcome. Counts behavior remains with `PROP-owed-counts-error-reason`.
+alone cannot establish that outcome. Counts behavior remains with `SPEC-owed-counts-error-reason`.
 
 
 Planning reinspection at `7e780ab7e45757bdf44e6edd330767f62ffd41dc` confirmed `AppShell.svelte` keeps the narrow navigation mounted under `display:none`, and its narrow aside has no height bound. `SidebarLink.svelte` reacts only to active/link changes. The proposed bounded Menu must therefore scroll a displayed active link after reveal and settled layout, before measuring cues. A manually collapsed System list keeps its current-page disclosure mark. Challenger identified this reveal timing failure; Planning closes it by explicit design and a real-layout regression requirement. This is inspected source and draft review, not an executed browser result.
