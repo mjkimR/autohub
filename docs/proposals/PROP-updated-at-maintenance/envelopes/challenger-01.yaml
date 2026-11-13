@@ -1,0 +1,19 @@
+kind: challenger
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T05:33:22.300384Z'
+status: completed
+summary: No material findings; the local mixin repair is the smallest compared option meeting the prospective last-write scope.
+findings: []
+assumptions:
+- The existing last-write contract and prospective repair without historical backfill are the proposed scope.
+- Codex emulated route; absolute scoped reads and unchanged before/after HEAD and tree snapshots substitute for native boundaries.
+unverified_areas:
+- Hub owner-path integration suites and PostgreSQL behavior remain Development verification.
+checks:
+  source: PASS proposal, capabilities, write semantics, exceptions, observation fairness and acceptance reviewed
+  async_probe: PASS in-memory async SQLite ORM and Core timestamps stayed readable after commit with expire_on_commit=False
+diff_scope:
+  base: e1a50a8064597d65fd44906f1b65c01ad93c2425
+  head: 2fdc289ed632df0c9ac34fad53d24f0a0b20ec93
