@@ -24,7 +24,7 @@ def workflow(root, run, *, step_dir=None, job_dir=None, workflow_dir=None, **fie
     step = {"run": run, **fields}
     if step_dir is not None:
         step["working-directory"] = step_dir
-    job = {"steps": [step]}
+    job: dict[str, object] = {"steps": [step]}
     if job_dir is not None:
         job["defaults"] = {"run": {"working-directory": job_dir}}
     data = {"jobs": {"checks": job}}
@@ -160,3 +160,42 @@ def test_backend_lint_hook_runs_checker_and_propagates_failure_read_only(tmp_pat
     assert result.returncode == 17
     assert trace.read_text().splitlines() == ["check-devkit", "check-ci-references"]
     assert (ROOT / "scripts/check-backend.sh").read_bytes() == before
+
+
+def test_job_shell_default_keeps_workflow_working_directory(checkout):
+    path = checkout / "module/config/manifest"
+    path.parent.mkdir(parents=True)
+    path.touch()
+    workflow(checkout, "just available config/manifest", workflow_dir="module")
+    file = checkout / ".github/workflows/check.yml"
+    data = yaml.safe_load(file.read_text())
+    data["jobs"]["checks"]["defaults"] = {"run": {"shell": "bash"}}
+    file.write_text(yaml.safe_dump(data))
+    assert run(checkout).returncode == 0
+
+
+@pytest.mark.parametrize(
+    "command", ["echo hello && just removed", "cat <<EOF\njust removed\nEOF", "if true; then\njust removed\nfi"]
+)
+def test_compound_prose_and_control_blocks_are_unverified(checkout, command):
+    workflow(checkout, command)
+    result = run(checkout)
+    assert result.returncode == 0, result.stderr
+    assert "skipped=1" in result.stdout
+    assert "unverified" in result.stdout
+
+
+def test_invalid_justfile_fails_introspection_without_running(checkout):
+    (checkout / "justfile").write_text("not a valid recipe")
+    workflow(checkout, "just available")
+    result = run(checkout)
+    assert result.returncode == 1
+    assert "CI_REFERENCES_INVALID" in result.stderr
+
+
+def test_directory_changing_run_block_is_unverified(checkout):
+    workflow(checkout, "cd module\njust available config/missing")
+    result = run(checkout)
+    assert result.returncode == 0, result.stderr
+    assert "skipped=1" in result.stdout
+    assert "unverified" in result.stdout
