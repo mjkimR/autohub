@@ -10,10 +10,9 @@
 	import ProjectScheduleDialog from './ProjectScheduleDialog.svelte';
 	import { projectTabHref } from './project-tabs';
 	import {
-		cadence,
 		loadOwnedSchedules,
-		nextRunLabel,
 		observedPulls,
+		scheduleTiming,
 		type OwnedSchedules
 	} from './owned-schedules';
 
@@ -88,8 +87,7 @@
 
 {#snippet facts(config: ScheduleConfig)}
 	<p class="text-xs text-muted-foreground">
-		{cadence(config)}{#if config.enabled}
-			· next {nextRunLabel(config)}{/if}
+		{scheduleTiming(config)}
 	</p>
 {/snippet}
 

@@ -32,7 +32,8 @@ The Project connection table is primary. Search and refresh sit above it; pagina
 - Project connection (creation form): `UX-project-create`.
 
 Below the `md` breakpoint the providers column is hidden and the repository is shown under the name; below `sm` the
-status and row-link columns are hidden as well, and the name opens the project.
+status and row-link columns are hidden as well: the status badge (`Active` or `Disabled`, with its icon) moves under
+the name, and the name opens the project.
 
 The route is `/projects`.
 

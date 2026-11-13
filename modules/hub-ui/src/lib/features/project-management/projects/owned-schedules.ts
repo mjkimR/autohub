@@ -6,6 +6,7 @@ type ScheduleConfig = components['schemas']['ScheduleConfigRead'];
 export const DISPATCH_TASK = 'pipeline.dispatch_project';
 export const OBSERVATION_TASK = 'pipeline.observe_project';
 export const CONNECTION_TEST_TASK = 'pipeline.connection_test';
+const PIPELINE_TASK_PREFIX = 'pipeline.';
 
 /** Schedule configurations a project owns, by owner kind. Agent schedules load from their own API. */
 export interface OwnedSchedules {
@@ -14,17 +15,16 @@ export interface OwnedSchedules {
 	connectionTest: ScheduleConfig[];
 }
 
-async function configsFor(taskFunc: string): Promise<ScheduleConfig[]> {
-	// `task_func` is a substring filter on the server; the exact match is checked here.
-	const items = await allPages(async (offset, limit) =>
+/** Every pipeline-owned configuration in one paginated read; `task_func` is a server substring filter. */
+async function pipelineConfigs(): Promise<ScheduleConfig[]> {
+	return allPages(async (offset, limit) =>
 		responseData(
 			await api.GET('/api/v1/schedule_configs', {
-				params: { query: { task_func: taskFunc, offset, limit } }
+				params: { query: { task_func: PIPELINE_TASK_PREFIX, offset, limit } }
 			}),
 			'Could not load project schedules'
 		)
 	);
-	return items.filter((config) => config.task_func === taskFunc);
 }
 
 function namesProject(config: ScheduleConfig, projectId: string): boolean {
@@ -38,19 +38,21 @@ function namesProject(config: ScheduleConfig, projectId: string): boolean {
  * exist only for tests started before that.
  */
 export async function loadOwnedSchedules(projectId: string): Promise<OwnedSchedules> {
-	const [dispatch, observation, connectionTest, tests] = await Promise.all([
-		configsFor(DISPATCH_TASK),
-		configsFor(OBSERVATION_TASK),
-		configsFor(CONNECTION_TEST_TASK),
-		api.GET('/api/v1/projects/{project_id}/connection-tests', {
+	const configs = await pipelineConfigs();
+	const byTask = (taskFunc: string) => configs.filter((config) => config.task_func === taskFunc);
+	const legacyTests = byTask(CONNECTION_TEST_TASK);
+	// Most projects have no legacy connection-test rows, so their tests are read only when needed.
+	let testIds = new Set<string>();
+	if (legacyTests.length > 0) {
+		const tests = await api.GET('/api/v1/projects/{project_id}/connection-tests', {
 			params: { path: { project_id: projectId } }
-		})
-	]);
-	const testIds = new Set((tests.data ?? []).map((test) => test.id));
+		});
+		testIds = new Set((tests.data ?? []).map((test) => test.id));
+	}
 	return {
-		dispatch: dispatch.filter((config) => namesProject(config, projectId)),
-		observation: observation.filter((config) => namesProject(config, projectId)),
-		connectionTest: connectionTest.filter(
+		dispatch: byTask(DISPATCH_TASK).filter((config) => namesProject(config, projectId)),
+		observation: byTask(OBSERVATION_TASK).filter((config) => namesProject(config, projectId)),
+		connectionTest: legacyTests.filter(
 			(config) =>
 				namesProject(config, projectId) ||
 				(typeof config.payload.test_id === 'string' && testIds.has(config.payload.test_id))
@@ -75,4 +77,9 @@ export function observedPulls(config: ScheduleConfig): number[] {
 /** When an enabled schedule runs next; one without a due time runs on the next tick. */
 export function nextRunLabel(config: ScheduleConfig): string {
 	return config.next_run_at ? new Date(config.next_run_at).toLocaleString() : 'due now';
+}
+
+/** Cadence and, for an enabled schedule, its next run, separated so they never run together. */
+export function scheduleTiming(config: ScheduleConfig): string {
+	return config.enabled ? `${cadence(config)} · next ${nextRunLabel(config)}` : cadence(config);
 }

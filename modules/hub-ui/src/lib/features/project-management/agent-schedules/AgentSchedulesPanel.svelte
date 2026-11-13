@@ -90,6 +90,14 @@
 		return schedule.enabled && project.enabled ? 'due now' : 'paused';
 	}
 
+	/** Trigger, next and last run joined with separators so no fact runs into the next. */
+	function timing(schedule: AgentSchedule): string {
+		const parts = [trigger(schedule)];
+		if (schedule.enabled) parts.push(`next ${nextRun(schedule)}`);
+		if (schedule.last_run_at) parts.push(`last ${when(schedule.last_run_at)}`);
+		return parts.join(' · ');
+	}
+
 	async function saved() {
 		form = null;
 		await load();
@@ -159,10 +167,7 @@
 								{/if}
 							</div>
 							<p class="text-xs text-muted-foreground">
-								{trigger(item)}{#if item.enabled}
-									· next {nextRun(item)}{/if}
-								{#if item.last_run_at}
-									· last {when(item.last_run_at)}{/if}
+								{timing(item)}
 							</p>
 						</div>
 						<div class="flex flex-wrap gap-2">

@@ -107,6 +107,14 @@
 	});
 </script>
 
+{#snippet status(project: Project)}
+	{#if project.enabled}
+		<Badge variant="secondary"><CircleCheck aria-hidden="true" />Active</Badge>
+	{:else}
+		<Badge variant="secondary"><CirclePause aria-hidden="true" />Disabled</Badge>
+	{/if}
+{/snippet}
+
 <div class="space-y-6">
 	<!-- Page Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -196,6 +204,8 @@
 									<span class="font-mono text-xs font-normal text-muted-foreground md:hidden"
 										>{project.github?.repository ?? 'No GitHub'}</span
 									>
+									<!-- Below sm the status column is hidden; keep the status with the name. -->
+									<span class="font-normal sm:hidden">{@render status(project)}</span>
 								</div>
 							</TableCell>
 							<TableCell class="hidden text-xs md:table-cell">
@@ -229,13 +239,7 @@
 									{/if}
 								</button>
 							</TableCell>
-							<TableCell class="hidden sm:table-cell">
-								{#if project.enabled}
-									<Badge variant="secondary"><CircleCheck aria-hidden="true" />Active</Badge>
-								{:else}
-									<Badge variant="secondary"><CirclePause aria-hidden="true" />Disabled</Badge>
-								{/if}
-							</TableCell>
+							<TableCell class="hidden sm:table-cell">{@render status(project)}</TableCell>
 							<TableCell class="hidden text-right sm:table-cell">
 								<!-- Configuration has one home: the project's Setup tabs; on a phone the name opens it. -->
 								<div class="flex items-center justify-end gap-3 text-sm">
