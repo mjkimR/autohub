@@ -2,7 +2,7 @@
 id: PROP-owed-item-contract
 title: Owed item contract for operator debt
 summary: Define one owed-item model and read surface so every exception class that waits for the operator reaches them through one count and one worklist with consistent definitions.
-status: reviewing                      # draft | reviewing | accepted | rejected
+status: accepted                      # draft | reviewing | accepted | rejected
 created_at: 2026-11-13
 target_area: capabilities/delivery/
 priority: high                        # critical | high | medium | low
