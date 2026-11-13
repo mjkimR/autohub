@@ -11,6 +11,7 @@
 	import { Clock, CornerDownRight } from '@lucide/svelte';
 	import RunDecisionsDialog from './RunDecisionsDialog.svelte';
 	import RunStateBadge from './RunStateBadge.svelte';
+	import { runHref } from './run-links';
 	type Entry = components['schemas']['DecisionEntryRead'];
 	type Run = components['schemas']['PipelineRunRead'];
 	type RunState = components['schemas']['PipelineRunState'];
@@ -26,9 +27,6 @@
 	};
 	const kindLabel = (value: string) => displayLabel(value, KIND_LABELS);
 	const projectHref = (entry: Entry) => `/projects/${encodeURIComponent(entry.project_id)}`;
-	// The PR run home page (`/projects/[projectId]/runs/[runId]`).
-	const runHref = (entry: Entry) =>
-		`${projectHref(entry)}/runs/${encodeURIComponent(entry.run_id)}`;
 	const kinds: Kind[] = [
 		'run-question',
 		'native-hub-question',
@@ -233,7 +231,7 @@
 			<div class="min-w-0 space-y-1">
 				<p class="font-medium break-words">{entry.title}</p>
 				<p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-					<a class="underline" href={runHref(entry)} data-run-link
+					<a class="underline" href={runHref(entry.run_id, entry.project_id)} data-run-link
 						>Open PR run <span class="sr-only">for PR #{entry.pull_number}</span></a
 					>
 					<!-- `run_state` is an open string; unknown states fall back to a neutral label. -->

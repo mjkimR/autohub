@@ -31,8 +31,10 @@
 	let refreshing = $state(false);
 	let operating = $state(false);
 	let attaching = $state(false);
-	// Remounts the decision and attempt sections after a header action changed the run.
-	let generation = $state(0);
+	// A header action that changed the run remounts both sections. A plain Refresh only remounts
+	// attempts: the Decisions section keeps its draft and notices and has its own refresh.
+	let decisionsGeneration = $state(0);
+	let attemptsGeneration = $state(0);
 
 	async function loadRun() {
 		const res = await api.GET('/api/v1/pipeline-runs/{run_id}', {
@@ -70,12 +72,13 @@
 		projectName = res.data?.name ?? 'Project';
 	}
 
-	async function refresh(remount = false) {
+	async function refresh(remount: 'all' | 'attempts' | 'none' = 'none') {
 		refreshing = true;
 		try {
 			await Promise.all([loadRun(), loadDecisions()]);
 			error = '';
-			if (remount) generation += 1;
+			if (remount !== 'none') attemptsGeneration += 1;
+			if (remount === 'all') decisionsGeneration += 1;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Could not load the PR run';
 		} finally {
@@ -86,7 +89,7 @@
 	async function operate(action: () => Promise<boolean>) {
 		operating = true;
 		try {
-			if (await action()) await refresh(true);
+			if (await action()) await refresh('all');
 		} finally {
 			operating = false;
 		}
@@ -148,7 +151,7 @@
 				oncancel={() => operate(() => cancelRun(run!.id))}
 				onattach={() => (attaching = true)}
 			/>
-			<Button variant="ghost" size="sm" disabled={refreshing} onclick={() => refresh(true)}
+			<Button variant="ghost" size="sm" disabled={refreshing} onclick={() => refresh('attempts')}
 				><RefreshCw aria-hidden="true" class={refreshing ? 'animate-spin' : ''} />Refresh</Button
 			>
 		</div>
@@ -180,7 +183,7 @@
 			</p>
 		{/if}
 
-		{#key generation}
+		{#key decisionsGeneration}
 			<section
 				id="decisions"
 				tabindex="-1"
@@ -190,6 +193,8 @@
 				<h2 id="run-decisions-heading" class="text-lg font-semibold">Decisions</h2>
 				<RunDecisions {run} onRunPage onchange={() => void refresh()} />
 			</section>
+		{/key}
+		{#key attemptsGeneration}
 			<section
 				id="attempts"
 				tabindex="-1"
@@ -212,6 +217,6 @@
 	<AttachPullRequestDialog
 		{run}
 		onclose={() => (attaching = false)}
-		onsaved={() => void refresh(true)}
+		onsaved={() => void refresh('all')}
 	/>
 {/if}

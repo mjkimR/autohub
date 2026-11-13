@@ -43,16 +43,22 @@ detail screen. The page title is "PR runs" (glossary term).
   - Primary action (one per row, state-driven, same rule as `UX-run-page`): Answer
     question, Resume with saved answer, Review approval or Check decision link to the
     run page's Decisions section; Next step links to a failed run's next step; Resume
-    acts on a stopped run no decision holds; Attach PR opens `UX-attach-pull-request`;
-    otherwise Open run.
+    acts on a stopped run whose decisions are known and none holds it; Attach PR opens
+    `UX-attach-pull-request`; otherwise Open run. A stopped run whose decisions are
+    unknown gets Open run, and plain Resume stays in the overflow menu. Each primary
+    action's accessible name contains its visible label and names the PR (for example
+    "Apply answer (resume with saved answer) for PR #7").
   - More actions (overflow menu): Open run, Decisions, Attempts & errors, Resume (only
     when allowed), Pause, Advance now, Attach PR, Inspect PR and Cancel run, each when
     it applies. Controls are ink with no status hue; Cancel run is the destructive item.
 - `UX-enroll-pull-request` (modal; opened by Enroll PR).
 
 Pending decisions come from one Decision inbox read of up to 100 entries for the
-filtered project, not one request per row. When that read fails or is incomplete,
-rows without an entry keep the conservative actions (Resume stays available).
+filtered project, not one request per row. It reloads only on first load, when the
+project filter changes, on Refresh and after an operation; search and state filters
+reuse it, and a response overtaken by a newer read or a project change is dropped.
+When that read fails or is incomplete, rows without an entry treat their decisions as
+unknown: the primary action is Open run and Resume is only in the overflow menu.
 
 The old run deep links `/projects/runs?run={id}[&view=decisions]` and
 `/projects/{projectId}?tab=runs&run={id}` redirect to `UX-run-page` instead of
@@ -73,7 +79,7 @@ on this screen.
 | --- | --- | --- | --- | --- | --- | --- |
 | Enroll PR | `UC-deliver-pull-request` 1 | populated | populated | `UX-enroll-pull-request` | `CAP-PR-pull-request-delivery` | Enrollment dialog opens. |
 | Refresh | `UC-deliver-pull-request` 4 | populated | loading |  | `CAP-PR-pull-request-delivery` | The list and its pending decisions reload. |
-| Open run (PR title or menu) | `UC-deliver-pull-request` 4, `UC-complete-sdd-workflow` 7 | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The run's page opens. |
+| Open run (PR title, primary action or menu) | `UC-deliver-pull-request` 4, `UC-complete-sdd-workflow` 7 | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The run's page opens. |
 | Answer question / Resume with saved answer | global: open the run page section that holds the run's owed question | populated | populated | `UX-run-page` | `CAP-PR-operator-decisions` | The run page opens at its Decisions section. |
 | Review approval | global: open the run page section that holds the run's owed native decision | populated | populated | `UX-run-page` | `CAP-SDD-native-delivery` | The run page opens at its Decisions section. |
 | Next step | global: open a failed run's recovery path on its page | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The failed run's page opens at its next step. |
@@ -81,7 +87,7 @@ on this screen.
 | Attach PR | global: associate a PR with eligible work that has no PR number | populated | populated | `UX-attach-pull-request` | `CAP-PR-pull-request-delivery` | Attachment dialog opens. |
 | Advance now | `UC-deliver-pull-request` 4, `UC-complete-sdd-workflow` 7 | populated | operating |  | `CAP-PR-pull-request-delivery` | A toast names the resulting state and the list reloads. |
 | Pause | `UC-deliver-pull-request` *a, `UC-complete-sdd-workflow` *a | populated | operating |  | `CAP-PR-pull-request-delivery` | Success toast and refreshed stopped state. |
-| Resume | `UC-deliver-pull-request` *c | populated | operating |  | `CAP-PR-pull-request-delivery` | A blocked-run reason is confirmed when present; the resumed state or refusal is shown. Not offered while a decision holds the run. |
+| Resume | `UC-deliver-pull-request` *c | populated | operating |  | `CAP-PR-pull-request-delivery` | A blocked-run reason is confirmed when present; the resumed state or refusal is shown. Not offered while a decision holds the run; in the overflow menu when the run's decisions are unknown. |
 | Cancel run | `UC-deliver-pull-request` *b | populated | operating |  | `CAP-PR-pull-request-delivery` | Browser confirmation precedes cancellation; the refreshed row shows the outcome. |
 | Inspect PR / Open on GitHub | global: open GitHub for PR review and readiness outside Hub | populated | populated | end | `CAP-PR-pull-request-delivery` | The PR opens in a separate tab for external readiness/review. |
 | Navigate to Projects | global: leave execution inspection through the application navigation | populated | populated | `UX-projects` |  | Project connections are shown. |

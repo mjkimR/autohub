@@ -44,12 +44,14 @@ unit back-link, Decisions, Execution attempts. Section anchors are `#next-step`,
 - PR run (action row): one state-driven primary action, then the secondary actions that apply.
   - Primary action, in priority order: Answer question (open Run question), Resume with saved answer (answered
     question not yet applied), Review approval (pending native SDD decision), Check decision (answer publication
-    pending), Next step (failed run), Resume (paused or blocked run that no decision holds), Attach PR (active run
-    without a PR). Decision actions move to the Decisions section; a run held by a pending decision never offers a
-    plain Resume.
+    pending), Next step (failed run), Resume (paused or blocked run whose decisions are known and none holds it),
+    Attach PR (active run without a PR). Decision actions move to the Decisions section; a run held by a pending
+    decision never offers a plain Resume. When the run's decisions are unknown (the read failed or was incomplete)
+    no primary action is shown on the page (Open run is the page itself) and Resume is only a secondary action.
   - Secondary actions: Resume (when not primary and allowed), Pause (active run), Advance now (re-evaluates the run
     instead of waiting for its next scheduled check; non-terminal run), Attach PR, Inspect PR, Cancel run
-    (non-terminal run; confirmed). Refresh reloads the page.
+    (non-terminal run; confirmed). Refresh reloads the run, its decision status and attempts; it keeps the
+    Decisions section mounted (draft answer and notices stay), which has its own Refresh decisions.
 - PR run (next step; failed or canceled run): states that the run cannot be resumed and that its record is kept.
   - Work Item (owning item; when a Work Plan item names this run): item key, title and Work Plan, with Open Work
     Item recovery to that item in `UX-work-plans` and Review attempt errors.
@@ -93,7 +95,7 @@ ink; Cancel run is the quiet destructive variant.
 | Attach PR | global: associate a PR with eligible work that has no PR number | populated | populated | `UX-attach-pull-request` | `CAP-PR-pull-request-delivery` | The attachment dialog opens; success reloads the run. |
 | Cancel run | `UC-deliver-pull-request` *b | populated | operating |  | `CAP-PR-pull-request-delivery` | Confirmation precedes cancellation; the ended state and next step load. |
 | Inspect PR | global: open GitHub for PR review and readiness outside Hub | populated | populated | end | `CAP-PR-pull-request-delivery` | The PR opens in a separate tab. |
-| Refresh / Retry | global: reload the current run without changing it | populated, error | loading |  | `CAP-PR-pull-request-delivery` | The run, its pending decisions and its sections reload; a failure keeps the last data. |
+| Refresh / Retry | global: reload the current run without changing it | populated, error | loading |  | `CAP-PR-pull-request-delivery` | The run, its pending decisions and its attempts reload; the Decisions section keeps its draft and notices; a failure keeps the last data. |
 | SDD unit link | global: return from an SDD run to its unit | populated | populated | `UX-repository` | `CAP-SDD-native-delivery` | The project's Repository tab opens. |
 | Breadcrumb Projects / project / Runs | global: navigate up from the run | populated, not-found, error | populated | `UX-pipeline-runs` |  | Projects, the project or its run list opens. |
 | Back to project runs | global: leave a missing run | not-found | populated | `UX-pipeline-runs` |  | The project's run list opens. |

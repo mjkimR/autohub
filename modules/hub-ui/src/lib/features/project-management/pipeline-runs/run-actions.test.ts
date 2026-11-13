@@ -7,6 +7,7 @@ import {
 	decisionWait,
 	decisionsFor,
 	primaryRunAction,
+	rowActionName,
 	type DecisionEntry
 } from './run-actions';
 import { legacyRunRedirect, runHref } from './run-links';
@@ -41,7 +42,8 @@ describe('primaryRunAction', () => {
 		],
 		['failed', run('failed'), known(), 'next-step'],
 		['paused without decisions', run('paused'), known(), 'resume'],
-		['paused with unknown decisions', run('paused'), { status: 'unknown' as const }, 'resume'],
+		['paused with unknown decisions', run('paused'), { status: 'unknown' as const }, 'open'],
+		['blocked with unknown decisions', run('blocked'), { status: 'unknown' as const }, 'open'],
 		['no PR', run('queued', { pull_number: 0 }), known(), 'attach-pr'],
 		['implementing', run('implementing'), known(), 'open'],
 		['completed', run('completed'), known(entry('run-question')), 'open']
@@ -54,6 +56,23 @@ describe('primaryRunAction', () => {
 			decisionWait([entry('native-workflow'), entry('run-question', { question_state: 'open' })])
 		).toBe('question');
 	});
+});
+
+test('row action names contain the visible label and name the PR', () => {
+	const saved = primaryRunAction(
+		run('paused'),
+		known(entry('run-question', { question_state: 'answered' }))
+	);
+	expect(rowActionName(saved, run('paused'))).toBe(
+		'Apply answer (resume with saved answer) for PR #7'
+	);
+	const answer = primaryRunAction(run('paused'), known(entry('run-question')));
+	expect(rowActionName(answer, run('paused'))).toBe('Answer question for PR #7');
+});
+
+test('unknown decisions keep plain Resume as a secondary action only', () => {
+	expect(canResume(run('paused'), { status: 'unknown' })).toBe(true);
+	expect(primaryRunAction(run('paused'), { status: 'unknown' }).label).toBe('Open run');
 });
 
 test('plain Resume is withheld while a known decision holds the run', () => {

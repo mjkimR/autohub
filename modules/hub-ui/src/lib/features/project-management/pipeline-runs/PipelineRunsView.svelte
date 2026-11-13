@@ -84,42 +84,52 @@
 		}
 	}
 
-	async function loadPending(projectId?: string) {
+	function filterProjectId(): string | undefined {
+		return scopedProject?.id ?? (selectedProjectId || undefined);
+	}
+
+	// Pending decisions follow the project filter only; search and state filters reuse them.
+	let pendingSeq = 0;
+	async function loadPending() {
+		const projectId = filterProjectId();
+		const seq = ++pendingSeq;
+		let next: typeof pending = null;
 		try {
-			pending = await loadPendingDecisions(projectId);
+			next = await loadPendingDecisions(projectId);
 		} catch {
 			// Unknown decisions keep conservative row actions; the list itself stays usable.
-			pending = null;
 		}
+		// Drop responses overtaken by a newer read or a project filter change.
+		if (seq === pendingSeq && projectId === filterProjectId()) pending = next;
 	}
 
 	async function loadRuns(offset = list.offset) {
-		const projectId = scopedProject?.id ?? (selectedProjectId || undefined);
 		const filters = {
 			search: searchQuery.trim(),
 			state: selectedState || undefined,
 			group_key: selectedGroupKey,
-			project_id: projectId
+			project_id: filterProjectId()
 		};
-		await Promise.all([
-			list.load(
-				async (offset, limit) =>
-					responseData(
-						await api.GET('/api/v1/pipeline-runs', {
-							params: { query: { ...filters, offset, limit } }
-						}),
-						'Failed to load runs'
-					),
-				offset
-			),
-			loadPending(projectId)
-		]);
+		await list.load(
+			async (offset, limit) =>
+				responseData(
+					await api.GET('/api/v1/pipeline-runs', {
+						params: { query: { ...filters, offset, limit } }
+					}),
+					'Failed to load runs'
+				),
+			offset
+		);
+	}
+
+	function reload(offset?: number) {
+		return Promise.all([loadRuns(offset), loadPending()]);
 	}
 
 	async function operate(runId: string, action: () => Promise<boolean>) {
 		operatingRunId = runId;
 		try {
-			if (await action()) void loadRuns();
+			if (await action()) void reload();
 		} finally {
 			operatingRunId = null;
 		}
@@ -135,7 +145,7 @@
 		selectedProjectId = scopedProject?.id ?? '';
 		loadProjects();
 		loadCatalogs();
-		loadRuns();
+		reload();
 	});
 </script>
 
@@ -157,7 +167,7 @@
 				variant="outline"
 				size="sm"
 				onclick={() => {
-					loadRuns();
+					reload();
 					loadProjects();
 					loadCatalogs();
 				}}
@@ -186,7 +196,11 @@
 			aria-label="Project filter"
 			disabled={!!scopedProject}
 			bind:value={selectedProjectId}
-			onchange={() => loadRuns(0)}
+			onchange={() => {
+				// Decisions read for the previous filter may not cover the new one.
+				pending = null;
+				void reload(0);
+			}}
 			class="max-w-full min-w-0"
 		>
 			{#if !scopedProject}<option value="">All Projects</option>{/if}
@@ -222,7 +236,7 @@
 	</div>
 
 	{#if list.error}
-		<LoadError message={list.error} retry={() => loadRuns()} />
+		<LoadError message={list.error} retry={() => reload()} />
 	{/if}
 
 	<div
@@ -292,7 +306,7 @@
 			{projects}
 			{pipelineCatalogs}
 			onclose={() => (isAcquireOpen = false)}
-			onsaved={() => loadRuns()}
+			onsaved={() => reload()}
 		/>
 	{/if}
 	{#if attachTargetRun}
@@ -300,7 +314,7 @@
 			<AttachPullRequestDialog
 				run={attachTargetRun}
 				onclose={() => (attachTargetRun = null)}
-				onsaved={() => loadRuns()}
+				onsaved={() => reload()}
 			/>
 		{/key}
 	{/if}

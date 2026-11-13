@@ -153,7 +153,7 @@ test.each([
 		if (menu) {
 			await openMenu(user);
 			await user.click(menuItem(label));
-		} else await user.click(screen.getByRole('button', { name: label }));
+		} else await user.click(screen.getByRole('button', { name: `${label} for PR #7` }));
 
 		await waitFor(() =>
 			expect(api.POST).toHaveBeenCalledWith(`/api/v1/pipeline-runs/{run_id}/${action}`, {
@@ -198,10 +198,10 @@ test('a run held by a pending question offers Answer, a marker and no plain Resu
 	render(PipelineRunsView);
 	await screen.findByText('Ship the feature');
 	expect(screen.getByText('Question waiting')).toBeTruthy();
-	expect(screen.getByRole('link', { name: 'Answer question' }).getAttribute('href')).toBe(
+	expect(screen.getByRole('link', { name: 'Answer question for PR #7' }).getAttribute('href')).toBe(
 		'/projects/project-1/runs/run-1#decisions'
 	);
-	expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+	expect(screen.queryByRole('button', { name: /Resume/ })).toBeNull();
 	await openMenu(user);
 	const names = menuItems().map(([text]) => text);
 	expect(names).not.toContain('Resume');
@@ -216,6 +216,92 @@ test('reads pending decisions once for the whole list, scoped to the selected pr
 	expect(reads[0][1]).toEqual({
 		params: { query: { project_id: 'project-1', cursor: undefined, limit: 100 } }
 	});
+});
+
+const decisionReads = () =>
+	api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs/decisions');
+
+test('search and state filters reuse pending decisions; a project change reloads them', async () => {
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+	await screen.findByRole('option', { name: 'Scheduler' });
+	expect(decisionReads()).toHaveLength(1);
+	await fireEvent.input(screen.getByPlaceholderText(/Search PR number/), {
+		target: { value: 'feature' }
+	});
+	await fireEvent.change(screen.getByLabelText('Run state'), { target: { value: 'blocked' } });
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs', {
+			params: { query: expect.objectContaining({ state: 'blocked' }) }
+		})
+	);
+	expect(decisionReads()).toHaveLength(1);
+	await fireEvent.change(screen.getByLabelText('Project filter'), {
+		target: { value: 'project-1' }
+	});
+	await waitFor(() => expect(decisionReads()).toHaveLength(2));
+	expect(decisionReads()[1][1].params.query.project_id).toBe('project-1');
+});
+
+test('a decisions response overtaken by a project change is dropped', async () => {
+	const previous = api.GET.getMockImplementation()!;
+	let releaseFirst!: () => void;
+	api.GET.mockImplementation((path: string, options?: { params: { query: object } }) => {
+		if (path === '/api/v1/pipeline-runs')
+			return Promise.resolve({ data: { items: [{ ...run, state: 'paused' }], total_count: 1 } });
+		if (path !== '/api/v1/pipeline-runs/decisions') return previous(path);
+		const scoped = (options?.params.query as { project_id?: string }).project_id;
+		if (scoped) return Promise.resolve({ data: { items: [], has_more: false } });
+		// The unscoped read answers last and claims an open question.
+		return new Promise((resolve) => {
+			releaseFirst = () =>
+				resolve({
+					data: {
+						items: [
+							{ run_id: 'run-1', kind: 'run-question', question_state: 'open', actionable: true }
+						],
+						has_more: false
+					}
+				});
+		});
+	});
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+	await screen.findByRole('option', { name: 'Scheduler' });
+	await fireEvent.change(screen.getByLabelText('Project filter'), {
+		target: { value: 'project-1' }
+	});
+	await screen.findByRole('button', { name: 'Resume for PR #7' });
+	releaseFirst();
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(screen.queryByText('Question waiting')).toBeNull();
+	expect(screen.getByRole('button', { name: 'Resume for PR #7' })).toBeTruthy();
+});
+
+test('an incomplete decisions page makes a stopped row open the run and keeps Resume in the menu', async () => {
+	const previous = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation((path: string) => {
+		if (path === '/api/v1/pipeline-runs')
+			return Promise.resolve({ data: { items: [{ ...run, state: 'paused' }], total_count: 1 } });
+		if (path === '/api/v1/pipeline-runs/decisions')
+			return Promise.resolve({
+				data: {
+					items: [{ run_id: 'other', kind: 'native-workflow', actionable: true }],
+					has_more: true,
+					next_cursor: 'next'
+				}
+			});
+		return previous(path);
+	});
+	const user = userEvent.setup();
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+	expect(screen.getByRole('link', { name: 'Open run for PR #7' }).getAttribute('href')).toBe(
+		'/projects/project-1/runs/run-1'
+	);
+	expect(screen.queryByRole('button', { name: /Resume/ })).toBeNull();
+	await openMenu(user);
+	expect(menuItems().map(([text]) => text)).toContain('Resume');
 });
 
 test('enrolls the selected project and refreshes the run list', async () => {
@@ -308,7 +394,7 @@ test('attaches a PR to the selected run and refreshes the list', async () => {
 	const user = userEvent.setup();
 	render(PipelineRunsView);
 	await screen.findByText('Ship the feature');
-	await user.click(screen.getByRole('button', { name: 'Attach PR' }));
+	await user.click(screen.getByRole('button', { name: 'Attach PR for PR #pending' }));
 	await waitFor(() =>
 		expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
 	);

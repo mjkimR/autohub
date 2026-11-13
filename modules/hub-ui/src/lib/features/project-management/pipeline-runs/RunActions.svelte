@@ -13,7 +13,13 @@
 		Play,
 		XCircle
 	} from '@lucide/svelte';
-	import { canResume, isTerminalRun, primaryRunAction, type RunDecisions } from './run-actions';
+	import {
+		canResume,
+		isTerminalRun,
+		primaryRunAction,
+		rowActionName,
+		type RunDecisions
+	} from './run-actions';
 	import type { RunSection } from './run-links';
 
 	type Run = components['schemas']['PipelineRunRead'];
@@ -55,13 +61,13 @@
 {#snippet primaryButton()}
 	{@const size = layout === 'page' ? 'default' : 'sm'}
 	{@const text = layout === 'page' ? primary.label : primary.short}
-	{@const name = text === primary.label ? undefined : primary.label}
+	{@const name = layout === 'page' ? undefined : rowActionName(primary, run)}
 	{#if primary.kind === 'resume'}
-		<Button {size} disabled={operating} onclick={onresume}>
+		<Button {size} disabled={operating} onclick={onresume} aria-label={name}>
 			<Play aria-hidden="true" />{text}
 		</Button>
 	{:else if primary.kind === 'attach-pr'}
-		<Button {size} disabled={operating} onclick={onattach}>
+		<Button {size} disabled={operating} onclick={onattach} aria-label={name}>
 			<Link2 aria-hidden="true" />{text}
 		</Button>
 	{:else if !(layout === 'page' && (primary.kind === 'open' || primary.kind === 'next-step'))}

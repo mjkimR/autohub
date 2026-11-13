@@ -43,12 +43,14 @@ let current: Record<string, unknown>;
 let decisions: unknown[];
 let plans: unknown[];
 let attempts: { data?: unknown; error?: unknown };
+let questions: unknown[];
 
 beforeEach(() => {
 	current = { ...run };
 	decisions = [];
 	plans = [];
 	attempts = { data: { items: [attempt], summary: null } };
+	questions = [];
 	goto.mockReset();
 	api.POST.mockReset();
 	api.GET.mockReset();
@@ -58,7 +60,9 @@ beforeEach(() => {
 		if (path === '/api/v1/pipeline-runs/decisions')
 			return { data: { items: decisions, has_more: false, next_cursor: null } };
 		if (path === '/api/v1/pipeline-runs/{run_id}/questions')
-			return { data: { items: [], total_count: 0, run_revision: current.revision } };
+			return {
+				data: { items: questions, total_count: questions.length, run_revision: current.revision }
+			};
 		if (path === '/api/v1/pipeline-runs/{run_id}/attempts') return attempts;
 		if (path === '/api/v1/projects/{project_id}/work-plans')
 			return { data: { items: plans, total_count: plans.length } };
@@ -213,4 +217,71 @@ test('/runs/<id> resolves the project and replaces itself with the run page', as
 		})
 	);
 	window.history.replaceState({}, '', '/');
+});
+
+test.each([
+	['decisions', 'paused'],
+	['attempts', 'paused'],
+	['next-step', 'failed']
+])('the #%s section link focuses that section once content renders', async (section, state) => {
+	current = { ...run, state, pause_reason: state === 'failed' ? null : run.pause_reason };
+	window.history.replaceState({}, '', `/projects/project-1/runs/run-1#${section}`);
+	try {
+		renderPage();
+		await waitFor(() => expect(document.activeElement?.id).toBe(section));
+	} finally {
+		window.history.replaceState({}, '', '/');
+	}
+});
+
+test('an incomplete decisions page keeps the run page conservative', async () => {
+	api.GET.mockImplementation(async (path: string) => {
+		if (path === '/api/v1/pipeline-runs/{run_id}') return { data: current };
+		if (path === '/api/v1/projects/{project_id}') return { data: { name: 'Scheduler' } };
+		if (path === '/api/v1/pipeline-runs/decisions')
+			return {
+				data: {
+					items: [{ run_id: 'other', kind: 'native-workflow', actionable: true }],
+					has_more: true,
+					next_cursor: 'next'
+				}
+			};
+		if (path === '/api/v1/pipeline-runs/{run_id}/attempts') return attempts;
+		return { data: { items: [], total_count: 0, run_revision: current.revision } };
+	});
+	renderPage();
+	await screen.findByRole('heading', { level: 1, name: 'Ship the feature' });
+	expect(
+		api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs/decisions')
+	).toHaveLength(5);
+	// Unknown decisions: no decision marker or decision action, Resume only as a secondary action.
+	expect(screen.queryByText('Question waiting')).toBeNull();
+	expect(screen.queryByRole('link', { name: 'Answer question' })).toBeNull();
+	expect(screen.getByRole('button', { name: 'Resume' })).toBeTruthy();
+});
+
+test('header Refresh keeps the Decisions draft instead of remounting it', async () => {
+	questions = [
+		{
+			id: 'question-1',
+			question: 'Keep existing behavior?',
+			state: 'open',
+			actor: 'agent',
+			created_at: '2026-09-30T00:00:00Z',
+			answers: []
+		}
+	];
+	const user = userEvent.setup();
+	renderPage();
+	const answer = (await screen.findByLabelText('Your answer')) as HTMLTextAreaElement;
+	await waitFor(() => expect(answer.disabled).toBe(false));
+	await user.type(answer, 'Draft reply');
+	await user.click(screen.getByRole('button', { name: 'Refresh' }));
+	await waitFor(() =>
+		expect(
+			api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs/{run_id}/attempts')
+		).toHaveLength(2)
+	);
+	expect(screen.getByLabelText('Your answer')).toBe(answer);
+	expect(answer.value).toBe('Draft reply');
 });

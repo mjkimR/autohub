@@ -59,12 +59,17 @@ export type RunActionKind =
 	| 'attach-pr'
 	| 'open';
 
-/** `short` is the compact row label; `label` names the action in full (page, accessible name). */
+/**
+ * `short` is the compact row label; `label` names the action in full (page, accessible name).
+ * Row accessible names must contain the visible `short` text (WCAG 2.5.3).
+ */
 export type RunAction = { kind: RunActionKind; label: string; short: string; section?: RunSection };
 
 /**
  * The single state-driven primary action of a PR run. A run held by a pending question or
  * approval never offers a plain Resume, because the backend refuses it until that decision is made.
+ * When its decisions are unknown, the primary action stays non-mutating (Open run) and plain
+ * Resume is only a secondary action.
  */
 export function primaryRunAction(run: Run, decisions: RunDecisions): RunAction {
 	const wait =
@@ -94,11 +99,19 @@ export function primaryRunAction(run: Run, decisions: RunDecisions): RunAction {
 		};
 	if (run.state === 'failed')
 		return { kind: 'next-step', label: 'Next step', short: 'Next step', section: 'next-step' };
-	if (run.state === 'paused' || run.state === 'blocked')
+	if ((run.state === 'paused' || run.state === 'blocked') && decisions.status === 'known')
 		return { kind: 'resume', label: 'Resume', short: 'Resume' };
 	if (!isTerminalRun(run) && !run.pull_number)
 		return { kind: 'attach-pr', label: 'Attach PR', short: 'Attach PR' };
 	return { kind: 'open', label: 'Open run', short: 'Open' };
+}
+
+/** Accessible name of a row's primary action: contains its visible text and names the PR. */
+export function rowActionName(action: RunAction, run: Pick<Run, 'pull_number'>): string {
+	const full = action.label.includes(action.short)
+		? action.label
+		: `${action.short} (${action.label.toLowerCase()})`;
+	return `${full} for PR #${run.pull_number || 'pending'}`;
 }
 
 /** Plain Resume is offered only for a stopped run that no known decision holds. */

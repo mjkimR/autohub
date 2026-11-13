@@ -39,6 +39,11 @@ afterEach(() => {
 	document.body.removeAttribute('style');
 });
 
+// The dialog moves focus to itself after opening; typing before that lands mid-keystroke.
+async function dialogFocused() {
+	await waitFor(() => expect(document.activeElement?.getAttribute('role')).toBe('dialog'));
+}
+
 test('saves an answer separately and explicitly resumes with the new revision', async () => {
 	const user = userEvent.setup();
 	api.POST.mockImplementation(async () => {
@@ -66,6 +71,7 @@ test('saves an answer separately and explicitly resumes with the new revision', 
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
+	await dialogFocused();
 	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
 	expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).value).toBe('Yes');
 	expect((screen.getByRole('button', { name: 'Save only' }) as HTMLButtonElement).disabled).toBe(
@@ -124,6 +130,7 @@ test('Save and resume saves, then resumes with the saved answer; a refused resum
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
+	await dialogFocused();
 	await user.type(screen.getByLabelText('Your answer'), 'Yes');
 	await user.click(screen.getByRole('button', { name: 'Save and resume' }));
 	await screen.findByText('Answer saved, but the run did not resume.');
@@ -141,6 +148,7 @@ test('retries a lost answer response with the same request identity', async () =
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
+	await dialogFocused();
 	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
 	await user.click(screen.getByRole('button', { name: 'Save only' }));
 	await screen.findByRole('alert');
@@ -175,6 +183,7 @@ test('keeps the answer request identity after response loss and a revision refre
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
+	await dialogFocused();
 	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
 	await user.click(screen.getByRole('button', { name: 'Save only' }));
 	await screen.findByRole('alert');
@@ -356,7 +365,9 @@ test('acknowledged inbox dismissal refreshes the list without re-reviewing the r
 		return { data: {} };
 	});
 	render(RunDecisionsDialog, { run, selection, onclose: vi.fn(), onchange });
-	await user.click(await screen.findByText('Dismiss this question'));
+	await screen.findByText('Dismiss this question');
+	await dialogFocused();
+	await user.click(screen.getByText('Dismiss this question'));
 	await user.type(screen.getByLabelText('Reason to dismiss'), 'Resolved elsewhere');
 	await user.click(screen.getByRole('button', { name: 'Dismiss without resuming' }));
 	await waitFor(() => expect(onchange).toHaveBeenCalledOnce());
