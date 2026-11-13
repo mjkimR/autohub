@@ -58,6 +58,7 @@ Generated primitives in `src/lib/components/ui/` are excluded because they defin
 - **Component classes**: every component accepts layout classes. The contracts in
   `eslint.config.js` also allow spacing on structural slots (cards, dialogs, tabs, table rows),
   typography on text slots and badges, and content color on table cells.
+  `Input` and `Textarea` call sites accept layout, spacing and typography classes, for icon padding or monospace identifiers and JSON.
 - **Values**: use the Tailwind scale (`w-50`, `text-xs`) instead of arbitrary values.
   If no scale value exists, disable `shadcn/no-arbitrary-values` on that line with a reason.
 
