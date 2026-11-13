@@ -1,0 +1,21 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T08:05:47.439123Z'
+status: completed
+review: review-01.yaml
+summary: Independent reviewer confirmed conservative whole-run skip repair and all five permanent boundary regressions
+findings:
+- issue: Unsupported multiline shell constructs leak their bodies into reference validation
+  evidence: 'scripts/check-ci-references.py:57-70. Independent probes: unused() function body and false && newline continuation each falsely report removed recipe and config/missing, exit1, despite unsupported outer syntax.'
+  failure_condition: A non-keyword function or multiline compound command contains a body that the checker treats as standalone direct commands
+  suggested_action: Conservatively skip whole unsupported function/grouping or multiline compound run blocks and add permanent regressions
+  resolution: resolved
+  severity: P2
+checks:
+  tests: PASS original two and additional || pipeline/subshell probes now checked0 skipped1 errors0; direct continuation remains supported; CI28 plus neighboring12 pass
+  integrity: PASS exact HEAD and snapshot preserved by read-only reviewer
+diff_scope:
+  base: ''
+  head: 13d675a95070c869b4681023d337e5659f86de55
