@@ -2,13 +2,13 @@
 id: PROP-repo-locked-sdd-runtime
 title: Install the SDD evaluation runtime from the repository lock
 summary: Auto Hub evaluates SDD work with the devkit packages pinned by the target repository's uv.lock, installed inside isolation, instead of a server profile that must contain every selected bundle. This removes per-repository provisioning.
-status: draft                         # draft | reviewing | accepted | rejected
+status: accepted                       # draft | reviewing | accepted | rejected
 created_at: 2026-11-13
 target_area: capabilities/sdd/
 priority: high                        # critical | high | medium | low
 size: L                               # S | M | L | XL (XL: would need two or more specs or task kinds; decompose before Planning)
 planning_effort: medium               # low | medium | high (hint for Planning)
-dev_effort: medium                    # low | medium | high (hint for Development)
+dev_effort: high                      # low | medium | high (hint for Development)
 boundaries:
   owns:
     - capabilities/sdd/
@@ -76,17 +76,110 @@ workflow, rule and bundle versions the agents used.
 
 ## 3. Proposed Design & Impact
 
-To be settled in Planning. Initial direction:
+Code facts this design rests on (head of this branch):
 
-- A two-phase isolated runner: an install phase with network limited to the
-  needed package sources and a scoped read credential, producing a read-only
-  venv keyed by the lock's digest; then the existing evaluation phase with no
-  network and no credentials, using that venv's devkit.
-- Runtime identity becomes the installed lock digest instead of the server pin.
+- Every devkit call runs `<home>/.venv/bin/python -m devkit_dist` inside
+  bubblewrap/sandbox-exec with the checkout writable, `<home>` read-only and no
+  network (`isolation.py`). `<home>` comes from the selected profile
+  (`profiles.py`) and its `pin.json` (written by `scripts/install-sdd.py`).
+- Run identity is `cli_version = "devkit-spec:" + pin.lock_sha256`; a snapshot
+  whose `cli_version` differs refuses evaluation ("SDD CLI version differs from
+  the execution pin", `services.py`).
+- Every devkit command has a 25-second timeout (`checkout.py`); the checkout is
+  fetched with the project's GitHub connector token, which never enters the sandbox.
+- The SDK bridge selects the runtime with the same `runtime_scope(repository)`
+  (`execution/flows/bridge.py`).
+
+Design after challenger round 01 (`envelopes/challenger-01.yaml`) and the
+user's answers (`envelopes/answer-01.yaml`); the decisions are recorded in
+`PADR-repository-locked-runtime` and `PADR-offline-source-build`.
+
+- **D1 Source and resolution point**: the runtime is resolved after fetch, per
+  evaluated commit, from its root `pyproject.toml` and `uv.lock` (parsed, never
+  executed, in the Hub process). `checkout()` no longer selects a runtime on
+  entry. Paths and the commit whose lock they use:
+
+  | Path | Commit |
+  | --- | --- |
+  | Activity start admission (`policy.py` start_blocker) | base |
+  | Inspect, readiness, enrollment, decisions, final lint | PR head |
+  | Milestone preview and batch evidence | resolved milestone ref |
+  | SDK existing-PR bridge | operator checkout HEAD |
+
+- **D2 Install set**: the locked dependency group(s) of the root project that
+  declare `devkit-spec` (or the main dependencies when declared there),
+  rendered by uv itself with `uv sync --frozen --only-group <group>
+  --no-install-project` into the target venv. This covers every bundle package
+  the committed presets can select, including the `RECEIPT_STALE`
+  regeneration path, and leaves markers, forks and hashes to uv. The rest of
+  the repository's environment is never installed. A missing bundle after
+  install is a repository lock defect (`SDD_BUNDLES_MISSING`, now checked
+  against the installed entry points).
+- **D3 Identity**: the runtime identity is the SHA-256 of `uv export --frozen`
+  for that group plus the interpreter's minor version: a deterministic,
+  identity-only pin schema (no cache path, timestamps or ordering). Batch
+  evidence stores this identity instead of the whole `runtime_pin()` and its
+  `uv.lock` configuration hash narrows to the same digest. Whether a changed
+  identity on a later head continues with the new runtime, while the
+  effective workflow, policy and configuration digests keep their refusal.
+- **D4 Install isolation and sources**: the install runs in the
+  OS sandbox with a writable venv and uv cache, only the manifest and lock
+  visible, `/etc/resolv.conf` and CA certificates bound read-only, and a pinned
+  `uv` copied into the runtime image stage. Evaluation is unchanged: no
+  network, no credentials, venv read-only. Private Git sources are fetched in
+  the Hub process with the project's connector token, which never enters the
+  sandbox; source builds run without network or credentials using build
+  backends pinned in the image; network, if any, serves registry downloads
+  only. If uv cannot separate download from build, the Hub process downloads
+  every artifact and the sandbox installs fully offline.
+- **D5 Install lifecycle and cache**: installation is decoupled from request
+  budgets. A per-digest cross-process file lock (`fcntl`) makes one build per
+  instance; an existing complete target counts as success. The build runs to
+  completion in the background even when the caller's deadline expires;
+  callers meanwhile receive a retryable `SDD_RUNTIME_PREPARING` diagnostic
+  (`retry: safe`). Builds go to a temporary directory renamed into place with
+  `pin.json`. Eviction is lease-protected (never a venv an evaluation holds)
+  under an explicit byte cap; the uv cache is pruned after each install.
+  git-safe commands no longer use the devkit venv: they run in isolation with
+  the image's Git only, so branch creation and decision commits never wait for
+  a runtime install.
+- **D6 Python**: the image's interpreter (3.13) when the repository's
+  `requires-python` admits it; otherwise refuse with a repository diagnostic.
+  No on-demand interpreter downloads.
+- **D7 Retirement and probe**: remove `AUTOHUB_SDD_PROFILES`,
+  `config/sdd-runtime-app-common` and repository mapping. Whether a default
+  image runtime remains: a repository whose root lock lacks `devkit-spec` is
+  refused with a repository diagnostic. Stop emitting `RUNTIME_REVISION_MISMATCH` (identical by
+  construction) but keep its diagnostic catalog entry for historical records.
+  Keep the `RECEIPT_STALE` regeneration exception. Split the runtime status
+  probe: a host isolation probe (image interpreter and Git in the sandbox, no
+  repository, no install) keeps rule 15; a separate project-lock probe reports
+  `preparing`, `ready` or a lock diagnostic.
+- **D8 Migration and rollback**: before rollout the operator settles active
+  native runs, open batch selections and approved but unresumed SDK bridge
+  claims; their stored identities refer to the server pin and are refused
+  afterward. Rolling back the deployment likewise strands runs enrolled under
+  lock-derived identities, so a rollback repeats the settlement. The live
+  canary `mjkimR/test-sandbox` has no `.devkit/` or `uv.lock` (checked through
+  the GitHub API on 2026-11-13), so it is not an SDD consumer today.
+- **Acceptance evidence to plan**: a measured cold-install time and venv plus
+  cache size for the g-scavenger-crew lock on the Cloud Run shape (cpu=1,
+  1Gi), which sets the byte cap and `--memory`; a forked or marker-gated
+  fixture lock; concurrent cold requests across worker processes.
+
 - Contracts affected: `CAP-SDD-runtime-isolation` (scope exclusion, rules 1-4,
   6, 9, 10, 11, 15), `CAP-SDK-existing-pr-bridge` profile selection,
   `ARCH-07-deployment`, `ARCH-11-risks-and-technical-debt` and the operations
   guides for the SDD runtime and execution targets.
+
+### Planning decisions
+
+- Q-A, Q-B and Q-C were answered by the user with the recommended options
+  (`envelopes/answer-01.yaml`): continue on a changed runtime identity, Hub-side
+  source fetch with offline builds, and refusal of repositories without a
+  devkit lock.
+- `PADR-repository-locked-runtime` records the runtime source, identity and
+  lifecycle; `PADR-offline-source-build` records the install trust boundary.
 
 ## 4. Lifecycle & Retirement Criteria
 
