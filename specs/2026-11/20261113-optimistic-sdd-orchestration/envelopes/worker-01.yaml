@@ -1,0 +1,44 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T06:53:46.016797Z'
+status: completed
+summary: Completed approved high-effort Development, UX/code/reconciliation reviews, checks and final report; local integration remains under auto policy. Recorded all four adjacent test/error-boundary extensions from tasks.md.
+findings: []
+assumptions:
+- User approved removal and separate UX review; dev-integration is auto policy, not a new human approval.
+unverified_areas:
+- Live GitHub/provider, deployment, full image build and rendered-browser walkthrough not performed.
+checks:
+  tests: PASS SQLite1207 PostgreSQL30 UI547 SDK27; broad PostgreSQL235 earlier
+  build: PASS backend SDK UI types/build and API freshness
+  lint: PASS project lint and document rules/hygiene
+diff_scope:
+  base: 725317b9e4450a1abfda7d20d0b72571191ce7ed
+  head: 5d15fc47f608da63c0f4d54ed330eedbef674d7d
+scope_extensions:
+- path: modules/hub/tests/integration/features/project_management/owed_items/test_owed_items.py
+  task: 1
+  reason: Reuse ordinary activity question fixtures after native decision retirement
+  requirements:
+  - AC-04
+  - AC-06
+  - AC-07
+- path: modules/hub/app/main.py
+  task: 2
+  reason: Expose retired SDD error codes to clients
+  requirements:
+  - AC-07
+  - AC-08
+- path: modules/hub/tests/integration/sdd_runtime.py
+  task: 2
+  reason: Remove the evaluator-only shared test environment
+  requirements:
+  - AC-07
+- path: modules/hub/tests/unit/scripts/test_check_devkit.py
+  task: 5
+  reason: Preserve root and viewer pin regressions after seed removal
+  requirements:
+  - AC-11
+activity_effort: high
