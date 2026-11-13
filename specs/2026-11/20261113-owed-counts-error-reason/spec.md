@@ -2,7 +2,7 @@
 id: SPEC-owed-counts-error-reason
 title: Preserve shared owed-counts failure reasons
 summary: "Restore shared-store Projects failure tooltips while preserving neutral count presentation, request cadence and session fences."
-status: planned
+status: in-progress
 created: 2026-11-13
 decomposed_from: PROP-hub-ui-shell-polish
 related_capabilities: [CAP-PR-owed-items]
