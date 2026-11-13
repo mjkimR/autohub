@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { runHref } from '../pipeline-runs/run-links';
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
 	import RunStateBadge from '../pipeline-runs/RunStateBadge.svelte';
@@ -68,7 +69,7 @@
 				{#each runs as run (run.id)}<li>
 						<a
 							class="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted"
-							href={`/projects/runs?run=${run.id}&view=decisions`}
+							href={runHref(run.id, projectId, 'decisions')}
 						>
 							<span class="font-medium">PR #{run.pull_number}</span>
 							<RunStateBadge state={run.state} />

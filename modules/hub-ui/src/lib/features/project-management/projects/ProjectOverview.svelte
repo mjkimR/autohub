@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
+	import RunStateBadge from '../pipeline-runs/RunStateBadge.svelte';
+	import { runHref } from '../pipeline-runs/run-links';
 	let { project }: { project: components['schemas']['ProjectRead'] } = $props();
 	let runs = $state<components['schemas']['PipelineRunRead'][]>([]);
 	let latestTests = $state<components['schemas']['ConnectionTestRead'][]>([]);
@@ -85,8 +87,8 @@
 	</div>
 	<section class="space-y-4 rounded-xl border bg-card p-6">
 		<div class="flex items-center justify-between">
-			<h2 class="text-lg font-semibold">Recent development runs</h2>
-			<a href="?tab=runs" class="text-sm text-primary underline">All project runs</a>
+			<h2 class="text-lg font-semibold">Recent PR runs</h2>
+			<a href="?tab=runs" class="text-sm text-primary underline">All project PR runs</a>
 		</div>
 		{#if error}<p role="alert">
 				{error} <button type="button" onclick={load} class="underline">Retry</button>
@@ -97,9 +99,11 @@
 			</p>
 		{:else}<ul class="divide-y">
 				{#each runs as run (run.id)}<li class="flex items-center justify-between gap-4 py-3">
-						<a href={`?tab=runs&run=${run.id}`} class="text-sm text-primary underline"
+						<a
+							href={runHref(run.id, project.id)}
+							class="min-w-0 truncate text-sm text-primary underline"
 							>PR #{run.pull_number} · {run.branch}</a
-						><span class="text-sm">{run.state}</span>
+						><RunStateBadge state={run.state} />
 					</li>{/each}
 			</ul>{/if}
 	</section>

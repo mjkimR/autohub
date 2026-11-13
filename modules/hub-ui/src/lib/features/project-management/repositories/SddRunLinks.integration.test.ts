@@ -31,7 +31,7 @@ test('links only the selected spec and ignores a late response for the previous 
 	await Promise.resolve();
 	expect(screen.queryByText('Old spec')).toBeNull();
 	expect(screen.getByRole('link', { name: /Current spec/ }).getAttribute('href')).toBe(
-		'/projects/runs?run=new-run&view=decisions'
+		'/projects/project/runs/new-run#decisions'
 	);
 	expect(api.GET.mock.calls[1][1].params.query.spec_dir).toBe('specs/2026-10/new');
 });
@@ -60,7 +60,7 @@ test('a selected proposal links its run and GitHub pull request', async () => {
 		(await screen.findByRole('link', { name: 'Open GitHub PR #12' })).getAttribute('href')
 	).toBe('https://github.com/team/repo/pull/12');
 	expect(screen.getByRole('link', { name: /Plan/ }).getAttribute('href')).toBe(
-		'/projects/runs?run=plan-run&view=decisions'
+		'/projects/project/runs/plan-run#decisions'
 	);
 	expect(api.GET.mock.calls[0][1].params.query.spec_dir).toBe('docs/proposals/PROP-feature');
 	expect(

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { runHref } from '../pipeline-runs/run-links';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { Input } from '$lib/components/ui/input';
 	import SddRunLinks from './SddRunLinks.svelte';
@@ -78,7 +79,7 @@
 	</div>
 	{#if state.runId && state.startedKey === state.key()}<Button
 			variant="outline"
-			href={`/projects/runs?run=${state.runId}&view=decisions`}>Open execution & decisions</Button
+			href={runHref(state.runId, projectId, 'decisions')}>Open execution & decisions</Button
 		>{/if}
 	<SddRunLinks {projectId} {repository} specDir={state.spec} refresh={state.runId} />
 	{#if state.runtime}<p role="status" class="text-sm">{state.runtime}</p>{/if}

@@ -141,7 +141,7 @@ test('detail exposes bookmarkable tabs and opens project-scoped runs', async () 
 	);
 	expect(screen.getByRole('link', { name: 'Overview' }).getAttribute('aria-current')).toBe('page');
 	await view.rerender({ projectId: 'p1', tab: 'runs' });
-	await screen.findByRole('heading', { name: 'Pipeline Runs' });
+	await screen.findByRole('heading', { name: 'PR runs' });
 	await waitFor(() =>
 		expect(api.GET).toHaveBeenCalledWith(
 			'/api/v1/pipeline-runs',

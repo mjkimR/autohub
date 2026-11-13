@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { runHref } from '../pipeline-runs/run-links';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import SddBatch from './SddBatch.svelte';
 	import { api, type components } from '$lib/api';
@@ -243,7 +244,7 @@
 									{#each member.evidence as evidence, index (index)}<p>
 											{#if evidence.run_id}<a
 													class="underline"
-													href={`/projects/runs?run=${encodeURIComponent(String(evidence.run_id))}&view=decisions`}
+													href={runHref(String(evidence.run_id), projectId, 'decisions')}
 													>Inspect run {String(evidence.run_id)}</a
 												> ·
 											{/if}

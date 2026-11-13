@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { runHref } from '$lib/features/project-management/pipeline-runs/run-links';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { onMount } from 'svelte';
 	import { Badge } from '$lib/components/ui/badge';
@@ -55,8 +56,9 @@
 		<DialogHeader>
 			<DialogTitle>{catalog.name} sessions</DialogTitle>
 			<DialogDescription>
-				Sessions this catalog started, most recent first. A task session's pull request is adopted
-				into its project's pipeline; a report session's final message is kept here.
+				Provider sessions this catalog started, most recent first. A provider session that delivers
+				a pull request is adopted into its project as a PR run; a report's final message is kept
+				here.
 			</DialogDescription>
 		</DialogHeader>
 		<label class="flex items-center gap-2 text-sm font-medium">
@@ -102,7 +104,7 @@
 							</details>
 						{/if}
 						{#if item.pipeline_run_retired_at}
-							<p class="text-xs text-muted-foreground">Pipeline run history expired</p>
+							<p class="text-xs text-muted-foreground">PR run history expired</p>
 						{/if}
 						{#if item.url || item.pull_request_url || item.pipeline_run_id}
 							<div class="mt-2 flex flex-wrap gap-3 text-xs">
@@ -120,10 +122,7 @@
 									>
 								{/if}
 								{#if item.pipeline_run_id}
-									<a
-										class="text-primary underline"
-										href={`/projects/runs?run=${item.pipeline_run_id}`}>Pipeline run</a
-									>
+									<a class="text-primary underline" href={runHref(item.pipeline_run_id)}>PR run</a>
 								{/if}
 							</div>
 						{/if}

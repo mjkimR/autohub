@@ -1,9 +1,9 @@
 ---
 id: UX-run-decisions
 title: Run Decisions
-summary: "The decision dialog separates saved Run question answers, explicit resumption and native SDD direction while retaining current run context and history. Supports exact pending-decision navigation."
+summary: "The Decisions panel of a PR run separates saved Run question answers, explicit resumption and native SDD direction while retaining current run context and history. Supports exact pending-decision navigation."
 area: delivery
-element: modal
+element: panel
 status: active
 usecases:
   - UC-resolve-run-question
@@ -23,13 +23,14 @@ capabilities:
 - **Primary task**: Resolve a Run question or inspect a native workflow decision.
 - **Facts to commit**: Current PR run revision, wait reason, pending question, saved answers and native evidence.
 - **Secondary items**: Native controls live in dedicated panels; prior questions and approval activity are secondary history.
+- **Hosts**: the Decisions section of `UX-run-page`, and the Decision inbox review dialog in `UX-decision-inbox`, which adds the PR identity, Inspect pull request, Open run page and Close around this panel.
 
 ## 2. Content
 
 The current wait and Run question form are primary. Native SDD evidence and
 actions occupy linked panels; question/approval histories sit beside them.
 
-- PR run (PR title, state, current revision, last successful local load time, wait reason and terminal notice).
+- PR run (last successful local load time with Refresh decisions; in the inbox dialog also the wait reason and terminal notice, which `UX-run-page` shows in its header and next-step section instead).
 - Run question (pending text, saved answer list, application state).
   - Run question (Your answer editor with Save and resume and Save only; collapsed as Answer differently while a saved answer awaits resume).
   - Run question (reasoned dismissal; inside a disclosure).
@@ -89,7 +90,8 @@ The selected decision outcome is retained beside its owner controls. It identifi
 | Dismiss without resuming | `UC-resolve-run-question` 4c | populated | busy |  | `CAP-PR-operator-decisions` | The dismissal is retained; execution remains stopped. |
 | Resume after inspection | global: recover a stopped run without granting native integration authority | empty | busy |  | `CAP-PR-pull-request-delivery` | The current run is reloaded; no integration approval is implied. |
 | Previous / Next questions | global: inspect retained question history without changing execution | populated | loading |  | `CAP-PR-operator-decisions` | The selected history page loads; older-page actions are disabled. |
-| Close | global: leave decision inspection without submitting further direction | populated | populated | close |  | The underlying PR run list remains visible. |
+| Close (inbox dialog) | global: leave decision inspection without submitting further direction | populated | populated | close |  | The Decision inbox remains visible with its row focused. |
+| Open run page (inbox dialog) | global: continue from an inbox review to the run's home | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The PR run page opens. |
 
 Last loaded identifies the last successful consistent Run/question read. A failed refresh keeps that prior observation time. Outcome API observation and persisted record times are separate facts.
 
@@ -105,7 +107,7 @@ Embedded panels retain the visible parent context and its Close exit; they add n
 
 ## 5. Evidence
 
-- [RunDecisionsDialog.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunDecisionsDialog.svelte).
+- [RunDecisions.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunDecisions.svelte) (panel) and [RunDecisionsDialog.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunDecisionsDialog.svelte) (inbox dialog host).
 - [DecisionQuestion.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionQuestion.svelte) and [DecisionAnswerComposer.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionAnswerComposer.svelte).
 - [DecisionOutcome.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionOutcome.svelte).
 - [DecisionQuestion.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionQuestion.integration.test.ts) and [DecisionOutcome.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionOutcome.integration.test.ts).

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { runHref } from '../pipeline-runs/run-links';
+	import RunStateBadge from '../pipeline-runs/RunStateBadge.svelte';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { Input } from '$lib/components/ui/input';
 	import { SvelteMap } from 'svelte/reactivity';
@@ -7,6 +9,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Textarea } from '$lib/components/ui/textarea';
 	type Proposal = components['schemas']['ProposalState'];
+	type RunState = components['schemas']['PipelineRunState'];
 	let { projectId, repository = '' }: { projectId: string; repository?: string } = $props();
 	let base = $state('main');
 	let effort = $state<'' | 'low' | 'medium' | 'high'>('');
@@ -123,7 +126,11 @@
 					{#if item.dev_pull}<a class="text-xs underline" href={pullUrl(item.dev_pull)}
 							>dev-{item.slug} #{item.dev_pull}</a
 						>{/if}
-					{#if item.run}<span class="text-xs text-muted-foreground">run {item.run.state}</span>{/if}
+					{#if item.run}<a href={runHref(item.run.id, projectId)} class="inline-flex"
+							><span class="sr-only">PR run </span><RunStateBadge
+								state={item.run.state as RunState}
+							/></a
+						>{/if}
 				</div>
 				{#if item.note}<p class="text-xs text-muted-foreground">{item.note}</p>{/if}
 				<p class="text-xs text-muted-foreground">
@@ -135,7 +142,7 @@
 						{#if action === 'accept' && item.run}
 							<a
 								class="rounded-md border px-3 py-2 text-xs font-medium underline"
-								href={`/projects/runs?run=${item.run.id}&view=decisions`}>Review & accept</a
+								href={runHref(item.run.id, projectId, 'decisions')}>Review & accept</a
 							>
 						{:else if action === 'reject'}
 							<Button

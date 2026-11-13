@@ -32,19 +32,19 @@ entrypoints:
 ## 2. Main Success Scenario
 
 1. The operator inspects the pending question and its PR context (`CAP-PR-operator-decisions`).
-   Interface: `UX-decision-inbox`, `UX-run-decisions`.
+   Interface: `UX-decision-inbox`, `UX-run-page`, `UX-run-decisions`.
 
 2. The operator saves the intended clarification (`CAP-PR-operator-decisions`).
-   Interface: `UX-run-decisions`.
+   Interface: `UX-run-page`, `UX-run-decisions`.
 
 3. Hub retains the answer without continuing execution (`CAP-PR-operator-decisions`).
-   Interface: `UX-run-decisions`.
+   Interface: `UX-run-page`, `UX-run-decisions`.
 
 4. The operator explicitly selects that saved answer to resume the Run (`CAP-PR-operator-decisions`).
-   Interface: `UX-decision-inbox`, `UX-run-decisions`.
+   Interface: `UX-decision-inbox`, `UX-run-page`, `UX-run-decisions`.
 
 5. Hub verifies the current context and records the answer's application to one prepared attempt (`CAP-PR-operator-decisions`).
-   Interface: `UX-run-decisions`.
+   Interface: `UX-run-page`, `UX-run-decisions`.
 
 The operator can locate the pending subject through `UX-decision-inbox` before opening its exact owner review. Optional notice-link entry follows `UC-receive-decision-notice`; authentication and exact current identity are checked before the existing owner controls enable. Native review refreshes and persists the current inspection basis before controls enable. Existing per-run entry points remain available.
 
@@ -52,7 +52,7 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
 
 - **1a.** The operator needs to introduce a question: Hub records it against the
   current PR and blocks the Run; resumes at step 1.
-   Interface: `UX-run-decisions`.
+   Interface: `UX-run-page`, `UX-run-decisions`.
 
 - **1b.** An agent reply has untrusted provenance or mismatched question metadata:
   Hub does not retain it as a question; this resolution flow does not start until
@@ -61,41 +61,41 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
 
 - **2a.** The inspected Run revision is obsolete: Hub refuses the new save without
   appending an answer; resumes at step 1 after reinspection.
-   Interface: `UX-run-decisions`.
+   Interface: `UX-run-page`, `UX-run-decisions`.
 
 - **2b.** A save response is lost: the owner review retains its immutable request and shows Outcome unknown. Check outcome reads that request; an explicit Retry same request preserves the original payload. The confirmed saved result resumes at step 4.
-   Interface: `UX-run-decisions`.
+   Interface: `UX-run-page`, `UX-run-decisions`.
 
 - **2c.** A recorded request ID is reused for different text: Hub refuses the
   changed input; the flow ends without replacing the earlier record.
-   Interface: `UX-run-decisions`.
+   Interface: `UX-run-page`, `UX-run-decisions`.
 
 - **4a.** No answer is selected for a pending question: Hub refuses resume and
   retains the pending decision; resumes at step 4 after explicit selection.
-   Interface: `UX-run-decisions`.
+   Interface: `UX-run-page`, `UX-run-decisions`.
 
 - **4b.** The PR head changed since the question: Hub refuses answer application;
   the operator inspects the changed work and this application flow ends pending
   dismissal or a fresh relevant question.
-   Interface: `UX-run-decisions`.
+   Interface: `UX-run-page`, `UX-run-decisions`.
 
 - **4c.** The operator dismisses the pending question with a reason: Hub retains
   the dismissal and leaves execution stopped; the clarification flow ends without
   applying an answer.
-   Interface: `UX-run-decisions`.
+   Interface: `UX-run-page`, `UX-run-decisions`.
 
 - **4d.** A completed resume request is replayed after a later pause: Hub returns
   the current paused Run without restarting it; the replay ends without a new
   application or removal of the stop.
-   Interface: `UX-run-decisions`.
+   Interface: `UX-run-page`, `UX-run-decisions`.
 
 - **5a.** Delivery fails after answer application was committed: the prepared
   application remains recorded; later delivery reconciliation uses that attempt
   rather than applying the same receipt again.
-   Interface: `UX-run-decisions`.
+   Interface: `UX-run-page`, `UX-run-decisions`.
 
 - **1z.** The inbox subject resolved, changed generation or failed inspection: controls remain disabled and the operator refreshes the list and explicitly reviews the current subject; resumes at step 1.
-   Interface: `UX-decision-inbox`, `UX-run-decisions`.
+   Interface: `UX-decision-inbox`, `UX-run-page`, `UX-run-decisions`.
 
 ## 4. Postconditions
 

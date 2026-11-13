@@ -1,20 +1,17 @@
 <script lang="ts">
 	import type { components } from '$lib/api';
 	import RunStateBadge from './RunStateBadge.svelte';
-	import { Button } from '$lib/components/ui/button';
+	import RunActions from './RunActions.svelte';
+	import { decisionWait, decisionWaitLabel, type RunDecisions } from './run-actions';
+	import { runHref } from './run-links';
 	import { Badge } from '$lib/components/ui/badge';
 	import { TableRow, TableCell } from '$lib/components/ui/table';
 	import {
 		GitPullRequest,
 		GitBranch,
 		ExternalLink,
-		History,
 		ShieldCheck,
-		Play,
-		Pause,
-		XCircle,
-		Link2,
-		RefreshCw
+		MessageSquare
 	} from '@lucide/svelte';
 
 	type PipelineRun = components['schemas']['PipelineRunRead'];
@@ -23,28 +20,31 @@
 		run,
 		projectName,
 		operating,
+		decisions,
 		onadvance,
 		onpause,
 		onresume,
 		oncancel,
-		onattach,
-		onhistory,
-		ondecisions
+		onattach
 	}: {
 		run: PipelineRun;
 		projectName: string;
 		operating: boolean;
+		decisions: RunDecisions;
 		onadvance: (runId: string) => void;
 		onpause: (runId: string) => void;
 		onresume: (run: PipelineRun) => void;
 		oncancel: (runId: string) => void;
 		onattach: (run: PipelineRun) => void;
-		onhistory: (run: PipelineRun) => void;
-		ondecisions: (run: PipelineRun) => void;
 	} = $props();
+
+	let waiting = $derived(
+		decisions.status === 'known' ? decisionWaitLabel(decisionWait(decisions.entries)) : null
+	);
 </script>
 
 <TableRow
+	data-attention={waiting ? 'true' : undefined}
 	class="grid min-w-0 gap-1 p-3 md:table-row md:p-0 [&>td]:min-w-0 [&>td]:whitespace-normal"
 >
 	<TableCell>
@@ -65,9 +65,12 @@
 					</a>
 				{/if}
 			</div>
-			<div class="text-sm font-medium text-foreground md:line-clamp-1 md:text-xs">
+			<a
+				href={runHref(run.id, run.project_id)}
+				class="block text-sm font-medium text-foreground underline-offset-4 hover:underline md:line-clamp-1 md:text-xs"
+			>
 				{run.pull_snapshot?.title || 'No title'}
-			</div>
+			</a>
 		</div>
 	</TableCell>
 
@@ -79,7 +82,12 @@
 	</TableCell>
 
 	<TableCell>
-		<RunStateBadge state={run.state} />
+		<div class="flex flex-col items-start gap-1">
+			<RunStateBadge state={run.state} />
+			{#if waiting}
+				<Badge variant="attention"><MessageSquare aria-hidden="true" />{waiting}</Badge>
+			{/if}
+		</div>
 		{#if run.pause_reason}
 			<p class="mt-1 max-w-xs text-xs whitespace-normal text-muted-foreground">
 				{run.pause_reason}
@@ -130,82 +138,16 @@
 	</TableCell>
 
 	<TableCell class="text-right">
-		<div class="flex flex-wrap items-center gap-2 md:justify-end md:gap-1">
-			<Button variant="outline" size="sm" onclick={() => ondecisions(run)}>Decisions</Button>
-			{#if run.state !== 'completed' && run.state !== 'failed' && run.state !== 'canceled'}
-				{#if run.state === 'paused' || run.state === 'blocked'}
-					<Button
-						variant="ghost"
-						size="icon"
-						onclick={() => onresume(run)}
-						disabled={operating}
-						title="Resume Run"
-						aria-label="Resume Run"
-					>
-						<Play class="size-4" />
-					</Button>
-				{:else}
-					<Button
-						variant="subtle"
-						size="icon"
-						onclick={() => onpause(run.id)}
-						disabled={operating}
-						title="Pause Run"
-						aria-label="Pause Run"
-					>
-						<Pause class="size-4" />
-					</Button>
-				{/if}
-
-				{#if !run.pull_number}
-					<Button
-						variant="subtle"
-						size="icon"
-						onclick={() => onattach(run)}
-						title="Attach Pull Request"
-						aria-label="Attach Pull Request"
-					>
-						<Link2 class="size-4 group-hover/button:text-primary" />
-					</Button>
-				{/if}
-
-				<Button
-					variant="subtle"
-					size="icon"
-					onclick={() => onadvance(run.id)}
-					disabled={operating}
-					title="Advance / Sync Run Status"
-					aria-label="Advance Run"
-				>
-					<RefreshCw
-						class="size-4 group-hover/button:text-success {operating ? 'animate-spin' : ''}"
-					/>
-				</Button>
-
-				<Button
-					variant="subtle"
-					size="icon"
-					onclick={() => oncancel(run.id)}
-					disabled={operating}
-					title="Cancel Run"
-					aria-label="Cancel Run"
-				>
-					<XCircle class="size-4 group-hover/button:text-destructive" />
-				</Button>
-			{/if}
-
-			<Button
-				variant="subtle"
-				size="icon"
-				onclick={() => onhistory(run)}
-				class="w-auto md:size-8"
-				title="View Attempt History"
-				aria-label="View Attempt History"
-			>
-				<History class="ml-3 size-4 md:ml-0" /><span class="mr-3 ml-2 md:hidden"
-					>Attempts &amp; errors</span
-				>
-			</Button>
-		</div>
+		<RunActions
+			{run}
+			{decisions}
+			{operating}
+			href={(section) => runHref(run.id, run.project_id, section)}
+			onadvance={() => onadvance(run.id)}
+			onpause={() => onpause(run.id)}
+			onresume={() => onresume(run)}
+			oncancel={() => oncancel(run.id)}
+			onattach={() => onattach(run)}
+		/>
 	</TableCell>
 </TableRow>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { runHref } from '../pipeline-runs/run-links';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { untrack } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -169,7 +170,7 @@
 									</p>{/if}
 								{#if claim.run_id}<a
 										class="underline"
-										href={`/projects/runs?run=${encodeURIComponent(String(claim.run_id))}&view=decisions`}
+										href={runHref(String(claim.run_id), projectId, 'decisions')}
 										>Inspect native owner</a
 									>{/if}
 								{#if claim.pull_number}<a

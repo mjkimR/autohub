@@ -4,6 +4,7 @@
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import { runHref } from '../pipeline-runs/run-links';
 	type Item = components['schemas']['WorkItemRead'];
 	type Recovery = components['schemas']['WorkItemRecoveryRead'];
 	type Command = components['schemas']['WorkItemRecover'];
@@ -182,7 +183,8 @@
 			<p>{record.detail}</p>
 			{#if record.prior_outcome.pipeline_run_id}<a
 					class="underline"
-					href={`/projects/runs?run=${record.prior_outcome.pipeline_run_id}`}>Original execution</a
+					href={runHref(String(record.prior_outcome.pipeline_run_id), projectId)}
+					>Original execution</a
 				>{/if}
 			{#each record.events as event (event.id)}<p>{event.kind}: {event.detail}</p>{/each}
 		</details>

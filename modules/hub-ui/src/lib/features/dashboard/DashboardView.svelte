@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { runHref } from '$lib/features/project-management/pipeline-runs/run-links';
 	import { DashboardState } from './dashboard.svelte';
 	import DashboardHealth from './DashboardHealth.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
@@ -287,10 +288,15 @@
 						<div class="flex items-center justify-between py-2.5 text-xs">
 							<div class="min-w-0 flex-1 pr-3">
 								<div class="flex items-center gap-2">
-									<span class="font-bold text-foreground">PR #{run.pull_number}</span>
-									<span class="truncate text-muted-foreground">
-										{run.pull_snapshot?.title || `PR #${run.pull_number}`}
-									</span>
+									<a
+										href={runHref(run.id, run.project_id)}
+										class="flex min-w-0 items-center gap-2 underline-offset-4 hover:underline"
+									>
+										<span class="font-bold text-foreground">PR #{run.pull_number}</span>
+										<span class="truncate text-muted-foreground">
+											{run.pull_snapshot?.title || `PR #${run.pull_number}`}
+										</span>
+									</a>
 								</div>
 								<div class="mt-0.5 flex items-center gap-2 font-mono text-xs text-muted-foreground">
 									<div class="flex min-w-0 items-center gap-1">
