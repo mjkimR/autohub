@@ -6,7 +6,7 @@ area: sdd
 status: deprecated
 usecases: []
 entrypoints:
-  - modules/hub/app/features/project_management/sdd/execution.py
+  - modules/hub/app/features/project_management/sdd/api.py
 ---
 
 # [CAP-SDD-runtime-isolation] Retired embedded SDD runtime boundary

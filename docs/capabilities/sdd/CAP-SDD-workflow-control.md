@@ -8,7 +8,7 @@ usecases:
   - UC-decide-sdd-proposal
 entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
-  - modules/hub/app/features/project_management/sdd/execution.py
+  - modules/hub/app/features/project_management/pipeline_runs/usecases/control.py
 ---
 
 # [CAP-SDD-workflow-control] Retired native SDD workflow authority

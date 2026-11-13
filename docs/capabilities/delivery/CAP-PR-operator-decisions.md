@@ -10,10 +10,7 @@ usecases:
   - UC-complete-sdd-workflow
 entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/api/interactions.py
-  - modules/hub/app/features/project_management/pipeline_runs/usecases/interactions.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/control.py
-  - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
-  - modules/hub/app/features/project_management/pipeline_runs/usecases/outcomes.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/discovery.py
 ---
 

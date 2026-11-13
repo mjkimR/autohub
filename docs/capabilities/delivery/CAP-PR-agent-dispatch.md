@@ -8,7 +8,6 @@ usecases:
   - UC-deliver-pull-request
 entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/dispatch.py
-  - modules/hub/app/features/project_management/pipeline_runs/adapters/codex_github_mention.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/delivery.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/implementation.py
 ---

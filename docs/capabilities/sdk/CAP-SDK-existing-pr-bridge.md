@@ -7,6 +7,7 @@ status: deprecated
 usecases:
   - UC-resume-verified-pr
 entrypoints:
+  - modules/hub/app/features/execution/flows/api.py
   - modules/hub/app/features/execution/flows/bridge.py
 ---
 
