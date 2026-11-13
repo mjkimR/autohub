@@ -1,7 +1,7 @@
 ---
 id: UX-app-shell
 title: Authenticated navigation panel
-summary: "Provide navigation grouped by operator job, health indication and session controls around each authenticated management screen, and signal the owed-item count from any screen with a link to the Attention landing."
+summary: "Provide navigation grouped by operator job, health indication and session controls around each authenticated management screen, signal the owed-item count from any screen, and expose off-screen navigation with decorative edge shadows in bounded desktop and narrow Menu lists."
 area: navigation
 element: panel
 status: active
@@ -36,6 +36,13 @@ The navigation is secondary to the active screen. It is a persistent side region
 - Service health (indicator): a periodic shallow health check reports Core Online or Offline.
 - Theme preference (toggle): also accessible in the narrow header.
 
+Navigation continuation:
+
+- The navigation list is bounded by the available viewport height, below the narrow header when Menu is open. Brand, Menu and session controls remain reachable while only the list scrolls.
+- A subtle shadow appears in the reserved top gutter only when content remains above, and in the bottom gutter only when content remains below. One CSS pixel of rounding tolerance suppresses fractional edge artifacts. Fitting or hidden zero-height navigation shows neither cue.
+- Gutters sit outside link text and focus/active outlines. They are decorative, hidden from assistive technology and cannot intercept pointer events or receive focus. Visual roles follow `docs/steering/visual-style.md`.
+- Scroll, viewport/content resize, System disclosure and administrative-link arrival update cues without another user scroll. Without ResizeObserver, scroll, window resize and content/visibility changes still update them.
+
 Attention opens `UX-attention` and Decisions opens `UX-decision-inbox`; the current destination is highlighted.
 
 System group (collapse behavior):
@@ -54,8 +61,8 @@ Current route label (the desktop top bar and the narrow header):
 Active destination (every navigation link, administrative ones included; emphasis per `docs/steering/visual-style.md`):
 
 - The active link carries `aria-current="page"`, semibold text, the neutral accent fill and a 1px ink outline (`sidebar-ring`, at least 3:1 against the sidebar and the fill in both themes), so it is identifiable without color. The left rule stays reserved for attention.
-- When the sidebar list overflows, the active link is scrolled into view.
-- Keyboard focus shows a translucent ink ring, distinct from the 1px active outline.
+- When the sidebar list overflows, the active link is scrolled into view. Opening a previously hidden narrow Menu waits for visible layout and aligns its displayed active destination within the list before settling cues. The surrounding page does not scroll; an explicitly collapsed System remains collapsed. A late administrative active destination is aligned after it arrives, and later operator scrolling does not snap back to it.
+- Keyboard focus shows a translucent ink ring, distinct from the 1px active outline. Focusing a destination keeps its ring inside the navigation scrollport.
 
 Owed-item signal (attention, operator debt):
 
@@ -71,7 +78,12 @@ Owed-item signal (attention, operator debt):
 - **populated**: authenticated children and navigation remain usable; choose a destination or Logout.
 - **system-collapsed**: the System group shows only its toggle (default, and remembered after a collapse); on a System route the collapsed toggle carries the "contains the current page" mark.
 - **system-expanded**: the System links are listed, because the operator opened the group or the current route is inside it.
-- **menu-open**: narrow navigation is expanded; selecting another URL implicitly closes its route-bound menu state.
+- **menu-open**: narrow navigation is viewport-bounded with reachable header/session controls; selecting another URL implicitly closes its route-bound menu state.
+- **navigation-fits**: neither cue appears; destinations remain usable.
+- **navigation-top**: only the bottom cue indicates more destinations.
+- **navigation-middle**: both cues indicate hidden content in both directions.
+- **navigation-bottom**: only the top cue indicates preceding destinations.
+- **menu-closed**: the hidden narrow navigation shows no cues; Menu can reopen it.
 - **offline**: the health indicator changes without itself removing the session or navigation.
 - **owed**: the owed-item total is above zero; the top rule and the Attention Badges appear. Open Attention to triage.
 - **owed-neutral**: the total is zero; the shell shows no mark at all.
@@ -103,9 +115,16 @@ Owed-item signal (attention, operator debt):
 | Open Account approval | global: navigation between management surfaces | populated | populated | `UX-users` | `CAP-ACCESS-authentication-authorization` | The account table appears. |
 | Open Machine keys | global: navigation between management surfaces | populated | populated | `UX-machines` | `CAP-ACCESS-authentication-authorization` | Machine administration appears. |
 | Toggle System | global: reveal diagnostic destinations | system-collapsed, system-expanded | system-expanded, system-collapsed |  |  | The chevron rotates, aria-expanded follows and the choice is remembered for this browser. |
-| Toggle Menu | global: reveal navigation on narrow displays | populated | menu-open |  |  | Menu expansion is reflected by aria-expanded. |
+| Toggle Menu | global: reveal navigation on narrow displays | menu-closed, menu-open | menu-open, menu-closed |  |  | aria-expanded follows; opening settles visible active-link alignment and cues while preserving manual System collapse. |
+| Scroll navigation | global: discover off-screen destinations | navigation-top, navigation-middle, navigation-bottom | navigation-top, navigation-middle, navigation-bottom | | | Only edges with hidden content show continuation. |
+| Resize, System disclosure or administrative-link arrival | global: keep navigation discoverable after layout changes | navigation-fits, navigation-top, navigation-middle, navigation-bottom | navigation-fits, navigation-top, navigation-middle, navigation-bottom | | | Cues follow settled layout without another scroll. |
 | Toggle theme | global: a console-wide visual preference | populated | populated |  |  | The theme changes without changing the current task. |
 
 ## 5. Evidence
 
 Implementation inspected: `modules/hub-ui/src/lib/components/shared/AppShell.svelte`, `modules/hub-ui/src/lib/components/shared/app-shell-nav.ts` (groups, route ownership and labels, remembered group state), `modules/hub-ui/src/lib/components/shared/SidebarNavGroup.svelte`, `modules/hub-ui/src/lib/components/shared/SidebarLink.svelte`, `modules/hub-ui/src/lib/features/attention/owed-counts.svelte.ts` and `modules/hub-ui/src/routes/+layout.svelte`. `AppShell.integration.test.ts` covers the group order and membership, System collapsed by default with `aria-expanded`/`aria-controls`, auto-expansion and the active link on a System route, the "contains the current page" mark after collapsing there, the remembered open state and the blocked-storage fallback, the top-bar label and active link for run, project, setup and unknown routes, the active outline on primary and administrative links, the single counts read with no decision-inbox read, the Attention Badge and narrow "Needs you" link to `/`, the neutral decision count from the same response, the "PR runs" label and the owed, exact backlog, singular, failed-only zero (no mark) and unknown (error, failure, invalid and negative count and loading: neutral "?" with its accessible label and tooltip, no rule) count states; `app-shell-nav.test.ts` checks that every routed list screen has exactly one link, that only System collapses, the route-to-label map and the storage round trip; `owed-counts.test.ts` covers the count rules, including invalid totals, dropped invalid per-kind values and the phrases; `layout-contrast.test.ts` checks the sidebar text and outline pairs in both themes. Session behavior is covered by the inspected `modules/hub-ui/src/lib/api/client.test.ts` and `modules/hub-ui/src/lib/stores/session.test.ts`.
+
+
+`SidebarNavViewport.svelte` owns edge measurement, reserved gutters, focused/active destination clearance and observer cleanup. `SidebarNavViewport.integration.test.ts` covers fitting/edge/fractional/hidden states, resize/content observation, no-ResizeObserver fallback, reveal alignment, manual collapse, late administrative arrival without subsequent scroll snapping, decorative attributes, keyboard clearance and cleanup. `AppShell.integration.test.ts` also verifies Menu reveal wiring and manual System collapse.
+
+Actual local Chromium layout verification for `SPEC-sidebar-overflow-cues` covered light/dark 1280×480 desktop and390×640 Menu layouts, fitting1280×1100, actual Tab focus and lower System/admin reveal with page scroll unchanged. A real-layout no-ResizeObserver run covered content changes, resize to390×500 and scrolling. API/page data was controlled by the ignored harness; this is no live backend, authentication or deployment verification. The Unit's `browser-evidence.md` records dimensions and checked states separately from test inspection.
