@@ -1,0 +1,21 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T06:53:31.354761Z'
+status: completed
+summary: Remove Hub-owned SDD evaluation/runtime and native control paths; dispatch explicit Draft activity intent through ordinary PR delivery, preserve fenced history and inspected ownership recovery, and reconcile approved ADR/UX/contracts.
+findings: []
+assumptions:
+- Repository and agent own setup/workflow; no runner or Action for devkit sync. Required verification stays repository-owned GitHub Actions.
+- Independent UX and code reviews passed; fresh reconciliation review passed after exact minor count correction. No required acceptance criteria deferred.
+unverified_areas:
+- No live GitHub/provider canary, deployment, rendered-browser walkthrough or full Docker image build.
+checks:
+  tests: PASS SQLite1207passed25skipped; affected PostgreSQL30passed; earlier broad PostgreSQL235passed; UI547passed; SDK27passed
+  build: PASS just check backend SDK UI types and production build; SDK wheel and source distribution; typed API current
+  lint: PASS just lint and final lint-check; committed CI rules35; docs rules35 and hygiene36; whitespace
+diff_scope:
+  base: 725317b9e4450a1abfda7d20d0b72571191ce7ed
+  head: 418989703373b9e5c2139c0131916127dd422a20
+activity_effort: high
