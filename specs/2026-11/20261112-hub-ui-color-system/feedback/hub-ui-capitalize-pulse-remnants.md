@@ -55,6 +55,7 @@ Resolved on branch `uiux-label-motion-cleanup` (hub-ui follow-up outside SDD, by
 - `docs/steering/visual-style.md` states both rules generally, without the "new or changed" qualifier.
 - Verification: `just test-ui` passed (54 files, 414 tests, including new `labels.test.ts` and presentation tests),
   `just lint` and `just check` passed.
-- Remaining outside this branch: `AppShell.svelte` still renders the signed-in user's name with `capitalize`; that
-  file is owned by a parallel branch and was not touched here. Drop the class there (or reopen this record) so
-  `rg "capitalize|animate-pulse" modules/hub-ui/src` outside `src/lib/components/ui/` finds nothing.
+- AppShell: the last `capitalize` in `AppShell.svelte` styled the header page label (`currentPageLabel()`), not a
+  user name. Branch `uiux-shell-signals` owned that file and removed the class; page labels are already written in
+  display case. After both branches merged, `rg "capitalize|animate-pulse" modules/hub-ui/src` outside
+  `src/lib/components/ui/` finds only the `labels.ts` doc comment.
