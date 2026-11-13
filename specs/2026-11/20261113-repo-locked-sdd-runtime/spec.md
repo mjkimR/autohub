@@ -1,28 +1,22 @@
 ---
-id: PROP-repo-locked-sdd-runtime
+id: SPEC-repo-locked-sdd-runtime
 title: Install the SDD evaluation runtime from the repository lock
 summary: Auto Hub evaluates SDD work with the devkit packages pinned by the target repository's uv.lock, installed inside isolation, instead of a server profile that must contain every selected bundle. This removes per-repository provisioning.
-status: accepted                       # draft | reviewing | accepted | rejected
-created_at: 2026-11-13
-target_area: capabilities/sdd/
-priority: high                        # critical | high | medium | low
-size: L                               # S | M | L | XL (XL: would need two or more specs or task kinds; decompose before Planning)
-planning_effort: medium               # low | medium | high (hint for Planning)
-dev_effort: high                      # low | medium | high (hint for Development)
-boundaries:
-  owns:
-    - capabilities/sdd/
-    - architecture/
-    - operations/
-  excludes:
-    - docs/decisions/
-task_kind: feature                    # feature | bugfix: the spec follows sdd-spec-<task_kind>
-workflow: sdd-proposal
+status: planned
+created: 2026-11-13
+related_capabilities: []
+related_usecases: []
+workflow: sdd-spec-feature
 ---
+<!-- devkit:skeleton -->
 
-# [PROP-repo-locked-sdd-runtime] Install the SDD evaluation runtime from the repository lock
+# [SPEC-repo-locked-sdd-runtime] Install the SDD evaluation runtime from the repository lock
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-repo-locked-sdd-runtime on 2026-11-13.
+
+### 1. Background & Hypothesis
 
 Native SDD evaluation runs devkit from a server-provisioned runtime profile
 (`AUTOHUB_SDD_HOME`, `AUTOHUB_SDD_PROFILES`, `config/sdd-runtime*`) and never
@@ -50,7 +44,26 @@ inside isolation, cached by lock digest, makes any devkit-adopted repository
 evaluable without operator provisioning, and makes Hub evaluate with the same
 workflow, rule and bundle versions the agents used.
 
-## 2. Technical Spike Questions
+## 2. User Stories
+
+- **US-1**: As a developer/agent, I want to implement Install the SDD evaluation runtime from the repository lock so that system capabilities are extended.
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: <what this change will not do>
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] <scenario>
+- **Given** <precondition>
+- **When** <action>
+- **Then** <expected result>
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### 2. Technical Spike Questions
 
 - **Q1 (identity)**: Rule 9 pins runtime identity for an admitted run. When the
   runtime derives from the evaluated commit's lock, which lock defines a run's
@@ -74,7 +87,7 @@ workflow, rule and bundle versions the agents used.
   runtime status endpoint and the SDK existing-PR bridge, which shares profile
   selection? Is the server profile kept as a fallback or removed?
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
 Code facts this design rests on (head of this branch):
 
@@ -90,9 +103,9 @@ Code facts this design rests on (head of this branch):
 - The SDK bridge selects the runtime with the same `runtime_scope(repository)`
   (`execution/flows/bridge.py`).
 
-Design after challenger round 01 (`envelopes/challenger-01.yaml`) and the
-user's answers (`envelopes/answer-01.yaml`); the decisions are recorded in
-`PADR-repository-locked-runtime` and `PADR-offline-source-build`.
+Design after challenger round 01 (historical Git `f7d54032b2c9d1fc420e8e13696088966cc5e585:docs/proposals/PROP-repo-locked-sdd-runtime/envelopes/challenger-01.yaml`) and the
+user's answers (historical Git `f7d54032b2c9d1fc420e8e13696088966cc5e585:docs/proposals/PROP-repo-locked-sdd-runtime/envelopes/answer-01.yaml`); the decisions are recorded in
+`ADR-repository-locked-runtime` and `ADR-offline-source-build`.
 
 - **D1 Source and resolution point**: the runtime is resolved after fetch, per
   evaluated commit, from its root `pyproject.toml` and `uv.lock` (parsed, never
@@ -172,16 +185,17 @@ user's answers (`envelopes/answer-01.yaml`); the decisions are recorded in
   `ARCH-07-deployment`, `ARCH-11-risks-and-technical-debt` and the operations
   guides for the SDD runtime and execution targets.
 
-### Planning decisions
+#### Planning decisions
 
 - Q-A, Q-B and Q-C were answered by the user with the recommended options
-  (`envelopes/answer-01.yaml`): continue on a changed runtime identity, Hub-side
+  (historical Git `f7d54032b2c9d1fc420e8e13696088966cc5e585:docs/proposals/PROP-repo-locked-sdd-runtime/envelopes/answer-01.yaml`): continue on a changed runtime identity, Hub-side
   source fetch with offline builds, and refusal of repositories without a
   devkit lock.
-- `PADR-repository-locked-runtime` records the runtime source, identity and
-  lifecycle; `PADR-offline-source-build` records the install trust boundary.
+- `ADR-repository-locked-runtime` records the runtime source, identity and
+  lifecycle; `ADR-offline-source-build` records the install trust boundary.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
 
 - On Acceptance: recorded with devkit spec proposal accept (after Planning, or --direct for an eligible draft in Backlog); handed off to a spec bundle on dev-<slug>; the proposal is deleted there and its decisions become ADRs
 - On Rejection: status: rejected only, with the user's reason in the commit message; a later hygiene pass writes the rejection ADR and deletes the proposal
+

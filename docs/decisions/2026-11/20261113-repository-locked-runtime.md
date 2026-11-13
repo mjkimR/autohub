@@ -1,16 +1,15 @@
 ---
-id: PADR-repository-locked-runtime
+id: ADR-repository-locked-runtime
 title: Evaluate SDD with the repository-locked runtime
 summary: For SDD evaluation of any devkit-adopted repository, we install devkit from the evaluated commit's own uv.lock instead of server profiles, to remove per-repository provisioning and evaluate with the agents' runtime, accepting install cost and trust in the lock.
-proposal: PROP-repo-locked-sdd-runtime
-# supersedes: [ADR-<slug>]   # write Supersedes in part `ADR-<slug>`: <the replaced clauses>. in Decision Outcome
-status: draft
+proposal: SPEC-repo-locked-sdd-runtime
+status: accepted
 created_at: 2026-11-13
 ---
 
-# [PADR-repository-locked-runtime] Evaluate SDD with the repository-locked runtime
+# [ADR-repository-locked-runtime] Evaluate SDD with the repository-locked runtime
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Date**: 2026-11-13
 
 ---

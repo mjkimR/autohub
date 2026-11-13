@@ -1,23 +1,22 @@
 ---
-id: PADR-offline-source-build
+id: ADR-offline-source-build
 title: Build locked sources offline after Hub-side fetch
 summary: For installing private Git sources without wheels, we fetch them in the Hub process with the project's connector token and build them in the sandbox without network or credentials, to keep build code away from tokens and metadata, accepting a more complex install.
-proposal: PROP-repo-locked-sdd-runtime
-# supersedes: [ADR-<slug>]   # write Supersedes in part `ADR-<slug>`: <the replaced clauses>. in Decision Outcome
-status: draft
+proposal: SPEC-repo-locked-sdd-runtime
+status: accepted
 created_at: 2026-11-13
 ---
 
-# [PADR-offline-source-build] Build locked sources offline after Hub-side fetch
+# [ADR-offline-source-build] Build locked sources offline after Hub-side fetch
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Date**: 2026-11-13
 
 ---
 
 ## 1. Context & Problem Statement
 
-Installing from a repository lock (`PADR-repository-locked-runtime`) must fetch private Git sources such as
+Installing from a repository lock (`ADR-repository-locked-runtime`) must fetch private Git sources such as
 devkit and g-tools. They ship no wheels, so installation runs their build backends. Evaluation today runs
 repository code with no network and no host credentials (`CAP-SDD-runtime-isolation` rule 11). A network-enabled
 sandbox with a token would give build code that token and access to the Cloud Run metadata server, whose

@@ -1,0 +1,8 @@
+request: gate:plan-accept
+kind: approve
+action: accept
+workflow: sdd-spec-feature
+stage: direction-handoff
+note: PROP-repo-locked-sdd-runtime
+by: user
+at: '2026-11-13T01:16:54.380621Z'
