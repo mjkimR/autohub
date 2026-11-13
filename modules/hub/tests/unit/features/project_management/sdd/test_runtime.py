@@ -145,6 +145,7 @@ async def test_complete_entry_is_leased_for_the_scope(tmp_path, monkeypatch):
 
 async def test_cold_cache_starts_one_install_and_reports_preparing(tmp_path, monkeypatch):
     monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(runtime, "INSTALL_WAIT_SECONDS", 0.05)
     monkeypatch.setattr(runtime, "select", lambda root: selection())
     started = asyncio.Event()
     release = asyncio.Event()
@@ -176,6 +177,7 @@ async def test_cold_cache_starts_one_install_and_reports_preparing(tmp_path, mon
 
 async def test_caller_deadline_does_not_cancel_the_install(tmp_path, monkeypatch):
     monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(runtime, "INSTALL_WAIT_SECONDS", 0)
     monkeypatch.setattr(runtime, "select", lambda root: selection())
     finished = asyncio.Event()
 
@@ -202,6 +204,82 @@ async def test_caller_deadline_does_not_cancel_the_install(tmp_path, monkeypatch
     assert task is not None
     await asyncio.wait_for(task, 2)
     assert not task.cancelled()
+
+
+async def test_caller_waits_for_an_install_that_finishes_within_the_wait(tmp_path, monkeypatch):
+    """A cold request keeps waiting (and so keeps a request-scoped CPU) until its own install publishes."""
+    monkeypatch.setattr(runtime, "select", lambda root: selection())
+    monkeypatch.setattr(runtime, "INSTALL_WAIT_SECONDS", 5)
+    monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+
+    async def build(chosen, token):
+        await asyncio.sleep(0.05)
+        provision(tmp_path, monkeypatch)
+        return True
+
+    monkeypatch.setattr("app.features.project_management.sdd.runtime_install.build", build)
+    runtime._installs.clear()
+    with runtime.runtime_source(tmp_path, "token"):
+        assert await runtime.ensure_runtime() == runtime_cache.entry(IDENTITY)
+
+
+async def test_caller_polls_an_install_claimed_by_another_process(tmp_path, monkeypatch):
+    """When another worker holds the build lock, the local task ends at once and the caller polls the cache."""
+    monkeypatch.setattr(runtime, "select", lambda root: selection())
+    monkeypatch.setattr(runtime, "INSTALL_WAIT_SECONDS", 5)
+    monkeypatch.setattr(runtime, "POLL_SECONDS", 0.01)
+    monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+    attempts = []
+
+    async def build(chosen, token):
+        attempts.append(token)
+        if len(attempts) == 3:
+            provision(tmp_path, monkeypatch)  # the other worker published meanwhile
+        return False
+
+    monkeypatch.setattr("app.features.project_management.sdd.runtime_install.build", build)
+    runtime._installs.clear()
+    with runtime.runtime_source(tmp_path, "token"):
+        assert await runtime.ensure_runtime() == runtime_cache.entry(IDENTITY)
+    assert len(attempts) == 3
+
+
+async def test_wait_ends_with_preparing_and_leaves_the_install_running(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(runtime, "select", lambda root: selection())
+    monkeypatch.setattr(runtime, "INSTALL_WAIT_SECONDS", 0.05)
+    release = asyncio.Event()
+
+    async def build(chosen, token):
+        await release.wait()
+        return True
+
+    monkeypatch.setattr("app.features.project_management.sdd.runtime_install.build", build)
+    runtime._installs.clear()
+    with runtime.runtime_source(tmp_path, "token"), pytest.raises(ProjectError) as raised:
+        await runtime.ensure_runtime()
+    assert raised.value.status == 503 and raised.value.code == "SDD_RUNTIME_PREPARING"
+    task = runtime.install_task(IDENTITY)
+    assert task is not None and not task.done()
+    release.set()
+    await asyncio.wait_for(task, 2)
+    assert not task.cancelled()
+
+
+async def test_failure_recorded_during_the_wait_is_reported(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(runtime, "select", lambda root: selection())
+    monkeypatch.setattr(runtime, "INSTALL_WAIT_SECONDS", 5)
+
+    async def build(chosen, token):
+        runtime_cache.record_failure(IDENTITY, "SDD_RUNTIME_INSTALL_FAILED", runtime_cache.token_scope(token))
+        return True
+
+    monkeypatch.setattr("app.features.project_management.sdd.runtime_install.build", build)
+    runtime._installs.clear()
+    with runtime.runtime_source(tmp_path, "token"), pytest.raises(ProjectError) as raised:
+        await runtime.ensure_runtime()
+    assert raised.value.status == 422 and raised.value.code == "SDD_RUNTIME_INSTALL_FAILED"
 
 
 async def test_recorded_failure_is_reported_without_reinstalling(tmp_path, monkeypatch):

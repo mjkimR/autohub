@@ -95,9 +95,13 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
    Check: [test_lock_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_incompatible_python_is_refused_before_rendering`.
 6. **Single-flight preparation**: WHILE no complete cache entry and no applicable
    failure marker exist for an identity, WHEN a devkit command needs that runtime,
-   Hub MUST start at most one install per identity across worker processes and
-   refuse the caller with HTTP 503 `SDD_RUNTIME_PREPARING`.
-   Check: [test_runtime_cache.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_cache.py), `test_only_one_process_claims_an_identity`; [test_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_cold_cache_starts_one_install_and_reports_preparing`; [test_runtime_install.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_a_held_claim_skips_the_install`.
+   Hub MUST start at most one install per identity across worker processes, keep
+   the caller waiting for up to 60 seconds without cancelling the install, and
+   then continue with the published entry, report a failure recorded meanwhile,
+   or refuse the caller with HTTP 503 `SDD_RUNTIME_PREPARING`. The wait keeps a
+   request in flight, so a host that allocates CPU only to requests still advances
+   the install.
+   Check: [test_runtime_cache.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_cache.py), `test_only_one_process_claims_an_identity`; [test_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_cold_cache_starts_one_install_and_reports_preparing`, `test_caller_waits_for_an_install_that_finishes_within_the_wait`, `test_caller_polls_an_install_claimed_by_another_process`, `test_wait_ends_with_preparing_and_leaves_the_install_running`, `test_failure_recorded_during_the_wait_is_reported`; [test_runtime_install.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_a_held_claim_skips_the_install`.
    A running native run that observes this refusal MUST keep its state and be inspected again on a later
    dispatcher tick until it has been preparing for 45 minutes, then block with a remediation reason; the SDK
    bridge MUST report only this refusal as the retryable `bridge-unavailable` and keep other evaluation

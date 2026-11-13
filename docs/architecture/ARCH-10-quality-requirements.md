@@ -145,10 +145,10 @@ outside any broader latency promise.
 - **Source**: concurrent evaluations of one repository lock.
 - **Stimulus**: five evaluations in one worker request devkit commands for a runtime identity with no complete cache entry; separately, two worker processes claim the same identity's install.
 - **Environment**: one per-instance cache directory; the install is held open until released.
-- **Response**: one install starts; every caller that cannot use the entry yet is refused as retryable; a caller whose deadline expires does not cancel the install.
-- **Measure**: one install call with the caller's token; all five callers receive HTTP 503 `SDD_RUNTIME_PREPARING`; of two processes exactly one obtains the claim; the install task finishes uncancelled after a 0.05-second caller deadline.
+- **Response**: one install starts; callers wait a bounded time for it, then use the entry or are refused as retryable; a caller whose deadline expires does not cancel the install.
+- **Measure**: one install call with the caller's token; all five callers receive HTTP 503 `SDD_RUNTIME_PREPARING` after their wait ends with the install still held; a caller whose install publishes within the wait receives the entry; of two processes exactly one obtains the claim; the install task finishes uncancelled after a 0.05-second caller deadline.
 - **Owner**: `CAP-SDD-runtime-isolation`.
-- **Check**: [test_runtime_cache.py](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_cache.py), `test_only_one_process_claims_an_identity`; [test_runtime.py](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_cold_cache_starts_one_install_and_reports_preparing`, `test_caller_deadline_does_not_cancel_the_install`.
+- **Check**: [test_runtime_cache.py](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_cache.py), `test_only_one_process_claims_an_identity`; [test_runtime.py](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_cold_cache_starts_one_install_and_reports_preparing`, `test_caller_waits_for_an_install_that_finishes_within_the_wait`, `test_caller_deadline_does_not_cancel_the_install`.
 
 ## Verification limits
 
