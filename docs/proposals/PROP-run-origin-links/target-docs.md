@@ -39,7 +39,8 @@ All existing main scenarios and extensions remain. Add these entry/extension exa
   Item/Work Plan IDs for **Open Work Item recovery**; it performs no Work Plan list scan. No related evidence displays
   **Origin unknown**, without labeling it manual or SDK. This inspection adds no execution authority.
 - `UC-inspect-repository-documents` step 1 accepts a Repository URL from a run. Step 3 initializes a valid unit
-  directory in both document and execution selection. Extension 3b: malformed, missing or inaccessible unit shows
+  directory in both document and execution selection. Run-generated unit links carry the recorded branch in `ref`;
+  legacy addresses use the default branch. The visible browse branch conveys no execution authority. Extension 3b: malformed, missing or inaccessible unit shows
   **Unit unavailable** and **Browse repository**; transient read failure adds **Retry**. Step 4 preserves the address
   through viewer switching/reload. Prior-address/project responses cannot replace current selection.
 - `UC-execute-sdd-batch` step 4 accepts a Repository batch URL from Attention or a run. It reads the exact batch even
@@ -108,7 +109,7 @@ an extension of existing secondary context, so no alternative page arrangement i
   open Sdd View; later mode switches preserve query and selection. The browse branch is not immutable PR-head
   evidence and conveys no execution authority.
 - **States**: populated/loading/empty/error remain. **unit-unavailable** names the requested unit and explains
-  malformed/missing/non-SDD/inaccessible selection or a missing addressed branch; **Browse repository** clears the unit request and returns to
+  malformed/missing/non-SDD/inaccessible selection or a missing addressed branch; **Browse repository** clears the unit request and resets an unavailable addressed ref to the default branch before
   ordinary browsing. Transient failure offers **Retry**. Unknown units enable no native start/readiness controls.
   **batch-unavailable** is confined to `UX-sdd-batch`; valid unit inspection remains available. Query/project changes
   invalidate earlier lookups. A non-SDD project explains unsupported SDD selection without hiding Git Browser.
