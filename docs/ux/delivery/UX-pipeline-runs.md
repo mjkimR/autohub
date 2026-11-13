@@ -26,8 +26,7 @@ capabilities:
 ## 2. Content
 
 The PR run list is the primary region. Filters stay above it; row actions belong
-to their PR run. The dashboard's Needs-you tile in `UX-dashboard` opens this screen
-with default filters. The same view can be scoped to one Project connection in its
+to their PR run. The empty state of `UX-attention` links here with default filters. The same view can be scoped to one Project connection in its
 detail screen. The page title is "PR runs" (glossary term).
 
 - Project connection (project filter; fixed in a scoped view).

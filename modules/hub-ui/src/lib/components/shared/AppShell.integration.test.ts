@@ -11,19 +11,19 @@ vi.mock('$lib/api', () => ({ api }));
 vi.mock('$lib/api/client', () => ({ logoutSession: vi.fn() }));
 vi.mock('$app/state', () => ({ page }));
 
-let decisions: () => Promise<unknown>;
+let counts: () => Promise<unknown>;
 let admin = false;
 
 beforeEach(() => {
 	admin = false;
 	localStorage.clear();
 	page.url = new URL('http://hub.test/decisions');
-	decisions = async () => ({ data: decisionPage(0) });
+	counts = async () => ({ data: countsOf(0) });
 	api.GET.mockReset();
 	api.GET.mockImplementation(async (path: string) => {
 		if (path === '/api/health') return { data: { status: 'ok' } };
 		if (path === '/api/v1/users/me') return { data: { is_superadmin: admin } };
-		if (path === '/api/v1/pipeline-runs/decisions') return decisions();
+		if (path === '/api/v1/owed-items/counts') return counts();
 		throw new Error(`unexpected ${path}`);
 	});
 });
@@ -31,12 +31,11 @@ afterEach(() => cleanup());
 
 const children = createRawSnippet(() => ({ render: () => '<p>content</p>' }));
 const nav = () => screen.getByRole('navigation', { name: 'Primary navigation' });
-const rules = () => document.querySelectorAll('[data-pending-rule]');
-const decisionPage = (count: number, items: unknown[] = []) => ({
-	items,
-	has_more: count > items.length,
-	next_cursor: count > items.length ? 'next' : null,
-	actionable_total_count: count
+const rules = () => document.querySelectorAll('[data-owed-rule]');
+const countsOf = (total: number, decision = 0) => ({
+	total,
+	by_kind: { decision, 'stopped-run': total - decision, 'failed-run': 4 },
+	by_project: total ? { p1: total } : {}
 });
 
 test('the active item carries aria-current and the ink outline, others do not', async () => {
@@ -61,65 +60,87 @@ test('administrative links use the same active style', async () => {
 	expect(other.getAttribute('aria-current')).toBeNull();
 });
 
-test('owed decisions light the top rule and label the Decisions count', async () => {
-	decisions = async () => ({ data: decisionPage(2, [{ actionable: true }]) });
+test('owed items light the top rule and badge the Attention link', async () => {
+	counts = async () => ({ data: countsOf(3, 2) });
 	render(AppShell, { children });
-	const link = await within(nav()).findByRole('link', { name: 'Decisions 2 pending decisions' });
-	expect(within(link).getByText('2')).toBeTruthy();
+	const link = await within(nav()).findByRole('link', { name: 'Attention 3 items need you' });
+	expect(link.getAttribute('href')).toBe('/');
+	expect(link.querySelector('[data-owed-count]')?.className).toContain('attention');
 	expect(rules()).toHaveLength(2);
-	expect(
-		screen.getByRole('link', { name: 'Decisions: 2 pending decisions' }).getAttribute('href')
-	).toBe('/decisions');
-	expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs/decisions', {
-		params: { query: { limit: 1 } }
-	});
+	const narrow = screen.getByRole('link', { name: 'Attention: 3 items need you' });
+	expect(narrow.getAttribute('href')).toBe('/');
+	expect(narrow.textContent).toContain('Needs you · 3');
+	// One counts read serves the shell; the decision inbox is not read for the badge.
+	expect(api.GET).toHaveBeenCalledWith('/api/v1/owed-items/counts');
+	expect(api.GET).not.toHaveBeenCalledWith('/api/v1/pipeline-runs/decisions', expect.anything());
+	expect(api.GET.mock.calls.filter(([path]) => path === '/api/v1/owed-items/counts')).toHaveLength(
+		1
+	);
 });
 
-test('a backlog beyond the read page is shown exactly', async () => {
-	decisions = async () => ({ data: decisionPage(137, [{ actionable: false }]) });
+test('Decisions shows the decision part of the same response, without attention', async () => {
+	counts = async () => ({ data: countsOf(3, 2) });
 	render(AppShell, { children });
-	await within(nav()).findByRole('link', { name: 'Decisions 137 pending decisions' });
-	expect(screen.getByText('137 pending')).toBeTruthy();
+	const link = await within(nav()).findByRole('link', { name: 'Decisions 2 pending decisions' });
+	const badge = link.querySelector('[data-decision-count]')!;
+	expect(badge.textContent).toContain('2');
+	expect(badge.className).not.toContain('attention');
+});
+
+test('failed runs alone are not counted: total zero stays neutral', async () => {
+	counts = async () => ({
+		data: { total: 0, by_kind: { decision: 0, 'failed-run': 5 }, by_project: {} }
+	});
+	render(AppShell, { children });
+	await waitFor(() => expect(api.GET).toHaveBeenCalledWith('/api/v1/owed-items/counts'));
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(within(nav()).getByRole('link', { name: 'Attention' })).toBeTruthy();
+	expect(within(nav()).getByRole('link', { name: 'Decisions' })).toBeTruthy();
+	expect(rules()).toHaveLength(0);
+	expect(document.querySelector('[data-owed-count]')).toBeNull();
+	expect(document.querySelector('[data-owed-unknown]')).toBeNull();
+	expect(document.querySelector('[data-decision-count]')).toBeNull();
+	expect(screen.queryByRole('link', { name: /Attention: / })).toBeNull();
+});
+
+test('a backlog is shown exactly', async () => {
+	counts = async () => ({ data: countsOf(137, 100) });
+	render(AppShell, { children });
+	await within(nav()).findByRole('link', { name: 'Attention 137 items need you' });
+	expect(screen.getByText('Needs you · 137')).toBeTruthy();
 	expect(screen.queryByText(/\+/)).toBeNull();
 });
 
-test('zero stays fully neutral with no badge', async () => {
-	decisions = async () => ({ data: decisionPage(0, [{ actionable: false }]) });
+test('one owed item uses the singular', async () => {
+	counts = async () => ({ data: countsOf(1, 1) });
 	render(AppShell, { children });
-	await waitFor(() =>
-		expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs/decisions', expect.anything())
-	);
-	await new Promise((resolve) => setTimeout(resolve, 0));
-	expect(within(nav()).getByRole('link', { name: 'Decisions' })).toBeTruthy();
-	expect(rules()).toHaveLength(0);
-	expect(document.querySelector('[data-pending-count]')).toBeNull();
-	expect(document.querySelector('[data-pending-unknown]')).toBeNull();
-	expect(screen.queryByRole('link', { name: /Decisions: / })).toBeNull();
+	await within(nav()).findByRole('link', { name: 'Attention 1 item needs you' });
+	await within(nav()).findByRole('link', { name: 'Decisions 1 pending decision' });
 });
 
 test.each([
 	['error', async () => ({ error: { detail: 'down' } })],
 	['failure', async () => Promise.reject(new Error('offline'))],
-	['invalid count', async () => ({ data: { items: [], has_more: false, next_cursor: null } })],
+	['invalid count', async () => ({ data: { by_kind: {}, by_project: {} } })],
+	['negative count', async () => ({ data: { total: -1, by_kind: {}, by_project: {} } })],
 	['loading', () => new Promise(() => {})]
 ])('%s shows a neutral unknown mark, not zero or debt', async (_name, response) => {
-	decisions = response;
+	counts = response;
 	render(AppShell, { children });
-	await waitFor(() =>
-		expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs/decisions', expect.anything())
-	);
+	await waitFor(() => expect(api.GET).toHaveBeenCalledWith('/api/v1/owed-items/counts'));
 	await new Promise((resolve) => setTimeout(resolve, 0));
-	const link = within(nav()).getByRole('link', { name: 'Decisions Pending decisions unknown' });
-	const mark = link.querySelector('[data-pending-unknown]')!;
+	const link = within(nav()).getByRole('link', { name: 'Attention Owed items unknown' });
+	const mark = link.querySelector('[data-owed-unknown]')!;
 	expect(mark.textContent).toContain('?');
-	expect(mark.getAttribute('title')).toBe('Pending decisions unknown');
+	expect(mark.getAttribute('title')).toBe('Owed items unknown');
 	expect(mark.className).not.toContain('attention');
-	const narrow = screen.getByRole('link', { name: 'Decisions: Pending decisions unknown' });
-	expect(narrow.getAttribute('href')).toBe('/decisions');
-	expect(narrow.getAttribute('title')).toBe('Pending decisions unknown');
+	const narrow = screen.getByRole('link', { name: 'Attention: Owed items unknown' });
+	expect(narrow.getAttribute('href')).toBe('/');
+	expect(narrow.getAttribute('title')).toBe('Owed items unknown');
 	expect(narrow.innerHTML).not.toContain('attention');
 	expect(rules()).toHaveLength(0);
-	expect(document.querySelector('[data-pending-count]')).toBeNull();
+	expect(document.querySelector('[data-owed-count]')).toBeNull();
+	expect(document.querySelector('[data-decision-count]')).toBeNull();
 });
 
 test('the PR run list is labeled with the glossary term', () => {
@@ -146,10 +167,11 @@ test('destinations are grouped by operator job, administration last', async () =
 		[...document.querySelectorAll(`[data-nav-group="${id}"] a`)].map(
 			(a) => a.querySelector('span')?.textContent
 		);
-	expect(names('attention')).toEqual(['Dashboard', 'Decisions']);
+	expect(names('attention')).toEqual(['Attention', 'Decisions']);
 	expect(names('work')).toEqual(['Projects', 'PR runs']);
 	expect(names('setup')).toEqual(['Connectors', 'AI catalogs', 'Notifications']);
 	expect(names('system')).toEqual([
+		'Health',
 		'Schedule configs',
 		'Schedule jobs',
 		'Webhook deliveries',
@@ -229,11 +251,13 @@ test.each([
 	['/runs/r1', 'PR run', 'PR runs'],
 	['/projects/p1', 'Project', 'Projects'],
 	['/settings/ai-catalogs', 'AI catalogs', 'AI catalogs'],
+	['/', 'Attention', 'Attention'],
+	['/system/health', 'Health', 'Health'],
 	['/nowhere', 'Page not found', null]
 ])('%s is labeled %s in the top bar', (path, label, activeName) => {
 	page.url = new URL(`http://hub.test${path}`);
 	render(AppShell, { children });
 	expect(screen.getAllByText(label, { selector: 'header span' })).toHaveLength(2);
 	const active = nav().querySelector('[aria-current="page"]');
-	expect(active?.textContent?.trim() ?? null).toBe(activeName);
+	expect(active?.querySelector('span')?.textContent?.trim() ?? null).toBe(activeName);
 });

@@ -55,7 +55,7 @@ entrypoints:
 
 - **4b.** Native admission has an uncertain outcome: Hub retains the same claim and known artifacts for reconciliation; resolved evidence resumes at step 4. Interface: `UX-sdd-batch`.
 
-- **4c.** An owner fails, is canceled/rejected, or protected evidence changes: Hub retains attention and the exact cause; the operator inspects its owner or stops future admission at step 5. Interface: `UX-sdd-batch`.
+- **4c.** An owner fails, is canceled/rejected, or protected evidence changes: Hub retains attention and the exact cause; the operator inspects its owner or stops future admission at step 5. Interface: `UX-attention`, `UX-sdd-batch`.
 
 - **5a.** A concurrent control changed the revision: Hub returns current state with a conflict; a fresh explicit control resumes at step 5. Interface: `UX-sdd-batch`.
 

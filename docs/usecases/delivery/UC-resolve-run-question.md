@@ -33,7 +33,7 @@ entrypoints:
 ## 2. Main Success Scenario
 
 1. The operator inspects the pending question and its PR context (`CAP-PR-operator-decisions`).
-   Interface: `UX-decision-inbox`, `UX-run-page`, `UX-run-decisions`.
+   Interface: `UX-attention`, `UX-decision-inbox`, `UX-run-page`, `UX-run-decisions`.
 
 2. The operator saves the intended clarification (`CAP-PR-operator-decisions`).
    Interface: `UX-run-page`, `UX-run-decisions`.

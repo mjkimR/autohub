@@ -96,7 +96,7 @@ test('counts runs by where they stand, including every state that waits for the 
 	expect(tile('Awaiting CI').textContent).toContain('1');
 	expect(tile('Completed').textContent).toContain('1');
 	// failed + paused + blocked
-	expect(tile('Needs you').textContent).toContain('3');
+	expect(tile('Held or failed').textContent).toContain('3');
 	expect(screen.getByText('Operational')).toBeTruthy();
 	expect(screen.getByText('Connected')).toBeTruthy();
 	expect(screen.getByText('Firing')).toBeTruthy();
@@ -137,7 +137,7 @@ test('statistics come from the full history even when only five recent runs are 
 	render(DashboardView);
 	await waitFor(() => expect(tile('Total Runs').textContent).toContain('151'));
 	expect(tile('Completed').textContent).toContain('150');
-	expect(tile('Needs you').textContent).toContain('1');
+	expect(tile('Held or failed').textContent).toContain('1');
 	expect(screen.getByText(/101 active connectors/)).toBeTruthy();
 });
 
@@ -160,44 +160,46 @@ const withRunsByState = (runsByState: Record<string, number> | null) => {
 	});
 };
 
-test('runs waiting for the operator mark the Needs-you tile and link to PR runs', async () => {
+test('held and failed runs are a neutral statistic; owed work lives on the Attention landing', async () => {
 	withRunsByState({ completed: 3, failed: 1, paused: 2, blocked: 1 });
 	render(DashboardView);
 
-	const link = await screen.findByRole('link', { name: /Needs you/ });
-	expect(link.getAttribute('href')).toBe('/projects/runs');
-	expect(link.getAttribute('data-attention')).toBe('true');
-	expect(link.textContent).toContain('4');
-	expect(link.textContent).toContain('1 failed · 2 paused · 1 blocked');
-	expect(document.querySelectorAll('[data-attention="true"]')).toHaveLength(1);
+	await waitFor(() => expect(tile('Held or failed').textContent).toContain('4'));
+	expect(tile('Held or failed').textContent).toContain('1 failed · 2 paused · 1 blocked');
+	expect(screen.queryByText('Needs you')).toBeNull();
+	expect(screen.queryByRole('link', { name: /Held or failed/ })).toBeNull();
+	expect(document.querySelector('[data-attention]')).toBeNull();
+	expect(document.querySelector('a[data-attention], [data-attention="true"]')).toBeNull();
+	expect(api.GET).not.toHaveBeenCalledWith('/api/v1/owed-items/counts', expect.anything());
 });
 
 test('the breakdown lists only the states that have runs', async () => {
 	withRunsByState({ paused: 2 });
 	render(DashboardView);
 
-	const link = await screen.findByRole('link', { name: /Needs you/ });
-	expect(link.textContent).toContain('2 paused');
-	expect(link.textContent).not.toContain('failed ·');
-	expect(link.textContent).not.toContain('blocked');
+	await waitFor(() => expect(tile('Held or failed').textContent).toContain('2 paused'));
+	expect(tile('Held or failed').textContent).not.toContain('failed ·');
+	expect(tile('Held or failed').textContent).not.toContain('blocked');
 });
 
-test('with nothing failed or held the Needs-you tile is neutral and not a link', async () => {
+test('with nothing failed or held the tile shows zero with its caption', async () => {
 	withRunsByState({ completed: 4 });
 	render(DashboardView);
 
-	await waitFor(() => expect(tile('Needs you').textContent).toContain('No failed or held runs'));
-	expect(tile('Needs you').textContent).toContain('Failed, paused, or blocked');
-	expect(screen.queryByRole('link', { name: /Needs you/ })).toBeNull();
-	expect(document.querySelector('[data-attention]')).toBeNull();
+	await waitFor(() => expect(tile('Held or failed').textContent).toContain('0'));
+	expect(tile('Held or failed').textContent).toContain('Failed, paused, or blocked');
 });
 
-test('unavailable statistics keep the Needs-you tile neutral with the unknown marker', async () => {
+test('unavailable statistics show the unknown marker', async () => {
 	withRunsByState(null);
 	render(DashboardView);
 
-	await waitFor(() => expect(tile('Needs you').textContent).toContain('—'));
-	expect(tile('Needs you').textContent).toContain('Failed, paused, or blocked');
-	expect(screen.queryByRole('link', { name: /Needs you/ })).toBeNull();
-	expect(document.querySelector('[data-attention]')).toBeNull();
+	await waitFor(() => expect(tile('Held or failed').textContent).toContain('—'));
+	expect(tile('Held or failed').textContent).toContain('Failed, paused, or blocked');
+});
+
+test('the page is titled System health and points to Attention', async () => {
+	render(DashboardView);
+	expect(screen.getByRole('heading', { level: 1, name: 'System health' })).toBeTruthy();
+	expect(screen.getByRole('link', { name: 'Attention' }).getAttribute('href')).toBe('/');
 });
