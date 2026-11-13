@@ -70,8 +70,9 @@ entrypoints:
 
 - **2e.** The base cannot supply a runtime: Hub refuses with the runtime
   code (`SDD_RUNTIME_UNLOCKED`, `SDD_RUNTIME_SOURCE_UNSUPPORTED`,
-  `SDD_RUNTIME_PYTHON_UNSUPPORTED`, `SDD_BUNDLES_MISSING`, or a recorded
-  `SDD_RUNTIME_SOURCE_UNAVAILABLE`, `SDD_RUNTIME_INSTALL_FAILED` or `SDD_ISOLATION_UNAVAILABLE`) before any
+  `SDD_RUNTIME_PYTHON_UNSUPPORTED`, `SDD_BUNDLES_MISSING`, a recorded
+  `SDD_RUNTIME_SOURCE_UNAVAILABLE` or `SDD_RUNTIME_INSTALL_FAILED`, or
+  `SDD_ISOLATION_UNAVAILABLE`) before any
   branch is created; the use case ends until the repository or connector is fixed.
    Interface: `UX-sdd-proposals`.
 

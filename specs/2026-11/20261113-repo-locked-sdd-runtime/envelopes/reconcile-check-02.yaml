@@ -1,0 +1,52 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:47:18.794959Z'
+status: completed
+summary: round 2; closes reconcile-check-01; round-1 fixes mostly reflected; new P1 (CAP section 4 base wording), one P2, four P3
+findings:
+- issue: CAP section 4 still says the evaluated commit is the base for Planning start admission only
+  evidence: docs/capabilities/sdd/CAP-SDD-runtime-isolation.md:206; activities.py:276-277; policy.py:69-73
+  failure_condition: A reader expects Development starts to skip base runtime evaluation
+  suggested_action: Say the base for Planning and Development start admission
+  resolution: open
+  severity: P1
+- issue: The ADR trace for the commit-per-evaluation clause points at rule 1, which does not restate the mapping
+  evidence: docs/decisions/2026-11/20261113-repository-locked-runtime.md:45; CAP-SDD-runtime-isolation.md:56-60, :206-208
+  failure_condition: Following the trace lands on a rule without the decided clause
+  suggested_action: State the mapping in a MUST rule and trace to it
+  resolution: open
+  severity: P2
+- issue: Three ADR traces cover their clause only partly (rule 20 without 21, rule 3 without the no-fallback clause, rule 9 without the pinned build environment)
+  evidence: docs/decisions/2026-11/20261113-repository-locked-runtime.md:47-48; 20261113-offline-source-build.md:44; CAP-SDD-runtime-isolation.md rules 3, 9, 20-21
+  failure_condition: Following a trace finds only part of the clause
+  suggested_action: Cite rules 20-21 and add the missing clauses to rules 3 and 9
+  resolution: open
+  severity: P3
+- issue: UC-start-sdd-activity 2e omits SDD_ISOLATION_UNAVAILABLE
+  evidence: docs/usecases/sdd/UC-start-sdd-activity.md:71-75; runtime_install.py:329-330
+  failure_condition: A start on a host without isolation is refused with an unlisted code
+  suggested_action: Add the code to 2e
+  resolution: open
+  severity: P3
+- issue: The fetch-environment sentence omits HOME, system configuration, prompt and credential helper overrides
+  evidence: docs/capabilities/sdd/CAP-SDD-runtime-isolation.md:258-259; runtime_install.py:106, :112; checkout.py:29-40
+  failure_condition: A reader assumes host Git configuration affects locked-source fetches
+  suggested_action: Name the overrides
+  resolution: open
+  severity: P3
+- issue: lock_detail is described as catalog text, but unreadable or uninspectable heads return fixed Hub messages
+  evidence: docs/capabilities/sdd/CAP-SDD-runtime-isolation.md:300-301; usecases.py:107-110; services.py:157-158
+  failure_condition: A client mapping lock_detail to catalog text gets other text
+  suggested_action: Say catalog text or a fixed Hub message
+  resolution: open
+  severity: P3
+assumptions:
+- 'Route: native isolated Claude Code reconcile-reviewer; snapshot unchanged'
+checks:
+  rules: PASS devkit rules check --ci --base 33a35220b82c
+diff_scope:
+  base: 33a35220b82ce1e5bf448f37d2acfa1a3661b720
+  head: 7b92637598c128d2b0dda7aa66fd386b6824cd49
+activity_effort: high

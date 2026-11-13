@@ -84,6 +84,12 @@ and `CAP-SDD-runtime-isolation` section 4 states the fetch environment, the
 `SDD_RUNTIME_PREPARING` exception to blocking, the `SDD_ISOLATION_UNAVAILABLE`
 projection and the unreadable-head status.
 
+Known test gap: `CAP-SDD-runtime-isolation` rule 1 states which commit each path
+evaluates (base for activity starts, PR head, milestone ref, operator checkout,
+default-branch head); the source shows each path passing that commit to its
+checkout, but no dedicated per-path test asserts it. Rule 1's Check line cites
+selection and identity tests only.
+
 A refused activity start replayed with the same request ID returns the recorded
 refusal without its code; this predates the change and applies to every refusal,
 so it is left unchanged.
