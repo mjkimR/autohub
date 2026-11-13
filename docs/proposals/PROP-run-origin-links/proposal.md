@@ -2,7 +2,7 @@
 id: PROP-run-origin-links
 title: Run origin links and subject deep links
 summary: "Expose where a PR run came from (Work Item, Work Plan, SDD batch, provider session, enrollment source) on the run read, and make the run page and Attention links open their exact subject, including an SDD unit or batch on the project Repository tab."
-status: reviewing                     # draft | reviewing | accepted | rejected
+status: accepted                     # draft | reviewing | accepted | rejected
 created_at: 2026-11-13
 target_area: capabilities/delivery/
 priority: medium                      # critical | high | medium | low
