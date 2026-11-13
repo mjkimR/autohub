@@ -272,7 +272,8 @@
 				{:else}
 					{#each configs as config (config.id)}
 						<TableRow>
-							<TableCell>
+							<!-- Generated names (agent schedules) are long; wrap them instead of widening the table. -->
+							<TableCell class="max-w-80 min-w-48 whitespace-normal">
 								<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
 									<span class="font-semibold text-foreground">{config.name}</span>
 									{#if config.task_func === 'system.maintain' || isProjectManaged(config)}
@@ -285,6 +286,13 @@
 								</div>
 								{#if config.description}
 									<div class="line-clamp-1 text-xs text-muted-foreground">{config.description}</div>
+								{/if}
+								{#if config.task_func === 'pipeline.observe_project'}
+									<!-- CI observation is also listed and managed in its project's Automation tab. -->
+									<a
+										class="text-xs font-medium underline-offset-4 hover:underline"
+										href={projectTabHref(config, 'automation')}>Project automation</a
+									>
 								{/if}
 							</TableCell>
 							<TableCell class="font-mono text-xs text-muted-foreground">
@@ -400,8 +408,8 @@
 				</p>
 				{#if deletingConfig && isProjectManaged(deletingConfig)}
 					<div class="rounded-md border border-warning/20 bg-warning/10 p-3 text-xs text-warning">
-						<strong>Warning:</strong> This schedule is automatically managed for a project. Deleting it
-						will stop automated background dispatching for this project.
+						<strong>Warning:</strong> This schedule belongs to a project. Deleting it stops that project's
+						scheduled work.
 					</div>
 				{/if}
 				<p class="text-xs text-muted-foreground">

@@ -12,13 +12,13 @@
 		project,
 		connectors,
 		catalogs,
-		section = 'all',
+		section,
 		onsaved
 	}: {
 		project: Project;
 		connectors: components['schemas']['ConnectorRead'][];
 		catalogs: components['schemas']['AICatalogRead'][];
-		section?: 'all' | 'general' | 'connection' | 'automation';
+		section: 'general' | 'connection' | 'automation';
 		onsaved: () => void;
 	} = $props();
 	let githubConnectors = $derived(connectors.filter((c) => c.provider === 'github'));
@@ -41,8 +41,13 @@
 	let autoEnrollSessions = $state(true);
 	let dispatchIntervalSeconds = $state('60');
 	// Empty leaves only the AI catalog's limits.
-	let maxInFlightRuns = $state('');
+	let maxInFlightRuns = $state<string | number | null>('');
 	let aiCatalogId = $state('');
+
+	/** A cleared number input binds `null` (or ''); both mean "no value", never 0. */
+	function optionalNumber(value: string | number | null): number | null {
+		return value === null || String(value).trim() === '' ? null : Number(value);
+	}
 
 	function initialize(project: Project) {
 		editName = project.name;
@@ -117,7 +122,7 @@
 								auto_enroll_on_trigger: autoEnrollOnTrigger,
 								auto_enroll_sessions: autoEnrollSessions,
 								dispatch_interval_seconds: Number(dispatchIntervalSeconds),
-								max_in_flight_runs: String(maxInFlightRuns).trim() ? Number(maxInFlightRuns) : null
+								max_in_flight_runs: optionalNumber(maxInFlightRuns)
 							}
 						}
 					: null
@@ -148,7 +153,7 @@
 </script>
 
 <form onsubmit={handleUpdateProject} class="space-y-5 py-2">
-	{#if section === 'all' || section === 'general'}
+	{#if section === 'general'}
 		<!-- Basic Info -->
 		<div class="space-y-3">
 			<div class="space-y-1.5">
@@ -179,226 +184,202 @@
 			</div>
 		</div>
 	{/if}
-	{#if section !== 'general'}
+	{#if section === 'connection'}
 		<!-- GitHub Section -->
 		<div class="space-y-3 rounded-lg border border-border/80 bg-muted/20 p-3.5">
-			{#if section !== 'automation'}
-				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-2">
-						<GitBranch class="size-4 text-foreground" />
-						<span class="text-sm font-semibold">GitHub Provider</span>
-					</div>
-					<label class="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-						<input
-							type="checkbox"
-							bind:checked={hasGithub}
-							class="size-3.5 rounded border-border text-primary focus:ring-primary"
-						/>
-						Enable GitHub
-					</label>
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					<GitBranch class="size-4 text-foreground" />
+					<span class="text-sm font-semibold">GitHub Provider</span>
 				</div>
-			{/if}
+				<label class="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+					<input
+						type="checkbox"
+						bind:checked={hasGithub}
+						class="size-3.5 rounded border-border text-primary focus:ring-primary"
+					/>
+					Enable GitHub
+				</label>
+			</div>
 			{#if hasGithub}
 				<div class="space-y-3 pt-2">
-					{#if section !== 'automation'}
+					<div class="space-y-1">
+						<label for="ghRepo" class="text-xs font-semibold text-muted-foreground uppercase">
+							Repository (owner/repo)
+						</label>
+						<Input
+							id="ghRepo"
+							placeholder="e.g. acme/my-app"
+							bind:value={githubRepo}
+							required={hasGithub}
+						/>
+					</div>
+
+					<div class="space-y-1">
+						<label for="ghConn" class="text-xs font-semibold text-muted-foreground uppercase">
+							GitHub Connector
+						</label>
+						{#if githubConnectors.length > 0}
+							<NativeSelect id="ghConn" bind:value={githubConnectorId} class="w-full">
+								{#each githubConnectors as conn (conn.id)}
+									<option value={conn.id}>{conn.name} ({conn.id.slice(0, 8)}...)</option>
+								{/each}
+							</NativeSelect>
+						{:else}
+							<Input
+								id="ghConn"
+								placeholder="Connector UUID"
+								bind:value={githubConnectorId}
+								required={hasGithub}
+							/>
+							<span class="text-xs text-warning"
+								>No GitHub connectors found. Please create one in Connectors.</span
+							>
+						{/if}
+					</div>
+
+					<div class="grid gap-2 sm:grid-cols-2">
 						<div class="space-y-1">
-							<label for="ghRepo" class="text-xs font-semibold text-muted-foreground uppercase">
-								Repository (owner/repo)
+							<label for="ghWf" class="text-xs font-semibold text-muted-foreground uppercase">
+								Workflow File
 							</label>
 							<Input
-								id="ghRepo"
-								placeholder="e.g. acme/my-app"
-								bind:value={githubRepo}
+								id="ghWf"
+								placeholder="ci.yml"
+								bind:value={githubWorkflow}
 								required={hasGithub}
 							/>
 						</div>
-
 						<div class="space-y-1">
-							<label for="ghConn" class="text-xs font-semibold text-muted-foreground uppercase">
-								GitHub Connector
+							<label for="ghJobs" class="text-xs font-semibold text-muted-foreground uppercase">
+								Required Jobs
 							</label>
-							{#if githubConnectors.length > 0}
-								<NativeSelect id="ghConn" bind:value={githubConnectorId} class="w-full">
-									{#each githubConnectors as conn (conn.id)}
-										<option value={conn.id}>{conn.name} ({conn.id.slice(0, 8)}...)</option>
-									{/each}
-								</NativeSelect>
-							{:else}
-								<Input
-									id="ghConn"
-									placeholder="Connector UUID"
-									bind:value={githubConnectorId}
-									required={hasGithub}
-								/>
-								<span class="text-xs text-warning"
-									>No GitHub connectors found. Please create one in Connectors.</span
-								>
-							{/if}
+							<Input
+								id="ghJobs"
+								placeholder="lint, test"
+								bind:value={githubRequiredJobs}
+								required={hasGithub}
+							/>
 						</div>
-
-						<div class="grid grid-cols-2 gap-2">
-							<div class="space-y-1">
-								<label for="ghWf" class="text-xs font-semibold text-muted-foreground uppercase">
-									Workflow File
-								</label>
-								<Input
-									id="ghWf"
-									placeholder="ci.yml"
-									bind:value={githubWorkflow}
-									required={hasGithub}
-								/>
-							</div>
-							<div class="space-y-1">
-								<label for="ghJobs" class="text-xs font-semibold text-muted-foreground uppercase">
-									Required Jobs
-								</label>
-								<Input
-									id="ghJobs"
-									placeholder="lint, test"
-									bind:value={githubRequiredJobs}
-									required={hasGithub}
-								/>
-							</div>
-						</div>
-					{/if}
-					{#if section === 'all' || section === 'automation'}
-						<details
-							open={section === 'automation'}
-							class="rounded-md border border-border/80 bg-background/50 p-3"
-						>
-							<summary class="cursor-pointer text-xs font-semibold text-foreground">
-								Advanced automation
-							</summary>
-							<div class="mt-3 space-y-3">
-								<label class="flex items-center justify-between gap-3 text-sm">
-									<span>
-										<span class="font-medium text-foreground"
-											>Automatically merge after CI passes</span
-										>
-										<span class="mt-0.5 block text-xs text-muted-foreground"
-											>GitHub branch rules remain the final authority.</span
-										>
-									</span>
-									<input
-										type="checkbox"
-										bind:checked={autoMerge}
-										class="size-4 rounded border-border text-primary focus:ring-primary"
-									/>
-								</label>
-
-								<div class="grid grid-cols-2 gap-3">
-									<div class="space-y-1">
-										<label
-											for="mergeMethod"
-											class="text-xs font-semibold text-muted-foreground uppercase"
-											>Merge method</label
-										>
-										<NativeSelect
-											id="mergeMethod"
-											bind:value={mergeMethod}
-											disabled={!autoMerge}
-											class="w-full"
-										>
-											<option value="squash">Squash</option>
-											<option value="merge">Create merge commit</option>
-											<option value="rebase">Rebase</option>
-										</NativeSelect>
-									</div>
-									<div class="space-y-1">
-										<label
-											for="dispatchInterval"
-											class="text-xs font-semibold text-muted-foreground uppercase"
-											>Dispatch interval (seconds)</label
-										>
-										<Input
-											id="dispatchInterval"
-											type="number"
-											min="30"
-											max="3600"
-											bind:value={dispatchIntervalSeconds}
-										/>
-									</div>
-									<div class="space-y-1">
-										<label
-											for="maxInFlightRuns"
-											class="text-xs font-semibold text-muted-foreground uppercase"
-											>Max runs in flight</label
-										>
-										<Input
-											id="maxInFlightRuns"
-											type="number"
-											min="1"
-											max="50"
-											placeholder="No project limit"
-											bind:value={maxInFlightRuns}
-										/>
-									</div>
-								</div>
-
-								<div class="space-y-1">
-									<label
-										for="aiCatalog"
-										class="text-xs font-semibold text-muted-foreground uppercase">AI catalog</label
-									>
-									<NativeSelect id="aiCatalog" bind:value={aiCatalogId} class="w-full">
-										<option value="">Default (Personal Codex)</option>
-										{#each pipelineCatalogs as catalog (catalog.id)}
-											<option value={catalog.id}>{catalog.name} ({catalog.kind})</option>
-										{/each}
-									</NativeSelect>
-								</div>
-
-								<label class="flex items-center justify-between gap-3 text-sm">
-									<span class="font-medium text-foreground">Ask the AI agent to fix failed CI</span>
-									<input
-										type="checkbox"
-										bind:checked={autoFixCi}
-										class="size-4 rounded border-border text-primary focus:ring-primary"
-									/>
-								</label>
-								<label class="flex items-center justify-between gap-3 text-sm">
-									<span class="font-medium text-foreground"
-										>Ask the AI agent to resolve merge conflicts</span
-									>
-									<input
-										type="checkbox"
-										bind:checked={autoFixConflicts}
-										class="size-4 rounded border-border text-primary focus:ring-primary"
-									/>
-								</label>
-								<label class="flex items-center justify-between gap-3 text-sm">
-									<span>
-										<span class="font-medium text-foreground">Enroll PRs containing @auto-run</span>
-										<span class="mt-0.5 block text-xs text-muted-foreground"
-											>Turning this off keeps PR enrollment manual.</span
-										>
-									</span>
-									<input
-										type="checkbox"
-										bind:checked={autoEnrollOnTrigger}
-										class="size-4 rounded border-border text-primary focus:ring-primary"
-									/>
-								</label>
-								<label class="flex items-center justify-between gap-3 text-sm">
-									<span>
-										<span class="font-medium text-foreground"
-											>Adopt PRs opened by agent sessions</span
-										>
-										<span class="mt-0.5 block text-xs text-muted-foreground"
-											>A provider session's PR becomes a PR run at CI observation.</span
-										>
-									</span>
-									<input
-										type="checkbox"
-										bind:checked={autoEnrollSessions}
-										class="size-4 rounded border-border text-primary focus:ring-primary"
-									/>
-								</label>
-							</div>
-						</details>
-					{/if}
+					</div>
 				</div>
 			{/if}
+		</div>
+	{:else if section === 'automation' && hasGithub}
+		<div class="space-y-4">
+			<label class="flex items-center justify-between gap-3 text-sm">
+				<span>
+					<span class="font-medium text-foreground">Automatically merge after CI passes</span>
+					<span class="mt-0.5 block text-xs text-muted-foreground"
+						>GitHub branch rules remain the final authority.</span
+					>
+				</span>
+				<input
+					type="checkbox"
+					bind:checked={autoMerge}
+					class="size-4 rounded border-border text-primary focus:ring-primary"
+				/>
+			</label>
+
+			<div class="grid gap-3 sm:grid-cols-2">
+				<div class="space-y-1">
+					<label for="mergeMethod" class="text-xs font-semibold text-muted-foreground uppercase"
+						>Merge method</label
+					>
+					<NativeSelect
+						id="mergeMethod"
+						bind:value={mergeMethod}
+						disabled={!autoMerge}
+						class="w-full"
+					>
+						<option value="squash">Squash</option>
+						<option value="merge">Create merge commit</option>
+						<option value="rebase">Rebase</option>
+					</NativeSelect>
+				</div>
+				<div class="space-y-1">
+					<label
+						for="dispatchInterval"
+						class="text-xs font-semibold text-muted-foreground uppercase"
+						>Dispatch interval (seconds)</label
+					>
+					<Input
+						id="dispatchInterval"
+						type="number"
+						min="30"
+						max="3600"
+						bind:value={dispatchIntervalSeconds}
+					/>
+				</div>
+				<div class="space-y-1">
+					<label for="maxInFlightRuns" class="text-xs font-semibold text-muted-foreground uppercase"
+						>Max runs in flight</label
+					>
+					<Input
+						id="maxInFlightRuns"
+						type="number"
+						min="1"
+						max="50"
+						placeholder="No project limit"
+						bind:value={maxInFlightRuns}
+					/>
+				</div>
+			</div>
+
+			<div class="space-y-1">
+				<label for="aiCatalog" class="text-xs font-semibold text-muted-foreground uppercase"
+					>AI catalog</label
+				>
+				<NativeSelect id="aiCatalog" bind:value={aiCatalogId} class="w-full">
+					<option value="">Default (Personal Codex)</option>
+					{#each pipelineCatalogs as catalog (catalog.id)}
+						<option value={catalog.id}>{catalog.name} ({catalog.kind})</option>
+					{/each}
+				</NativeSelect>
+			</div>
+
+			<label class="flex items-center justify-between gap-3 text-sm">
+				<span class="font-medium text-foreground">Ask the AI agent to fix failed CI</span>
+				<input
+					type="checkbox"
+					bind:checked={autoFixCi}
+					class="size-4 rounded border-border text-primary focus:ring-primary"
+				/>
+			</label>
+			<label class="flex items-center justify-between gap-3 text-sm">
+				<span class="font-medium text-foreground">Ask the AI agent to resolve merge conflicts</span>
+				<input
+					type="checkbox"
+					bind:checked={autoFixConflicts}
+					class="size-4 rounded border-border text-primary focus:ring-primary"
+				/>
+			</label>
+			<label class="flex items-center justify-between gap-3 text-sm">
+				<span>
+					<span class="font-medium text-foreground">Enroll PRs containing @auto-run</span>
+					<span class="mt-0.5 block text-xs text-muted-foreground"
+						>Turning this off keeps PR enrollment manual.</span
+					>
+				</span>
+				<input
+					type="checkbox"
+					bind:checked={autoEnrollOnTrigger}
+					class="size-4 rounded border-border text-primary focus:ring-primary"
+				/>
+			</label>
+			<label class="flex items-center justify-between gap-3 text-sm">
+				<span>
+					<span class="font-medium text-foreground">Adopt PRs opened by agent sessions</span>
+					<span class="mt-0.5 block text-xs text-muted-foreground"
+						>A provider session's PR becomes a PR run at CI observation.</span
+					>
+				</span>
+				<input
+					type="checkbox"
+					bind:checked={autoEnrollSessions}
+					class="size-4 rounded border-border text-primary focus:ring-primary"
+				/>
+			</label>
 		</div>
 	{/if}
 	<div class="flex justify-end pt-2">

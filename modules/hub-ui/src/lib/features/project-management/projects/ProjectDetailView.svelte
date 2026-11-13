@@ -4,25 +4,24 @@
 	import { allPages, responseData } from '$lib/api/pagination';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
+	import { ChevronLeft } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import WorkPlansPanel from '../work-plans/WorkPlansPanel.svelte';
 	import ProjectOverview from './ProjectOverview.svelte';
 	import ProjectConnections from './ProjectConnections.svelte';
 	import ProjectSettingsForm from './ProjectSettingsForm.svelte';
-	import ProjectScheduleDialog from './ProjectScheduleDialog.svelte';
-	import AgentSchedulesDialog from '../agent-schedules/AgentSchedulesDialog.svelte';
+	import ProjectAutomation from './ProjectAutomation.svelte';
+	import ProjectHeader from './ProjectHeader.svelte';
+	import ProjectSectionNav from './ProjectSectionNav.svelte';
 	import PipelineRunsView from '../pipeline-runs/PipelineRunsView.svelte';
 	import RepositoryView from '../repositories/RepositoryView.svelte';
-	import { projectTabs, type ProjectTab } from './project-tabs';
+	import type { ProjectTab } from './project-tabs';
 	let { projectId, tab = 'overview' }: { projectId: string; tab?: ProjectTab } = $props();
 	let project = $state<components['schemas']['ProjectRead'] | null>(null);
 	let connectors = $state<components['schemas']['ConnectorRead'][]>([]);
 	let catalogs = $state<components['schemas']['AICatalogRead'][]>([]);
 	let error = $state('');
 	let loading = $state(true);
-	let schedulesOpen = $state(false);
-	let observationOpen = $state(false);
 	let deleting = $state(false);
 	async function load() {
 		try {
@@ -69,44 +68,21 @@
 
 <svelte:head><title>{project?.name ?? 'Project'} · AutoHub</title></svelte:head>
 <div class="mx-auto w-full max-w-7xl space-y-6">
-	<a href="/projects" class="text-sm text-muted-foreground hover:text-foreground">← Projects</a>
+	{#if !project}
+		<a
+			href="/projects"
+			class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+			><ChevronLeft aria-hidden="true" class="size-4" />Projects</a
+		>
+	{/if}
 	{#if error}<div role="alert" class="rounded-lg border border-destructive/30 p-4">
 			{error} <button type="button" onclick={load} class="underline">Retry</button>
 		</div>{/if}
-	{#if loading}<p>Loading project…</p>{:else if project}
-		<header class="flex flex-wrap items-center justify-between gap-4">
-			<div>
-				<div class="flex items-center gap-2">
-					<h1 class="text-3xl font-semibold tracking-tight">{project.name}</h1>
-					{#if project.project_type === 'sdd'}
-						<Badge variant="warning">sdd</Badge>
-					{/if}
-				</div>
-				<p class="mt-2 text-sm text-muted-foreground">
-					{project.github?.repository ?? 'No repository connected'}
-				</p>
-			</div>
-			<div class="flex items-center gap-3 text-sm">
-				<span class="rounded-full bg-muted px-3 py-1"
-					>{project.enabled ? 'Active' : 'Disabled'}</span
-				>{#if project.github}<a
-						class="text-primary underline"
-						href={`https://github.com/${project.github.repository}`}
-						target="_blank"
-						rel="noreferrer">Repository ↗</a
-					>{/if}
-			</div>
-		</header>
-		<nav aria-label="Project sections" class="flex gap-1 overflow-x-auto border-b">
-			{#each projectTabs as item (item.id)}
-				<a
-					href={`/projects/${projectId}?tab=${item.id}`}
-					aria-current={tab === item.id ? 'page' : undefined}
-					class={`shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${tab === item.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-					>{item.label}</a
-				>
-			{/each}
-		</nav>
+	{#if loading}<p role="status" class="text-sm text-muted-foreground">Loading project…</p>
+	{:else if project}
+		<!-- Phase 3 seam: the owed-item exception strip renders through ProjectHeader's `signals`. -->
+		<ProjectHeader {project} />
+		<ProjectSectionNav {projectId} {tab} />
 		{#key `${project.id}:${project.revision}:${tab}`}
 			{#if tab === 'overview'}<ProjectOverview {project} />
 			{:else if tab === 'repository'}<RepositoryView {project} />
@@ -118,43 +94,19 @@
 					{catalogs}
 					onsaved={load}
 				/>
-			{:else if tab === 'automation'}
-				<div class="space-y-6">
-					<section class="rounded-xl border bg-card p-6">
-						<h2 class="text-lg font-semibold">Development automation</h2>
-						{#if project.github}<ProjectSettingsForm
-								{project}
-								{connectors}
-								{catalogs}
-								section="automation"
-								onsaved={load}
-							/>{:else}<p class="mt-3 text-sm text-muted-foreground">
-								Add a GitHub connection first.
-							</p>{/if}
-					</section>
-					<section class="space-y-4 rounded-xl border bg-card p-6">
-						<h2 class="text-lg font-semibold">Schedules</h2>
-						<p class="text-sm text-muted-foreground">
-							Manage agent work and recurring CI observations for this project.
-						</p>
-						<div class="flex flex-wrap gap-3">
-							<Button variant="outline" onclick={() => (schedulesOpen = true)}
-								>Agent schedules</Button
-							><Button
-								variant="outline"
-								disabled={!project.github}
-								onclick={() => (observationOpen = true)}>Create CI observation schedule</Button
-							>
-						</div>
-					</section>
-				</div>
+			{:else if tab === 'automation'}<ProjectAutomation
+					{project}
+					{connectors}
+					{catalogs}
+					onsaved={load}
+				/>
 			{:else}
 				<section class="rounded-xl border bg-card p-6">
 					<h2 class="text-lg font-semibold">Project settings</h2>
 					<ProjectSettingsForm {project} {connectors} {catalogs} section="general" onsaved={load} />
 				</section>
 				<section
-					class="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-destructive/30 p-6"
+					class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-destructive/30 p-6"
 				>
 					<div>
 						<h2 class="font-semibold">Delete project</h2>
@@ -168,12 +120,3 @@
 		{/key}
 	{/if}
 </div>
-{#if project && schedulesOpen}<AgentSchedulesDialog
-		{project}
-		{catalogs}
-		onclose={() => (schedulesOpen = false)}
-	/>{/if}
-{#if project && observationOpen}<ProjectScheduleDialog
-		{project}
-		onclose={() => (observationOpen = false)}
-	/>{/if}
