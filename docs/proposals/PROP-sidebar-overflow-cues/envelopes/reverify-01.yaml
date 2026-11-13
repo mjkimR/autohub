@@ -1,0 +1,22 @@
+kind: reverify
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T07:03:18.922708Z'
+status: completed
+review: challenger-01.yaml
+summary: Author verified explicit visible-layout active-link scroll before cue measurement, collapsed-System preservation, and real-layout reveal regression now close Challenger finding 1.
+findings:
+- issue: Reveal the active destination after opening the bounded narrow Menu.
+  evidence: proposal.md visibility update only remeasures; SidebarLink.svelte:18-22 reacts to active/link changes, while AppShell.svelte:136-141 keeps the hidden navigation mounted.
+  failure_condition: Load a lower System or administrative destination with Menu closed on a short narrow viewport, then open Menu; the active-link effect ran while hidden and remeasurement leaves it outside the newly bounded scrollport.
+  suggested_action: Add visibility-settled active-link scrolling before cue measurement, preserving explicitly collapsed System; verify the lower-route closed-to-open case in real layout without surrounding-page scrolling.
+  resolution: resolved
+  severity: P1
+unverified_areas:
+- Implementation and real browser verification remain Development work.
+checks:
+  design: PASS proposal and Screens cover closed-to-open lower destination and surrounding-page scroll exclusion
+diff_scope:
+  base: ''
+  head: 3a2e6ec8a663afe64c0efef42520b688da5eca63

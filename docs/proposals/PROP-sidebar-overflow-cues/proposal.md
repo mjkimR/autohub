@@ -2,7 +2,7 @@
 id: PROP-sidebar-overflow-cues
 title: Show sidebar navigation overflow cues
 summary: "Show decorative theme-token cues at navigation edges with hidden content so operators can discover off-screen links on short viewports."
-status: draft
+status: accepted
 created_at: 2026-11-13
 target_area: ux/navigation/
 priority: low
@@ -37,12 +37,22 @@ Inherited implementation and test inspection is retained in `materials/sidebar-e
 verification has run. Medium Planning settles the cue treatment and responsive states before code; medium
 Development verifies layout-dependent behavior and accessibility with independent review.
 
-## 2. Technical Spike Questions
+## 2. Planning Decisions
 
-- **Q1**: Compare a fade and a shadow at the overflowing edge using existing theme tokens. Choose a treatment that
-  remains visible in both themes without obscuring links, adding a focus target or intercepting interaction.
-- **Q2**: Determine the smallest component responsibility for measuring hidden content and updating on scrolling,
-  resize, System expansion/collapse and administrative-link arrival. Preserve existing active-link scrolling.
+Source inspection at `7e780ab7e45757bdf44e6edd330767f62ffd41dc` confirms the existing desktop navigation scrollport, active-link scrolling and unbounded narrow Menu. No layout or browser test ran during Planning.
+
+| Choice | Assessment |
+| --- | --- |
+| Edge shadow using existing sidebar tokens (selected) | A directional shadow indicates continuation without fading link text. Reserve small edge gutters outside the scrollport, so decoration never covers a link, active outline or focus ring. Verify visibility in both themes during Development. |
+| Fade from the sidebar surface to transparent | A surface overlay is simple, but fading link content weakens readability. A fade confined to the same reserved gutters is viable, but provides less directional separation from the sidebar surface. |
+
+Use a cohesive `SidebarNavViewport.svelte` wrapper in the existing shared component directory. It owns the bounded scrollport, inner content measurement and decorative edge gutters; it receives navigation content through a snippet. It does not own groups, routes, counts or active-link behavior. Keep `SidebarLink.svelte`'s `scrollIntoView({ block: 'nearest' })` behavior.
+
+Measure on mount and scroll, and use `ResizeObserver` on both viewport and content to capture resize, System disclosure and administrative-link arrival. After the narrow Menu becomes visible and layout settles, scroll the displayed active link into view within the navigation scrollport, then measure its cues. A hidden active link in an explicitly collapsed System group stays hidden; preserve the existing disclosure choice and current-page mark. Hidden zero-height regions expose no cues. Clamp fractional edge comparisons with a documented one-CSS-pixel tolerance, and disconnect observers/listeners on unmount. Scrolling the active link triggers the same update path. The fallback when `ResizeObserver` is unavailable retains native scrolling and updates from scroll/window resize and known content/visibility changes.
+
+The desktop sidebar remains viewport-bounded. Bound the open narrow Menu to the space remaining below its header, with a shrinking navigation region and reachable session controls. Observe the navigation viewport rather than creating another page scroll region. This is necessary for SCROLL-05: the current narrow aside grows with its contents and has no bounded navigation overflow. Opening and closing Menu preserves existing navigation semantics. Development covers loading a lower System or administrative destination while Menu is closed, then opening it: the visible active link must lie within the navigation scrollport without scrolling the surrounding page.
+
+Use existing sidebar surface/ink tokens through `layout.css`; add a named semantic cue token only if needed to meet both-theme visibility. No arbitrary palette, new attention emphasis or new focus target is introduced. Exact gutter dimensions and opacity are implementation choices verified by real layout; the acceptance requirement is visible directional continuation without overlap or interaction interception. These are local presentation choices, so no PADR is needed.
 
 ## 3. Proposed Design & Impact
 
@@ -62,7 +72,7 @@ Development verifies layout-dependent behavior and accessibility with independen
 - **SCROLL-04**: Given keyboard navigation or an active-link change, when the existing link scrolls into view, then
   links remain usable and cues neither obscure content nor intercept pointer/focus behavior.
 - **SCROLL-05**: Given short desktop and narrow Menu layouts in both themes, when a real-layout browser check runs,
-  then the correct cues are visible and decorative. Mocked dimensions may supplement that evidence.
+  then the correct cues are visible and decorative, the navigation scrolls within the available viewport, and Menu and session controls remain reachable. Mocked dimensions may supplement that evidence.
 
 Use the established UI integration harness and a real browser layout check, followed by `just lint`, `just check`
 and document rules. The sibling `PROP-owed-counts-error-reason` is behaviorally independent; serialize Development
@@ -77,6 +87,5 @@ writes, handoff and integration when their `AppShell.integration.test.ts` scope 
 
 ## 4. Lifecycle & Retirement Criteria
 
-This is a queued S feature draft. The approved split creates the child without direction acceptance or Development
-handoff. Planning compares cue treatments, drafts the relevant states and runs its mandatory Challenger pass.
+This S feature is under Planning review. Direction acceptance and Development handoff remain Host/user actions. The selected shadow treatment and screen delta are retained in `target-docs.md`; Development proves the layout outcomes.
 No PADR, milestone, inherited answer or open source feedback requires transfer. Source evidence is inspection only.
