@@ -32,8 +32,8 @@ entrypoints:
    (`CAP-SDD-native-delivery`, rules 3–7).
    Interface: `UX-sdd-proposals`.
 
-2. Hub checks the project, base policy and proposal eligibility; for Planning it
-   evaluates the base with the runtime the base's lock pins
+2. Hub checks the project, base policy and proposal eligibility; for Planning and
+   Development it evaluates the base with the runtime the base's lock pins
    (`CAP-SDD-native-delivery`, rules 1–3, 18; `CAP-SDD-runtime-isolation`, rules 1–6, 15).
    Interface: `UX-sdd-proposals`.
 
@@ -68,17 +68,17 @@ entrypoints:
   `SDD_LIFECYCLE_INACTIVE`; no activity branch or PR is created and the use case ends.
    Interface: `UX-sdd-proposals`.
 
-- **2e.** Planning's base cannot supply a runtime: Hub refuses with the runtime
+- **2e.** The base cannot supply a runtime: Hub refuses with the runtime
   code (`SDD_RUNTIME_UNLOCKED`, `SDD_RUNTIME_SOURCE_UNSUPPORTED`,
   `SDD_RUNTIME_PYTHON_UNSUPPORTED`, `SDD_BUNDLES_MISSING`, or a recorded
   `SDD_RUNTIME_SOURCE_UNAVAILABLE` or `SDD_RUNTIME_INSTALL_FAILED`) before any
   branch is created; the use case ends until the repository or connector is fixed.
    Interface: `UX-sdd-proposals`.
 
-- **2f.** Planning's base runtime is still being installed: Hub refuses with HTTP
+- **2f.** The base runtime is still being installed: Hub refuses with HTTP
   503 / `SDD_RUNTIME_PREPARING` before any branch is created. Replaying the same
-  request returns that recorded refusal; the operator starts Planning again after
-  the install and the use case resumes at step 1.
+  request returns that recorded refusal; the operator starts the activity again
+  after the install and the use case resumes at step 1.
    Interface: `UX-sdd-proposals`.
 
 - **3a.** Existing branch is unrelated: Hub refuses with HTTP 409 / `SDD_BRANCH_EXISTS`;
@@ -99,10 +99,10 @@ entrypoints:
   the reported enrollment error; the use case ends with remote artifacts retained.
    Interface: `UX-sdd-proposals`.
 
-- **4b.** The head's runtime is still being installed at enrollment: enrollment
-  fails with HTTP 503 / `SDD_RUNTIME_PREPARING` after the PR exists; as in 4a the
-  PR is retained, and retrying the owned activity PR path after the install
-  resumes at step 4.
+- **4b.** The head's runtime becomes unavailable between the base check and
+  enrollment (for example evicted): enrollment fails with HTTP 503 /
+  `SDD_RUNTIME_PREPARING` after the PR exists; as in 4a the PR is retained, and
+  retrying the owned activity PR path after the install resumes at step 4.
    Interface: `UX-sdd-proposals`.
 
 Milestone observations in `UC-preview-sdd-milestone` supply no start authority. Step 2 evaluates native admission afresh; preview scheduling introduces no additional start gate.
@@ -203,17 +203,16 @@ admission guarantees.
 
 - **Covers**: 2e.
 - **Given**: The selected base has no root `uv.lock` declaring `devkit-spec`.
-- **When**: The operator starts Planning.
+- **When**: The operator starts Planning or Development.
 - **Then**: `SDD_RUNTIME_UNLOCKED` is returned and no activity branch or PR is created.
 
 ### SDD-START-12: Report a runtime still being prepared
 
-- **Covers**: 2f, 4b.
-- **Given**: No cached runtime exists for the evaluated commit's lock identity.
-- **When**: The operator starts the activity.
-- **Then**: HTTP 503 `SDD_RUNTIME_PREPARING` is returned with one install started;
-  for Planning no branch exists, for Development the created PR is retained for
-  owned-PR recovery.
+- **Covers**: 2f.
+- **Given**: No cached runtime exists for the base's lock identity.
+- **When**: The operator starts Planning or Development.
+- **Then**: HTTP 503 `SDD_RUNTIME_PREPARING` is returned with one install started
+  and no activity branch or PR exists.
 
 ## 6. Source and Verification Boundary
 

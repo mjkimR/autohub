@@ -1,0 +1,60 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:43:30.620040Z'
+status: completed
+summary: 'round 1; 21 targets checked: constants, refusal table, status schema and Check lines match; one P1 (Development base evaluation), three P2, three P3'
+findings:
+- issue: UC-start-sdd-activity limits base runtime evaluation to Planning, but Development also evaluates the base before creating its branch
+  evidence: docs/usecases/sdd/UC-start-sdd-activity.md:35, :71, :78, :102, :211-216; activities.py:276-277; policy.py:59-63; runtime.py:178
+  failure_condition: A Development start on a base whose runtime is cold or unlocked is refused before any branch, contrary to 4b and SDD-START-12
+  suggested_action: Cover both activities in step 2, 2e and 2f; rewrite SDD-START-12; narrow or drop 4b
+  resolution: open
+  severity: P1
+- issue: ADR-offline-source-build cites the renumbered rule 11 and both ADRs keep '(planned revision)' traces
+  evidence: docs/decisions/2026-11/20261113-offline-source-build.md:21, :46-48; 20261113-repository-locked-runtime.md:44-49
+  failure_condition: A reader following the trace lands on the wrong rule
+  suggested_action: Repair the traces to the implementing rule numbers and add both ADRs as targets
+  resolution: open
+  severity: P2
+- issue: CAP section 4 claims a minimal environment for all install subprocesses, but the Hub-process Git fetch inherits the Hub environment plus the credential header
+  evidence: docs/capabilities/sdd/CAP-SDD-runtime-isolation.md:257-259; runtime_install.py:106; checkout.py:29-40
+  failure_condition: Any install with a locked Git source
+  suggested_action: Scope the sentence to the uv and sandboxed steps and describe the fetch environment
+  resolution: open
+  severity: P2
+- issue: CAP section 4 says every tabled refusal blocks a native run, contradicting rule 6 for SDD_RUNTIME_PREPARING
+  evidence: docs/capabilities/sdd/CAP-SDD-runtime-isolation.md:272, :278-280 vs :87-91; progress.py:248-250, :330-341
+  failure_condition: A reader expects a block on the first PREPARING observation
+  suggested_action: Except SDD_RUNTIME_PREPARING up to the 45-minute limit; clarify operations
+  resolution: open
+  severity: P2
+- issue: Rule 12 omits SDD_ISOLATION_UNAVAILABLE as a recorded failure code
+  evidence: docs/capabilities/sdd/CAP-SDD-runtime-isolation.md:114-118; runtime_install.py:327-328
+  failure_condition: An install on a host without an isolation runner
+  suggested_action: Name SDD_ISOLATION_UNAVAILABLE in rule 12
+  resolution: open
+  severity: P3
+- issue: The refusal table implies a coded SDD_ISOLATION_UNAVAILABLE diagnostic, but it projects as COMMAND_FAILED
+  evidence: docs/capabilities/sdd/CAP-SDD-runtime-isolation.md:276-279; diagnostics.py:46-67, :127-131
+  failure_condition: Readiness without an isolation runner shows COMMAND_FAILED
+  suggested_action: Catalog the code or document the projection
+  resolution: open
+  severity: P3
+- issue: CAP section 4 says state is null after a failed host probe, but an unreadable head reports state failed regardless
+  evidence: docs/capabilities/sdd/CAP-SDD-runtime-isolation.md:290-294; usecases.py:104-111
+  failure_condition: Host probe and head read both fail
+  suggested_action: Document the unreadable-head result
+  resolution: open
+  severity: P3
+assumptions:
+- 'Route: native isolated Claude Code reconcile-reviewer; snapshot unchanged'
+unverified_areas:
+- Batch PREPARING handling; UX-sdd-run held copy
+checks:
+  rules: PASS devkit rules check --ci --base ba24dd5
+diff_scope:
+  base: ba24dd5a7de494f2e9e7b026c104d80d097f02ac
+  head: 33a35220b82ce1e5bf448f37d2acfa1a3661b720
+activity_effort: high

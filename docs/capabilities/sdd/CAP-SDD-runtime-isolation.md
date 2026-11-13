@@ -112,7 +112,8 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
     to install or evaluate with it.
     Check: [test_runtime_install.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_symlinked_build_output_is_refused`, `test_a_swapped_venv_after_the_probe_fails_the_install`, `test_hub_never_acts_below_the_venv_after_a_late_swap`; [test_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_runtime_pin_must_name_its_own_entry`, `test_symlinked_entry_venv_is_refused`.
 12. **Install failure back-off**: IF an install fails, THEN Hub MUST record its
-    catalog code (`SDD_RUNTIME_SOURCE_UNAVAILABLE` for a refused fetch, else
+    catalog code (`SDD_RUNTIME_SOURCE_UNAVAILABLE` for a refused fetch,
+    `SDD_ISOLATION_UNAVAILABLE` when no isolation runner exists (rule 23), else
     `SDD_RUNTIME_INSTALL_FAILED`) for 10 minutes, scoped to a hash of the credential
     used, and refuse callers with that credential with HTTP 422 and that code
     without reinstalling.
@@ -254,7 +255,9 @@ Install steps, in a fresh staging directory:
 6. Hub process: write `pin.json`, remove `work/`, rename staging to the entry and
    evict over the cap.
 
-Install subprocesses receive only `PATH`, `HOME`, `TMPDIR`, `LANG`, `NO_COLOR` and
+The Hub-process Git fetches (step 1) run with the Hub environment plus the connector
+credential header, with hooks and fsmonitor disabled. The uv and sandboxed install
+subprocesses (steps 2-6) receive only `PATH`, `HOME`, `TMPDIR`, `LANG`, `NO_COLOR` and
 uv settings (`UV_NO_CONFIG`, `UV_PYTHON_DOWNLOADS`, `UV_CACHE_DIR`, and
 `UV_OFFLINE` for sandboxed builds and installs). `pin.json` holds `provider`
 (`devkit-spec`), `identity`, `lock_sha256` (equal to `identity`), `group`,
@@ -277,7 +280,10 @@ uv settings (`UV_NO_CONFIG`, `UV_PYTHON_DOWNLOADS`, `UV_CACHE_DIR`, and
 
 Readiness reports these as `ready: false` with the diagnostic; enrollment and other
 requests return the HTTP status. A native run whose evaluation receives one of them
-is blocked with the diagnostic. `SDD_PROFILE_INVALID` and
+is blocked with the diagnostic, except `SDD_RUNTIME_PREPARING`, which keeps the
+run's state until the 45-minute limit (rule 6). `SDD_ISOLATION_UNAVAILABLE` is not
+in the diagnostic catalog: its HTTP error carries the code, while its diagnostic
+row projects as `COMMAND_FAILED` with category `runtime`. `SDD_PROFILE_INVALID` and
 `RUNTIME_REVISION_MISMATCH` remain in the catalog for retained records only.
 
 ### Runtime status
@@ -288,7 +294,8 @@ is blocked with the diagnostic. `SDD_PROFILE_INVALID` and
   `detail` (`Python <version>` or the probe failure).
 - Constants: `profile` = `repository-lock`, `provider` = `devkit-spec`.
 - Project lock state of the default-branch head: `state` (`ready`, `preparing`,
-  `failed`, or null without a repository connection or after a failed host probe),
+  `failed`, or null without a repository connection or when the host probe fails
+  after the head was read; an unreadable head reports `failed` whatever the probe),
   `identity` and `lock_sha256` (both the identity), `bundles` and `revisions`
   (from the entry's pin when `ready`) and `lock_detail` (catalog text when
   `failed`, including an unreadable head).

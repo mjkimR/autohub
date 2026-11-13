@@ -72,7 +72,8 @@ curl -s "$SERVICE_URL/api/v1/projects/<project-id>/sdd/runtime"
 ## Troubleshooting
 
 Readiness reports these codes as `ready: false` with a diagnostic; enrollment
-returns them as HTTP errors; a running native run blocks with them.
+returns them as HTTP errors; a running native run blocks with them, except
+`SDD_RUNTIME_PREPARING` (see its row).
 
 | Reported condition | Operator action |
 | --- | --- |

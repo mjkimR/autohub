@@ -41,12 +41,12 @@ differ from the one the agents used, which `RECEIPT_STALE` and `RUNTIME_REVISION
 Chosen option: 3, because it is the only option that meets both the provisioning and the parity drivers; the user
 accepted the risk that a pull request changes its lock to steer its own evaluation.
 
-- The evaluation runtime is installed from the evaluated commit's root `uv.lock`: the locked dependency group that declares `devkit-spec`, rendered by uv. → CAP-SDD-runtime-isolation (planned revision)
-- The commit is the base for activity start admission, the pull request head for inspection, decisions and final lint, the milestone ref for previews and batches, and the operator checkout for the SDK bridge. → CAP-SDD-runtime-isolation (planned revision)
-- The runtime identity is the digest of the uv export of that group plus the interpreter minor version. → CAP-SDD-runtime-isolation (planned revision)
-- A changed runtime identity on a later head continues with the new runtime; effective workflow, policy and configuration digests keep their refusal. → CAP-SDD-runtime-isolation (planned revision)
-- A repository whose root lock lacks `devkit-spec` is refused with a repository diagnostic; no server profile or default image runtime remains. → CAP-SDD-runtime-isolation (planned revision)
-- Installation runs outside request budgets, single-flight per digest across processes, and callers receive a retryable preparing diagnostic meanwhile. → CAP-SDD-runtime-isolation (planned revision)
+- The evaluation runtime is installed from the evaluated commit's root `uv.lock`: the locked dependency group that declares `devkit-spec`, rendered by uv. → `CAP-SDD-runtime-isolation` rule 1 (MUST)
+- The commit is the base for activity start admission, the pull request head for inspection, decisions and final lint, the milestone ref for previews and batches, and the operator checkout for the SDK bridge. → `CAP-SDD-runtime-isolation` rule 1 (MUST)
+- The runtime identity is the digest of the uv export of that group plus the interpreter minor version. → `CAP-SDD-runtime-isolation` rule 2 (MUST)
+- A changed runtime identity on a later head continues with the new runtime; effective workflow, policy and configuration digests keep their refusal. → `CAP-SDD-runtime-isolation` rule 20 (MUST)
+- A repository whose root lock lacks `devkit-spec` is refused with a repository diagnostic; no server profile or default image runtime remains. → `CAP-SDD-runtime-isolation` rule 3 (MUST)
+- Installation runs outside request budgets, single-flight per digest across processes, and callers receive a retryable preparing diagnostic meanwhile. → `CAP-SDD-runtime-isolation` rules 6-7 (MUST)
 
 ## 5. Consequences
 

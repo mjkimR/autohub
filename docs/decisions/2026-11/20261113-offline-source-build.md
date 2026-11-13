@@ -18,7 +18,7 @@ created_at: 2026-11-13
 
 Installing from a repository lock (`ADR-repository-locked-runtime`) must fetch private Git sources such as
 devkit and g-tools. They ship no wheels, so installation runs their build backends. Evaluation today runs
-repository code with no network and no host credentials (`CAP-SDD-runtime-isolation` rule 11). A network-enabled
+repository code with no network and no host credentials (`CAP-SDD-runtime-isolation` rule 22). A network-enabled
 sandbox with a token would give build code that token and access to the Cloud Run metadata server, whose
 service-account token reaches Hub's secrets.
 
@@ -40,10 +40,10 @@ Chosen option: 2, with option 3 as the fallback when uv cannot separate registry
 because it keeps build code away from credentials and metadata while reusing the connector token the checkout
 already uses.
 
-- Private Git sources are fetched in the Hub process with the project's GitHub connector token; the token never enters the sandbox. → CAP-SDD-runtime-isolation (planned revision)
-- Source builds run in the sandbox without network or credentials, using build backends pinned in the image. → CAP-SDD-runtime-isolation (planned revision)
-- Network inside the install sandbox, if any, serves registry artifact downloads only. → CAP-SDD-runtime-isolation (planned revision)
-- Evaluation keeps no network and no credentials. → `CAP-SDD-runtime-isolation` rule 11 (MUST)
+- Private Git sources are fetched in the Hub process with the project's GitHub connector token; the token never enters the sandbox. → `CAP-SDD-runtime-isolation` rule 8 (MUST)
+- Source builds run in the sandbox without network or credentials, using build backends pinned in the image. → `CAP-SDD-runtime-isolation` rule 9 (MUST)
+- Network inside the install sandbox, if any, serves registry artifact downloads only. → `CAP-SDD-runtime-isolation` rule 9 (MUST)
+- Evaluation keeps no network and no credentials. → `CAP-SDD-runtime-isolation` rule 22 (MUST)
 
 ## 5. Consequences
 

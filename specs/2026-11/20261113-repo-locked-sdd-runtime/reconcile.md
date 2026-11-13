@@ -44,6 +44,10 @@ targets:
     resolution: modified
   - file: docs/steering/glossary.md
     resolution: modified
+  - file: docs/decisions/2026-11/20261113-repository-locked-runtime.md
+    resolution: modified
+  - file: docs/decisions/2026-11/20261113-offline-source-build.md
+    resolution: modified
 ---
 
 # Reconcile: SPEC-repo-locked-sdd-runtime
@@ -72,6 +76,13 @@ Drafting from code surfaced gaps that returned the unit to `build-verify`
   `test_contracts.py` and cited by rules 21 and 29.
 - The architecture and operations index rows and the `spec.md` rule citation are
   corrected; "Runtime identity" is added to the glossary.
+
+Reconcile check round 1 found further reflection gaps, fixed in text: Development
+also evaluates the base before creating its branch (`UC-start-sdd-activity`), the ADR
+traces now name the implementing rules (reference repair only, no decision change),
+and `CAP-SDD-runtime-isolation` section 4 states the fetch environment, the
+`SDD_RUNTIME_PREPARING` exception to blocking, the `SDD_ISOLATION_UNAVAILABLE`
+projection and the unreadable-head status.
 
 A refused activity start replayed with the same request ID returns the recorded
 refusal without its code; this predates the change and applies to every refusal,
