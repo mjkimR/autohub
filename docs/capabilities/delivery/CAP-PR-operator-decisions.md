@@ -13,6 +13,7 @@ entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/usecases/control.py
   - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/outcomes.py
+  - modules/hub/app/features/project_management/pipeline_runs/usecases/discovery.py
 ---
 
 # [CAP-PR-operator-decisions] Run Questions and Operator Decisions
@@ -67,7 +68,9 @@ WHEN an authenticated operator lists decisions, Hub MUST expose visible nontermi
 
 WHEN listing a changing worklist, Hub MUST use oldest waiting time and stable key with a limit-plus-one keyset query and zero provider calls. Ordinary waiting time is question creation time. Check: `test_keyset_bounded_and_cursor_filters` in the same test file.
 
-The authenticated `GET /api/v1/pipeline-runs/decisions` accepts optional `project_id`, `kind`, `question_state` (open/answered), `cursor` and `limit` (default 20, range 1–100). It returns `items`, `has_more` and `next_cursor`; malformed or filter-mismatched cursors return 422, unknown projects 404. It follows existing run-read visibility: admitted users share projects; no independent project ACL is introduced. Refresh restarts pagination because new generations may precede a retained cursor.
+WHEN listing decisions, Hub MUST report `actionable_total_count`, the exact number of actionable rows the request's `project_id`, `kind` and `question_state` filters admit on visible nonterminal Runs, independent of `cursor` and `limit`, using one aggregate query in the same database transaction as the page rows. Rows awaiting answer publication (`actionable=false`) are not counted. The count covers decision-inbox rows only, not other operator-owed work. Check: `test_keyset_bounded_and_cursor_filters`, `test_native_generation_and_publication_pending`, `test_discovery_question_lifecycle_and_exact_owner` and `test_count_shares_the_page_transaction` in the same test file.
+
+The authenticated `GET /api/v1/pipeline-runs/decisions` accepts optional `project_id`, `kind`, `question_state` (open/answered), `cursor` and `limit` (default 20, range 1–100). It returns `items`, `has_more`, `next_cursor` and `actionable_total_count`; malformed or filter-mismatched cursors return 422, unknown projects 404. It follows existing run-read visibility: admitted users share projects; no independent project ACL is introduced. Refresh restarts pagination because new generations may precede a retained cursor.
 
 `POST /api/v1/pipeline-runs/decisions/review` accepts an exact `key` and `fingerprint`. Missing/ended owners return 404; changed generations return 409. The Run question read `GET /api/v1/pipeline-runs/{run_id}/questions/{question_id}` resolves that exact owner question, including one outside the first history page. `UX-decision-inbox` opens `UX-run-decisions`; filters and loaded cursor page persist when it closes.
 
