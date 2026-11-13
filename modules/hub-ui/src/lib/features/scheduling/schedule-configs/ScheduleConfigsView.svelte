@@ -73,6 +73,17 @@
 		return PROJECT_MANAGED_TASKS.has(config.task_func);
 	}
 
+	/**
+	 * The owning project's tab for a project-managed row; rows whose payload names no project
+	 * (connection-test payloads carry only the test ID) fall back to the project list.
+	 */
+	function projectTabHref(config: ScheduleConfig, tab: 'automation' | 'connections'): string {
+		const projectId = config.payload.project_id;
+		return typeof projectId === 'string'
+			? `/projects/${encodeURIComponent(projectId)}?tab=${tab}`
+			: '/projects';
+	}
+
 	async function loadConfigs(offset = list.offset) {
 		const filters = {
 			search: searchQuery.trim(),
@@ -262,7 +273,7 @@
 					{#each configs as config (config.id)}
 						<TableRow>
 							<TableCell>
-								<div class="flex items-center gap-2">
+								<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
 									<span class="font-semibold text-foreground">{config.name}</span>
 									{#if config.task_func === 'system.maintain' || isProjectManaged(config)}
 										<Badge variant="info">
@@ -312,17 +323,14 @@
 								{#if config.task_func === 'system.maintain'}
 									<span class="text-xs text-muted-foreground">Managed by Auto Hub</span>
 								{:else if config.task_func === 'pipeline.dispatch_project'}
-									<Button
-										variant="outline"
-										size="sm"
-										href={typeof config.payload.project_id === 'string'
-											? `/projects/${encodeURIComponent(config.payload.project_id)}?tab=settings`
-											: '/projects'}
-									>
-										Project settings
+									<!-- Owned rows link to the owning project's tab; the dispatch interval lives in Automation. -->
+									<Button variant="outline" size="sm" href={projectTabHref(config, 'automation')}>
+										Project automation
 									</Button>
 								{:else if config.task_func === 'pipeline.connection_test'}
-									<span class="text-xs text-muted-foreground">Manage in project Connections</span>
+									<Button variant="outline" size="sm" href={projectTabHref(config, 'connections')}>
+										Project connections
+									</Button>
 								{:else}
 									<div class="flex items-center justify-end gap-1.5">
 										<Button variant="outline" onclick={() => toggleEnable(config)}>

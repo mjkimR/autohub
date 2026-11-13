@@ -8,7 +8,8 @@ export const PENDING_DECISION_NAV_MIN_MS = 15_000;
 /**
  * Operator-owed decisions across visible projects: the Decision inbox rows that carry
  * attention (actionable "Needs decision" and "Answer saved — resume pending"), counted
- * exactly by the backend. `unknown` covers loading and errors and is always shown neutral.
+ * exactly by the backend. `unknown` covers loading and errors; it is shown as a neutral "?" mark
+ * so it never reads as zero, and never with attention.
  */
 export type PendingDecisionCount = { status: 'unknown' } | { status: 'known'; count: number };
 
@@ -27,6 +28,14 @@ export function summarizePendingDecisions(page: {
 export function pendingDecisionText(value: PendingDecisionCount): string {
 	if (value.status !== 'known' || value.count === 0) return '';
 	return String(value.count);
+}
+
+/** Accessible name and tooltip of the neutral "?" mark shown while the count is unknown. */
+export const PENDING_DECISIONS_UNKNOWN_LABEL = 'Pending decisions unknown';
+
+/** Loading, errors and invalid counts are unknown: shown as a neutral "?", never as zero or debt. */
+export function isPendingDecisionUnknown(value: PendingDecisionCount): boolean {
+	return value.status === 'unknown';
 }
 
 /** Screen-reader phrase, e.g. "3 pending decisions" or "1 pending decision". */

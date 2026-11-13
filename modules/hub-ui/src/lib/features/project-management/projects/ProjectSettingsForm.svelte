@@ -385,7 +385,7 @@
 											>Adopt PRs opened by agent sessions</span
 										>
 										<span class="mt-0.5 block text-xs text-muted-foreground"
-											>A task session's PR enters the pipeline at CI observation.</span
+											>A provider session's PR becomes a PR run at CI observation.</span
 										>
 									</span>
 									<input
