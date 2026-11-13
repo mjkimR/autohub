@@ -1,0 +1,13 @@
+[project]
+name = "ws-root"
+version = "0.1.0"
+requires-python = ">=3.13,<3.14"
+[dependency-groups]
+dev = ["devkit-spec", "member"]
+[tool.uv]
+package = false
+[tool.uv.workspace]
+members = ["packages/member"]
+[tool.uv.sources]
+member = { workspace = true }
+devkit-spec = { path = "packages/devkit-spec", editable = true }

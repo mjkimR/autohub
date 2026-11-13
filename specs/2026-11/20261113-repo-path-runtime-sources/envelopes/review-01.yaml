@@ -1,0 +1,25 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T04:35:50.761480Z'
+status: completed
+summary: 'Initial code-reviewer pass (nested native subagent): AC-01..AC-06 confirmed by unit, integration and probe evidence; scope extensions accepted; one P3 on workspace members versus Non-Goal 5.'
+findings:
+- issue: uv workspace members inside the checkout are now accepted as editable path sources, while spec Non-Goal 5 names workspace members as an example of locks that keep SDD_RUNTIME_UNLOCKED.
+  evidence: modules/hub/app/features/project_management/sdd/lock_runtime.py:222; specs/2026-11/20261113-repo-path-runtime-sources/spec.md section 3 Non-Goal 5
+  failure_condition: A repository whose selected group includes a uv workspace member with a workspace = true source.
+  suggested_action: Correct Non-Goal 5 and the Living Spec to say in-checkout workspace members install like other in-checkout editable sources, or refuse them explicitly, with a test.
+  resolution: open
+  severity: P3
+assumptions:
+- 'Route: native isolated code-reviewer nested by the Development worker; read-only verified by index snapshot before and after'
+unverified_areas:
+- Real sandboxed path install not rerun by the reviewer; worker evidence used
+checks:
+  tests: PASS just test sdd lock/install unit files 61 passed (reviewer); full suite 1535 passed (worker)
+  lint: PASS devkit rules check --ci --base 32c69e5
+diff_scope:
+  base: 32c69e53124dd6aae4e84cfe8a2613a12b386d23
+  head: 764f3f3a64952ec74957b8dfb8c5a7a8f1e62547
+activity_effort: medium

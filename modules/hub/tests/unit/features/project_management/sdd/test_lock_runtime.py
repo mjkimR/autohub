@@ -281,3 +281,11 @@ def test_caches_and_git_metadata_are_not_captured(tmp_path):
         (root / "tools/my-bundle" / name).parent.mkdir(parents=True, exist_ok=True)
         (root / "tools/my-bundle" / name).write_text("cache")
     assert select(root).identity == base.identity
+
+
+def test_workspace_members_inside_the_checkout_install_like_path_sources(tmp_path):
+    selection = select(checkout(tmp_path, Path(__file__).parent / "fixtures/workspace-lock"))
+    assert [(source.package, source.path) for source in selection.paths] == [
+        ("devkit-spec", "packages/devkit-spec"),
+        ("member", "packages/member"),
+    ]
