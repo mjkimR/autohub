@@ -1,0 +1,41 @@
+kind: scout
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T05:30:44.909433Z'
+status: completed
+summary: Official-source scout found interactive Remote Agents support but no established unattended Hub integration contract; legacy recovery needs explicit preservation.
+findings:
+- issue: Remote Agents support interactive start and resume but do not establish an unattended creation contract.
+  evidence: 'https://antigravity.google/docs/remote-agents?tab=cli: Start a remote agent session; Features not available excludes --print.'
+  suggested_action: Require an official unattended create and authentication contract before Hub implementation.
+  resolution: open
+- issue: Conversation resume IDs do not establish response-loss reconciliation or machine-readable results.
+  evidence: 'https://antigravity.google/docs/remote-agents?tab=cli: Resume remote conversations; https://antigravity.google/docs/features: Remote Agents notifications.'
+  suggested_action: Keep create identity, observation, reports, PR outcomes and lost-response recovery unverified.
+  resolution: open
+- issue: Headless CLI authentication does not establish Remote Agents authentication.
+  evidence: 'https://antigravity.google/docs/install/: ADC and Gemini API key; Remote Agents availability requires eligible personal account sign-in.'
+  suggested_action: Do not infer service-account, ADC or API-key access to Remote Agents.
+  resolution: open
+- issue: Local headless CLI and SDK are a different execution-surface option.
+  evidence: 'https://antigravity.google/docs/cli/reference/: --print and --remote-agent are separate; Remote Agents exclude print mode.'
+  suggested_action: Treat local/headless execution as a separately scoped alternative.
+  resolution: open
+- issue: Legacy session and connection-test recovery outlive schedule disablement and require wider retirement inventory.
+  evidence: modules/hub/app/features/execution/tasks/domains/maintenance/repos.py:55; modules/hub/app/features/project_management/connection_tests/adapters/registry.py:7; adapters/jules_cleanup.py:90; CAP-AGENT-provider-sessions; CAP-CONN-connection-verification.
+  suggested_action: Retain provider identities, collector/adoption, recipe cleanup and credentials until safely dispositioned; include missing future boundaries.
+  resolution: open
+- issue: Existing PR delivery and recovery lineage remain separate owners.
+  evidence: CAP-PR-pull-request-delivery; ADR-work-item-recovery-lineage; modules/hub/app/features/project_management/pipeline_runs/adapters/registry.py:12.
+  suggested_action: Preserve retained identities and uncertain-outcome reconciliation without adding a second PR controller.
+  resolution: open
+assumptions:
+- Codex emulated role; absolute read scope and equal pre/post temporary-index tree 0209b3811935011da38752fafe2b70fe84e939b6 verified no Scout writes.
+unverified_areas:
+- No live provider execution, production inventory, credentials, unpublished API or Jules shutdown notice checked.
+checks:
+  sources: PASS official pages inspected 2026-11-13 and legacy source inventory
+diff_scope:
+  base: e1a50a8064597d65fd44906f1b65c01ad93c2425
+  head: 12ad59f43d33346a04d90b35913c1ed2dcb233c4

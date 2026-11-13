@@ -1,0 +1,30 @@
+kind: challenger
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T05:33:15.138611Z'
+status: needs_input
+summary: round 1; Recovery ownership is preserved; narrow credential-repair exception, with retirement-versus-defer left for the user.
+findings:
+- issue: Option B removal of configuration entry points could prevent restoring credentials needed to drain legacy work.
+  evidence: docs/proposals/PROP-jules-antigravity-migration/proposal.md:72,84-90,107; docs/operations/provider-connections.md:93-95; CAP-AGENT-provider-sessions; modules/hub/app/features/configuration/connectors/usecases/token.py:23-39.
+  failure_condition: A retained session or unresolved connection test needs provider access after its connector is disabled or token expires, but removed editing paths prevent recovery.
+  suggested_action: Narrow option B to remove new-work creation/configuration while retaining connector enablement, credential repair and any catalog reassignment needed for legacy recovery until its drain conditions are satisfied; state this exception in preservation constraints and retirement acceptance checks.
+  resolution: open
+  severity: P2
+- issue: Whether Jules retirement proceeds without an available replacement is an unresolved product direction.
+  evidence: docs/proposals/PROP-jules-antigravity-migration/proposal.md:71-77,127-131; materials/feasibility.md:15-38.
+  failure_condition: Implementation starts before A or B is chosen and silently drops replacement or stops existing Jules admission without an independent retirement decision.
+  suggested_action: 'Decision needed: choose A, defer the migration until official automation/recovery prerequisites hold, or B, return to Backlog for retirement-first and deferred-replacement decomposition. No acceptance or handoff before the answer.'
+  resolution: open
+  severity: P2
+assumptions:
+- Codex emulated read-only route; equal pre/post temporary-index tree 42633e94bd9f7ddaf919ed7402a0ad5d8c5a45e6 and unchanged HEAD verified no role writes.
+- Official-source claims assessed from completed dated scout evidence, not live behavior.
+unverified_areas:
+- No live credentials, provider execution, deployment or production legacy-row inventory; detailed child design waits for direction.
+checks:
+  inspection: PASS options, source, preservation, contracts, recovery lineage and credential-repair behavior
+diff_scope:
+  base: e1a50a8064597d65fd44906f1b65c01ad93c2425
+  head: 99639126cb597c6ad61190c312575c7b24125063

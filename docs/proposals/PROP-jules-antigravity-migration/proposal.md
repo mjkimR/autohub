@@ -1,7 +1,7 @@
 ---
 id: PROP-jules-antigravity-migration
 title: Migrate Jules integration to Antigravity Remote Agents
-summary: "Retire Jules integration and assess a supported Antigravity Remote Agents execution path while preserving existing session and delivery history."
+summary: "Defer Jules-to-Antigravity migration until a supported unattended Remote Agents contract is established, while preserving Jules behavior, recovery and delivery history."
 status: draft
 created_at: 2026-11-06
 target_area: capabilities/agents/
@@ -13,6 +13,10 @@ boundaries:
   owns:
   - modules/hub/app/features/ai_catalogs/
   - modules/hub/app/features/project_management/agent_schedules/
+  - modules/hub/app/features/project_management/connection_tests/
+  - modules/hub/app/features/project_management/pipeline_runs/adapters/registry.py
+  - modules/hub/app/features/project_management/projects/schemas.py
+  - modules/hub/app/features/scheduling/schedule_configs/system.py
   - modules/hub/app/features/execution/
   - modules/hub/app/features/configuration/connectors/
   - modules/hub/migrations/
@@ -20,6 +24,8 @@ boundaries:
   - modules/hub-ui/src/lib/
   - modules/hub-ui/src/routes/
   - docs/capabilities/agents/
+  - docs/capabilities/connections/
+  - docs/capabilities/projects/
   - docs/usecases/
   - docs/ux/
   - docs/operations/
@@ -39,11 +45,16 @@ The operator does not plan further Jules feature investment and wants the existi
 
 `CAP-AGENT-provider-sessions` owns scheduled Jules sessions, report collection and task PR adoption. `CAP-AGENT-catalog-admission` owns shared provider admission. A replacement should preserve those product boundaries where the target provider offers a supported automation interface, while leaving PR delivery with `CAP-PR-pull-request-delivery`.
 
-The official [Antigravity Remote Agents documentation](https://antigravity.google/docs/remote-agents/) describes Google-managed remote execution and the `agy --remote-agent` CLI entry point. This establishes a candidate execution surface, not compatibility with Jules APIs or a proven unattended Hub integration. Authentication, supported automation, durable identity and outcome collection remain Planning questions. No Jules shutdown date or API removal schedule is asserted by this proposal.
+The official [Antigravity Remote Agents documentation](https://antigravity.google/docs/remote-agents/) describes Google-managed remote execution and the `agy --remote-agent` CLI entry point. This establishes a candidate execution surface, not compatibility with Jules APIs or a proven unattended Hub integration. The 2026-11-13 official-source spike found interactive start/resume support, but no published unattended Remote Agents create, observe, outcome or response-loss recovery contract. Remote sessions explicitly exclude `--print`. Authentication, durable identity and outcome collection therefore remain unestablished for a Hub integration. No Jules shutdown date or API removal schedule is asserted by this proposal.
 
 Recommended scheduling: follow the queued MCP tools, decision notifications and Work Plan templates unless provider availability makes retirement urgent. The ordering is a product preference, not a dependency on `SPEC-mcp-delivery-tools`, `SPEC-decision-notifications` or `SPEC-work-plan-templates`.
 
 ## 2. Technical Spike Questions
+
+The official-source evidence, implementation inventory and incoming-reference map are retained in
+[Planning feasibility evidence](materials/feasibility.md). This is source/document inspection, not a live provider
+verification. No replacement implementation is ready for acceptance.
+
 
 - **Q1**: Does Antigravity provide a supported noninteractive API or CLI contract for creating, identifying, observing and resuming remote sessions, with credentials usable by Hub's execution environment?
 - **Q2**: Which task/report, repository binding, PR result, human-input, quota and cancellation semantics can be mapped, and which existing Jules behaviors cannot be carried over?
@@ -52,6 +63,43 @@ Recommended scheduling: follow the queued MCP tools, decision notifications and 
 - **Q5**: Can replacement and retirement form one bounded migration spec? If supported integration or cutover requires independently deliverable work, decompose the draft before direction acceptance.
 
 ## 3. Proposed Design & Impact
+
+### Planning options
+
+| Option | Supported basis | Consequence |
+| --- | --- | --- |
+| **A — Defer the migration until an official Remote Agents automation contract exists (selected)** | Remote Agents document interactive App/web/CLI starts and resume by conversation ID; the required unattended protocol is not established. | Keep this proposal as the migration destination and preserve current Jules behavior. Restart when official authentication, create identity, observation/outcome and response-loss recovery contracts can be verified together. |
+| **B — Retire new Jules admission first; defer Antigravity integration separately** | Hub owns admission, schedules and retained history independently of a replacement provider. | Return to Backlog for decomposition into a bounded retirement child and a deferred replacement child. Retirement disables new Jules session/test work and new-work creation/configuration entry points, while preserving legacy collection, adoption, test cleanup and history until their cutover conditions hold. Connector enablement, credential repair and catalog reassignment needed for legacy recovery remain available until draining is complete. The minimal recovery implementation remains while required. |
+| **C — Use local/headless Antigravity CLI or SDK instead** | Official headless CLI/SDK documentation is separate from Remote Agents. | This changes the requested execution surface and needs a separate proposal covering workspace isolation, deployment and outcomes. It is not a supported substitute within this migration. |
+
+The operator selected option A: defer the full migration and preserve current Jules behavior. No urgent Jules
+shutdown or retirement deadline is established, and the requested replacement cannot yet satisfy the existing
+recovery guarantees. Option B requires a separate decision to retire Jules independently of replacement
+availability. Option C remains an unselected scope alternative.
+
+### Preservation and cutover constraints
+
+1. Existing `jules` catalog kinds, connector identities and tracked session identities are never renamed to an
+   Antigravity identity. Reports, PR URLs, `pipeline_run_id` and `pipeline_run_retired_at` remain readable under their
+   original provider.
+2. Disabling new Jules admission does not stop collection of known or uncertain sessions or pending task PR
+   adoption. The retirement plan must inventory their disposition before removing the collector or usable
+   credentials. Connector enablement, credential repair and catalog reassignment required to restore legacy recovery
+   remain available until draining is complete. A held/unconfirmed remote result is not proof that remote work stopped.
+3. Existing connection tests retain their captured catalog/connector evidence, provider output discovery, positive
+   cleanup ownership and enrollment/merge exclusion. The Jules recipe/recovery implementation is retained while a
+   legacy test still needs it. Removing the registry entry alone would strand `adapter_for` and manual cleanup
+   resolution, conflicting with `CAP-CONN-connection-verification`.
+4. New schedules never become Antigravity schedules through a data backfill or catalog kind rewrite. An eventual
+   replacement binding and its execution authority are explicit. No credential or prompt portability is assumed.
+5. Scope expansion candidates discovered by the inventory are named in `boundaries`: connection-test adapters,
+   the pipeline adapter refusal registry, project catalog schema references, schedule-system metadata and their
+   owning connection/project contracts. They support retirement preservation; no PR delivery redesign is proposed.
+6. No database backfill, destructive cleanup, provider removal or service cutover runs during Planning. A retirement
+   child must define persisted cutover diagnostics and demonstrate old-row readability, new-admission refusal,
+   continued pending collection/adoption, and unresolved test cleanup/protection with PostgreSQL and SQLite tests.
+   Acceptance also covers a disabled/expired connector repaired after new admission is refused: legacy recovery
+   resumes without permitting another new Jules session or connection test.
 
 ### Candidate scope
 
@@ -78,4 +126,30 @@ Recommended scheduling: follow the queued MCP tools, decision notifications and 
 
 ## 4. Lifecycle & Retirement Criteria
 
-This is queued feature migration work with high Planning and Development effort. Draft size L is provisional until the supported target automation surface is established. Planning must settle feasibility, preserved behavior, legacy pending-work disposition and cutover authority; split independently deliverable removal and integration scopes if necessary. No provider replacement, service shutdown or credential removal is authorized by adding this draft. Normal direction acceptance and handoff precede implementation.
+### Selected deferral and restart conditions
+
+Planning ended with the operator's defer decision recorded in `envelopes/answer-01.yaml`. This proposal returns to
+Backlog as `draft` and remains the restart destination for the full migration. It is not accepted for implementation,
+and no retirement-first child, PADR, screen, gate record or handoff is created.
+
+Resume Planning when official documentation establishes all of these contracts together:
+
+1. Unattended Remote Agents authentication usable by Hub's execution environment.
+2. Supported creation with durable remote identity and repository binding.
+3. Machine-readable observation and outcome collection sufficient to map reports and PR results.
+4. Response-loss reconciliation that distinguishes existing remote work from a never-created session without an
+   unsupported retry or duplicate effect.
+
+At restart, verify those contracts against current official evidence before settling feasibility. Revisit Q1-Q5,
+legacy pending-work disposition, preserved history and cutover authority. Reassess whether replacement and retirement
+remain one bounded spec, and split independently deliverable scopes if necessary. MIGRATE-01 through MIGRATE-05
+remain candidate acceptance checks, not implemented guarantees. Direction acceptance and handoff precede
+implementation. Development then verifies the chosen preservation/cutover behavior with SQLite and PostgreSQL
+regressions and the required review before integration.
+
+While queued, preserve existing Jules admission, schedules, sessions, collection/adoption, credential repair,
+connection-test recovery and readable history. No provider replacement, service shutdown, credential removal or
+production change is authorized by this deferral. A retirement-first direction needs a new operator decision.
+
+Planning and Development effort remain `high`. Draft size `L` stays provisional until the supported target
+execution surface is established. This return records the waiting condition without declaring the migration delivered.

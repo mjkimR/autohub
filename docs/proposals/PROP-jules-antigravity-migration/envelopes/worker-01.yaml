@@ -1,0 +1,37 @@
+kind: worker
+stage: direction-handoff
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T05:34:07.918035Z'
+status: needs_input
+summary: Completed official-source feasibility spike and high-effort scout/challenger review; no unattended Remote Agents contract established. Preserved legacy recovery constraints and await one retirement-versus-defer direction decision.
+findings: []
+assumptions:
+- Codex emulated isolation uses absolute worktree/read scopes, per-operation approval, support-role temporary-index snapshots and final scope audit as substitutes for native boundary enforcement.
+- High-effort challenger finding 1 received the concrete suggested clarification only in cited proposal sections; minor-fix self-verification applies and no selected direction changed. Finding 2 remains a user decision.
+unverified_areas:
+- No live provider, credentials, production legacy-row inventory or deployment checked; public evidence does not establish unpublished/future automation capabilities.
+- No PADR, screen or final target-docs draft until the user selects direction; no implementation acceptance, split, handoff or retirement effect occurred.
+checks:
+  rules: PASS proposal and entire authored bundle, 35 rules, zero warnings/errors
+  planning-review: PASS scout and challenger round 1 recorded, credential-repair clarification self-verified; direction finding remains open
+  role-boundaries: PASS scout and challenger left HEAD and temporary-index snapshots unchanged
+  product-tests: SKIP Planning-only source/document inspection, no production change
+  swept: PASS recorded=0 duplicates=0
+diff_scope:
+  base: e1a50a8064597d65fd44906f1b65c01ad93c2425
+  head: f9ae7ff6970bdd607120e2e901e8a982168a59a5
+questions:
+- id: migration-direction
+  title: Antigravity migration direction
+  prompt: Should the migration wait for a supported unattended Remote Agents contract, or should Jules new-work retirement proceed first?
+  context: Official Remote Agents docs establish interactive start and resume but exclude print mode and do not establish unattended authentication, create, observe, result collection or response-loss recovery. No urgent Jules shutdown date is established. Retirement-first changes product scope independently of replacement availability and therefore needs the operator's choice before implementation or decomposition.
+  options:
+  - id: defer
+    description: Defer the full migration and preserve current Jules behavior; keep this proposal as the restart destination until the official automation and recovery prerequisites can be verified.
+    recommended: true
+  - id: retire-first
+    description: Return to Backlog for a retirement-first child and a deferred Antigravity child; refuse new Jules work while retaining legacy session/adoption/test cleanup, credential repair and history until safe drain conditions hold. If decomposition is not accepted, retain the original migration proposal and do not start retirement.
+    recommended: false
+  allow_note: true
+activity_effort: high

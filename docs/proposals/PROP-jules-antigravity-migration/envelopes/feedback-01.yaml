@@ -1,0 +1,13 @@
+kind: feedback
+stage: collect-feedback
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T05:33:39.269986Z'
+status: completed
+summary: Swept this Antigravity Planning run; no unrecorded repository-owned tool or instruction observations. Feasibility limitations remain in the proposal evidence.
+findings: []
+checks:
+  swept: PASS recorded=0 duplicates=0
+diff_scope:
+  base: e1a50a8064597d65fd44906f1b65c01ad93c2425
+  head: f9ae7ff6970bdd607120e2e901e8a982168a59a5
