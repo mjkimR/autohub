@@ -4,7 +4,8 @@
 	import { responseData } from '$lib/api/pagination';
 	import { Badge } from '$lib/components/ui/badge';
 	import { CircleCheck, CircleX } from '@lucide/svelte';
-	import { NEEDS_YOU_ANCHOR, attentionHref, owedChips, type OwedChip } from './owed-signals';
+	import { attentionHref } from '$lib/features/attention/owed-links';
+	import { NEEDS_YOU_ANCHOR, owedChips, type OwedChip } from './owed-signals';
 
 	let {
 		projectId,

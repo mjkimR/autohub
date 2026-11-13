@@ -111,10 +111,10 @@ entrypoints:
 - **\*c.** A paused Run receives a push before resume: Hub observes that push
   instead of repeating the delivered request when resuming without an answer;
   resumes at step 4.
-   Interface: `UX-attention`, `UX-pipeline-runs`, `UX-run-page`.
+   Interface: `UX-attention`, `UX-pipeline-runs`, `UX-project-detail`, `UX-run-page`.
 
 - **\*d.** A failed/canceled Run belongs to a Work Item: the operator inspects its original outcome in the Plan and requests unchanged-work recovery. Hub reconciles the same PR/Run and applies existing admission and budget gates; accepted continuation resumes at step 4, while refusal retains history and ends this continuation (`CAP-WORK-work-plan-execution`, `CAP-PR-pull-request-delivery`).
-   Interface: `UX-attention`, `UX-run-page`, `UX-work-plans`.
+   Interface: `UX-attention`, `UX-project-detail`, `UX-run-page`, `UX-work-plans`.
 
 ## 4. Postconditions
 

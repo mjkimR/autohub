@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import ProjectExceptionStrip from '$lib/features/project-management/projects/ProjectExceptionStrip.svelte';
 import AttentionView from './AttentionView.svelte';
 import { OWED_KINDS } from './owed-kinds';
 import { ITEM, PLAN, PROJECT, RUN, owedItem } from './owed-fixtures';
@@ -234,6 +235,33 @@ test('?project= on the URL is the initial filter, with one read', async () => {
 	expect(reads).toEqual([
 		['/api/v1/owed-items', { params: { query: { limit: 100, project_id: PROJECT } } }]
 	]);
+	await waitFor(() =>
+		expect((screen.getByRole('combobox', { name: 'Project' }) as HTMLSelectElement).value).toBe(
+			PROJECT
+		)
+	);
+});
+
+test("the project strip's View in Attention link round-trips to the filtered landing", async () => {
+	const counts = vi.fn(async () => ({
+		data: { total: 1, by_kind: { decision: 1 }, by_project: { [PROJECT]: 1 } }
+	}));
+	const listing = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation(async (path: string, init?: { params?: { query?: object } }) =>
+		path === '/api/v1/owed-items/counts' ? counts() : listing(path, init)
+	);
+	render(ProjectExceptionStrip, { projectId: PROJECT });
+	const link = await screen.findByRole('link', { name: 'View in Attention' });
+	const href = link.getAttribute('href')!;
+	cleanup();
+
+	page.url = new URL(href, 'http://hub.test');
+	pages = async () => pageOf([owedItem('decision', { context: { run_id: RUN } })]);
+	render(AttentionView);
+	await waitFor(() => expect(groupOrder()).toEqual(['decision']));
+	expect(api.GET).toHaveBeenCalledWith('/api/v1/owed-items', {
+		params: { query: { limit: 100, project_id: PROJECT } }
+	});
 	await waitFor(() =>
 		expect((screen.getByRole('combobox', { name: 'Project' }) as HTMLSelectElement).value).toBe(
 			PROJECT

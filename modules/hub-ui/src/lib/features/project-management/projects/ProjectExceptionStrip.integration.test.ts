@@ -78,14 +78,14 @@ test('populated strip shows one chip per kind linking to where it is resolved', 
 	const region = within(strip());
 	const href = (name: string) => region.getByRole('link', { name }).getAttribute('href');
 	expect(decisions.getAttribute('href')).toBe('/projects/p1?tab=runs');
-	expect(href('1 held run')).toBe('/projects/p1?tab=runs');
-	expect(href('1 plan awaiting decision')).toBe('/projects/p1?tab=plans');
-	expect(href('1 recovery to inspect')).toBe('/projects/p1?tab=plans');
-	expect(href('1 batch needs attention')).toBe('/projects/p1?tab=repository');
-	expect(href('1 cleanup to review')).toBe('/projects/p1?tab=connections');
+	expect(href('1 held PR run')).toBe('/projects/p1?tab=runs');
+	expect(href('1 Work Plan to review')).toBe('/projects/p1?tab=plans');
+	expect(href('1 Work Item recovery')).toBe('/projects/p1?tab=plans');
+	expect(href('1 SDD batch in attention')).toBe('/projects/p1?tab=repository');
+	expect(href('1 connection-test cleanup')).toBe('/projects/p1?tab=connections');
 	expect(href('View in Attention')).toBe('/?project=p1');
 	// Failed runs are listed quietly: outline chip, never the attention variant.
-	const failed = region.getByRole('link', { name: '3 failed runs' });
+	const failed = region.getByRole('link', { name: '3 failed PR runs' });
 	expect(failed.getAttribute('href')).toBe('/projects/p1?tab=runs');
 	expect(failed.className).not.toContain('attention');
 	expect(decisions.className).toContain('attention');
@@ -99,14 +99,14 @@ test('every counted kind maps to a project section and a readable label', () => 
 	const chips = owedChips('p1', byKind);
 	expect(chips.map((chip) => [chip.label, chip.href.split('?')[1], chip.quiet])).toEqual([
 		['1 decision', 'tab=runs', false],
-		['1 held run', 'tab=runs', false],
-		['1 plan awaiting decision', 'tab=plans', false],
-		['1 recovery to inspect', 'tab=plans', false],
-		['1 replacement to accept', 'tab=plans', false],
-		['1 Work Item needs attention', 'tab=plans', false],
-		['1 batch needs attention', 'tab=repository', false],
-		['1 cleanup to review', 'tab=connections', false],
-		['1 failed run', 'tab=runs', true]
+		['1 held PR run', 'tab=runs', false],
+		['1 Work Plan to review', 'tab=plans', false],
+		['1 Work Item recovery', 'tab=plans', false],
+		['1 Work Item replacement', 'tab=plans', false],
+		['1 Work Item needing attention', 'tab=plans', false],
+		['1 SDD batch in attention', 'tab=repository', false],
+		['1 connection-test cleanup', 'tab=connections', false],
+		['1 failed PR run', 'tab=runs', true]
 	]);
 });
 
@@ -121,7 +121,7 @@ test('only failed runs show the quiet chip without claiming no exceptions', asyn
 		data: { total: 0, by_kind: { ...zero, 'failed-run': 1 }, by_project: {} }
 	});
 	render(ProjectDetailView, { projectId: 'p1', tab: 'overview' });
-	expect(await screen.findByRole('link', { name: '1 failed run' })).toBeTruthy();
+	expect(await screen.findByRole('link', { name: '1 failed PR run' })).toBeTruthy();
 	expect(screen.queryByText('No exceptions')).toBeNull();
 	expect(screen.queryByRole('link', { name: 'View in Attention' })).toBeNull();
 });
@@ -154,6 +154,6 @@ test('changing section re-reads the counts once, without polling', async () => {
 		data: { total: 1, by_kind: { ...zero, 'work-plan-proposed': 1 }, by_project: { p1: 1 } }
 	});
 	await view.rerender({ projectId: 'p1', tab: 'plans' });
-	expect(await screen.findByRole('link', { name: '1 plan awaiting decision' })).toBeTruthy();
+	expect(await screen.findByRole('link', { name: '1 Work Plan to review' })).toBeTruthy();
 	expect(countCalls()).toHaveLength(2);
 });

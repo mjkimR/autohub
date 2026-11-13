@@ -46,7 +46,7 @@ entrypoints:
    Interface: `UX-connection-tests`.
 
 7. The operator reviews the verification evidence, configuration applicability and separate cleanup result (`CAP-CONN-connection-verification`).
-   Interface: `UX-connection-tests`, `UX-attention`.
+   Interface: `UX-connection-tests`, `UX-attention`, `UX-project-detail`.
 
 ## 3. Extensions
 
