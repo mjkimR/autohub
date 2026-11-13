@@ -26,15 +26,15 @@ workflow: sdd-proposal
 
 ## 1. Background & Hypothesis
 
-Split from `SPEC-owed-item-contract` on the user's decision in its Planning: run origin fields serve the run page, not
-the owed-item contract, whose subject needs only type, ID and project.
+Split off from the original proposal of `SPEC-owed-item-contract` on the user's decision in its Planning: run origin
+fields serve the run page, not the owed-item contract, whose subject needs only type, ID and project.
 
 The app-wide UX review of 2026-11-13 (designer increment I5; relationships R4, R11 and R19) found that a PR run has no
 path back to where it came from. `PipelineRun` and `PipelineRunRead`
 (`modules/hub/app/features/project_management/pipeline_runs/schemas.py`) carry no Work Item, Work Plan, SDD batch,
 provider session or enrollment source. Links exist only on the other side: `WorkItem.pipeline_run_id`,
 `AICatalogSession.pipeline_run_id` and `SddActivityClaim.run_id`. No enrollment source is persisted. Evidence:
-`docs/proposals/PROP-owed-item-contract/materials/owed-state-inventory.md` on the `plan-owed-item-contract` branch.
+`docs/materials/2026-11/20261113-owed-item-contract/owed-state-inventory.md`.
 
 Hypothesis: exposing origin links on the run read lets `UX-run-page` and run rows link back to the Work Item, Work
 Plan, SDD batch or provider session, closing the one-way relationships without frontend derivation.
