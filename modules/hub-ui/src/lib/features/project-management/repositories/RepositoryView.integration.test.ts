@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
+import { tick } from 'svelte';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import type { components } from '$lib/api';
 import RepositoryView from './RepositoryView.svelte';
@@ -184,4 +185,52 @@ test('same-project browser query navigation replaces selected unit and preserves
 		).toBe(unit)
 	);
 	expect(api.POST).not.toHaveBeenCalled();
+});
+
+test('ordinary selected branch survives Hub SDD Refresh without a ref query', async () => {
+	page.url = new URL('http://hub.test/projects/p?tab=repository');
+	render(RepositoryView, { project });
+	await waitFor(() =>
+		expect((screen.getByLabelText('Repository branch') as HTMLSelectElement).value).toBe('main')
+	);
+	await userEvent.setup().selectOptions(screen.getByLabelText('Repository branch'), 'dev-demo');
+	await userEvent.setup().click(screen.getAllByRole('button', { name: 'Refresh' })[0]);
+	await waitFor(() =>
+		expect((screen.getByLabelText('Repository branch') as HTMLSelectElement).value).toBe('dev-demo')
+	);
+});
+
+test('pending directory response is discarded immediately after same-project invalid-address navigation', async () => {
+	page.url = new URL('http://hub.test/projects/p?tab=repository');
+	const original = api.GET.getMockImplementation()!;
+	let finish!: (value: unknown) => void;
+	api.GET.mockImplementation((path, options) =>
+		path.endsWith('/tree') && options.params.query.path === ''
+			? new Promise((resolve) => {
+					finish = resolve;
+				})
+			: original(path, options)
+	);
+	render(RepositoryView, { project });
+	await waitFor(() => expect(finish).toBeTypeOf('function'));
+	page.url = new URL('http://hub.test/projects/p?tab=repository&unit=../invalid&ref=deleted');
+	await screen.findByRole('heading', { name: 'Unit unavailable' });
+	await userEvent.setup().click(screen.getByRole('button', { name: 'Git Browser' }));
+	finish({
+		data: {
+			items: [
+				{
+					name: 'stale-response.txt',
+					path: 'stale-response.txt',
+					type: 'file',
+					size: 10,
+					sha: 'stale'
+				}
+			]
+		}
+	});
+	await tick();
+	await tick();
+	expect(screen.queryByRole('button', { name: 'stale-response.txt' })).toBeNull();
+	expect(screen.queryByText('stale-response.txt')).toBeNull();
 });

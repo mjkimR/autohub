@@ -38,6 +38,10 @@
 			unit = requestedUnit,
 			ref = requestedRef;
 		userSelectedMode = null;
+		++readVersion;
+		tree = activeBlob = readmeBlob = null;
+		currentPath = '';
+		error = '';
 		untrack(() => {
 			if (project.github) void selection.select(id, sdd, unit, ref);
 		});
@@ -46,6 +50,7 @@
 		info = selection.info;
 		currentRef = selection.ref;
 		selectedSpec = selection.unit;
+		loading = selection.status === 'loading';
 		if (selection.status === 'ready') untrack(() => void loadTree('', selection.ref));
 	});
 	onDestroy(() => selection.destroy());
@@ -158,7 +163,7 @@
 	}
 
 	async function refreshSdd() {
-		await selection.select(project.id, isSdd, requestedUnit, requestedRef);
+		await selection.select(project.id, isSdd, requestedUnit, requestedRef || currentRef);
 		viewerRevision++;
 	}
 

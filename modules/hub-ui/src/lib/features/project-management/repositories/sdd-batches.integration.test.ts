@@ -74,3 +74,17 @@ test('same-project address races and concurrent list reads keep the newest exact
 	expect(state.batch?.id).toBe('B');
 	expect(state.rows.map((row) => row.id)).toEqual(['B']);
 });
+
+test('successful list load preserves the failed addressed subject error and independent list failures', async () => {
+	api.GET.mockReset()
+		.mockResolvedValueOnce({ error: { detail: 'Not found' } })
+		.mockResolvedValueOnce({ data: [] });
+	const state = new SddBatches();
+	state.reset('project');
+	await state.refresh('missing');
+	await state.load('project');
+	expect(state.requestedId).toBe('missing');
+	expect(state.batch).toBeNull();
+	expect(state.error).toContain('Not found');
+	expect(state.loaded).toBe(true);
+});

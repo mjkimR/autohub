@@ -57,3 +57,12 @@ test('session without exact URL remains text, not a misleading catalog link', ()
 	expect(screen.getByText('Provider session retained')).toBeTruthy();
 	expect(screen.queryAllByRole('link')).toHaveLength(0);
 });
+
+test('snapshot-only native evidence remains known even without an available subject link', () => {
+	render(RunOrigins, {
+		run: { ...run, enrollment_source: 'native_sdd', sdd_snapshot: { execution_version: 1 } }
+	});
+	expect(screen.getByText('Related origin: Native SDD')).toBeTruthy();
+	expect(screen.queryByText(/Origin unknown/)).toBeNull();
+	expect(screen.queryAllByRole('link')).toHaveLength(0);
+});

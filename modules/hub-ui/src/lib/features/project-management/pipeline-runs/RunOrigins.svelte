@@ -6,11 +6,24 @@
 		typeof run.sdd_snapshot?.spec_dir === 'string' ? run.sdd_snapshot.spec_dir : ''
 	);
 	let refs = $derived(run.related_origins ?? []);
+	let evidence = $derived.by(() => {
+		if (run.enrollment_source) return run.enrollment_source;
+		const kinds = refs.map((origin) => origin.kind);
+		if (run.sdd_snapshot && Object.keys(run.sdd_snapshot).length) kinds.push('native_sdd');
+		const unique = kinds.filter((kind, index) => kinds.indexOf(kind) === index);
+		return unique.length > 1 ? 'multiple' : (unique[0] ?? 'unknown');
+	});
+	const labels = {
+		work_plan: 'Work Plan',
+		provider_session: 'Provider session',
+		native_sdd: 'Native SDD',
+		multiple: 'Multiple retained origins',
+		unknown: 'Origin unknown'
+	};
 </script>
 
 <div aria-label="Related origins" class="space-y-1 text-xs text-muted-foreground">
-	<span>Related origins</span>
-	{#if !currentUnit && !refs.length}<span> · Origin unknown</span>{/if}
+	<span>Related origin: {labels[evidence]}</span>
 	{#if currentUnit}
 		<p class="break-all">
 			Current SDD unit <a

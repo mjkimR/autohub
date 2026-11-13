@@ -13,6 +13,7 @@ export class SddBatches {
 	listBusy = $state(false);
 	loaded = $state(false);
 	error = $state('');
+	listError = $state('');
 	private generation = 0;
 	private listGeneration = 0;
 	reset(project: string) {
@@ -24,6 +25,7 @@ export class SddBatches {
 		this.batch = null;
 		this.requestedId = '';
 		this.error = '';
+		this.listError = '';
 		this.busy = this.listBusy = this.loaded = false;
 	}
 	clear() {
@@ -38,7 +40,7 @@ export class SddBatches {
 		if (this.loaded || this.listBusy) return;
 		const generation = ++this.listGeneration;
 		this.listBusy = true;
-		this.error = '';
+		this.listError = '';
 		try {
 			const rows = responseData(
 				await api.GET('/api/v1/projects/{project_id}/sdd/batches', {
@@ -53,7 +55,7 @@ export class SddBatches {
 			this.loaded = true;
 		} catch (e) {
 			if (generation === this.listGeneration && project === this.project)
-				this.error = e instanceof Error ? e.message : 'Unable to load retained batches';
+				this.listError = e instanceof Error ? e.message : 'Unable to load retained batches';
 		} finally {
 			if (generation === this.listGeneration && project === this.project) this.listBusy = false;
 		}

@@ -81,6 +81,14 @@
 	{#if batches.busy}<p role="status" class="text-xs text-muted-foreground">
 			Loading retained batch {batches.requestedId}…
 		</p>{/if}
+	{#if batches.listError}
+		<div role="alert" class="space-y-2 text-sm">
+			<p>{batches.listError}</p>
+			<Button size="sm" variant="outline" onclick={() => batches.load(projectId)}
+				>Retry retained list</Button
+			>
+		</div>
+	{/if}
 	{#if batches.error}<section role="alert" class="space-y-2 text-sm">
 			<p>Batch unavailable: {batches.requestedId}. {batches.error}</p>
 			{#if batches.requestedId}<Button size="sm" variant="outline" onclick={() => batches.refresh()}
