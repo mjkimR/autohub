@@ -46,7 +46,8 @@ so no state is conveyed by color alone.
 - **US-1**: As an operator, I want work waiting for me (paused or blocked runs, pending decisions) to be the only
   amber element on a screen, so that I find it without reading every row.
 - **US-2**: As an operator, I want failures to stay red and distinct from runs that need my intervention, so that I
-  can tell a broken run from a held one.
+  can tell a broken run from a held one. The dashboard Needs-you tile groups every operator-actionable run; its
+  per-state breakdown keeps failed runs distinguishable there.
 - **US-3**: As an operator, I want routine progress and completed work to stay visually quiet, so that they do not
   compete with exceptions.
 - **US-4**: As an operator using a screen reader, a monochrome display or either theme, I want every status to carry
@@ -54,23 +55,21 @@ so no state is conveyed by color alone.
 - **US-5**: As a hub-ui contributor, I want an `attention` token and Badge variant documented beside the other status
   colors, so that new screens apply the same ranking without raw palette classes.
 
-No use case goal changes. The listed screens keep their content, states and interactions except for the
-representations in the Screens section, so `related_usecases` stays empty.
+No use case goal changes, so `related_usecases` stays empty.
+
+**Focus**: the change is centered on the color system and exception-signal ranking. Interaction and structural
+changes that serve this goal are allowed as long as every documented use case stays achievable (AC-11). The Screens
+section lists each such change with its use case citations.
 
 ## 3. Non-Goals
 
 1. **Scope Excluded**: Shell lighting, meaning an amber rule at the top of the application shell or a pending-count
-   badge on the Decisions navigation item.
+   badge on the Decisions navigation item, and any global pending-decision count.
    **When to Reconsider**: when a global pending-decision count source exists for the shell.
 2. **Scope Excluded**: Any backend, API, OpenAPI schema or generated-client change. Every state and count shown is
    already delivered by the current API.
-3. **Scope Excluded**: Layout or information-architecture changes beyond the elements listed in this spec: no region
-   moves, no new screens, no new navigation and no changed interactions.
-4. **Scope Excluded**: Typography, font, radius and spacing changes.
-5. **Scope Excluded**: Recoloring elements not listed here. Elements that use `primary` (default buttons, links,
-   checkboxes, selected toggles, active tabs, focus rings) change only through the new token values; their classes
-   stay.
-6. **Scope Excluded**: Charts. `--chart-1` to `--chart-5` stay greyscale and unused.
+3. **Scope Excluded**: Typography and font changes.
+4. **Scope Excluded**: Charts. `--chart-1` to `--chart-5` stay greyscale and unused.
 
 ## 4. Acceptance Criteria & Behavioral Contracts
 
@@ -119,8 +118,8 @@ replaced by spaces (`awaiting ci`), as rendered today.
   | State | Variant | Icon (`@lucide/svelte`) |
   | --- | --- | --- |
   | queued | outline | CircleDashed |
-  | dispatching | info | Loader |
-  | implementing | info | Loader |
+  | dispatching | info | Hammer |
+  | implementing | info | Hammer |
   | awaiting_ci | outline | Clock |
   | completed | success | Check |
   | canceled | secondary | Slash |
@@ -139,14 +138,18 @@ replaced by spaces (`awaiting ci`), as rendered today.
 - **When** the Needs-you count (failed + paused + blocked) is greater than `0`
 - **Then** the "Needs you" tile is the only tile with a colored fill, using `attention` with `attention-foreground`
   text, and shows the count
+- **And** its caption is the per-state breakdown of the non-zero counts in the order failed, paused, blocked,
+  joined by ` · ` (for example `1 failed · 2 paused · 1 blocked`), computed client-side from `runs_by_state`
 - **And** Total Runs, Active Work, Awaiting CI and Completed tiles use the same neutral card styling with no status
   color on border, fill or number
 - **When** the Needs-you count is `0`
-- **Then** the tile is neutral like the others and shows the text "Nothing waiting"
+- **Then** the tile is neutral like the others, shows the text "No failed or held runs" in place of the count, and
+  keeps the caption "Failed, paused, or blocked"
 - **When** statistics are unavailable (`—`)
-- **Then** the tile is neutral and shows the unknown marker
-- **And** the integration test asserts the `> 0`, `0` and unknown cases by text, and the colored case by a stable
-  attribute (for example `data-attention="true"`), not by class names.
+- **Then** the tile is neutral, shows the unknown marker and keeps the caption "Failed, paused, or blocked"
+- **And** the label "Nothing waiting" is not used, because the tile does not count pending decisions (Non-Goal 1)
+- **And** the integration test asserts the `> 0` (count and breakdown), `0` and unknown cases by text, and the
+  colored case by `data-attention="true"`, not by class names.
 
 ### [AC-06] Contrast of key pairs
 
@@ -164,16 +167,25 @@ replaced by spaces (`awaiting ci`), as rendered today.
 
 ### [AC-07] Decisions inbox row status
 
+The inbox uses exactly these status labels; spec-sync copies them into `UX-decision-inbox`.
+
+| Row condition | Badge variant | Icon | Label | Attention left rule |
+| --- | --- | --- | --- | --- |
+| actionable, question state not `answered` | attention | dot | Needs decision | yes |
+| actionable, question state `answered` | attention | CornerDownRight | Answer saved — resume pending | yes |
+| not actionable | info | Clock | Answer publication pending | no |
+
 - **Given** the Decisions inbox with loaded rows
-- **When** a row is actionable and its question state is not `answered`
-- **Then** the row shows an `attention` Badge with a dot and the label "Needs decision", and the row has a 3px left
-  rule in the attention stroke color; the row background stays neutral
-- **When** a row's question state is `answered`
-- **Then** it shows a `success` Badge with a Check icon and the label "Answer saved", and no left rule
-- **When** a row is not actionable
-- **Then** it shows an `info` Badge with a Clock icon and the label "Answer publication pending", and no left rule
+- **When** each row condition above holds
+- **Then** the row shows the listed Badge, icon and label; the icon or dot is `aria-hidden`
+- **And** a row with an attention left rule has a 3px left border in the attention stroke color and
+  `data-attention="true"`; the row background stays neutral
+- **And** the Question state filter options read "All states", "Needs decision" (`open`) and "Answer saved — resume
+  pending" (`answered`); the option values are unchanged
+- **And** `success` with Check is not used in the inbox list
 - **And** the per-row Review button, Retry and Retry review use the `outline` variant
-- **And** the integration test asserts each label and the left-rule marker by text or a stable attribute.
+- **And** the integration test asserts each of the three labels and that `data-attention` is present only on the
+  two attention rows.
 
 ### [AC-08] Decorative primary removed
 
@@ -206,27 +218,45 @@ replaced by spaces (`awaiting ci`), as rendered today.
 - **And** `npx eslint` on every touched authored file reports `0` `shadcn/*` warnings
 - **And** no size-preset ceiling in `modules/hub-ui/eslint.config.js` is raised or added.
 
+### [AC-12] Needs-you tile opens Pipeline Runs
+
+- **Given** the dashboard with a Needs-you count greater than `0`
+- **When** the operator activates the Needs-you tile
+- **Then** the tile is a link to `/projects/runs` with no query string, and Pipeline Runs opens with its default
+  filters
+- **And** the link's accessible name contains "Needs you" and the count
+- **When** the count is `0` or unknown
+- **Then** the tile is not a link
+- **And** the integration test asserts the `href` when the count is above `0` and the absence of a link at `0`.
+
+The link is unfiltered. `/projects/runs` reads only the `run` and `view` query parameters, and the
+`GET /api/v1/pipeline-runs` `state` parameter accepts one `PipelineRunState`, so preselecting failed, paused and
+blocked together would need an API change (Non-Goal 2).
+
 ### [AC-11] Use cases stay achievable
 
 - **Given** the use cases cited by `UX-decision-inbox`, `UX-pipeline-runs`, `UX-dashboard` and `UX-app-shell`
   (`UC-receive-decision-notice`, `UC-resolve-run-question`, `UC-decide-sdd-proposal`, `UC-complete-sdd-workflow`,
   `UC-deliver-pull-request`, `UC-access-hub`)
-- **When** the existing integration tests for those screens run
-- **Then** they pass with only label, representation or attribute updates, and no Interactions row of those UX
-  documents loses its trigger or target.
+- **When** each step those documents' Interactions rows serve is traced through the changed screens
+- **Then** every step still has a trigger on its cited screen that reaches the cited target
+- **And** the existing integration tests for those screens pass, changed only where a label, representation,
+  attribute or interaction listed in the Screens section changed.
 
 ## 5. Screens
 
-The changed elements are three existing screens and one shared representation. Each draft lists only what changes;
-unchanged Purpose, regions, states and Interactions rows stay as in the current UX document. Emphasis is written as a
-role (attention, failure, quiet, neutral); the visual style steering file the plan adds owns the token mapping.
+The changed elements are three existing screens and one shared representation. Each draft lists what changes,
+including interactions; anything not listed stays as in the current UX document. A changed interaction cites the
+use case step it serves. Emphasis is written as a role (attention, failure, quiet, neutral); the visual style
+steering file the plan adds owns the token mapping.
 
 ### Candidates and recommendation
 
-The arrangement is fixed by the approved direction: no region moves. The open choice was where attention appears.
+The open choice was where attention appears.
 
 - **Recommended — marks on existing elements**: attention appears only on badges, the Needs-you tile and the inbox
-  row's left rule. It adds no region and keeps every screen's primary region.
+  row's left rule, and the Needs-you tile becomes the path to the runs it counts. It keeps every screen's primary
+  region.
 - **Rejected — shell lighting**: an amber shell rule and a Decisions navigation count. It needs a global
   pending-count source (Non-Goal 1).
 - **Rejected — full-row amber backgrounds**: it raises alarm fatigue and lowers text contrast on dense lists.
@@ -235,27 +265,41 @@ The arrangement is fixed by the approved direction: no region moves. The open ch
 
 - **Primary task**: unchanged.
 - **Content change**: PR run (summary counts) shows Total Runs, Active Work, Awaiting CI and Completed as neutral
-  counts of equal weight, and a Needs-you count (failed, paused or blocked PR runs). The Needs-you count is the only
-  emphasized tile: attention emphasis with its count when it is above zero; neutral with the label "Nothing waiting"
-  at zero; neutral with the unknown marker when statistics cannot be loaded.
+  counts of equal weight, and a Needs-you count (failed, paused or blocked PR runs). The Needs-you tile is the only
+  emphasized tile:
+  - above zero: attention emphasis, the count, a breakdown caption such as "1 failed · 2 paused · 1 blocked", and a
+    link to `UX-pipeline-runs`;
+  - zero: neutral, "No failed or held runs", caption "Failed, paused, or blocked", not a link;
+  - statistics unavailable: neutral, the unknown marker, the same caption, not a link.
 - **Content change**: PR run (recent list) state uses the PR run state badge below.
 - **States**: **populated** gains the distinction above; **loading** and **degraded** keep the unknown marker on a
   neutral tile; next actions are unchanged (Refresh, Retry, navigation).
-- **Interactions**: unchanged; the summary tiles remain non-interactive.
+- **Interactions** (added row):
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
+| Open the Needs-you tile | global: navigation from the exception count to the runs it counts | populated | populated | `UX-pipeline-runs` | | Pipeline Runs opens with default filters; the operator filters by state and continues `UC-deliver-pull-request` *a, *b or *c there. |
 
 ### UX-decision-inbox — Decision inbox (changed row)
 
 - **Primary task**: unchanged.
-- **Content change**: each PR run row's decision status is a labeled badge:
-  - "Needs decision" (attention emphasis, dot) when the row is actionable and unanswered; the row also carries an
-    attention left rule so pending rows can be found by scanning the list edge.
-  - "Answer saved" (quiet success, check icon) when the Run question is answered.
-  - "Answer publication pending" (quiet info, clock icon) while the Native SDD activity is not actionable.
+- **Content change**: each PR run row's decision status is one labeled badge, with the exact labels of AC-07:
+  - "Needs decision" (attention emphasis, dot, attention left rule) when the row is actionable and unanswered.
+  - "Answer saved — resume pending" (attention emphasis, corner-down-right icon, attention left rule) when the Run
+    question is answered but the Run has not resumed; the operator still owes `UC-resolve-run-question` 4.
+  - "Answer publication pending" (quiet info, clock icon, no rule) while the Native SDD activity is not actionable.
+- **Content change**: the Question state filter options use the same labels: "Needs decision" and "Answer saved —
+  resume pending". The document's earlier "Needs answer" becomes "Needs decision".
 - **Content change**: Review, Retry and Retry review are secondary-weight (outline) buttons, so the status badge,
   not the button, carries the row's emphasis.
 - **States**: unchanged; **empty**, **error** and **loading** show no attention marks.
-- **Interactions**: unchanged. Review still serves `UC-resolve-run-question` 1, `UC-decide-sdd-proposal` 1,
-  `UC-complete-sdd-workflow` 3b, 3c, 3d and 4; Retry review still serves `UC-receive-decision-notice` 2b.
+- **Interactions**: existing rows stay; Review still serves `UC-resolve-run-question` 1, `UC-decide-sdd-proposal` 1,
+  `UC-complete-sdd-workflow` 3b, 3c, 3d and 4, and Retry review still serves `UC-receive-decision-notice` 2b. Added
+  row:
+
+| Trigger | Step | From | To | Target | Capability | Feedback |
+| --- | --- | --- | --- | --- | --- | --- |
+| Review saved answer | `UC-resolve-run-question` 4 | populated | reviewing | `UX-run-decisions` | `CAP-PR-operator-decisions` | The exact question opens with its saved answer, ready to select for resume. |
 
 ### UX-pipeline-runs — Pipeline Runs (changed representation)
 
@@ -264,7 +308,8 @@ The arrangement is fixed by the approved direction: no region moves. The open ch
   attention (paused, blocked), quiet progress (dispatching, implementing), quiet success (completed) or neutral
   (queued, awaiting CI, canceled). The pause reason stays below the badge.
 - **States**: unchanged. **operating** keeps the row's badge until the refreshed state arrives.
-- **Interactions**: unchanged; Resume Run on a blocked or paused row still serves `UC-deliver-pull-request` *c.
+- **Interactions**: unchanged; it is the target of the dashboard's Needs-you tile. Resume Run on a paused or blocked
+  row still serves `UC-deliver-pull-request` *c.
 
 ### PR run state badge (shared representation)
 
@@ -275,22 +320,38 @@ is unchanged.
 
 ### UX review
 
-The optional `ux-reviewer` walk-through is offered to the Host, which decides whether to run it before
-implementation. It was not run while drafting.
+Round 1 of the `ux-reviewer` ran on the drafts at `1341b8d` and is recorded in `envelopes/ux-review-01.yaml`. This
+revision folds its findings: Answer saved is attention work, the zero-count label claims only what it counts, the
+Needs-you tile links to Pipeline Runs and shows a breakdown, the inbox labels are settled, and progress uses a
+non-loading glyph. The deliberate-pause finding is accepted as designed (section 6), and the delta-draft coverage
+finding needs no change.
 
-## 6. Assumptions
+## 6. Assumptions and Accepted Rationale
 
-- Review, Retry and Retry review become `outline` rather than staying `default` (ink). Repeated solid ink buttons
-  on every inbox row would outweigh the attention badge.
+- **Accepted rationale**: deliberately paused runs stay attention. Resuming a paused run always needs the operator,
+  so it is operator debt even when the pause was intended. No API change distinguishes intent.
+- Review, Retry and Retry review become `outline` rather than staying `default` (ink); the ux-reviewer confirmed
+  this. Repeated solid ink buttons on every inbox row would outweigh the attention badge.
 - Light `--warning` is `oklch(0.50 0.08 80)`, not the drafted `0.52`: at `0.52` warning text on its Badge tint over
   `--background` measured `4.36:1`.
 - In light mode `--attention` (`0.78 0.165 70`) measures `2.06:1` on `--card`, so strokes and dots that must meet
   `3:1` (inbox left rule, chip dot) use `--attention-text`, which measures `6.27:1`; filled areas carrying
   `--attention-foreground` text use `--attention`.
-- Dispatching and implementing use a static Loader icon; the pulsing dot in `PipelineRunRow.svelte` is removed so
-  motion does not compete with attention.
+- Dispatching and implementing use a static Hammer icon (work in progress). A loader glyph reads as a stalled
+  spinner when static, and Play or Cog would clash with the Resume control or settings. The pulsing dot in
+  `PipelineRunRow.svelte` is removed so motion does not compete with attention.
 - Schedule job `pending` is routine and maps to `outline`, not `attention`.
 - Selected and active states that use `primary` (dashboard polling toggle, project tabs, schedule cards) keep their
   classes and become ink through the token change.
+- The active sidebar item keeps its existing `aria-current`, `font-semibold` and foreground text contrast (about
+  `15:1` against about `5.6:1` for inactive items); its `sidebar-accent` fill alone measures about `1.14:1`.
 - Contrast pairs were pre-computed from the drafted values with a WCAG relative-luminance script during
   specification; AC-06 makes the committed test the authoritative check.
+
+## 7. Follow-ups
+
+These are outside this Unit and do not constrain it:
+
+- A stronger active indicator for the sidebar item and an active style for the administrative links.
+- Horizontal overflow of the dashboard at 390px viewport width (page width 416px), observed in local screenshots.
+- Shell lighting and a Decisions navigation count once a global pending-decision count exists (Non-Goal 1).

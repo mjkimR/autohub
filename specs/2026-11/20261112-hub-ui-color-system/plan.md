@@ -28,8 +28,8 @@ installed `@lucide/svelte`, and the contrast check implements the OKLCH-to-sRGB 
 | Contrast check | `src/routes/layout-contrast.test.ts` (new) | Parses `layout.css`, asserts the AC-06 pairs |
 | Run state | `pipeline-runs/presentation.ts`, `pipeline-runs/RunStateBadge.svelte` (new), `presentation.test.ts` (new) | One state → variant/icon/label mapping and component |
 | Run state consumers | `PipelineRunRow.svelte`, `RunDecisionsDialog.svelte`, `repositories/SddRunLinks.svelte`, `dashboard/DashboardView.svelte` | Render `RunStateBadge` |
-| Dashboard | `dashboard/DashboardView.svelte`, `DashboardView.integration.test.ts` | Neutral tiles; attention Needs-you tile; muted section icons |
-| Inbox | `pipeline-runs/DecisionInbox.svelte`, `DecisionInbox.integration.test.ts` | Status badges, left rule, outline buttons |
+| Dashboard | `dashboard/DashboardView.svelte`, `dashboard/dashboard.svelte.ts`, `DashboardView.integration.test.ts` | Neutral tiles; attention Needs-you tile with breakdown and link; muted section icons |
+| Inbox | `pipeline-runs/DecisionInbox.svelte`, `DecisionInbox.integration.test.ts` | Settled status labels and badges, left rule, filter option labels, outline buttons |
 | Cleanup | `AppShell.svelte`, `LoginView.svelte`, `DashboardHealth.svelte`, `TaskSpecsView.svelte`, `AICatalogsView.svelte`, `NotificationsView.svelte`, `SystemConfigsView.svelte`, `ScheduleConfigsView.svelte`, `AttachPullRequestDialog.svelte`, `EnrollPullRequestDialog.svelte`, `SddRunPanel.svelte`, `JsonSchemaForm.svelte`, `AttemptHistoryDialog.svelte`, `ProjectConnectionCheckDialog.svelte`, `ProjectOverview.svelte`, `ScheduleJobsView.svelte` | Remove decorative primary; tokens for schedule job status |
 | Docs | `modules/hub-ui/README.md`, `docs/steering/visual-style.md` (new) | Document `attention` and the color roles |
 
@@ -131,31 +131,44 @@ DOM (`capitalize` is CSS), so `PipelineRunsView.integration.test.ts`'s `getByTex
 
 ### 3.4 Dashboard PR run summary
 
+`dashboard.svelte.ts` adds one getter beside `failedRuns`; it reads the same `runs_by_state` and needs no API change:
+
+```ts
+get needsYouBreakdown(): string | null;
+// null when stats are unavailable or failed + paused + blocked === 0
+// otherwise the non-zero parts in the order failed, paused, blocked, e.g. "1 failed · 2 paused · 1 blocked"
+```
+
 In `DashboardView.svelte`, the five tiles share one neutral class string (the current Total Runs tile:
 `rounded-lg border border-border/70 bg-background/50 p-3`, label `text-muted-foreground`, number in default
 foreground). The Needs-you tile switches on `dashboard.failedRuns`:
 
-| `failedRuns` | Tile | Number line | Attribute |
-| --- | --- | --- | --- |
-| number > 0 | `border-attention bg-attention text-attention-foreground`; label and caption also `text-attention-foreground` | the count | `data-attention="true"` |
-| `0` | neutral | "Nothing waiting" | none |
-| `'—'` | neutral | `—` | none |
+| `failedRuns` | Element | Tile | Number line | Caption | Attribute |
+| --- | --- | --- | --- | --- | --- |
+| number > 0 | `<a href="/projects/runs">` | `border-attention bg-attention text-attention-foreground`, hover `bg-attention/90`, focus ring kept | the count | `needsYouBreakdown` | `data-attention="true"` |
+| `0` | `<div>` | neutral | "No failed or held runs" | "Failed, paused, or blocked" | none |
+| `'—'` | `<div>` | neutral | `—` | "Failed, paused, or blocked" | none |
 
-The caption "Failed, paused, or blocked" stays. Section-header icons on lines 154, 258, 273 and 328 become
-`text-muted-foreground`. The recent-runs badge becomes `RunStateBadge`. The polling toggle keeps `bg-primary`.
+The link carries no query string (AC-12): the Pipeline Runs route reads only `run` and `view`, and the list API's
+`state` parameter is single-valued. Its accessible name comes from its visible text ("Needs you", the count and the
+breakdown); add no `aria-label` that would hide the breakdown. Section-header icons on lines 154, 258, 273 and 328
+become `text-muted-foreground`. The recent-runs badge becomes `RunStateBadge`. The polling toggle keeps
+`bg-primary`.
 
 ### 3.5 Decisions inbox row
 
-In `DecisionInbox.svelte`, derive one status per entry:
+In `DecisionInbox.svelte`, derive one status per entry. These are the settled labels of AC-07:
 
 | Condition | Badge | Content | Row |
 | --- | --- | --- | --- |
 | `!entry.actionable` | `info` | Clock icon + "Answer publication pending" | neutral |
-| `question_state === 'answered'` | `success` | Check icon + "Answer saved" | neutral |
-| otherwise | `attention` | `size-1.5 rounded-full bg-attention-text` dot + "Needs decision" | `border-l-3 border-l-attention-text`, `data-needs-decision="true"` |
+| `question_state === 'answered'` | `attention` | CornerDownRight icon + "Answer saved — resume pending" | `border-l-3 border-l-attention-text`, `data-attention="true"` |
+| otherwise | `attention` | `size-1.5 rounded-full bg-attention-text` dot + "Needs decision" | `border-l-3 border-l-attention-text`, `data-attention="true"` |
 
-Icons and the dot are `aria-hidden`. The badge replaces the plain `<p>` text in place. The Review, Retry and Retry
-review buttons gain `variant="outline"`. Keep the article's existing border and padding. If `border-l-3` triggers
+The label uses an em dash (U+2014) with a space on each side. Icons and the dot are `aria-hidden`. The badge
+replaces the plain `<p>` text in place. The Question state filter options read "All states", "Needs decision"
+(`open`) and "Answer saved — resume pending" (`answered`); their values stay. The Review, Retry and Retry review
+buttons gain `variant="outline"`. Keep the article's existing border and padding. If `border-l-3` triggers
 `shadcn/no-unknown-classes`, use `border-l-4`; never an arbitrary value.
 
 ### 3.6 Cleanup
@@ -198,6 +211,8 @@ text pair is at least `4.71`.
 - **Statistics unavailable**: `failedRuns` is `'—'`; the tile stays neutral (section 3.4), so an outage never looks
   like operator debt.
 - **Native entry not actionable but unanswered**: not-actionable wins, matching the current label precedence.
+- **Breakdown with stats partially missing**: a missing `runs_by_state` key counts as `0`, as `failedRuns` already
+  does.
 - **Size preset**: `DashboardView.svelte` has 405 lines; the tile change is net neutral. No ceiling may rise (AC-10).
   If a file approaches its limit, extract by responsibility (for example the summary tiles) rather than raising it.
 - **Lint scope**: `badge.svelte` is a generated primitive excluded from `shadcn/*`; every other touched file must end
@@ -209,12 +224,16 @@ text pair is at least `4.71`.
   actions, neutral surfaces, attention for operator debt, destructive for failures, quiet success/info/warning), the
   attention token roles of section 3.1, "never color alone: label plus icon", and "attention only on badges, tiles
   and left rules, never full row backgrounds". It cites `layout.css` as the value source and restates no values.
+- `docs/steering/visual-style.md` also records that attention means operator debt, including answered-but-not-resumed
+  questions and deliberately paused runs.
 - `modules/hub-ui/README.md` Design-system lint: add `attention` to the status colors and Badge variants, and point
   to the steering file for when to use it.
-- Reconciled at `spec-sync`, not in a task: `UX-dashboard` (summary counts become Total, Active Work, Awaiting CI,
-  Completed and Needs-you with "Nothing waiting" at zero), `UX-decision-inbox` (row status labels "Needs decision",
-  "Answer saved", "Answer publication pending" as badges; the document says "Needs answer" today) and
-  `UX-pipeline-runs` (state shown as label plus icon). `UX-app-shell` documents no header chip, so it is unchanged.
+- Reconciled at `spec-sync`, not in a task, by copying the `SPEC-hub-ui-color-system` Screens drafts:
+  `UX-dashboard` (summary counts, Needs-you breakdown, "No failed or held runs" at zero, the added Interactions row
+  to `UX-pipeline-runs`), `UX-decision-inbox` (the three AC-07 labels, filter option labels, "Needs answer" replaced
+  by "Needs decision", the added Review saved answer row for `UC-resolve-run-question` 4) and `UX-pipeline-runs`
+  (state shown as label plus icon). `UC-resolve-run-question` step 4 may add `UX-decision-inbox` to its Interface
+  line. `UX-app-shell` documents no header chip, so it is unchanged.
 
 ## 6. Verification & Test Plan
 
@@ -223,9 +242,10 @@ text pair is at least `4.71`.
 | AC-01, AC-02 | `layout-contrast.test.ts` parses every listed token (missing token fails); review of `layout.css` against section 3.1 |
 | AC-03 | `just check` (type accepts `'attention'`); review of `badge.svelte` diff |
 | AC-04 | `presentation.test.ts` covers all nine states (variant, icon, label) and asserts no `warning`; `rg -n "getStateBadgeVariant\(" modules/hub-ui/src` shows only `presentation.ts` and its test |
-| AC-05 | `DashboardView.integration.test.ts`: count > 0 has `data-attention="true"`; `0` shows "Nothing waiting" without it; failed stats show `—` without it |
+| AC-05 | `DashboardView.integration.test.ts`: count > 0 has `data-attention="true"` and the breakdown text; `0` shows "No failed or held runs" without it; failed stats show `—` without it |
+| AC-12 | `DashboardView.integration.test.ts`: count > 0 renders a link with `href="/projects/runs"` whose name contains "Needs you"; at `0` there is no such link |
 | AC-06 | `layout-contrast.test.ts` in `just test-ui` |
-| AC-07 | `DecisionInbox.integration.test.ts`: three labels; `data-needs-decision` only on the unanswered actionable row |
+| AC-07 | `DecisionInbox.integration.test.ts`: the three exact labels; `data-attention` on the Needs decision and Answer saved — resume pending rows only; filter option texts |
 | AC-08 | `rg -n "Svelte 5 Runes\|bg-primary/10\|hover:border-primary\|shadow-primary\|6366f1" modules/hub-ui/src` returns nothing outside `src/lib/components/ui/` |
 | AC-09 | `rg -n "emerald\|amber" modules/hub-ui/src` returns nothing |
 | AC-10 | `just lint`, `just check`, `just test-ui` exit 0; `npx --prefix modules/hub-ui eslint <touched files>` shows no `shadcn/` warning; `git diff modules/hub-ui/eslint.config.js` is empty |

@@ -30,11 +30,11 @@ authored file must end with zero `shadcn/*` warnings; `badge.svelte` is a genera
   - **Verification**: `just test-ui` passes, including `presentation.test.ts` for all nine states; `npx --prefix modules/hub-ui eslint` on the touched files shows no `shadcn/` warning.
 
 - [ ] **Task 3**: Dashboard PR run summary and Decisions inbox status, with integration tests
-  - **_Boundary**: `modules/hub-ui/src/lib/features/dashboard/DashboardView.svelte`, `modules/hub-ui/src/lib/features/dashboard/DashboardView.integration.test.ts`, `modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.svelte`, `modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.integration.test.ts`
-  - _Requirements: AC-05, AC-07, AC-11_
-  - Apply section 3.4: neutral tiles, the three Needs-you cases with `data-attention`, muted section-header icons and `RunStateBadge` in the recent-runs list.
-  - Apply section 3.5: the three status badges, the attention left rule with `data-needs-decision`, and `outline` Review, Retry and Retry review buttons.
-  - Add test cases for Needs-you `> 0`, `0` ("Nothing waiting") and unavailable (`—`), and for the three inbox labels and the left-rule marker.
+  - **_Boundary**: `modules/hub-ui/src/lib/features/dashboard/DashboardView.svelte`, `modules/hub-ui/src/lib/features/dashboard/dashboard.svelte.ts`, `modules/hub-ui/src/lib/features/dashboard/DashboardView.integration.test.ts`, `modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.svelte`, `modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.integration.test.ts`
+  - _Requirements: AC-05, AC-07, AC-11, AC-12_
+  - Apply section 3.4: the `needsYouBreakdown` getter, neutral tiles, the three Needs-you cases with `data-attention`, the breakdown caption, the unfiltered `/projects/runs` link above zero, muted section-header icons and `RunStateBadge` in the recent-runs list.
+  - Apply section 3.5: the three settled status badges, the attention left rule with `data-attention` on both attention rows, the filter option labels, and `outline` Review, Retry and Retry review buttons.
+  - Add test cases for Needs-you `> 0` (count, breakdown, link `href`), `0` ("No failed or held runs", no link) and unavailable (`—`, no link), and for the three inbox labels, the `data-attention` rows and the filter option texts.
   - **Verification**: `just test-ui` passes; `npx --prefix modules/hub-ui eslint` on the four files shows no `shadcn/` warning; neither Svelte file exceeds its size-preset limit.
 
 - [ ] **Task 4**: Remove decorative primary and raw palette colors
