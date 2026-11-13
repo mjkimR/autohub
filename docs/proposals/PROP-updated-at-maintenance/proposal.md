@@ -2,7 +2,7 @@
 id: PROP-updated-at-maintenance
 title: Maintain updated_at on every owner write
 summary: "Make updated_at advance on every write to Hub-owned rows, so owed-item waiting times, run finish times and run retention read the last write instead of the creation time."
-status: draft                         # draft | reviewing | accepted | rejected
+status: reviewing                         # draft | reviewing | accepted | rejected
 created_at: 2026-11-13
 target_area: capabilities/execution/
 priority: medium                      # critical | high | medium | low
