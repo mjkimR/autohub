@@ -198,6 +198,12 @@ export interface components {
             next_action_at: string | null;
             /** Quota Block Count */
             quota_block_count: number;
+            /**
+             * Has Pending Decision
+             * @description The run has an actionable decision-inbox row (a Run question or Native SDD request)
+             * @default false
+             */
+            has_pending_decision: boolean;
         };
         /**
          * PipelineRunState

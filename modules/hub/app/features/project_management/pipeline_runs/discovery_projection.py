@@ -18,12 +18,15 @@ from app.features.project_management.pipeline_runs.requests import request_diges
 from app.features.project_management.sdd.discovery import candidates
 from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy import Table, delete, event, select
+from sqlalchemy.orm import object_session
+from sqlalchemy.orm.attributes import set_committed_value
 
 
 def sync_run(connection, run_id, now=None):
+    """Refresh one run's rows and return whether any of them is actionable."""
     run_row = connection.execute(select(PipelineRun.__table__).where(PipelineRun.id == run_id)).mappings().first()
     if run_row is None:
-        return
+        return False
     run = SimpleNamespace(**run_row)
     now = now or get_current_utc_time()
     table = cast(Table, DecisionEntry.__table__)
@@ -115,10 +118,18 @@ def sync_run(connection, run_id, now=None):
     obsolete = set(previous) - retained
     if obsolete:
         connection.execute(delete(table).where(table.c.key.in_(obsolete)))
+    return any(row["actionable"] for row in rows)
 
 
 def _sync(mapper, connection, owner):
-    sync_run(connection, owner.id if isinstance(owner, PipelineRun) else owner.pipeline_run_id)
+    run_id = owner.id if isinstance(owner, PipelineRun) else owner.pipeline_run_id
+    pending = sync_run(connection, run_id)
+    # Keep the loaded run's read-only flag equal to the rows just written, without another statement.
+    run = owner if isinstance(owner, PipelineRun) else None
+    if run is None and (session := object_session(owner)) is not None:
+        run = session.identity_map.get(session.identity_key(PipelineRun, run_id))
+    if run is not None:
+        set_committed_value(run, "has_pending_decision", pending)
 
 
 for model in (PipelineRun, RunQuestion, RunResumeReceipt):

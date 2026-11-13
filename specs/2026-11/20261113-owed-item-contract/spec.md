@@ -2,7 +2,7 @@
 id: SPEC-owed-item-contract
 title: Owed item contract for operator debt
 summary: Define one owed-item model and read surface so every exception class that waits for the operator reaches them through one count and one worklist with consistent definitions.
-status: planned
+status: in-progress
 created: 2026-11-13
 related_capabilities:
   - CAP-PR-operator-decisions
@@ -193,7 +193,9 @@ Work Item `attention` > run state. A run is held by a decision when it has any d
 - **Given** a run with an open Run question and a run without decisions
 - **When** the operator reads `GET /api/v1/pipeline-runs` and `GET /api/v1/pipeline-runs/{run_id}`
 - **Then** `has_pending_decision` is true for the first and false for the second, independent of list paging
-- **And** after the question is dismissed, the dismiss response and later reads report false
+- **And** after the question is dismissed, later reads report false
+- **And** a run loaded in a transaction reports the new value after a flush that adds or removes its decision rows, so
+  run responses built after a mutation in that transaction need no extra statement
 
 ### [AC-13] Typed client and layering
 - **Given** the merged backend
