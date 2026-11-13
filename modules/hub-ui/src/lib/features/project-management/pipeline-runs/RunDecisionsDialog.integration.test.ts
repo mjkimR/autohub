@@ -39,6 +39,11 @@ afterEach(() => {
 	document.body.removeAttribute('style');
 });
 
+// The dialog moves focus to itself after opening; typing before that lands mid-keystroke.
+async function dialogFocused() {
+	await waitFor(() => expect(document.activeElement?.getAttribute('role')).toBe('dialog'));
+}
+
 test('saves an answer separately and explicitly resumes with the new revision', async () => {
 	const user = userEvent.setup();
 	api.POST.mockImplementation(async () => {
@@ -66,12 +71,13 @@ test('saves an answer separately and explicitly resumes with the new revision', 
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
+	await dialogFocused();
 	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
 	expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).value).toBe('Yes');
-	expect((screen.getByRole('button', { name: 'Save answer' }) as HTMLButtonElement).disabled).toBe(
+	expect((screen.getByRole('button', { name: 'Save only' }) as HTMLButtonElement).disabled).toBe(
 		false
 	);
-	await user.click(screen.getByRole('button', { name: 'Save answer' }));
+	await user.click(screen.getByRole('button', { name: 'Save only' }));
 	await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(1));
 	await screen.findByText('Answer saved. The run remains stopped until you resume.');
 	expect(api.POST).toHaveBeenCalledTimes(1);
@@ -85,6 +91,55 @@ test('saves an answer separately and explicitly resumes with the new revision', 
 	await screen.findByText('Resume recorded. Agent delivery may still be pending.');
 });
 
+function answeredAfterSave(outcome: Record<string, unknown>) {
+	api.POST.mockImplementation(async (path: string) => {
+		if (path.endsWith('/resume')) return { error: { detail: 'Run changed' } };
+		api.GET.mockImplementation(async (getPath: string) => ({
+			data: getPath.endsWith('/questions')
+				? {
+						items: [
+							{
+								...question,
+								state: 'answered',
+								answers: [
+									{ id: 'answer-1', answer: 'Yes', actor: 'user', created_at: question.created_at }
+								]
+							}
+						],
+						total_count: 1,
+						run_revision: 3
+					}
+				: getPath.includes('decision-outcomes')
+					? outcome
+					: { ...run, revision: 3 }
+		}));
+		return { data: {} };
+	});
+}
+
+test('Save and resume saves, then resumes with the saved answer; a refused resume stays recoverable', async () => {
+	const user = userEvent.setup();
+	answeredAfterSave({
+		operation: 'answer',
+		request_id: 'x',
+		record_state: 'recorded',
+		answer_id: 'answer-1',
+		run_revision: 3
+	});
+	render(RunDecisionsDialog, { run, onclose: vi.fn(), onchange: vi.fn() });
+	await waitFor(() =>
+		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
+	);
+	await dialogFocused();
+	await user.type(screen.getByLabelText('Your answer'), 'Yes');
+	await user.click(screen.getByRole('button', { name: 'Save and resume' }));
+	await screen.findByText('Answer saved, but the run did not resume.');
+	const resume = api.POST.mock.calls.find(([path]) => path.endsWith('/resume'));
+	expect(resume?.[1].body).toMatchObject({ expected_revision: 3, answer_id: 'answer-1' });
+	expect(api.POST.mock.calls.filter(([path]) => path.endsWith('/answers'))).toHaveLength(1);
+	expect(screen.getByRole('button', { name: 'Resume with this answer' })).toBeTruthy();
+});
+
 test('retries a lost answer response with the same request identity', async () => {
 	const user = userEvent.setup({ delay: null });
 	api.POST.mockRejectedValue(new Error('Connection lost'));
@@ -93,8 +148,9 @@ test('retries a lost answer response with the same request identity', async () =
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
+	await dialogFocused();
 	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
-	await user.click(screen.getByRole('button', { name: 'Save answer' }));
+	await user.click(screen.getByRole('button', { name: 'Save only' }));
 	await screen.findByRole('alert');
 	await user.click(screen.getByRole('button', { name: 'Retry same request' }));
 	expect(api.POST.mock.calls[1]).toEqual(api.POST.mock.calls[0]);
@@ -127,8 +183,9 @@ test('keeps the answer request identity after response loss and a revision refre
 	await waitFor(() =>
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
+	await dialogFocused();
 	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
-	await user.click(screen.getByRole('button', { name: 'Save answer' }));
+	await user.click(screen.getByRole('button', { name: 'Save only' }));
 	await screen.findByRole('alert');
 	const original = api.POST.mock.calls[0][1].body.request_id;
 	await user.click(screen.getByRole('button', { name: 'Refresh decisions' }));
@@ -145,7 +202,7 @@ test('keeps the answer request identity after response loss and a revision refre
 		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
 	);
 	await user.type(await screen.findByLabelText('Your answer'), 'Yes');
-	await user.click(screen.getByRole('button', { name: 'Save answer' }));
+	await user.click(screen.getByRole('button', { name: 'Save only' }));
 	expect(api.POST.mock.calls[2][1].body.request_id).not.toBe(original);
 });
 
@@ -275,7 +332,7 @@ test('failed inbox inspection leaves every mutation disabled', async () => {
 	} as components['schemas']['DecisionEntryRead'];
 	render(RunDecisionsDialog, { run, selection, onclose: vi.fn(), onchange: vi.fn() });
 	await screen.findByRole('alert');
-	expect(screen.queryByRole('button', { name: 'Save answer' })).toBeNull();
+	expect(screen.queryByRole('button', { name: 'Save only' })).toBeNull();
 	expect(api.GET).not.toHaveBeenCalled();
 	expect(api.POST).toHaveBeenCalledWith('/api/v1/pipeline-runs/decisions/review', {
 		body: { key: 'entry', fingerprint: 'old' }
@@ -308,7 +365,8 @@ test('acknowledged inbox dismissal refreshes the list without re-reviewing the r
 		return { data: {} };
 	});
 	render(RunDecisionsDialog, { run, selection, onclose: vi.fn(), onchange });
-	await screen.findByRole('button', { name: 'Save answer' });
+	await screen.findByText('Dismiss this question');
+	await dialogFocused();
 	await user.click(screen.getByText('Dismiss this question'));
 	await user.type(screen.getByLabelText('Reason to dismiss'), 'Resolved elsewhere');
 	await user.click(screen.getByRole('button', { name: 'Dismiss without resuming' }));

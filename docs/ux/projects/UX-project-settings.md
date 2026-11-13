@@ -17,7 +17,7 @@ capabilities:
 
 - **Primary task**: update a Project connection.
 - **Facts to commit**: current name, type, enabled state, selected GitHub connector, repository, verification and automation settings.
-- **Secondary items**: the project detail uses the same form in separate general, connection and automation regions.
+- **Secondary items**: the project detail uses the same form in separate general, connection and automation regions. The dispatch interval is edited in the Automation tab's region; `UX-schedule-configs` links each project dispatch row there.
 
 ## 2. Content
 
@@ -26,7 +26,7 @@ The saved configuration form is primary. General settings precede the optional G
 - Project connection (settings form): name, type, enabled flag and GitHub connection toggle.
   - Connector (GitHub selector): names and identifiers, without plaintext credentials.
   - Project connection (verification fields): repository, workflow and comma-separated required jobs.
-  - AI catalog (selector) and Project connection (automation policy): catalog, merge/fix/enrollment controls, dispatch interval and concurrency.
+  - AI catalog (selector) and Project connection (automation policy): catalog, merge/fix/enrollment controls, dispatch interval and concurrency. "Adopt PRs opened by agent sessions" explains that a provider session's PR becomes a PR run at CI observation.
 - Save Changes: saves the loaded project revision and refreshes its parent on success.
 
 ## 3. States

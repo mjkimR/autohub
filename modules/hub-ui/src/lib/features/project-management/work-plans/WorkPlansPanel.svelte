@@ -12,6 +12,7 @@
 	import WorkPlanGroup from './WorkPlanGroup.svelte';
 	import WorkItemRecovery from './WorkItemRecovery.svelte';
 	import WorkItemReplacement from './WorkItemReplacement.svelte';
+	import { runHref } from '../pipeline-runs/run-links';
 	type Plan = components['schemas']['WorkPlanRead'];
 	let { project }: { project: components['schemas']['ProjectRead'] } = $props();
 	let plans = $state<Plan[]>([]);
@@ -139,10 +140,13 @@
 	onMount(() => {
 		void load().then(async () => {
 			await tick();
-			if (window.location.hash.startsWith('#work-plan-')) {
-				const card = document.getElementById(window.location.hash.slice(1));
-				card?.scrollIntoView?.();
-				card?.focus();
+			const hash = window.location.hash;
+			if (hash.startsWith('#work-plan-') || hash.startsWith('#work-item-')) {
+				// A Work Item link (e.g. from a failed PR run's next step) opens that item's details.
+				const target = document.getElementById(hash.slice(1));
+				if (target instanceof HTMLDetailsElement) target.open = true;
+				target?.scrollIntoView?.();
+				target?.focus();
 			}
 		});
 		const timer = setInterval(() => {
@@ -319,7 +323,7 @@
 				</p>{/if}
 			<div class="divide-y rounded-lg border">
 				{#each plan.items as item (item.id)}
-					<details class="p-4">
+					<details id={`work-item-${item.id}`} tabindex="-1" class="scroll-mt-6 p-4">
 						<summary class="cursor-pointer text-sm"
 							><span class="font-medium"
 								>{item.key}: {item.title}{#if item.branch}
@@ -352,7 +356,7 @@
 									>{/if}
 								{#if item.pipeline_run_id}<a
 										class="text-primary underline"
-										href={`/projects/${project.id}?tab=runs`}>Execution runs</a
+										href={runHref(item.pipeline_run_id, project.id)}>PR run</a
 									>{/if}
 							</div>
 							<WorkItemRecovery

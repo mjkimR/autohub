@@ -160,7 +160,7 @@ const withRunsByState = (runsByState: Record<string, number> | null) => {
 	});
 };
 
-test('runs waiting for the operator mark the Needs-you tile and link to Pipeline Runs', async () => {
+test('runs waiting for the operator mark the Needs-you tile and link to PR runs', async () => {
 	withRunsByState({ completed: 3, failed: 1, paused: 2, blocked: 1 });
 	render(DashboardView);
 

@@ -51,8 +51,8 @@ it('reopens stopped-inflight owner artifacts and retained catalog overrides', as
 	const user = userEvent.setup();
 	await user.click(screen.getByRole('button', { name: 'Load retained batches' }));
 	await user.click(await screen.findByText('Inspect retained evidence and preferences'));
-	expect(screen.getByRole('link', { name: 'Inspect native owner' }).getAttribute('href')).toContain(
-		'run=native-run'
+	expect(screen.getByRole('link', { name: 'Inspect native owner' }).getAttribute('href')).toBe(
+		'/projects/p/runs/native-run#decisions'
 	);
 	expect(screen.getByRole('link', { name: 'PR #42' }).getAttribute('href')).toBe(
 		'https://github.com/owner/app/pull/42'

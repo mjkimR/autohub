@@ -82,13 +82,8 @@ test('a backlog beyond the read page is shown exactly', async () => {
 	expect(screen.queryByText(/\+/)).toBeNull();
 });
 
-test.each([
-	['zero', async () => ({ data: decisionPage(0, [{ actionable: false }]) })],
-	['error', async () => ({ error: { detail: 'down' } })],
-	['failure', async () => Promise.reject(new Error('offline'))],
-	['loading', () => new Promise(() => {})]
-])('%s stays neutral', async (_name, response) => {
-	decisions = response;
+test('zero stays fully neutral with no badge', async () => {
+	decisions = async () => ({ data: decisionPage(0, [{ actionable: false }]) });
 	render(AppShell, { children });
 	await waitFor(() =>
 		expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs/decisions', expect.anything())
@@ -97,4 +92,39 @@ test.each([
 	expect(within(nav()).getByRole('link', { name: 'Decisions' })).toBeTruthy();
 	expect(rules()).toHaveLength(0);
 	expect(document.querySelector('[data-pending-count]')).toBeNull();
+	expect(document.querySelector('[data-pending-unknown]')).toBeNull();
+	expect(screen.queryByRole('link', { name: /Decisions: / })).toBeNull();
+});
+
+test.each([
+	['error', async () => ({ error: { detail: 'down' } })],
+	['failure', async () => Promise.reject(new Error('offline'))],
+	['invalid count', async () => ({ data: { items: [], has_more: false, next_cursor: null } })],
+	['loading', () => new Promise(() => {})]
+])('%s shows a neutral unknown mark, not zero or debt', async (_name, response) => {
+	decisions = response;
+	render(AppShell, { children });
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs/decisions', expect.anything())
+	);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	const link = within(nav()).getByRole('link', { name: 'Decisions Pending decisions unknown' });
+	const mark = link.querySelector('[data-pending-unknown]')!;
+	expect(mark.textContent).toContain('?');
+	expect(mark.getAttribute('title')).toBe('Pending decisions unknown');
+	expect(mark.className).not.toContain('attention');
+	const narrow = screen.getByRole('link', { name: 'Decisions: Pending decisions unknown' });
+	expect(narrow.getAttribute('href')).toBe('/decisions');
+	expect(narrow.getAttribute('title')).toBe('Pending decisions unknown');
+	expect(narrow.innerHTML).not.toContain('attention');
+	expect(rules()).toHaveLength(0);
+	expect(document.querySelector('[data-pending-count]')).toBeNull();
+});
+
+test('the PR run list is labeled with the glossary term', () => {
+	render(AppShell, { children });
+	expect(within(nav()).getByRole('link', { name: 'PR runs' }).getAttribute('href')).toBe(
+		'/projects/runs'
+	);
+	expect(within(nav()).queryByRole('link', { name: 'Pipeline runs' })).toBeNull();
 });

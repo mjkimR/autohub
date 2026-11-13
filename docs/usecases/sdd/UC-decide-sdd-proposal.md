@@ -29,7 +29,7 @@ entrypoints:
 
 1. The operator inspects the waiting proposal run and its evidence
    (`CAP-SDD-native-delivery`, rules 9–11).
-   Interface: `UX-decision-inbox`, `UX-run-decisions`, `UX-sdd-run`, `UX-sdd-proposals`.
+   Interface: `UX-decision-inbox`, `UX-run-page`, `UX-run-decisions`, `UX-sdd-run`, `UX-sdd-proposals`.
 
 2. The operator submits acceptance bound to the inspected head and run revision
    (`CAP-SDD-native-delivery`, rules 10–11).

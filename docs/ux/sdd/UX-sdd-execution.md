@@ -20,7 +20,7 @@ capabilities:
 
 - **Primary task**: Check and enroll an existing native spec PR.
 - **Facts to commit**: Unit directory, existing PR number, activity effort, registration eligibility and initial stage/waits for their exact inspected combination.
-- **Secondary items**: Runtime diagnostics and related executions sit beside the registration result; stages and decisions open in Pipeline Runs.
+- **Secondary items**: Runtime diagnostics and related executions sit beside the registration result; stages and decisions open on the PR run page (`UX-run-page`).
 
 ## 2. Content
 
@@ -60,8 +60,8 @@ Milestone subset inspection belongs to `UX-sdd-milestone-preview`. Its result su
 | Check runtime | global: diagnose the server-selected native execution runtime | populated | loading |  | `CAP-SDD-runtime-isolation` | Profile/isolation/bundle information or an unavailable/error diagnostic appears. |
 | Check readiness | `UC-complete-sdd-workflow` 1 | populated | loading |  | `CAP-SDD-workflow-control` | Registration eligibility, inspected head, first stage, current waits, approval policy and safe diagnostics appear, or a setup/refusal error retains its safe guidance. |
 | Start execution | `UC-complete-sdd-workflow` 1 | ready | loading |  | `CAP-SDD-workflow-control` | Successful registration offers the retained execution link and disables resubmitting that combination. |
-| Open execution & decisions | `UC-complete-sdd-workflow` 3 | registered | populated | `UX-run-decisions` | `CAP-SDD-workflow-control` | The selected run opens in its decision dialog. |
-| Open related execution | `UC-inspect-repository-documents` 6 | populated | populated | `UX-run-decisions` | `CAP-DOC-repository-viewer` | The recorded project-scoped run and decisions open without starting work. |
+| Open execution & decisions | `UC-complete-sdd-workflow` 3 | registered | populated | `UX-run-page` | `CAP-SDD-workflow-control` | The selected run's page opens at its Decisions section. |
+| Open related execution | `UC-inspect-repository-documents` 6 | populated | populated | `UX-run-page` | `CAP-DOC-repository-viewer` | The recorded run's page opens at its Decisions section without starting work. |
 | Retry related executions | `UC-inspect-repository-documents` 5c | error | loading |  | `CAP-DOC-repository-viewer` | The selected unit’s related runs are requested again. |
 
 ## 5. Evidence

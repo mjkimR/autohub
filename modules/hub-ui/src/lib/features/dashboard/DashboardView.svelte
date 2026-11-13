@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { runHref } from '$lib/features/project-management/pipeline-runs/run-links';
 	import { DashboardState } from './dashboard.svelte';
 	import DashboardHealth from './DashboardHealth.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
@@ -157,13 +158,13 @@
 		lastTickAt={dashboard.lastTickAt}
 	/>
 
-	<!-- Pipeline Runs Observability Card -->
+	<!-- PR runs observability card -->
 	<Card class="overflow-hidden">
 		<CardHeader class="pb-3">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
 					<Workflow class="size-5 text-muted-foreground" />
-					<CardTitle class="text-base font-semibold">Pipeline Runs Orchestration</CardTitle>
+					<CardTitle class="text-base font-semibold">PR runs</CardTitle>
 				</div>
 				<Button variant="link" size="xs" onclick={() => goto('/projects/runs')}>
 					View All Runs
@@ -265,12 +266,12 @@
 
 	<!-- Activity Streams (Side by Side) -->
 	<div class="grid gap-6 lg:grid-cols-2">
-		<!-- Recent Pipeline Runs -->
+		<!-- Recent PR runs -->
 		<div class="min-w-0 rounded-xl border border-border/80 bg-card/60 p-5 backdrop-blur-xs">
 			<div class="flex items-center justify-between pb-3">
 				<div class="flex items-center gap-2">
 					<Workflow class="size-4 text-muted-foreground" />
-					<h2 class="text-sm font-semibold tracking-tight">Recent Pipeline Runs</h2>
+					<h2 class="text-sm font-semibold tracking-tight">Recent PR runs</h2>
 				</div>
 				<Button variant="subtle" size="xs" onclick={() => goto('/projects/runs')}>View All</Button>
 			</div>
@@ -278,19 +279,22 @@
 			{#if dashboard.error && dashboard.recentRuns.length === 0}
 				<p class="text-sm text-muted-foreground">Recent runs unavailable.</p>
 			{:else if dashboard.recentRuns.length === 0}
-				<div class="py-8 text-center text-xs text-muted-foreground">
-					No pipeline runs dispatched yet.
-				</div>
+				<div class="py-8 text-center text-xs text-muted-foreground">No PR runs yet.</div>
 			{:else}
 				<div class="divide-y divide-border/60">
 					{#each dashboard.recentRuns as run (run.id)}
 						<div class="flex items-center justify-between py-2.5 text-xs">
 							<div class="min-w-0 flex-1 pr-3">
 								<div class="flex items-center gap-2">
-									<span class="font-bold text-foreground">PR #{run.pull_number}</span>
-									<span class="truncate text-muted-foreground">
-										{run.pull_snapshot?.title || `PR #${run.pull_number}`}
-									</span>
+									<a
+										href={runHref(run.id, run.project_id)}
+										class="flex min-w-0 items-center gap-2 underline-offset-4 hover:underline"
+									>
+										<span class="font-bold text-foreground">PR #{run.pull_number}</span>
+										<span class="truncate text-muted-foreground">
+											{run.pull_snapshot?.title || `PR #${run.pull_number}`}
+										</span>
+									</a>
 								</div>
 								<div class="mt-0.5 flex items-center gap-2 font-mono text-xs text-muted-foreground">
 									<div class="flex min-w-0 items-center gap-1">
@@ -375,7 +379,7 @@
 		<div class="flex flex-wrap gap-3">
 			<Button onclick={() => goto('/projects/runs')}>
 				<Workflow class="size-4" />
-				Pipeline Runs
+				PR runs
 			</Button>
 			<Button variant="secondary" onclick={() => goto('/projects')}>
 				<FolderKanban class="size-4" />

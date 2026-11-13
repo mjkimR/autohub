@@ -79,10 +79,9 @@ test('filters reset paging and pages use the retained cursor', async () => {
 	const user = userEvent.setup();
 	render(DecisionInbox);
 	await screen.findByText('Choose behavior');
-	expect(screen.getByRole('link', { name: 'PR #7' }).getAttribute('href')).toBe(
+	expect(screen.getByRole('link', { name: 'PR #7 ↗' }).getAttribute('href')).toBe(
 		'https://github.com/owner/app/pull/7'
 	);
-	expect(screen.getByText(/blocked/)).toBeTruthy();
 	await user.selectOptions(screen.getByLabelText('Kind'), 'run-question');
 	await waitFor(() =>
 		expect(api.GET).toHaveBeenLastCalledWith('/api/v1/pipeline-runs/decisions', {
@@ -182,5 +181,30 @@ test('question state filter options use the inbox status labels', async () => {
 		['', 'All states'],
 		['open', 'Needs decision'],
 		['answered', 'Answer saved — resume pending']
+	]);
+});
+test('rows link the project and PR run in-app and label the run state and kind', async () => {
+	render(DecisionInbox);
+	const row = (await screen.findByText('Choose behavior')).closest('article')!;
+	expect(screen.getByRole('link', { name: 'Application' }).getAttribute('href')).toBe(
+		'/projects/project'
+	);
+	expect(screen.getByRole('link', { name: 'Open PR run for PR #7' }).getAttribute('href')).toBe(
+		'/projects/project/runs/run'
+	);
+	const state = row.querySelector('[data-run-state]')!;
+	expect(state.getAttribute('data-run-state')).toBe('blocked');
+	expect(state.textContent?.trim()).toBe('Blocked');
+	expect(row.textContent).toContain('Run question');
+	expect(row.textContent).not.toMatch(/\bblocked\b|run question/);
+	const kinds = [...(screen.getByLabelText('Kind') as HTMLSelectElement).options];
+	expect(kinds.map((option) => option.text)).toEqual([
+		'All kinds',
+		'Run question',
+		'SDD Hub question',
+		'SDD worker question',
+		'SDD workflow request',
+		'SDD proposal decision',
+		'SDD integration decision'
 	]);
 });

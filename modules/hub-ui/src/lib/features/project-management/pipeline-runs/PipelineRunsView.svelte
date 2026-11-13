@@ -1,20 +1,20 @@
 <script lang="ts">
 	import { NativeSelect } from '$lib/components/ui/native-select';
-	import { SvelteMap } from 'svelte/reactivity';
-	import RunDecisionsDialog from './RunDecisionsDialog.svelte';
 	import RunGroupFilter from './RunGroupFilter.svelte';
 	import PipelineRunRow from './PipelineRunRow.svelte';
-	import AttemptHistoryDialog from './AttemptHistoryDialog.svelte';
 	import EnrollPullRequestDialog from './EnrollPullRequestDialog.svelte';
 	import AttachPullRequestDialog from './AttachPullRequestDialog.svelte';
+	import { advanceRun, cancelRun, pauseRun, resumeRun } from './run-operations';
+	import { decisionsFor, loadPendingDecisions, type DecisionEntry } from './run-actions';
+	import { legacyRunRedirect } from './run-links';
 	import { PaginatedState } from '$lib/state/paginated.svelte';
 	import { allPages, responseData } from '$lib/api/pagination';
 	import ListPagination from '$lib/components/shared/ListPagination.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
 
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { api, type components } from '$lib/api';
-	import { apiErrorMessage } from '$lib/api/errors';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -42,10 +42,9 @@
 	let selectedProjectId = $state<string>('');
 	let selectedState = $state<components['schemas']['PipelineRunState'] | ''>('');
 	let selectedGroupKey = $state<string | undefined>();
+	// Observed pending decisions grouped by run: one bounded read, never one request per row.
+	let pending = $state<{ byRun: Map<string, DecisionEntry[]>; complete: boolean } | null>(null);
 
-	let decisionRun = $state<PipelineRun | null>(null);
-	const resumeRequests = new SvelteMap<string, string>();
-	let selectedRun = $state<PipelineRun | null>(null);
 	let isAcquireOpen = $state(false);
 	let attachTargetRun = $state<PipelineRun | null>(null);
 
@@ -85,12 +84,31 @@
 		}
 	}
 
+	function filterProjectId(): string | undefined {
+		return scopedProject?.id ?? (selectedProjectId || undefined);
+	}
+
+	// Pending decisions follow the project filter only; search and state filters reuse them.
+	let pendingSeq = 0;
+	async function loadPending() {
+		const projectId = filterProjectId();
+		const seq = ++pendingSeq;
+		let next: typeof pending = null;
+		try {
+			next = await loadPendingDecisions(projectId);
+		} catch {
+			// Unknown decisions keep conservative row actions; the list itself stays usable.
+		}
+		// Drop responses overtaken by a newer read or a project filter change.
+		if (seq === pendingSeq && projectId === filterProjectId()) pending = next;
+	}
+
 	async function loadRuns(offset = list.offset) {
 		const filters = {
 			search: searchQuery.trim(),
 			state: selectedState || undefined,
 			group_key: selectedGroupKey,
-			project_id: scopedProject?.id ?? (selectedProjectId || undefined)
+			project_id: filterProjectId()
 		};
 		await list.load(
 			async (offset, limit) =>
@@ -104,140 +122,30 @@
 		);
 	}
 
-	function openAttempts(run: PipelineRun) {
-		selectedRun = run;
+	function reload(offset?: number) {
+		return Promise.all([loadRuns(offset), loadPending()]);
 	}
 
-	async function handleAdvance(runId: string) {
+	async function operate(runId: string, action: () => Promise<boolean>) {
 		operatingRunId = runId;
 		try {
-			const res = await api.POST('/api/v1/pipeline-runs/{run_id}/advance', {
-				params: { path: { run_id: runId } }
-			});
-			if (res.error) {
-				const detail = apiErrorMessage(res.error, 'Failed to advance run');
-				toast.error(detail);
-			} else {
-				toast.success(`Run advanced to ${res.data?.state ?? 'next state'}`);
-				loadRuns();
-			}
-		} catch {
-			toast.error('Error advancing run');
+			if (await action()) void reload();
 		} finally {
 			operatingRunId = null;
-		}
-	}
-
-	async function handlePause(runId: string) {
-		operatingRunId = runId;
-		try {
-			const res = await api.POST('/api/v1/pipeline-runs/{run_id}/pause', {
-				params: { path: { run_id: runId } },
-				body: { reason: 'Paused via UI' }
-			});
-			if (res.error) {
-				const detail = apiErrorMessage(res.error, 'Failed to pause run');
-				toast.error(detail);
-			} else {
-				toast.success('Run paused');
-				loadRuns();
-			}
-		} catch {
-			toast.error('Error pausing run');
-		} finally {
-			operatingRunId = null;
-		}
-	}
-
-	async function handleResume(run: PipelineRun) {
-		// A blocked run's reason can warn that resuming would duplicate work still running at Codex.
-		if (
-			run.state === 'blocked' &&
-			run.pause_reason &&
-			!confirm(`${run.pause_reason}\n\nResume this run?`)
-		)
-			return;
-		const runId = run.id;
-		operatingRunId = runId;
-		try {
-			const key = `${runId}:${run.revision}`;
-			if (!resumeRequests.has(key)) resumeRequests.set(key, crypto.randomUUID());
-			const res = await api.POST('/api/v1/pipeline-runs/{run_id}/resume', {
-				params: { path: { run_id: runId } },
-				body: { request_id: resumeRequests.get(key)!, expected_revision: run.revision }
-			});
-			if (res.error) {
-				const detail = apiErrorMessage(res.error, 'Failed to resume run');
-				toast.error(detail);
-			} else {
-				toast.success(`Run resumed (${res.data?.state})`);
-				loadRuns();
-			}
-		} catch {
-			toast.error('Error resuming run');
-		} finally {
-			operatingRunId = null;
-		}
-	}
-
-	async function handleCancel(runId: string) {
-		if (!confirm('Are you sure you want to cancel this pipeline run?')) return;
-		operatingRunId = runId;
-		try {
-			const res = await api.POST('/api/v1/pipeline-runs/{run_id}/cancel', {
-				params: { path: { run_id: runId } }
-			});
-			if (res.error) {
-				const detail = apiErrorMessage(res.error, 'Failed to cancel run');
-				toast.error(detail);
-			} else {
-				toast.success('Run canceled');
-				loadRuns();
-			}
-		} catch {
-			toast.error('Error canceling run');
-		} finally {
-			operatingRunId = null;
-		}
-	}
-
-	function openAttachPr(run: PipelineRun) {
-		attachTargetRun = run;
-	}
-
-	/** A link such as a catalog session's "Pipeline run" names a run to open: `/projects/runs?run=<id>`. */
-	async function openLinkedRun() {
-		let runId: string | null;
-		try {
-			runId = new URLSearchParams(window.location.search).get('run');
-		} catch {
-			return;
-		}
-		if (!runId) return;
-		try {
-			const res = await api.GET('/api/v1/pipeline-runs/{run_id}', {
-				params: { path: { run_id: runId } }
-			});
-			if (!res.data) {
-				toast.error('The linked pipeline run was not found');
-				return;
-			}
-			selectedProjectId = res.data.project_id;
-			if (scopedProject && res.data.project_id !== scopedProject.id) return;
-			await loadRuns(0);
-			if (new URLSearchParams(window.location.search).get('view') === 'decisions')
-				decisionRun = res.data;
-			else openAttempts(res.data);
-		} catch {
-			toast.error('Failed to load the linked pipeline run. Please refresh to retry.');
 		}
 	}
 
 	onMount(() => {
+		// Old run deep links (`?run=<id>[&view=decisions]`) now open the PR run page.
+		const legacy = legacyRunRedirect(window.location.search);
+		if (legacy) {
+			void goto(legacy, { replaceState: true });
+			return;
+		}
 		selectedProjectId = scopedProject?.id ?? '';
 		loadProjects();
 		loadCatalogs();
-		loadRuns().then(openLinkedRun);
+		reload();
 	});
 </script>
 
@@ -245,9 +153,9 @@
 	<!-- Page Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
-			<h1 class="text-3xl font-bold tracking-tight">Pipeline Runs</h1>
+			<h1 class="text-3xl font-bold tracking-tight">PR runs</h1>
 			<p class="text-sm text-muted-foreground">
-				Durable issue implementation lifecycle, attempt execution history, and CI status
+				Each enrolled pull request's delivery state, decisions waiting on you and attempt history
 			</p>
 		</div>
 		<div class="flex items-center gap-3">
@@ -259,7 +167,7 @@
 				variant="outline"
 				size="sm"
 				onclick={() => {
-					loadRuns();
+					reload();
 					loadProjects();
 					loadCatalogs();
 				}}
@@ -288,7 +196,11 @@
 			aria-label="Project filter"
 			disabled={!!scopedProject}
 			bind:value={selectedProjectId}
-			onchange={() => loadRuns(0)}
+			onchange={() => {
+				// Decisions read for the previous filter may not cover the new one.
+				pending = null;
+				void reload(0);
+			}}
 			class="max-w-full min-w-0"
 		>
 			{#if !scopedProject}<option value="">All Projects</option>{/if}
@@ -324,29 +236,29 @@
 	</div>
 
 	{#if list.error}
-		<LoadError message={list.error} retry={() => loadRuns()} />
+		<LoadError message={list.error} retry={() => reload()} />
 	{/if}
 
 	<div
-		class="overflow-hidden rounded-xl border border-border/80 bg-card/60 shadow-xs backdrop-blur-xs"
+		class="overflow-x-auto rounded-xl border border-border/80 bg-card/60 shadow-xs backdrop-blur-xs"
 	>
 		<Table class="block md:table">
 			<TableHeader class="hidden md:table-header-group">
 				<TableRow>
-					<TableHead class="w-45">Pull Request</TableHead>
-					<TableHead class="w-40">Project</TableHead>
-					<TableHead class="w-32.5">State</TableHead>
+					<TableHead>Pull Request</TableHead>
+					<TableHead>Project</TableHead>
+					<TableHead>State</TableHead>
 					<TableHead>Branch & Pull Request</TableHead>
-					<TableHead class="w-40">Lease Status</TableHead>
-					<TableHead class="w-35">Created</TableHead>
-					<TableHead class="w-22.5 text-right">Attempts</TableHead>
+					<TableHead>Lease Status</TableHead>
+					<TableHead>Created</TableHead>
+					<TableHead class="text-right">Actions</TableHead>
 				</TableRow>
 			</TableHeader>
 			<TableBody class="block md:table-row-group">
 				{#if loading}
 					<TableRow>
 						<TableCell colspan={7} class="h-32 text-center text-muted-foreground">
-							Loading pipeline runs...
+							Loading PR runs…
 						</TableCell>
 					</TableRow>
 				{:else if list.error}
@@ -356,7 +268,7 @@
 						<TableCell colspan={7} class="h-32 text-center text-muted-foreground">
 							<div class="flex flex-col items-center justify-center gap-2">
 								<Workflow class="size-8 text-muted-foreground/40" />
-								<span>No pipeline runs found</span>
+								<span>No PR runs found</span>
 							</div>
 						</TableCell>
 					</TableRow>
@@ -366,13 +278,12 @@
 							{run}
 							projectName={getProjectName(run.project_id)}
 							operating={operatingRunId === run.id}
-							onadvance={handleAdvance}
-							onpause={handlePause}
-							onresume={handleResume}
-							oncancel={handleCancel}
-							onattach={openAttachPr}
-							onhistory={openAttempts}
-							ondecisions={(run) => (decisionRun = run)}
+							decisions={decisionsFor(run.id, pending)}
+							onadvance={(id) => operate(id, () => advanceRun(id))}
+							onpause={(id) => operate(id, () => pauseRun(id))}
+							onresume={(run) => operate(run.id, () => resumeRun(run))}
+							oncancel={(id) => operate(id, () => cancelRun(id))}
+							onattach={(run) => (attachTargetRun = run)}
 						/>
 					{/each}
 				{/if}
@@ -389,25 +300,13 @@
 		/>
 	{/if}
 
-	{#if decisionRun}
-		{#key decisionRun.id}<RunDecisionsDialog
-				run={decisionRun}
-				onclose={() => (decisionRun = null)}
-				onchange={() => loadRuns()}
-			/>{/key}
-	{/if}
-	{#if selectedRun}
-		{#key selectedRun.id}
-			<AttemptHistoryDialog run={selectedRun} onclose={() => (selectedRun = null)} />
-		{/key}
-	{/if}
 	{#if isAcquireOpen}
 		<EnrollPullRequestDialog
 			initialProjectId={selectedProjectId || (projects[0]?.id ?? '')}
 			{projects}
 			{pipelineCatalogs}
 			onclose={() => (isAcquireOpen = false)}
-			onsaved={() => loadRuns()}
+			onsaved={() => reload()}
 		/>
 	{/if}
 	{#if attachTargetRun}
@@ -415,7 +314,7 @@
 			<AttachPullRequestDialog
 				run={attachTargetRun}
 				onclose={() => (attachTargetRun = null)}
-				onsaved={() => loadRuns()}
+				onsaved={() => reload()}
 			/>
 		{/key}
 	{/if}

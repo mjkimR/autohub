@@ -212,11 +212,11 @@ test('pages through sessions and hides their reconciliation marker', async () =>
 	expect(await screen.findByText('Weekly hygiene report')).toBeTruthy();
 	expect(screen.getByText('report')).toBeTruthy();
 	expect(screen.getByText('1–2 of 45')).toBeTruthy();
-	// A report keeps its final message; a task links the pipeline run that adopted its pull request.
+	// A report keeps its final message; a task links the PR run that adopted its pull request.
 	expect(screen.getByText(/3 stale dependencies/)).toBeTruthy();
-	expect(screen.getByRole('link', { name: 'Pipeline run' })).toHaveProperty(
+	expect(screen.getByRole('link', { name: 'PR run' })).toHaveProperty(
 		'href',
-		expect.stringContaining('/projects/runs?run=run-9')
+		expect.stringContaining('/runs/run-9')
 	);
 	expect(api.GET).toHaveBeenCalledWith('/api/v1/ai-catalogs/{catalog_key}/sessions', {
 		params: { path: { catalog_key: 'personal-jules' }, query: { offset: 0, limit: 20 } }

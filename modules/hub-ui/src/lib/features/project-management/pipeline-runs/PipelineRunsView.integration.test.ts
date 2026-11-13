@@ -1,12 +1,34 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import PipelineRunsView from './PipelineRunsView.svelte';
 
-const { api } = vi.hoisted(() => ({ api: { GET: vi.fn(), POST: vi.fn() } }));
+const { api, goto } = vi.hoisted(() => ({ api: { GET: vi.fn(), POST: vi.fn() }, goto: vi.fn() }));
 
 vi.mock('$lib/api', () => ({ api }));
+vi.mock('$app/navigation', () => ({ goto }));
 vi.mock('svelte-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+
+/**
+ * Opens a row's overflow menu. Floating UI cannot measure layout in jsdom, so the positioned menu
+ * stays visibility-hidden there and its items are queried with `hidden: true`.
+ */
+async function openMenu(user: ReturnType<typeof userEvent.setup>) {
+	await user.click(screen.getByRole('button', { name: 'More actions for PR #7' }));
+	await screen.findByRole('menu', { hidden: true });
+}
+
+/** A hidden element has no computed accessible name, so menu items are matched by text. */
+function menuItems() {
+	return screen
+		.getAllByRole('menuitem', { hidden: true })
+		.map((item) => [item.textContent?.trim(), item] as const);
+}
+function menuItem(name: string) {
+	const found = menuItems().find(([text]) => text === name)?.[1];
+	if (!found) throw new Error(`No menu item ${name}`);
+	return found;
+}
 
 const project = { id: 'project-1', name: 'Scheduler', enabled: true, revision: 1 };
 const catalogs = [
@@ -61,17 +83,21 @@ test('combines inherited group and run state filters, preserving the empty null 
 	);
 	await fireEvent.change(screen.getByLabelText('Run group'), { target: { value: 'all' } });
 	await waitFor(() =>
-		expect(api.GET).toHaveBeenLastCalledWith('/api/v1/pipeline-runs', {
-			params: {
-				query: expect.objectContaining({ group_key: undefined, state: 'blocked', offset: 0 })
+		expect(api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs').at(-1)).toEqual([
+			'/api/v1/pipeline-runs',
+			{
+				params: {
+					query: expect.objectContaining({ group_key: undefined, state: 'blocked', offset: 0 })
+				}
 			}
-		})
+		])
 	);
 });
 
 beforeEach(() => {
 	api.GET.mockReset();
 	api.POST.mockReset();
+	goto.mockReset();
 	api.GET.mockImplementation((path: string) => {
 		if (path === '/api/v1/projects')
 			return Promise.resolve({ data: { items: [project], total_count: 1 } });
@@ -96,7 +122,8 @@ test('renders current run state and pauses the selected run', async () => {
 
 	await screen.findByText('Ship the feature');
 	expect(screen.getByText('Implementing', { selector: '[data-run-state]' })).toBeTruthy();
-	await user.click(screen.getByRole('button', { name: 'Pause Run' }));
+	await openMenu(user);
+	await user.click(menuItem('Pause'));
 
 	await waitFor(() =>
 		expect(api.POST).toHaveBeenCalledWith('/api/v1/pipeline-runs/{run_id}/pause', {
@@ -107,33 +134,174 @@ test('renders current run state and pauses the selected run', async () => {
 });
 
 test.each([
-	{ label: 'Advance Run', state: 'implementing', action: 'advance' },
-	{ label: 'Resume Run', state: 'paused', action: 'resume' },
-	{ label: 'Cancel Run', state: 'implementing', action: 'cancel' }
-])('$label acts on the selected row and refreshes the list', async ({ label, state, action }) => {
+	{ label: 'Advance now', state: 'implementing', action: 'advance', menu: true },
+	{ label: 'Resume', state: 'paused', action: 'resume', menu: false },
+	{ label: 'Cancel run', state: 'implementing', action: 'cancel', menu: true }
+])(
+	'$label acts on the selected row and refreshes the list',
+	async ({ label, state, action, menu }) => {
+		const previous = api.GET.getMockImplementation()!;
+		api.GET.mockImplementation((path: string) =>
+			path === '/api/v1/pipeline-runs'
+				? Promise.resolve({ data: { items: [{ ...run, state }], total_count: 1 } })
+				: previous(path)
+		);
+		vi.spyOn(window, 'confirm').mockReturnValue(true);
+		const user = userEvent.setup();
+		render(PipelineRunsView);
+		await screen.findByText('Ship the feature');
+		if (menu) {
+			await openMenu(user);
+			await user.click(menuItem(label));
+		} else await user.click(screen.getByRole('button', { name: `${label} for PR #7` }));
+
+		await waitFor(() =>
+			expect(api.POST).toHaveBeenCalledWith(`/api/v1/pipeline-runs/{run_id}/${action}`, {
+				params: { path: { run_id: 'run-1' } },
+				...(action === 'resume'
+					? { body: { request_id: expect.any(String), expected_revision: 1 } }
+					: {})
+			})
+		);
+		await waitFor(() =>
+			expect(api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs')).toHaveLength(
+				2
+			)
+		);
+	}
+);
+
+test('a run held by a pending question offers Answer, a marker and no plain Resume', async () => {
 	const previous = api.GET.getMockImplementation()!;
-	api.GET.mockImplementation((path: string) =>
-		path === '/api/v1/pipeline-runs'
-			? Promise.resolve({ data: { items: [{ ...run, state }], total_count: 1 } })
-			: previous(path)
-	);
-	vi.spyOn(window, 'confirm').mockReturnValue(true);
+	api.GET.mockImplementation((path: string) => {
+		if (path === '/api/v1/pipeline-runs')
+			return Promise.resolve({ data: { items: [{ ...run, state: 'paused' }], total_count: 1 } });
+		if (path === '/api/v1/pipeline-runs/decisions')
+			return Promise.resolve({
+				data: {
+					items: [
+						{
+							run_id: 'run-1',
+							kind: 'run-question',
+							question_state: 'open',
+							actionable: true
+						}
+					],
+					has_more: false,
+					next_cursor: null,
+					actionable_total_count: 1
+				}
+			});
+		return previous(path);
+	});
 	const user = userEvent.setup();
 	render(PipelineRunsView);
 	await screen.findByText('Ship the feature');
-	await user.click(screen.getByRole('button', { name: label }));
+	expect(screen.getByText('Question waiting')).toBeTruthy();
+	expect(screen.getByRole('link', { name: 'Answer question for PR #7' }).getAttribute('href')).toBe(
+		'/projects/project-1/runs/run-1#decisions'
+	);
+	expect(screen.queryByRole('button', { name: /Resume/ })).toBeNull();
+	await openMenu(user);
+	const names = menuItems().map(([text]) => text);
+	expect(names).not.toContain('Resume');
+	expect(names).toContain('Advance now');
+});
 
+test('reads pending decisions once for the whole list, scoped to the selected project', async () => {
+	render(PipelineRunsView, { scopedProject: project as never });
+	await screen.findByText('Ship the feature');
+	const reads = api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs/decisions');
+	expect(reads).toHaveLength(1);
+	expect(reads[0][1]).toEqual({
+		params: { query: { project_id: 'project-1', cursor: undefined, limit: 100 } }
+	});
+});
+
+const decisionReads = () =>
+	api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs/decisions');
+
+test('search and state filters reuse pending decisions; a project change reloads them', async () => {
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+	await screen.findByRole('option', { name: 'Scheduler' });
+	expect(decisionReads()).toHaveLength(1);
+	await fireEvent.input(screen.getByPlaceholderText(/Search PR number/), {
+		target: { value: 'feature' }
+	});
+	await fireEvent.change(screen.getByLabelText('Run state'), { target: { value: 'blocked' } });
 	await waitFor(() =>
-		expect(api.POST).toHaveBeenCalledWith(`/api/v1/pipeline-runs/{run_id}/${action}`, {
-			params: { path: { run_id: 'run-1' } },
-			...(action === 'resume'
-				? { body: { request_id: expect.any(String), expected_revision: 1 } }
-				: {})
+		expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs', {
+			params: { query: expect.objectContaining({ state: 'blocked' }) }
 		})
 	);
-	await waitFor(() =>
-		expect(api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs')).toHaveLength(2)
+	expect(decisionReads()).toHaveLength(1);
+	await fireEvent.change(screen.getByLabelText('Project filter'), {
+		target: { value: 'project-1' }
+	});
+	await waitFor(() => expect(decisionReads()).toHaveLength(2));
+	expect(decisionReads()[1][1].params.query.project_id).toBe('project-1');
+});
+
+test('a decisions response overtaken by a project change is dropped', async () => {
+	const previous = api.GET.getMockImplementation()!;
+	let releaseFirst!: () => void;
+	api.GET.mockImplementation((path: string, options?: { params: { query: object } }) => {
+		if (path === '/api/v1/pipeline-runs')
+			return Promise.resolve({ data: { items: [{ ...run, state: 'paused' }], total_count: 1 } });
+		if (path !== '/api/v1/pipeline-runs/decisions') return previous(path);
+		const scoped = (options?.params.query as { project_id?: string }).project_id;
+		if (scoped) return Promise.resolve({ data: { items: [], has_more: false } });
+		// The unscoped read answers last and claims an open question.
+		return new Promise((resolve) => {
+			releaseFirst = () =>
+				resolve({
+					data: {
+						items: [
+							{ run_id: 'run-1', kind: 'run-question', question_state: 'open', actionable: true }
+						],
+						has_more: false
+					}
+				});
+		});
+	});
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+	await screen.findByRole('option', { name: 'Scheduler' });
+	await fireEvent.change(screen.getByLabelText('Project filter'), {
+		target: { value: 'project-1' }
+	});
+	await screen.findByRole('button', { name: 'Resume for PR #7' });
+	releaseFirst();
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(screen.queryByText('Question waiting')).toBeNull();
+	expect(screen.getByRole('button', { name: 'Resume for PR #7' })).toBeTruthy();
+});
+
+test('an incomplete decisions page makes a stopped row open the run and keeps Resume in the menu', async () => {
+	const previous = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation((path: string) => {
+		if (path === '/api/v1/pipeline-runs')
+			return Promise.resolve({ data: { items: [{ ...run, state: 'paused' }], total_count: 1 } });
+		if (path === '/api/v1/pipeline-runs/decisions')
+			return Promise.resolve({
+				data: {
+					items: [{ run_id: 'other', kind: 'native-workflow', actionable: true }],
+					has_more: true,
+					next_cursor: 'next'
+				}
+			});
+		return previous(path);
+	});
+	const user = userEvent.setup();
+	render(PipelineRunsView);
+	await screen.findByText('Ship the feature');
+	expect(screen.getByRole('link', { name: 'Open run for PR #7' }).getAttribute('href')).toBe(
+		'/projects/project-1/runs/run-1'
 	);
+	expect(screen.queryByRole('button', { name: /Resume/ })).toBeNull();
+	await openMenu(user);
+	expect(menuItems().map(([text]) => text)).toContain('Resume');
 });
 
 test('enrolls the selected project and refreshes the run list', async () => {
@@ -167,16 +335,15 @@ test('offers only enabled catalogs that deliver pull request work', async () => 
 	expect(Array.from(select.options).map((o) => o.value)).toEqual(['', 'personal-codex']);
 });
 
-test('opens the run named in the page URL', async () => {
-	window.history.replaceState({}, '', '/projects/runs?run=run-1');
+test.each([
+	['/projects/runs?run=run-1', '/runs/run-1'],
+	['/projects/runs?run=run-1&view=decisions', '/runs/run-1#decisions'],
+	['/projects/project-1?tab=runs&run=run-1', '/runs/run-1']
+])('redirects the old run deep link %s to the PR run page', async (from, to) => {
+	window.history.replaceState({}, '', from);
 	render(PipelineRunsView);
-
-	await screen.findByText('Ship the feature');
-	await waitFor(() =>
-		expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs/{run_id}/attempts', {
-			params: { path: { run_id: 'run-1' } }
-		})
-	);
+	await waitFor(() => expect(goto).toHaveBeenCalledWith(to, { replaceState: true }));
+	expect(api.GET).not.toHaveBeenCalledWith('/api/v1/pipeline-runs', expect.anything());
 	window.history.replaceState({}, '', '/projects/runs');
 });
 
@@ -227,14 +394,14 @@ test('attaches a PR to the selected run and refreshes the list', async () => {
 	const user = userEvent.setup();
 	render(PipelineRunsView);
 	await screen.findByText('Ship the feature');
-	await user.click(screen.getByRole('button', { name: 'Attach Pull Request' }));
+	await user.click(screen.getByRole('button', { name: 'Attach PR for PR #pending' }));
 	await waitFor(() =>
 		expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
 	);
 	await user.clear(screen.getByLabelText('Pull Request Number'));
 	await user.type(screen.getByLabelText('Pull Request Number'), '12');
 	await user.clear(screen.getByLabelText('Pull Request URL (optional)'));
-	await user.click(screen.getByRole('button', { name: 'Attach PR' }));
+	await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Attach PR' }));
 	await waitFor(() =>
 		expect(api.POST).toHaveBeenCalledWith('/api/v1/pipeline-runs/{run_id}/attach-pr', {
 			params: { path: { run_id: 'run-1' } },
@@ -243,64 +410,4 @@ test('attaches a PR to the selected run and refreshes the list', async () => {
 	);
 	await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 	expect(api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs')).toHaveLength(2);
-});
-
-test('reopening history fetches fresh attempts and resets expanded timelines', async () => {
-	const previous = api.GET.getMockImplementation()!;
-	api.GET.mockImplementation((path: string) =>
-		path === '/api/v1/pipeline-runs/{run_id}/attempts'
-			? Promise.resolve({
-					data: {
-						items: [
-							{
-								id: 'attempt-1',
-								attempt_number: 1,
-								kind: 'implementation',
-								state: 'running',
-								idempotency_key: 'key-1',
-								request_digest: 'digest-1',
-								created_at: '2026-09-14T00:00:00Z'
-							}
-						]
-					}
-				})
-			: previous(path)
-	);
-	const user = userEvent.setup();
-	render(PipelineRunsView);
-	await screen.findByText('Ship the feature');
-	await user.click(screen.getByRole('button', { name: 'View Attempt History' }));
-	await user.click(await screen.findByRole('button', { name: 'Show requests and replies' }));
-	expect(screen.getByRole('button', { name: 'Hide requests and replies' })).toBeTruthy();
-	await user.keyboard('{Escape}');
-	await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-	await waitFor(() => expect(getComputedStyle(document.body).pointerEvents).not.toBe('none'));
-	await user.click(screen.getByRole('button', { name: 'View Attempt History' }));
-	expect(await screen.findByRole('button', { name: 'Show requests and replies' })).toBeTruthy();
-	expect(
-		api.GET.mock.calls.filter(([path]) => path === '/api/v1/pipeline-runs/{run_id}/attempts')
-	).toHaveLength(2);
-});
-
-test('attempt loading failures show a retry instead of an empty history', async () => {
-	const previous = api.GET.getMockImplementation()!;
-	let failed = true;
-	api.GET.mockImplementation((path: string) =>
-		path === '/api/v1/pipeline-runs/{run_id}/attempts'
-			? Promise.resolve(
-					failed
-						? { error: { detail: 'History temporarily unavailable' } }
-						: { data: { items: [], summary: null } }
-				)
-			: previous(path)
-	);
-	const user = userEvent.setup();
-	render(PipelineRunsView);
-	await screen.findByText('Ship the feature');
-	await user.click(screen.getByRole('button', { name: 'View Attempt History' }));
-	await screen.findByText('History temporarily unavailable');
-	expect(screen.queryByText('No execution attempts recorded yet')).toBeNull();
-	failed = false;
-	await user.click(screen.getByRole('button', { name: /Retry/ }));
-	await screen.findByText('No execution attempts recorded yet');
 });

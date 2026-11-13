@@ -51,7 +51,7 @@ The member table is primary. The captured basis and completeness notice sit abov
 | Expand member prerequisites | `UC-preview-sdd-milestone` 3 | populated, held, incomplete | same | | `CAP-SDD-native-delivery` | Exact prerequisite IDs, anchors, status and hold reasons appear. |
 | Open source anchor | `UC-preview-sdd-milestone` 3 | populated, held, incomplete | same | | `CAP-DOC-repository-viewer` | Open GitHub source at the captured SHA while retaining the panel. |
 | Open owned PR | `UC-preview-sdd-milestone` 3 | populated, held, incomplete | same | | `CAP-SDD-native-delivery` | Open the owned PR on GitHub while retaining the panel, including before enrollment; no enrollment or resumption occurs. |
-| Open existing execution | `UC-preview-sdd-milestone` 3 | populated, held | same | `UX-run-decisions` | `CAP-SDD-native-delivery` | Open recorded run without resuming or approving it. |
+| Open existing execution | `UC-preview-sdd-milestone` 3 | populated, held | same | `UX-run-page` | `CAP-SDD-native-delivery` | The recorded run's page opens at its Decisions section without resuming or approving it. |
 | Select/deselect eligible member | `UC-preview-sdd-milestone` 4 | populated, selected | selected | | `CAP-SDD-native-delivery` | Exact subset/order changes; no execution starts. |
 | Clear selection | `UC-preview-sdd-milestone` 4 | selected | populated | | `CAP-SDD-native-delivery` | Selected count returns to zero. |
 | Leave repository inspection | `UC-preview-sdd-milestone` 5 | populated, selected, held, incomplete, error | end | end | `CAP-SDD-native-delivery` | Navigate away without saving a queue. |

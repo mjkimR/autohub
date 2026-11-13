@@ -44,7 +44,7 @@ entrypoints:
 
 4. The operator reviews the inspected evidence and approves integration
    (`CAP-SDD-workflow-control`, rules 3, 6).
-   Interface: `UX-decision-inbox`, `UX-sdd-run`.
+   Interface: `UX-decision-inbox`, `UX-run-page`, `UX-sdd-run`.
 
 5. Hub continues the authorized workflow through integration and its final checks
    (`CAP-SDD-workflow-control`, rules 4–6, 19; `CAP-SDD-runtime-isolation`, rule 13).

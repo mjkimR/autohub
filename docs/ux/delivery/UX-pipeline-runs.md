@@ -1,7 +1,7 @@
 ---
 id: UX-pipeline-runs
-title: Pipeline Runs
-summary: "The Pipeline Runs screen lists PR run state, ownership and recovery controls and opens enrollment, decision and attempt-history dialogs."
+title: PR Runs
+summary: "The PR runs screen lists PR run state, ownership and pending decisions with one state-driven action per row, and opens each run's page and the enrollment dialog."
 area: delivery
 element: screen
 status: active
@@ -14,37 +14,56 @@ capabilities:
   - CAP-SDD-workflow-control
 ---
 
-# [UX-pipeline-runs] Pipeline Runs
+# [UX-pipeline-runs] PR Runs
 
 ## 1. Purpose
 
-- **Primary task**: Inspect and control a PR run.
-- **Facts to commit**: Project connection, PR identity, run state/revision, wait reason and lease status.
-- **Secondary items**: Enrollment, decisions, PR attachment and execution-attempt history open dedicated modals.
+- **Primary task**: Find the PR run that needs attention and take its next action.
+- **Facts to commit**: Project connection, PR identity, run state/revision, pending decision, wait reason and lease status.
+- **Secondary items**: Each run's decisions, attempts and full controls live on `UX-run-page`; enrollment and PR
+  attachment open dedicated modals.
 
 ## 2. Content
 
 The PR run list is the primary region. Filters stay above it; row actions belong
 to their PR run. The dashboard's Needs-you tile in `UX-dashboard` opens this screen
 with default filters. The same view can be scoped to one Project connection in its
-detail screen. The route `/projects/runs` also accepts a run deep link.
+detail screen. The page title is "PR runs" (glossary term).
 
 - Project connection (project filter; fixed in a scoped view).
 - PR run (searchable and paginated row): PR number/title, branch, state, revision,
-  wait reason, lease holder/expiry and creation time. The state is the PR run state
-  badge: a label plus a decorative icon, ranked as failure (failed), attention
-  (paused, blocked), quiet progress (dispatching, implementing), quiet success
-  (completed) or neutral (queued, awaiting CI, canceled), per
-  `docs/steering/visual-style.md`. The pause reason stays below the badge. Row
-  controls such as Pause Run and Resume Run are ink with no status hue.
-  - `UX-run-decisions` (modal; opened for an inspected row).
-  - `UX-attempt-history` (modal; opened for the row's Execution attempts).
-  - `UX-attach-pull-request` (modal; offered only when no PR number is attached).
+  wait reason, lease holder/expiry and creation time. The PR title opens `UX-run-page`.
+  The state is the PR run state badge: a label plus a decorative icon, ranked as
+  failure (failed), attention (paused, blocked), quiet progress (dispatching,
+  implementing), quiet success (completed) or neutral (queued, awaiting CI,
+  canceled), per `docs/steering/visual-style.md`. The pause reason stays below the badge.
+  - Decision-wait marker (attention Badge beside the state; when the Decision inbox
+    lists a pending decision for the run): Question waiting, Answer saved — resume
+    pending, or Approval waiting.
+  - Primary action (one per row, state-driven, same rule as `UX-run-page`): Answer
+    question, Resume with saved answer, Review approval or Check decision link to the
+    run page's Decisions section; Next step links to a failed run's next step; Resume
+    acts on a stopped run whose decisions are known and none holds it; Attach PR opens
+    `UX-attach-pull-request`; otherwise Open run. A stopped run whose decisions are
+    unknown gets Open run, and plain Resume stays in the overflow menu. Each primary
+    action's accessible name contains its visible label and names the PR (for example
+    "Apply answer (resume with saved answer) for PR #7").
+  - More actions (overflow menu): Open run, Decisions, Attempts & errors, Resume (only
+    when allowed), Pause, Advance now, Attach PR, Inspect PR and Cancel run, each when
+    it applies. Controls are ink with no status hue; Cancel run is the destructive item.
 - `UX-enroll-pull-request` (modal; opened by Enroll PR).
 
-State, group and text filters reload the first page. A linked run can select its
-project and open decisions or attempts. Ordinary PR readiness is changed in
-GitHub, not by a ready toggle on this screen.
+Pending decisions come from one Decision inbox read of up to 100 entries for the
+filtered project, not one request per row. It reloads only on first load, when the
+project filter changes, on Refresh and after an operation; search and state filters
+reuse it, and a response overtaken by a newer read or a project change is dropped.
+When that read fails or is incomplete, rows without an entry treat their decisions as
+unknown: the primary action is Open run and Resume is only in the overflow menu.
+
+The old run deep links `/projects/runs?run={id}[&view=decisions]` and
+`/projects/{projectId}?tab=runs&run={id}` redirect to `UX-run-page` instead of
+loading the list. Ordinary PR readiness is changed in GitHub, not by a ready toggle
+on this screen.
 
 ## 3. States
 
@@ -59,20 +78,24 @@ GitHub, not by a ready toggle on this screen.
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
 | Enroll PR | `UC-deliver-pull-request` 1 | populated | populated | `UX-enroll-pull-request` | `CAP-PR-pull-request-delivery` | Enrollment dialog opens. |
-| Refresh / Advance Run | `UC-deliver-pull-request` 4, `UC-complete-sdd-workflow` 7 | populated | loading |  | `CAP-PR-pull-request-delivery` | Loading state or action toast precedes the refreshed run state. |
-| View Attempt History | `UC-deliver-pull-request` 4 | populated | populated | `UX-attempt-history` | `CAP-PR-pull-request-delivery` | The selected run’s attempt dialog opens. |
-| Decisions | global: inspect the selected run before choosing a task | populated | populated | `UX-run-decisions` | `CAP-PR-operator-decisions` | Current question and native workflow context load. |
-| Attach Pull Request | global: associate a PR with eligible work that has no PR number | populated | populated | `UX-attach-pull-request` | `CAP-PR-pull-request-delivery` | Attachment dialog opens. |
-| Pause Run | `UC-deliver-pull-request` *a, `UC-complete-sdd-workflow` *a | populated | operating |  | `CAP-PR-pull-request-delivery` | Success toast and refreshed stopped state. |
-| Resume Run | `UC-deliver-pull-request` *c | populated | operating |  | `CAP-PR-pull-request-delivery` | A blocked-run reason is confirmed when present; the resumed state or refusal is shown. |
-| Cancel Run | `UC-deliver-pull-request` *b | populated | operating |  | `CAP-PR-pull-request-delivery` | Browser confirmation precedes cancellation; the refreshed row shows the outcome. |
-| Open on GitHub | global: open GitHub for PR review and readiness outside Hub | populated | populated | end | `CAP-PR-pull-request-delivery` | The PR opens in a separate tab for external readiness/review. |
+| Refresh | `UC-deliver-pull-request` 4 | populated | loading |  | `CAP-PR-pull-request-delivery` | The list and its pending decisions reload. |
+| Open run (PR title, primary action or menu) | `UC-deliver-pull-request` 4, `UC-complete-sdd-workflow` 7 | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The run's page opens. |
+| Answer question / Resume with saved answer | global: open the run page section that holds the run's owed question | populated | populated | `UX-run-page` | `CAP-PR-operator-decisions` | The run page opens at its Decisions section. |
+| Review approval | global: open the run page section that holds the run's owed native decision | populated | populated | `UX-run-page` | `CAP-SDD-native-delivery` | The run page opens at its Decisions section. |
+| Next step | global: open a failed run's recovery path on its page | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The failed run's page opens at its next step. |
+| Attempts & errors | `UC-deliver-pull-request` 4 | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The run page opens at its Execution attempts section. |
+| Attach PR | global: associate a PR with eligible work that has no PR number | populated | populated | `UX-attach-pull-request` | `CAP-PR-pull-request-delivery` | Attachment dialog opens. |
+| Advance now | `UC-deliver-pull-request` 4, `UC-complete-sdd-workflow` 7 | populated | operating |  | `CAP-PR-pull-request-delivery` | A toast names the resulting state and the list reloads. |
+| Pause | `UC-deliver-pull-request` *a, `UC-complete-sdd-workflow` *a | populated | operating |  | `CAP-PR-pull-request-delivery` | Success toast and refreshed stopped state. |
+| Resume | `UC-deliver-pull-request` *c | populated | operating |  | `CAP-PR-pull-request-delivery` | A blocked-run reason is confirmed when present; the resumed state or refusal is shown. Not offered while a decision holds the run; in the overflow menu when the run's decisions are unknown. |
+| Cancel run | `UC-deliver-pull-request` *b | populated | operating |  | `CAP-PR-pull-request-delivery` | Browser confirmation precedes cancellation; the refreshed row shows the outcome. |
+| Inspect PR / Open on GitHub | global: open GitHub for PR review and readiness outside Hub | populated | populated | end | `CAP-PR-pull-request-delivery` | The PR opens in a separate tab for external readiness/review. |
 | Navigate to Projects | global: leave execution inspection through the application navigation | populated | populated | `UX-projects` |  | Project connections are shown. |
 
 ## 5. Evidence
 
 - [PipelineRunsView.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/PipelineRunsView.svelte).
-- [PipelineRunRow.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/PipelineRunRow.svelte).
+- [PipelineRunRow.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/PipelineRunRow.svelte) and [RunActions.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunActions.svelte).
 - [RunStateBadge.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunStateBadge.svelte) and [presentation.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/presentation.ts), with [presentation.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/presentation.test.ts) covering every run state.
 - [PipelineRunsView.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/PipelineRunsView.integration.test.ts); test assertions were inspected.
 

@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest';
 import {
+	isPendingDecisionUnknown,
 	pendingDecisionPhrase,
 	pendingDecisionText,
 	summarizePendingDecisions
@@ -18,7 +19,13 @@ test('one owed decision uses the singular', () => {
 	expect(pendingDecisionPhrase(value)).toBe('1 pending decision');
 });
 
-test('zero and unknown stay neutral', () => {
+test('only an unknown count is marked unknown; zero is known', () => {
+	expect(isPendingDecisionUnknown({ status: 'unknown' })).toBe(true);
+	expect(isPendingDecisionUnknown({ status: 'known', count: 0 })).toBe(false);
+	expect(isPendingDecisionUnknown({ status: 'known', count: 3 })).toBe(false);
+});
+
+test('zero and unknown carry no count text', () => {
 	const zero = summarizePendingDecisions({ actionable_total_count: 0 });
 	expect(zero).toEqual({ status: 'known', count: 0 });
 	expect(pendingDecisionText(zero)).toBe('');

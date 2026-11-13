@@ -41,9 +41,9 @@
 	}
 </script>
 
-<section class="space-y-2 rounded-lg border p-3 text-sm" aria-label="Decision outcome">
-	<p class="font-medium">Decision outcome</p>
-	{#if review.subject || review.intent || outcome}
+{#if review.subject || review.intent || outcome}
+	<section class="space-y-2 rounded-lg border p-3 text-sm" aria-label="Decision outcome">
+		<p class="font-medium">Decision outcome</p>
 		<p>
 			Request <code>{review.subject?.requestId}</code> · {review.subject?.operation}
 		</p>
@@ -93,27 +93,32 @@
 				disabled={review.busy || terminal || changed || review.competingUnresolved}
 				onclick={retry}>Retry same request</Button
 			>{/if}
-	{:else}
-		<p class="text-muted-foreground">
-			After a browser reload, unacknowledged submission intent is unavailable. Review durable owner
-			history; an absent record leaves the outcome unknown.
+		{#if review.intent?.rejected}<Button
+				variant="outline"
+				onclick={async () => {
+					await onrefresh();
+					review.releaseRejection();
+				}}>Review current context to correct input</Button
+			>{/if}
+		{#if onreconcile && !terminal && ((review.intent?.body as { decision?: string })?.decision === 'accept_plan' || (review.intent?.body as { decision?: string })?.decision === 'reject_plan' || ['accept_plan', 'reject_plan'].includes(outcome?.native_channel || ''))}
+			<p>
+				Reconcile publication inspects current evidence and may continue this run. It grants no
+				approval and preserves later stops.
+			</p>
+			<Button variant="outline" disabled={review.busy} onclick={onreconcile}
+				>Review publication reconciliation</Button
+			>
+		{/if}
+		{#if review.error}<p role="status">{review.error}</p>{/if}
+	</section>
+{:else}
+	<!-- Nothing was submitted from this page: recovery guidance stays available but never leads. -->
+	<details class="text-xs text-muted-foreground" aria-label="Decision outcome">
+		<summary class="cursor-pointer">Submitted a decision before reloading?</summary>
+		<p class="mt-2 leading-relaxed">
+			An unconfirmed submission is not kept after a browser reload. Use Check saved answer outcome
+			or the decision history to read what was recorded; a missing record means the outcome is still
+			unknown.
 		</p>
-	{/if}
-	{#if review.intent?.rejected}<Button
-			variant="outline"
-			onclick={async () => {
-				await onrefresh();
-				review.releaseRejection();
-			}}>Review current context to correct input</Button
-		>{/if}
-	{#if onreconcile && !terminal && ((review.intent?.body as { decision?: string })?.decision === 'accept_plan' || (review.intent?.body as { decision?: string })?.decision === 'reject_plan' || ['accept_plan', 'reject_plan'].includes(outcome?.native_channel || ''))}
-		<p>
-			Reconcile publication inspects current evidence and may continue this run. It grants no
-			approval and preserves later stops.
-		</p>
-		<Button variant="outline" disabled={review.busy} onclick={onreconcile}
-			>Review publication reconciliation</Button
-		>
-	{/if}
-	{#if review.error}<p role="status">{review.error}</p>{/if}
-</section>
+	</details>
+{/if}
