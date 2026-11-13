@@ -2,7 +2,7 @@
 id: SPEC-schedule-config-ownership
 title: Schedule configuration ownership and project filter
 summary: "Derive verified schedule owners and mutation metadata in bounded reads, and filter schedules by project before pagination."
-status: in-progress
+status: completed
 created: 2026-11-13
 related_capabilities: [CAP-EXEC-scheduling-maintenance, CAP-AGENT-provider-sessions, CAP-PROJ-project-connections]
 related_usecases: []
