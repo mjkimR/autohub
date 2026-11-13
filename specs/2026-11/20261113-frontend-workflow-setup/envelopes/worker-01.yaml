@@ -1,0 +1,24 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:20:21.629311Z'
+status: completed
+summary: Completed setup/lint repair with 12 passing command regressions, real initialization and full lint/check; independent review passed, developer guides reconciled and the two source feedback records resolved. No integration or remote effects.
+findings: []
+assumptions:
+- Codex execution boundaries emulated by absolute cwd/path checks, separate per-operation escalations, scope audits and clean-HEAD checks; no native enforcement guarantee.
+- Full checks ran on implementation 992aae8; later changes are task, source-feedback and workflow documentation only and passed final CI rules.
+unverified_areas:
+- Fresh native Git worktree creation, live deployment and npm registry behavior are not established by command-shim tests; actual direct setup and installed tooling checks are separate evidence.
+checks:
+  sync_start: PASS exit=0
+  tests: PASS Red 8 failed/4 passed before source; Green 12 passed after source; actual just init exit 0
+  lint: PASS full just lint and final CI rules zero errors/warnings
+  build: PASS full just check backend/SDK types and frontend check/build
+  review: PASS independent code reviewer no findings, unchanged HEAD and identical snapshots
+  reconcile: PASS medium self-verification exception documented for repository tooling and its own three developer guides; entrypoints zero pairs
+diff_scope:
+  base: 2bd4356acf905300583ee4581f7bb9a50e032695
+  head: 2705466e92753d965e16fff0ef4ae2e63004fcc9
+activity_effort: medium
