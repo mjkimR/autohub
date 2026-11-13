@@ -1,0 +1,18 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:13:32.406700Z'
+status: completed
+summary: 'Owed-item contract delivered: GET /api/v1/owed-items and /counts through one read-only aggregate repository (one UNION ALL statement per read, plus one project lookup with project_id; one transaction, no provider call), PipelineRunRead.has_pending_decision, regenerated typed client, CAP-PR-owed-items and owner predicates in the Living Spec; no hub-ui screen change'
+findings: []
+assumptions:
+- waiting_since for state-based kinds is the owner updated_at, which Hub never maintains (FB-timestamp-updated-at-never-maintained)
+- Shell Badge and dashboard tile keep their current sources until the Phase 2 Attention landing
+checks:
+  tests: PASS just test 1445 passed 76 skipped (SQLite); just test-pg full backend 1472 passed 46 skipped at 1e007dd plus owed_items 15 and flag/discovery 12 passed after fixes; just test-ui 493 passed
+  build: PASS just check (pyright hub and sdk 0 errors, hub-ui check and build); just check-ui-api up to date
+  lint: PASS just lint-check; devkit rules check --ci --base bb227d6
+diff_scope:
+  base: bb227d633f19d79aff0252b5025cdba5edb5b1e0
+  head: 49931385c960c004f25411e670a78f78ca279f98
