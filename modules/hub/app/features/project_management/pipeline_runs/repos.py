@@ -39,7 +39,7 @@ class PipelineRunRepository:
         token: UUID,
         now: datetime,
     ) -> PipelineRun | None:
-        return (
+        run = (
             await session.execute(
                 select(PipelineRun)
                 .where(
@@ -51,6 +51,12 @@ class PipelineRunRepository:
                 .with_for_update()
             )
         ).scalar_one_or_none()
+
+        if run is not None:
+            from app.features.project_management.sdd.execution import require_current
+
+            require_current(run)
+        return run
 
     async def get_active_for_pull(
         self, session: AsyncSession, project_id: UUID, pull_number: int, *, lock: bool = False
@@ -82,13 +88,7 @@ class PipelineRunRepository:
             )
             .exists()
         )
-        approval_wait = and_(
-            PipelineRun.state == PipelineRunState.PAUSED,
-            PipelineRun.sdd_progress["waiting_for_approval"].as_boolean().is_(True),
-        )
-        observing = or_(
-            PipelineRun.state.in_((PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI)), approval_wait
-        )
+        observing = PipelineRun.state.in_((PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI))
         filters = [
             PipelineRun.project_id == project_id,
             PipelineRun.state.in_(ACTIVE_RUN_STATES),
@@ -106,16 +106,13 @@ class PipelineRunRepository:
         if ready_at is not None:
             filters.extend(
                 [
-                    or_(
-                        approval_wait,
-                        PipelineRun.state.in_(
-                            (
-                                PipelineRunState.QUEUED,
-                                PipelineRunState.DISPATCHING,
-                                PipelineRunState.IMPLEMENTING,
-                                PipelineRunState.AWAITING_CI,
-                            )
-                        ),
+                    PipelineRun.state.in_(
+                        (
+                            PipelineRunState.QUEUED,
+                            PipelineRunState.DISPATCHING,
+                            PipelineRunState.IMPLEMENTING,
+                            PipelineRunState.AWAITING_CI,
+                        )
                     ),
                     or_(PipelineRun.next_action_at.is_(None), PipelineRun.next_action_at <= ready_at),
                     or_(PipelineRun.lease_token.is_(None), PipelineRun.lease_expires_at <= ready_at),
@@ -310,6 +307,7 @@ class PipelineRunRepository:
             )
             .values(lease_owner=owner, lease_token=token, lease_expires_at=expires_at)
             .returning(PipelineRun)
+            .execution_options(synchronize_session="fetch", populate_existing=True)
         )
         return result.scalar_one_or_none()
 

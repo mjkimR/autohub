@@ -46,7 +46,7 @@ def register_sdd(registry: ToolRegistry, deps: Dependencies) -> None:
     register(
         registry,
         "sdd_start_planning",
-        "Start Planning of a draft proposal (PROP-<slug> explicitly requested and eligible under devkit, with size S, M, L or absent; decompose an XL draft first) in the cloud: Hub creates plan-<slug> from base_branch with a start commit that sets status reviewing, opens the pull request and enrolls the run; the first attempt is the Planning worker. An existing remote plan-<slug> refuses the start unless it carries Hub's own open pull request. Check the local branches before calling.",
+        "Request Planning of an explicitly selected proposal. Hub publishes a Draft activity PR and tracks ordinary PR execution; repository setup, SDD eligibility and workflow are the working agent's responsibility. Reuse the original request_id and identical payload after an uncertain response. Inspect an existing owner before requesting replacement work.",
         StartActivity,
         RunView,
         start_planning,
@@ -55,7 +55,7 @@ def register_sdd(registry: ToolRegistry, deps: Dependencies) -> None:
     register(
         registry,
         "sdd_start_development",
-        "Start Development of an accepted proposal in the cloud: Hub creates dev-<slug> from base_branch with an empty start commit, opens a draft pull request and enrolls a handoff-first run whose first step is devkit spec proposal handoff. An existing remote dev-<slug> refuses the start unless it carries Hub's own open pull request. Repositories whose [development] approach is adaptive-dev refuse both starts.",
+        "Request Development of an explicitly selected proposal. Hub publishes a Draft activity PR and tracks ordinary PR execution without evaluating repository workflow or provisioning development tools. Reuse the original request_id and identical payload after an uncertain response. The agent follows repository instructions and leaves PR ready/merge authority with the operator and ordinary PR owner.",
         StartActivity,
         RunView,
         start_development,

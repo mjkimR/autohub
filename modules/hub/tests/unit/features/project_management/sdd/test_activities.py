@@ -1,74 +1,69 @@
-import base64
 import json
-from contextlib import asynccontextmanager
-from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 
 import httpx2
 import pytest
 from app.features.project_management.projects.errors import ProjectError
-from app.features.project_management.sdd import activities, policy, services
+from app.features.project_management.sdd import activities
 from app.features.project_management.sdd.schemas import StartActivityRequest
 
 pytestmark = pytest.mark.unit
-BASE = "a" * 40
-DRAFT = "---\nid: PROP-demo\nstatus: draft\ntask_kind: feature\n---\n# Demo\n"
+BASE, START = "a" * 40, "b" * 40
 
 
-class FakeGitHub:
-    def __init__(self, proposal=DRAFT):
-        self.refs = {"main": BASE}
-        self.proposal, self.pulls, self.created = proposal, [], []
-        self.eligible = True
-        self.approach, self.unmet, self.errors, self.checkouts = "sdd", [], [], []
+class GitHub:
+    def __init__(self):
+        self.refs, self.pulls, self.writes = {"main": BASE}, [], []
+        self.lose = None
+        self.reads = []
 
-    def respond(self, request: httpx2.Request) -> httpx2.Response:
+    def respond(self, request):
         path = request.url.path.removeprefix("/repos/owner/app")
-        if path.startswith("/git/ref/heads/"):
-            ref = path.removeprefix("/git/ref/heads/")
-            return (
-                httpx2.Response(200, json={"object": {"sha": self.refs[ref]}})
-                if ref in self.refs
-                else httpx2.Response(404)
-            )
-        if path == "/contents/docs/proposals/PROP-demo/proposal.md":
-            if self.proposal is None:
-                return httpx2.Response(404)
-            content = base64.b64encode(self.proposal.encode()).decode()
-            return httpx2.Response(200, json={"encoding": "base64", "content": content})
-
-        def normalized(pull):
-            return {
-                **pull,
-                "state": pull.get("state", "open"),
-                "head": {"repo": {"full_name": "owner/app"}, **pull.get("head", {})},
-                "base": {"repo": {"full_name": "owner/app"}, **pull.get("base", {})},
+        if request.method == "GET":
+            self.reads.append(path)
+            if path.startswith("/git/ref/heads/"):
+                ref = path.removeprefix("/git/ref/heads/")
+                return (
+                    httpx2.Response(200, json={"object": {"sha": self.refs[ref]}})
+                    if ref in self.refs
+                    else httpx2.Response(404)
+                )
+            if path == f"/git/commits/{BASE}":
+                return httpx2.Response(200, json={"tree": {"sha": "c" * 40}})
+            if path == "/pulls":
+                return httpx2.Response(200, json=self.pulls)
+            if path.startswith("/pulls/"):
+                pull = next((p for p in self.pulls if str(p["number"]) == path.rsplit("/", 1)[1]), None)
+                return httpx2.Response(200, json=pull) if pull else httpx2.Response(404)
+            raise AssertionError(f"Repository setup/content must not be read: {path}")
+        data = json.loads(request.content)
+        self.writes.append((path, data))
+        if path == "/git/commits":
+            return httpx2.Response(201, json={"sha": START})
+        if path == "/git/refs":
+            self.refs[data["ref"].removeprefix("refs/heads/")] = data["sha"]
+            result = {"object": {"sha": data["sha"]}}
+        elif path == "/pulls":
+            result = {
+                **data,
+                "number": 42,
+                "state": "open",
+                "head": {"ref": data["head"], "sha": START, "repo": {"full_name": "owner/app"}},
+                "base": {"ref": data["base"], "repo": {"full_name": "owner/app"}},
             }
-
-        if path == "/pulls" and request.method == "GET":
-            return httpx2.Response(
-                200,
-                json=[
-                    normalized(p)
-                    for p in self.pulls
-                    if request.url.params.get("state") == "all" or p.get("state", "open") == "open"
-                ],
-            )
-        if path.startswith("/pulls/") and request.method == "GET":
-            number = int(path.rsplit("/", 1)[1])
-            pull = next((p for p in self.pulls if p["number"] == number), None)
-            return httpx2.Response(200, json=normalized(pull)) if pull else httpx2.Response(404)
-        if path == "/pulls" and request.method == "POST":
-            body = json.loads(request.content)
-            self.created.append(body)
-            return httpx2.Response(201, json={"number": 42, **body})
-        raise AssertionError(f"Unexpected {request.method} {path}")
+            self.pulls.append(result)
+        else:
+            raise AssertionError(path)
+        if self.lose == path:
+            self.lose = None
+            raise httpx2.ReadTimeout("response lost", request=request)
+        return httpx2.Response(201, json=result)
 
 
 @pytest.fixture
-def started(monkeypatch):
-    github, branches, enrolled = FakeGitHub(), [], []
+def setup(monkeypatch):
+    github, enrolled, checkpoint = GitHub(), [], {}
     monkeypatch.setattr(
         activities.pipeline_services,
         "create_github_client",
@@ -77,181 +72,95 @@ def started(monkeypatch):
         ),
     )
 
-    async def start_branch(repository, base_sha, branch, token, message, write):
-        branches.append((branch, base_sha, message, write))
-        github.refs[branch] = "b" * 40
-        return "b" * 40
-
-    monkeypatch.setattr(activities, "start_branch", start_branch)
-
-    @asynccontextmanager
-    async def checkout(repository, head, base, token):
-        github.checkouts.append(base)
-        yield Path("/nonexistent")
-
-    async def restore(root):
-        return []
-
-    async def cli(root, *args):
-        if args == ("spec", "policy"):
-            return {"approvals": {}, "development": {"approach": github.approach, "source": "default"}}
-        assert args[:2] == ("workflow", "next")
-        done = ["intent-proposal"] if github.eligible else []
-        return {"done": done, "unmet": github.unmet, "errors": github.errors}
-
-    monkeypatch.setattr(policy, "checkout", checkout)
-    monkeypatch.setattr(policy, "restore", restore)
-    monkeypatch.setattr(services, "cli", cli)
-
     class Runs:
-        async def enroll(self, project_id, request):
+        async def enroll(self, project_id, request, **kwargs):
             enrolled.append(request)
-            return SimpleNamespace(id="run")
+            return SimpleNamespace(id=uuid4())
 
     class Observer:
         async def get_token(self, connector, provider):
             return "token"
 
-    project = SimpleNamespace(id=uuid4(), github_repository="owner/app", github_connector_id=uuid4())
-    starter = activities.ActivityStarter(Observer(), Runs())
-    return github, branches, enrolled, project, starter
+    async def retain(**values):
+        checkpoint.update(values)
 
-
-def request(**overrides):
-    return StartActivityRequest(request_id=uuid4(), **overrides)
-
-
-async def test_planning_starts_plan_branch_with_reviewing_and_a_ready_pull_request(started):
-    github, branches, enrolled, project, starter = started
-    await starter.start(project, "plan", "demo", request(activity_effort="high"), "user:mj")
-    branch, base, message, write = branches[0]
-    assert (branch, base, message[0]) == ("plan-demo", BASE, "Start Planning of PROP-demo")
-    assert write is not None  # sets status reviewing in the start commit
-    assert github.created[0]["head"] == "plan-demo" and github.created[0]["draft"] is False
-    assert activities.marker("plan", "demo") in github.created[0]["body"]
-    assert enrolled[0].spec_dir == "docs/proposals/PROP-demo" and not enrolled[0].handoff
-    assert enrolled[0].activity_effort == "high" and enrolled[0].pull_number == 42
-
-
-async def test_development_starts_dev_branch_with_a_handoff_first_run(started):
-    github, branches, enrolled, project, starter = started
-    github.proposal = DRAFT.replace("status: draft", "status: accepted")
-    await starter.start(project, "dev", "demo", request(), "user:mj")
-    assert branches[0][0] == "dev-demo" and branches[0][3] is None
-    assert github.created[0]["draft"] is True and enrolled[0].handoff is True
-
-
-@pytest.mark.parametrize(
-    "activity,existing,override,expected",
-    [
-        ("plan", False, None, "high"),
-        ("dev", False, None, "low"),
-        ("plan", True, None, "high"),
-        ("dev", False, "medium", "medium"),
-    ],
-)
-async def test_activity_effort_uses_the_proposal_hint_unless_overridden(
-    started, activity, existing, override, expected
-):
-    github, _, enrolled, project, starter = started
-    github.proposal = DRAFT.replace("task_kind:", "planning_effort: high\ndev_effort: low\ntask_kind:")
-    if activity == "dev":
-        github.proposal = github.proposal.replace("status: draft", "status: accepted")
-    if existing:
-        github.refs["plan-demo"] = "c" * 40
-        github.pulls = [{"number": 9, "head": {"ref": "plan-demo"}, "body": activities.marker("plan", "demo")}]
-    await starter.start(project, activity, "demo", request(activity_effort=override), "user:mj")
-    assert enrolled[0].activity_effort == expected
-
-
-@pytest.mark.parametrize(
-    ("activity", "proposal", "match"),
-    [
-        ("plan", DRAFT.replace("draft", "reviewing", 1), "starts from a draft"),
-        (
-            "plan",
-            DRAFT.replace("task_kind", "needs_decompose: true\ntask_kind"),
-            "decomposition",
-        ),
-        ("plan", DRAFT.replace("task_kind", "size: XL\ntask_kind"), "size XL"),
-        ("plan", None, "is not on main"),
-        ("dev", DRAFT, "accepted proposal"),
-        ("dev", DRAFT.replace("draft", "rejected", 1), "accepted proposal"),
-    ],
-)
-async def test_start_refuses_a_proposal_in_the_wrong_state(started, activity, proposal, match):
-    github, branches, _, project, starter = started
-    github.proposal = proposal
-    with pytest.raises(ProjectError, match=match):
-        await starter.start(project, activity, "demo", request(), "user:mj")
-    assert not branches and not github.created
-
-
-async def test_existing_branch_refuses_unless_it_carries_hubs_own_pull_request(started):
-    github, branches, enrolled, project, starter = started
-    github.refs["plan-demo"] = "c" * 40
-    with pytest.raises(ProjectError, match="already exists"):
-        await starter.start(project, "plan", "demo", request(), "user:mj")
-    github.pulls = [{"number": 9, "head": {"ref": "plan-demo"}, "body": activities.marker("plan", "demo")}]
-    await starter.start(project, "plan", "demo", request(), "user:mj")
-    assert not branches and not github.created and enrolled[0].pull_number == 9
-
-
-async def test_slug_must_make_an_activity_branch(started):
-    *_, project, starter = started
-    with pytest.raises(ProjectError, match="activity branch"):
-        await starter.start(project, "plan", "Demo", request(), "user:mj")
-
-
-@pytest.mark.parametrize("size", ["S", "M", "L", "''"])
-async def test_planning_starts_for_every_size_the_gate_allows(started, size):
-    github, branches, _, project, starter = started
-    github.proposal = DRAFT.replace("task_kind", f"size: {size}\ntask_kind")
-    await starter.start(project, "plan", "demo", request(), "user:mj")
-    assert branches[0][0] == "plan-demo"
-
-
-async def test_xl_draft_is_refused_before_any_checkout_or_branch(started):
-    github, branches, _, project, starter = started
-    github.proposal = DRAFT.replace("task_kind", "size: XL  # decompose\ntask_kind")
-    with pytest.raises(ProjectError, match="decompose it in Backlog") as refused:
-        await starter.start(project, "plan", "demo", request(), "user:mj")
-    assert refused.value.status == 409
-    assert not github.checkouts and not branches and not github.created
-
-
-@pytest.mark.parametrize(
-    ("unmet", "errors", "match"),
-    [
-        (
-            [{"name": "frontmatter(proposal.md size S|M|L|)", "satisfied": False, "detail": "size=XL"}],
-            [],
-            r"size gate \(size=XL\)",
-        ),
-        (
-            [],
-            [{"code": "ENVELOPE_INVALID", "message": "secret"}],
-            r"invalid workflow evidence on the base \(ENVELOPE_INVALID\)",
-        ),
-        ([], [], "Resolve the workflow eligibility checks"),
-    ],
-)
-async def test_planning_refusal_reports_what_the_base_evaluation_found(started, unmet, errors, match):
-    github, branches, _, project, starter = started
-    github.eligible, github.unmet, github.errors = False, unmet, errors
-    with pytest.raises(ProjectError, match=match) as refused:
-        await starter.start(project, "plan", "demo", request(), "user:mj")
-    assert refused.value.status == 409 and "secret" not in refused.value.detail
-    assert not branches and not github.created
+    return (
+        github,
+        enrolled,
+        checkpoint,
+        retain,
+        activities.ActivityStarter(Observer(), Runs()),
+        SimpleNamespace(id=uuid4(), github_repository="owner/app", github_connector_id=uuid4()),
+    )
 
 
 @pytest.mark.parametrize("activity", ["plan", "dev"])
-async def test_adaptive_dev_base_refuses_starts_before_creating_branches(started, activity):
-    github, branches, enrolled, project, starter = started
-    github.approach = "adaptive-dev"
-    if activity == "dev":
-        github.proposal = DRAFT.replace("status: draft", "status: accepted")
-    with pytest.raises(ProjectError, match="adaptive-dev") as refused:
-        await starter.start(project, activity, "demo", request(), "user:mj")
-    assert refused.value.status == 409 and refused.value.code == "SDD_LIFECYCLE_INACTIVE"
-    assert github.checkouts == [BASE] and not branches and not github.created and not enrolled
+async def test_start_is_github_only_draft_without_reading_repository_eligibility(setup, activity):
+    github, enrolled, checkpoint, retain, starter, project = setup
+    request = StartActivityRequest(request_id=uuid4(), activity_effort="high")
+    await starter.start(project, activity, "demo", request, "operator", checkpoint=retain, saved=checkpoint)
+    assert [p for p, _ in github.writes] == ["/git/commits", "/git/refs", "/pulls"]
+    commit = github.writes[0][1]
+    assert commit["tree"] == "c" * 40 and commit["parents"] == [BASE]
+    assert github.pulls[0]["draft"] is True
+    assert enrolled[0].handoff is (activity == "dev")
+    assert enrolled[0].activity_effort == "high"
+    assert checkpoint["initial_sha"] == START and checkpoint["pull_number"] == 42
+    assert not any("contents" in p for p in github.reads)
+
+
+@pytest.mark.parametrize("lost", ["/git/refs", "/pulls"])
+async def test_response_loss_recovers_same_saved_candidate_without_duplicate_writes(setup, lost):
+    github, enrolled, checkpoint, retain, starter, project = setup
+    github.lose = lost
+    request = StartActivityRequest(request_id=uuid4())
+    with pytest.raises(Exception, match="not confirmed"):
+        await starter.start(project, "plan", "demo", request, "operator", checkpoint=retain, saved=checkpoint)
+    assert checkpoint["initial_sha"] == START
+    await starter.start(project, "plan", "demo", request, "operator", checkpoint=retain, saved=checkpoint)
+    assert [p for p, _ in github.writes].count("/git/refs") == 1
+    assert [p for p, _ in github.writes].count("/pulls") == 1
+    assert len(github.pulls) == len(enrolled) == 1
+
+
+async def test_unrelated_branch_is_never_adopted(setup):
+    github, _, checkpoint, retain, starter, project = setup
+    github.refs["plan-demo"] = "d" * 40
+    with pytest.raises(ProjectError, match="different owner") as error:
+        await starter.start(
+            project,
+            "plan",
+            "demo",
+            StartActivityRequest(request_id=uuid4()),
+            "operator",
+            checkpoint=retain,
+            saved=checkpoint,
+        )
+    assert error.value.code == "SDD_BRANCH_EXISTS" and github.writes == []
+
+
+async def test_missing_original_ref_does_not_create_replacement(setup):
+    github, _, checkpoint, retain, starter, project = setup
+    checkpoint.update(initial_sha=START, branch="plan-demo", base_sha=BASE, ref_attempted=True)
+    with pytest.raises(ProjectError, match="uncertain"):
+        await starter.start(
+            project,
+            "plan",
+            "demo",
+            StartActivityRequest(request_id=uuid4()),
+            "operator",
+            checkpoint=retain,
+            saved=checkpoint,
+        )
+    assert github.writes == []
+
+
+async def test_closed_original_pr_is_not_replaced(setup):
+    github, _, checkpoint, retain, starter, project = setup
+    request = StartActivityRequest(request_id=uuid4())
+    await starter.start(project, "plan", "demo", request, "operator", checkpoint=retain, saved=checkpoint)
+    github.pulls[0]["state"] = "closed"
+    writes = len(github.writes)
+    with pytest.raises(ProjectError, match="already closed"):
+        await starter.start(project, "plan", "demo", request, "operator", checkpoint=retain, saved=checkpoint)
+    assert len(github.writes) == writes

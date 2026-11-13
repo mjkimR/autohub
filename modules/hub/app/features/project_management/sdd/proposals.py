@@ -1,12 +1,4 @@
-"""The Proposals screen: each proposal's state on the base, its activity branches and the decisions it can take.
-
-The base holds the proposal's own status; a ``plan-<slug>`` branch shows a draft as ``reviewing`` without a base commit
-(strategy layer 01 section 5.1). The actions follow 01 sections 6.2 and 6.3: start Planning of a draft, accept or
-reject a reviewing proposal through its waiting run, start Development of an accepted one. A rejected proposal takes
-no action; it waits for the hygiene cleanup of a local Host. A draft that devkit-spec's decomposition gate refuses
-(``needs_decompose`` or a size other than S, M or L) offers no Planning start, and a repository whose
-``[development] approach`` is adaptive-dev offers neither a start nor an acceptance (devkit-spec refuses them).
-"""
+"""Display repository proposal metadata; activity starts never infer workflow eligibility."""
 
 import asyncio
 from urllib.parse import quote
@@ -17,9 +9,6 @@ from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.work_plans.github import WorkGitHub
 
 from .activities import _frontmatter_value, _text
-from .gates import PLAN_ACCEPT_REQUEST
-from .policy import ADAPTIVE_DEV, LIFECYCLE_INACTIVE, development_approach, size_blocker
-from .progress import held
 
 PROPOSAL_LIMIT = 50
 
@@ -29,47 +18,19 @@ def _slug(name: str) -> str | None:
     return slug if name.startswith("PROP-") and slug and slug[0].isalnum() and slug == slug.lower() else None
 
 
-def recorded_approach(runs) -> str | None:
-    """The ``[development] approach`` the latest run evaluation recorded, ``None`` before any evaluation.
-
-    Adaptive development when either the Planning head (where devkit-spec accepts) or the owning base (where Development
-    hands off) chose it. A hint for which actions to offer; starts and acceptances read the policy again.
-    """
-    for run in runs:
-        progress = run.sdd_progress or {}
-        policies = [
-            policy
-            for policy in (
-                progress.get("base_policy"),
-                (progress.get("snapshot") or {}).get("policy"),
-                (run.sdd_snapshot or {}).get("policy"),
-            )
-            if isinstance(policy, dict) and policy
-        ]
-        if policies:
-            return ADAPTIVE_DEV if any(development_approach(p) == ADAPTIVE_DEV for p in policies) else "sdd"
-    return None
-
-
 def waiting_run(runs) -> dict | None:
-    """The latest unfinished run of the proposal unit, with what a decision on it needs."""
     run = next((r for r in runs if r.state not in FINAL_RUN_STATES), None)
     if run is None:
         return None
-    progress = run.sdd_progress or {}
-    requests = (progress.get("current") or {}).get("requests") or []
     return {
         "id": str(run.id),
         "state": run.state,
         "revision": run.revision,
         "pause_reason": run.pause_reason,
         "pull_number": run.pull_number,
-        "head_sha": progress.get("head_sha"),
-        "plan_accept_open": run.state in ("paused", "blocked")
-        and progress.get("unit_status") == "reviewing"
-        and not held(progress)
-        and any(r.get("id") == PLAN_ACCEPT_REQUEST for r in requests),
-        "decided": bool(progress.get("plan_decision")),
+        "head_sha": (run.pull_snapshot or {}).get("head_sha"),
+        "plan_accept_open": False,
+        "decided": False,
     }
 
 
@@ -83,25 +44,9 @@ def proposal_state(
 ) -> dict:
     status = (_frontmatter_value(anchor, "status") if anchor else None) or "unknown"
     plan, dev = f"plan-{slug}" in branches, f"dev-{slug}" in branches
-    display = "reviewing" if status == "draft" and plan else status
-    actions: list[str] = []
-    note = None
-    size = size_blocker(_frontmatter_value(anchor or "", "size"))
-    if status == "rejected":
-        note = "Planning ended by rejection; a local Host removes it in hygiene after writing its ADR"
-    elif approach == ADAPTIVE_DEV:
-        note = LIFECYCLE_INACTIVE
-    elif status == "draft" and not plan:
-        if _frontmatter_value(anchor or "", "needs_decompose") == "true":
-            note = "Needs decomposition in Backlog before Planning"
-        elif size:
-            note = f"The proposal is {size}; decompose it in Backlog before Planning (S, M or L)"
-        else:
-            actions.append("start_planning")
-    elif status == "accepted" and not dev:
-        actions.append("start_development")
-    if run and run["plan_accept_open"] and status != "rejected":
-        actions += ["reject"] if approach == ADAPTIVE_DEV else ["accept", "reject"]
+    display = status
+    actions = [] if run else ["start_planning", "start_development"]
+    note = "Repository setup and workflow eligibility are the working agent's responsibility"
     return {
         "slug": slug,
         "id": f"PROP-{slug}",
@@ -154,7 +99,7 @@ async def list_proposals(observer, project, base_branch: str, runs_for) -> dict:
     items = []
     for slug, entry in zip(slugs, anchors, strict=True):
         runs = await runs_for(f"docs/proposals/PROP-{slug}")
-        items.append(proposal_state(slug, _text(entry), branches, pulls, waiting_run(runs), recorded_approach(runs)))
+        items.append(proposal_state(slug, _text(entry), branches, pulls, waiting_run(runs)))
     return {
         "base_branch": base_branch,
         "base_sha": base_sha,

@@ -5,9 +5,9 @@ from uuid import UUID, uuid4
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 
-from .adapters import RECOVERABLE_ERRORS, WorkerAdapter
+from .adapters import RECOVERABLE_ERRORS, RETIRED_BRIDGE, WorkerAdapter, WorkerResult, retired_binding
 from .repos import FlowRepository
-from .runtime import FlowRuntime
+from .runtime import FlowRuntime, retire_undispatched, uses_retired_bridge
 
 
 class FlowWorker:
@@ -23,6 +23,11 @@ class FlowWorker:
     async def advance(self, run_id: UUID) -> bool:
         token = uuid4()
         async with self.transaction() as session:
+            run = await self.repo.run(session, run_id, lock=True)
+            if run is None:
+                return False
+            if await retire_undispatched(session, self.repo, run, get_current_utc_time()):
+                return True
             if not await self.repo.claim(session, run_id, token, get_current_utc_time()):
                 return False
         try:
@@ -30,6 +35,7 @@ class FlowWorker:
                 run = await self.repo.fenced(session, run_id, token, get_current_utc_time())
                 if run is None:
                     return False
+                retired = uses_retired_bridge(run)
                 action = await self.runtime.plan(session, run, get_current_utc_time())
             if action is None:
                 return True
@@ -38,7 +44,15 @@ class FlowWorker:
             result = None
             error = None
             try:
-                result = await self.adapter.execute(action)
+                if retired:
+                    if retired_binding(action.binding):
+                        from .bridge import PRBridgeWorker
+
+                        result = await PRBridgeWorker().execute(action)
+                    else:
+                        result = WorkerResult(attempt_id=action.attempt_id, status="failed", error=RETIRED_BRIDGE)
+                else:
+                    result = await self.adapter.execute(action)
             except RECOVERABLE_ERRORS:
                 error = "worker-unavailable"
             async with self.transaction() as session:

@@ -5,9 +5,9 @@ from uuid import uuid4
 
 from autohub_sdk import ApprovalStep, InputRef, LiteralValue, ReleaseSpec, TaskRef, TaskStep
 
-from .adapters import WorkerAction, WorkerResult
+from .adapters import RETIRED_BRIDGE, WorkerAction, WorkerResult, retired_binding
 from .errors import FlowError
-from .models import FlowAttempt, FlowRun
+from .models import FlowAttempt, FlowPRLink, FlowRun
 from .validation import definition, steps_for, validate
 
 
@@ -19,6 +19,53 @@ def contract(run: FlowRun):
     release = ReleaseSpec.model_validate(run.snapshot["definition"])
     steps, result, output = steps_for(release, TaskRef(key=run.task_key, contract_version=run.task_version), run.inputs)
     return release, steps, result, output
+
+
+def uses_retired_bridge(run: FlowRun) -> bool:
+    _, specs, _, _ = contract(run)
+    bindings = run.snapshot.get("bindings", {})
+    return any(
+        isinstance(spec, TaskStep)
+        and retired_binding(bindings.get(f"{spec.task.key}@{spec.task.contract_version}", {}))
+        for spec in specs
+    )
+
+
+async def retire_undispatched(session, repo, run: FlowRun, now) -> bool:
+    """End old bridge work before a worker lease can create its first intent."""
+    from app.features.project_management.pipeline_runs.models import RunResumeReceipt
+    from sqlalchemy import select
+
+    if run.status not in ("queued", "running", "waiting", "canceling") or not uses_retired_bridge(run):
+        return False
+    rows = await repo.steps(session, run.id)
+    attempts = await repo.attempts(session, run.id)
+    link = await session.scalar(select(FlowPRLink).where(FlowPRLink.flow_run_id == run.id).with_for_update())
+    receipt = (
+        await session.get(RunResumeReceipt, link.delivery_attempt_id) if link and link.delivery_attempt_id else None
+    )
+    receipt_backed = receipt is not None and link is not None and receipt.pipeline_run_id == link.pipeline_run_id
+    if receipt_backed and run.step_index >= len(rows):
+        return False  # Finish from the already observed result, without another effect.
+    current = rows[run.step_index] if run.step_index < len(rows) else None
+    outstanding = [
+        item
+        for item in attempts
+        if current is not None
+        and item.step_id == current.id
+        and item.status in ("intent", "ready", "running", "observing")
+    ]
+    if outstanding:
+        return False  # Its saved intent is settled through WorkerResult, retaining its ID.
+    await repo.bump(session, run, now)
+    run.status = "canceled" if run.status == "canceling" else "failed"
+    run.error = RETIRED_BRIDGE
+    run.next_action_at = run.lease_token = run.lease_expires_at = None
+    if current is not None:
+        current.status, current.deadline = "failed", None
+    if link is not None and not receipt_backed:
+        link.canceled = True
+    return True
 
 
 def resolve(binding, run, rows):

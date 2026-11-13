@@ -198,13 +198,5 @@ test('rows link the project and PR run in-app and label the run state and kind',
 	expect(row.textContent).toContain('Run question');
 	expect(row.textContent).not.toMatch(/\bblocked\b|run question/);
 	const kinds = [...(screen.getByLabelText('Kind') as HTMLSelectElement).options];
-	expect(kinds.map((option) => option.text)).toEqual([
-		'All kinds',
-		'Run question',
-		'SDD Hub question',
-		'SDD worker question',
-		'SDD workflow request',
-		'SDD proposal decision',
-		'SDD integration decision'
-	]);
+	expect(kinds.map((option) => option.text)).toEqual(['All kinds', 'Run question']);
 });

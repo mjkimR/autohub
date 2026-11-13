@@ -29,16 +29,9 @@ ADVANCE_LEASE_SECONDS = 120
 
 def progress_key(run: PipelineRunRead) -> tuple:
     """Only workflow changes justify another observation, never timestamps or a revision alone."""
-    native = run.sdd_progress or {}
-    stage = (native.get("current") or {}).get("stage") or {}
-    return (
-        run.state,
-        stage.get("id"),
-        bool(native.get("approval")),
-        native.get("integrated"),
-        native.get("head_sha"),
-        native.get("base_sha"),
-    )
+    snapshot = run.pull_snapshot
+    head = snapshot.get("head_sha") if isinstance(snapshot, dict) else snapshot.head_sha
+    return (run.state, head)
 
 
 class PipelineRunAdvancement:
@@ -88,13 +81,7 @@ class PipelineRunAdvancement:
                             if exc.code != CATALOG_HOLD_CODE or not observed:
                                 raise
                             return run
-                    approval_wait = run.state == PipelineRunState.PAUSED and (run.sdd_progress or {}).get(
-                        "waiting_for_approval"
-                    )
-                    if (
-                        run.state not in (PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI)
-                        and not approval_wait
-                    ):
+                    if run.state not in (PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI):
                         return run
                     before = progress_key(run)
                     run = await self.lifecycle.observe_run(run_id, owner=owner, token=grant.token, observer=observer)

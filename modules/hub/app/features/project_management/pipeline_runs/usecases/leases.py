@@ -34,6 +34,11 @@ class PipelineRunLeases:
         now = get_current_utc_time()
         token = uuid4()
         async with AsyncTransaction() as session:
+            from app.features.project_management.sdd.execution import require_current
+
+            current = await self.repo.get(session, run_id, lock=True)
+            if current is not None:
+                require_current(current)
             run = await self.repo.acquire_lease(
                 session,
                 run_id,
@@ -76,6 +81,9 @@ class PipelineRunLeases:
 
     @staticmethod
     def _lease_grant(run: PipelineRun) -> LeaseGrant:
+        from app.features.project_management.sdd.execution import require_current
+
+        require_current(run)
         if run.lease_owner is None or run.lease_token is None or run.lease_expires_at is None:
             raise RuntimeError("Lease update returned incomplete lease state")
         return LeaseGrant(

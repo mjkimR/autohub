@@ -147,7 +147,7 @@ Work Plan actors are derived from the authenticated machine as
 null selects all groups, empty selects ungrouped work, and a nonempty value matches
 the exact trimmed key. The key is limited to 100 characters. Domain behavior
 belongs to `CAP-WORK-work-plan-execution`, `CAP-PR-pull-request-delivery`,
-`CAP-PR-operator-decisions` and `CAP-SDD-workflow-control`.
+`CAP-PR-operator-decisions` and `CAP-SDD-native-delivery`.
 
 There is no universal deduplication promise for mutations. PR enrollment recovers
 through `runs_list` filtered by project and exact PR number. After an uncertain
@@ -187,19 +187,21 @@ between reads. Disconnecting a client does not cancel the underlying work.
 
 The Work endpoint additionally registers six READ tools: `decisions_list`,
 `runs_decision_outcome`, `sdd_batches_list`, `sdd_batches_get`,
-`work_items_recoveries` and `work_items_replacements`. Six WRITE tools are
-`decisions_review`, `sdd_batches_control`, `work_items_recover`,
+`work_items_recoveries` and `work_items_replacements`. Five WRITE tools are
+`decisions_review`, `work_items_recover`,
 `work_items_replacement_link`, `work_items_replacement_accept` and
 `work_items_replacement_withdraw`. `ADR-mcp-delivery-owner-adapters` records this
 bounded owner-adapter decision.
 
-- **Inspection scope**: WHEN exact decision inspection persists native evidence,
-  Hub MUST require work-write scope even though it grants no execution authority.
+- **Inspection scope**: WHEN the registered exact decision review tool runs,
+  Hub MUST require its work-write scope without granting execution authority.
+  It does not evaluate repository workflow or revive native decisions.
 - **Owner identity**: WHEN a delivery mutation runs, Hub MUST derive its actor as
   `machine:<authenticated machine UUID>` and retain the owner's supplied request,
   revision, replay and eligibility rules. No human impersonation, revision refresh
   or automatic command retry occurs. Replacement acceptance satisfies only its
-  existing local Item edge; batch controls affect only future admission.
+  existing local Item edge. Native batch mutation tools are not registered;
+  `sdd_batches_list` and `sdd_batches_get` return retained history only.
 - **Safe evidence**: WHEN these tools serialize owner results, Hub MUST return
   allowlisted typed views excluding raw task/answer text, snapshots, recovery
   command/prior-outcome maps and event evidence maps. Current authority and hold

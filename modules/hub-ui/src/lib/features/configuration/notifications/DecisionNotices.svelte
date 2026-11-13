@@ -16,14 +16,7 @@
 	let { channelId }: { channelId: string } = $props();
 	const notices = untrack(() => decisionNoticeState(channelId));
 	type Settings = components['schemas']['SubscriptionSettings'];
-	const kinds = [
-		'run-question',
-		'native-hub-question',
-		'native-worker-question',
-		'native-workflow',
-		'native-proposal',
-		'native-integration'
-	] as const;
+	const kinds = ['run-question'] as const;
 	let form = $state<Settings>({
 		enabled: false,
 		project_scope: 'selected',

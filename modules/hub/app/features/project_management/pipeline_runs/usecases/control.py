@@ -53,11 +53,12 @@ class PipelineRunControl:
             run = await self.repo.get(session, run_id, lock=True)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
+            from app.features.project_management.sdd.execution import require_current
+
+            require_current(run)
             if run.state in (PipelineRunState.COMPLETED, PipelineRunState.FAILED, PipelineRunState.CANCELED):
                 raise ProjectError(422, f"Cannot pause a run in {run.state} state")
             run.state = PipelineRunState.PAUSED
-            if run.sdd_progress:
-                run.sdd_progress = {**run.sdd_progress, "waiting_for_approval": False}
             run.pause_reason = request.reason if request and request.reason else "Manually paused by user"
             run.lease_owner = None
             run.lease_token = None
@@ -76,17 +77,14 @@ class PipelineRunControl:
         expected_head_sha: str | None = None,
         guard=None,
     ) -> PipelineRunRead:
-        async with AsyncTransaction() as session:
-            native_run = await self.repo.get(session, run_id)
-            native = native_run is not None and bool(native_run.sdd_snapshot)
-        if native:
-            from app.features.project_management.sdd.control import SddControl
+        from app.features.project_management.sdd.execution import require_current
 
-            if request is None:
-                raise ProjectError(422, "Native sdd resume requires a revision-checked request")
-            return await SddControl(self.repo, self.projects, self.observer).resume(run_id, request, actor)
+        async with AsyncTransaction() as session:
+            current = await self.repo.get(session, run_id)
+            if current is not None:
+                require_current(current)
         if request and (request.decision or request.workflow_answer):
-            raise ProjectError(422, "Sdd decisions require a native sdd run")
+            raise ProjectError(410, "Native SDD workflow decisions were retired", code="SDD_EXECUTION_RETIRED")
         interactions = RunInteractionService()
         digest = (
             request_digest({"run_id": str(run_id), "actor": actor, "request": request.model_dump(mode="json")})
@@ -120,6 +118,9 @@ class PipelineRunControl:
             run = await self.repo.get(session, run_id, lock=True)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
+            from app.features.project_management.sdd.execution import require_current
+
+            require_current(run)
             if guard is not None:
                 await guard(session, run)
             if result := await replay(session, run):
@@ -330,13 +331,16 @@ class PipelineRunControl:
             run = await self.repo.get(session, run_id, lock=True)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
+            from app.features.project_management.sdd.execution import require_current
+
+            require_current(run)
             if run.state not in (PipelineRunState.QUEUED, PipelineRunState.DISPATCHING, PipelineRunState.IMPLEMENTING):
                 raise ProjectError(422, f"Cannot attach PR to a run in {run.state} state")
             project = await self.projects.get(session, run.project_id)
             repo_name = project.github_repository or "repo"
             run.pull_number = request.pull_number
             run.pull_url = request.pull_url or f"https://github.com/{repo_name}/pull/{request.pull_number}"
-            run.state = PipelineRunState.IMPLEMENTING if run.sdd_snapshot else PipelineRunState.AWAITING_CI
+            run.state = PipelineRunState.AWAITING_CI
             run.revision += 1
             active_attempt = await self.repo.active_attempt(session, run.id)
             if active_attempt is not None and active_attempt.state in (
@@ -360,6 +364,9 @@ class PipelineRunControl:
             run = await self.repo.get(session, run_id, lock=True)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
+            from app.features.project_management.sdd.execution import require_current
+
+            require_current(run)
             attempt = await self.repo.get_attempt(session, attempt_id)
             if attempt is None or attempt.pipeline_run_id != run_id:
                 raise ProjectError(404, "Execution attempt not found for this pipeline run")

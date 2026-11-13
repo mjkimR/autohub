@@ -3,7 +3,8 @@ id: ADR-sdd-batch-ledger
 title: Keep sequential SDD selection separate from native activity owners
 summary: "For sequential native SDD work, we retain an immutable batch ledger linked to existing activity owners, to preserve approvals and recovery, accepting explicit waits for uncertain lineage."
 proposal: SPEC-sdd-milestone-execution
-status: accepted
+status: superseded
+superseded_by: ADR-repository-owned-sdd-execution
 created_at: 2026-11-05
 ---
 

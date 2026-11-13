@@ -5,19 +5,19 @@ production baseline is **2026-10-02**, Cloud Run revision `autohub-00015-4l4`, D
 schema `autohub`. Documentation cleanup did not recheck the serving revision or
 rerun the historical suites below. These records do not establish an SDD baseline
 for Auto Hub's own development. All verification recorded below predates
-`SPEC-repo-locked-sdd-runtime` (2026-11-13), which replaced server runtime profiles
-with repository-locked runtimes; no deployment or live canary of that change is
-recorded.
+`SPEC-optimistic-sdd-orchestration`, which removes the embedded evaluator and
+retires native batch/bridge execution. No deployment or live canary of that
+responsibility change is recorded.
 
 ## Current local implementation
 
 | Area | Implemented behavior | Owning reference |
 | --- | --- | --- |
-| SDD activities | Planning/Development starts, recoverable decisions, approval, questions, handoff and effort/review evidence | Native delivery (`CAP-SDD-native-delivery`), workflow control (`CAP-SDD-workflow-control`) |
-| SDD runtime | Runtime installed from each evaluated commit's `uv.lock` into a per-instance cache, receipt checks and workflow/approval fencing | [devkit integration](sdd-runtime.md) |
+| SDD activities | Explicit Planning/Development intent, Draft PR publication and ordinary Run questions/CI; repository agent owns setup/workflow | `CAP-SDD-native-delivery`, `CAP-PR-pull-request-delivery` |
+| Retired native execution | Historical runtime/decision/batch evidence and fenced legacy authority; no evaluator runtime | [activity operations](sdd-runtime.md) |
 | Repository viewer | Branch-specific documents, proposal roadmap and recorded Proposal → Spec → Run/PR lineage | Viewer (`CAP-DOC-repository-viewer`) |
 | Pipeline progression | Shared tick/webhook/manual driver, bounded retries and preserved waits | Advancement (`CAP-PR-pull-request-delivery`) |
-| SDK flows | Durable host, scoped approval and the existing-PR bridge | SDK contract (`CAP-SDK-task-flow-execution`) |
+| SDK flows | Durable generic host and scoped approval; built-in SDD/PR bridge new effects retired | `CAP-SDK-task-flow-execution`, `CAP-SDK-existing-pr-bridge` |
 
 ### Latest recorded local verification
 
@@ -31,10 +31,10 @@ Actions execution were not performed for that follow-up.
 ### Remaining rollout evidence
 
 Before claiming deployment of the local changes, build the container, apply the
-matching migrations, settle admitted SDD work as the
-[rollout procedure](sdd-runtime.md#rollout-and-rollback) requires, and verify the
-host probe and a project's lock state on the serving host. Run the [live SDD canary](sdd-runtime.md#live-canary-after-deployment)
-and record the revision, Run/PR links and approval history. Actual provider
+matching retirement migration, and inspect previously dispatched work under the
+[rollout procedure](sdd-runtime.md#rollout-and-rollback). Check ordinary activity
+start/questions and GitHub delivery through the [live canary](sdd-runtime.md#live-canary-after-deployment),
+and record the revision and exact Run/PR links. Actual provider
 replies, GitHub CI and merge behavior cannot be inferred from local fixtures.
 
 ## Recorded production baseline (2026-10-02)
@@ -69,8 +69,8 @@ The following behavior was recorded as deployed with automated coverage only:
 - Automatic planning/WBS, dynamic catalog routing, Jules question collection and
   pre-merge LLM review are outside the implemented scope. Provider uncertainties
   remain in catalog limitations (`CAP-AGENT-provider-sessions`).
-- Multiple devkit proposals, milestone batch execution and Work Plan linkage are
-  deferred (`CAP-SDD-native-delivery`).
+- Native executable milestone batches and built-in SDD/PR bridge execution are
+  retired; no replacement scheduler/bridge is promised (`CAP-SDD-native-delivery`).
 - Plan registration issues many queries (query-counter warning); behavior is not
   affected.
 

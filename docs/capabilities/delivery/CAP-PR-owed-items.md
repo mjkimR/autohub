@@ -8,7 +8,6 @@ usecases:
   - UC-resolve-run-question
   - UC-deliver-pull-request
   - UC-execute-work-plan
-  - UC-execute-sdd-batch
   - UC-verify-project-connection
 entrypoints:
   - modules/hub/app/features/project_management/owed_items/api.py
@@ -21,7 +20,7 @@ entrypoints:
 ## 1. Summary
 
 An owed item is one root cause that waits for the operator: a decision, a stopped PR run, a proposed Work Plan, a
-Work Item recovery, replacement or attention, an SDD batch in attention or a connection-test cleanup review. Hub lists
+Work Item recovery, replacement or attention, a connection-test cleanup review. Hub lists
 and counts these items through one read surface, so every screen can count and route the same set. The operator-facing
 label is "Needs you".
 
@@ -31,7 +30,7 @@ label is "Needs you".
   reads, and the per-run pending-decision flag on PR run reads.
 - **Out-of-Scope**: each owner keeps its lifecycle and actions: decisions in `CAP-PR-operator-decisions` and
   `CAP-SDD-workflow-control`, PR runs in `CAP-PR-pull-request-delivery`, Work Plans in `CAP-WORK-work-plan-execution`,
-  SDD batches in `CAP-SDD-workflow-control`, connection tests in `CAP-CONN-connection-verification` and catalog holds
+  retired native history in `CAP-SDD-native-delivery`, connection tests in `CAP-CONN-connection-verification` and catalog holds
   in `CAP-AGENT-catalog-admission`. Notices stay in `CAP-NOTIFY-operator-notifications`.
 - **Scope Excluded**: grouping owed items into threads or workspaces, owed-item notices, MCP exposure, a persisted
   owed projection and any action on the owed item itself. The app shell Badge reads the counts and the Attention
@@ -44,7 +43,7 @@ label is "Needs you".
 2. **Stable key**: Hub MUST key each item as `<kind>:<subject id>`, the `decision` kind embedding the unchanged
    `decision_key`, and MUST keep the key while the kind and subject stay the same. Check: the same test.
 3. **One item per root cause**: WHEN several owners describe the same cause, Hub MUST list only the most specific:
-   decision, then Work Item recovery or replacement, then SDD batch attention, then Work Item `attention`, then run
+   decision, then Work Item recovery or replacement, then Work Item `attention`, then run
    state. A run with any decision-inbox row is held by that decision. Check: `test_decisions_suppress_runs_and_match_the_inbox_count`,
    `test_failed_runs_are_quiet_and_recovery_wins`, `test_work_plan_and_work_item_kinds` and
    `test_batch_attention_suppresses_its_run_and_yields_to_decisions` and
@@ -75,7 +74,7 @@ label is "Needs you".
 | `work-item-recovery` | yes | Recovery in `accepted` or `reconciling` (`CAP-WORK-work-plan-execution`) | `work-item-recovery` | `inspect-recovery` |
 | `work-item-replacement` | yes | Active link whose original has a `waiting` dependent edge without a live acceptance (`CAP-WORK-work-plan-execution`) | `replacement-link` | `accept-replacement` |
 | `work-item-attention` | yes | Work Item in `attention` (`CAP-WORK-work-plan-execution`) | `work-item` | `inspect-work-item` |
-| `sdd-batch-attention` | yes | SDD batch in `attention` (`CAP-SDD-workflow-control`) | `sdd-batch` | `inspect-batch` |
+| `sdd-batch-attention` | legacy only | Retained native batch evidence; no new admission (`CAP-SDD-native-delivery`) | `sdd-batch` | `inspect-batch` |
 | `connection-test-cleanup` | yes | Terminal test whose cleanup the operator can review (`CAP-CONN-connection-verification`) | `connection-test` | `review-cleanup` |
 | `failed-run` | no | `failed` PR run (`CAP-PR-pull-request-delivery`) | `pipeline-run` | `inspect-run` |
 

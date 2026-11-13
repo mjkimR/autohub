@@ -24,7 +24,7 @@ native progression. Activity claims use the same version discriminator in their
 checkpoint. Shared helper predicates prevent truthiness-based routing.
 
 Preserve GitHub activity ownership/checkpoints while replacing local Git branch
-commits with GitHub ref creation and Draft PR creation. The worker receives the
+commits with a GitHub Git API empty intent commit using the unchanged base tree, ref creation and Draft PR creation. The distinct intent commit permits a PR without editing repository files. The worker receives the
 repository instructions and requested intent, without stage or sync commands.
 Keep question correlation and current-head CI; ingest optimistic questions before
 push-based progression, including while observing CI, and recheck pending input

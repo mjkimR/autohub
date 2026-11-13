@@ -24,7 +24,7 @@ keeps that evidence separate.
 | Deployment and notices | [Cloud Run](operations/cloud-run-deployment.md), [operator notices](operations/operator-notices.md) |
 | Recorded local/production verification and rollout gaps | [Deployment status](operations/deployment-status.md), [retained evidence](materials/index.md) |
 
-Auto Hub's support for native SDD in connected repositories is defined by
+Auto Hub's support for repository-owned SDD activities in connected repositories is defined by
 `CAP-SDD-native-delivery`. Its own development approach, installed tooling and
 lifecycle are described in [contributor guidance](development/README.md#change-workflow).
 

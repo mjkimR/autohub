@@ -14,7 +14,7 @@ status: active
 | Scheduled task | `ScheduleConfig`, `ScheduleJob` | External trigger claims due work and invokes its registered handler | `CAP-EXEC-scheduling-maintenance` |
 | PR delivery | `PipelineRun`, attempts, deliveries and replies | Ticks/events/operator calls enter shared bounded advancement | `CAP-PR-pull-request-delivery` |
 | Work Plan | `WorkPlan`, `WorkItem`, typed recovery records/events | Admission creates or attaches a PR, then hands it to the existing PR owner | `CAP-WORK-work-plan-execution` |
-| Native SDD | PR activity/request and repository workflow evidence | Isolated evaluation selects a workflow operation; Hub fences its publication and continuation | `CAP-SDD-native-delivery`, `CAP-SDD-workflow-control` |
+| Repository SDD activity | Descriptive PR activity intent and recoverable claim | Working agent owns repository workflow; ordinary PR owner advances delivery | `CAP-SDD-native-delivery` |
 | SDK task/flow | `sdk_flow_*` releases/runs/steps/attempts/commands | Maintenance advances an immutable admitted release through configured targets | `CAP-SDK-task-flow-execution` |
 | Connection diagnostic | Test record, ownership and cleanup evidence | A claimed recipe step prepares, dispatches, observes or cleans up diagnostic work | `CAP-CONN-connection-verification` |
 
@@ -60,21 +60,18 @@ Request acceptance and terminal recovery apply Project → Plan → Run → Item
 
 The recovery worker releases DB locks for PR/ref/comment reads. Pending records stay outside ordinary Item observation; the recovery due queue filters leases/holds before its bounded limit. Once preparation is admitted, the existing preparer owns it. Historical started-work metadata remains set while waiting, preserving the specification edit fence. Terminal activation and its durable intent commit together; active-owner uniqueness prevents a losing recovery from dispatching. The existing PR owner then controls delivery, current-head CI and final merge. A recovery-confirmed last-Item merge invokes ordinary Plan completion and mirror reflection in the same transaction.
 
-## Native decision publication
+## Repository activity publication
 
-Native proposal decisions use a different transaction sequence:
+Planning and Development are explicit activity intent over ordinary PR delivery.
+Hub reserves the exact unit/activity/request before GitHub ref and Draft PR
+publication. It records candidate artifacts and recovers the same owner after a
+lost response. It does not author repository state or evaluate a devkit stage.
 
-1. Retain the request identity and prepare its candidate repository commit.
-2. Recheck publication authority and hold the Run/Project fence for the bounded push.
-3. Retain the published candidate and apply continuation only if it remains applicable.
-4. After an uncertain push/result write, reconcile the exact remote candidate
-   rather than repeat publication or restore withdrawn authority.
-
-`CAP-SDD-native-delivery` owns proposal decisions;
-`CAP-SDD-workflow-control` owns workflow answers, handoff and integration actions.
-`CAP-SDD-runtime-isolation` owns the evaluation process and identity inputs.
-The general identity/fencing concepts and deliberate transaction exceptions are
-collected in `ARCH-08-crosscutting-concepts`.
+Optimistic snapshots carry `execution_version: 2` and `provider: repository-agent`.
+Repository setup, workflow gates and correctness belong to its working agent.
+Questions around pushes are processed before CI/merge continuation; a saved answer
+alone changes no merge authority. `CAP-SDD-native-delivery` and
+`CAP-PR-operator-decisions` own these contracts.
 
 ## SDK dispatch and PR handoff
 
@@ -83,11 +80,10 @@ A maintenance step then commits attempt intent, calls the bound worker outside
 the database transaction and fences the returned result. Recovery inspects the
 same attempt before deciding whether another submission is permitted.
 
-The existing-PR bridge inserts a repository-evidence check and scoped approval
-before resuming the existing PR owner. A retained resume receipt lets recovery
-follow the same PR attempt. The SDK flow projects that owner's outcome; it does
-not replace its ready/CI/merge handling. Exact conditions are in
-`CAP-SDK-existing-pr-bridge`.
+The built-in SDD/PR bridge namespaces are retired. Undispatched and unreceipted
+legacy work settles terminally; an exact receipt-backed delivery may observe its
+existing PR owner without repeating resume. `CAP-SDK-existing-pr-bridge` owns this
+retirement boundary. Generic SDK flow dispatch remains independent.
 
 ## Diagnostic completion and housekeeping
 
@@ -104,23 +100,29 @@ execution capability owns the actual next action.
 
 Implementation anchors include
 [PR progress](../../modules/hub/app/features/project_management/pipeline_runs/usecases/progress.py),
-[SDD publication](../../modules/hub/app/features/project_management/sdd/plan_publication.py),
+[activity publication](../../modules/hub/app/features/project_management/sdd/activities.py),
 [SDK runtime](../../modules/hub/app/features/execution/flows/runtime.py) and
 [connection coordination](../../modules/hub/app/features/project_management/connection_tests/services.py).
 `ARCH-10-quality-requirements` connects these sequences to measurable regression
 scenarios; [deployment status](../operations/deployment-status.md) retains live evidence.
 
-## Sequential SDD admission and recovery
+## Legacy execution retirement
 
-`SddBatch` and `SddBatchMember` retain immutable through-Development selection, source basis, exact order and phase checkpoints. `SddBatchControl` retains revisioned request receipts. `SddActivityClaim` is shared by individual and batch starts. `ADR-sdd-batch-ledger` records this ownership choice; `CAP-SDD-native-delivery` owns the interface.
+Legacy native snapshots and retained batch/claim/decision tables remain historical.
+The data migration cancels nonterminal old Runs, revokes leases, settles local
+active attempts and stops old batches. It preserves immutable requests, selections,
+receipts, exact remote artifacts and uncertainty. A downgrade does not reactivate
+retired authority.
 
-Batch admission and controls MUST lock Project before Batch and the shared activity reservation. Claim-only lease writes acquire no parent afterward. Existing PR owners retain their Run transaction; exact claim binding is validated and written atomically in enrollment, including project, lease, unit, repository, branch, candidate and enrollment snapshot. No Run lock is held while acquiring a parent Project/Batch lock. Check: PostgreSQL multi-connection `modules/hub/tests/integration/features/project_management/sdd/test_batch_claims.py`; lock-order review complements these races.
+Hub MUST refuse implicit conversion or resume of old native work and preserve an
+uncertain reservation until explicit project-scoped reconciliation acknowledges
+the exact retained checkpoint. Check: retirement migration and claim reconciliation
+tests; source discriminator in `project_management/sdd/execution.py`.
 
-Sequential admission MUST retain one member's slot through its exact Planning/Development owner outcomes. A claim is committed before remote effects; its exact candidate is saved before push. A final selected-base read follows policy evaluation before the bounded publication under its claim fence. Recovery reuses only saved artifacts and a live matching lease. Enrollment response loss recovers the exact persisted binding. Missing artifacts or uncertain ownership preserve the hold; retired settled receipts never restart. Check: `test_batch_claims.py` and `modules/hub/tests/unit/features/project_management/sdd/test_batch_activities.py`.
-
-A maintenance transition observes the existing owner or performs one next phase admission. Planning merge/accepted-source evidence precedes Development; validated handoff identifies the exact SPEC; completed SPEC and confirmed Development merge finish a member. Canonical edge-only repair preserves all other graph/content identities. These checks grant no workflow or merge authority. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py`.
-
-Unresolved claims protect their runs from retention. Settled claims retain tombstones after eligible run-link pruning. The migration freezes four explicit table definitions and indexes rather than importing changing application metadata. Check: `modules/hub/tests/integration/migrations/test_sdd_batch_migration.py`.
+The migration performs no GitHub mutation and cannot cancel previously dispatched
+external agent work. Explicit reconciliation releases only the selected reservation;
+it grants no resume, replacement start or merge authority. New starts retain their
+own request identity and ordinary active-PR exclusivity.
 
 ## Work Item replacement evidence
 

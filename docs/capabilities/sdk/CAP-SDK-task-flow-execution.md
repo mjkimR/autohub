@@ -1,12 +1,11 @@
 ---
 id: CAP-SDK-task-flow-execution
 title: Durable SDK Task and Flow Execution
-summary: "The SDK declares versioned sequential task flows, while Auto Hub admits immutable releases and executes durable, authorized runs through configured workers. It excludes worker deployment and the existing-PR bridge's delivery authorization."
+summary: "The SDK declares versioned sequential task flows, while Auto Hub admits immutable releases and executes durable, authorized runs through configured workers. It excludes worker deployment; built-in SDD/PR bridge effects are retired."
 area: sdk
 status: active
 usecases:
   - UC-execute-task-flow
-  - UC-resume-verified-pr
 entrypoints:
   - packages/sdk/src/autohub_sdk/flow.py
   - packages/sdk/src/autohub_sdk/client.py
@@ -20,7 +19,7 @@ entrypoints:
 `autohub-sdk` supplies declarations, wire models and an HTTP client independently
 of the backend. Auto Hub owns release registration, run/attempt persistence,
 maintenance-driven execution, approval and recovery. `CAP-SDK-existing-pr-bridge`
-owns the additional evidence and authority required to resume an existing PR.
+identifies the retired built-in SDD/PR binding and receipt-backed observation boundary.
 
 ## 2. Scope and Boundary
 
@@ -74,8 +73,8 @@ rotating keys for that machine preserves ownership.
 `ReleaseSpec` contains `FlowManifest` v2 (`tasks`, `flows`) and `bindings`.
 Each binding names a task contract, `executor` (`http` or `native`) and a configured
 `target`; registration uploads no Python code. Native targets are
-`autohub.identity` and the allowlisted bridge targets owned by
-`CAP-SDK-existing-pr-bridge`. HTTP targets are server-configured through
+`autohub.identity`. The former `autohub.sdd:*` and `autohub.pr_delivery:*`
+bindings are retired under `CAP-SDK-existing-pr-bridge`. HTTP targets are server-configured through
 `AUTOHUB_FLOW_HTTP_TARGETS` and require HTTPS or loopback HTTP. Their URLs reject
 embedded usernames/passwords, query strings and fragments. The optional
 `credential_env` name matches `^[A-Z][A-Z0-9_]*$`. Registration snapshots the

@@ -3,7 +3,8 @@ id: ADR-offline-source-build
 title: Build locked sources offline after Hub-side fetch
 summary: For installing private Git sources without wheels, we fetch them in the Hub process with the project's connector token and build them in the sandbox without network or credentials, to keep build code away from tokens and metadata, accepting a more complex install.
 proposal: SPEC-repo-locked-sdd-runtime
-status: accepted
+status: superseded
+superseded_by: ADR-repository-owned-sdd-execution
 created_at: 2026-11-13
 ---
 
@@ -11,7 +12,7 @@ created_at: 2026-11-13
 
 Superseded in part by `ADR-repository-owned-sdd-execution`: all decisions assigning source fetch, build and isolated evaluation to Hub.
 
-- **Status**: Accepted
+- **Status**: Superseded by `ADR-repository-owned-sdd-execution`
 - **Date**: 2026-11-13
 
 ---

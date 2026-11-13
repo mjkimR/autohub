@@ -40,15 +40,15 @@ outside any broader latency promise.
 - **Owner**: `CAP-PR-pull-request-delivery`, `CAP-PR-ci-observation`.
 - **Check**: [test_merge_stage.py](../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_merge_stage.py), `test_cancel_after_final_ci_read_prevents_merge`.
 
-## Q-03: Recover a published SDD decision without publishing again
+## Q-03: Recover an activity publication without replacement
 
-- **Source**: a failed local result transaction after proposal publication.
-- **Stimulus**: the pushed decision commit exists but finishing its database result fails.
-- **Environment**: recorded candidate identity, controlled publication/PR-head fixtures and a persisted decision receipt.
-- **Response**: replay reconciles that exact commit; a cancellation after the push remains authoritative.
-- **Measure**: exactly one publication is observed; recovery records it as published, with `applied: false` and no approval if the run was canceled.
+- **Source**: a lost GitHub ref or PR publication response.
+- **Stimulus**: the exact saved candidate exists but the caller did not receive success.
+- **Environment**: retained claim/checkpoint and controlled GitHub API fixtures.
+- **Response**: retry recovers the same branch/PR under its original request identity.
+- **Measure**: no duplicate write is issued for the saved candidate; absent/closed original artifacts do not authorize replacement.
 - **Owner**: `CAP-SDD-native-delivery`.
-- **Check**: [test_plan_publication.py](../../modules/hub/tests/integration/features/project_management/sdd/test_plan_publication.py), `test_lost_database_result_recovers_exact_pushed_commit_without_publishing_again`.
+- **Check**: `modules/hub/tests/unit/features/project_management/sdd/test_activities.py`, `test_response_loss_recovers_same_saved_candidate_without_duplicate_writes`, `test_missing_original_ref_does_not_create_replacement` and `test_closed_original_pr_is_not_replaced`.
 
 ## Q-04: Recover an uncertain SDK attempt under its existing identity
 
@@ -100,15 +100,6 @@ outside any broader latency promise.
 - **Owner**: `CAP-CONN-connection-verification`.
 - **Check**: [test_ownership_recovery.py](../../modules/hub/tests/integration/features/project_management/connection_tests/test_ownership_recovery.py), `test_default_branch_inheriting_test_commit_never_grants_cleanup_ownership`.
 
-## Q-09: Isolate repository code from host credentials and network
-
-- **Source**: repository-defined Python rule code.
-- **Stimulus**: it attempts to read a host file, inherit a host secret variable and open a network connection.
-- **Environment**: a fixture repository whose lock selects the seed runtime, with the supported OS isolation runner; a separate unit case removes all runners.
-- **Response**: isolated evaluation denies the file/network access and omits the secret environment value; missing isolation refuses execution.
-- **Measure**: the probe records `file: denied`, a null secret variable and a denied/unreachable network errno; the no-runner case raises instead of constructing an unsandboxed command.
-- **Owner**: `CAP-SDD-runtime-isolation`.
-- **Check**: [test_cli.py](../../modules/hub/tests/integration/features/project_management/sdd/test_cli.py), `test_repository_python_rule_cannot_read_host_secret_or_use_network`; [test_runtime.py](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_no_unsandboxed_fallback`.
 
 ## Q-10: Bound the scheduler's operator-facing exception detail
 
@@ -130,33 +121,13 @@ outside any broader latency promise.
 - **Owner**: `CAP-ACCESS-authentication-authorization`.
 - **Check**: [test_access_logging.py](../../modules/hub/tests/unit/test_access_logging.py), `test_google_callback_query_is_removed_from_access_log`, `test_other_request_queries_are_preserved`, `test_filter_installation_is_idempotent`.
 
-## Q-12: Keep runtime build code away from credentials, network and the venv
 
-- **Source**: a locked Git source's hatchling build hook.
-- **Stimulus**: during a runtime install it opens a network connection, reads a host secret variable and writes a `.pth` file into the runtime's `.venv`.
-- **Environment**: the pinned build environment (`.cache/sdd-build` or `/opt/sdd-build`) with the supported OS isolation runner.
-- **Response**: the build runs offline in the sandbox that can write only `work/`; the built wheel is then installed by a separate sandboxed step.
-- **Measure**: the hook records `network: blocked`, no secret value and `venv: denied`; no planted `.pth` file exists and the wheel is installed.
-- **Owner**: `CAP-SDD-runtime-isolation`.
-- **Check**: [test_lock_runtime.py](../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py), `test_source_build_hook_cannot_reach_the_network_or_credentials`; [test_runtime_install.py](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_token_is_used_only_by_hub_process_fetches`.
-
-## Q-13: Install a cold runtime once per identity
-
-- **Source**: concurrent evaluations of one repository lock.
-- **Stimulus**: five evaluations in one worker request devkit commands for a runtime identity with no complete cache entry; separately, two worker processes claim the same identity's install.
-- **Environment**: one per-instance cache directory; the install is held open until released.
-- **Response**: one install starts; callers wait a bounded time for it, then use the entry or are refused as retryable; a caller whose deadline expires does not cancel the install.
-- **Measure**: one install call with the caller's token; all five callers receive HTTP 503 `SDD_RUNTIME_PREPARING` after their wait ends with the install still held; a caller whose install publishes within the wait receives the entry; of two processes exactly one obtains the claim; the install task finishes uncancelled after a 0.05-second caller deadline.
-- **Owner**: `CAP-SDD-runtime-isolation`.
-- **Check**: [test_runtime_cache.py](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_cache.py), `test_only_one_process_claims_an_identity`; [test_runtime.py](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_cold_cache_starts_one_install_and_reports_preparing`, `test_caller_waits_for_an_install_that_finishes_within_the_wait`, `test_caller_deadline_does_not_cancel_the_install`.
 
 ## Verification limits
 
 These scenarios define checks of controlled failures and invariants. They do not
 prove every possible remote race, every sensitive logging field or arbitrary
 worker cooperation. Publication-lock and overlapping-cursor assertions require
-PostgreSQL; real CLI isolation requires its provisioned runner; the real build
-isolation case skips without the pinned build environment. The cold-install cost
-recorded for `SPEC-repo-locked-sdd-runtime` is a measurement, not a scenario
-check. Skips and fixture
-results cannot stand in for those environments or for a serving-host canary.
+PostgreSQL. Skips and fixture results cannot stand in for those environments
+or for a serving-host canary. Connected-repository runtime compatibility and
+internal SDD correctness are not Hub quality guarantees.

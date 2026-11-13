@@ -1,158 +1,62 @@
 ---
 id: CAP-SDK-existing-pr-bridge
-title: Verified Existing-PR Delivery Bridge
-summary: "Configured native SDK tasks verify repository evidence and obtain scoped approval before resuming one existing paused PR run. The bridge observes the existing PR owner and preserves its resume identity through recovery."
+title: Retired built-in existing-PR bridge
+summary: "The evaluator-coupled autohub.sdd and autohub.pr_delivery SDK bindings are retired. Legacy receipt-backed delivery can observe its existing PR owner; generic SDK task/flow execution and scoped PR APIs remain available."
 area: sdk
-status: active
+status: deprecated
 usecases:
   - UC-resume-verified-pr
 entrypoints:
   - modules/hub/app/features/execution/flows/bridge.py
-  - modules/hub/app/features/execution/flows/evidence.py
 ---
 
-# [CAP-SDK-existing-pr-bridge] Verified Existing-PR Delivery Bridge
+# [CAP-SDK-existing-pr-bridge] Retired built-in existing-PR bridge
 
 ## 1. Summary
 
-The bridge connects an external SDK flow to a `PipelineRun` that was already
-implemented outside Hub's native SDD execution. It validates the actual checkout,
-claims the PR run, binds approval to evidence and resumes the existing owner.
-`CAP-SDK-task-flow-execution` owns admission, machine scopes, approval commands,
-worker leases and the surrounding flow lifecycle.
+The built-in `autohub.sdd:*` and `autohub.pr_delivery:*` bindings no longer
+verify repository checkouts or resume PR work. `ADR-repository-owned-sdd-execution`
+retires both namespaces together. `CAP-SDK-task-flow-execution` continues to own
+generic SDK releases, tasks, flows, approval and worker execution.
 
-## 2. Scope and Boundary
+## 2. Scope & Boundary
 
-- **In-Scope**: server-selected project/checkout binding; repository evidence
-  evaluation; exclusive PR-run claim; persisted approval authority; existing-run
-  resume and receipt recovery; owner-state projection and cancellation fencing.
-- **Out-of-Scope**: repository implementation belongs to the external developer;
-  workflow definitions and readiness evaluation belong to devkit-spec; ready
-  status, CI observation and merging belong to the existing PR owner; checkout
-  provisioning belongs to the operator; runtime selection, installation and
-  isolation belong to `CAP-SDD-runtime-isolation`.
-- **Scope Excluded**: new PR/run creation, a second merge controller, caller-chosen
-  checkout roots, bypassing approval by omitting the approval step, and rolling
-  back external requests or effects already delivered.
+- **In-Scope**: deterministic refusal of new bridge effects, durable settlement
+  of old unreceipted work and observe-only recovery of receipt-backed delivery.
+- **Out-of-Scope**: repository implementation and verification belong to its
+  owner/agent and GitHub Actions. Ordinary PR control belongs to
+  `CAP-PR-pull-request-delivery`; generic SDK execution belongs to
+  `CAP-SDK-task-flow-execution`.
+- **Scope Excluded**: checkout configuration, runtime provisioning, devkit
+  evaluation, new built-in bridge effects or a replacement bridge protocol.
 
-## 3. Business Rules and Policies
+## 3. Business Rules & Policies
 
-1. **Configured namespace**: WHEN a native bridge release is registered, the host MUST restrict its target to a server-configured provider/environment, project and absolute checkout. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_one_flow_claims_pipeline_and_native_namespace_is_restricted`.
-2. **Checkout identity**: WHEN repository evidence is read, the bridge MUST require a clean checkout at the requested Git HEAD before and after evaluating evidence. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_real_git_cli_evidence_rejects_dirty_and_changed_head`.
-3. **Workflow readiness**: WHEN the check task evaluates the bound spec, the bridge MUST require the workflow evaluated with the checkout's locked runtime to satisfy Hub's integration-approval readiness predicate. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_real_git_cli_evidence_rejects_dirty_and_changed_head` and its real-CLI fixture.
-4. **Paused owner**: WHEN evidence is claimed, the bridge MUST require the configured project's externally implemented PR run to be paused at the supplied revision and head. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_bridge_resumes_once_then_observes_existing_pr` and its `paused` fixture.
-5. **Single claim**: IF another flow owns an unreleasable PR claim, THEN the bridge MUST fail the check with `pr-owned-by-another-flow`. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_one_flow_claims_pipeline_and_native_namespace_is_restricted`.
-6. **Scoped approval**: WHEN the flow's approval command authorizes a claimed PR, the host MUST persist the approving flow revision, evidence-content digest and machine/key actor on the claim. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_bridge_resumes_once_then_observes_existing_pr`.
-7. **No implicit approval**: IF a delivery task has no persisted claim approval, THEN the bridge MUST fail with `pr-resume-approval-required`. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_native_bridge_requires_persisted_scoped_approval`.
-8. **Approved evidence**: WHEN a delivery attempt first resumes a PR, the bridge MUST re-evaluate repository evidence against the evidence digest passed from the check task. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_approval_evidence_change_and_cancel_fence`.
-9. **Live PR head**: IF the PR head changes before its first resume, THEN the existing PR owner MUST reject the resume instead of creating a successful receipt. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_approval_head_change_rejects_resume`.
-10. **Resume identity**: WHEN a delivery attempt resumes the PR, the bridge MUST use that attempt's UUID as the existing owner's resume request ID. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_bridge_resumes_once_then_observes_existing_pr`.
-11. **Effect recovery**: IF a worker dies after the resume effect, THEN a recovered delivery attempt MUST reuse the persisted resume receipt without issuing a second resume. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_pr_resume_effect_survives_worker_death_and_cancel_fences_owner`.
-12. **Owner projection**: WHEN the PR owner is observed after resume, the bridge MUST project its pending, paused/blocked, failed/canceled or completed outcome into the existing SDK attempt. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_pr_owner_state_is_projected`.
-13. **Cancellation fence**: WHEN the owning bridge task is canceled, the bridge MUST tombstone its PR claim against later resume. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_pr_resume_effect_survives_worker_death_and_cancel_fences_owner`.
-14. **Owner cancellation**: WHEN a bridge task is canceled after assigning its delivery attempt, the bridge MUST request cancellation of its nonterminal PR owner. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_pr_resume_effect_survives_worker_death_and_cancel_fences_owner`.
+1. **Admission retirement**: WHEN a new built-in bridge registration/start/control would create work, Hub MUST refuse it with `SDD_BRIDGE_RETIRED`. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py`.
+2. **Durable settlement**: WHEN old bridge work without a saved PR-resume receipt reaches execution, Hub MUST settle it terminally rather than treating retirement as transient worker unavailability. Check: the bridge retirement suite.
+3. **Receipt-backed observation**: WHEN a legacy delivery has a saved PR-resume receipt, Hub MUST limit its progression to observing the existing PR owner without repeating resume or repository evaluation. Check: `test_receipt_backed_delivery_only_observes_existing_owner` in the bridge suite.
+4. **History preservation**: Hub MUST preserve completed flow results and retained bridge evidence. Check: completed-result and flow retirement regressions in the bridge suite.
 
-## 4. Interfaces and Data Contracts
+## 4. Interfaces & Data Contracts
 
-### Registration and inputs
+Synchronous boundaries that would admit fresh bridge effects use HTTP 410
+`SDD_BRIDGE_RETIRED`. Outstanding unreceipted asynchronous attempts produce a
+terminal failed result carrying that code. Undispatched steps retire before a
+worker claims them. A saved receipt is not permission to repeat its original
+resume effect.
 
-The native binding targets are `autohub.sdd:<name>` for evidence checking and
-`autohub.pr_delivery:<name>` for delivery. `AUTOHUB_FLOW_DELIVERY_TARGETS` maps the
-name to `provider`, `environment`, `project_id` and an absolute `checkout` path.
-Registration rejects an unknown or mismatched namespace with HTTP 422
-`worker-binding`. A release resolves and snapshots that binding; clients do not
-supply an arbitrary server checkout path.
+Exact existing idempotent start/command replay may return retained history.
+Cancel retains the old delivery tombstone and ordinary owner cancellation for
+already-resumed delivery; it does not start bridge work. Receipt-backed observation
+requires the exact delivery attempt and same PR owner's saved resume receipt.
 
-The bridge uses the release/run/command HTTP API and scopes from
-`CAP-SDK-task-flow-execution`. It exposes no separate public resume endpoint.
-The check task receives:
+Retained bindings, claims and receipts are historical data. The host does not
+need `AUTOHUB_FLOW_DELIVERY_TARGETS` or an operator checkout for these retired
+namespaces. Ordinary scoped PR APIs remain available independently; they do not
+inherit former bridge approval or repository-readiness guarantees.
 
-| Field | Contract |
-| --- | --- |
-| `pipeline_run_id` | Existing PR run UUID |
-| `pipeline_revision` | Integer at least 1, matching the paused run |
-| `head_sha` | Exactly 40 lowercase hexadecimal characters |
-| `spec_dir` | Existing directory matching `specs/[0-9]{4}-[0-9]{2}/[a-zA-Z0-9_-]+` within the configured checkout |
-| `evidence_digest` | Optional at input; produced by the check and supplied to delivery |
+## 5. Verification Boundary
 
-Unknown bridge input fields are rejected. The check emits these reviewed fields
-plus `evidence_digest`. Delivery requires its fields to equal the claim's checked
-evidence; the approval must still match the complete checked evidence content.
-A claim formerly owned by a failed/canceled flow can be reassigned only if no
-delivery attempt was assigned. A PR with its own native SDD snapshot is refused
-with `pr-owned-by-native-sdd` rather than given a second execution owner.
-
-### Evidence and approval
-
-The check resolves the spec beneath the checkout and rejects file paths escaping
-the spec tree. It evaluates `devkit spec policy`, `devkit workflow show`,
-`devkit workflow next` and detailed envelope checks with the runtime that the
-operator checkout's own root `uv.lock` pins (`CAP-SDD-runtime-isolation`). The
-project's GitHub connector token is used only to fetch that lock's Git sources in
-the Hub process when the runtime is not yet cached. The bound workflow defines its required review, reconcile,
-completion and final-report evidence; Hub does not replace that definition with
-filename presence checks.
-
-The integration-approval readiness predicate rejects held evidence and requires
-the evaluated integration gate to be current or already passed under the
-predicate's completed-gate condition. The digest covers `head_sha`, the runtime/
-workflow/configuration snapshot (including its `devkit-lock:<identity>` CLI
-identity) and SHA-256 hashes of spec files. Git cleanliness
-and HEAD are checked again after evaluation and hashing.
-
-Approval stores the approving flow revision, the digest of the claim's checked
-fields and the machine/key actor. It does not itself resume the PR. Before the
-first resume, delivery rechecks repository evidence and the existing PR controller
-checks the expected PR revision/head. Recovery after a recorded resume uses its
-receipt rather than repeating initial checkout/resume effects. Existing owner
-checks continue to govern CI and merge after that point.
-
-### Results and failures
-
-The delivery worker emits `pipeline_run_id`, owner `state` and `head_sha`.
-
-| Owner outcome | Worker result | Public flow while observing |
-| --- | --- | --- |
-| `completed` | `completed` | Completes after flow result validation |
-| `failed`, `canceled` | `failed`, error `pr-failed` or `pr-canceled` | `failed` |
-| `paused`, `blocked` | `pending`, error `pr-paused` or `pr-blocked` | `waiting` / `external-result` |
-| Other nonterminal state | `pending` | `waiting` / `external-result` |
-
-The following failures are asynchronous attempt/run errors, not invented HTTP
-routes or refusal statuses:
-
-| Error | Condition |
-| --- | --- |
-| `spec-path-invalid`, `evidence-path-invalid` | Invalid or escaping spec/evidence path |
-| `checkout-head-changed`, `checkout-dirty`, `checkout-check-failed` | Checkout identity or Git check failed |
-| `workflow-evaluation-failed`, `workflow-not-ready-for-integration` | CLI evaluation failed or did not reach the required gate |
-| `pr-owned-by-native-sdd`, `pr-project-mismatch`, `pr-must-be-paused-at-reviewed-revision`, `pr-head-changed`, `pr-must-be-externally-implemented` | Ineligible existing owner |
-| `pr-owned-by-another-flow`, `pr-bridge-canceled`, `pr-bridge-owner-mismatch` | Claim unavailable or fenced |
-| `pr-resume-approval-required`, `pr-evidence-mismatch`, `pr-attempt-mismatch`, `approved-evidence-changed` | Approval/evidence/delivery identity does not match |
-| `pr-resume-rejected`, `pr-run-missing` | Existing owner refused resume or vanished |
-| `bridge-input-or-checkout-invalid` | Invalid bridge model or missing checkout/spec |
-
-A runtime that is still being installed (`SDD_RUNTIME_PREPARING`, HTTP 503) is not
-`workflow-evaluation-failed`: the bridge reports it as `bridge-unavailable`.
-Internal transient failures such as `bridge-stale` or `bridge-unavailable` reach
-the flow worker's recoverable path as `worker-unavailable`; they do not authorize
-redispatch under a new attempt ID. Canceling a delivery with an assigned attempt
-can cancel the existing owner; cancellation does not roll back external agent
-requests, pushes or merges that already happened.
-
-## 5. Source and Verification Evidence
-
-The contracts derive from the inspected
-[bridge](../../../modules/hub/app/features/execution/flows/bridge.py),
-[evidence reader](../../../modules/hub/app/features/execution/flows/evidence.py),
-[target model](../../../modules/hub/app/features/execution/flows/bridge_config.py),
-[approval persistence](../../../modules/hub/app/features/execution/flows/services.py)
-and [SDD evaluator](../../../modules/hub/app/features/project_management/sdd/services.py).
-The [bridge tests](../../../modules/hub/tests/integration/features/execution/flows/test_bridge.py)
-use actual Git and a fixture checkout that locks the seed devkit runtime, whose
-cache entry is seeded from `just install-sdd`, for evidence checks, while GitHub
-and owner transitions use controlled fixtures. That the evidence digest covers the
-`devkit-lock:<identity>` CLI identity is source-inspected through the snapshot;
-no bridge test asserts it separately. Those tests were inspected during
-authoring, not executed by this document. Fixture evidence does not establish live
-GitHub CI/merge or production deployment.
+The flow registration, worker and bridge-retirement paths define the source
+contract. Tests cited above are source pointers, not a live GitHub/provider or
+deployment result. `UC-resume-verified-pr` records the retired operator path.

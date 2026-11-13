@@ -48,15 +48,7 @@ export class DecisionIntent {
 	get competingUnresolved() {
 		return Object.values(reviews).some(
 			(other) =>
-				other !== this &&
-				other.runId === this.runId &&
-				other.validSession &&
-				other.unresolved &&
-				!(
-					this.recovery &&
-					!other.recovery &&
-					['accept_plan', 'reject_plan'].includes((other.intent?.body as Resume)?.decision || '')
-				)
+				other !== this && other.runId === this.runId && other.validSession && other.unresolved
 		);
 	}
 	get unresolved() {

@@ -11,8 +11,23 @@ from app_http_client import get_http_client
 from autohub_sdk import ReleaseSpec, TaskRef, content_digest
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from .bridge_config import DeliveryTarget
 from .errors import FlowError
+
+RETIRED_BRIDGE = "SDD_BRIDGE_RETIRED"
+BRIDGE_PREFIXES = ("autohub.sdd:", "autohub.pr_delivery:")
+
+
+def retired_binding(binding: dict) -> bool:
+    return binding.get("executor") == "native" and str(binding.get("target", "")).startswith(BRIDGE_PREFIXES)
+
+
+def retired_bindings(bindings: dict) -> bool:
+    return any(retired_binding(binding) for binding in bindings.values())
+
+
+def reject_retired_bindings(bindings: dict) -> None:
+    if retired_bindings(bindings):
+        raise FlowError(410, RETIRED_BRIDGE, "built-in repository delivery bridges have been retired")
 
 
 class HttpTarget(BaseModel):
@@ -32,11 +47,8 @@ class HttpTarget(BaseModel):
 
 
 class WorkerBindings:
-    def __init__(
-        self, targets: dict[str, HttpTarget] | None = None, deliveries: dict[str, DeliveryTarget] | None = None
-    ):
+    def __init__(self, targets: dict[str, HttpTarget] | None = None):
         self.targets = targets or {}
-        self.deliveries = deliveries or {}
 
     def resolve(self, release: ReleaseSpec, provider=None, environment=None) -> dict:
         resolved = {}
@@ -44,14 +56,8 @@ class WorkerBindings:
             key = f"{binding.task.key}@{binding.task.contract_version}"
             if binding.executor == "native" and binding.target == "autohub.identity":
                 resolved[key] = {"executor": "native", "target": binding.target}
-            elif binding.executor == "native" and binding.target.startswith(("autohub.sdd:", "autohub.pr_delivery:")):
-                name = binding.target.split(":", 1)[1]
-                target = self.deliveries.get(name)
-                if target is None or (target.provider, target.environment) != (provider, environment):
-                    raise FlowError(
-                        422, "worker-binding", "delivery target is not configured for this provider environment"
-                    )
-                resolved[key] = {"executor": "native", "target": binding.target, **target.snapshot()}
+            elif retired_binding({"executor": binding.executor, "target": binding.target}):
+                raise FlowError(410, RETIRED_BRIDGE, "built-in repository delivery bridges have been retired")
             elif binding.executor == "http" and binding.target in self.targets:
                 resolved[key] = {
                     "executor": "http",
@@ -67,8 +73,7 @@ def get_worker_bindings() -> WorkerBindings:
     from pydantic import TypeAdapter
 
     targets = TypeAdapter(dict[str, HttpTarget]).validate_json(os.getenv("AUTOHUB_FLOW_HTTP_TARGETS", "{}"))
-    deliveries = TypeAdapter(dict[str, DeliveryTarget]).validate_json(os.getenv("AUTOHUB_FLOW_DELIVERY_TARGETS", "{}"))
-    return WorkerBindings(targets, deliveries)
+    return WorkerBindings(targets)
 
 
 class WorkerResult(BaseModel):
@@ -101,10 +106,12 @@ class WorkerAction:
 
 class WorkerAdapter:
     async def execute(self, action: WorkerAction) -> WorkerResult:
-        if action.binding["executor"] == "native" and action.binding["target"] != "autohub.identity":
+        if retired_binding(action.binding):
             from .bridge import PRBridgeWorker
 
             return await PRBridgeWorker().execute(action)
+        if action.binding["executor"] == "native" and action.binding["target"] != "autohub.identity":
+            return WorkerResult(attempt_id=action.attempt_id, status="failed", error="worker-binding")
         if action.binding["executor"] == "native":
             return WorkerResult(
                 attempt_id=action.attempt_id,

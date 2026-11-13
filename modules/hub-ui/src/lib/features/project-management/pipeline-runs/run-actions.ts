@@ -7,8 +7,12 @@ export type DecisionEntry = components['schemas']['DecisionEntryRead'];
 
 const TERMINAL = ['completed', 'failed', 'canceled'];
 
-export function isTerminalRun(run: Pick<Run, 'state'>): boolean {
-	return TERMINAL.includes(run.state);
+export function isTerminalRun(
+	run: Pick<Run, 'state'> & Partial<Pick<Run, 'sdd_snapshot'>>
+): boolean {
+	return (
+		!!(run.sdd_snapshot && run.sdd_snapshot.execution_version !== 2) || TERMINAL.includes(run.state)
+	);
 }
 
 /**
@@ -72,6 +76,8 @@ export type RunAction = { kind: RunActionKind; label: string; short: string; sec
  * Resume is only a secondary action.
  */
 export function primaryRunAction(run: Run, decisions: RunDecisions): RunAction {
+	if (run.sdd_snapshot && run.sdd_snapshot.execution_version !== 2)
+		return { kind: 'open', label: 'Inspect retired run', short: 'Inspect', section: 'decisions' };
 	const wait =
 		decisions.status === 'known' && !isTerminalRun(run) ? decisionWait(decisions.entries) : null;
 	if (wait === 'question')
@@ -116,6 +122,7 @@ export function rowActionName(action: RunAction, run: Pick<Run, 'pull_number'>):
 
 /** Plain Resume is offered only for a stopped run that no known decision holds. */
 export function canResume(run: Run, decisions: RunDecisions): boolean {
+	if (run.sdd_snapshot && run.sdd_snapshot.execution_version !== 2) return false;
 	if (run.state !== 'paused' && run.state !== 'blocked') return false;
 	return decisions.status === 'unknown' || decisionWait(decisions.entries) === null;
 }

@@ -1,83 +1,31 @@
 ---
 id: UX-sdd-workflow-request
-title: SDD Workflow Request
-summary: "The workflow-request panel presents the current native request and keeps proposal decisions, worker answers and other workflow choices distinct. Supports exact pending-decision navigation."
+title: Retired native workflow request
+summary: "This former native evaluator control is retired; repository documents and ordinary PR questions remain available independently."
 area: sdd
 element: panel
-status: active
-usecases:
-  - UC-decide-sdd-proposal
-  - UC-complete-sdd-workflow
+status: deprecated
+usecases: []
 capabilities:
   - CAP-SDD-native-delivery
-  - CAP-SDD-workflow-control
 ---
 
-# [UX-sdd-workflow-request] SDD Workflow Request
+# [UX-sdd-workflow-request] Retired native workflow request
 
 ## 1. Purpose
 
-- **Primary task**: Answer the current native workflow request.
-- **Facts to commit**: Request identity, prompt, eligible/recommended options, inspected head and the meaning of the selected action.
-- **Secondary items**: Integration approval stays in `UX-sdd-run`; decision/publication history stays in `UX-sdd-decision-history`.
+This panel is no longer an active product control.
 
 ## 2. Content
 
-The first current request is primary. Eligible choices and its note/decision
-editor precede the action buttons; explanation below states how the answer is
-published and whether the request remains open.
-
-- Native SDD activity (current request ID, kind, title, prompt and optional context).
-- Native SDD activity (eligible radio choices and recommendation marker).
-- Native SDD activity (note or outside-options worker decision).
-- SDD unit (inspected proposal head; for a plan-accept request).
-
-The panel appears for a paused/blocked run with an applicable request. It excludes
-the dev-integration gate. Worker questions expose Record answer but no Decline or
-Defer; proposal rejection requires a reason; other requests can expose Decline
-and Defer with text explaining that these leave the request open.
-
-An inbox selection names the exact request, including a non-first request. Missing requests do not substitute the first request. The parent disables controls until native inspection succeeds; acknowledged submission reloads the inbox before owner reload.
-
-The selected decision outcome is retained beside its owner controls. It identifies the exact displayed request, saved answer text, applied attempt and independent delivery/publication evidence. Current Run/authority/hold remains distinct. Another history selection changes the displayed read subject without replacing an unresolved mutation intent. Parent review owns PR navigation and Close.
+No live readiness, workflow-choice or execution-selection content is rendered. Historical records are inspected through `UX-sdd-run` or `UX-sdd-batch`; repository documents remain in `UX-repository`.
 
 ## 3. States
 
-- **populated**: Review the current request and choose an eligible answer.
-- **empty**: No applicable request is rendered; inspect the parent’s next-action panel.
-- **busy**: Recording disables the request controls; wait for refreshed evidence.
-- **error**: The action error remains visible; inspect/refresh the current request before retrying.
-
-- **saved**: Saved text/identity remains visible; applying a saved answer requires explicit selection.
-- **applied**: The retained attempt is shown separately from delivery and current pause/terminal state.
-- **uncertain**: Outcome unknown offers Check outcome and eligible Retry same request; replacement submission is disabled while original intent exists.
-- **changed**: Changed basis disables old continuation; refresh current context before another action.
-- **acknowledged-refresh-error**: Recorded identity/text survives failed refresh; retry reads rather than replacing the mutation.
-- **publication-pending**: Exact worker answer remains recorded; duplicate answer controls stay disabled without matched publication proof.
+- **retired**: no live control exists; open the ordinary repository or Run view.
 
 ## 4. Interactions
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Accept proposal | `UC-decide-sdd-proposal` 2 | populated | busy |  | `CAP-SDD-native-delivery` | The decision is authored for the inspected head and current evidence reloads. |
-| Reject proposal | `UC-decide-sdd-proposal` 2a | populated | busy |  | `CAP-SDD-native-delivery` | A nonblank reason is required; publication outcome or refusal is shown. |
-| Record answer | `UC-complete-sdd-workflow` 3b | populated | busy |  | `CAP-SDD-workflow-control` | The UI explains that the worker question remains open until the agent publishes its answer envelope. |
-| Confirm choice / Approve | `UC-complete-sdd-workflow` 3c | populated | busy |  | `CAP-SDD-workflow-control` | The selected workflow direction is retained and refreshed evidence is shown. |
-| Decline / Defer decision | `UC-complete-sdd-workflow` 3c | populated | busy |  | `CAP-SDD-workflow-control` | The request remains open; these actions do not stop the run or withdraw integration authority. |
-
-### Retained outcome actions
-
-| Trigger | Step | From | To | Target | Capability | Feedback |
-| --- | --- | --- | --- | --- | --- | --- |
-| Retry same request | `UC-complete-sdd-workflow` *b, `UC-decide-sdd-proposal` 5b | uncertain | applied, uncertain, changed | | `CAP-SDD-workflow-control` | Original request and payload replay only; current owner guards remain authoritative. |
-| Reconcile publication | `UC-decide-sdd-proposal` 5b, `UC-decide-sdd-proposal` 6a, `UC-decide-sdd-proposal` 6b | uncertain | changed, applied, uncertain | `UX-run-decisions` | `CAP-SDD-native-delivery` | Opens the parent recovery review; confirmation and the separate stable request belong to `UX-run-decisions`. |
-
-Embedded panels retain the visible parent context and its Close exit; they add no Back button. Native history owns Check request outcome and sends its exact read subject to the parent outcome region.
-
-## 5. Evidence
-
-- [SddWorkflowRequests.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/SddWorkflowRequests.svelte).
-- [SddWorkflowRequests.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/SddWorkflowRequests.integration.test.ts); test assertions were inspected.
-
-This description is derived from source inspection. It does not claim a browser
-walkthrough, a fresh test execution or a live provider result.
+| Open repository | global: leave the retired control | retired | populated | `UX-repository` | `CAP-DOC-repository-viewer` | Read-only documents open without evaluation. |

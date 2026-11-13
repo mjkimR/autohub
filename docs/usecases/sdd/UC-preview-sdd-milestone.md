@@ -1,95 +1,64 @@
 ---
 id: UC-preview-sdd-milestone
-title: Review eligible milestone work
-summary: "A project operator inspects an immutable milestone snapshot and reviews an eligible local subset without starting activities or saving a queue."
+title: Retired executable milestone preview
+summary: "The former runtime-evaluated milestone readiness and eligible ordering path is retired. Operators can inspect retained owner evidence without reviving its authority."
 area: sdd
 primary_actor: Project operator
-supporting_actors:
-  - GitHub
-  - Server-selected devkit runtime
-status: active
-capabilities:
-  - CAP-SDD-native-delivery
-  - CAP-DOC-repository-viewer
-entrypoints:
-  - modules/hub-ui/src/lib/features/project-management/repositories/SddMilestonePreview.svelte
-  - modules/hub/app/features/project_management/sdd/api.py
+supporting_actors: []
+status: deprecated
+capabilities: [CAP-SDD-native-delivery]
 ---
 
-# [UC-preview-sdd-milestone] Review eligible milestone work
+# [UC-preview-sdd-milestone] Retired executable milestone preview
 
 ## 1. Goal
 
-- **Goal**: Understand exact milestone members and their prerequisites, then review an explicitly selected eligible subset before separate execution admission.
-- **Scope**: Auto Hub repository milestone preview.
-- **Trigger**: The operator wants to inspect work in a repository milestone.
-- **Preconditions**: The operator is authenticated.
+- **Goal**: inspect the retained outcome and understand that the former operation
+  grants no live execution authority.
+- **Scope**: retained history and retirement refusal.
+- **Trigger**: an operator opens an old subject or calls its retired operation.
+- **Preconditions**: the operator is authenticated.
 
 ## 2. Main Success Scenario
 
-1. The operator chooses the repository ref and milestone (`CAP-DOC-repository-viewer`, `CAP-SDD-native-delivery`). Interface: `UX-repository`, `UX-sdd-milestone-preview`.
-2. Hub displays the captured snapshot basis and completeness (`CAP-SDD-native-delivery`). Interface: `UX-sdd-milestone-preview`.
-3. The operator inspects exact member readiness, prerequisites and related activity evidence (`CAP-SDD-native-delivery`). Interface: `UX-sdd-milestone-preview`.
-4. The operator selects an eligible subset and reviews its suggested order (`CAP-SDD-native-delivery`). Interface: `UX-sdd-milestone-preview`.
-5. The operator ends inspection or refreshes the observation (`CAP-SDD-native-delivery`). Interface: `UX-sdd-milestone-preview`.
+1. The operator opens the retained owner subject (`CAP-SDD-native-delivery`).
+   Off screen: the client inspects retained API evidence; no dedicated browser control exists.
+2. Hub displays the stored identity/outcome as historical evidence (`CAP-SDD-native-delivery`).
+   Off screen: the client inspects retained API evidence; no dedicated browser control exists.
+3. The operator follows the linked Run/PR or leaves the retired subject (`CAP-SDD-native-delivery`).
+   Off screen: the client inspects retained API evidence; no dedicated browser control exists.
 
 ## 3. Extensions
 
-- **1a.** Project/ref/path/milestone validation refuses: The panel displays the refusal; the use case ends without evaluation authority or artifacts. Interface: `UX-sdd-milestone-preview`.
-- **2a.** Discovery/evaluation is incomplete or exceeds a bound: Hub displays observed coverage and reasons with selection disabled; the operator may inspect rows or retry at step 2. Interface: `UX-sdd-milestone-preview`.
-- **2b.** No direct members are observed: Hub displays an empty state; the operator chooses another milestone at step 1 or ends inspection. Interface: `UX-sdd-milestone-preview`.
-- **3a.** A member is held, unsupported, finished, unknown or already active: The row remains inspect-only with its available evidence; resumes at step 3. Interface: `UX-sdd-milestone-preview`.
-- **4a.** Context changes before an earlier response completes: Hub discards the old result and subset; resumes at step 1 for the current context. Interface: `UX-sdd-milestone-preview`.
+- **1a.** Retained evidence is absent or inaccessible: Hub reports that exact
+  subject unavailable; the use case ends without selecting another owner.
+  Off screen: the client inspects retained API evidence; no dedicated browser control exists.
+- **2a.** A caller requests the retired live operation: Hub refuses before fresh
+  work or repository evaluation; the use case ends. Off screen: this is an API refusal, not an active control.
 
 ## 4. Postconditions
 
-- **Success guarantee**: The operator reviews only the explicitly selected eligible direct members at the displayed snapshot.
-- **Minimal guarantee**: Inspection changes no repository, activity, PR, run, decision or scheduler state. Incomplete evidence supplies no selectable order or execution authority.
+- **Success guarantee**: the operator can distinguish historical evidence from
+  an actionable execution.
+- **Minimal guarantee**: opening history or retrying an old operation cannot
+  grant authority to a replacement Run or effect.
 
 ## 5. Acceptance Criteria (Given / When / Then)
 
-### PREVIEW-01: Review a local subset
+Applicable rules: `CAP-SDD-native-delivery` retained history and retirement.
 
-- **Covers**: main success scenario.
-- **Given**: A complete milestone observation with eligible members.
-- **When**: The operator selects a subset.
-- **Then**: Only that subset appears in deterministic order and no activity starts or queue is persisted.
+### RETIRED-01: Read exact history
 
-### PREVIEW-02: Refuse invalid context
+- **Covers**: main success scenario, 1a.
+- **Given** an exact retained subject ID.
+- **When** it is read.
+- **Then** Hub returns its stored evidence or its exact unavailable outcome without execution.
 
-- **Covers**: 1a.
-- **Given**: Invalid project, ref or milestone identity/path.
-- **When**: Preview is requested.
-- **Then**: The refusal appears without fabricated readiness or artifacts.
-
-### PREVIEW-03: Disclose incomplete coverage
+### RETIRED-02: Refuse live authority
 
 - **Covers**: 2a.
-- **Given**: Missing/ambiguous graph evidence, failed pagination/runtime or an exceeded bound.
-- **When**: Preview returns.
-- **Then**: Coverage and reasons remain visible and selection/order are disabled.
+- **Given** a request for runtime-evaluated milestone readiness and eligible ordering.
+- **When** the retired boundary receives it.
+- **Then** no repository evaluation or new work is performed.
 
-### PREVIEW-04: Explain an empty milestone
-
-- **Covers**: 2b.
-- **Given**: No direct proposal members are observed.
-- **When**: The result is displayed.
-- **Then**: Another milestone or refresh is offered without claiming completed delivery.
-
-### PREVIEW-05: Inspect a held or existing activity
-
-- **Covers**: 3a.
-- **Given**: Unfinished prerequisites, workflow holds, unsupported historical anchors or an owned existing PR.
-- **When**: The operator inspects a row.
-- **Then**: Exact available anchor/worker/PR/run evidence appears without selecting, starting or resuming that activity.
-
-### PREVIEW-06: Discard stale context
-
-- **Covers**: 4a.
-- **Given**: A selected subset or pending preview for an earlier context.
-- **When**: Project, ref, milestone or refresh changes.
-- **Then**: Selection clears and a late obsolete response cannot restore it.
-
-## 6. Source and Verification Boundary
-
-`CAP-SDD-native-delivery` links the enforcing backend and UI checks. Real Git/catalog/isolation fixtures establish the captured document basis; provider calls are doubled. No live provider or deployment result is claimed.
+Retained mutation tombstones return `SDD_EXECUTION_RETIRED`. Local batch Stop settles future admission only; it does not resume work or cancel a provider.

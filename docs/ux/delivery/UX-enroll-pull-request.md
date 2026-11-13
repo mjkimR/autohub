@@ -1,7 +1,7 @@
 ---
 id: UX-enroll-pull-request
 title: Enroll Pull Request
-summary: "The enrollment dialog binds an existing pull request to a Project connection and optional AI catalog, including native unit input for SDD projects."
+summary: "The enrollment dialog binds an existing pull request to a Project connection and optional AI catalog, including descriptive unit intent for SDD projects."
 area: delivery
 element: modal
 status: active
@@ -23,12 +23,12 @@ capabilities:
 ## 2. Content
 
 The enrollment form is the primary region. Project connection selection governs
-whether the native SDD unit field appears.
+whether the SDD unit intent field appears.
 
 - Project connection (required selector).
 - PR run (candidate PR number and Already implemented flag).
 - AI catalog (enabled pipeline-delivery options or Project default).
-- SDD unit (required bound spec directory; only for an SDD Project connection).
+- SDD unit (requested unit directory; only for an SDD Project connection).
 - Submit/Cancel controls (below the fields).
 
 ## 3. States

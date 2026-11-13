@@ -49,14 +49,14 @@ tools is unnecessary for that responsibility.
 We select optimistic PR orchestration because it removes the repository
 responsibility instead of relocating its evaluator.
 
-- Hub forwards explicit unit/activity intent to the working agent without testing repository SDD readiness. → `CAP-SDD-native-delivery` optimistic dispatch (MUST, planned restatement).
-- Repository setup, asset management and workflow interpretation belong to the repository and its agent. Hub neither runs nor delegates `devkit sync` as a prerequisite or replacement service. → `CAP-SDD-native-delivery` repository responsibility (MUST, planned restatement).
-- Hub uses ordinary PR delivery, durable questions/answers and explicit resume; it does not select stages or author repository workflow decisions. → `CAP-PR-pull-request-delivery` SDD activity context (MUST, planned restatement).
-- Both activity kinds start Draft. Existing PR ready state, current-head GitHub checks and project merge policy govern delivery; Hub claims no enforcement of repository-internal gates. → `CAP-SDD-native-delivery` merge boundary (MUST, planned restatement).
-- Required repository verification executes in repository-owned GitHub Actions, whose results Hub observes through its existing CI contract. No Action or runner is introduced for devkit asset restoration or readiness evaluation. → `CAP-PR-pull-request-delivery` verification ownership (MUST, planned restatement).
-- Executable milestone readiness, graph-based native batches and the evaluator-coupled SDK bridge bindings are retired without replacement execution systems. → `CAP-SDD-native-delivery` retired surfaces (MUST, planned restatement).
-- Historical native evidence remains readable. Old execution authority is fenced and cannot implicitly convert into an optimistic Run. → `ARCH-06-execution` legacy execution retirement (MUST, planned restatement).
-- The serving image carries no SDD devkit runtime, installer, build environment or evaluation sandbox requirement. Auto Hub's contributor devkit process remains repository-owned tooling. → `ARCH-07-deployment` deployment boundary (MUST, planned restatement).
+- Hub forwards explicit unit/activity intent to the working agent without testing repository SDD readiness. → `CAP-SDD-native-delivery` rule 1 (MUST).
+- Repository setup, asset management and workflow interpretation belong to the repository and its agent. Hub neither runs nor delegates `devkit sync` as a prerequisite or replacement service. → `CAP-SDD-native-delivery` rules 2–3 (MUST).
+- Hub uses ordinary PR delivery, durable questions/answers and explicit resume; it does not select stages or author repository workflow decisions. → `CAP-PR-pull-request-delivery` SDD activity context (MUST).
+- Both activity kinds start Draft. Existing PR ready state, current-head GitHub checks and project merge policy govern delivery; Hub claims no enforcement of repository-internal gates. → `CAP-SDD-native-delivery` rule 8 (MUST).
+- Required repository verification executes in repository-owned GitHub Actions, whose results Hub observes through its existing CI contract. No Action or runner is introduced for devkit asset restoration or readiness evaluation. → `CAP-PR-pull-request-delivery` verification ownership (MUST).
+- Executable milestone readiness, graph-based native batches and the evaluator-coupled SDK bridge bindings are retired without replacement execution systems. → `CAP-SDD-native-delivery` rule 9 and `CAP-SDK-existing-pr-bridge` rule 1 (MUST).
+- Historical native evidence remains readable. Old execution authority is fenced and cannot implicitly convert into an optimistic Run. → `ARCH-06-execution` Legacy execution retirement (MUST).
+- The serving image carries no SDD devkit runtime, installer, build environment or evaluation sandbox requirement. Auto Hub's contributor devkit process remains repository-owned tooling. → `ARCH-07-deployment` Deployment boundary (MUST).
 
 Supersedes in part `ADR-repository-locked-runtime`: all in-force decisions assigning runtime selection, installation and evaluation to Hub.
 
@@ -66,12 +66,10 @@ Supersedes in part `ADR-offline-source-build`: all decisions assigning source fe
 
 Supersedes in part `ADR-sdd-batch-ledger`: all decisions defining live graph-based native SDD batch admission and progression.
 
-These statements enumerate the replacement while the earlier decisions remain
-accepted during Planning. The promoted decision replaces all in-force decisions in
-`ADR-repository-locked-runtime`, `ADR-repository-path-sources`,
-`ADR-offline-source-build` and `ADR-sdd-batch-ledger`. Set each fully replaced ADR
-to superseded during Development reconciliation. `ADR-sdd-development` remains
-accepted because it governs Auto Hub's own contributor workflow.
+This decision replaces all in-force decisions in `ADR-repository-locked-runtime`,
+`ADR-repository-path-sources`, `ADR-offline-source-build` and
+`ADR-sdd-batch-ledger`. Each is superseded. `ADR-sdd-development` remains accepted
+because it governs Auto Hub's own contributor workflow.
 
 The open-proposal inventory in `SPEC-optimistic-sdd-orchestration` has no proposal
 whose sole outcome is embedded SDD evaluation. Keep unrelated outcomes; adjust
@@ -95,10 +93,10 @@ GitHub Actions; this decision creates no verification workflow on their behalf.
 
 ## 6. Confirmation
 
-Planned checks are OPT-01 through OPT-12 in
-`SPEC-optimistic-sdd-orchestration`: API/PR progression and question regressions,
-retirement migration and PostgreSQL ownership races, UI historical reads,
-bridge refusal and generic SDK regressions, and packaging/CLI reachability
-inspection. Development reconciles the restating contracts before this ADR is
-reported implemented. Planning criticism and source inspection validate the
-proposal only; no runtime-removal implementation or deployment is claimed here.
+`SPEC-optimistic-sdd-orchestration` AC-01 through AC-12 define the delivery checks.
+Source regressions include optimistic activity/API and claim recovery, ordinary
+question/PR progression, retirement migration, bridge refusal and generic flows,
+plus UI absence-of-probe/history behavior. Source/import and serving-image review
+verify evaluator removal. The spec's check records identify commands actually
+executed; this decision does not establish live provider, GitHub or deployment
+verification.

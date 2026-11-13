@@ -1,4 +1,4 @@
-"""Transaction boundaries for immutable selection and future-admission controls."""
+"""Read retained batch history and settle local future-admission ownership."""
 
 from typing import Annotated
 
@@ -8,8 +8,8 @@ from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 from fastapi import Depends
 
-from .batch_models import SddBatch, SddBatchControl, SddBatchMember
-from .batch_policy import ordered_selection, project_basis, same_request
+from .batch_models import SddBatchControl
+from .batch_policy import same_request
 from .batch_repo import BatchRepository
 from .usecases import SddUseCase
 
@@ -20,6 +20,7 @@ class SddBatchUseCase:
 
     async def _read(self, session, row):
         return {
+            "retired": True,
             "id": str(row.id),
             "project_id": str(row.project_id),
             "state": row.state,
@@ -75,85 +76,11 @@ class SddBatchUseCase:
             return [await self._read(session, row) for row in await self.repo.lists(session, project_id)]
 
     async def create(self, project_id, request, actor):
-        from .milestones import preview_milestone
-        from .repos import SddRepository
-
-        digest = request_digest(request.model_dump(mode="json"))
-        async with AsyncTransaction() as session:
-            project = await self.projects.get(session, project_id)
-            previous = await self.repo.request(session, project_id, request.request_id)
-            if previous:
-                same_request(previous, actor, digest)
-                return await self._read(session, previous)
-        project = await self.sdd.milestone_context(project_id)
-        identity = project_basis(project)
-
-        async def runs_for(unit):
-            async with AsyncTransaction() as session:
-                return await SddRepository().runs(session, project_id, unit)
-
-        preview = await preview_milestone(self.sdd.observer, project, request, runs_for, capture=True)
-        if preview["resolved_sha"] != request.expected_sha:
-            raise ProjectError(409, "Preview SHA changed; inspect a fresh selection")
-        ordered = ordered_selection(preview, [m.model_dump(mode="json") for m in request.members])
-        async with AsyncTransaction() as session:
-            current = await self.projects.get(session, project_id, lock=True)
-            previous = await self.repo.request(session, project_id, request.request_id)
-            if previous:
-                same_request(previous, actor, digest)
-                return await self._read(session, previous)
-            if project_basis(current) != identity:
-                raise ProjectError(409, "Project changed while selection was evaluated")
-            if await self.repo.active(session, project_id):
-                raise ProjectError(409, "An unsettled batch already excludes another selection")
-            from .batch_evidence import remote_head
-
-            if await remote_head(self.sdd.observer, current, request.ref) != preview["resolved_sha"]:
-                raise ProjectError(409, "Selected base moved before batch creation committed")
-            basis = {
-                "project": identity,
-                "ref": request.ref,
-                "sha": request.expected_sha,
-                "milestone": preview["milestone"],
-                "through_development": True,
-                "evidence": preview["batch_basis"],
-                "edges": preview["edges"],
-            }
-            row = await self.repo.save(
-                session,
-                SddBatch(
-                    project_id=project_id,
-                    request_id=request.request_id,
-                    request_digest=digest,
-                    actor=actor,
-                    basis=basis,
-                    evaluation={"observed_at": preview["observed_at"]},
-                ),
-            )
-            for position, member in enumerate(ordered):
-                prefs = member["preferences"]
-                member["effective_preferences"] = {
-                    "planning_effort": prefs.get("planning_effort") or member.get("planning_effort") or "medium",
-                    "dev_effort": prefs.get("dev_effort") or member.get("dev_effort") or "medium",
-                    "planning_catalog": prefs.get("planning_catalog")
-                    or preview.get("default_catalog")
-                    or "personal-codex",
-                    "dev_catalog": prefs.get("dev_catalog") or preview.get("default_catalog") or "personal-codex",
-                }
-                await self.repo.save(
-                    session,
-                    SddBatchMember(
-                        batch_id=row.id,
-                        position=position,
-                        anchor_id=member["id"],
-                        path=member["path"],
-                        initial=member,
-                        phase=member["activity_kind"],
-                    ),
-                )
-            return await self._read(session, row)
+        return await self.sdd.retired_operation(project_id)
 
     async def control(self, project_id, batch_id, request, actor):
+        if request.action != "stop":
+            return await self.sdd.retired_operation(project_id)
         digest = request_digest(request.model_dump(mode="json"))
         async with AsyncTransaction() as session:
             await self.projects.get(session, project_id, lock=True)
@@ -165,24 +92,14 @@ class SddBatchUseCase:
                 same_request(previous, actor, digest)
                 return await self._read(session, row)
             if row.revision != request.expected_revision:
-                raise ProjectError(409, "Batch revision changed; review current future-admission state")
-            if row.state in ("stopped", "completed"):
-                raise ProjectError(409, "Future admission is terminal")
-            row.state = {"pause": "paused", "resume": "running", "stop": "stopped"}[request.action]
+                raise ProjectError(409, "Batch revision changed; inspect retained history")
+            row.state = "stopped"
             row.revision += 1
-            if request.action == "resume":
-                members = await self.repo.members(session, row.id)
-                refusals = [
-                    c for m in members for c in await self.repo.claims(session, m.id) if c.checkpoint.get("refusal")
-                ]
-                if refusals:
-                    row.evaluation = {**row.evaluation, "reviewed_refusal": str(refusals[-1].id)}
-            if request.action == "stop":
-                members = await self.repo.members(session, row.id)
-                all_claims = [c for m in members for c in await self.repo.claims(session, m.id)]
-                unsettled = any(not c.settled for c in all_claims)
-                if not unsettled:
-                    row.exclusion = False
+            row.detail = "Native batch execution retired; Stop settles local future admission only"
+            members = await self.repo.members(session, row.id)
+            claims = [c for m in members for c in await self.repo.claims(session, m.id)]
+            if not any(not c.settled for c in claims):
+                row.exclusion = False
             await self.repo.save(
                 session,
                 SddBatchControl(
@@ -190,7 +107,7 @@ class SddBatchUseCase:
                     request_id=request.request_id,
                     actor=actor,
                     request_digest=digest,
-                    action=request.action,
+                    action="stop",
                 ),
             )
             return await self._read(session, row)

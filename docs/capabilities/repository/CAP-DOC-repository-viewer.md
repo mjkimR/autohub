@@ -5,7 +5,6 @@ summary: "Auto Hub serves authenticated repository files and embeds the pinned d
 area: repository
 status: active
 usecases:
-  - UC-preview-sdd-milestone
   - UC-inspect-repository-documents
 entrypoints:
   - modules/hub/app/features/project_management/repositories/api/v1.py
@@ -61,15 +60,15 @@ a PR's inspected revision independently determines execution readiness.
    Check: [Roadmap.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/Roadmap.integration.test.ts), `embedded roadmap opens selected-branch proposal members of %s`.
 7. **Recorded lineage**: WHEN retrieving related executions, Hub MUST limit results
    to the requested project and exact unit or recorded `handoff_from` lineage.
-   Check: [test_lineage.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lineage.py), `test_proposal_spec_run_and_pr_lineage_uses_recorded_project_scoped_handoffs`.
+   Check: `modules/hub/app/features/project_management/sdd/repos.py` and activity history API tests.
 8. **Read-only execution links**: WHEN listing a unit's related executions, Hub
    MUST return at most the latest 20 runs without advancing them.
-   Check: [test_native.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_native.py), `test_spec_runs_are_exact_project_scoped_and_do_not_advance`; [SddRunLinks.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddRunLinks.integration.test.ts), `a selected proposal links its run and GitHub pull request`.
+   Check: activity history API tests; [SddRunLinks.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddRunLinks.integration.test.ts), `a selected proposal links its run and GitHub pull request`.
 9. **Visible refusal**: IF a repository API read is refused, THEN the embedded
    data source MUST propagate its error rather than supply fabricated contents.
    Check: [data-source.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/data-source.test.ts), `repository refusals propagate to the embedded viewer`.
 
-10. **Milestone preview navigation**: WHEN an SDD repository is inspected, Hub MUST offer its separate milestone-preview panel using the selected ref while retaining read-only viewer navigation. `CAP-SDD-native-delivery` owns readiness and local selection. Check: `modules/hub-ui/src/lib/features/project-management/repositories/RepositoryView.svelte` and repository UI integration tests.
+10. **Read-only milestone documents**: WHEN an SDD repository is inspected, Hub MUST keep milestone/document navigation separate from activity execution intent. It provides no executable readiness preview or eligible ordering. Check: repository UI integration tests and `RepositoryView.svelte` source inspection.
 
 ## 4. Interfaces & Data Contracts
 
@@ -108,7 +107,7 @@ milestone fields do not.
 Hub compiles the pinned `devkit-viewer` tarball into its SPA. It does not download a
 viewer bundle or install a plugin while serving a repository view. The library
 owns document parsing/rendering; Hub owns its repository data source, Proposals
-controls and native execution panel. These controls remain separate from reading.
+controls and descriptive activity panel. These controls remain separate from reading.
 The [artifact receipt and rebuild procedure](../../../modules/hub-ui/vendor/devkit-viewer.md)
 identify the library source and contributor update path.
 

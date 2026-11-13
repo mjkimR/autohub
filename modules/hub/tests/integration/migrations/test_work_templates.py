@@ -16,5 +16,5 @@ async def test_template_migration_roundtrip(session):
             assert "work_plan_templates" not in inspect(conn).get_table_names()
             migration.upgrade()
         assert "work_template_requests" in inspect(conn).get_table_names()
-        assert scripts().get_heads() == ["b582df39e211"]
+        assert scripts().get_heads() == ["c693ea40f322"]
     await connection.run_sync(roundtrip)

@@ -19,5 +19,5 @@ async def test_replacement_migration_roundtrip_preserves_legacy(session):
         for table in ('work_replacement_links','work_replacement_acceptances','work_replacement_events','work_replacement_receipts','work_replacement_evidence'):
             assert connection.scalar(text(f'SELECT count(*) FROM {table}'))==0
         assert 'uq_replacement_active_original' in {i['name'] for i in inspect(connection).get_indexes('work_replacement_links')}
-        assert scripts().get_heads()==['b582df39e211']
+        assert scripts().get_heads()==['c693ea40f322']
     await conn.run_sync(check)

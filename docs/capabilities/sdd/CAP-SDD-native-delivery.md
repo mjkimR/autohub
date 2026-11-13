@@ -1,225 +1,98 @@
 ---
 id: CAP-SDD-native-delivery
-title: Native SDD activity and proposal delivery
-summary: "Auto Hub starts native proposal activities and progresses immutable milestone selections through existing native owners. Read-only previews remain separate; batch admission preserves exact dependencies, recoverable claims and native approval authority."
+title: Repository-owned SDD activity delivery
+summary: "Hub starts explicit SDD activity intent through ordinary PR delivery without evaluating repository readiness. Repository agents own setup and workflow execution; legacy native batches and decisions remain historical evidence."
 area: sdd
 status: active
 usecases:
   - UC-start-sdd-activity
+  - UC-complete-sdd-workflow
   - UC-decide-sdd-proposal
   - UC-preview-sdd-milestone
   - UC-execute-sdd-batch
 entrypoints:
   - modules/hub/app/features/project_management/sdd/api.py
   - modules/hub/app/features/project_management/sdd/activities.py
-  - modules/hub/app/features/project_management/sdd/plan_publication.py
-  - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
-  - modules/hub/app/features/project_management/sdd/batch_driver.py
-  - modules/hub/app/features/project_management/sdd/batch_usecases.py
+  - modules/hub/app/features/project_management/sdd/activity_claims.py
 ---
 
-# [CAP-SDD-native-delivery] Native SDD activity and proposal delivery
+# [CAP-SDD-native-delivery] Repository-owned SDD activity delivery
 
 ## 1. Summary
 
-Native SDD connects devkit proposal/spec workflows to durable `PipelineRun`
-execution. Hub creates activity branches and PRs, inspects workflow evidence and
-publishes operator or delegated proposal decisions. The existing PR owner retains
-CI observation and merge control.
+An operator requests Planning or Development for an exact repository unit. Hub
+creates its activity branch and Draft PR, then uses the ordinary PR owner.
+`ADR-repository-owned-sdd-execution` records the responsibility decision.
+`UC-start-sdd-activity` ends at registration; `UC-complete-sdd-workflow` follows
+its work, questions and GitHub outcome.
 
 ## 2. Scope & Boundary
 
-- **In-Scope**: activity start admission, proposal/spec binding, proposal decision
-  publication, decision recovery, proposal approval fences, observational milestone preview and explicit sequential SDD batch admission.
-- **Out-of-Scope**: `CAP-SDD-runtime-isolation` owns isolated evaluation and
-  restore; `CAP-SDD-workflow-control` owns native stage answers, holds and
-  integration authority. Devkit owns workflow definitions/document authoring;
-  providers own implementation; GitHub owns CI. Work Plan admission, milestone
-  execution outside the bounded sequential SDD batch path and adoption of SDD for Auto Hub's own development are excluded.
-- **Scope Excluded**: generic resume as approval, cross-proposal branch acceptance,
-  repository evidence as independent merge authority, and retrospective approvals.
+- **In-Scope**: explicit activity intent, GitHub branch/PR publication, exclusive
+  recoverable claims, descriptive unit context and retained native history.
+- **Out-of-Scope**: repository setup, generated assets, devkit policy, workflow
+  interpretation, prerequisites and correctness belong to the repository and its
+  working agent. `CAP-PR-pull-request-delivery` owns attempts, CI and merge;
+  `CAP-PR-operator-decisions` owns questions and explicit answer application.
+- **Scope Excluded**: embedded or remote evaluator, a `devkit sync` service,
+  executable milestone readiness, graph-derived batches and replacement queues.
 
 ## 3. Business Rules & Policies
 
-1. **Start admission**: WHEN an activity start is requested, Hub MUST require an
-   enabled `sdd` project with a GitHub repository and connector before creating
-   activity artifacts. Source: [usecases.py](../../../modules/hub/app/features/project_management/sdd/usecases.py).
-2. **Inactive lifecycle**: IF the evaluated base development approach is
-   `adaptive-dev`, THEN Hub MUST refuse Planning/Development with HTTP 409 and
-   `SDD_LIFECYCLE_INACTIVE` before creating a branch or PR.
-   Check: [test_activities.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_activities.py), `test_adaptive_dev_base_refuses_starts_before_creating_branches`.
-3. **Planning eligibility**: WHEN a new Planning branch is needed, Hub MUST require a draft
-   proposal explicitly requested for Planning, with no decomposition requirement,
-   size S/M/L or absent, and eligibility satisfied by devkit's base evaluation
-   before starting its branch.
-   Check: [test_activities.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_activities.py), `test_start_refuses_a_proposal_in_the_wrong_state`, `test_planning_starts_for_every_size_the_gate_allows`, `test_planning_refusal_reports_what_the_base_evaluation_found`.
-4. **Planning artifacts**: WHEN an eligible Planning start has no existing activity
-   branch, Hub MUST create `plan-<slug>` with the proposal changed to `reviewing`
-   and a ready PR bound to the proposal run.
-   Check: [test_activities.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_activities.py), `test_planning_starts_plan_branch_with_reviewing_and_a_ready_pull_request`.
-5. **Development artifacts**: WHEN Development is requested for an accepted
-   proposal with no existing activity branch, Hub MUST create `dev-<slug>` with an
-   empty start commit and a draft PR enrolled for handoff-first execution.
-   Check: [test_activities.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_activities.py), `test_development_starts_dev_branch_with_a_handoff_first_run`.
-6. **Existing branch ownership**: IF an activity branch already exists, THEN Hub
-   MUST reuse its own marker-bearing open PR or refuse the start with HTTP 409 / `SDD_BRANCH_EXISTS`
-   rather than overwrite an unrelated branch.
-   Check: [test_activities.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_activities.py), `test_existing_branch_refuses_unless_it_carries_hubs_own_pull_request`.
-7. **Effort selection**: WHEN enrolling an activity, Hub MUST use an explicit
-   `activity_effort` before the proposal's activity-specific effort hint.
-   Check: [test_activities.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_activities.py), `test_activity_effort_uses_the_proposal_hint_unless_overridden`.
-8. **Evaluation ownership**: WHEN an activity or proposal operation needs repository
-   evaluation, Hub MUST delegate runtime selection and installation to
-   `CAP-SDD-runtime-isolation`, which uses the evaluated commit's own lock, rather
-   than installing tooling named by the request.
-   Check: [test_lock_runtime.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py), `test_evaluation_uses_the_locked_runtime_and_records_its_identity`, `test_activity_branch_git_needs_no_runtime`.
-9. **Readiness is observational**: WHEN readiness or related executions are read,
-   Hub MUST leave execution unstarted and Git unchanged.
-   Check: [test_native.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_native.py), `test_native_enrollment_requires_spec_and_readiness_is_read_only`, `test_spec_runs_are_exact_project_scoped_and_do_not_advance`.
-10. **Decision basis**: WHEN a proposal decision is submitted, Hub MUST fence it
-    against its request identity, actor, inspected PR head, run/project revisions,
-    current binding and workflow evidence before publication.
-    Check: [test_native.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_native.py), `test_proposal_acceptance_is_committed_by_hub_and_merged_by_policy`; [test_plan_authorization.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_plan_authorization.py), `test_a_question_arriving_during_preparation_fences_the_push`.
-11. **Acceptance gate**: WHEN accepting a proposal manually, Hub MUST require its
-    own Planning branch and an unheld, reviewing proposal waiting for plan-accept.
-    Check: [test_cli.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_cli.py), `test_acceptance_refuses_another_proposals_branch_without_publishing`; [test_plan_authorization.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_plan_authorization.py), `test_unapplied_hub_question_blocks_a_proposal_decision`.
-12. **Rejection result**: WHEN rejecting a reviewing proposal with nonblank
-    feedback, Hub MUST publish its rejected status.
-    Check: [test_cli.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_cli.py), `test_rejection_changes_status_only_and_closes_open_questions`; [test_native.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_native.py), `test_proposal_rejection_needs_a_reason_and_merges_the_status_change`.
-13. **Durable publication**: WHEN publishing a decision, Hub MUST persist the exact
-    candidate before its bounded push under Run/Project row locks and a confirmed
-    head lease.
-    Check: [test_plan_publication.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_plan_publication.py), `test_stop_before_publication_prevents_external_write`, `test_cancellation_waits_for_a_publication_that_already_holds_the_fence`.
-14. **Lost-result recovery**: IF publication has an uncertain result, THEN Hub MUST
-    reconcile the exact saved candidate and its authority applicability before
-    attempting another publication.
-    Check: [test_plan_publication.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_plan_publication.py), `test_lost_database_result_recovers_exact_pushed_commit_without_publishing_again`, `test_failed_push_retries_the_same_request_without_losing_audit`.
-15. **Delegation ownership**: WHERE automatic plan acceptance is enabled, Hub MUST
-    require delegation from both the owning base and proposal policy without
-    restoring explicitly withdrawn approval during inspection or generic resume.
-    Check: [test_plan_publication.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_plan_publication.py), `test_auto_plan_acceptance_requires_owning_base_and_records_policy_authority`, `test_withdrawn_proposal_approval_is_not_restored_by_inspection`; [test_plan_authorization.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_plan_authorization.py), `test_auto_delegation_stays_withdrawn_until_explicit_reapproval`.
-16. **Decision commit CI**: WHEN a published decision remains applicable to its
-    run, Hub MUST return that run to `awaiting_ci` for the decision commit before
-    policy-controlled merge.
-    Check: [test_plan_authorization.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_plan_authorization.py), `test_published_decision_head_waits_for_its_own_ci_before_merging`, `test_a_different_head_is_never_allowed_by_the_decision_receipt`.
-17. **Handoff lineage**: WHEN handoff-first Development creates a spec, Hub MUST
-    continue the bound workflow on that spec with its recorded proposal origin.
-    Check: [test_cli.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_cli.py), `test_handoff_first_run_follows_the_new_spec_after_the_handoff`; [test_lineage.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lineage.py).
-
-18. **Development eligibility**: IF a new Development activity's base proposal
-    is not accepted, THEN Hub MUST refuse with HTTP 409 / `CONFLICT` before
-    creating its activity branch.
-    Check: [test_activities.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_activities.py), `test_start_refuses_a_proposal_in_the_wrong_state`.
-19. **Rejection question closure**: WHEN rejecting a reviewing proposal with open
-    worker questions, Hub MUST close those questions with the rejection decision
-    before publishing it.
-    Check: [test_cli.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_cli.py), `test_rejection_changes_status_only_and_closes_open_questions`.
-20. **Inapplicable publication recovery**: IF the remote head matches a saved
-    decision candidate but its authority is no longer applicable, THEN Hub MUST
-    record that publication with `applied: false` without changing the run state
-    or granting approval.
-    Check: [test_plan_publication.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_plan_publication.py), `test_lost_database_result_recovers_exact_pushed_commit_without_publishing_again`.
-
-21. **Pinned preview**: WHEN a milestone preview is requested, Hub MUST resolve its repository ref once and use that full SHA for all membership and prerequisite document reads. Check: `modules/hub/tests/integration/features/project_management/sdd/test_milestone_cli.py`, two-branch/moving-ref fixture.
-22. **Direct membership**: WHEN discovering milestone work, Hub MUST use devkit's global/registered-package catalog and exact resolver for direct proposal anchors, including supported historical flat anchors, without adding historical SPEC milestone metadata as members. Check: `modules/hub/tests/integration/features/project_management/sdd/test_milestone_cli.py`.
-23. **Separate readiness facets**: WHEN evaluating supported draft or accepted members, Hub MUST expose shared native admission separately from preview dependency scheduling and workflow worker holds. Check: `modules/hub/tests/unit/features/project_management/sdd/test_milestones.py`, admission parity and blocked/question/malformed worker fixtures.
-24. **Exact scheduling**: WHEN evaluating a prerequisite, Hub MUST satisfy it only through a done/dropped milestone or an exact canonical completed SPEC, without reopening completed SPEC history or inferring proposal-to-spec lineage. Check: `modules/hub/tests/unit/features/project_management/sdd/test_milestones.py` and real isolated alias fixtures.
-25. **Incomplete evidence**: IF the observed graph has missing/ambiguous/nonanchor relations, active cycles, unavailable evidence or an exceeded read bound, THEN Hub MUST report an incomplete preview that permits no selectable order. Check: `modules/hub/tests/unit/features/project_management/sdd/test_milestones.py`, graph/boundary/pagination/runtime fixtures.
-26. **Observational preview**: WHEN previewing or selecting milestone work, Hub MUST create no activity, PR, run, decision, repository edit or scheduler queue. Check: `modules/hub/tests/unit/features/project_management/sdd/test_milestones.py`, `modules/hub/tests/integration/features/project_management/sdd/test_milestone_api.py` and UI preview tests.
-27. **Existing activities**: WHEN a matching branch exists, Hub MUST expose its marker-bearing owned PR and optional exact project-scoped run as inspect-only evidence, or an unrelated-branch hold. Check: `modules/hub/tests/unit/features/project_management/sdd/test_milestones.py`, owned-PR-before-enrollment and pagination fixtures.
-28. **Ephemeral subset**: WHEN an operator selects milestone activities, Hub MUST retain only explicitly selected eligible direct members of a complete preview in deterministic canonical-ID topological order. Check: `modules/hub-ui/src/lib/features/project-management/repositories/milestone-selection.test.ts` and `SddMilestonePreview.integration.test.ts` beside it.
-29. **Context invalidation**: WHEN project, ref, milestone or explicit refresh changes, Hub MUST clear local selection and discard obsolete preview responses. Check: `modules/hub-ui/src/lib/features/project-management/repositories/SddMilestonePreview.integration.test.ts`.
-
-### Proposal discovery
-
-WHEN a persisted native proposal is actionable, Hub MUST expose its exact proposal decision identity in the shared worklist without creating a second mutation owner. In-progress/published proposal decisions are excluded. Discovery does not accept, publish, hand off or merge work. `CAP-SDD-workflow-control` owns exact-subject inspection and native generation guards; `CAP-PR-operator-decisions` owns the shared listing interface. Check: [discovery.py](../../../modules/hub/app/features/project_management/sdd/discovery.py), reviewed against the existing owner predicates.
-
-`UC-decide-sdd-proposal` enters through `UX-decision-inbox` or the existing run surfaces; proposal decisions retain their existing publication and authority guards.
-
-### Decision recovery outcomes
-
-WHEN a proposal publication is prepared or uncertain, Hub MUST disclose retained candidate commit identities through the exact owner outcome read defined by `CAP-PR-operator-decisions`. Several candidates do not imply one authoritative publication. Check: `test_prepared_candidates_and_legacy_context_stay_truthful` in [test_outcomes.py](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_outcomes.py).
-
-WHEN the operator reviews publication reconciliation, the interface MUST explain its inspection/possible continuation effect and use a separate stable recovery intent against refreshed current Run context. It preserves the original uncertain proposal intent. An unresolved recovery request blocks competing original submissions and retries, while its own exact retry remains available. Ended Runs offer no recovery continuation. Check: [RunDecisionsDialog.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunDecisionsDialog.integration.test.ts) and [decision-intents.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/decision-intents.integration.test.ts).
+1. **Optimistic dispatch**: WHEN an authorized operator requests an activity, Hub MUST treat its unit/activity as work intent without proving SDD readiness. Check: `modules/hub/tests/integration/features/project_management/sdd/test_optimistic_api.py` and unit `sdd/test_activities.py`.
+2. **Repository responsibility**: Hub MUST leave repository setup, asset management and workflow interpretation to the repository and its working agent. Check: `modules/hub/app/features/project_management/sdd/activities.py`; review of implementation instructions.
+3. **No sync delegation**: Hub MUST NOT run or delegate `devkit sync` as an activity prerequisite or replacement service. Check: source/import and serving-image inspection.
+4. **Host admission**: WHEN starting work, Hub MUST validate project access, enabled connection/catalog, input shape, GitHub refs and exclusive activity/PR ownership. Check: activity ownership tests under `modules/hub/tests/integration/features/project_management/sdd/`.
+5. **No repository eligibility gate**: Hub MUST NOT refuse activity intent because of proposal status/size, devkit adoption, dependencies, receipt, lock, Python range or bundle availability. Check: `modules/hub/tests/unit/features/project_management/sdd/test_activities.py`.
+6. **Draft publication**: WHEN publishing either activity kind, Hub MUST create a Draft PR without a server-authored proposal-state commit. Check: `modules/hub/app/features/project_management/sdd/activities.py` and its activity tests.
+7. **Exact recovery**: WHEN publication has an uncertain result, Hub MUST preserve the original request, claim and exact saved branch/PR artifacts for reconciliation. Check: activity claim/recovery tests under `modules/hub/tests/integration/features/project_management/sdd/`.
+8. **Merge boundary**: WHILE an activity PR is Draft, Hub MUST withhold merge under the ordinary PR contract. Check: `modules/hub/tests/integration/features/project_management/pipeline_runs/test_merge_stage.py`.
+9. **Retired surfaces**: Hub MUST refuse live native workflow evaluation, milestone execution preview, batch creation/resume and native typed decision mutations with `SDD_EXECUTION_RETIRED` where their tombstone route is retained. Check: `modules/hub/tests/integration/features/project_management/sdd/test_optimistic_api.py`.
+10. **Historical reads**: WHEN retained native runs, decisions, batches or claims are read, Hub MUST return their stored evidence without restoring an evaluator or granting execution authority. Check: history API tests under `modules/hub/tests/integration/features/project_management/sdd/`.
+11. **Uncertain reservation**: WHILE a retired claim or an unleased uncertain publication without a Run retains external ownership, Hub MUST require explicit project-scoped reconciliation before releasing that reservation. Check: `modules/hub/tests/integration/features/project_management/sdd/test_optimistic_api.py`.
+12. **No implicit conversion**: Hub MUST NOT convert a legacy native Run into an optimistic Run through generic resume. Check: `modules/hub/app/features/project_management/sdd/execution.py` and retirement migration tests.
 
 ## 4. Interfaces & Data Contracts
 
-All endpoint paths below include the `/api/v1` mount.
+All paths are under `/api/v1/projects/{project_id}/sdd` and require the existing
+application authorization boundary.
 
-| Interface | Request / result |
+| Interface | Contract |
 | --- | --- |
-| `GET /api/v1/projects/{project_id}/sdd/milestones` | Required `ref`; captured SHA, complete flag/reasons and global/package active/archive catalog for the Hub selector |
-| `POST /api/v1/projects/{project_id}/sdd/milestone-preview` | Required `ref`, `milestone_id`; optional exact `milestone_path`; `MilestonePreview` observation |
-| `GET /api/v1/projects/{project_id}/sdd/proposals` | `base_branch` defaults to `main`; returns base identity, proposal actions, activity PRs, related waiting run and `truncated` |
-| `POST /api/v1/projects/{project_id}/sdd/proposals/{slug}/planning` | `StartActivityRequest`; HTTP 201 `PipelineRunRead` |
-| `POST /api/v1/projects/{project_id}/sdd/proposals/{slug}/development` | `StartActivityRequest`; HTTP 201 `PipelineRunRead` |
-| `GET /api/v1/projects/{project_id}/sdd/runtime` | Host isolation probe and the default-branch head's repository-lock runtime state, identity, bundles and revisions (`CAP-SDD-runtime-isolation`) |
-| `POST /api/v1/projects/{project_id}/sdd/readiness` | `pull_number`, `spec_dir`; result includes `ready`, reason, head/base, CLI/workflow/current evidence and warnings |
-| `POST /api/v1/pipeline-runs/{run_id}/resume` | Proposal decisions use `request_id`, `expected_revision`, `decision`, `head_sha`, optional `feedback` |
-| `GET /api/v1/pipeline-runs/{run_id}/sdd-decisions` | Durable decision evidence, including candidate/publication outcome |
+| `GET /proposals` | Descriptive proposal metadata and activity/run links on an explicit base; metadata is no eligibility proof |
+| `POST /proposals/{slug}/planning` | Explicit Planning intent with client request UUID, base, optional effort/catalog |
+| `POST /proposals/{slug}/development` | Explicit Development intent with the same publication/recovery contract |
+| `GET /runs?spec_dir=...` | Retained unit-bound Run history |
+| `GET /batches`, `GET /batches/{batch_id}` | Retained batch selection, member and claim evidence |
+| `GET /claims/{claim_id}` | Exact retained claim and checkpoint digest |
+| `POST /claims/{claim_id}/reconcile` | `request_id`, `expected_checkpoint_digest`, `acknowledge_external_work: true`; releases the selected retired reservation or eligible unleased uncertain no-Run publication; acknowledges an exact linked terminal retired Run |
+| `POST /runs/{run_id}/reconcile` | `request_id`, `expected_revision`, `acknowledge_external_work: true`; acknowledges a terminal retired Run's external work without changing its state |
 
-`MilestonePreview` carries project/repository identity, requested ref and resolved SHA, exact milestone identity/path/status, repository observation time, runtime identity, completeness/reasons, counts/limits, prerequisite nodes/edges and member rows. Rows distinguish `eligible_now`, `held`, `existing_activity`, `finished`, `unsupported` and `unknown`. Admission and scheduling are separate facets; workflow holds retain exact worker evidence. Valid flat or package proposal anchors unsupported by native start remain inspect-only. Reviewing/rejected proposals offer no new activity.
+Optimistic `sdd_snapshot` records `execution_version: 2`,
+`provider: repository-agent`, `spec_dir`, requested activity/handoff intent and
+optional effort. It is descriptive context, not a workflow/runtime contract.
+Legacy snapshots lack that version and remain inspect-only. Both activity kinds
+use `plan-<slug>` or `dev-<slug>` and the same ordinary PR owner. GitHub API
+publication makes an unchanged-tree intent commit so the Draft PR has an exact
+activity candidate; it does not edit proposal content or status.
 
-Preview bounds are 50 direct members, 200 distinct prerequisite anchors, 500 dependency edges and a 150-second request deadline. Evaluation is sequential in one pinned checkout with one runtime restoration. Matching activity PR observation allows 10 pages of 100 rows; an exhausted full tenth page or failed later page is incomplete. Counts are observed coverage, not an estimate of unseen work. Incomplete previews expose no selected order. Done/dropped milestones remain inspectable without executable selection.
+A start retry reuses its UUID and identical payload. An unrelated branch or
+active owner remains a conflict. Unknown remote effects are retained, not treated
+as absent or rolled back. A current optimistic claim is releasable only when its publication is uncertain,
+no Run is bound and no live lease remains. Release preserves its saved artifacts
+and does not adopt/delete a remote branch; an existing branch remains a conflict
+for a distinct start. Active owners must be followed or settled through their Run. A retired Run
+acknowledgment alone does not release an independently retained unsettled claim;
+new enrollment checks both holds.
 
-A milestone prerequisite accepts only an MS identity. A work prerequisite accepts only an exact PROP/SPEC anchor. Draft, reviewing, accepted and rejected PROP prerequisites remain held; origin metadata and matching slugs supply no canonical mapping. Only the devkit resolver's unambiguous canonical result supplies one. The pinned runtime's supported aliases retain their own document prefix. An unfinished member is not released by selecting another member first.
+Legacy local Stop can settle future batch admission;
+it neither resumes admitted work nor cancels external agent work.
 
-Run/PR observations carry their own timestamp and exact known head/base IDs. An owned PR remains inspectable before any run exists; no run is fabricated. External observations are not atomic with the repository snapshot. The response carries no execution authority token. Later activity start evaluates its existing admission afresh; preview scheduling adds no start gate.
+## 5. Source and Verification Evidence
 
-Existing project access and enabled-SDD/connection checks precede evaluation. Invalid paths, unknown/ambiguous milestones and path/ID mismatches refuse with HTTP 422; an unreadable member/runtime/dependency yields incomplete evidence. The request never falls back to main.
-
-`StartActivityRequest` requires UUID `request_id`; `base_branch` defaults to
-`main`; optional `activity_effort` is `low`, `medium` or `high`; optional `catalog`
-selects admission. Slugs match `[a-z0-9][a-z0-9_-]*` with at most 59 characters.
-The bound `spec_dir` names `docs/proposals/PROP-<slug>` or
-`specs/YYYY-MM/<unit>`; its anchor is `proposal.md` or `spec.md` respectively.
-
-Proposal decisions are `accept_plan` or `reject_plan`. They require a 40-character
-lowercase hexadecimal `head_sha` and a current `expected_revision`; rejection
-requires nonblank `feedback`. They cannot be combined with `workflow_answer` or
-`answer_id`. `gate:plan-accept` cannot be answered as a generic workflow answer.
-Published commits preserve actor/reason evidence; their author comes from
-`AUTOHUB_SDD_COMMIT_IDENTITY`, default `AutoHub <autohub@users.noreply.github.com>`.
-
-HTTP 409 uses `CONFLICT` by default; inactive lifecycle uses
-`SDD_LIFECYCLE_INACTIVE`; concurrent decision preparation uses
-`SDD_DECISION_IN_PROGRESS`; an unrelated activity branch uses `SDD_BRANCH_EXISTS`. Invalid requests use HTTP 422 / `INVALID_REQUEST`;
-invalid configured commit identity uses `SDD_IDENTITY_INVALID`. A runner failure
-can leave remote activity artifacts or uncertain publication evidence: no automatic
-rollback or renewed approval is implied.
-
-## 5. Source and Verification Boundary
-
-Interfaces derive from [sdd/api.py](../../../modules/hub/app/features/project_management/sdd/api.py),
-[sdd/schemas.py](../../../modules/hub/app/features/project_management/sdd/schemas.py),
-[interaction_schemas.py](../../../modules/hub/app/features/project_management/pipeline_runs/interaction_schemas.py),
-[activities.py](../../../modules/hub/app/features/project_management/sdd/activities.py),
-[plan_decisions.py](../../../modules/hub/app/features/project_management/sdd/plan_decisions.py)
-and [plan_publication.py](../../../modules/hub/app/features/project_management/sdd/plan_publication.py).
-The linked checks identify source-level regression evidence, not a claim that all
-suites were executed while writing this contract. Serving-host setup and operator
-procedures remain in the [runtime operations guide](../../operations/sdd-runtime.md).
-`CAP-SDD-runtime-isolation` defines receipt/restore/drift/isolation guarantees;
-`CAP-SDD-workflow-control` defines native workflow continuation and integration authority.
-
-## 6. Sequential SDD batch contract
-
-1. **Batch ownership**: WHEN an operator confirms through-Development intent, Hub MUST retain an immutable explicit selection while existing native owners retain all workflow gates, handoff, CI and merge authority. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py`.
-2. **Execution selection**: WHEN creating a batch, Hub MUST independently evaluate a complete pinned preview and accept only 1–50 explicitly selected supported direct proposal members in canonical-ID topological order, including prerequisite-held future intent. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batches.py`.
-3. **Immutable basis**: WHEN creating a batch, Hub MUST fence its exact expected SHA. For subsequent admission, a descendant SHA may advance only after fresh complete evaluation proves protected project, membership, graph, source, configuration and runtime inputs unchanged or validates the recorded authorized phase transition or canonical repair. Unknown or rewritten ancestry and unexplained protected-input changes MUST hold admission. Check: `test_batches.py` and `test_batch_progression.py` beside the preceding test.
-4. **Batch dependencies**: WHEN admitting a member, Hub MUST require exact satisfied prerequisites from current complete evidence. A done/dropped milestone or exact completed canonical SPEC satisfies scheduling; a PROP-to-SPEC activity link alone does not. Edge-only canonical repair must prove preserved graph and content, including outside prerequisites. Check: `modules/hub/tests/unit/features/project_management/sdd/test_batch_evidence.py`.
-5. **Sequential slot**: WHILE an earlier member has unresolved admitted work, Hub MUST retain its slot and refuse later admission. Planning requires its owner's confirmed merge and accepted source checkpoint before Development; completion requires exact completed SPEC evidence and the Development owner's confirmed merge. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py`.
-6. **Shared reservation**: WHEN individual or batch start competes for one native activity, Hub MUST use the same durable project/activity reservation and preserve the winning exact owner. Matching original request receipts recover their exact owner and saved artifacts; a different unsettled reservation conflicts and remains authoritative, preventing duplicate admission. Exact owned-PR recovery does not transfer another reservation. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_claims.py`.
-7. **Saved recovery**: IF admission has an uncertain external or enrollment result, THEN Hub MUST reconcile its retained exact candidate, branch, PR and enrollment identity before continuation. Missing, closed, ambiguous or retired artifacts remain a hold and never authorize a replacement start. Check: `modules/hub/tests/unit/features/project_management/sdd/test_batch_activities.py` and `test_batch_claims.py`.
-8. **Batch controls**: WHEN pause, resume or stop wins its expected-revision fence, Hub MUST apply that control only to future claims. A prior winning claim can still produce artifacts; its native owner retains its controls. Stop permanently ends future admission and its receipt cannot undo a later state. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batches.py` and `test_batch_claims.py`.
-9. **Request identity**: WHEN a create/control request is replayed, Hub MUST compare its actor and normalized payload and return current retained state without repeating effects; changed reuse conflicts. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batches.py`.
-10. **Failed owner**: IF the native owner is failed, canceled or rejected, THEN Hub MUST retain the inspected terminal outcome without automatically skipping or replacing that member. Exclusion is released only after admitted claims settle. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py`.
-11. **Pinned preferences**: WHEN dispatching a selected activity, Hub MUST retain its confirmed effective effort and catalog preferences rather than adopt later defaults. Check: `modules/hub/tests/integration/features/project_management/sdd/test_batch_progression.py` and UI batch tests.
-
-### Batch interfaces
-
-All paths use `/api/v1/projects/{project_id}/sdd/batches`: `POST` creates, `GET` lists retained batches, `GET /{batch_id}` reads, and `POST /{batch_id}/controls` controls future admission. Create requires UUID `request_id`, `ref`, `milestone_id`, optional exact `milestone_path`, full lowercase `expected_sha`, literal `through_development: true` and `members`. Each member carries exact `id`, `path`, `activity` (`plan` or `dev`) and optional `planning_effort`, `dev_effort`, `planning_catalog`, `dev_catalog`. Effort values are `low`, `medium`, `high`; missing preferences inherit the inspected defaults before retention. Control requires UUID `request_id`, positive `expected_revision` and `action` (`pause`, `resume`, `stop`). Unknown input fields are refused.
-
-The retained result includes `id`, `project_id`, `state`, `revision`, `exclusion`, safe `detail`, immutable `basis`, latest `evaluation` and ordered `members`. Batch states are `running`, `paused`, `attention`, `stopped`, `completed`. Member states are `waiting`, `admitted`, `succeeded`, `failed`, `canceled`, `rejected`. Claim uncertainty is separate evidence, not success. Invalid input uses HTTP 422 / `INVALID_REQUEST`; stale evidence, active exclusion and changed identity/revision use HTTP 409 / `CONFLICT`.
-
-`UC-execute-sdd-batch` and `UX-sdd-batch` expose the retained intent. `UC-start-sdd-activity` remains a single-activity registration goal. The eligible-only local subset in `UC-preview-sdd-milestone` remains observation-only. `ADR-sdd-batch-ledger` records the separation.
+The activity API, claim owner and ordinary PR lifecycle define this contract.
+Tests cited above are enforcing-source pointers; their presence is not a claim
+that they were executed or that a live provider/GitHub deployment passed.
+`ARCH-06-execution` defines retirement and ownership structure;
+`CAP-SDD-workflow-control` and `CAP-SDD-runtime-isolation` retain retired boundary
+IDs. `CAP-SDK-existing-pr-bridge` separately owns built-in bridge retirement.

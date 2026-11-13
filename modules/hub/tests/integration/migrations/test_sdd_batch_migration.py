@@ -22,6 +22,6 @@ async def test_sdd_batch_migration_roundtrip_preserves_projects(session):
         assert all(name in tables for name in ("sdd_batches", "sdd_batch_members", "sdd_activity_claims", "sdd_batch_controls"))
         assert conn.scalar(text("SELECT count(*) FROM projects")) == before
         assert "uq_sdd_batch_exclusion" in {r["name"] for r in inspect(conn).get_indexes("sdd_batches")}
-        assert scripts().get_heads() == ["b582df39e211"]
+        assert scripts().get_heads() == ["c693ea40f322"]
 
     await connection.run_sync(roundtrip)

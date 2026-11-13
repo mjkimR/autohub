@@ -7,8 +7,7 @@
 		revision,
 		terminal = false,
 		onrefresh,
-		recovery = false,
-		onreconcile
+		recovery = false
 	}: {
 		runId: string;
 		head: string;
@@ -16,7 +15,6 @@
 		terminal?: boolean;
 		onrefresh: () => void | Promise<void>;
 		recovery?: boolean;
-		onreconcile?: () => void | Promise<void>;
 	} = $props();
 	let review = $derived(decisionIntent(runId, recovery));
 	let outcome = $derived(review.outcome);
@@ -100,15 +98,7 @@
 					review.releaseRejection();
 				}}>Review current context to correct input</Button
 			>{/if}
-		{#if onreconcile && !terminal && ((review.intent?.body as { decision?: string })?.decision === 'accept_plan' || (review.intent?.body as { decision?: string })?.decision === 'reject_plan' || ['accept_plan', 'reject_plan'].includes(outcome?.native_channel || ''))}
-			<p>
-				Reconcile publication inspects current evidence and may continue this run. It grants no
-				approval and preserves later stops.
-			</p>
-			<Button variant="outline" disabled={review.busy} onclick={onreconcile}
-				>Review publication reconciliation</Button
-			>
-		{/if}
+
 		{#if review.error}<p role="status">{review.error}</p>{/if}
 	</section>
 {:else}

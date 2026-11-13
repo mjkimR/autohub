@@ -1,13 +1,12 @@
 ---
 id: UX-repository
 title: Repository Browser
-summary: "The repository panel reads the selected branch through a Git browser or embedded SDD viewer and exposes linked native execution panels for SDD projects."
+summary: "The repository panel reads the selected branch through a Git browser or embedded SDD viewer and exposes descriptive activity and retained history panels for SDD projects."
 area: repository
 element: panel
 status: active
 usecases:
   - UC-inspect-repository-documents
-  - UC-preview-sdd-milestone
 capabilities:
   - CAP-DOC-repository-viewer
   - CAP-SDD-native-delivery
@@ -19,7 +18,7 @@ capabilities:
 
 - **Primary task**: Inspect repository content at the selected branch.
 - **Facts to commit**: Project connection repository identity, selected branch, file path and viewer mode.
-- **Secondary items**: Native execution and proposal actions occupy linked panels above the embedded viewer.
+- **Secondary items**: Activity intent and proposal actions occupy linked panels above the embedded viewer.
 
 ## 2. Content
 
@@ -29,9 +28,8 @@ An SDD Project connection initially uses Sdd View and can switch to Git Browser.
 - Repository viewer (branch selector and path breadcrumbs).
 - Repository viewer (Git Browser directory rows, selected file and README preview).
 - Repository viewer (embedded SDD document/milestone navigation in Sdd View).
-- `UX-sdd-execution` (native readiness and related-run links; SDD mode only).
-- `UX-sdd-proposals` (native proposal actions; SDD mode only).
-- `UX-sdd-milestone-preview` (selected-ref milestone selector, immutable preview and local eligible subset; SDD mode only).
+- `UX-sdd-execution` (unit intent and related-run links; SDD mode only).
+- `UX-sdd-proposals` (explicit activity starts; SDD mode only).
 
 Selecting a recognized proposal/spec path carries that unit directory to the
 execution panel. A browse ref is not represented as the execution PR’s head.
@@ -50,7 +48,6 @@ visible retry path. Binary file handling belongs to the Git file renderer.
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
 | Open milestone preview | `UC-inspect-repository-documents` 4c | populated | populated | `UX-sdd-milestone-preview` | `CAP-DOC-repository-viewer` | Continue the milestone observation goal in its separate panel. |
-| Choose milestone | `UC-preview-sdd-milestone` 1 | populated | populated | `UX-sdd-milestone-preview` | `CAP-SDD-native-delivery` | The selected repository ref supplies the preview basis. |
 | Choose branch or file | `UC-inspect-repository-documents` 3 | populated | loading |  | `CAP-DOC-repository-viewer` | The selected ref/path content loads without mutating the repository. |
 | Refresh / Retry | `UC-inspect-repository-documents` 4 | error | loading |  | `CAP-DOC-repository-viewer` | The requested read is retried; SDD refresh reloads repository identity and remounts its viewer. |
 | Sdd View / Git Browser | global: choose a read-only repository representation | populated | populated |  | `CAP-DOC-repository-viewer` | The selected mode replaces the content surface. |

@@ -10,14 +10,6 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY modules/hub-ui ./
 RUN npm run build
 
-# ---- Pinned build backend for offline, sandboxed builds of locked devkit sources ----
-# Repository SDD runtimes are installed at evaluation time from each repository's own uv.lock.
-FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS sdd-builder
-WORKDIR /provision
-COPY config/sdd-build config/sdd-build
-COPY scripts/install-sdd.py scripts/install-sdd.py
-RUN python scripts/install-sdd.py /opt/sdd-build --manifest config/sdd-build
-
 # ---- Backend Builder Stage ----
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS backend-builder
 ENV TZ=UTC
@@ -44,18 +36,13 @@ FROM python:3.13-slim AS runtime
 ENV TZ=UTC
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/app/.venv/bin:$PATH"
-ENV AUTOHUB_SDD_BUILD=/opt/sdd-build
-ENV AUTOHUB_SDD_CACHE=/tmp/autohub-sdd-runtimes
-RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates bubblewrap \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user setup
 RUN groupadd -g 1000 appuser && useradd -u 1000 -g appuser -m appuser
 
 WORKDIR /app/modules/hub
-COPY --from=sdd-builder /opt/sdd-build /opt/sdd-build
-# uv renders and installs repository locks (lock_runtime, runtime_install); the build stage pins its version.
-COPY --from=sdd-builder /usr/local/bin/uv /usr/local/bin/uv
 COPY --from=backend-builder --chown=appuser:appuser /app/.venv /app/.venv
 COPY --from=frontend-builder --chown=appuser:appuser /app/modules/hub-ui/build ./ui_dist
 COPY --chown=appuser:appuser modules/hub/app ./app

@@ -107,6 +107,7 @@ class FlowRepository:
                 or_(FlowRun.next_action_at.is_(None), FlowRun.next_action_at <= now),
             )
             .values(lease_token=token, lease_expires_at=now + timedelta(seconds=seconds))
+            .execution_options(synchronize_session=False)
         )
         return result.rowcount == 1
 

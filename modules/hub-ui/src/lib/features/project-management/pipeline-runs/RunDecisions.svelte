@@ -38,26 +38,9 @@
 	let reason = $state('');
 	let error = $state('');
 	let busy = $state(false);
-	let decisionBusy = $state(false);
-	let recoveryOpen = $state(false);
-	let recoveryBasis = $state('');
-	let recovery = $derived(decisionIntent(run.id, true));
-	async function reviewRecovery() {
-		await load(false);
-		recoveryBasis = head;
-		recoveryOpen = true;
-	}
-	async function reconcilePublication() {
-		await recovery.submit(
-			'resume',
-			{ request_id: crypto.randomUUID(), expected_revision: revision },
-			recoveryBasis
-		);
-		await afterMutation();
-	}
 	let review = $derived(decisionIntent(run.id));
 	let head = $derived(decisionBasis(current));
-	let locked = $derived(busy || decisionBusy || review.unresolved || recovery.unresolved);
+	let locked = $derived(busy || review.unresolved);
 	let ready = $state(false);
 	let loadedAt = $state('');
 	let saved = $state('');
@@ -68,7 +51,8 @@
 				(q.state === 'open' || q.state === 'answered')
 		)
 	);
-	let terminal = $derived(['completed', 'failed', 'canceled'].includes(current.state));
+	let legacy = $derived(!!current.sdd_snapshot && current.sdd_snapshot.execution_version !== 2);
+	let terminal = $derived(legacy || ['completed', 'failed', 'canceled'].includes(current.state));
 	let pastQuestions = $derived(questions.filter((q) => q.id !== pending?.id));
 	const requests = new SvelteMap<string, string>();
 	function requestId(key: string) {
@@ -144,7 +128,7 @@
 		}
 	}
 	async function submit() {
-		if (decisionBusy || !ready || offset !== 0) return;
+		if (!ready || offset !== 0) return;
 		// An uncertain answer keeps its identity across refreshes, even when its save
 		// already advanced the revision. Acknowledgement ends this submission intent.
 		const key = pending
@@ -168,7 +152,7 @@
 		await afterMutation();
 	}
 	async function resume(answerId?: string) {
-		if (decisionBusy || !ready || offset !== 0) return;
+		if (!ready || offset !== 0) return;
 		await review.submit(
 			'resume',
 			{
@@ -184,7 +168,7 @@
 	// Save and resume (DecisionQuestion): two owner requests; failures throw so the composer can
 	// show an unsaved or saved-but-not-resumed state instead of a section-level error.
 	async function saveAnswer(answer: string) {
-		if (decisionBusy || !ready || offset !== 0 || !pending)
+		if (!ready || offset !== 0 || !pending)
 			throw new Error('Decisions are not current. Refresh decisions first.');
 		// An identity confirmed through Retry same request is finished; a new save is a new request.
 		for (const [key, id] of requests)
@@ -201,7 +185,7 @@
 		return review.outcome?.answer_id ?? undefined;
 	}
 	async function resumeAnswer(answerId: string) {
-		if (decisionBusy || !ready || offset !== 0)
+		if (!ready || offset !== 0)
 			throw new Error('Decisions are not current. Refresh decisions before resuming.');
 		busy = true;
 		error = '';
@@ -212,7 +196,7 @@
 		}
 	}
 	async function dismiss() {
-		if (decisionBusy || !ready || offset !== 0 || !pending) return;
+		if (!ready || offset !== 0 || !pending) return;
 		responseData(
 			await api.POST('/api/v1/pipeline-runs/{run_id}/questions/{question_id}/dismiss', {
 				params: { path: { run_id: run.id, question_id: pending.id } },
@@ -229,11 +213,7 @@
 </script>
 
 <div class="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2">
-	<Button
-		variant="ghost"
-		size="sm"
-		disabled={busy || decisionBusy}
-		onclick={() => perform(() => load())}
+	<Button variant="ghost" size="sm" disabled={busy} onclick={() => perform(() => load())}
 		><RefreshCw class={busy ? 'size-3.5 animate-spin' : 'size-3.5'} />Refresh decisions</Button
 	>
 	{#if loadedAt}<p class="text-xs text-muted-foreground">Last loaded: {loadedAt}</p>{/if}
@@ -308,63 +288,12 @@
 				</details>
 			</section>
 		{/if}
-		{#if current.sdd_snapshot}
-			<SddRunPanel
-				showOutcome={false}
-				onreconcile={async () => {
-					await perform(reviewRecovery);
-				}}
-				run={current}
-				disabled={locked || !ready || offset !== 0}
-				questionPending={!!pending}
-				selectedRequestId={selection &&
-				!['run-question', 'native-hub-question'].includes(selection.kind)
-					? selection.subject_id
-					: undefined}
-				onbusychange={(value) => {
-					decisionBusy = value;
-				}}
-				onchange={async () => {
-					await afterMutation();
-				}}
-			/>
-		{/if}
-		<DecisionOutcome
-			runId={run.id}
-			{head}
-			{revision}
-			{terminal}
-			onrefresh={() => load(false)}
-			onreconcile={reviewRecovery}
-		/>
-		{#if recoveryOpen}<section
-				class="space-y-2 rounded-lg border p-3"
-				aria-label="Publication reconciliation"
-			>
-				<p>
-					Current evidence reviewed. Confirm inspection and possible continuation using a separate
-					recovery request.
-				</p>
-				<Button
-					disabled={busy ||
-						terminal ||
-						head !== recoveryBasis ||
-						recovery.unresolved ||
-						!['paused', 'blocked'].includes(current.state)}
-					onclick={() => perform(reconcilePublication)}>Confirm publication reconciliation</Button
-				>
-				<DecisionOutcome
-					recovery={true}
-					runId={run.id}
-					{head}
-					{revision}
-					{terminal}
-					onrefresh={() => load(false)}
-				/>
-			</section>{/if}
+		{#if current.sdd_snapshot}<SddRunPanel run={current} />{/if}
+		<DecisionOutcome runId={run.id} {head} {revision} {terminal} onrefresh={() => load(false)} />
+
 		{#if ready && !terminal && offset === 0 && !pending}
 			{#if current.state === 'paused' || current.state === 'blocked'}
-				<details open={!current.sdd_snapshot} class="rounded-xl border p-4 text-sm">
+				<details open={true} class="rounded-xl border p-4 text-sm">
 					<summary class="cursor-pointer font-medium">Recovery & inspection</summary>
 					<p class="my-3 text-muted-foreground">
 						Recheck this run after resolving its wait. This action does not grant integration
@@ -398,14 +327,7 @@
 		class="min-w-0 space-y-5 md:w-70 md:shrink-0 md:border-l md:pl-5"
 		aria-label="Decision history"
 	>
-		{#if current.sdd_snapshot}<SddDecisionHistory
-				runId={run.id}
-				{revision}
-				disabled={locked || !ready || offset !== 0}
-				onchange={async () => {
-					await afterMutation();
-				}}
-			/>{/if}
+		{#if legacy}<SddDecisionHistory runId={run.id} {revision} />{/if}
 		<section class="space-y-3">
 			<h3 class="flex items-center gap-2 text-sm font-semibold">
 				<History class="size-4 text-muted-foreground" />Question history

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { GitBranch, FolderGit2, Sparkles, RefreshCw, Layers } from '@lucide/svelte';
 	import { SddViewer } from 'devkit-viewer';
 	import { api, type components } from '$lib/api';
@@ -10,7 +11,7 @@
 	import FileBlobViewer from './FileBlobViewer.svelte';
 	import SddExecution from './SddExecution.svelte';
 	import SddProposals from './SddProposals.svelte';
-	import SddMilestonePreview from './SddMilestonePreview.svelte';
+	import SddBatch from './SddBatch.svelte';
 	import { repositoryDataSource } from './data-source';
 	import type { RepoBlob, RepoInfo, RepoItem, RepoTree } from './types';
 
@@ -303,11 +304,9 @@
 						projectId={project.id}
 						repository={project.github?.repository ?? ''}
 					/>{/key}{/if}
-			{#if isSdd}<SddMilestonePreview
+			{#if isSdd}<SddBatch
 					projectId={project.id}
-					repository={project.github.repository}
-					{currentRef}
-					refresh={viewerRevision}
+					selectedBatchId={page.url.searchParams.get('batch') || ''}
 				/>{/if}
 			<!-- Native Sdd Viewer -->
 			<section class="rounded-xl border bg-card p-4 shadow-xs">

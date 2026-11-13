@@ -17,7 +17,7 @@
 	type RunState = components['schemas']['PipelineRunState'];
 	type Kind = Entry['kind'];
 	/** Display labels for decision kinds; filter values stay the raw API kinds. */
-	const KIND_LABELS: Record<Kind, string> = {
+	const KIND_LABELS: Record<string, string> = {
 		'run-question': 'Run question',
 		'native-hub-question': 'SDD Hub question',
 		'native-worker-question': 'SDD worker question',
@@ -27,14 +27,7 @@
 	};
 	const kindLabel = (value: string) => displayLabel(value, KIND_LABELS);
 	const projectHref = (entry: Entry) => `/projects/${encodeURIComponent(entry.project_id)}`;
-	const kinds: Kind[] = [
-		'run-question',
-		'native-hub-question',
-		'native-worker-question',
-		'native-workflow',
-		'native-proposal',
-		'native-integration'
-	];
+	const kinds: Kind[] = ['run-question'];
 	let items = $state<Entry[]>([]);
 	let kind = $state<Kind | ''>('');
 	let questionState = $state<'' | 'open' | 'answered'>('');

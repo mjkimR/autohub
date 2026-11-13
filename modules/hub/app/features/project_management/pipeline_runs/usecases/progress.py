@@ -24,7 +24,7 @@ from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.models import Project
 from app.features.project_management.projects.schemas import ProjectRead
 from app.features.project_management.projects.services import ProjectService
-from app.features.project_management.sdd.progress import SddProgress, merge_ready
+from app.features.project_management.sdd.execution import optimistic, require_current
 from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
@@ -112,10 +112,11 @@ class PipelineRunProgress:
             reject_test_refs(run.pull_snapshot)
             repository, connector_id, number = project.github_repository, project.github_connector_id, run.pull_number
             heads = await ConnectionTestRepository().protected_heads(session, repository or "")
-            snapshot_data = getattr(run, "sdd_snapshot", None)
-            native_snapshot = dict(snapshot_data) if snapshot_data else None
-            progress_data = getattr(run, "sdd_progress", None)
-            native_previous = dict(progress_data) if progress_data else {}
+            require_current(run)
+            from app.features.project_management.pipeline_runs.interaction_repo import RunInteractionRepository
+
+            if await RunInteractionRepository().pending(session, run.id):
+                raise ProjectError(409, "Operator question is pending; merge is not authorized")
             work_binding = (
                 await session.execute(
                     select(WorkPlan.base_branch, WorkItem.branch)
@@ -123,17 +124,6 @@ class PipelineRunProgress:
                     .where(WorkItem.pipeline_run_id == run.id)
                 )
             ).one_or_none()
-        if native_snapshot and repository and connector_id:
-            pull = await self.observer.get_pull_request(connector_id, repository, number)
-            approval = native_previous.get("approval")
-            if (
-                not approval
-                or pull.get("draft")
-                or pull["head"]["sha"] != (native_previous or {}).get("head_sha")
-                or pull["base"]["sha"] != (native_previous or {}).get("base_sha")
-                or not merge_ready(native_previous)
-            ):
-                raise ProjectError(409, "Native integration head, base or approval changed; re-inspect before merge")
         if (heads or work_binding) and repository and connector_id:
             token = await self.observer.get_token(connector_id, "github")
             async with pipeline_services.create_github_client(token) as client:
@@ -146,8 +136,8 @@ class PipelineRunProgress:
                 ):
                     raise ProjectError(409, "Work plan PR branch changed; restore its original target before merging")
                 await reject_test_ancestry(reader, repository, pr["head"]["sha"], heads)
-        if native_snapshot or heads or work_binding:
-            # Native PR reads can race with pause/revoke just like ancestry reads.
+        if heads or work_binding:
+            # External reads can race with pause and operator input.
             # Fence the last external read before authorizing the merge write.
             async with AsyncTransaction() as session:
                 await self._validate(session, checkpoint)
@@ -175,17 +165,14 @@ class PipelineRunProgress:
         implementing = ImplementationProgress(self.repo, self.ai_catalogs)
         ci = CIProgress(self.repo, self.observer)
         implementation_input = None
-        implementation_applied = False
+        question_input = None
         project_read = None
-        native_snapshot = native_previous = native_target = None
-        native_attempt = None
-        native_result = None
-        ci_result = None
         async with AsyncTransaction() as session:
             now = get_current_utc_time()
             run = await self.repo.get_leased(session, run_id, owner=owner, token=token, now=now)
             if run is None:
                 await raise_lease_conflict(self.repo, session, run_id, "advance run")
+            require_current(run)
             project = await self.projects.get(session, run.project_id)
             if (
                 not project.enabled
@@ -194,47 +181,15 @@ class PipelineRunProgress:
                 or project.github_connector_id is None
             ):
                 return await block_for_project_change(self.repo, session, run, now)
-            approval_wait = (
-                run.state == PipelineRunState.PAUSED
-                and bool(getattr(run, "sdd_snapshot", None))
-                and (run.sdd_progress or {}).get("waiting_for_approval")
-            )
-            if run.state not in (PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI) and not approval_wait:
+            if run.state not in (PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI):
                 return PipelineRunRead.model_validate(run)
-            snapshot_data = getattr(run, "sdd_snapshot", None)
-            if snapshot_data:
-                progress_data = getattr(run, "sdd_progress", None)
-                native_snapshot, native_previous = (
-                    dict(snapshot_data),
-                    dict(progress_data) if progress_data else {},
-                )
-                native_attempt = await self.repo.active_attempt(session, run.id)
-                native_delivery = (
-                    await self.repo.latest_delivery(session, native_attempt.id) if native_attempt else None
-                )
-                native_stage = native_previous.get("current", {}).get("stage") or {}
-                native_previous["allow_head_change"] = bool(
-                    native_attempt
-                    and native_delivery
-                    and native_delivery.posted_at
-                    and (
-                        native_attempt.kind in ("ci-fix", "conflict-fix")
-                        or (
-                            native_attempt.request_snapshot.get("sdd_stage") == native_stage.get("id")
-                            and "lint-ci-clean" in native_stage.get("exit", [])
-                        )
-                    )
-                )
-                native_target = DeliveryTarget(project.github_connector_id, project.github_repository, run.pull_number)
-            # A native resume may only re-inspect a gate before any implementation was dispatched.
-            if run.state == PipelineRunState.IMPLEMENTING and (native_snapshot is None or native_attempt is not None):
-                implementation_input = await implementing.prepare(
-                    session,
-                    run,
-                    DeliveryTarget(project.github_connector_id, project.github_repository, run.pull_number),
-                )
+            target = DeliveryTarget(project.github_connector_id, project.github_repository, run.pull_number)
+            if run.state == PipelineRunState.IMPLEMENTING:
+                implementation_input = await implementing.prepare(session, run, target)
             else:
                 project_read = ProjectRead.model_validate(project)
+                if optimistic(run) and await self.repo.active_attempt(session, run.id) is not None:
+                    question_input = await implementing.prepare(session, run, target)
             pull_number = run.pull_number
             checkpoint = ProgressCheckpoint(
                 run.id,
@@ -245,7 +200,6 @@ class PipelineRunProgress:
                 project.revision,
                 await self._attempt_version(session, run.id),
             )
-            # Bound all external reads/writes below and keep the lease longer than that budget.
             run.lease_expires_at = (
                 max(as_utc(run.lease_expires_at), now + timedelta(seconds=PROGRESS_LEASE_SECONDS))
                 if run.lease_expires_at
@@ -253,74 +207,20 @@ class PipelineRunProgress:
             )
 
         if implementation_input is not None:
-            implementation_result = await implementing.observe(implementation_input, observer)
-            if native_snapshot is not None:
-                # Persist trusted questions/quota waits before a native policy decision can publish a commit.
-                async with AsyncTransaction() as session:
-                    run, _ = await self._validate(session, checkpoint)
-                    result = await implementing.apply(
-                        session, run, get_current_utc_time(), implementation_input, implementation_result
-                    )
-                    if run.state != PipelineRunState.IMPLEMENTING:
-                        return result
-                implementation_applied = True
-        if native_snapshot is not None:
-            assert native_target is not None
-            native_pull = (
-                implementation_result.pull
-                if implementation_input is not None
-                else await observer.get_pull_request(native_target.connector_id, native_target.repository, pull_number)
-            )
-            native_result = await SddProgress(self.repo, self.projects).observe(
-                native_snapshot,
-                native_previous,
-                native_target,
-                native_pull,
-                observer,
-                run_id=run_id,
-                revision=checkpoint.revision,
-                lease=(owner, str(token)),
-            )
-        if native_result and native_result.get("published_run") is not None:
-            return native_result["published_run"]
-        if (
-            checkpoint.state == PipelineRunState.AWAITING_CI
-            and implementation_input is None
-            and (
-                native_result is None
-                or (
-                    merge_ready(native_result.get("evidence", {}))
-                    and not native_result["pull"].get("draft")
-                    and native_result.get("evidence", {}).get("approval")
-                    and native_result["evidence"]["head_sha"] == (native_previous or {}).get("head_sha")
-                    and native_result["evidence"]["base_sha"] == (native_previous or {}).get("base_sha")
-                )
-            )
-        ):
-            assert project_read is not None
-            plan = ((native_result or {}).get("evidence") or {}).get("plan_decision") or {}
-            merge_message = (plan["commit_title"], plan["commit_body"]) if plan.get("commit_title") else None
-            ci_result = await ci.observe(
-                project_read, pull_number, observer, lambda: self._authorize_merge(checkpoint), merge_message
-            )
+            result = await implementing.observe(implementation_input, observer)
+            async with AsyncTransaction() as session:
+                run, _ = await self._validate(session, checkpoint)
+                return await implementing.apply(session, run, get_current_utc_time(), implementation_input, result)
 
+        if question_input is not None:
+            observed = await implementing.observe(question_input, observer)
+            async with AsyncTransaction() as session:
+                run, _ = await self._validate(session, checkpoint)
+                if await implementing.apply_questions(session, run, question_input, observed):
+                    return PipelineRunRead.model_validate(run)
+
+        assert project_read is not None
+        result = await ci.observe(project_read, pull_number, observer, lambda: self._authorize_merge(checkpoint))
         async with AsyncTransaction() as session:
             run, _ = await self._validate(session, checkpoint)
-            now = get_current_utc_time()
-            if implementation_input is not None:
-                result = (
-                    PipelineRunRead.model_validate(run)
-                    if implementation_applied
-                    else await implementing.apply(session, run, now, implementation_input, implementation_result)
-                )
-                if native_result is not None and run.state == PipelineRunState.IMPLEMENTING:
-                    result = await SddProgress(self.repo).apply(session, run, now, native_result)
-            elif native_result is not None and ci_result is None:
-                result = await SddProgress(self.repo).apply(session, run, now, native_result)
-            else:
-                assert project_read is not None and ci_result is not None
-                if native_result is not None:
-                    run.sdd_progress = native_result["evidence"]
-                result = await ci.apply(session, run, project_read, now, ci_result)
-
-        return result
+            return await ci.apply(session, run, project_read, get_current_utc_time(), result)

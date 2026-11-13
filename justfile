@@ -118,18 +118,6 @@ test-ui:
     activate_frontend_node
     uv run --no-active --no-sync devkit run -- npm --prefix "$path" test
 
-# Install a reviewed locked environment: the devkit seed runtime for tests (default) or config/sdd-build
-install-sdd destination=".cache/sdd" manifest="config/sdd-runtime":
-    @uv run --no-active --no-sync python scripts/install-sdd.py "{{ destination }}" --manifest "{{ manifest }}"
-
-# Run the isolated SDD contracts with the seed runtime and .cache/sdd-build; never silently skip them
-test-sdd runtime=".cache/sdd":
-    @bash scripts/test-sdd.sh "{{ runtime }}"
-
-# Run the required isolated SDD contracts with PostgreSQL, including row-lock contention
-test-sdd-pg runtime=".cache/sdd":
-    @bash scripts/test-sdd.sh "{{ runtime }}" postgres
-
 # Test the standalone pipeline SDK without backend fixtures
 test-sdk:
     @uv run --no-active --no-sync devkit run -- uv run --no-active --no-sync pytest -q --tb=short -c packages/sdk/pyproject.toml packages/sdk/tests

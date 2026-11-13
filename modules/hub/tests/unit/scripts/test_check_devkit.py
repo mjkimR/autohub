@@ -3,7 +3,6 @@
 import json
 import runpy
 import shutil
-import tomllib
 from pathlib import Path
 
 import pytest
@@ -17,11 +16,8 @@ PinsError = checker["DevkitPinsError"]
 
 @pytest.fixture
 def project(tmp_path):
-    for profile in checker["PROFILES"]:
-        for name in ("pyproject.toml", "uv.lock"):
-            target = tmp_path / profile / name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / profile / name, target)
+    for name in ("pyproject.toml", "uv.lock"):
+        shutil.copyfile(ROOT / name, tmp_path / name)
     for name in (
         "package-lock.json",
         "vendor/devkit-viewer.source.json",
@@ -33,16 +29,15 @@ def project(tmp_path):
     return tmp_path
 
 
-def test_reviewed_three_profiles_and_viewer_match(project):
+def test_reviewed_root_toolchain_and_viewer_match_without_runtime_profiles(project):
     revision, version = check(project)
     assert len(revision) == 40 and version
 
 
-@pytest.mark.parametrize("profile", checker["PROFILES"])
 @pytest.mark.parametrize("name", ["pyproject.toml", "uv.lock"])
-def test_one_profiles_git_pin_cannot_drift(project, profile, name):
+def test_root_git_pin_cannot_drift(project, name):
     revision, _ = check(project)
-    path = project / profile / name
+    path = project / name
     path.write_text(path.read_text().replace(revision, "f" * 40))
     with pytest.raises(PinsError) as refused:
         check(project)
@@ -51,7 +46,7 @@ def test_one_profiles_git_pin_cannot_drift(project, profile, name):
 
 def test_transitive_package_version_cannot_drift(project):
     _, version = check(project)
-    path = project / "config/sdd-runtime/uv.lock"
+    path = project / "uv.lock"
     path.write_text(
         path.read_text().replace(
             f'name = "devkit-core"\nversion = "{version}"', 'name = "devkit-core"\nversion = "0.0.0"'
@@ -72,16 +67,13 @@ def test_catalog_git_pin_cannot_drift_independently(project):
         check(project)
 
 
-@pytest.mark.parametrize("profile", checker["PROFILES"][1:])
-def test_catalog_does_not_belong_in_isolated_sdd_runtime(project, profile):
+def test_missing_development_package_is_rejected(project):
     path = project / "uv.lock"
     text = path.read_text()
     start = text.index('\nname = "devkit-catalog"\n')
     end = text.index("\n[[package]]", start)
-    catalog = "\n[[package]]" + text[start:end]
-    runtime_lock = project / profile / "uv.lock"
-    runtime_lock.write_text(runtime_lock.read_text() + catalog)
-    assert any(package["name"] == "devkit-catalog" for package in tomllib.loads(runtime_lock.read_text())["package"])
+    package_start = text.rfind("\n[[package]]", 0, start)
+    path.write_text(text[:package_start] + text[end:])
     with pytest.raises(PinsError, match="package inventory"):
         check(project)
 

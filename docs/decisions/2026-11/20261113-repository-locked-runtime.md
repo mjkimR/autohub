@@ -3,7 +3,8 @@ id: ADR-repository-locked-runtime
 title: Evaluate SDD with the repository-locked runtime
 summary: For SDD evaluation of any devkit-adopted repository, we install devkit from the evaluated commit's own uv.lock instead of server profiles, to remove per-repository provisioning and evaluate with the agents' runtime, accepting install cost and trust in the lock.
 proposal: SPEC-repo-locked-sdd-runtime
-status: accepted
+status: superseded
+superseded_by: ADR-repository-owned-sdd-execution
 created_at: 2026-11-13
 ---
 
@@ -13,7 +14,7 @@ Superseded in part by `ADR-repository-owned-sdd-execution`: all in-force decisio
 
 Superseded in part by `ADR-repository-path-sources`: the clause that the runtime identity is the digest of the uv export of that group plus the interpreter minor version.
 
-- **Status**: Accepted
+- **Status**: Superseded by `ADR-repository-owned-sdd-execution`
 - **Date**: 2026-11-13
 
 ---

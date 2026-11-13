@@ -11,7 +11,6 @@ usecases:
 capabilities:
   - CAP-PR-pull-request-delivery
   - CAP-PR-operator-decisions
-  - CAP-SDD-workflow-control
 ---
 
 # [UX-pipeline-runs] PR Runs
@@ -80,12 +79,11 @@ on this screen.
 | Refresh | `UC-deliver-pull-request` 4 | populated | loading |  | `CAP-PR-pull-request-delivery` | The list and its pending decisions reload. |
 | Open run (PR title, primary action or menu) | `UC-deliver-pull-request` 4, `UC-complete-sdd-workflow` 7 | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The run's page opens. |
 | Answer question / Resume with saved answer | global: open the run page section that holds the run's owed question | populated | populated | `UX-run-page` | `CAP-PR-operator-decisions` | The run page opens at its Decisions section. |
-| Review approval | global: open the run page section that holds the run's owed native decision | populated | populated | `UX-run-page` | `CAP-SDD-native-delivery` | The run page opens at its Decisions section. |
 | Next step | global: open a failed run's recovery path on its page | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The failed run's page opens at its next step. |
 | Attempts & errors | `UC-deliver-pull-request` 4 | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The run page opens at its Execution attempts section. |
 | Attach PR | global: associate a PR with eligible work that has no PR number | populated | populated | `UX-attach-pull-request` | `CAP-PR-pull-request-delivery` | Attachment dialog opens. |
 | Advance now | `UC-deliver-pull-request` 4, `UC-complete-sdd-workflow` 7 | populated | operating |  | `CAP-PR-pull-request-delivery` | A toast names the resulting state and the list reloads. |
-| Pause | `UC-deliver-pull-request` *a, `UC-complete-sdd-workflow` *a | populated | operating |  | `CAP-PR-pull-request-delivery` | Success toast and refreshed stopped state. |
+| Pause | `UC-deliver-pull-request` *a | populated | operating |  | `CAP-PR-pull-request-delivery` | Success toast and refreshed stopped state. |
 | Resume | `UC-deliver-pull-request` *c | populated | operating |  | `CAP-PR-pull-request-delivery` | A blocked-run reason is confirmed when present; the resumed state or refusal is shown. Not offered while a decision holds the run; in the overflow menu when the run's decisions are unknown. |
 | Cancel run | `UC-deliver-pull-request` *b | populated | operating |  | `CAP-PR-pull-request-delivery` | Browser confirmation precedes cancellation; the refreshed row shows the outcome. |
 | Inspect PR / Open on GitHub | global: open GitHub for PR review and readiness outside Hub | populated | populated | end | `CAP-PR-pull-request-delivery` | The PR opens in a separate tab for external readiness/review. |

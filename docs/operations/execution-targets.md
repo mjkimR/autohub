@@ -2,7 +2,7 @@
 
 Use this guide to configure a serving Auto Hub host before registering SDK
 releases. `CAP-SDK-task-flow-execution` owns the API/worker protocol and
-`CAP-SDK-existing-pr-bridge` owns PR evidence and approval. Configuration does
+`CAP-SDK-existing-pr-bridge` identifies retired built-in bridge bindings. Configuration does
 not create a release, deploy worker code or prove a live delivery.
 
 ## SDK flow host
@@ -46,47 +46,24 @@ A release snapshots its resolved URL and credential-variable name. When changing
 those settings, register a new release ID and activate it at the observed
 environment revision; an existing release replay preserves the original binding.
 Rotating the referenced credential's value does not require a new release.
-Native `autohub.identity` is available for a pure input-echo contract check;
-configured bridge targets use the procedure below.
+Native `autohub.identity` is available for a pure input-echo contract check.
 
-## SDK flow bridge with an existing PR
+## Retired built-in PR bridge
 
-Check the [serving host](sdd-runtime.md#serving-host) before configuring bridge
-targets. Mount or otherwise provision a clean checkout on the Hub host whose HEAD
-matches the PR being reviewed and whose root `uv.lock` meets the
-[consumer requirements](sdd-runtime.md#consumer-requirements). The standard image
-packages Git, `uv` and the pinned build environment, but does not provision that
-repository checkout for the bridge.
-
-Set a server-owned delivery mapping before registering the consumer's release:
-
-```sh
-AUTOHUB_FLOW_DELIVERY_TARGETS='{"local":{"provider":"planhub","environment":"local","project_id":"<existing-project-uuid>","checkout":"/absolute/clean/checkout"}}'
-```
-
-This example permits `autohub.sdd:local` and `autohub.pr_delivery:local` for the
-named provider/environment and existing project. The checkout path must be
-absolute. The check uses the devkit runtime the checkout's own lock pins; the
-project's GitHub connector must be able to read that lock's Git sources. Release
-registration installs neither the runtime nor checkout dependencies; the first
-check of an uncached lock starts the runtime install.
-
-Check the mounted checkout and intended existing paused PR run before submitting
-the flow. Review the evidence through `UC-resume-verified-pr` and use a machine
-key carrying approval scope for the approval command. Approval does not itself
-mark the PR ready or replace the existing PR owner's CI/merge controls.
-Resolve an unsuccessful delivery against that owner explicitly; do not treat
-an uncertain result as permission to create another PR executor.
+The `autohub.sdd:*` and `autohub.pr_delivery:*` namespaces reject new effects with
+`SDD_BRIDGE_RETIRED`. Do not provision an operator checkout, devkit runtime or
+`AUTOHUB_FLOW_DELIVERY_TARGETS` mapping for them. Existing idempotent history
+replays can return retained outcomes. Exact receipt-backed delivery can observe
+its old PR owner without a second resume; unreceipted work retires terminally.
+Completed results stay readable. `CAP-SDK-existing-pr-bridge` owns these bounds.
 
 ## Operational verification
 
-Confirm the target mapping and credential-variable availability on the serving
-host, then register and activate the intended release. Observe run and attempt
-results through `UC-execute-task-flow` or `UC-resume-verified-pr`. A successful
-local fixture or echo task does not prove a bridge's deployed GitHub, approval,
-CI or merge path. Record live evidence and its source/release identity in
-[delivery status](deployment-status.md).
+Confirm the configured HTTP target and credential-variable availability, then
+register/activate the intended generic release. Observe run/attempt results
+through `UC-execute-task-flow`. Local echo/fixture results do not prove another
+worker's deployed receipt protocol or live GitHub behavior. Record live evidence
+and source/release identity in [delivery status](deployment-status.md).
 
-Contributor test commands and optional loopback applications belong in
-[testing](../development/testing.md). Worker implementation and deployed service
-credentials remain operator-owned.
+Contributor checks belong in [testing](../development/testing.md). Worker
+implementation and deployed service credentials remain operator-owned.

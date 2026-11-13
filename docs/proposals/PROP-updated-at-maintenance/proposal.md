@@ -60,7 +60,6 @@ time:
 | `WorkPlan` (`project_management/work_plans/models.py`) | `owed_items/repos.py` `work-plan-proposed` `waiting_since` | Waiting time is the creation time. |
 | `WorkItem` (`project_management/work_plans/models.py`) | `owed_items/repos.py` `work-item-attention` `waiting_since`; `CAP-WORK-work-plan-execution` retention ("its own last update") through the attached run | Waiting time is the creation time. |
 | `ReplacementLink` (`project_management/work_plans/replacement_models.py`) | `owed_items/repos.py` `work-item-replacement` `waiting_since` | Waiting time is the creation time. |
-| `SddBatch` (`project_management/sdd/batch_models.py`) | `owed_items/repos.py` `sdd-batch-attention` `waiting_since` | Waiting time is the creation time. |
 | `ConnectionTest` (`project_management/connection_tests/models.py`) | `owed_items/repos.py` cleanup fallback; `maintenance/repos.py` `pending_tests` ordering | Maintained by `finish_step`; other writes leave it. |
 | `ScheduleConfig`, `ScheduleJob`, `Connector`, `SystemConfig` (`scheduling/`, `configuration/`) | `updated_at` sort aliases in each `query_options.py`; `SystemConfigsView.svelte` "Updated" | Sorting by `updated_at` equals sorting by creation. |
 
@@ -148,7 +147,7 @@ Evidence is retained in `materials/timestamp-write-evidence.md` at the assigned 
   When the write supplies an explicit business timestamp or the same-column preservation expression, that value
   wins. Cover actual owner methods on SQLite and PostgreSQL.
 - **STAMP-03**: Given each owed owner kind backed by `updated_at` (failed/stopped run, proposed Plan, attention Item,
-  replacement link and attention SDD batch), when its actual owner path changes it, then the owed read returns the
+  replacement link), when its actual owner path changes it, then the owed read returns the
   saved updated timestamp without fixture assignment of the expected result. Decision/recovery/connection-finish
   clocks keep their existing precedence. Rejected writes and ordinary unchanged ORM flushes preserve the time.
 - **STAMP-04**: Given an operator or webhook terminal transition of a run with an old stored timestamp, when its
