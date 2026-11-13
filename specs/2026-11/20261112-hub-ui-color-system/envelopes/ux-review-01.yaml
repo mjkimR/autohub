@@ -1,0 +1,55 @@
+kind: ux-review
+stage: specify
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-12T22:58:56.429650Z'
+status: completed
+summary: Round 1. Walked UC-receive-decision-notice, UC-resolve-run-question, UC-decide-sdd-proposal, UC-complete-sdd-workflow, UC-deliver-pull-request. UX-dashboard R1=1 R2=2 R3=1 R4=2 R5=1 R6=2; UX-decision-inbox R1=1 R2=2 R3=2 R4=2 R5=1 R6=2; UX-pipeline-runs R1=2 R2=2 R3=2 R4=2 R5=2 R6=2; PR run state badge R1=2 R2=n/a R3=2 R4=n/a R5=1 R6=2
+findings:
+- issue: 'answer-saved-reads-finished: UC-resolve-run-question 4: ''Answer saved'' as quiet success+Check reads as done, but the operator still has to resume the Run (walkthrough question 1)'
+  evidence: spec.md Screens > UX-decision-inbox > Content change; AC-07
+  failure_condition: A row whose Run question is answered but not applied looks finished, so the operator skips the resume step
+  suggested_action: 'Treat answered-not-resumed as operator work: attention badge with a resume-pending label, a distinct icon and the left rule'
+  resolution: open
+- issue: 'nothing-waiting-overclaims: the zero-count label ''Nothing waiting'' claims no pending work while the tile counts only failed, paused and blocked runs'
+  evidence: spec.md Screens > UX-dashboard > Content change; AC-05
+  failure_condition: Pending decisions exist while no run is failed, paused or blocked; the dashboard says nothing is waiting
+  suggested_action: Use a label limited to what the count measures, such as 'No failed or held runs'
+  resolution: open
+- issue: 'tile-not-interactive: the emphasized Needs-you tile offers no next action (R3)'
+  evidence: spec.md Screens > UX-dashboard > Interactions ('summary tiles remain non-interactive')
+  failure_condition: The operator sees a non-zero attention count and has no direct path to the runs it counts
+  suggested_action: Link the tile to Pipeline Runs when the count is above zero, filtered if the route already supports it
+  resolution: open
+- issue: 'failed-grouped-with-held: the Needs-you tile merges failed with paused and blocked, weakening US-2'
+  evidence: spec.md AC-05; US-2
+  failure_condition: An operator cannot tell from the dashboard whether the count holds failures or held runs
+  suggested_action: Show a per-state breakdown caption, such as '1 failed · 2 paused · 1 blocked'
+  resolution: open
+- issue: 'label-term-mismatch: the row says ''Needs decision'' while UX-decision-inbox and the filter say ''Needs answer'' (R5)'
+  evidence: spec.md Screens > UX-decision-inbox; docs UX-decision-inbox Content; DecisionInbox.svelte filter options
+  failure_condition: The same state carries two labels across the filter, the row and the Living Spec
+  suggested_action: Settle one label set in the spec so spec-sync copies it
+  resolution: open
+- issue: 'static-loader-reads-stalled: a static Loader glyph for dispatching/implementing reads as a frozen spinner'
+  evidence: spec.md AC-04 table; Assumptions (static Loader)
+  failure_condition: A run in progress looks stuck because its loading glyph does not move
+  suggested_action: Use a non-loading work-in-progress glyph that does not clash with Play/Resume
+  resolution: open
+- issue: 'deliberate-pause-amber-noise: a run paused on purpose shows attention like an unexpected hold'
+  evidence: spec.md AC-04 (paused -> attention)
+  failure_condition: Operators who pause runs deliberately see amber for work they chose to hold
+  suggested_action: 'Accepted as designed: resuming always needs the operator; record the rationale, no change'
+  resolution: open
+- issue: 'delta-drafts-ux-coverage: link check (reviewer judgment) the Screens drafts are deltas, so RULE-ux-links and RULE-ux-coverage cannot read full drafts'
+  evidence: spec.md Screens (delta drafts)
+  failure_condition: A coverage gap in an unchanged row would not be visible in the draft
+  suggested_action: 'No change: unchanged rows stay in docs/ux, where the rules run at spec-sync'
+  resolution: open
+assumptions:
+- Delegated by the Host; the reviewer's fields were relayed by the Host and recorded by the spec author
+- PR run state badge R2 and R4 are n/a because it is a representation without its own region or interaction
+checks: {}
+diff_scope:
+  base: ''
+  head: 1341b8d1767cbc6cdea18b24a9c0fdd5e9911f80
