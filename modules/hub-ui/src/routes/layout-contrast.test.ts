@@ -76,9 +76,25 @@ function tint(theme: Theme, name: string, alpha: number, surface: string): Rgb {
 	return fg.map((v, i) => alpha * v + (1 - alpha) * bg[i]) as Rgb;
 }
 
-// Badge tint alphas mirror badge.svelte: success/info/warning bg-*/15, destructive bg-destructive/10 (dark /20).
-const tintAlpha = (theme: Theme, status: string) =>
-	status === 'destructive' ? (theme === 'dark' ? 0.2 : 0.1) : 0.15;
+const badgeSource = readFileSync(
+	join(import.meta.dirname, '../lib/components/ui/badge/badge.svelte'),
+	'utf8'
+);
+
+/** The `bg-<status>/NN` tint alpha of a Badge variant, read from badge.svelte (`dark:` overrides in dark). */
+function tintAlpha(theme: Theme, status: string): number {
+	const variant = badgeSource.match(new RegExp(`\\b${status}:\\s*'([^']*)'`));
+	if (!variant) throw new Error(`badge.svelte has no ${status} variant`);
+	const classes = variant[1].split(/\s+/);
+	const alphaOf = (prefix: string) => {
+		const cls = classes.find((name) => new RegExp(`^${prefix}bg-${status}/\\d+$`).test(name));
+		return cls === undefined ? undefined : Number(cls.split('/')[1]) / 100;
+	};
+	const light = alphaOf('');
+	if (light === undefined)
+		throw new Error(`badge.svelte ${status} variant has no bg-${status}/NN tint`);
+	return theme === 'dark' ? (alphaOf('dark:') ?? light) : light;
+}
 
 type Pair = { label: string; fg: Rgb; bg: Rgb; min: number };
 

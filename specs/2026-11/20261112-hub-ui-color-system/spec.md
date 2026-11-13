@@ -350,6 +350,11 @@ finding needs no change.
   subtitle under the shell's "Autohub" name is removed; the dashboard sync indicator drops `animate-pulse` and keeps
   its icon and text, so the Needs-you tile is the only salient element; and the dashboard activity cards gain
   `min-w-0`, which fixes horizontal overflow at 390px viewport width.
+- **Contract amendments approved by `user`** during review-refine: (a) run labels are display-case strings written
+  in code (the section 4 preamble), not CSS `capitalize` of the lowercase state; (b) the 390px dashboard horizontal
+  overflow fix belongs to this Unit; (c) the "Scheduler Manager" subtitle is removed and the
+  `modules/hub-ui/README.md` opening names the product "Autohub". Amendment (c) also follows the user's earlier
+  product decision that "Autohub" is the canonical name and the subtitle is retired.
 - Contrast pairs were pre-computed from the drafted values with a WCAG relative-luminance script during
   specification; AC-06 makes the committed test the authoritative check.
 
