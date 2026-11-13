@@ -46,7 +46,7 @@ Chosen option: 3, because it is the only option that makes these repositories ev
 content-addressed and the build sandboxed.
 
 - Path and editable sources of the selected group that resolve inside the evaluated checkout are installed; paths outside it, symlinks on the path or inside the tree, archives and URL sources are refused. → `CAP-SDD-runtime-isolation` rule 4 (MUST)
-- The Hub process captures each path source tree at selection, bounded in file count and size, and writes the captured copy into the install's build directory; no fetch or credential is involved. → `CAP-SDD-runtime-isolation` rule 8 (MUST)
+- The Hub process captures each path source tree at selection, bounded in file count and size, and writes the captured copy into the install's build directory; no fetch or credential is involved. → `CAP-SDD-runtime-isolation` rule 32 (MUST)
 - Path sources are built offline in the sandbox with the image's pinned backend and installed as wheels, exactly like Git sources. → `CAP-SDD-runtime-isolation` rule 9 (MUST)
 - The runtime identity also covers a deterministic content digest of each path source tree, and is unchanged for a selection without path sources. → `CAP-SDD-runtime-isolation` rule 2 (MUST)
 - Supersedes in part `ADR-repository-locked-runtime`: the clause that the runtime identity is the digest of the uv export of that group plus the interpreter minor version.
@@ -66,4 +66,4 @@ content-addressed and the build sandboxed.
 `modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py` (selection, refusals, identity),
 `modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py` (Hub-process staging) and the
 sandboxed path install in `modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py`;
-review of the restating `CAP-SDD-runtime-isolation` rules 2, 4, 8 and 9.
+review of the restating `CAP-SDD-runtime-isolation` rules 2, 4, 9 and 32.

@@ -16,7 +16,7 @@ plan: PLAN-repo-path-runtime-sources
 ## Phase 2: Implementation
 
 - [x] **Task 2.1**: Select in-checkout path sources, capture their trees and add their digests to the identity, with unit tests and fixtures
-  - **_Boundary**: `modules/hub/app/features/project_management/sdd/lock_runtime.py`, `modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py`, `modules/hub/tests/unit/features/project_management/sdd/fixtures/`, `modules/hub/app/features/project_management/sdd/diagnostics.py` `(scope extension: the SDD_RUNTIME_SOURCE_UNSUPPORTED and SDD_RUNTIME_INSTALL_FAILED catalog text of CAP-SDD-runtime-isolation rule 25 must name in-repository path sources)`, `modules/hub/app/features/project_management/sdd/runtime.py`
+  - **_Boundary**: `modules/hub/app/features/project_management/sdd/lock_runtime.py`, `modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py`, `modules/hub/tests/unit/features/project_management/sdd/fixtures/`, `modules/hub/app/features/project_management/sdd/diagnostics.py` `(scope extension: the SDD_RUNTIME_SOURCE_UNSUPPORTED and SDD_RUNTIME_INSTALL_FAILED catalog text of CAP-SDD-runtime-isolation rule 25 must name in-repository path sources)`, `modules/hub/app/features/project_management/sdd/runtime.py`, `docs/steering/glossary.md` `(scope extension: the Runtime identity entry restates CAP-SDD-runtime-isolation rule 2, which now covers path source content)`
   - _Requirements: AC-01, AC-02, AC-03, AC-04_
   - **Verification**: `just test tests/unit/features/project_management/sdd/test_lock_runtime.py`
 - [x] **Task 2.2**: Stage captured path sources in the Hub process and build them in the sandbox, with unit and integration tests

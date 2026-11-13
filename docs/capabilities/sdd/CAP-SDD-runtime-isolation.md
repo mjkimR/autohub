@@ -26,7 +26,9 @@ Each native evaluation runs devkit from the runtime that the evaluated commit's
 root `uv.lock` pins (`ADR-repository-locked-runtime`). Hub installs that runtime
 once per runtime identity into a per-instance cache. Git sources are fetched in
 the Hub process; their builds run offline in the OS sandbox without credentials
-(`ADR-offline-source-build`). Native evaluation reads exact PR commits in
+(`ADR-offline-source-build`). Path sources inside the evaluated checkout are
+captured by the Hub at selection, hashed into the runtime identity and built the
+same way (`ADR-repository-path-sources`). Native evaluation reads exact PR commits in
 disposable checkouts and runs repository workflow checks under OS isolation. The
 committed config/receipt and effective workflow define the identity retained by
 an admitted run; the runtime identity is recorded with it and follows the lock.
@@ -44,8 +46,10 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
   [runtime operations guide](../../operations/sdd-runtime.md).
 - **Scope Excluded**: installing a repository's whole environment (only the locked
   group that declares `devkit-spec`, or the main dependencies); downloading Python
-  interpreters; Git sources outside `https://github.com/`, path, URL, editable or
-  custom-index sources; building registry sdists; a cache shared across instances
+  interpreters; Git sources outside `https://github.com/`; path sources outside the
+  checkout, through a symlink or with a marker; archive, URL or custom-index
+  sources; editable installs (path sources install as built wheels); building
+  registry sdists; a cache shared across instances
   or surviving restarts; a fallback server runtime for repositories without a
   devkit lock; unsandboxed evaluation; automatic repository initialization or
   upgrades. Reconsider these when a consumer needs another Git host, a private
@@ -62,23 +66,27 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
    default-branch head for runtime status.
    Check: [test_lock_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_group_selection_renders_only_the_devkit_group`, `test_main_dependencies_are_selected_without_a_group`; [test_lock_runtime.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py), `test_evaluation_uses_the_locked_runtime_and_records_its_identity`.
 2. **Runtime identity**: Hub MUST derive the runtime identity from the selected
-   group's `uv export` text, the image interpreter's `major.minor` version and the
-   build environment's lock digest, so that a lock change outside the group keeps
-   the identity.
-   Check: [test_lock_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_unrelated_lock_change_keeps_the_identity_and_group_change_does_not`, `test_identity_covers_the_build_environment`.
+   group's `uv export` text, the content digest of each selected path source tree,
+   the image interpreter's `major.minor` version and the build environment's lock
+   digest, so that a lock change outside the group keeps the identity and a changed
+   path source changes it.
+   Check: [test_lock_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_unrelated_lock_change_keeps_the_identity_and_group_change_does_not`, `test_identity_covers_the_build_environment`, `test_path_source_identity_is_the_same_across_checkout_directories`, `test_path_source_content_and_executable_bit_change_the_identity`, `test_identity_without_path_sources_keeps_its_document`.
 3. **Unlocked repository**: IF the commit has no readable root `pyproject.toml` or
    `uv.lock`, declares `devkit-spec` in no dependency group or main dependency, or
    its lock cannot be exported unchanged, THEN Hub MUST refuse with HTTP 422
    `SDD_RUNTIME_UNLOCKED` and start no install; no server profile or default image
    runtime is used instead.
    Check: [test_lock_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_repository_without_a_lock_is_refused`, `test_repository_whose_project_does_not_declare_devkit_spec_is_refused`, `test_symlinked_manifest_is_refused`; [test_lock_runtime.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py), `test_repository_without_a_devkit_lock_is_refused_through_checkout`.
-4. **Unsupported sources**: IF the selected export contains an option line, a path,
-   URL or editable requirement, a Git source outside `https://github.com/` or
-   without an exact 40-character revision, a registry requirement without SHA-256
-   hashes, or a registry package whose lock source is not `https://pypi.org/simple`,
-   THEN Hub MUST refuse with HTTP 422 `SDD_RUNTIME_SOURCE_UNSUPPORTED` before any
-   fetch or download.
-   Check: [test_lock_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_unsupported_sources_are_refused`, `test_registry_package_from_another_index_is_refused`.
+4. **Unsupported sources**: IF the selected export contains an option line other
+   than `-e ./<path>`, a path requirement that is not a `./<path>` inside the
+   checkout or carries hashes or a marker, a URL or archive requirement, a Git
+   source outside `https://github.com/` or without an exact 40-character revision,
+   a registry requirement without SHA-256 hashes, a registry package whose lock
+   source is not `https://pypi.org/simple`, or a path source whose directory is
+   missing, reached through a symlink, lacks a regular `pyproject.toml`, contains a
+   symlink or special file or exceeds the capture limits, THEN Hub MUST refuse with
+   HTTP 422 `SDD_RUNTIME_SOURCE_UNSUPPORTED` before any fetch or download.
+   Check: [test_lock_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_unsupported_sources_are_refused`, `test_registry_package_from_another_index_is_refused`, `test_unsafe_path_source_trees_are_refused`, `test_path_source_outside_the_checkout_is_refused_before_reading_it`, `test_path_source_size_is_bounded`.
 5. **Python compatibility**: IF the root `requires-python` excludes the image
    interpreter's version, THEN Hub MUST refuse with HTTP 422
    `SDD_RUNTIME_PYTHON_UNSUPPORTED` before rendering the lock.
@@ -102,13 +110,13 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
    sources only in the Hub process with the project's GitHub connector token and
    keep that token out of every sandboxed step, `pin.json` and diagnostic.
    Check: [test_runtime_install.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_token_is_used_only_by_hub_process_fetches`.
-9. **Sandboxed build steps**: WHEN Hub builds a locked Git source, installs the
+9. **Sandboxed build steps**: WHEN Hub builds a locked Git or path source, installs the
    built wheels or probes the installed inventory, it MUST run that step in OS
    isolation without network, with a minimal environment and one writable
    directory (`work/` for builds, `.venv` for the wheel install and probe); builds
    MUST use the image's pinned build environment (`AUTOHUB_SDD_BUILD`) without build
    isolation.
-   Check: [test_runtime_install.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_linux_sandbox_unshares_network_and_binds_one_writable_directory`, `test_sources_build_in_the_sandbox_offline_and_wheels_install_hashed`, `test_builds_write_only_work_and_the_wheel_install_runs_sandboxed`, `test_later_sandboxes_cannot_write_the_staging_root`, `test_probe_and_install_write_only_the_venv_and_read_the_hub_prefix`; [test_lock_runtime.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py), `test_source_build_hook_cannot_reach_the_network_or_credentials`.
+   Check: [test_runtime_install.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_linux_sandbox_unshares_network_and_binds_one_writable_directory`, `test_sources_build_in_the_sandbox_offline_and_wheels_install_hashed`, `test_builds_write_only_work_and_the_wheel_install_runs_sandboxed`, `test_later_sandboxes_cannot_write_the_staging_root`, `test_probe_and_install_write_only_the_venv_and_read_the_hub_prefix`, `test_path_sources_are_staged_by_the_hub_and_built_in_the_sandbox`; [test_lock_runtime.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py), `test_source_build_hook_cannot_reach_the_network_or_credentials`, `test_path_source_runtime_installs_offline_through_the_sandbox`.
 10. **Hub-authored pin**: WHEN an install finishes, Hub MUST write `pin.json` with
     the identity and interpreter prefix it computed itself, never values reported
     by the sandboxed probe.
@@ -204,6 +212,13 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
     record `runtime` as only `provider`, `identity`, `python` and `revisions`, and
     exclude `uv.lock` from the `configuration` hashes.
     Check: [test_batch_evidence.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_batch_evidence.py), `test_basis_runtime_is_the_same_identity_across_cache_directories`; [test_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_runtime_identity_is_deterministic_and_pathless`.
+32. **Path source capture**: WHEN the selected export contains an in-checkout
+    path source (`./<path>`, or `-e ./<path>` for editable and workspace sources),
+    Hub MUST read its tree in the Hub process at selection without following
+    symlinks, skipping `.git`, `.venv` and `__pycache__` directories and within
+    10,000 files and 32 MiB across the selection, and build only that captured
+    copy, with no fetch or credential.
+    Check: [test_lock_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_in_checkout_path_and_editable_sources_are_selected`, `test_devkit_spec_may_itself_be_a_path_source`, `test_workspace_members_inside_the_checkout_install_like_path_sources`, `test_caches_and_git_metadata_are_not_captured`; [test_runtime_install.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_path_only_runtime_needs_no_fetch_or_token`, `test_install_uses_the_content_captured_at_selection`.
 
 ## 4. Interfaces & Data Contracts
 
@@ -216,10 +231,17 @@ status. Selection reads root `pyproject.toml` (at most 1 MiB) and `uv.lock` (at
 most 8 MiB, no symlinks) and runs
 `uv export --frozen --offline --no-header --no-annotate --no-emit-project --format requirements-txt`
 with `--only-group <group>` or `--no-dev`. It builds and downloads nothing.
+Each in-checkout path source line names its package through the lock's
+`editable` or `directory` source of that path; `devkit-spec` itself may be one.
+Selection captures the tree (rule 32) and holds the captured files for the
+install, which may run after the disposable checkout is removed.
 
 The runtime identity is the SHA-256 of the JSON document
 `{"build": <build lock SHA-256 or "none">, "export": <export text>, "python": "<major>.<minor>"}`
-with sorted keys. The snapshot CLI identity (`cli_version`) is
+with sorted keys; a selection with path sources adds
+`"paths": {<checkout-relative path>: <tree digest>}`. The tree digest is the
+SHA-256 of the sorted JSON list of `[<relative path>, "x" or "-", <content SHA-256>]`
+per captured file, `x` marking the owner-executable bit. The snapshot CLI identity (`cli_version`) is
 `devkit-lock:<identity>`. Workflow identity hashes semantic JSON while excluding
 checkout/binding metadata. The run snapshot retains configuration digest, unit,
 provider, CLI identity, workflow ID/hash and effective policy without diagnostic
@@ -249,12 +271,13 @@ the instance that locks the same runtime.
 Install steps, in a fresh staging directory:
 
 1. Hub process: shallow `git fetch` of each distinct GitHub revision with the
-   connector token into `work/src/`.
+   connector token into `work/src/`, and the captured files of each path source
+   written to `work/src/path-<n>/` without a fetch or credential.
 2. Hub process: `uv venv` with the image interpreter and
    `uv pip install --no-deps --only-binary :all: --require-hashes` of the registry
    wheels.
 3. Sandbox writing `work/`: `uv build --wheel --offline --no-build-isolation` of
-   each Git source with the `AUTOHUB_SDD_BUILD` interpreter.
+   each Git and path source with the `AUTOHUB_SDD_BUILD` interpreter.
 4. Sandbox writing `.venv`: offline `uv pip install --no-index` of the built wheels.
 5. Sandbox writing `.venv`: inventory probe of package versions and
    `devkit.bundles` entry points.
@@ -276,7 +299,7 @@ uv settings (`UV_NO_CONFIG`, `UV_PYTHON_DOWNLOADS`, `UV_CACHE_DIR`, and
 | Code | HTTP | Category | Retry | Condition |
 | --- | --- | --- | --- | --- |
 | `SDD_RUNTIME_UNLOCKED` | 422 | repository | `after_fix` | Rule 3 |
-| `SDD_RUNTIME_SOURCE_UNSUPPORTED` | 422 | repository | `after_fix` | Rule 4 |
+| `SDD_RUNTIME_SOURCE_UNSUPPORTED` | 422 | repository | `after_fix` | Rule 4, including path sources over the rule 32 limits |
 | `SDD_RUNTIME_PYTHON_UNSUPPORTED` | 422 | repository | `after_fix` | Rule 5 |
 | `SDD_BUNDLES_MISSING` | 422 | repository | `after_fix` | Rule 15 |
 | `SDD_RUNTIME_PREPARING` | 503 | runtime | `safe` | Rule 6, or an eviction holds the entry |
