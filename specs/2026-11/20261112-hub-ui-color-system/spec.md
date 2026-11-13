@@ -73,8 +73,8 @@ section lists each such change with its use case citations.
 
 ## 4. Acceptance Criteria & Behavioral Contracts
 
-Token values are OKLCH. "Key pairs" are the pairs listed in AC-06. Run labels are the run state with underscores
-replaced by spaces (`awaiting ci`), as rendered today.
+Token values are OKLCH. "Key pairs" are the pairs listed in AC-06. Run labels are the display-case run state written
+out in code (`Awaiting CI`, `Implementing`), not produced by CSS `capitalize`, so acronyms keep their case.
 
 ### [AC-01] Ink primary and neutral surfaces
 
@@ -345,6 +345,11 @@ finding needs no change.
   classes and become ink through the token change.
 - The active sidebar item keeps its existing `aria-current`, `font-semibold` and foreground text contrast (about
   `15:1` against about `5.6:1` for inactive items); its `sidebar-accent` fill alone measures about `1.14:1`.
+- Build-verify polish (Impeccable audit, in scope): the Resume and Pause controls on a Pipeline Runs row are ink with
+  no status hue; run labels are explicit display-case strings ("Awaiting CI"); the retired "Scheduler Manager"
+  subtitle under the shell's "Autohub" name is removed; the dashboard sync indicator drops `animate-pulse` and keeps
+  its icon and text, so the Needs-you tile is the only salient element; and the dashboard activity cards gain
+  `min-w-0`, which fixes horizontal overflow at 390px viewport width.
 - Contrast pairs were pre-computed from the drafted values with a WCAG relative-luminance script during
   specification; AC-06 makes the committed test the authoritative check.
 
@@ -353,5 +358,4 @@ finding needs no change.
 These are outside this Unit and do not constrain it:
 
 - A stronger active indicator for the sidebar item and an active style for the administrative links.
-- Horizontal overflow of the dashboard at 390px viewport width (page width 416px), observed in local screenshots.
 - Shell lighting and a Decisions navigation count once a global pending-decision count exists (Non-Goal 1).

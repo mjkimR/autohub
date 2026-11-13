@@ -106,7 +106,8 @@ label:
 import type { Component } from 'svelte';
 export type RunStatePresentation = { variant: BadgeVariant; icon: Component; label: string };
 export function getRunStatePresentation(state: RunState): RunStatePresentation;
-// label = state.replaceAll('_', ' ')
+// label = RUN_STATE_LABELS[state], display case written out ("Awaiting CI");
+// an unknown state falls back to its sentence-cased value
 // getStateBadgeVariant(state) === getRunStatePresentation(state).variant
 ```
 
@@ -120,14 +121,15 @@ the `warning` branch.
   let { state, class: className }: { state: RunState; class?: string } = $props();
   const view = $derived(getRunStatePresentation(state));
 </script>
-<Badge variant={view.variant} class={cn('capitalize', className)}>
+<Badge variant={view.variant} data-run-state={state} class={className}>
   <view.icon aria-hidden="true" /> {view.label}
 </Badge>
 ```
 
 Replace the four call sites with `<RunStateBadge state={...} />`. `PipelineRunRow.svelte` drops its inline
-pulse/CheckCircle2/AlertCircle/PauseCircle branches and their unused imports. The label text stays lower case in the
-DOM (`capitalize` is CSS), so `PipelineRunsView.integration.test.ts`'s `getByText('implementing')` keeps working.
+pulse/CheckCircle2/AlertCircle/PauseCircle branches and their unused imports, and its Resume (Play) and Pause icons
+carry no `warning` hue, because controls are ink. Labels are explicit display-case strings rather than CSS
+`capitalize`, so "Awaiting CI" keeps its acronym; `PipelineRunsView.integration.test.ts` asserts `Implementing`.
 
 ### 3.4 Dashboard PR run summary
 
@@ -153,7 +155,8 @@ The link carries no query string (AC-12): the Pipeline Runs route reads only `ru
 `state` parameter is single-valued. Its accessible name comes from its visible text ("Needs you", the count and the
 breakdown); add no `aria-label` that would hide the breakdown. Section-header icons on lines 154, 258, 273 and 328
 become `text-muted-foreground`. The recent-runs badge becomes `RunStateBadge`. The polling toggle keeps
-`bg-primary`.
+`bg-primary`. The sync indicator drops `animate-pulse` and keeps its icon and "Sync:" text, so the Needs-you tile is
+the only salient element. The activity cards carry `min-w-0` so the page does not overflow at 390px viewport width.
 
 ### 3.5 Decisions inbox row
 
@@ -174,7 +177,8 @@ buttons gain `variant="outline"`. Keep the article's existing border and padding
 ### 3.6 Cleanup
 
 - `AppShell.svelte`: delete the header `<span>` containing the pulsing dot and "Svelte 5 Runes" (lines 266-271) and
-  any wrapper left empty. The sidebar logo keeps `sidebar-primary`, which becomes ink.
+  any wrapper left empty. The sidebar logo keeps `sidebar-primary`, which becomes ink. The retired "Scheduler
+  Manager" subtitle under "Autohub" is removed, leaving the logo tile and the name on one line.
 - Icon tiles `bg-primary/10 text-primary` → `bg-muted text-muted-foreground` in `DashboardHealth.svelte`,
   `TaskSpecsView.svelte`, `AICatalogsView.svelte`, `NotificationsView.svelte`, `SystemConfigsView.svelte`,
   `AttachPullRequestDialog.svelte`, `EnrollPullRequestDialog.svelte` and `SddRunPanel.svelte`.
