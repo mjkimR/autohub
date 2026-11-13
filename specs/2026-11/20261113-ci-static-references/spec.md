@@ -2,7 +2,7 @@
 id: SPEC-ci-static-references
 title: Validate static CI recipe and config references
 summary: "Catch missing literal just recipes and config paths in CI run steps through local lint checks without interpreting dynamic shell expressions."
-status: in-progress
+status: completed
 created: 2026-11-13
 related_capabilities: []
 related_usecases: []
