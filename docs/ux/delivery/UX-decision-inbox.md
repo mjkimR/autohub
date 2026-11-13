@@ -62,7 +62,7 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
 | Review worker/workflow request | `UC-complete-sdd-workflow` 3b, `UC-complete-sdd-workflow` 3c | populated | reviewing | `UX-run-decisions` | `CAP-SDD-workflow-control` | Exact request is selected in `UX-sdd-workflow-request`; missing identity requires reinspection. |
 | Review integration decision | `UC-complete-sdd-workflow` 4 | populated | reviewing | `UX-run-decisions` | `CAP-SDD-workflow-control` | `UX-sdd-run` receives refreshed evidence and preserves approval fences. |
 | Open project | global: inspect the decision's owning project | populated | populated | `UX-project-detail` | | The project detail opens; the inbox is left. |
-| Open PR run | global: inspect the decision's PR run in its home | populated | populated |  | `CAP-PR-pull-request-delivery` | The PR run page (`/projects/[projectId]/runs/[runId]`) opens; Review in the row remains the decision path from the inbox. |
+| Open PR run | global: inspect the decision's PR run in its home | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The PR run page opens; Review in the row remains the decision path from the inbox. |
 | Change filters | global: narrow discovery without deciding | populated | loading | | | Cursor resets; only matching visible subjects load. |
 | Next / Previous | global: browse observed pending decisions | populated | loading | | | Current filters persist; unavailable cursor navigation is disabled. |
 | Refresh / Retry / Clear filters | global: recover discovery | error, empty, populated | loading | | | First page reloads with selected filters or cleared filters. |

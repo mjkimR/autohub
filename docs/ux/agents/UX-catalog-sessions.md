@@ -44,7 +44,7 @@ Session history is primary below the status filter.
 | --- | --- | --- | --- | --- | --- | --- |
 | Change status filter or page | `UC-run-agent-session` 7 | populated | loading |  | `CAP-AGENT-provider-sessions` | The selected catalog history page and count replace the previous results. |
 | Expand Result | `UC-run-agent-session` 7 | populated | populated |  | `CAP-AGENT-provider-sessions` | The stored final summary is disclosed in the same row. |
-| Pipeline run | `UC-run-agent-session` 7 | populated | populated | `UX-pipeline-runs` | `CAP-AGENT-provider-sessions` | The linked PR run is selected. |
+| PR run | `UC-run-agent-session` 7 | populated | populated | `UX-run-page` | `CAP-AGENT-provider-sessions` | The linked PR run page opens. |
 | Open session or Pull request | `UC-run-agent-session` 7 | populated | populated | end | `CAP-AGENT-provider-sessions` | The external provider or PR opens in a separate tab. |
 | Close | global: return to the catalog after session inspection | populated | populated | `UX-ai-catalogs` |  | The catalog list remains visible. |
 

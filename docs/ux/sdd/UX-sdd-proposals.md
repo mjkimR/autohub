@@ -50,7 +50,7 @@ a failed action retains its error rather than claiming remote rollback.
 | --- | --- | --- | --- | --- | --- | --- |
 | Refresh | `UC-start-sdd-activity` 1 | populated | loading |  | `CAP-SDD-native-delivery` | Proposal state is reloaded for the entered base. |
 | Start review / Start development | `UC-start-sdd-activity` 1 | populated | busy |  | `CAP-SDD-native-delivery` | A started-activity message appears and proposal/run state reloads. |
-| Review & accept | `UC-decide-sdd-proposal` 1 | populated | populated | `UX-run-decisions` | `CAP-SDD-native-delivery` | The linked PR run opens directly in decisions. |
+| Review & accept | `UC-decide-sdd-proposal` 1 | populated | populated | `UX-run-page` | `CAP-SDD-native-delivery` | The linked PR run page opens at its Decisions section. |
 | Reject… / Reject proposal | `UC-decide-sdd-proposal` 2a | populated | rejecting |  | `CAP-SDD-native-delivery` | A reason editor precedes submission; the decision result or failure is shown. |
 | Open plan/dev PR | global: inspect the activity branch in GitHub | populated | populated | end | `CAP-SDD-native-delivery` | The associated external PR opens. |
 

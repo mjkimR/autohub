@@ -30,7 +30,7 @@ At `/`, health indicators precede the primary PR run summary; supporting object 
   - zero: neutral, "No failed or held runs", caption "Failed, paused, or blocked", not a link;
   - statistics unavailable: neutral, the unknown marker, the same caption, not a link.
 - Project connection, Schedule configuration and Connector (metric cards): aggregate counts that lead to their management screens.
-- PR run (recent list): PR identity/title, branch, state as the PR run state badge (label plus icon, emphasis by role per `docs/steering/visual-style.md`) and external PR link when available.
+- PR run (recent list "Recent PR runs"): PR identity/title (opens `UX-run-page`), branch, state as the PR run state badge (label plus icon, emphasis by role per `docs/steering/visual-style.md`) and external PR link when available.
 - Schedule job (recent list): recent execution outcomes.
 - Refresh controls: manual Refresh and Off/5s/15s/30s polling, with the last fully successful refresh time. The live-refresh indicator shows an icon and text without motion.
 
@@ -49,8 +49,9 @@ At `/`, health indicators precede the primary PR run summary; supporting object 
 | Refresh or Retry | global: inspect operational state without starting the underlying work | populated | loading |  |  | Independent health/statistics/list requests update their own regions. |
 | Choose Off, 5s, 15s or 30s | global: inspect operational state without starting the underlying work | populated | populated |  |  | The polling choice changes; it does not dispatch work. |
 | Open a project metric or project navigation | global: navigation between management surfaces | populated | populated | `UX-projects` |  | Project connections are listed. |
-| Open the Needs-you tile | global: navigation from the exception count to the runs it counts | populated | populated | `UX-pipeline-runs` |  | Pipeline Runs opens with default filters; the operator filters by state and continues there with Resume Run (`UC-deliver-pull-request` *c), Cancel Run (`UC-deliver-pull-request` *b) or Decisions for a blocked run's question. |
-| View All Runs or open run navigation | global: navigation between management surfaces | populated | populated | `UX-pipeline-runs` |  | PR runs are listed. |
+| Open the Needs-you tile | global: navigation from the exception count to the runs it counts | populated | populated | `UX-pipeline-runs` |  | PR runs opens with default filters; the operator filters by state and continues on a run's page with Resume (`UC-deliver-pull-request` *c), Cancel run (`UC-deliver-pull-request` *b) or Decisions for a blocked run's question. |
+| View All Runs | global: navigation between management surfaces | populated | populated | `UX-pipeline-runs` |  | PR runs are listed. |
+| Open a recent PR run | global: inspect one recent PR run in its home | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The PR run page opens. |
 | Open the schedule metric | global: navigation between management surfaces | populated | populated | `UX-schedule-configs` |  | Schedule configurations are listed. |
 | Open execution history | global: navigation between management surfaces | populated | populated | `UX-schedule-jobs` |  | Schedule jobs are listed. |
 | Open connector metric | global: navigation between management surfaces | populated | populated | `UX-connectors` |  | Connector configuration is shown. |

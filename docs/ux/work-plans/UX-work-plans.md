@@ -32,7 +32,7 @@ The filtered Plan list is primary. New/edit controls precede it; each card group
   - Work Item replacement link (inline comparison): original/replacement IDs, specifications, acceptance texts, repository/target, Plan/evidence revisions and reason. Candidate lookup uses the exact replacement Work Item ID. The current edge remains primary; history is subordinate.
   - Work Item dependency acceptance (single-edge review): selected dependent, both specification digests, confirmed PR/merge/execution/completion-time evidence and explicit acknowledgement. Linking or merge alone does not release work.
   - Work Item replacement link (paged history): actor/reason/time, retained acceptance and consumed dependent; active evidence stays visible across inactive link pages, with further event loading.
-  - Work Item (execution links): PR, Issue and `UX-pipeline-runs`; expired Run history is distinguished from retained completion evidence.
+  - Work Item (execution links): PR, Issue and PR run (`UX-run-page`); expired Run history is distinguished from retained completion evidence.
   - Work Plan (mirror status): Issue link, pending/error state separate from execution.
   - Work Plan (activity/comment region): author/time/revision, change details, comments filter and further-page loading.
 - Work Plan template (management): Templates opens `UX-work-plan-templates`, where the operator can select an exact loaded source Plan/revision. A derived Plan retains ordinary execution controls.
@@ -76,7 +76,7 @@ Filters include All, Next work, Needs a decision, Execution requested, On hold/p
 | Start / Pause / Resume | `UC-execute-work-plan` 2c, `UC-execute-work-plan` 6a | populated | busy |  | `CAP-WORK-work-plan-execution` | A successful control reloads the Plan; refused controls show an error. |
 | Revoke and confirm | `UC-execute-work-plan` 6b | populated | busy |  | `CAP-WORK-work-plan-execution` | Confirmation states that started work continues and this Plan cannot resume. |
 | Submit a stale control | `UC-execute-work-plan` *a | populated | error |  | `CAP-WORK-work-plan-execution` | The error preserves the server state; reload before deciding whether to retry. |
-| Open Execution runs | global: follow an admitted Work Item to its PR delivery | populated | populated | `UX-pipeline-runs` | `CAP-PR-pull-request-delivery` | The project Runs tab opens. |
+| PR run | global: follow an admitted Work Item to its PR delivery | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The Work Item's PR run page opens. |
 | Change group / save / cancel | global: update classification without controlling execution | populated, editing | editing, populated |  | `CAP-WORK-work-plan-execution` | The saved group and any conflicting revision are shown; errors retain the form. |
 | Expand activity / add comment / load more | global: inspect or add explanatory Plan history | populated | populated |  | `CAP-WORK-work-plan-execution` | Activity changes load separately; comments do not start work or answer Run questions. |
 | Retry Work Item / Confirm retry | `UC-execute-work-plan` 4c, `UC-execute-work-plan` 5c, `UC-deliver-pull-request` *d | populated, confirming | confirming, busy | | `CAP-WORK-work-plan-execution` | Review the prior result and unchanged target, enter a reason and receive acceptance or refusal. |
