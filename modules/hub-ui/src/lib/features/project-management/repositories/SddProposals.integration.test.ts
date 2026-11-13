@@ -85,7 +85,7 @@ test('accept opens the evidence review while rejection records the head and a re
 		'https://github.com/owner/app/pull/7'
 	);
 	expect(screen.getByRole('link', { name: 'Review & accept' }).getAttribute('href')).toBe(
-		'/projects/runs?run=r1&view=decisions'
+		'/projects/p1/runs/r1#decisions'
 	);
 	expect(api.POST).not.toHaveBeenCalled();
 	await user.click(screen.getByRole('button', { name: 'Reject…' }));

@@ -29,14 +29,14 @@ The project header anchors all tabs. Overview is the entry region; each selected
 
 - Project connection (header and overview): repository link, enabled/type badges, automatic-merge setting and saved access status.
   - Connection test (latest-per-catalog summary): verified, failure or retest recommendation.
-  - PR run (recent row): PR, branch and state; opens `UX-pipeline-runs`.
+  - PR run (recent row): PR, branch and the PR run state badge; opens `UX-run-page`.
 - Repository viewer (tab): `UX-repository`.
 - Work Plan (tab): `UX-work-plans`.
 - PR run (tab): `UX-pipeline-runs` scoped to this project.
 - Project connection (connection tab): `UX-project-connections`.
 - Project connection (automation/settings tabs): automation policy, schedules and general settings; schedule controls open `UX-agent-schedules` or `UX-project-schedule`.
 
-The route is `/projects/{projectId}` and the selected section is the `tab` query parameter.
+The route is `/projects/{projectId}` and the selected section is the `tab` query parameter. A PR run of the project has its own page at `/projects/{projectId}/runs/{runId}` (`UX-run-page`).
 
 ## 3. States
 
@@ -52,7 +52,8 @@ The route is `/projects/{projectId}` and the selected section is the `tab` query
 | Projects backlink | global: return to project selection | populated, loading, error | populated | `UX-projects` | `CAP-PROJ-project-connections` | The projects list opens. |
 | Repository tab | global: inspect repository documents | populated | populated | `UX-repository` | `CAP-DOC-repository-viewer` | The branch-specific repository viewer opens. |
 | Plans tab | global: inspect pre-PR work | populated | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | Project Work Plans open. |
-| Runs tab / recent run | global: inspect project PR delivery | populated | populated | `UX-pipeline-runs` | `CAP-PR-pull-request-delivery` | The project run list opens, with a selected run when linked. |
+| Runs tab | global: inspect project PR delivery | populated | populated | `UX-pipeline-runs` | `CAP-PR-pull-request-delivery` | The project run list opens; an old `run` link redirects to `UX-run-page`. |
+| Recent run | global: open one PR run from the project overview | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The run page opens. |
 | Connections tab / connection overview card | global: inspect and configure project connections | populated | populated | `UX-project-connections` | `CAP-PROJ-project-connections`, `CAP-CONN-connection-verification` | Connection forms and isolated test history open. |
 | Automation / settings tab | global: edit the relevant project configuration | populated | populated |  | `CAP-PROJ-project-connections` | The relevant settings form is shown. |
 | Agent schedules | global: configure provider-session schedules | populated | populated | `UX-agent-schedules` | `CAP-AGENT-provider-sessions` | The agent schedules dialog opens. |

@@ -45,7 +45,7 @@ entrypoints:
    Interface: `UX-pipeline-runs`.
 
 4. Hub observes the provider's push and the repository's verification result through scheduled or webhook advancement (`CAP-PR-agent-dispatch`, `CAP-PR-ci-observation`, `CAP-PR-webhook-advancement`).
-   Interface: `UX-pipeline-runs`, `UX-attempt-history`.
+   Interface: `UX-pipeline-runs`, `UX-run-page`, `UX-attempt-history`.
 
 5. The operator marks the PR ready when its work is acceptable (`CAP-PR-pull-request-delivery`).
    Off screen: the operator changes PR readiness in GitHub outside the Hub interface.
@@ -101,19 +101,19 @@ entrypoints:
 - **\*a.** The operator pauses the Run: Hub stops progression and clears its
   observation lease; the flow remains unfinished until an inspected resume.
   An already sent provider request can still produce changes.
-   Interface: `UX-pipeline-runs`.
+   Interface: `UX-pipeline-runs`, `UX-run-page`.
 
 - **\*b.** The operator cancels the Run: Hub ends local progression; the flow ends
   without recalling an already sent request or undoing its effects.
-   Interface: `UX-pipeline-runs`.
+   Interface: `UX-pipeline-runs`, `UX-run-page`.
 
 - **\*c.** A paused Run receives a push before resume: Hub observes that push
   instead of repeating the delivered request when resuming without an answer;
   resumes at step 4.
-   Interface: `UX-pipeline-runs`.
+   Interface: `UX-pipeline-runs`, `UX-run-page`.
 
 - **\*d.** A failed/canceled Run belongs to a Work Item: the operator inspects its original outcome in the Plan and requests unchanged-work recovery. Hub reconciles the same PR/Run and applies existing admission and budget gates; accepted continuation resumes at step 4, while refusal retains history and ends this continuation (`CAP-WORK-work-plan-execution`, `CAP-PR-pull-request-delivery`).
-   Interface: `UX-work-plans`.
+   Interface: `UX-run-page`, `UX-work-plans`.
 
 ## 4. Postconditions
 
