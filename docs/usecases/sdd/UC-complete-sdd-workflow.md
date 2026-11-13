@@ -34,8 +34,9 @@ entrypoints:
    (`CAP-SDD-workflow-control`, rules 1, 22–23).
    Interface: `UX-sdd-execution`.
 
-2. Hub checks the binding/runtime and retains the evaluated execution identity
-   (`CAP-SDD-workflow-control`, rule 1; `CAP-SDD-runtime-isolation`, rules 1–9).
+2. Hub checks the binding and the runtime the PR head's lock pins, and retains the
+   evaluated execution identity
+   (`CAP-SDD-workflow-control`, rule 1; `CAP-SDD-runtime-isolation`, rules 1–21).
    Interface: `UX-sdd-execution`.
 
 3. Hub dispatches stage work and evaluates its reported outcome until integration
@@ -47,7 +48,7 @@ entrypoints:
    Interface: `UX-decision-inbox`, `UX-run-page`, `UX-sdd-run`.
 
 5. Hub continues the authorized workflow through integration and its final checks
-   (`CAP-SDD-workflow-control`, rules 4–6, 19; `CAP-SDD-runtime-isolation`, rule 13).
+   (`CAP-SDD-workflow-control`, rules 4–6, 19; `CAP-SDD-runtime-isolation`, rule 24).
    Interface: `UX-sdd-run`.
 
 6. The operator marks the PR ready for merge (`CAP-SDD-workflow-control`).
@@ -62,11 +63,18 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
 ## 3. Extensions
 
 - **2a.** Binding/runtime admission fails: Hub reports failed readiness or refuses
-  enrollment with the capability-defined invalid request/runtime error and safe diagnostic guidance; the use
+  enrollment with the capability-defined invalid request/runtime error and safe diagnostic guidance,
+  including `SDD_RUNTIME_UNLOCKED` for a head without a devkit lock; the use
   case ends without successful native enrollment.
    Interface: `UX-sdd-execution`.
 
 - **2b.** Registration is eligible but the inspected workflow already waits for input: the operator can register with that wait disclosed; resumes at step 3 with the existing hold or decision channel unchanged.
+   Interface: `UX-sdd-execution`.
+
+- **2c.** The head's runtime is still being installed: readiness is false with the
+  `SDD_RUNTIME_PREPARING` diagnostic (retry `safe`) and enrollment is refused with
+  HTTP 503; the operator checks readiness again after the install and the use case
+  resumes at step 1.
    Interface: `UX-sdd-execution`.
 
 - **3a.** A worker problem or malformed envelope holds the unit: Hub blocks and
@@ -90,6 +98,15 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
   direction and carries it into later stages; resumes at step 3. A no-change answer
   can return to the gate without a fabricated push; answering is not approval.
    Interface: `UX-decision-inbox`, `UX-run-decisions`.
+
+- **3e.** A later head's lock pins another runtime: if it is cached, Hub
+  evaluates with it, records the new runtime identity and continues at step 3; if
+  it is still being installed, Hub keeps the run's state, records the
+  `SDD_RUNTIME_PREPARING` diagnostic and inspects the head again on a later
+  dispatcher tick, returning to step 3 once the install completes; after 45
+  minutes of preparing, Hub blocks the run with a remediation reason and the
+  operator resumes it after fixing the runtime setup.
+   Interface: `UX-sdd-run`.
 
 - **4a.** Ready status or pinned auto policy already authorizes the unheld gate:
   Hub records the observed/policy authority; resumes at step 5 without inventing
@@ -123,7 +140,7 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
   authority: Hub clears approval and blocks; reinspection returns to step 4.
    Interface: `UX-sdd-run`.
 
-- **5c.** Runtime/configuration drift or final recorded-rule loading prevents
+- **5c.** Workflow/configuration drift or final recorded-rule loading prevents
   evaluation: Hub blocks with the runtime contract's structured remediation rather than
   dispatching repair for that setup failure; the invocation ends pending recovery.
    Interface: `UX-sdd-run`.
@@ -175,9 +192,30 @@ owns the evaluated runtime and configuration identity.
 ### SDD-COMPLETE-02: Refuse an invalid admission
 
 - **Covers**: 2a.
-- **Given**: The selected unit's PR is on another activity branch or its reviewed runtime is unavailable.
+- **Given**: The selected unit's PR is on another activity branch or its head has no root `uv.lock` declaring `devkit-spec`.
 - **When**: The operator checks/enrolls native execution.
 - **Then**: Readiness is false or enrollment is refused without a successful native run.
+
+### SDD-COMPLETE-24: Report a runtime still being prepared
+
+- **Covers**: 2c.
+- **Given**: No cached runtime exists for the PR head's lock identity.
+- **When**: The operator checks readiness.
+- **Then**: Readiness is false with an `SDD_RUNTIME_PREPARING` runtime diagnostic whose retry is `safe`, one install starts, and a later check after it completes can be eligible.
+
+### SDD-COMPLETE-25: Continue with a changed runtime identity
+
+- **Covers**: 3e.
+- **Given**: An admitted run's snapshot names one runtime identity and its next head locks another with the same effective workflow, policy and configuration.
+- **When**: Hub evaluates the next head.
+- **Then**: The run continues and its snapshot records the new `devkit-lock:<identity>`; a changed effective workflow is still refused.
+
+### SDD-COMPLETE-26: Wait for a runtime that is still installing
+
+- **Covers**: 3e.
+- **Given**: A running native run whose next head's runtime is still being installed.
+- **When**: The dispatcher observes the run.
+- **Then**: The run keeps its state without a pause reason and its progress carries the `SDD_RUNTIME_PREPARING` diagnostic.
 
 ### SDD-COMPLETE-03: Require resolved worker evidence
 

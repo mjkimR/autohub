@@ -1,0 +1,70 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T02:20:13.172483Z'
+status: completed
+review: review-01.yaml
+summary: ''
+findings:
+- issue: 'Sandboxed source build can make the Hub process execute its code: the build may write .pth files into the staging venv and clear the Hub uv cache before the unsandboxed final wheel install'
+  evidence: modules/hub/app/features/project_management/sdd/runtime_install.py:173-205; isolation.py:73-76; probes .cache/review-probe/review-01/pth2, pth3
+  failure_condition: A locked Git source whose build hook plants a .pth or symlink in the staging .venv and removes the uv interpreter cache
+  suggested_action: Confine the build sandbox to the source tree and wheel output; run the final wheel install inside the sandbox; reject symlinked build outputs; test a planted .pth
+  resolution: resolved
+  severity: P1
+- issue: pin.json python_prefix comes from repository-controlled inventory output and widens every later devkit sandbox's readable paths
+  evidence: runtime_install.py:232; checkout.py:87; isolation.py:62-65; probe test_pin_trusts_repository_controlled_python_prefix
+  failure_condition: A locked package whose .pth prints inventory JSON with python_prefix '/'
+  suggested_action: Compute python_prefix in the Hub process; validate inventory types; add a unit test
+  resolution: resolved
+  severity: P1
+- issue: Registry packages from a non-default index pass classification because uv export emits no index option
+  evidence: lock_runtime.py:138-205; probe .cache/review-probe/review-01/index
+  failure_condition: A selected group package whose uv.lock source.registry is not https://pypi.org/simple
+  suggested_action: Check uv.lock registry sources of exported packages and refuse SDD_RUNTIME_SOURCE_UNSUPPORTED; add a fixture
+  resolution: resolved
+  severity: P2
+- issue: build() records failure markers only for InstallFailure and ProjectError; other exceptions escape without backoff
+  evidence: runtime_install.py:221-226, 268-282; runtime.py:73-80; probe test_non_dict_inventory_escapes_build_without_failure_marker
+  failure_condition: Non-object inventory JSON or a filesystem error during install
+  suggested_action: Catch Exception, record SDD_RUNTIME_INSTALL_FAILED, validate inventory shape; test it
+  resolution: resolved
+  severity: P2
+- issue: GET /sdd/runtime returns 500 when host probe and head read both fail (duplicate state keyword)
+  evidence: usecases.py:107-109; services.py:126,128; probe test_runtime_status_duplicate_state
+  failure_condition: Host without isolation and a project whose head cannot be read
+  suggested_action: Merge dicts or omit state from the probe failure; add a test
+  resolution: resolved
+  severity: P2
+- issue: AC-04 persisted snapshot cli_version update in progress.py is untested
+  evidence: progress.py:360-362; tests check only evidence snapshot
+  failure_condition: A regression in the progress branch leaves the stored snapshot on the old identity unnoticed
+  suggested_action: Add a progress-level test for continuation and rebound
+  resolution: resolved
+  severity: P2
+- issue: lock_status reads pin.json without a lease or error handling
+  evidence: services.py:142-147
+  failure_condition: Concurrent eviction between resolve and read yields a 500
+  suggested_action: Read under a lease or catch OSError/ValueError and report preparing
+  resolution: resolved
+  severity: P3
+- issue: Host probe process is not killed or awaited on timeout
+  evidence: services.py:113-128
+  failure_condition: A hanging sandboxed interpreter on a misconfigured host
+  suggested_action: Kill the process group and await it on timeout
+  resolution: resolved
+  severity: P3
+- issue: Cache entries and failure markers are shared across projects regardless of connector access
+  evidence: runtime.py:87-96; runtime_install.py:268-282; runtime_cache.py:104-122
+  failure_condition: Two projects with identical locks but connectors with different GitHub access
+  suggested_action: Record accepted sharing and scope failure markers to the token or connector
+  resolution: resolved
+  severity: P3
+- issue: Cache maintenance blocks the event loop and leaks stale staging and marker files
+  evidence: runtime_install.py:263-264; runtime_cache.py:70-76, 91-101, 136-163
+  failure_condition: Large evictions or crashed installs of identities never requested again
+  suggested_action: Run evict in a thread, remove stale staging with a free build lock, count staging in the cap
+  resolution: resolved
+  severity: P3
+checks: {}

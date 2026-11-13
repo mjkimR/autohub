@@ -78,13 +78,19 @@ async def push_head(root: Path, repository: str, branch: str, expected_head: str
 
 async def command(*args: str, cwd: Path, env: dict | None = None, allow_failure: bool = False) -> str:
     if args[0] in ("devkit", "git-safe"):
-        from .isolation import isolated_command
-        from .runtime import runtime_home, runtime_pin
+        from .isolation import isolated_command, isolated_git
 
-        home, pin = runtime_home(), runtime_pin()
+        if args[0] == "devkit":
+            from .lock_runtime import interpreter_prefix
+            from .runtime import ensure_runtime
+
+            home = await ensure_runtime()
+            # The prefix the sandbox may read is the Hub's own, never a value a cached runtime recorded.
+            invocation = isolated_command(home, cwd, args[1:], interpreter_prefix())
+        else:
+            invocation = isolated_git(cwd, args[1:])  # Git never waits for a devkit runtime
         temp = cwd / ".devkit/transient/hub-tmp"
         temp.mkdir(parents=True, exist_ok=True)
-        invocation = isolated_command(home, cwd, args[1:], pin["python_prefix"], git=args[0] == "git-safe")
         return await _command(
             *invocation,
             cwd=cwd,
@@ -158,9 +164,9 @@ async def checkout(repository: str, head: str, base: str, token: str):
         raise ProjectError(422, "SDD requires exact Git head and base commits")
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
         raise ProjectError(422, "Invalid repository")
-    from .profiles import runtime_scope
+    from .runtime import runtime_source
 
-    with runtime_scope(repository), TemporaryDirectory(prefix="autohub-sdd-") as directory:
+    with TemporaryDirectory(prefix="autohub-sdd-") as directory:
         root = Path(directory).resolve()
         await command("git", "init", "--quiet", cwd=root)
         await command(
@@ -182,4 +188,5 @@ async def checkout(repository: str, head: str, base: str, token: str):
             for path in [directory_path, *directory_path.rglob("*")]:
                 if path.is_symlink():
                     raise ProjectError(422, "SDD evaluation does not accept symlinked harness or evidence files")
-        yield root
+        with runtime_source(root, token):
+            yield root

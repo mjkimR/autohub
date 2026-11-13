@@ -29,7 +29,8 @@ worker leases and the surrounding flow lifecycle.
 - **Out-of-Scope**: repository implementation belongs to the external developer;
   workflow definitions and readiness evaluation belong to devkit-spec; ready
   status, CI observation and merging belong to the existing PR owner; checkout
-  provisioning and runtime installation belong to the operator.
+  provisioning belongs to the operator; runtime selection, installation and
+  isolation belong to `CAP-SDD-runtime-isolation`.
 - **Scope Excluded**: new PR/run creation, a second merge controller, caller-chosen
   checkout roots, bypassing approval by omitting the approval step, and rolling
   back external requests or effects already delivered.
@@ -38,7 +39,7 @@ worker leases and the surrounding flow lifecycle.
 
 1. **Configured namespace**: WHEN a native bridge release is registered, the host MUST restrict its target to a server-configured provider/environment, project and absolute checkout. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_one_flow_claims_pipeline_and_native_namespace_is_restricted`.
 2. **Checkout identity**: WHEN repository evidence is read, the bridge MUST require a clean checkout at the requested Git HEAD before and after evaluating evidence. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_real_git_cli_evidence_rejects_dirty_and_changed_head`.
-3. **Workflow readiness**: WHEN the check task evaluates the bound spec, the bridge MUST require the configured runtime's evaluated workflow to satisfy Hub's integration-approval readiness predicate. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_real_git_cli_evidence_rejects_dirty_and_changed_head` and its real-CLI fixture.
+3. **Workflow readiness**: WHEN the check task evaluates the bound spec, the bridge MUST require the workflow evaluated with the checkout's locked runtime to satisfy Hub's integration-approval readiness predicate. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_real_git_cli_evidence_rejects_dirty_and_changed_head` and its real-CLI fixture.
 4. **Paused owner**: WHEN evidence is claimed, the bridge MUST require the configured project's externally implemented PR run to be paused at the supplied revision and head. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_bridge_resumes_once_then_observes_existing_pr` and its `paused` fixture.
 5. **Single claim**: IF another flow owns an unreleasable PR claim, THEN the bridge MUST fail the check with `pr-owned-by-another-flow`. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_one_flow_claims_pipeline_and_native_namespace_is_restricted`.
 6. **Scoped approval**: WHEN the flow's approval command authorizes a claimed PR, the host MUST persist the approving flow revision, evidence-content digest and machine/key actor on the claim. Check: `modules/hub/tests/integration/features/execution/flows/test_bridge.py::test_bridge_resumes_once_then_observes_existing_pr`.
@@ -84,16 +85,19 @@ with `pr-owned-by-native-sdd` rather than given a second execution owner.
 ### Evidence and approval
 
 The check resolves the spec beneath the checkout and rejects file paths escaping
-the spec tree. Through the project's server-assigned runtime profile, it evaluates
-`devkit spec policy`, `devkit workflow show`, `devkit workflow next` and detailed
-envelope checks. The bound workflow defines its required review, reconcile,
+the spec tree. It evaluates `devkit spec policy`, `devkit workflow show`,
+`devkit workflow next` and detailed envelope checks with the runtime that the
+operator checkout's own root `uv.lock` pins (`CAP-SDD-runtime-isolation`). The
+project's GitHub connector token is used only to fetch that lock's Git sources in
+the Hub process when the runtime is not yet cached. The bound workflow defines its required review, reconcile,
 completion and final-report evidence; Hub does not replace that definition with
 filename presence checks.
 
 The integration-approval readiness predicate rejects held evidence and requires
 the evaluated integration gate to be current or already passed under the
 predicate's completed-gate condition. The digest covers `head_sha`, the runtime/
-workflow/configuration snapshot and SHA-256 hashes of spec files. Git cleanliness
+workflow/configuration snapshot (including its `devkit-lock:<identity>` CLI
+identity) and SHA-256 hashes of spec files. Git cleanliness
 and HEAD are checked again after evaluation and hashing.
 
 Approval stores the approving flow revision, the digest of the claim's checked
@@ -128,6 +132,8 @@ routes or refusal statuses:
 | `pr-resume-rejected`, `pr-run-missing` | Existing owner refused resume or vanished |
 | `bridge-input-or-checkout-invalid` | Invalid bridge model or missing checkout/spec |
 
+A runtime that is still being installed (`SDD_RUNTIME_PREPARING`, HTTP 503) is not
+`workflow-evaluation-failed`: the bridge reports it as `bridge-unavailable`.
 Internal transient failures such as `bridge-stale` or `bridge-unavailable` reach
 the flow worker's recoverable path as `worker-unavailable`; they do not authorize
 redispatch under a new attempt ID. Canceling a delivery with an assigned attempt
@@ -143,7 +149,10 @@ The contracts derive from the inspected
 [approval persistence](../../../modules/hub/app/features/execution/flows/services.py)
 and [SDD evaluator](../../../modules/hub/app/features/project_management/sdd/services.py).
 The [bridge tests](../../../modules/hub/tests/integration/features/execution/flows/test_bridge.py)
-use actual Git and the provisioned devkit CLI for evidence checks, while GitHub
-and owner transitions use controlled fixtures. Those tests were inspected during
+use actual Git and a fixture checkout that locks the seed devkit runtime, whose
+cache entry is seeded from `just install-sdd`, for evidence checks, while GitHub
+and owner transitions use controlled fixtures. That the evidence digest covers the
+`devkit-lock:<identity>` CLI identity is source-inspected through the snapshot;
+no bridge test asserts it separately. Those tests were inspected during
 authoring, not executed by this document. Fixture evidence does not establish live
 GitHub CI/merge or production deployment.

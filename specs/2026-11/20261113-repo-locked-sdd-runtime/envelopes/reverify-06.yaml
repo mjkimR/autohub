@@ -1,0 +1,38 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:36:26.272258Z'
+status: completed
+review: review-06.yaml
+summary: 'Self-verified under review-loop section 2: each fix is at the finding''s location and applies its suggested action (revision bump and approval-wait cleanup in the block path, 45-minute limit above the worst-case step timeouts with a corrected message, test-only additions, an operations and capability note); no API, schema or error code changed; the block test asserts the revision bump and fails without it, and the window test fails if the start time is overwritten'
+findings:
+- issue: The PREPARING_EXPIRED block skips the revision bump and leaves waiting_for_approval set
+  evidence: modules/hub/app/features/project_management/sdd/progress.py:329-338 vs 341-348, 486-492; probe .cache/review-probe/review-06/test_probe_preparing_window.py
+  failure_condition: A paused or implementing native run preparing beyond the limit is blocked with an unchanged revision and a stale approval wait
+  suggested_action: Bump run.revision and pop waiting_for_approval in the block path; assert the revision in the test
+  resolution: resolved
+  severity: P2
+- issue: PREPARING_LIMIT (20 min) is shorter than the summed worst-case install step timeouts and its message points at codes that do not exist while the install runs
+  evidence: modules/hub/app/features/project_management/sdd/progress.py:21-26; runtime_install.py:31-34
+  failure_condition: A slow but healthy cold install exceeds 20 minutes
+  suggested_action: Raise the limit above the worst case or correct the comment and message
+  resolution: resolved
+  severity: P3
+- issue: No test pins the marker lifetime against the cadence or the preparing window's persistence and reset
+  evidence: modules/hub/tests/unit/features/project_management/sdd/test_runtime_cache.py:71-76; tests/integration/features/project_management/sdd/test_native.py:145-159
+  failure_condition: Shortening the marker or overwriting the preparing start passes all tests
+  suggested_action: Test a marker aged five minutes and a multi-observation preparing window with reset on success
+  resolution: resolved
+  severity: P3
+- issue: The bridge surfaces install failures only when the external tick is under the 10-minute marker; operations do not state it
+  evidence: modules/hub/app/features/project_management/sdd/runtime_cache.py:24-26; docs/operations/cloud-run-deployment.md:232-236; docs/operations/sdd-runtime.md:79-84
+  failure_condition: An external tick longer than 10 minutes with a persistently failing install
+  suggested_action: State the tick constraint in operations and the capability
+  resolution: resolved
+  severity: P3
+checks:
+  unit: PASS 243
+  integration: PASS just test-sdd 147
+  lint: PASS just lint
+  types: PASS just check

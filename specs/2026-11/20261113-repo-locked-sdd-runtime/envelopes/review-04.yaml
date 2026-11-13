@@ -1,0 +1,25 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T02:47:34.591708Z'
+status: completed
+summary: 'round 4; recovery round (resolution-01): review-03 #1 and #2 fixed; new macOS P1 from staging path reuse across installs of one identity'
+findings:
+- issue: Staging paths repeat per identity and Hub process, so a lingering macOS sandbox process keeps a path grant into a later install's staging and can plant a .pth that the Hub-process registry install runs
+  evidence: modules/hub/app/features/project_management/sdd/runtime_cache.py:75-81; runtime_install.py:143-160, :106-128, :308-310; isolation.py:45; probes .cache/review-probe/review-04/reuse.py, uvq2/
+  failure_condition: A Hub on macOS reinstalls an identity in the same process after an earlier install of it left a detached sandbox process running
+  suggested_action: Create every staging directory with tempfile.mkdtemp under the cache root; test distinct paths for two installs of one identity; update plan and docstring
+  resolution: open
+  severity: P1
+assumptions:
+- 'Route: native isolated Claude Code code-reviewer; snapshot unchanged'
+unverified_areas:
+- Linux bubblewrap install not run by the reviewer
+- git config redirect variant reasoned, not probed
+checks:
+  unit: PASS just test tests/unit/features/project_management/sdd (235)
+diff_scope:
+  base: 6a980a75f996dd51cbffacc58636a696c9ef9b92
+  head: 8fef7cf1eec6a3e26aee77ba9098185234174ff1
+activity_effort: high

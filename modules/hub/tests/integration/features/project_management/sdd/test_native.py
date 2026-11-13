@@ -113,6 +113,75 @@ async def test_single_owner_approval_to_ci_merge_and_idempotent_receipt(client, 
     assert replay.status_code == 200 and replay.json()["state"] == "completed"
 
 
+async def test_continued_run_records_the_new_runtime_identity(client, run, monkeypatch):
+    """A head evaluated with another lock-derived runtime keeps the run and stores the new identity (AC-04)."""
+    assert run["sdd_snapshot"]["cli_version"] == "fixture"
+
+    async def inspect(self, repository, spec_dir, pull, token, **kwargs):
+        value = evidence(pull["head"]["sha"], pull["base"]["sha"], kwargs.get("approved", False))
+        value["snapshot"]["cli_version"] = "devkit-lock:" + "e" * 64
+        return value
+
+    monkeypatch.setattr(native.SddService, "inspect", inspect)
+    observed = await merge.advance(client, run)
+    assert observed["state"] == "paused"
+    assert observed["sdd_snapshot"]["cli_version"] == "devkit-lock:" + "e" * 64
+    assert observed["sdd_snapshot"]["workflow_hash"] == run["sdd_snapshot"]["workflow_hash"]
+
+
+async def test_preparing_runtime_keeps_the_run_and_retries_later(client, run, monkeypatch):
+    """A retry-safe SDD_RUNTIME_PREPARING never blocks a running native run."""
+    from app.features.project_management.projects.errors import ProjectError
+
+    async def inspect(self, repository, spec_dir, pull, token, **kwargs):
+        raise ProjectError(503, "installing", code="SDD_RUNTIME_PREPARING")
+
+    monkeypatch.setattr(native.SddService, "inspect", inspect)
+    observed = await merge.advance(client, run)
+    assert observed["state"] == run["state"] and observed["pause_reason"] is None
+    assert [row["code"] for row in observed["sdd_progress"]["diagnostics"]] == ["SDD_RUNTIME_PREPARING"]
+
+
+async def test_runtime_preparing_beyond_the_limit_blocks_the_run(client, run, monkeypatch):
+    """Whatever the observation cadence, a runtime that never becomes available is surfaced as a block."""
+    from datetime import timedelta
+
+    from app.features.project_management.projects.errors import ProjectError
+    from app.features.project_management.sdd import progress
+
+    async def inspect(self, repository, spec_dir, pull, token, **kwargs):
+        raise ProjectError(503, "installing", code="SDD_RUNTIME_PREPARING")
+
+    monkeypatch.setattr(native.SddService, "inspect", inspect)
+    monkeypatch.setattr(progress, "PREPARING_LIMIT", timedelta(seconds=-1))
+    observed = await merge.advance(client, run)
+    assert observed["state"] == "blocked" and observed["pause_reason"] == progress.PREPARING_EXPIRED
+    assert observed["revision"] == run["revision"] + 1
+    assert "runtime_preparing_since" not in observed["sdd_progress"]  # a resume starts a fresh window
+    assert "waiting_for_approval" not in observed["sdd_progress"]
+
+
+async def test_preparing_window_persists_across_observations_and_resets_on_success(client, run, monkeypatch):
+    from app.features.project_management.projects.errors import ProjectError
+
+    preparing = {"on": True}
+    original = native.SddService.inspect
+
+    async def inspect(self, repository, spec_dir, pull, token, **kwargs):
+        if preparing["on"]:
+            raise ProjectError(503, "installing", code="SDD_RUNTIME_PREPARING")
+        return await original(self, repository, spec_dir, pull, token, **kwargs)
+
+    monkeypatch.setattr(native.SddService, "inspect", inspect)
+    first = await merge.advance(client, run)
+    since = first["sdd_progress"]["runtime_preparing_since"]
+    second = await merge.advance(client, first)
+    assert second["sdd_progress"]["runtime_preparing_since"] == since  # the window is not restarted
+    preparing["on"] = False
+    recovered = await merge.advance(client, second)
+    assert "runtime_preparing_since" not in recovered["sdd_progress"]
+
+
 async def test_resume_never_means_approval_and_reject_stops(client, run, github):
     waiting = await merge.advance(client, run)
     resumed, _ = await decide(client, waiting)
@@ -203,8 +272,8 @@ async def test_native_enrollment_requires_spec_and_readiness_is_read_only(client
     assert missing.status_code == 422
     runtime = await client.get(f"/api/v1/projects/{project['id']}/sdd/runtime")
     assert runtime.status_code == 200, runtime.text
-    status = runtime.json()  # ok on a provisioned host; otherwise the detail names the installer
-    assert status["ok"] or "install-sdd" in status["detail"]
+    status = runtime.json()  # the host probe plus the default-branch head's lock state (no real remote here)
+    assert status["ok"] and status["profile"] == "repository-lock" and status["state"] is not None
     ready = await client.post(
         f"/api/v1/projects/{project['id']}/sdd/readiness", json={"pull_number": 7, "spec_dir": SPEC}
     )

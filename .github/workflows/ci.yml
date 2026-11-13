@@ -59,19 +59,15 @@ jobs:
       - run: uv run --no-sync devkit sync --locked
       - name: Verify reviewed devkit and viewer pins before provisioning
         run: just check-devkit
-      - name: Install the reviewed devkit-spec runtime
+      - name: Install the devkit seed runtime and the pinned build backend
         env:
           GH_TOKEN: ${{ secrets.SDD_READ_TOKEN }}
         run: |
           just install-sdd
-          just install-sdd .cache/sdd-app-common config/sdd-runtime-app-common
+          just install-sdd .cache/sdd-build config/sdd-build
       - name: Native delivery, human decisions and isolated CLI contract
-        env:
-          AUTOHUB_TEST_SDD_APP_COMMON: ${{ github.workspace }}/.cache/sdd-app-common
         run: just test-sdd
       - name: SDD publication, cancellation and bridge contracts (PostgreSQL)
-        env:
-          AUTOHUB_TEST_SDD_APP_COMMON: ${{ github.workspace }}/.cache/sdd-app-common
         run: just test-sdd-pg
 
   backend-postgres:

@@ -2,6 +2,9 @@
 
 import asyncio
 import json
+import os
+import signal
+from contextlib import suppress
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -14,10 +17,10 @@ from .contracts import workflow_hash
 from .diagnostics import SddEvaluationError, capture, collect, diagnostic, failure, merge, remember
 from .evidence import anchor_metadata, answer_resolutions, proposal_metadata, reports, review_gaps
 from .gates import INTEGRATION_GATE
-from .isolation import isolation_runner
+from .isolation import isolated_python, isolation_runner
+from .lock_runtime import interpreter, interpreter_prefix
 from .policy import base_policy
-from .profiles import current
-from .runtime import configured_version, restore, revision_warnings, runtime_pin
+from .runtime import configured_version, current_source, ensure_runtime, resolve, restore
 from .units import is_proposal, read_status, unit_anchor
 
 STALE_LINT = (
@@ -97,33 +100,76 @@ def read_hold(current: dict) -> dict:
     }
 
 
-class SddService:
-    async def runtime_status(self) -> dict:
-        """Whether this host can evaluate: the runtime pin is consistent and devkit starts inside the sandbox.
+async def _probe(invocation: list[str], cwd: Path) -> str:
+    """Run the host probe for at most 30 seconds; a hung sandbox is killed with its process group."""
+    process = await asyncio.create_subprocess_exec(
+        *invocation,
+        cwd=cwd,
+        env={"PATH": "/usr/bin:/bin", "HOME": str(cwd), "LANG": "C.UTF-8"},
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    try:
+        async with asyncio.timeout(30):
+            output, _ = await process.communicate()
+    except BaseException:
+        if process.returncode is None:
+            with suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+            await process.wait()
+        raise
+    if process.returncode:
+        raise OSError("probe failed")
+    return output.decode(errors="replace")
 
-        The canary for a new host (Cloud Run needs user namespaces for bubblewrap): no repository is involved.
+
+class SddService:
+    async def runtime_status(self, repository=None, head=None, token=None) -> dict:
+        """The host probe and, for a project head, the state of its lock-derived runtime.
+
+        The host probe starts the image interpreter inside the sandbox and installs nothing: it is the canary for a
+        new host (Cloud Run needs user namespaces for bubblewrap). The lock state may start a background install.
         """
-        try:
-            pin = runtime_pin()
-        except ProjectError as exc:
-            return {"ok": False, "profile": current()[0], "isolation": isolation_runner(), "detail": str(exc)}
-        status = {
-            "profile": current()[0],
-            "bundles": pin.get("bundles", []),
-            "provider": pin.get("provider"),
-            "lock_sha256": pin.get("lock_sha256"),
-            "revisions": {k: str(v) for k, v in (pin.get("revisions") or {}).items()},
-            "isolation": isolation_runner(),
-        }
+        status = {"profile": "repository-lock", "provider": "devkit-spec", "isolation": isolation_runner()}
+        python = interpreter()
+        prefix = interpreter_prefix()
         with TemporaryDirectory(prefix="autohub-sdd-probe-") as directory:
+            probe = Path(directory).resolve()
             try:
-                async with asyncio.timeout(30):
-                    version = await command("devkit", "--version", cwd=Path(directory).resolve())
+                invocation = isolated_python(probe, python, prefix, "import sys; print(sys.version.split()[0])")
+                output = await _probe(invocation, probe)
             except ProjectError as exc:
                 return {**status, "ok": False, "detail": str(exc)}
             except (OSError, TimeoutError):
-                return {**status, "ok": False, "detail": "Isolated devkit did not start within 30 seconds"}
-        return {**status, "ok": True, "detail": version.strip()[:200]}
+                return {**status, "ok": False, "detail": "The sandboxed interpreter did not start"}
+        status.update(ok=True, detail="Python " + output.strip()[:40])
+        if repository and head and token:
+            status.update(await self.lock_status(repository, head, token))
+        return status
+
+    async def lock_status(self, repository, head, token) -> dict:
+        try:
+            async with checkout(repository, head, head, token), asyncio.timeout(30):
+                selection, state = await resolve(current_source())
+        except ProjectError as exc:
+            return {"state": "failed", "lock_detail": diagnostic(exc.code or "COMMAND_FAILED")["message"]}
+        except (OSError, TimeoutError):
+            return {"state": "failed", "lock_detail": "The repository head could not be inspected"}
+        result = {"identity": selection.identity, "lock_sha256": selection.identity, "revisions": {}, "bundles": []}
+        if state == "ready":
+            from . import runtime_cache
+
+            try:
+                with runtime_cache.lease(selection.identity) as home:
+                    pin = json.loads((home / "pin.json").read_text())
+            except (OSError, ValueError):  # evicted or being evicted since the lookup
+                return {**result, "state": "preparing"}
+            result.update(bundles=pin.get("bundles", []), revisions=pin.get("revisions", {}))
+            return {**result, "state": "ready"}
+        if state == "preparing":
+            return {**result, "state": "preparing"}
+        return {**result, "state": "failed", "lock_detail": diagnostic(state)["message"]}
 
     async def inspect(self, repository, spec_dir, pull, token, *, snapshot=None, approved=False, operation=None):
         head, base = pull["head"]["sha"], pull["base"]["sha"]
@@ -160,10 +206,10 @@ class SddService:
             snapshot = None  # enrollment of a handoff-first run: no contract to compare yet
         if snapshot and snapshot.get("provider") != "devkit-spec":
             raise ProjectError(409, "Legacy execution is read-only; enroll a new SDD run")
-        expected = snapshot["cli_version"] if snapshot else configured_version()
+        # The runtime follows the evaluated commit's own lock; a changed identity alone never refuses a run
+        # (ADR-repository-locked-runtime). Workflow, policy and configuration digests keep their refusal below.
+        await ensure_runtime()
         version = configured_version()
-        if version != expected:
-            raise ProjectError(422, "SDD CLI version differs from the execution pin")
         if handoff and not (root / spec_dir / "proposal.md").is_file():
             # The handoff moved the proposal into its spec: the run follows that unit from now on (01 section 6.3).
             target = handoff_target(root, spec_dir)
@@ -176,7 +222,7 @@ class SddService:
             raise ProjectError(422, "Initialize devkit-spec and bind an existing spec or proposal before execution")
         committed = committed_configuration(root)
         # The repository's lock is parsed in this process (never executed); keep that work off the event loop.
-        warnings = [*await restore(root), *await asyncio.to_thread(revision_warnings, root)]
+        warnings = await restore(root)
         remember([diagnostic(row["code"], severity="warning") for row in warnings])
         stale = any(item["code"] == "RECEIPT_STALE" for item in warnings)
         try:
@@ -220,6 +266,7 @@ class SddService:
             "policy": keys,
         }
         pinned = dict(snapshot or contract)
+        pinned["cli_version"] = contract["cli_version"]
         if isinstance(pinned.get("policy"), dict):
             pinned["policy"] = {key: value for key, value in pinned["policy"].items() if key != "notices"}
         if snapshot and any(

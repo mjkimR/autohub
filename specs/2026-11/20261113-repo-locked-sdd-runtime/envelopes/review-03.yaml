@@ -1,0 +1,30 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T02:38:41.926343Z'
+status: completed
+summary: 'round 3; REVISE: round-2 #2-#4 fixed; #1 recurs on macOS through the Hub''s .venv/.tmp actions after a lingering-process swap; one P3 on test fakes'
+findings:
+- issue: 'recurs: envelopes/review-02.yaml #1; on macOS a lingering process from the sandboxed wheel install or probe can swap .venv for a symlink after the Hub''s identity check, so the Hub''s unsandboxed .venv/.tmp removal and mkdir follow it'
+  evidence: modules/hub/app/features/project_management/sdd/runtime_install.py:287-292, :258-260, :226 vs :269; probe .cache/review-probe/review-03/venv_swap.py
+  failure_condition: A Hub on macOS installs a lock whose package starts a background process that replaces .venv with a symlink after a step returns; the Hub then deletes or creates <target>/.tmp
+  suggested_action: Never act on a path under a sandbox-writable directory after a sandbox step (or act through a descriptor opened before it); compare identity with the creation-time value; test the swap before _clean
+  resolution: open
+  severity: P1
+- issue: Fakes drop the probe's writable path and the install's readable paths, so round-2 fixes are unguarded
+  evidence: modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py:43, :45, :211-215
+  failure_condition: Reverting the probe to a staging-root writable path or dropping interpreter_prefix() from the install's readable paths passes the suite
+  suggested_action: Record writable and readable in the fakes and assert them
+  resolution: open
+  severity: P3
+assumptions:
+- 'Route: native isolated Claude Code code-reviewer; snapshot unchanged'
+unverified_areas:
+- Linux bubblewrap wheel install not run by the reviewer
+checks:
+  unit: PASS just test tests/unit/features/project_management/sdd (233)
+diff_scope:
+  base: 506af022cea0c10c2022c2ae0d0a8094b688af3d
+  head: 6a980a75f996dd51cbffacc58636a696c9ef9b92
+activity_effort: high

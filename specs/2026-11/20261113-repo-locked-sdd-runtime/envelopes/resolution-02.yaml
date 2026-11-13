@@ -1,0 +1,11 @@
+kind: resolution
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:26:33.608047Z'
+status: completed
+summary: 'Host recovery: failure markers last 10 minutes, native runs block after 20 minutes of preparing, the bridge retries only SDD_RUNTIME_PREPARING; tests cover the limit and both bridge mappings; one further fresh round follows'
+findings: []
+checks: {}
+resolves: worker-02.yaml
+activity_effort: high

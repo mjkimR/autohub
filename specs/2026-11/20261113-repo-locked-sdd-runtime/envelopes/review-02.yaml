@@ -1,0 +1,43 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T02:27:51.748734Z'
+status: completed
+summary: 'round 2; REVISE: all round-1 findings fixed; new macOS sandbox-exec P1 (staging root swap and lingering process) and three P3'
+findings:
+- issue: On macOS sandbox-exec the staging-writable wheel install and inventory probe can swap the staging root for a symlink or leave a lingering process that rewrites pin.json, steering Hub writes, publish and the trusted python_prefix
+  evidence: modules/hub/app/features/project_management/sdd/runtime_install.py:197, :236, :224-229, :255-265; runtime_cache.py:84-93; checkout.py:87; isolation.py:40-46; probes .cache/review-probe/review-02/rootswap, daemon
+  failure_condition: A Hub serving on macOS installs a lock containing a package whose .pth swaps the staging root or forks a lingering process during the wheel install or inventory probe
+  suggested_action: Keep Hub-written paths outside sandbox-writable roots, verify directory identity after sandboxed steps, and compute python_prefix at use time; add tests
+  resolution: open
+  severity: P1
+- issue: The sandboxed wheel install mounts sys.base_prefix instead of the configured interpreter's prefix
+  evidence: modules/hub/app/features/project_management/sdd/isolation.py:75; runtime_install.py:197 vs :233; lock_runtime.py:64-66
+  failure_condition: AUTOHUB_SDD_PYTHON points at an interpreter with another prefix on Linux
+  suggested_action: Pass the interpreter's real prefix into the readable paths of the wheel install
+  resolution: open
+  severity: P3
+- issue: plan.md still describes the pre-round-1 install layout and cache state
+  evidence: specs/2026-11/20261113-repo-locked-sdd-runtime/plan.md:77, :96-107, :113
+  failure_condition: Readers or reconcile take the plan as the design of record
+  suggested_action: Update plan sections 3 and 4 to the implemented layout
+  resolution: open
+  severity: P3
+- issue: 'Regression tests for round-1 #5, #7 and #8 are weak or missing'
+  evidence: modules/hub/tests/unit/features/project_management/sdd/test_services.py:265-293; services.py:103-124, :162-167
+  failure_condition: Reintroducing the duplicate state key, removing the lease fallback or the killpg passes all tests
+  suggested_action: Stub status with state None; add lock_status BlockingIOError and probe-timeout kill tests
+  resolution: open
+  severity: P3
+assumptions:
+- 'Route: native isolated Claude Code code-reviewer; snapshot unchanged'
+unverified_areas:
+- Linux bubblewrap behaviour not run by the reviewer
+checks:
+  unit: PASS just test tests/unit/features/project_management/sdd (227)
+  integration: PASS test_lock_runtime.py (6) with the seed runtime
+diff_scope:
+  base: 8ed73760cc51c543cdfa2da998a4a80ae3de71dd
+  head: 506af022cea0c10c2022c2ae0d0a8094b688af3d
+activity_effort: high

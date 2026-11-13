@@ -69,9 +69,10 @@ CI observation and merge control.
    `activity_effort` before the proposal's activity-specific effort hint.
    Check: [test_activities.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_activities.py), `test_activity_effort_uses_the_proposal_hint_unless_overridden`.
 8. **Evaluation ownership**: WHEN an activity or proposal operation needs repository
-   evaluation, Hub MUST delegate it to `CAP-SDD-runtime-isolation` rather than
-   install or select tooling from the target request.
-   Check: [test_profiles.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_profiles.py).
+   evaluation, Hub MUST delegate runtime selection and installation to
+   `CAP-SDD-runtime-isolation`, which uses the evaluated commit's own lock, rather
+   than installing tooling named by the request.
+   Check: [test_lock_runtime.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py), `test_evaluation_uses_the_locked_runtime_and_records_its_identity`, `test_activity_branch_git_needs_no_runtime`.
 9. **Readiness is observational**: WHEN readiness or related executions are read,
    Hub MUST leave execution unstarted and Git unchanged.
    Check: [test_native.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_native.py), `test_native_enrollment_requires_spec_and_readiness_is_read_only`, `test_spec_runs_are_exact_project_scoped_and_do_not_advance`.
@@ -152,7 +153,7 @@ All endpoint paths below include the `/api/v1` mount.
 | `GET /api/v1/projects/{project_id}/sdd/proposals` | `base_branch` defaults to `main`; returns base identity, proposal actions, activity PRs, related waiting run and `truncated` |
 | `POST /api/v1/projects/{project_id}/sdd/proposals/{slug}/planning` | `StartActivityRequest`; HTTP 201 `PipelineRunRead` |
 | `POST /api/v1/projects/{project_id}/sdd/proposals/{slug}/development` | `StartActivityRequest`; HTTP 201 `PipelineRunRead` |
-| `GET /api/v1/projects/{project_id}/sdd/runtime` | Runtime profile, bundle inventory, lock/revision identity and isolation result |
+| `GET /api/v1/projects/{project_id}/sdd/runtime` | Host isolation probe and the default-branch head's repository-lock runtime state, identity, bundles and revisions (`CAP-SDD-runtime-isolation`) |
 | `POST /api/v1/projects/{project_id}/sdd/readiness` | `pull_number`, `spec_dir`; result includes `ready`, reason, head/base, CLI/workflow/current evidence and warnings |
 | `POST /api/v1/pipeline-runs/{run_id}/resume` | Proposal decisions use `request_id`, `expected_revision`, `decision`, `head_sha`, optional `feedback` |
 | `GET /api/v1/pipeline-runs/{run_id}/sdd-decisions` | Durable decision evidence, including candidate/publication outcome |
@@ -196,7 +197,7 @@ Interfaces derive from [sdd/api.py](../../../modules/hub/app/features/project_ma
 [plan_decisions.py](../../../modules/hub/app/features/project_management/sdd/plan_decisions.py)
 and [plan_publication.py](../../../modules/hub/app/features/project_management/sdd/plan_publication.py).
 The linked checks identify source-level regression evidence, not a claim that all
-suites were executed while writing this contract. Runtime provisioning and operator
+suites were executed while writing this contract. Serving-host setup and operator
 procedures remain in the [runtime operations guide](../../operations/sdd-runtime.md).
 `CAP-SDD-runtime-isolation` defines receipt/restore/drift/isolation guarantees;
 `CAP-SDD-workflow-control` defines native workflow continuation and integration authority.

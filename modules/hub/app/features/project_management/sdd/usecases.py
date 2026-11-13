@@ -12,7 +12,6 @@ from app_layer_base.core.database.transaction import AsyncTransaction
 from fastapi import Depends
 
 from .diagnostics import failure
-from .profiles import runtime_scope
 from .repos import SddRepository
 from .schemas import ProposalList, SddDiagnostic, SddReadiness, SddRuntimeStatus
 from .services import SddService
@@ -90,10 +89,27 @@ class SddUseCase:
             return [PipelineRunRead.model_validate(row) for row in rows]
 
     async def runtime(self, project_id):
+        """The host probe plus the lock state of the project's default-branch head, when it is connected."""
         async with AsyncTransaction() as session:
             project = await self.projects.get(session, project_id)
-        with runtime_scope(project.github_repository):
+        repository, connector = project.github_repository, project.github_connector_id
+        if not repository or not connector:
             return SddRuntimeStatus(**await SddService().runtime_status())
+        from app.features.project_management.pipelines import services as pipeline_services
+        from app.features.project_management.work_plans.github import WorkGitHub
+
+        from .milestones import _basis
+
+        try:
+            token = await self.observer.get_token(connector, "github")
+            async with pipeline_services.create_github_client(token) as client:
+                head = await _basis(WorkGitHub(client), repository, "HEAD")
+        except ProjectError:
+            status = await SddService().runtime_status()
+            return SddRuntimeStatus(
+                **{**status, "state": "failed", "lock_detail": "The repository head could not be read"}
+            )
+        return SddRuntimeStatus(**await SddService().runtime_status(repository, head, token))
 
     async def readiness(self, project_id, request):
         async with AsyncTransaction() as session:

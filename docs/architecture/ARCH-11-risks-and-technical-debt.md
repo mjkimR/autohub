@@ -87,18 +87,53 @@ their treatment to be reconsidered.
 
 ## Runtime drift and admitted work
 
-- **Kind**: compatibility and operational constraint.
-- **Boundary**: native SDD work is admitted against a reviewed runtime/profile,
-  workflow and evidence identity. Installing a different runtime does not upgrade
-  the authority of an existing run or its previously reviewed approval subject.
-- **Consequence**: runtime or workflow drift can leave admitted work unable to
-  continue; silently reusing approval against the replacement would change what
-  was authorized.
-- **Treatment**: use the profile/snapshot and refusal boundaries in
-  `CAP-SDD-native-delivery` and `CAP-SDK-existing-pr-bridge`. Provision a reviewed
-  replacement and settle affected runs before switching the serving configuration;
-  replacement work requires fresh enrollment where the contract requires it.
+- **Kind**: compatibility and trust constraint.
+- **Boundary**: the evaluation runtime follows each evaluated commit's own
+  `uv.lock` (`ADR-repository-locked-runtime`). A changed runtime identity on a
+  later head continues an admitted run; its effective workflow, policy and
+  configuration identity still refuse unauthorized change. A pull request can
+  change its lock and so the devkit rules that judge it; the user accepted that
+  risk in the ADR.
+- **Consequence**: a devkit bump inside a run changes the evaluator without
+  re-enrollment; a bump that changes the effective workflow still leaves the run
+  unable to continue. Runs, batch selections and bridge claims admitted under
+  server-profile identities compare against a different `cli_version` format and
+  batch `runtime` shape.
+- **Treatment**: use the snapshot and refusal boundaries in
+  `CAP-SDD-runtime-isolation`, `CAP-SDD-native-delivery` and
+  `CAP-SDK-existing-pr-bridge`. Settle active native runs, open batch selections
+  and approved bridge claims before rolling this runtime model out and again
+  before rolling it back ([operations](../operations/sdd-runtime.md#rollout-and-rollback)).
   Revisit this boundary when runtime selection or snapshot compatibility changes.
+
+## Cold runtime installs and the per-instance cache
+
+- **Kind**: latency and capacity constraint.
+- **Boundary**: the first evaluation of a lock on an instance installs its runtime
+  in the background and is refused with `SDD_RUNTIME_PREPARING` meanwhile. The
+  cache is per instance, lives on `/tmp` (in-memory on Cloud Run) and is lost on
+  restart. A cold install measured 11-18 seconds, a 29 MiB entry and a 153 MiB
+  transient peak at cpu=1, 1 GiB in a local container, not on the serving host.
+- **Consequence**: readiness after a scale-out, restart or lock change reports a
+  retryable refusal, and a native run whose next head needs a cold install waits,
+  keeping its state, until a later dispatcher tick finds the runtime installed or
+  45 minutes pass and the run blocks with a remediation reason.
+  Request-based CPU throttling can lengthen an
+  install. Many distinct locks evict each other above `AUTOHUB_SDD_CACHE_BYTES`.
+- **Treatment**: callers retry `SDD_RUNTIME_PREPARING`; operators size
+  `AUTOHUB_SDD_CACHE_BYTES` against instance memory. Revisit with a shared cache
+  when cold installs dominate evaluation latency or instances multiply.
+
+## macOS isolation is development-only
+
+- **Kind**: platform constraint.
+- **Boundary**: macOS `sandbox-exec` cannot end detached processes that a
+  sandboxed step leaves. Install steps use unguessable staging paths and Hub never
+  acts below `.venv` after the first sandbox step, but a leftover process can keep
+  running on the host.
+- **Consequence**: macOS hosts do not give the containment that serving requires.
+- **Treatment**: serve only from Linux hosts with bubblewrap; use macOS for local
+  development and tests. Revisit if macOS serving becomes a requirement.
 
 ## Retained history and live deployment proof
 
@@ -112,7 +147,7 @@ their treatment to be reconsidered.
 - **Treatment**: bind deployment claims to recorded image/source identity and the
   relevant live checks. Preserve only evidence needed for active compatibility or
   deployment claims in [verification materials](../materials/index.md). Revisit
-  the needed evidence after changing images, migrations, profiles, credentials or
+  the needed evidence after changing images, migrations, runtime models, credentials or
   provider behavior, and before relying on records outside their retention scope.
 
 ## Installation-wide account access

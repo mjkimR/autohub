@@ -4,14 +4,17 @@ Local implementation and checks were recorded on **2026-11-05**. The last record
 production baseline is **2026-10-02**, Cloud Run revision `autohub-00015-4l4`, DB
 schema `autohub`. Documentation cleanup did not recheck the serving revision or
 rerun the historical suites below. These records do not establish an SDD baseline
-for Auto Hub's own development.
+for Auto Hub's own development. All verification recorded below predates
+`SPEC-repo-locked-sdd-runtime` (2026-11-13), which replaced server runtime profiles
+with repository-locked runtimes; no deployment or live canary of that change is
+recorded.
 
 ## Current local implementation
 
 | Area | Implemented behavior | Owning reference |
 | --- | --- | --- |
 | SDD activities | Planning/Development starts, recoverable decisions, approval, questions, handoff and effort/review evidence | Native delivery (`CAP-SDD-native-delivery`), workflow control (`CAP-SDD-workflow-control`) |
-| SDD runtime | Pinned default/app-common profiles, repository mapping, receipt checks and workflow/approval fencing | [devkit integration](sdd-runtime.md) |
+| SDD runtime | Runtime installed from each evaluated commit's `uv.lock` into a per-instance cache, receipt checks and workflow/approval fencing | [devkit integration](sdd-runtime.md) |
 | Repository viewer | Branch-specific documents, proposal roadmap and recorded Proposal → Spec → Run/PR lineage | Viewer (`CAP-DOC-repository-viewer`) |
 | Pipeline progression | Shared tick/webhook/manual driver, bounded retries and preserved waits | Advancement (`CAP-PR-pull-request-delivery`) |
 | SDK flows | Durable host, scoped approval and the existing-PR bridge | SDK contract (`CAP-SDK-task-flow-execution`) |
@@ -28,8 +31,9 @@ Actions execution were not performed for that follow-up.
 ### Remaining rollout evidence
 
 Before claiming deployment of the local changes, build the container, apply the
-matching migrations, configure the runtime profiles and verify isolation on the
-serving host. Run the [live SDD canary](sdd-runtime.md#live-canary-after-deployment)
+matching migrations, settle admitted SDD work as the
+[rollout procedure](sdd-runtime.md#rollout-and-rollback) requires, and verify the
+host probe and a project's lock state on the serving host. Run the [live SDD canary](sdd-runtime.md#live-canary-after-deployment)
 and record the revision, Run/PR links and approval history. Actual provider
 replies, GitHub CI and merge behavior cannot be inferred from local fixtures.
 

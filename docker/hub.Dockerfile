@@ -10,18 +10,13 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY modules/hub-ui ./
 RUN npm run build
 
-# ---- Isolated, locked devkit-spec environment ----
+# ---- Pinned build backend for offline, sandboxed builds of locked devkit sources ----
+# Repository SDD runtimes are installed at evaluation time from each repository's own uv.lock.
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS sdd-builder
-RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates bubblewrap \
-    && rm -rf /var/lib/apt/lists/*
 WORKDIR /provision
-COPY config/sdd-runtime config/sdd-runtime
-COPY config/sdd-runtime-app-common config/sdd-runtime-app-common
+COPY config/sdd-build config/sdd-build
 COPY scripts/install-sdd.py scripts/install-sdd.py
-RUN --mount=type=secret,id=sdd_token \
-    if [ -f /run/secrets/sdd_token ]; then export GH_TOKEN="$(cat /run/secrets/sdd_token)"; fi; \
-    python scripts/install-sdd.py /opt/sdd && \
-    python scripts/install-sdd.py /opt/sdd-app-common --manifest config/sdd-runtime-app-common
+RUN python scripts/install-sdd.py /opt/sdd-build --manifest config/sdd-build
 
 # ---- Backend Builder Stage ----
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS backend-builder
@@ -49,7 +44,8 @@ FROM python:3.13-slim AS runtime
 ENV TZ=UTC
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/app/.venv/bin:$PATH"
-ENV AUTOHUB_SDD_HOME=/opt/sdd
+ENV AUTOHUB_SDD_BUILD=/opt/sdd-build
+ENV AUTOHUB_SDD_CACHE=/tmp/autohub-sdd-runtimes
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates bubblewrap \
     && rm -rf /var/lib/apt/lists/*
 
@@ -57,8 +53,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends git ca-certific
 RUN groupadd -g 1000 appuser && useradd -u 1000 -g appuser -m appuser
 
 WORKDIR /app/modules/hub
-COPY --from=sdd-builder /opt/sdd /opt/sdd
-COPY --from=sdd-builder /opt/sdd-app-common /opt/sdd-app-common
+COPY --from=sdd-builder /opt/sdd-build /opt/sdd-build
+# uv renders and installs repository locks (lock_runtime, runtime_install); the build stage pins its version.
+COPY --from=sdd-builder /usr/local/bin/uv /usr/local/bin/uv
 COPY --from=backend-builder --chown=appuser:appuser /app/.venv /app/.venv
 COPY --from=frontend-builder --chown=appuser:appuser /app/modules/hub-ui/build ./ui_dist
 COPY --chown=appuser:appuser modules/hub/app ./app

@@ -1,0 +1,10 @@
+request: return:build-verify
+kind: return
+action: accept
+workflow: sdd-spec-feature
+stage: build-verify
+note: 'Living Spec drafting found contract gaps: bridge maps SDD_RUNTIME_PREPARING
+  to a terminal rejection instead of retryable bridge-unavailable; a running native
+  run blocks on a retry-safe PREPARING; CI sdd-contract job still installs the removed
+  app-common profile; a workflow-pin test was deleted with test_profiles.py'
+at: '2026-11-13T03:07:51.333692Z'

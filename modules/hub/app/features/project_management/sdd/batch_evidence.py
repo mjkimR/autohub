@@ -7,7 +7,7 @@ import yaml
 from app.features.project_management.pipeline_runs.requests import request_digest
 
 from .milestone_graph import metadata
-from .runtime import runtime_pin
+from .runtime import ensure_runtime, runtime_identity
 from .services import cli
 
 
@@ -27,13 +27,15 @@ def content_basis(root, row):
 
 async def capture_basis(root, graph, members):
     config = {}
-    for name in (".devkit/config.toml", ".devkit/installation.json", "uv.lock"):
+    # uv.lock is covered by the runtime identity: unrelated dependency changes do not change the basis.
+    for name in (".devkit/config.toml", ".devkit/installation.json"):
         path = root / name
         config[name] = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+    await ensure_runtime()
     return {
         "members": [content_basis(root, row) for row in members],
         "configuration": config,
-        "runtime": runtime_pin(),
+        "runtime": runtime_identity(),
         "policy": await cli(root, "spec", "policy"),
     }
 

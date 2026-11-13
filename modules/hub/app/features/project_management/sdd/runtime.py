@@ -1,64 +1,173 @@
-"""An operator-provisioned Python environment, independent of repository dependencies."""
+"""The devkit runtime of the checked-out commit, installed from its own uv.lock and resolved on first use.
 
-import hashlib
+A checkout scope registers its root and the project's connector token; nothing is selected or installed until a
+devkit command needs it, so Git-only operations never wait for a runtime. A complete cache entry is leased for the
+rest of the scope. A missing entry starts one background install per identity, which a caller's deadline cannot
+cancel, and the caller receives a retryable ``SDD_RUNTIME_PREPARING`` refusal meanwhile.
+"""
+
+import asyncio
 import json
 import re
 import tomllib
+from contextlib import ExitStack, contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from app.features.project_management.projects.errors import ProjectError
 
-from .profiles import current
+from . import runtime_cache as cache
+from .lock_runtime import Selection, select
 
-# Packages whose Git revision the runtime pin records and a repository's own lock may pin differently.
-PINNED_PACKAGES = (
-    "devkit-spec",
-    "devkit-agt",
-    "devkit-dist",
-    "devkit-core",
-    "devkit-cli",
-    "devkit-advisory",
-    "devkit-docs",
-)
-LOCK_LIMIT = 8 * 1024 * 1024
 RECEIPT_STALE_DETAIL = (
-    "The committed devkit receipt, configuration or seeded files are out of date for the reviewed runtime{revision}; "
-    "Hub regenerated the managed assets for this evaluation. Run devkit sync with a matching devkit-spec and commit "
-    "the result before integration (a receipt change needs a new enrollment)."
+    "The committed devkit receipt, configuration or seeded files are out of date for the repository's locked "
+    "devkit{revision}; Hub regenerated the managed assets for this evaluation. Run devkit sync with the locked "
+    "devkit-spec and commit the result before integration (a receipt change needs a new enrollment)."
 )
+FAILURES = {
+    "SDD_RUNTIME_SOURCE_UNAVAILABLE": (
+        "The project's GitHub connector cannot read a Git source the repository locks for devkit; grant it read "
+        "access and retry."
+    ),
+    "SDD_RUNTIME_INSTALL_FAILED": (
+        "Hub could not install the repository's locked devkit runtime; check that registry packages provide wheels "
+        "and Git sources build with the provided backend, then retry."
+    ),
+    "SDD_ISOLATION_UNAVAILABLE": "SDD evaluation requires an isolated runner (bubblewrap on Linux, sandbox-exec on macOS)",
+}
+PREPARING = "Hub is installing the repository's locked devkit runtime; retry shortly."
+
+
+@dataclass
+class RuntimeSource:
+    root: Path
+    token: str | None
+    home: Path | None = None
+    stack: ExitStack = field(default_factory=ExitStack)
+
+
+_source: ContextVar[RuntimeSource | None] = ContextVar("sdd_runtime_source", default=None)
+_installs: dict[str, asyncio.Task] = {}
+
+
+@contextmanager
+def runtime_source(root: Path, token: str | None):
+    """Make ``root``'s locked runtime available to devkit commands in this scope; leases end with it."""
+    source = RuntimeSource(Path(root).resolve(), token)
+    marker = _source.set(source)
+    try:
+        yield source
+    finally:
+        _source.reset(marker)
+        source.stack.close()
+
+
+def current_source() -> RuntimeSource:
+    source = _source.get()
+    if source is None:
+        raise ProjectError(503, "No checkout scope selects an SDD runtime", code="SDD_RUNTIME_UNAVAILABLE")
+    return source
+
+
+def _start_install(selection: Selection, token: str | None) -> None:
+    """One process-level install task per identity; it is not awaited, so no caller can cancel it."""
+    from .runtime_install import build
+
+    task = _installs.get(selection.identity)
+    if task is not None and not task.done():
+        return
+    _installs[selection.identity] = asyncio.get_running_loop().create_task(build(selection, token or ""))
+
+
+def install_task(identity: str) -> asyncio.Task | None:
+    return _installs.get(identity)
+
+
+async def resolve(source: RuntimeSource, *, start: bool = True) -> tuple[Selection, str]:
+    """The selection and its cache state (``ready``, ``preparing`` or a failure code); may start an install."""
+    selection = await asyncio.to_thread(select, source.root)
+    if cache.complete(selection.identity):
+        return selection, "ready"
+    if code := cache.failure(selection.identity, cache.token_scope(source.token)):
+        return selection, code
+    if start:
+        _start_install(selection, source.token)
+    return selection, "preparing"
+
+
+async def ensure_runtime() -> Path:
+    """The leased cache entry of the current checkout's runtime, or a refusal naming why it is unavailable."""
+    source = current_source()
+    if source.home is not None:
+        return source.home
+    selection, state = await resolve(source)
+    if state == "preparing":
+        raise ProjectError(503, PREPARING, code="SDD_RUNTIME_PREPARING")
+    if state != "ready":
+        raise ProjectError(422, FAILURES.get(state, FAILURES["SDD_RUNTIME_INSTALL_FAILED"]), code=state)
+    try:
+        source.home = source.stack.enter_context(cache.lease(selection.identity))
+    except BlockingIOError:  # an eviction holds the entry right now
+        raise ProjectError(503, PREPARING, code="SDD_RUNTIME_PREPARING") from None
+    home = source.home
+    if home.is_symlink() or (home / ".venv").is_symlink() or not (home / ".venv").is_dir():
+        source.stack.close()
+        source.stack, source.home = ExitStack(), None
+        raise ProjectError(422, FAILURES["SDD_RUNTIME_INSTALL_FAILED"], code="SDD_RUNTIME_INSTALL_FAILED")
+    if not cache.complete(selection.identity):  # evicted between the check and the lease
+        source.stack.close()
+        source.stack = ExitStack()
+        source.home = None
+        raise ProjectError(503, PREPARING, code="SDD_RUNTIME_PREPARING")
+    return source.home
 
 
 def runtime_home() -> Path:
-    return current()[1]
+    try:
+        source = current_source()
+    except ProjectError:
+        source = None
+    if source is None or source.home is None:
+        raise ProjectError(503, "The SDD runtime has not been resolved", code="SDD_RUNTIME_UNAVAILABLE")
+    return source.home
 
 
 def runtime_pin() -> dict:
     home = runtime_home()
     try:
         pin = json.loads((home / "pin.json").read_text())
-        if (
-            pin["provider"] != "devkit-spec"
-            or pin["lock_sha256"] != hashlib.sha256((home / "uv.lock").read_bytes()).hexdigest()
-        ):
-            raise ValueError("runtime lock mismatch")
+        if pin["provider"] != "devkit-spec" or pin["identity"] != home.name:
+            raise ValueError("runtime pin mismatch")
         return pin
     except (OSError, ValueError, KeyError, TypeError):
         raise ProjectError(
-            422, "Provision the locked runtime with just install-sdd", code="SDD_RUNTIME_UNAVAILABLE"
+            422, "The cached SDD runtime is inconsistent; retry", code="SDD_RUNTIME_UNAVAILABLE"
         ) from None
 
 
+def runtime_identity() -> dict:
+    """The deterministic identity record compared by batches: no paths, times or cache locations."""
+    pin = runtime_pin()
+    return {
+        "provider": pin["provider"],
+        "identity": pin["identity"],
+        "python": pin.get("python"),
+        "revisions": dict(sorted((pin.get("revisions") or {}).items())),
+    }
+
+
 def configured_version() -> str:
-    return "devkit-spec:" + runtime_pin()["lock_sha256"]
+    return "devkit-lock:" + runtime_pin()["identity"]
 
 
 async def restore(root: Path) -> list[dict]:
-    """Restore the Git-ignored managed assets of a checkout from the reviewed runtime; report a stale receipt.
+    """Restore the Git-ignored managed assets of a checkout from its locked runtime; report a stale receipt.
 
     ``devkit sync --locked`` restores exactly what the committed receipt records. When that receipt no longer
-    matches the runtime's packages (``RECEIPT_STALE``), the assets are regenerated with a plain ``devkit sync``
+    matches the locked packages (``RECEIPT_STALE``), the assets are regenerated with a plain ``devkit sync``
     instead and the mismatch is returned as a warning: the checkout is disposable, so the repository's commits
-    stay untouched, and the packages are the operator's, so nothing unreviewed runs. Every other failure blocks.
+    stay untouched. Every other failure blocks.
     """
     from .checkout import SddCommandError, command
 
@@ -66,6 +175,7 @@ async def restore(root: Path) -> list[dict]:
         raise ProjectError(
             422, "Commit the devkit configuration and installation receipt before enrolling", code="SDD_RECEIPT_MISSING"
         )
+    await ensure_runtime()
     check_bundles(root)
     try:
         await command("devkit", "sync", "--locked", "--format", "json", cwd=root)
@@ -78,7 +188,7 @@ async def restore(root: Path) -> list[dict]:
 
 
 def stale_warning() -> dict:
-    """The RECEIPT_STALE warning, naming the runtime's devkit-spec revision when the pin records one."""
+    """The RECEIPT_STALE warning, naming the locked devkit-spec revision when the pin records one."""
     try:
         revisions = runtime_pin().get("revisions")
     except ProjectError:
@@ -88,53 +198,8 @@ def stale_warning() -> dict:
     return {"code": "RECEIPT_STALE", "detail": RECEIPT_STALE_DETAIL.format(revision=named)}
 
 
-def lock_revisions(text: str) -> dict[str, str]:
-    """Exact Git revisions of the pinned packages in a uv.lock; anything else in the file is ignored."""
-    try:
-        packages = tomllib.loads(text).get("package", [])
-    except (tomllib.TOMLDecodeError, RecursionError):  # repository content: malformed or hostile input is no signal
-        return {}
-    revisions: dict[str, str] = {}
-    for package in packages if isinstance(packages, list) else []:
-        if not isinstance(package, dict) or package.get("name") not in PINNED_PACKAGES:
-            continue
-        source = package.get("source")
-        git = source.get("git") if isinstance(source, dict) else None
-        revision = git.rsplit("#", 1)[-1] if isinstance(git, str) else ""
-        if re.fullmatch(r"[0-9a-f]{40}", revision):
-            revisions[package["name"]] = revision
-    return revisions
-
-
-def revision_warnings(root: Path) -> list[dict]:
-    """Best-effort parity signal: the repository's locked devkit revisions against the runtime pin's.
-
-    Agents work from the repository's own devkit installation, which Hub cannot inspect; a root ``uv.lock``
-    is its only committed trace. Only exact revisions are compared, and only revisions are displayed.
-    """
-    pinned = runtime_pin().get("revisions")
-    lock = root / "uv.lock"
-    if not isinstance(pinned, dict) or lock.is_symlink() or not lock.is_file() or lock.stat().st_size > LOCK_LIMIT:
-        return []
-    try:
-        locked = lock_revisions(lock.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError):
-        return []
-    return [
-        {
-            "code": "RUNTIME_REVISION_MISMATCH",
-            "detail": (
-                f"The repository locks {name} at {locked[name][:12]} while the reviewed runtime provides "
-                f"{str(pinned[name])[:12]}; agents and Hub may follow different workflow definitions."
-            ),
-        }
-        for name in PINNED_PACKAGES
-        if name in locked and isinstance(pinned.get(name), str) and locked[name] != pinned[name]
-    ]
-
-
 def check_bundles(root: Path) -> None:
-    """Refuse missing installed bundles before sync; never install a repository's dependencies."""
+    """Refuse bundles that no installed package of the repository's own lock provides, before sync."""
     config = root / ".devkit/config.toml"
     if not config.is_file():
         return  # sync reports malformed/missing configuration
@@ -145,16 +210,13 @@ def check_bundles(root: Path) -> None:
         required.update(row["bundle"] for row in receipt.get("assets", []) if isinstance(row.get("bundle"), str))
     except (ValueError, TypeError, KeyError, AttributeError):
         return  # the CLI owns full configuration/receipt validation
-    bundles = runtime_pin().get("bundles")
-    if bundles is None:
-        return  # older installations still enforce selection through sync
-    missing = sorted(required - set(bundles))
+    missing = sorted(required - set(runtime_pin().get("bundles") or []))
     if missing:
         # Only bundle identifiers, never arbitrary repository text, enter diagnostics.
         names = [name for name in missing if re.fullmatch(r"[a-z][a-z0-9-]{0,63}", name)]
         raise ProjectError(
             422,
-            f"SDD runtime profile {current()[0]} is missing bundles: {', '.join(names) or 'invalid selection'}. "
-            "Provision a reviewed profile containing these bundles and map this repository to it.",
+            f"The repository's locked devkit runtime is missing bundles: {', '.join(names) or 'invalid selection'}. "
+            "Add the packages providing them to the locked devkit dependency group and commit uv.lock.",
             code="SDD_BUNDLES_MISSING",
         )

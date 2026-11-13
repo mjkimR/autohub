@@ -118,11 +118,11 @@ test-ui:
     activate_frontend_node
     uv run --no-active --no-sync devkit run -- npm --prefix "$path" test
 
-# Install the locked devkit-spec Python runtime (private Git access required at provisioning only)
+# Install a reviewed locked environment: the devkit seed runtime for tests (default) or config/sdd-build
 install-sdd destination=".cache/sdd" manifest="config/sdd-runtime":
     @uv run --no-active --no-sync python scripts/install-sdd.py "{{ destination }}" --manifest "{{ manifest }}"
 
-# Require the provisioned runtime and OS isolation; never silently skip the CLI contract
+# Run the isolated SDD contracts with the seed runtime and .cache/sdd-build; never silently skip them
 test-sdd runtime=".cache/sdd":
     @bash scripts/test-sdd.sh "{{ runtime }}"
 

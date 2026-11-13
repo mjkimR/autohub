@@ -1,0 +1,21 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T02:51:03.650330Z'
+status: completed
+review: review-04.yaml
+summary: 'Self-verified by the implementer under review-loop section 2: the fix touches only runtime_cache.staging (the finding''s evidence), applies the suggested mkdtemp as written, changes no API, schema or error code, and test_each_install_gets_a_fresh_unguessable_staging_path failed before and passes after'
+findings:
+- issue: Staging paths repeat per identity and Hub process, so a lingering macOS sandbox process keeps a path grant into a later install's staging and can plant a .pth that the Hub-process registry install runs
+  evidence: modules/hub/app/features/project_management/sdd/runtime_cache.py:75-81; runtime_install.py:143-160, :106-128, :308-310; isolation.py:45; probes .cache/review-probe/review-04/reuse.py, uvq2/
+  failure_condition: A Hub on macOS reinstalls an identity in the same process after an earlier install of it left a detached sandbox process running
+  suggested_action: Create every staging directory with tempfile.mkdtemp under the cache root; test distinct paths for two installs of one identity; update plan and docstring
+  resolution: resolved
+  severity: P1
+assumptions:
+- User accepted that macOS-only containment beyond this fix is out of scope; serving hosts are Linux bubblewrap
+checks:
+  unit: PASS just test tests/unit/features/project_management/sdd (236)
+  integration: PASS just test-sdd (144, 7 PG-only skips)
+  lint: PASS just lint; check=PASS just check

@@ -1,6 +1,6 @@
 """Native stage transitions under the existing PipelineRun lease and transaction."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import NAMESPACE_URL, uuid5
 
 from app.features.project_management.pipeline_runs.interaction_service import RunInteractionService
@@ -17,6 +17,14 @@ from .evidence import in_context
 from .gates import INTEGRATION_GATE, PLAN_ACCEPT_REQUEST
 from .services import SddService
 from .units import is_proposal, proposal_slug
+
+# Above the worst-case sum of one install's step timeouts (about 36 minutes for a single Git source), so only a runtime
+# that keeps failing or is reinstalled over and over reaches it.
+PREPARING_LIMIT = timedelta(minutes=45)
+PREPARING_EXPIRED = (
+    "The repository's locked devkit runtime did not become available within 45 minutes. Check the runtime status: "
+    "resume once it reports ready, or fix the reported install failure first"
+)
 
 # What an agent is told about a warning. The human remediation of RECEIPT_STALE (commit a new receipt) would end
 # this run's contract mid-flight, so the agent is told to leave it to the operator instead.
@@ -237,6 +245,9 @@ class SddProgress:
                 }
             return {"pull": pull, "evidence": evidence}
         except ProjectError as exc:
+            if getattr(exc, "code", None) == "SDD_RUNTIME_PREPARING":
+                # The head's locked runtime is installing: retry on a later tick instead of blocking the run.
+                return {"pull": pull, "preparing": True, "diagnostics": failure(exc)}
             return {
                 "pull": pull,
                 "error": str(exc),
@@ -316,6 +327,18 @@ class SddProgress:
         pull = observed["pull"]
         if pull.get("state") == "closed":
             await finish_closed_pull(self.repo, session, run, pull, now)
+        elif observed.get("preparing"):
+            # Keep the run's state; the next dispatcher tick inspects again once the runtime is installed. A runtime
+            # that stays unavailable beyond PREPARING_LIMIT blocks the run whatever the observation cadence.
+            progress = {**(run.sdd_progress or {}), "diagnostics": observed.get("diagnostics", [])}
+            since = progress.setdefault("runtime_preparing_since", now.isoformat())
+            if as_utc(now) - as_utc(datetime.fromisoformat(since)) > PREPARING_LIMIT:
+                progress.pop("runtime_preparing_since")
+                progress.pop("waiting_for_approval", None)
+                progress["error"] = PREPARING_EXPIRED
+                run.state, run.pause_reason = "blocked", PREPARING_EXPIRED
+                run.revision += 1
+            run.sdd_progress = progress
         elif observed.get("error"):
             progress = dict(run.sdd_progress or {})
             progress["error"] = observed["error"]
@@ -357,6 +380,9 @@ class SddProgress:
                         else {}
                     ),
                 }
+            elif evidence.get("snapshot", {}).get("cli_version") not in (None, run.sdd_snapshot.get("cli_version")):
+                # The runtime follows the repository's lock; record the identity this head was evaluated with.
+                run.sdd_snapshot = {**run.sdd_snapshot, "cli_version": evidence["snapshot"]["cli_version"]}
             await retain_publications(session, run.id, evidence)
             run.sdd_progress = evidence
             plan = evidence.get("plan_decision")

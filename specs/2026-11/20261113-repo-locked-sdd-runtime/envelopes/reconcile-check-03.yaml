@@ -1,0 +1,34 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:50:23.502587Z'
+status: completed
+summary: round 3; closes reconcile-check-02; all round-2 findings fixed and matching code; three P3 (per-path test gap, one trace, one wording)
+findings:
+- issue: Rule 1's commit-per-path clause has no per-path test in its Check line
+  evidence: docs/capabilities/sdd/CAP-SDD-runtime-isolation.md:59-63; docs/decisions/2026-11/20261113-repository-locked-runtime.md section 6; activities.py:255,277; usecases.py:103-106
+  failure_condition: A path evaluating the wrong commit passes every listed check
+  suggested_action: Cite covering tests, add per-path tests, or record the gap in reconcile.md
+  resolution: open
+  severity: P3
+- issue: The ADR trace for 'rendered by uv' points only at rule 1, which does not mention uv rendering
+  evidence: docs/decisions/2026-11/20261113-repository-locked-runtime.md:44; CAP-SDD-runtime-isolation.md:56-58, :64-65
+  failure_condition: Following the trace misses the uv rendering
+  suggested_action: Trace to rules 1-2
+  resolution: open
+  severity: P3
+- issue: UC-start-sdd-activity 2e limits SDD_ISOLATION_UNAVAILABLE to a recorded marker
+  evidence: docs/usecases/sdd/UC-start-sdd-activity.md:71-75; isolation.py:57
+  failure_condition: A reader expects the code only after a recorded install failure
+  suggested_action: Move the code out of the recorded phrase
+  resolution: open
+  severity: P3
+assumptions:
+- 'Route: native isolated Claude Code reconcile-reviewer; snapshot unchanged'
+checks:
+  rules: PASS devkit rules check --ci --base 7b92637598c1
+diff_scope:
+  base: 7b92637598c128d2b0dda7aa66fd386b6824cd49
+  head: 21ba8ec757946fdb4e5dbdf99e42b3f463f0fa97
+activity_effort: high

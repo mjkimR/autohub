@@ -15,11 +15,7 @@ while getopts "n:t:" opt; do
   esac
 done
 
-BUILD_SECRETS=()
-if [ "${GH_TOKEN:+set}" = set ]; then
-  BUILD_SECRETS+=(--secret id=sdd_token,env=GH_TOKEN)
-fi
-docker build "${BUILD_SECRETS[@]}" \
+docker build \
   -f "$SCRIPT_DIR/hub.Dockerfile" \
   -t "$IMAGE_NAME:$IMAGE_TAG" \
   "$PROJECT_ROOT"

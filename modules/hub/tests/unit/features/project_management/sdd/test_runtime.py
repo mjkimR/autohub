@@ -1,26 +1,44 @@
-import hashlib
+import asyncio
 import json
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
 from app.features.project_management.projects.errors import ProjectError
-from app.features.project_management.sdd import checkout, isolation, runtime
+from app.features.project_management.sdd import checkout, isolation, runtime, runtime_cache
 from app.features.project_management.sdd.decisions import validate_answer
+from app.features.project_management.sdd.lock_runtime import Selection
 
 pytestmark = pytest.mark.unit
+IDENTITY = "f" * 64
 
 
-def provision(home: Path, monkeypatch, **extra):
-    home.mkdir()
-    monkeypatch.setenv("AUTOHUB_SDD_HOME", str(home))
-    (home / "uv.lock").write_text("lock")
-    pin = {"provider": "devkit-spec", "lock_sha256": hashlib.sha256(b"lock").hexdigest(), **extra}
+def provision(tmp_path, monkeypatch, **extra) -> Path:
+    """A complete cache entry for IDENTITY."""
+    monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+    home = runtime_cache.entry(IDENTITY)
+    home.mkdir(parents=True)
+    (home / ".venv").mkdir()
+    pin = {"provider": "devkit-spec", "identity": IDENTITY, "python_prefix": "/usr", "bundles": [], **extra}
     (home / "pin.json").write_text(json.dumps(pin))
+    return home
 
 
-def lock(revision: str, name: str = "devkit-spec") -> str:
-    return f'[[package]]\nname = "{name}"\nversion = "0.1.0"\nsource = {{ git = "https://host/repo?rev=main#{revision}" }}\n'
+@contextmanager
+def resolved(root, home):
+    with runtime.runtime_source(root, None) as source:
+        source.home = home
+        yield source
+
+
+def selection():
+    return Selection(group="dev", export="x", identity=IDENTITY, python="3.13", git=(), registry=())
+
+
+def receipt(root):
+    (root / ".devkit").mkdir()
+    (root / ".devkit/installation.json").write_text("{}")
 
 
 async def test_missing_receipt_never_syncs_or_initializes(tmp_path, monkeypatch):
@@ -32,9 +50,8 @@ async def test_missing_receipt_never_syncs_or_initializes(tmp_path, monkeypatch)
 
 
 async def test_stale_receipt_is_regenerated_best_effort_and_reported(tmp_path, monkeypatch):
-    provision(tmp_path / "runtime", monkeypatch, revisions={"devkit-spec": "f" * 40})
-    (tmp_path / ".devkit").mkdir()
-    (tmp_path / ".devkit/installation.json").write_text("{}")
+    home = provision(tmp_path, monkeypatch, revisions={"devkit-spec": "f" * 40})
+    receipt(tmp_path)
     calls = []
 
     async def invoke(*args, cwd, **kwargs):
@@ -44,103 +61,177 @@ async def test_stale_receipt_is_regenerated_best_effort_and_reported(tmp_path, m
         return "{}"
 
     monkeypatch.setattr(checkout, "command", invoke)
-    warnings = await runtime.restore(tmp_path)
+    with resolved(tmp_path, home):
+        warnings = await runtime.restore(tmp_path)
     assert [item["code"] for item in warnings] == ["RECEIPT_STALE"]
     assert "(devkit-spec ffffffffffff)" in warnings[0]["detail"]
     assert calls == [("devkit", "sync", "--locked", "--format", "json"), ("devkit", "sync", "--format", "json")]
 
 
-def test_reviewed_runtime_lock_resolves_full_revisions_for_every_compared_package():
-    lock = Path(__file__).resolve().parents[7] / "config/sdd-runtime/uv.lock"
-    revisions = runtime.lock_revisions(lock.read_text())
-    assert set(revisions) == set(runtime.PINNED_PACKAGES)  # the installer records exactly these full revisions
-
-
-async def test_stale_warning_names_the_runtime_revision_when_recorded(tmp_path, monkeypatch):
-    provision(tmp_path / "runtime", monkeypatch, revisions={"devkit-spec": "f" * 40})
-    assert "(devkit-spec ffffffffffff)" in runtime.stale_warning()["detail"]
-    monkeypatch.setenv("AUTOHUB_SDD_HOME", str(tmp_path / "absent"))
+async def test_stale_warning_names_the_locked_revision_when_recorded(tmp_path, monkeypatch):
+    home = provision(tmp_path, monkeypatch, revisions={"devkit-spec": "f" * 40})
+    with resolved(tmp_path, home):
+        assert "(devkit-spec ffffffffffff)" in runtime.stale_warning()["detail"]
     assert runtime.stale_warning()["code"] == "RECEIPT_STALE"  # no runtime detail, still a warning
 
 
 async def test_failed_regeneration_after_a_stale_receipt_blocks(tmp_path, monkeypatch):
-    (tmp_path / ".devkit").mkdir()
-    (tmp_path / ".devkit/installation.json").write_text("{}")
+    home = provision(tmp_path, monkeypatch)
+    receipt(tmp_path)
     errors = iter([checkout.SddCommandError("RECEIPT_STALE", "stale"), checkout.SddCommandError("SYNC_CONFLICT", "x")])
 
     async def invoke(*args, cwd, **kwargs):
         raise next(errors)
 
     monkeypatch.setattr(checkout, "command", invoke)
-    with pytest.raises(checkout.SddCommandError) as result:
+    with resolved(tmp_path, home), pytest.raises(checkout.SddCommandError) as result:
         await runtime.restore(tmp_path)
     assert result.value.cli_code == "SYNC_CONFLICT"
 
 
 @pytest.mark.parametrize("code", ["SELECTION_INVALID", "SYNC_CONFLICT", "COMMAND_FAILED"])
 async def test_other_sync_failures_still_block(tmp_path, monkeypatch, code):
-    (tmp_path / ".devkit").mkdir()
-    (tmp_path / ".devkit/installation.json").write_text("{}")
+    home = provision(tmp_path, monkeypatch)
+    receipt(tmp_path)
     invoke = AsyncMock(side_effect=checkout.SddCommandError(code, "failed"))
     monkeypatch.setattr(checkout, "command", invoke)
-    with pytest.raises(checkout.SddCommandError) as result:
+    with resolved(tmp_path, home), pytest.raises(checkout.SddCommandError) as result:
         await runtime.restore(tmp_path)
     assert result.value.cli_code == code
     assert invoke.await_count == 1
 
 
-def test_runtime_pin_detects_changed_lock(tmp_path, monkeypatch):
-    monkeypatch.setenv("AUTOHUB_SDD_HOME", str(tmp_path))
-    (tmp_path / "uv.lock").write_text("original")
-    (tmp_path / "pin.json").write_text(
-        json.dumps({"provider": "devkit-spec", "lock_sha256": hashlib.sha256(b"original").hexdigest()})
-    )
-    assert runtime.configured_version().startswith("devkit-spec:")
-    (tmp_path / "uv.lock").write_text("different")
-    with pytest.raises(ProjectError, match="locked runtime"):
-        runtime.configured_version()
+async def test_bundles_missing_from_the_locked_runtime_refuse_before_sync(tmp_path, monkeypatch):
+    home = provision(tmp_path, monkeypatch, bundles=["spec", "docs"])
+    receipt(tmp_path)
+    (tmp_path / ".devkit/config.toml").write_text('[presets]\ng-foundation = "all"\n')
+    invoke = AsyncMock()
+    monkeypatch.setattr(checkout, "command", invoke)
+    with resolved(tmp_path, home), pytest.raises(ProjectError, match="g-foundation") as result:
+        await runtime.restore(tmp_path)
+    assert result.value.code == "SDD_BUNDLES_MISSING"
+    invoke.assert_not_awaited()
 
 
-def test_revision_mismatch_is_a_warning_without_repository_text(tmp_path, monkeypatch):
-    provision(tmp_path / "runtime", monkeypatch, revisions={"devkit-spec": "a" * 40, "devkit-agt": "b" * 40})
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    (repo / "uv.lock").write_text(
-        '[[package]]\nname = "devkit-spec"\nversion = "0.1.0"\n'
-        'source = { git = "https://user:secret-token@host/org/devkit-spec?rev=main#'
-        + "c" * 40
-        + '" }\n\n'
-        + lock("b" * 40, "devkit-agt")
-    )
-    warnings = runtime.revision_warnings(repo)
-    assert [item["code"] for item in warnings] == ["RUNTIME_REVISION_MISMATCH"]
-    assert "c" * 12 in warnings[0]["detail"] and "a" * 12 in warnings[0]["detail"]
-    assert "secret-token" not in warnings[0]["detail"] and "host/" not in warnings[0]["detail"]
+def test_runtime_pin_must_name_its_own_entry(tmp_path, monkeypatch):
+    home = provision(tmp_path, monkeypatch)
+    with resolved(tmp_path, home):
+        assert runtime.configured_version() == "devkit-lock:" + IDENTITY
+        (home / "pin.json").write_text(json.dumps({"provider": "devkit-spec", "identity": "0" * 64}))
+        with pytest.raises(ProjectError) as raised:
+            runtime.configured_version()
+    assert raised.value.code == "SDD_RUNTIME_UNAVAILABLE"
 
 
-def test_revision_parity_is_silent_without_an_exact_signal(tmp_path, monkeypatch):
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    (repo / "uv.lock").write_text(lock("c" * 40))
-    provision(tmp_path / "older", monkeypatch)  # a runtime provisioned before revisions were recorded
-    assert runtime.revision_warnings(repo) == []
-    provision(tmp_path / "current", monkeypatch, revisions={"devkit-spec": "c" * 40})
-    assert runtime.revision_warnings(repo) == []
-    (repo / "uv.lock").write_text(lock("main"))  # a branch, not a revision
-    assert runtime.revision_warnings(repo) == []
-    (repo / "uv.lock").write_text("not = toml = [[[")
-    assert runtime.revision_warnings(repo) == []
-    (repo / "uv.lock").write_text("a = " + "[" * 100_000 + "]" * 100_000)  # hostile nesting is no signal either
-    assert runtime.revision_warnings(repo) == []
-    (repo / "uv.lock").unlink()
-    assert runtime.revision_warnings(repo) == []
+def test_runtime_identity_is_deterministic_and_pathless(tmp_path, monkeypatch):
+    home = provision(tmp_path, monkeypatch, python="3.13", revisions={"devkit-spec": "a" * 40})
+    with resolved(tmp_path, home):
+        assert runtime.runtime_identity() == {
+            "provider": "devkit-spec",
+            "identity": IDENTITY,
+            "python": "3.13",
+            "revisions": {"devkit-spec": "a" * 40},
+        }
+
+
+async def test_complete_entry_is_leased_for_the_scope(tmp_path, monkeypatch):
+    home = provision(tmp_path, monkeypatch)
+    monkeypatch.setattr(runtime, "select", lambda root: selection())
+    with runtime.runtime_source(tmp_path, "token"):
+        assert await runtime.ensure_runtime() == home
+        assert runtime_cache.evict(0) == []  # leased: never evicted mid-evaluation
+    assert runtime_cache.evict(0) == [IDENTITY]
+
+
+async def test_cold_cache_starts_one_install_and_reports_preparing(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(runtime, "select", lambda root: selection())
+    started = asyncio.Event()
+    release = asyncio.Event()
+    builds = []
+
+    async def build(chosen, token):
+        builds.append(token)
+        started.set()
+        await release.wait()
+        return True
+
+    monkeypatch.setattr("app.features.project_management.sdd.runtime_install.build", build)
+    runtime._installs.clear()
+
+    async def caller():
+        with runtime.runtime_source(tmp_path, "token"), pytest.raises(ProjectError) as raised:
+            await runtime.ensure_runtime()
+        return raised.value
+
+    errors = await asyncio.gather(*(caller() for _ in range(5)))
+    await started.wait()
+    assert builds == ["token"]
+    assert all(error.status == 503 and error.code == "SDD_RUNTIME_PREPARING" for error in errors)
+    release.set()
+    task = runtime.install_task(IDENTITY)
+    assert task is not None
+    await task
+
+
+async def test_caller_deadline_does_not_cancel_the_install(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(runtime, "select", lambda root: selection())
+    finished = asyncio.Event()
+
+    async def build(chosen, token):
+        await asyncio.sleep(0.2)
+        finished.set()
+        return True
+
+    monkeypatch.setattr("app.features.project_management.sdd.runtime_install.build", build)
+    runtime._installs.clear()
+
+    async def slow_request():
+        with runtime.runtime_source(tmp_path, "token"):
+            try:
+                await runtime.ensure_runtime()
+            except ProjectError:
+                await asyncio.sleep(10)  # the request keeps waiting until its deadline
+
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(0.05):
+            await slow_request()
+    await asyncio.wait_for(finished.wait(), 2)
+    task = runtime.install_task(IDENTITY)
+    assert task is not None
+    await asyncio.wait_for(task, 2)
+    assert not task.cancelled()
+
+
+async def test_recorded_failure_is_reported_without_reinstalling(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(runtime, "select", lambda root: selection())
+    runtime_cache.record_failure(IDENTITY, "SDD_RUNTIME_SOURCE_UNAVAILABLE", runtime_cache.token_scope("token"))
+    monkeypatch.setattr(runtime, "_start_install", lambda *args: pytest.fail("reinstalled during the retry delay"))
+    with runtime.runtime_source(tmp_path, "token"), pytest.raises(ProjectError) as raised:
+        await runtime.ensure_runtime()
+    assert raised.value.status == 422 and raised.value.code == "SDD_RUNTIME_SOURCE_UNAVAILABLE"
+    assert "token" not in raised.value.detail and "github.com" not in raised.value.detail
+
+
+async def test_git_safe_never_resolves_a_runtime(tmp_path, monkeypatch):
+    monkeypatch.setattr(runtime, "ensure_runtime", AsyncMock(side_effect=AssertionError("resolved a runtime")))
+    monkeypatch.setattr(isolation, "isolated_git", lambda root, args: ["sandbox", "git", *args])
+
+    async def invoke(*args, **kwargs):
+        return "ok"
+
+    monkeypatch.setattr(checkout, "_command", invoke)
+    with runtime.runtime_source(tmp_path, "token"):
+        assert await checkout.command("git-safe", "status", cwd=tmp_path) == "ok"
 
 
 async def test_cli_drops_credentials_and_requires_isolation(tmp_path, monkeypatch):
     monkeypatch.setenv("GH_TOKEN", "private-token")
     monkeypatch.setenv("DATABASE_URL", "private-db")
+    monkeypatch.setattr(runtime, "ensure_runtime", AsyncMock(return_value=Path("/cache/x")))
     monkeypatch.setattr(runtime, "runtime_pin", lambda: {"python_prefix": "/usr"})
-    monkeypatch.setattr(runtime, "runtime_home", lambda: Path("/opt/sdd"))
     monkeypatch.setattr(isolation, "isolated_command", lambda *args, **kwargs: ["sandbox", "devkit"])
 
     async def invoke(*args, **kwargs):
@@ -261,3 +352,29 @@ def test_handoff_requires_eligible_choice_and_integration_uses_own_authority():
         validate_answer(evidence, {"request": "question:worker-01.q1", "action": "accept", "value": "zzz"})
     with pytest.raises(ProjectError, match="Write the decision"):
         validate_answer(evidence, {"request": "question:worker-01.q1", "action": "accept", "note": "  "})
+
+
+async def test_symlinked_entry_venv_is_refused(tmp_path, monkeypatch):
+    home = provision(tmp_path, monkeypatch)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (home / ".venv").rmdir()
+    (home / ".venv").symlink_to(elsewhere)
+    monkeypatch.setattr(runtime, "select", lambda root: selection())
+    with runtime.runtime_source(tmp_path, "token"), pytest.raises(ProjectError) as raised:
+        await runtime.ensure_runtime()
+    assert raised.value.code == "SDD_RUNTIME_INSTALL_FAILED"
+
+
+async def test_devkit_sandbox_reads_the_hub_prefix_not_the_recorded_one(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(runtime, "ensure_runtime", AsyncMock(return_value=tmp_path))
+    monkeypatch.setattr(runtime, "runtime_pin", lambda: {"python_prefix": "/"})
+    monkeypatch.setattr(
+        isolation, "isolated_command", lambda home, root, args, prefix: seen.append(prefix) or ["sandbox"]
+    )
+    monkeypatch.setattr(checkout, "_command", AsyncMock(return_value="ok"))
+    await checkout.command("devkit", "--version", cwd=tmp_path)
+    from app.features.project_management.sdd.lock_runtime import interpreter_prefix
+
+    assert seen == [interpreter_prefix()] and seen[0] != "/"

@@ -159,19 +159,14 @@ gcloud artifacts repositories create "$REPO_NAME" \
 ### 5.2 Build & Push with Cloud Build
 
 Use the reviewed helper from the repository root. It builds and deploys the
-image, wiring a Secret Manager read credential into BuildKit for the pinned
-private runtime sources:
+image; the build needs no source credential because the image contains no devkit
+runtime:
 
 ```bash
-export SDD_BUILD_SECRET="<existing-secret-name>"
 just deploy-cloud-run --project "$PROJECT_ID" --region "$REGION" --service "$SERVICE_NAME" --connection-name "$DB_CONNECTION_NAME" --no-scheduler
 ```
 
-The named secret contains the source-read token; grant the Cloud Build identity
-access to that secret and the token access to the reviewed source repositories.
-The helper maps it to `GH_TOKEN` and passes only the `sdd_token` BuildKit secret
-mount. This is separate from the application secret bundle. Use
-`bash docker/helper/deploy_cloud_run.sh --help` for supported flags; repository
+Use `bash docker/helper/deploy_cloud_run.sh --help` for supported flags; repository
 and tag settings follow the helper's environment/defaults. Provision the external
 scheduler separately in section 6 when using `--no-scheduler`.
 
@@ -193,12 +188,17 @@ gcloud run deploy "$SERVICE_NAME" \
   --set-secrets="APP_SECRETS_JSON=autohub-secrets:latest"
 ```
 
-The image includes the default SDD runtime at `/opt/sdd` and the reviewed app-common
-profile at `/opt/sdd-app-common`. Set `AUTOHUB_SDD_PROFILES` to the server-owned
-repository mapping documented in [runtime profiles](sdd-runtime.md#runtime-profiles)
-for projects requiring app-common. Give the build identity read access to both
-pinned source repositories. `ARCH-07-deployment` and `CAP-SDD-runtime-isolation` own
-the packaged-runtime and request-isolation contracts.
+The image contains Git, bubblewrap, `uv` and the pinned build environment
+`/opt/sdd-build`, and sets `AUTOHUB_SDD_BUILD` and
+`AUTOHUB_SDD_CACHE=/tmp/autohub-sdd-runtimes`. Each instance installs the devkit
+runtime a repository's `uv.lock` pins on first use, with that project's GitHub
+connector token; the service needs outbound access to GitHub and PyPI. The cache
+lives in in-memory `/tmp` and counts against `--memory`; adjust
+`AUTOHUB_SDD_CACHE_BYTES` (default 256 MiB) through the
+[runtime operations guide](sdd-runtime.md#serving-host) when changing memory.
+Remove `AUTOHUB_SDD_HOME` and `AUTOHUB_SDD_PROFILES` from older services.
+`ARCH-07-deployment` and `CAP-SDD-runtime-isolation` own the runtime-cache and
+request-isolation contracts.
 
 Native SDD evaluation runs devkit inside bubblewrap, which needs unprivileged user
 namespaces: add `--execution-environment=gen2` to the deploy command for a service
@@ -206,7 +206,8 @@ that evaluates SDD runs, then confirm on the deployed host with
 `GET /api/v1/projects/{id}/sdd/runtime` (or the SDD panel's **Check runtime**), which
 must report `ok: true` with `isolation: bubblewrap`. See
 `CAP-SDD-runtime-isolation` for the runtime contract and the
-[provisioning reference](sdd-runtime.md#isolation-and-deployment) for operational setup.
+[runtime operations guide](sdd-runtime.md#isolation-and-deployment) for operational
+setup, including the [rollout and rollback settlement](sdd-runtime.md#rollout-and-rollback).
 
 Record the deployed Service URL output (e.g. `https://autohub-xxxx-du.a.run.app`):
 
