@@ -2,7 +2,7 @@
 id: SPEC-hub-ui-color-system
 title: Rank operator attention in the hub-ui color system
 summary: "Replace the blue-led hub-ui palette with ink actions, neutral surfaces and an amber attention token so that only work waiting for the operator and failures carry saturated color."
-status: in-progress
+status: completed
 created: 2026-11-12
 related_capabilities: []
 related_usecases: []

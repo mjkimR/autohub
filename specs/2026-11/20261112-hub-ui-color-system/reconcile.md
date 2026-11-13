@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-hub-ui-color-system
-status: pending
+status: resolved
 targets:
   - file: docs/ux/operations/UX-dashboard.md
     resolution: modified
