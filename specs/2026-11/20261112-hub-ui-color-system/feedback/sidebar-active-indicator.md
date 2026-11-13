@@ -8,7 +8,7 @@ target: UX-app-shell
 origin: agent
 severity: noise
 recurring: false
-status: open
+status: promoted
 created_at: 2026-11-13
 ---
 
@@ -37,3 +37,5 @@ SPEC-hub-ui-color-system section 6: the active sidebar item keeps aria-current, 
 contrast (about 5.6:1 for inactive items); its sidebar-accent fill alone measures about 1.14:1.
 Section 7 lists a stronger active indicator and an administrative-link active style as follow-ups outside the Unit.
 ```
+
+- **Disposition**: branch `uiux-shell-signals` (`UX-app-shell`, `SidebarLink.svelte`): active links, administrative ones included, carry aria-current, semibold text and a 1px `sidebar-ring` ink outline that `layout-contrast.test.ts` keeps at 3:1 or better against the sidebar and accent fill in both themes; the left rule stays reserved for attention.

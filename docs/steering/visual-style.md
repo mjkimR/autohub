@@ -40,13 +40,16 @@ Attention means operator debt: a paused or blocked PR run, a Run question awaiti
 question whose run has not resumed. A deliberately paused run is attention too, because only the operator can resume
 it.
 
-- Show attention only on a Badge, a summary tile or a row's left rule. Never fill a full row background with it,
-  because dense amber lists cause alarm fatigue and lower text contrast.
+- Show attention only on a Badge, a summary tile, a row's left rule or the application shell's top rule (2px, while
+  pending decisions are owed; `UX-app-shell`). Never fill a full row background with it, because dense amber lists
+  cause alarm fatigue and lower text contrast.
+- Keep the left rule for attention. Selected and active states, such as the active sidebar link, use ink: a 1px
+  `sidebar-ring` outline with semibold text, never a hued or left-edge mark.
 - Use the `attention` fill only on an area whose text is `attention-foreground`, such as the dashboard Needs-you
   tile.
 - Use `attention-text` for every attention mark on a neutral surface: text, icons, dots and strokes such as the
-  Decisions inbox left rule. The `attention` fill is too light to meet the 3:1 UI threshold as a stroke on a light
-  card.
+  Decisions inbox left rule and the shell top rule. The `attention` fill is too light to meet the 3:1 UI threshold as
+  a stroke on a light card.
 - Use the `attention` Badge variant for a labeled status; it pairs `attention-surface` with `attention-text`.
 - Show attention only when the count or condition is present. A zero or unknown count stays neutral, so an outage
   never looks like operator debt.

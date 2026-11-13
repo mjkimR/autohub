@@ -8,7 +8,7 @@ target: UX-app-shell
 origin: agent
 severity: noise
 recurring: false
-status: open
+status: promoted
 created_at: 2026-11-13
 ---
 
@@ -34,3 +34,5 @@ Deferred product work from `SPEC-hub-ui-color-system` (Non-Goal 1 and section 7,
 SPEC-hub-ui-color-system Non-Goal 1 excludes shell lighting and any global pending-decision count;
 When to Reconsider: when a global pending-decision count source exists for the shell.
 ```
+
+- **Disposition**: branch `uiux-shell-signals` (`UX-app-shell`, `pending-decisions.svelte.ts`): the shell derives the count from the existing Decision inbox list (first 50 rows, actionable rows only, "N+" lower bound beyond that) without a backend change, and shows a 2px `attention-text` top rule plus a text count Badge linking to `UX-decision-inbox` only while the count is above zero; zero, loading, error and undecidable stay neutral.
