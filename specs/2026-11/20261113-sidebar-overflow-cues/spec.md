@@ -1,43 +1,54 @@
 ---
-id: PROP-sidebar-overflow-cues
+id: SPEC-sidebar-overflow-cues
 title: Show sidebar navigation overflow cues
-summary: "Show decorative theme-token cues at navigation edges with hidden content so operators can discover off-screen links on short viewports."
-status: accepted
-created_at: 2026-11-13
-target_area: ux/navigation/
-priority: low
-size: S
-planning_effort: medium
-dev_effort: medium
-boundaries:
-  owns:
-    - ux/navigation/
-    - modules/hub-ui/src/lib/components/shared/
-    - modules/hub-ui/src/routes/layout.css
-  excludes:
-    - docs/decisions/
-    - modules/hub/
-    - modules/hub-ui/src/lib/api/
-    - modules/hub-ui/src/lib/features/attention/
-    - modules/hub-ui/src/lib/features/project-management/projects/
-task_kind: feature
+summary: Show decorative theme-token cues at navigation edges with hidden content so operators can discover off-screen links on short viewports.
+status: planned
+created: 2026-11-13
 decomposed_from: PROP-hub-ui-shell-polish
-workflow: sdd-proposal
+related_capabilities: []
+related_usecases: []
+workflow: sdd-spec-feature
 ---
+<!-- devkit:skeleton -->
 
-# [PROP-sidebar-overflow-cues] Show sidebar navigation overflow cues
+# [SPEC-sidebar-overflow-cues] Show sidebar navigation overflow cues
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-sidebar-overflow-cues on 2026-11-13.
+- **Preserved Materials**: `docs/materials/2026-11/20261113-sidebar-overflow-cues`
+- Target Docs Blueprint: `PROP-sidebar-overflow-cues-target` (Living Spec targets for this plan and reconcile.md)
+
+### 1. Background & Hypothesis
 
 `UX-app-shell` scrolls the active navigation link into view, but no edge signal shows that other links remain above
 or below a short sidebar viewport. Decorative edge cues can expose that hidden content without changing navigation.
 
 This feature is split from ~~`PROP-hub-ui-shell-polish`~~ at `d9cf2ae7ed792ecb8582c07d9f09979f544e26db`.
-Inherited implementation and test inspection is retained in `materials/sidebar-evidence.md`. No browser or layout
+Inherited implementation and test inspection is retained in `docs/materials/2026-11/20261113-sidebar-overflow-cues/sidebar-evidence.md`. No browser or layout
 verification has run. Medium Planning settles the cue treatment and responsive states before code; medium
 Development verifies layout-dependent behavior and accessibility with independent review.
 
-## 2. Planning Decisions
+## 2. User Stories
+
+- **US-1**: As a developer/agent, I want to implement Show sidebar navigation overflow cues so that system capabilities are extended.
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: <what this change will not do>
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] <scenario>
+- **Given** <precondition>
+- **When** <action>
+- **Then** <expected result>
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### 2. Planning Decisions
 
 Source inspection at `7e780ab7e45757bdf44e6edd330767f62ffd41dc` confirms the existing desktop navigation scrollport, active-link scrolling and unbounded narrow Menu. No layout or browser test ran during Planning.
 
@@ -54,7 +65,7 @@ The desktop sidebar remains viewport-bounded. Bound the open narrow Menu to the 
 
 Use existing sidebar surface/ink tokens through `layout.css`; add a named semantic cue token only if needed to meet both-theme visibility. No arbitrary palette, new attention emphasis or new focus target is introduced. Exact gutter dimensions and opacity are implementation choices verified by real layout; the acceptance requirement is visible directional continuation without overlap or interaction interception. These are local presentation choices, so no PADR is needed.
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
 1. Show a top cue only when navigation content remains above and a bottom cue only when content remains below.
    Show neither when the navigation fits.
@@ -62,7 +73,7 @@ Use existing sidebar surface/ink tokens through `layout.css`; add a named semant
 3. Preserve navigation order, System disclosure, keyboard access and active-link visibility.
 4. Draft the changed `UX-app-shell` states before implementation and reflect the verified result in that owner.
 
-### Acceptance and verification
+#### Acceptance and verification
 
 - **SCROLL-01**: Given fitting navigation, when the sidebar renders or resizes, then neither overflow cue appears.
 - **SCROLL-02**: Given overflowing navigation, when positioned at the top, middle or bottom, then each cue indicates
@@ -78,14 +89,15 @@ Use the established UI integration harness and a real browser layout check, foll
 and document rules. The sibling `SPEC-owed-counts-error-reason` is behaviorally independent; serialize Development
 writes, handoff and integration when their `AppShell.integration.test.ts` scope overlaps.
 
-### Non-goals
+#### Non-goals
 
 1. **Scope Excluded**: changing count polling cadence, throttling or the count read itself.
 2. **Scope Excluded**: sidebar groups, their order or collapsed diagnostic-group behavior.
 3. **Scope Excluded**: counts error-reason display or any changes to the shared counts store and Projects.
 4. **Scope Excluded**: backend, typed API and unrelated shell redesign.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
 
 This S feature is under Planning review. Direction acceptance and Development handoff remain Host/user actions. The selected shadow treatment and screen delta are retained in `target-docs.md`; Development proves the layout outcomes.
 No PADR, milestone, inherited answer or open source feedback requires transfer. Source evidence is inspection only.
+
