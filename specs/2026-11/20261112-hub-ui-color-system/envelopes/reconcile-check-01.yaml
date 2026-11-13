@@ -1,0 +1,48 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-12T23:37:23.425495Z'
+status: completed
+summary: 'Isolated reconcile-reviewer round 1 on daa2b70..a237bea: targets cover the change and no P1; one P2 (no-impact wording) and three P3 documentation findings.'
+findings:
+- issue: reconcile.md No-impact reason claims "same state labels and icons with only token-level emphasis changes" for UX-run-decisions, UX-sdd-execution and UX-schedule-jobs, but the diff changed labels/icons there (RunStateBadge in RunDecisionsDialog, SddRunLinks; schedule jobs moved to Badge variants).
+  evidence: reconcile.md No impact; RunDecisionsDialog.svelte:218; SddRunLinks.svelte:74; ScheduleJobsView.svelte
+  failure_condition: A later reader trusts the stated reason and misses that labels and icons changed on those surfaces.
+  suggested_action: 'Reword: those documents name the run state/status badge without setting label, icon or emphasis; the shared run state badge (presentation.ts, ux-objects state/lease context) and docs/steering/visual-style.md own those details.'
+  resolution: open
+  severity: P2
+- issue: UX-dashboard "Open the Needs-you tile" Feedback cites UC-deliver-pull-request *a/*b/*c; *a is pausing, which is wrong for held or failed runs.
+  evidence: docs/ux/operations/UX-dashboard.md:52
+  failure_condition: A reader maps the Needs-you navigation to the pause extension that does not apply to failed, paused or blocked runs.
+  suggested_action: Name the continuing controls (Resume Run *c, Cancel Run *b, or Decisions for a blocked run's question) or drop the UC references.
+  resolution: open
+  severity: P3
+- issue: docs/steering/visual-style.md states absolutes (display case in code, not CSS capitalize; no animate-pulse on live/routine indicators) that untouched UI still violates.
+  evidence: ScheduleJobsView.svelte:159, DashboardView.svelte:354, AttemptHistoryDialog.svelte, DecisionQuestion.svelte:26 (capitalize); RunDecisionsDialog.svelte:257, SddDecisionHistory.svelte:88 (animate-pulse)
+  failure_condition: The steering file describes current UI as compliant when it is not, so contributors cannot tell the rule's reach.
+  suggested_action: Scope the rules to new and changed surfaces (and casing-sensitive labels) and record the remaining cases as follow-up feedback; no code change in this Unit.
+  resolution: open
+  severity: P3
+- issue: docs/README.md "Read by purpose" lacks docs/steering/visual-style.md.
+  evidence: docs/README.md:11-24
+  failure_condition: Contributors choosing colors do not find the visual style steering file from the documentation guide.
+  suggested_action: Add a Read by purpose row for the visual style.
+  resolution: open
+  severity: P3
+assumptions:
+- No-impact on UX-run-decisions, UX-sdd-execution and UX-schedule-jobs is correct; only the stated reason is wrong (F1).
+- The hub-ui README is a contributor guide, not a Living Spec target.
+- The Needs-you row Step cell is a valid global reason; only its Feedback cell is wrong (F2).
+- Rejecting all 35 entrypoint candidates is correct.
+- The Review saved answer row documents an existing path.
+unverified_areas:
+- Rendered contrast
+- just lint, just check and just test-ui not run by the reviewer
+- Feedback bodies against the source-feedback reference
+checks:
+  lint: 'PASS devkit rules check --ci --base main: errors=0 warnings=0 (35 rules)'
+  entrypoints: 'PASS entrypoints derive dry-run: 35 candidates, applied=0'
+diff_scope:
+  base: daa2b7028a9fa3cdad93117ca087f93a3f3f1acb
+  head: a237bea5ce9b8fe34c46de5b4fe8274c22b6a2cf
