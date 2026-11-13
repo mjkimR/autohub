@@ -8,7 +8,7 @@ target: app_layer_base TimestampMixin (updated_at server_onupdate) and owner mod
 origin: agent
 severity: workaround
 recurring: false
-status: open
+status: promoted
 created_at: 2026-11-13
 ---
 
@@ -33,3 +33,5 @@ created_at: 2026-11-13
 app_layer_base/base/models/mixin.py: updated_at ... server_default=func.now(), server_onupdate=func.now()
 rg "updated_at" in modules/hub/app: only flows/repos.py sets it explicitly; migrations define no update trigger.
 ```
+
+- **Disposition**: PROP-updated-at-maintenance: bugfix proposal to maintain `updated_at` on every write to Hub-owned rows, with the affected models and readers surveyed.
