@@ -1,0 +1,21 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T08:25:53.750993Z'
+status: completed
+review: review-01.yaml
+summary: Independent reviewer confirms both stale project-option paths fenced and selection preserved
+findings:
+- issue: Older project-option requests overwrite newer results
+  evidence: 'ScheduleConfigsView.svelte:73-85 lacks request generation. Independent ignored review-01/options-race.test.ts failed2 tests: older error replaces newer success, older success removes Current project option.'
+  failure_condition: Initial/Refresh/Retry reads overlap and an older request settles after the latest
+  suggested_action: Fence both success and error by request generation and retain regression coverage
+  resolution: resolved
+  severity: P2
+checks:
+  tests: PASS focused16 and fullUI594; independent permanent regression inspection
+  rules: PASS fix-range35 rules zero errors or warnings
+diff_scope:
+  base: aa77391f4e122c5cf1ee6d78d68b109b44a69fc2
+  head: 73b80c748c8a30d588b12293bb827f452f59f4f2
