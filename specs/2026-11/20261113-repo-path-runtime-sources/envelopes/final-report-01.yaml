@@ -1,0 +1,17 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T04:43:00.181349Z'
+status: completed
+summary: 'SDD runtime selection accepts in-checkout path, editable and workspace-member sources: captured by the Hub at selection (no symlinks, 10,000 files/32 MiB), hashed into the identity (unchanged for locks without path sources), built offline in the sandbox and installed as wheels; outside paths stay SDD_RUNTIME_SOURCE_UNSUPPORTED. ADR-repository-path-sources supersedes the identity clause of ADR-repository-locked-runtime in part.'
+findings: []
+assumptions:
+- No before/after performance outcome applies; the measurable outcome is behavioral (path-source repositories were refused, now install), shown by the real sandboxed integration test
+checks:
+  tests: PASS just test 1536 passed 82 skipped; just test tests/unit/features/project_management/sdd 270 passed; just test-sdd sdd-v016-a1ff with AUTOHUB_SDD_BUILD=base .cache/sdd-build 148 passed 7 skipped
+  build: PASS just check (pyright hub and sdk 0 errors, hub-ui check and build)
+  lint: PASS just lint; devkit rules check --ci --base 32c69e5 0 errors
+diff_scope:
+  base: 32c69e53124dd6aae4e84cfe8a2613a12b386d23
+  head: 1df75cda385597804b39b73e52e54a320801248a
