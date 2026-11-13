@@ -9,6 +9,8 @@ created_at: 2026-11-13
 
 # [ADR-repository-locked-runtime] Evaluate SDD with the repository-locked runtime
 
+Superseded in part by `ADR-repository-path-sources`: the clause that the runtime identity is the digest of the uv export of that group plus the interpreter minor version.
+
 - **Status**: Accepted
 - **Date**: 2026-11-13
 
