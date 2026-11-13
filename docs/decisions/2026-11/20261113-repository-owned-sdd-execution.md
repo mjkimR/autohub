@@ -1,16 +1,16 @@
 ---
-id: PADR-repository-owned-sdd-execution
+id: ADR-repository-owned-sdd-execution
 title: Keep repository SDD execution outside Hub
 summary: "For connected-repository SDD work, we delegate setup and workflow execution to the repository and its agent, to keep Hub focused on PR orchestration, accepting failures discovered after dispatch."
-proposal: PROP-optimistic-sdd-orchestration
+proposal: SPEC-optimistic-sdd-orchestration
 supersedes: [ADR-repository-locked-runtime, ADR-repository-path-sources, ADR-offline-source-build, ADR-sdd-batch-ledger]
-status: draft
+status: accepted
 created_at: 2026-11-13
 ---
 
-# [PADR-repository-owned-sdd-execution] Keep repository SDD execution outside Hub
+# [ADR-repository-owned-sdd-execution] Keep repository SDD execution outside Hub
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Date**: 2026-11-13
 
 ## 1. Context & Problem Statement
@@ -73,7 +73,7 @@ accepted during Planning. The promoted decision replaces all in-force decisions 
 to superseded during Development reconciliation. `ADR-sdd-development` remains
 accepted because it governs Auto Hub's own contributor workflow.
 
-The open-proposal inventory in `PROP-optimistic-sdd-orchestration` has no proposal
+The open-proposal inventory in `SPEC-optimistic-sdd-orchestration` has no proposal
 whose sole outcome is embedded SDD evaluation. Keep unrelated outcomes; adjust
 live native-control assumptions in `PROP-run-origin-links` and deleted-write
 examples in `PROP-updated-at-maintenance`. This decision rejects the embedded
@@ -96,7 +96,7 @@ GitHub Actions; this decision creates no verification workflow on their behalf.
 ## 6. Confirmation
 
 Planned checks are OPT-01 through OPT-12 in
-`PROP-optimistic-sdd-orchestration`: API/PR progression and question regressions,
+`SPEC-optimistic-sdd-orchestration`: API/PR progression and question regressions,
 retirement migration and PostgreSQL ownership races, UI historical reads,
 bridge refusal and generic SDK regressions, and packaging/CLI reachability
 inspection. Development reconciles the restating contracts before this ADR is

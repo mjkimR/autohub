@@ -1,76 +1,97 @@
 ---
-id: PROP-optimistic-sdd-orchestration
-title: Delegate SDD execution to repositories and agents
-summary: "Remove Hub-side SDD runtime preparation and workflow evaluation. Start repository work optimistically through ordinary PR delivery and observe repository-owned GitHub Actions checks."
-status: accepted
-created_at: 2026-11-13
-target_area: capabilities/sdd/
-priority: high
-size: L
-planning_effort: high
-dev_effort: high
-boundaries:
-  owns:
-    - modules/hub/app/features/project_management/
-    - modules/hub/app/features/execution/flows/
-    - modules/hub/app/features/execution/tasks/domains/maintenance/
-    - modules/hub/app/mcp/
-    - modules/hub/migrations/
-    - modules/hub/tests/
-    - modules/hub-ui/src/
-    - packages/sdk/
-    - config/
-    - scripts/
-    - docker/
-    - .github/workflows/
-    - justfile
-    - docs/
-    - README.md
-  excludes:
-    - .devkit/managed/
-    - .agents/skills/
-    - .codex/
-    - .devkit/config.toml
-    - pyproject.toml
-    - uv.lock
-task_kind: feature
-workflow: sdd-proposal
+id: PLAN-optimistic-sdd-orchestration
+spec: SPEC-optimistic-sdd-orchestration
 ---
 
-# [PROP-optimistic-sdd-orchestration] Delegate SDD execution to repositories and agents
+# Technical Plan: `SPEC-optimistic-sdd-orchestration`
 
-## 1. Background & Hypothesis
+## 1. Constitution & Invariant Review
 
-Hub prepares a repository-specific devkit runtime, restores its managed assets,
-evaluates its workflow and dispatches one stage at a time. This makes repository
-setup and correctness prerequisites of Hub orchestration. The intended boundary
-assigns those responsibilities to the repository and its working agent.
+`ADR-repository-owned-sdd-execution` replaces the runtime, path-source,
+offline-source-build and native-batch decisions. Their current contracts are
+reconciled before integration; Auto Hub contributor SDD and generic SDK remain.
+The user approved removal of live native batches and both built-in SDK bridges.
+Independent UX review requested by the user ran against the draft panels;
+its owner-conflict, unknown-result and interface-link findings are resolved.
 
-Hub should start requested work optimistically and retain its existing PR owner,
-operator questions, delivery identity, retries and GitHub CI/merge observation.
-Hub-side `devkit sync` is removed without a replacement runner or Actions job.
-Repository verification, when configured, executes in repository-owned GitHub
-Actions. This does not change Auto Hub's own contributor SDD workflow.
+## 2. Architecture Overview & Impact
 
-## 2. Planning Decisions
+Use ordinary PR progression for new SDD activities. No new package or service.
+Retain descriptive `sdd_snapshot` with `execution_version: 2`,
+`provider: repository-agent`, `spec_dir`, activity/handoff intent and optional
+effort. Legacy snapshots without version 2 are read-only; they never select live
+native progression. Activity claims use the same version discriminator in their
+checkpoint. Shared helper predicates prevent truthiness-based routing.
 
-Baseline: `main` at `9cc90ff27daa15256ea38488464e6330089d8a69`. This request
-has no prerequisite unit. The local checkout was clean, so Planning uses
-`plan-optimistic-sdd-orchestration` in this checkout under `worktree=auto`.
-Remote branch absence could not be checked because origin DNS was unavailable;
-no push or remote operation succeeded.
+Preserve GitHub activity ownership/checkpoints while replacing local Git branch
+commits with GitHub ref creation and Draft PR creation. The worker receives the
+repository instructions and requested intent, without stage or sync commands.
+Keep question correlation and current-head CI; ingest optimistic questions before
+push-based progression, including while observing CI, and recheck pending input
+at the merge fence.
 
-The Scout inspected the existing PR lifecycle and identified the coupling in
-`MAT-optimistic-sdd-boundary`. This is source inspection,
-not an executed runtime or deployment claim.
+Retain historical batch models, repository reads and decision receipts. Remove
+all executable graph/runtime/controller modules and SDD batch maintenance. Retire
+both built-in bridge namespaces at registration/admission and durably settle
+unreceipted old work. Receipt-backed bridge deliveries observe the old owner only.
 
-| Option | Responsibility | Cost and consequence |
-| --- | --- | --- |
-| Keep the embedded evaluator | Hub installs devkit, restores assets and decides each stage. | Preserves native guarantees but retains the responsibility being removed. |
-| Move the evaluator to Actions | Hub requests remote evaluation and consumes its result. | Adds a remote protocol and still makes Hub enforce repository workflow. No requirement justifies it. |
-| Optimistic PR orchestration (selected) | An agent owns repository setup, SDD interpretation and progress; Hub owns delivery, questions and GitHub observations. | Removes preflight guarantees. Invalid work can consume an attempt before the agent reports a problem. |
+## 3. Component & Interface Design
 
-### Responsibility boundary
+- New Runs: ordinary enrollment plus optional descriptive SDD unit intent. No
+  status/size/receipt/lock evaluation. Existing branch/path shape guards remain.
+- `StartActivityRequest`: existing request UUID, base, catalog and effort fields.
+  Starts are idempotent and always Draft. The claim's exact saved artifacts guard
+  response-loss recovery; a different owner remains a conflict.
+- Runtime/readiness/milestone evaluation and native typed decisions are retired.
+  Old native mutations return HTTP 410 `SDD_EXECUTION_RETIRED`; history GETs remain.
+- Batch create/resume is retired; history and local Stop settlement remain.
+- Legacy bridge registration/start/control new effects return HTTP 410
+  `SDD_BRIDGE_RETIRED`. Async unreceipted attempts settle failed, not retryable.
+- Legacy claim reconciliation is explicit, project-scoped and bound to the exact
+  retained checkpoint digest and actor acknowledgment of inspected external work.
+  It releases only the selected reservation, never resumes a Run or creates work.
+
+```mermaid
+flowchart LR
+  User[Operator intent] --> Hub[PR dispatch and questions]
+  Hub --> Agent[Repository agent]
+  Agent --> Repo[Repository setup and workflow]
+  Repo --> PR[GitHub PR]
+  PR --> CI[Repository Actions]
+  CI --> Hub
+```
+
+## 4. Storage & State Management
+
+Use a frozen data migration after `b582df39e211`; add no destructive schema drop.
+Cancel nonterminal legacy native Runs, revoke leases and settle mutable local
+attempt state. Stop old batches while retaining selections and outcomes. Fence
+legacy claims and retain uncertainty/reservations until explicit reconciliation.
+Delete rebuildable actionable native decision projections, retaining owner
+receipts. A downgrade does not reactivate anything. New snapshots/claims carry
+version 2 and follow ordinary PR locks and immutable attempt identity.
+
+## 5. Error Handling & Edge Cases
+
+Unknown GitHub publication retains the exact original intent and request ID;
+recovery inspects the saved candidate, never fabricates a replacement. Wrong
+project/ref/catalog/owner still refuses. Retired mutation refusals occur before
+repository execution or remote writes. Completed legacy records stay unchanged.
+External agents cannot be canceled by local retirement; operators inspect them
+before acknowledging ownership release. A question/answer is never merge authority.
+
+## 6. Verification & Test Plan
+
+Run focused optimistic launch/recovery, question/push/CI, retired mutation and
+historical-read tests; migration upgrade/downgrade and PostgreSQL claim races;
+SDK bridge retirement plus generic flows; frontend integration tests for absent
+probes/controls, preserved unknown intent and history. Then `just lint`, `just
+check`, `just docs-check`, `just gen-ui-api` and `just check-ui-api`. Run standalone
+SDK tests/build if its code changes. No live provider/GitHub result is claimed.
+
+## Approved Responsibility and Retirement Details
+
+#### Responsibility boundary
 
 - Start intent is explicit: project, base branch, proposal/spec path, Planning or
   Development and optional catalog/effort. This is a work request, not proof that
@@ -97,7 +118,7 @@ not an executed runtime or deployment claim.
   push while the PR is Draft. Reuse correlation/head fences; do not reintroduce
   repository workflow evaluation to decide whether the question is valid.
 
-### Removal inventory
+#### Removal inventory
 
 | Area | Remove | Retain or simplify |
 | --- | --- | --- |
@@ -117,7 +138,7 @@ built-in bindings. Historical records and IDs remain readable; no evaluator
 fallback is kept for them. Delete evaluator-only tests and replace them with
 regressions for the new boundary and retained orchestration.
 
-### Scope Excluded
+#### Scope Excluded
 
 - Creating a GitHub Action, remote devkit runner or check-result ingestion protocol.
 - Delegating `devkit sync` to a runner or Action as a substitute for its removal.
@@ -127,7 +148,7 @@ regressions for the new boundary and retained orchestration.
   provider adapters, Work Plans or Auto Hub's own SDD contributor process.
 - Deleting historical runs, attempts, batch selections, decisions or PR links.
 
-### Historical and in-flight work
+#### Historical and in-flight work
 
 The cutover stops new legacy-native admission before changing its dispatch path.
 A data migration marks every nonterminal old native Run canceled with an explicit
@@ -156,7 +177,7 @@ reservation until that acknowledgment records the exact candidate. Operator
 rollout guidance covers external agents still working after local cancellation.
 A downgrade never reactivates a retired Run, batch or claim.
 
-### Related open proposal disposition
+#### Related open proposal disposition
 
 The user authorized rejection of related open proposals. Inventory covers the
 six other proposal anchors returned by `docs list proposal --all-namespaces
@@ -179,72 +200,3 @@ Development rechecks the inventory and aligns surviving partial proposals under
 exclusive ownership before they are used for a later handoff. If another live
 branch owns one, coordinate that change rather than rewriting it from this task.
 
-### Acceptance and verification
-
-- **OPT-01**: Given a repository with no devkit lock, missing receipt or unsupported
-  Python requirement, when an authorized activity starts, then Hub dispatches the
-  requested work without installing dependencies or evaluating repository setup.
-- **OPT-02**: Given a requested proposal whose status/size/prerequisites do not
-  satisfy devkit, when work starts, then Hub does not reject it on those grounds;
-  the agent may report the repository problem through its normal question path.
-- **OPT-03**: Given Planning or Development start and a repeated request after a
-  lost response, then the same owned branch/Draft PR/Run is recovered. No server
-  proposal-status commit, checkout, `sync` or workflow evaluation occurs.
-- **OPT-04**: Given an implementation request, then it names intent/unit/effort and
-  repository instructions without an evaluated stage or single-stage stop. Agent
-  questions, selected answers and explicit resume use existing durable identity.
-- **OPT-05**: Given a correlated question before or after an agent push, then the
-  Run waits for input; a saved answer alone neither resumes nor grants merge.
-  A late question cannot be bypassed just because the head advanced.
-- **OPT-06**: Given an agent push and no open question, then existing configured
-  GitHub CI observation proceeds. Draft never merges; ready plus current-head CI
-  and project policy can merge. Head changes and return to Draft invalidate any
-  in-flight merge decision without repository workflow reevaluation.
-- **OPT-07**: Given the application/worker/MCP routes, then no retained request can
-  reach a devkit command, runtime install, source build, local repository checkout
-  or native workflow interpreter. Removed UI controls cause no background probes.
-- **OPT-08**: Given a legacy native Run/batch/claim, then migration preserves its
-  history, ends local progression, fences stale workers and refuses conversion
-  or resume. Explicit reconciliation is required before uncertain ownership can
-  be released to new work. No external cancellation or successful merge is invented.
-- **OPT-09**: Given a built-in bridge binding or old bridge flow, then no runtime
-  check or fresh PR-resume effect runs. A receipt-backed already resumed delivery
-  can observe its owner; generic SDK flows and standalone SDK dependencies work.
-- **OPT-10**: Given an SDD document view or historical Run/batch link, then the
-  operator can browse the exact available subject and see its retired status
-  without readiness claims, actionable native decisions or execution controls.
-- **OPT-11**: Given the serving image and ordinary project setup, then no SDD build
-  environment, cache, sandbox probe or source-read credential is required. The
-  contributor's own devkit setup and checks continue to run.
-- **OPT-12**: Given reconciled documents and live proposal scopes, then active
-  contracts describe repository-owned setup/execution, accepted runtime decisions
-  have the correct supersession, and no retained proposal requires live SDD
-  eligibility/control on a retired historical surface.
-
-Development runs focused backend API/progression/question/migration tests,
-PostgreSQL ownership races, UI integration tests for removed controls/history,
-SDK bridge retirement and generic flow regressions, plus `just lint`, `just
-check`, `just docs-check`, `just gen-ui-api`/`just check-ui-api`. If standalone SDK
-code changes, run `just test-sdk` and `just build-sdk`. These are required future
-checks; Planning reports its own executed checks separately. No deployment,
-provider or live GitHub result is inferred from local verification.
-
-## 3. Proposed Delivery
-
-One feature spec delivers the responsibility change across dependent consumers.
-Implement the new execution discriminator and legacy fences before routing new
-activity work through ordinary PR delivery. Remove native evaluation/control and
-bridge entrypoints, then evaluator modules/assets. Simplify UI/MCP/generated API,
-reconcile owning contracts and supersede decisions in the same delivery.
-
-The PADR is `PADR-repository-owned-sdd-execution`. Its promoted ADR is the
-responsibility decision; the detailed acceptance examples above become the spec.
-No separate replacement runner or scheduling project is required for completion.
-
-## 4. Lifecycle & Retirement Criteria
-
-The proposal is reviewing until the concrete removal scope passes `plan-accept`.
-On acceptance, promote its PADR during handoff and implement the single feature
-spec. Do not describe capabilities as changed until the implementation lands.
-Retain completed specs as history. Rejection records the decision without deleting
-history or changing currently implemented behavior.

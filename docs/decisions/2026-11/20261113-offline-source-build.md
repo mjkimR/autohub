@@ -9,6 +9,8 @@ created_at: 2026-11-13
 
 # [ADR-offline-source-build] Build locked sources offline after Hub-side fetch
 
+Superseded in part by `ADR-repository-owned-sdd-execution`: all decisions assigning source fetch, build and isolated evaluation to Hub.
+
 - **Status**: Accepted
 - **Date**: 2026-11-13
 

@@ -1,0 +1,29 @@
+kind: ux-review
+stage: specify
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T06:15:52.443168Z'
+status: completed
+summary: 'round 1; target start/completion flows reviewed: repository panel R1=2 R2=2 R3=1 R4=1 R5=2 R6=2; PR context R1-R6=2.'
+findings:
+- issue: 'UC-start-sdd-activity 2–4: ownership conflicts lack recovery state (R3).'
+  evidence: spec.md Screens > Repository activity panel > States
+  failure_condition: An active owner or uncertain legacy claim is presented as retry-only.
+  suggested_action: Name retained owner, evidence links and explicit reconciliation requirements.
+  resolution: open
+- issue: 'UC-start-sdd-activity 3–4: unknown publication does not fence replacement intent (R4).'
+  evidence: spec.md Screens > Repository activity panel > States and Interactions
+  failure_condition: Changing selection obscures an unresolved original start request.
+  suggested_action: Preserve original intent/recovery disclosure and disable competing starts until settlement or explicit reconciliation.
+  resolution: open
+- issue: 'link check (reviewer judgment): completion steps 1–3 and 7 lack explicit interface mappings.'
+  evidence: spec.md Screens > PR activity context panel > Interactions and target flow
+  failure_condition: Reconciliation leaves steps attached to removed readiness/stage controls.
+  suggested_action: Map opening/execution/CI progression to retained ordinary Run screens.
+  resolution: open
+assumptions:
+- Reviews uncommitted Screens; emulated read-only role, unchanged tree 7725faecf8175e2764cded964a29c777afb792c9.
+checks: {}
+diff_scope:
+  base: ''
+  head: 725317b9e4450a1abfda7d20d0b72571191ce7ed

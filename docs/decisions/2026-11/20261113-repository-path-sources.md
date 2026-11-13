@@ -9,6 +9,8 @@ supersedes: [ADR-repository-locked-runtime]
 
 # [ADR-repository-path-sources] Install repository path sources from the evaluated checkout
 
+Superseded in part by `ADR-repository-owned-sdd-execution`: all decisions assigning path-source capture, identity and installation to Hub.
+
 - **Status**: Accepted
 - **Date**: 2026-11-13
 - **Involved Components/Capabilities**: `capabilities/sdd/`

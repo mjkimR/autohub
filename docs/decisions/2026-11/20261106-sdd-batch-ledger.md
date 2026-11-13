@@ -9,6 +9,8 @@ created_at: 2026-11-05
 
 # [ADR-sdd-batch-ledger] Keep sequential SDD selection separate from native activity owners
 
+Superseded in part by `ADR-repository-owned-sdd-execution`: all decisions defining live graph-based native SDD batch admission and progression.
+
 ## 1. Context & Problem Statement
 
 Selected native units cross proposal Planning, handoff and spec Development. `CAP-SDD-native-delivery` and `CAP-SDD-workflow-control` assign each activity and PR its own authority. Repository anchors can disappear after handoff; a batch cannot infer scheduling authority from a similar spec name.

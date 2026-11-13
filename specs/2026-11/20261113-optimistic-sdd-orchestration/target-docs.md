@@ -3,7 +3,7 @@ id: PROP-optimistic-sdd-orchestration-target
 title: Repository-owned SDD execution Living Spec targets
 summary: "Plan optimistic activity dispatch, retire live SDD evaluation and bridge contracts, and retain historical native execution evidence."
 status: draft
-proposal: PROP-optimistic-sdd-orchestration
+proposal: SPEC-optimistic-sdd-orchestration
 created_at: 2026-11-13
 targets:
   - file: docs/capabilities/sdd/CAP-SDD-native-delivery.md
@@ -51,7 +51,7 @@ targets:
 
 # [PROP-optimistic-sdd-orchestration-target] Repository-owned SDD execution Living Spec targets
 
-This blueprint is conditional on `PROP-optimistic-sdd-orchestration`; it does not
+This blueprint is conditional on `SPEC-optimistic-sdd-orchestration`; it does not
 change the implemented guarantees before Development lands.
 
 ## 1. Capabilities and Use Cases
@@ -70,7 +70,7 @@ change the implemented guarantees before Development lands.
 - Align `CAP-PR-pull-request-delivery`, `CAP-PR-operator-decisions` and
   `CAP-MCP-tool-access` with generic execution, questions, current-head CI and the
   retired mutations. Add reciprocal capability/use-case links where ownership moves.
-- Resolve reverse references in `materials/reverse-references.txt`. Additional
+- Resolve reverse references in `docs/materials/2026-11/20261113-optimistic-sdd-orchestration/reverse-references.txt`. Additional
   active contract references found by Development are reconciliation targets;
   completed specs remain historical evidence.
 
@@ -100,7 +100,7 @@ credentials and documents the smaller serving dependency boundary.
 `ARCH-11-risks-and-technical-debt` stop promising runtime compatibility or native
 stage guarantees. They retain ordinary PR ownership/recovery guarantees.
 
-Promote `PADR-repository-owned-sdd-execution` at handoff. When the implementation
+Promote `ADR-repository-owned-sdd-execution` at handoff. When the implementation
 and restating contracts agree, mark `ADR-repository-locked-runtime`,
 `ADR-repository-path-sources`, `ADR-offline-source-build` and
 `ADR-sdd-batch-ledger` superseded by that ADR. Preserve `ADR-sdd-development`.

@@ -24,7 +24,7 @@ Inspection is separate from executed checks and live deployment evidence.
 
 The Scout's independent read-only snapshot had tree
 `804983b7fc4f815aead18ba2292b3ba0fa38d08f` before and after; HEAD remained
-the source baseline. Its return is recorded in `envelopes/scout-01.yaml`.
+the source baseline. Its return is recorded in historical Git `725317b9e4450a1abfda7d20d0b72571191ce7ed:docs/proposals/PROP-optimistic-sdd-orchestration/envelopes/scout-01.yaml`.
 
 Owning contracts: `CAP-SDD-native-delivery`, `CAP-SDD-workflow-control`,
 `CAP-SDD-runtime-isolation`, `CAP-SDK-existing-pr-bridge`,
