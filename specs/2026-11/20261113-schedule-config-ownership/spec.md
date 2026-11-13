@@ -2,7 +2,7 @@
 id: SPEC-schedule-config-ownership
 title: Schedule configuration ownership and project filter
 summary: "Derive verified schedule owners and mutation metadata in bounded reads, and filter schedules by project before pagination."
-status: planned
+status: in-progress
 created: 2026-11-13
 related_capabilities: [CAP-EXEC-scheduling-maintenance, CAP-AGENT-provider-sessions, CAP-PROJ-project-connections]
 related_usecases: []
@@ -67,3 +67,7 @@ The generic schedule list guesses ownership from task names and payloads, expose
 Resolution order is system.maintain; pipeline.dispatch_project; pipeline.connection_test; remaining agent-owned configuration; remaining pipeline.observe_project; operator. Reserved and agent-owned rows deny generic mutation; observation/operator rows allow it. Existing guard authority is preserved. IDs come only from retained owners/projects. Canonical and unhyphenated UUID strings are supported; malformed/nonstring values are unresolved.
 
 `PROP-schedule-config-ownership-target` carries the accepted Screens and six-document ledger. Reuse that layout and verified project names with ID fallback; no new screen alternative is selected. Inspection of current source confirms the carried premises. Development runs at medium effort with independent code and reconciliation reviews. No live rollout is included.
+
+## Implementation assumptions
+
+Existing PATCH permits clearing both triggers. Read DTO validation preserves those manual-only persisted rows; mutation input validators are unchanged. Internal dispatcher DTO defaults preserve its construction without owner queries, while every public CRUD read explicitly projects owner metadata. The shared pagination dependency did not copy skip_count; the schedule-local dependency now applies the accepted option explicitly.

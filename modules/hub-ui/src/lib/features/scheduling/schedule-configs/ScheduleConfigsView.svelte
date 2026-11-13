@@ -3,9 +3,10 @@
 	import { PaginatedState } from '$lib/state/paginated.svelte';
 	import ListPagination from '$lib/components/shared/ListPagination.svelte';
 	import ScheduleEditorDialog from './ScheduleEditorDialog.svelte';
+	import ScheduleOwnerLabel from './ScheduleOwnerLabel.svelte';
 	import type { ScheduleEditor } from './schedule-form';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
-	import { countedPage, responseData } from '$lib/api/pagination';
+	import { allPages, countedPage, responseData } from '$lib/api/pagination';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
@@ -60,33 +61,35 @@
 	let isDeleting = $state(false);
 	let deletingConfig = $state<ScheduleConfig | null>(null);
 
-	// Project schedules and legacy tasks retained for compatibility.
-	const PROJECT_MANAGED_TASKS = new Set([
-		'pipeline.dispatch_project',
-		'pipeline.connection_test',
-		'pipeline.observe_project',
-		'jules.session',
-		'jules.sync_sessions'
-	]);
+	let projectId = $state('');
+	let projects = $state<components['schemas']['ProjectRead'][]>([]);
+	let projectError = $state('');
+	const projectNames = $derived(new Map(projects.map((project) => [project.id, project.name])));
 
 	function isProjectManaged(config: ScheduleConfig): boolean {
-		return PROJECT_MANAGED_TASKS.has(config.task_func);
+		return config.owner?.kind !== 'operator' && config.owner?.kind !== 'system_maintenance';
 	}
 
-	/**
-	 * The owning project's tab for a project-managed row; rows whose payload names no project
-	 * (connection-test payloads carry only the test ID) fall back to the project list.
-	 */
-	function projectTabHref(config: ScheduleConfig, tab: 'automation' | 'connections'): string {
-		const projectId = config.payload.project_id;
-		return typeof projectId === 'string'
-			? `/projects/${encodeURIComponent(projectId)}?tab=${tab}`
-			: '/projects';
+	async function loadProjects() {
+		projectError = '';
+		try {
+			projects = await allPages(async (offset, limit) =>
+				responseData(
+					await api.GET('/api/v1/projects', {
+						params: { query: { offset, limit, skip_count: false } }
+					}),
+					'Failed to load projects'
+				)
+			);
+		} catch {
+			projectError = 'Failed to load project options. Retry to choose a project.';
+		}
 	}
 
 	async function loadConfigs(offset = list.offset) {
 		const filters = {
 			search: searchQuery.trim(),
+			...(projectId ? { project_id: projectId } : {}),
 			enabled: enabledFilter === '' ? undefined : enabledFilter === 'true'
 		};
 		await list.load(
@@ -115,6 +118,7 @@
 	function refresh() {
 		void loadConfigs();
 		void loadTaskSpecs();
+		void loadProjects();
 	}
 
 	async function toggleEnable(config: ScheduleConfig) {
@@ -190,6 +194,7 @@
 </script>
 
 <div class="space-y-6">
+	{#if projectError}<LoadError message={projectError} retry={loadProjects} />{/if}
 	{#if taskSpecsError}<LoadError message={taskSpecsError} retry={loadTaskSpecs} />{/if}
 	{#if loadError}<LoadError message={loadError} retry={() => loadConfigs()} />{/if}
 	<!-- Page Header -->
@@ -227,6 +232,13 @@
 				class="pl-9"
 			/>
 		</div>
+		<NativeSelect aria-label="Project" bind:value={projectId} onchange={() => loadConfigs(0)}>
+			<option value="">All projects</option>
+			{#if projectId && !projectNames.has(projectId)}<option value={projectId}>{projectId}</option
+				>{/if}
+			{#each projects as project (project.id)}<option value={project.id}>{project.name}</option
+				>{/each}
+		</NativeSelect>
 		<NativeSelect
 			aria-label="Schedule status"
 			bind:value={enabledFilter}
@@ -276,23 +288,13 @@
 							<TableCell class="max-w-80 min-w-48 whitespace-normal">
 								<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
 									<span class="font-semibold text-foreground">{config.name}</span>
-									{#if config.task_func === 'system.maintain' || isProjectManaged(config)}
-										<Badge variant="info">
-											{config.task_func === 'system.maintain'
-												? 'System Managed'
-												: 'Project Managed'}
-										</Badge>
-									{/if}
+									<ScheduleOwnerLabel
+										{config}
+										projectName={projectNames.get(config.owner?.project_id ?? '')}
+									/>
 								</div>
 								{#if config.description}
 									<div class="line-clamp-1 text-xs text-muted-foreground">{config.description}</div>
-								{/if}
-								{#if config.task_func === 'pipeline.observe_project'}
-									<!-- CI observation is also listed and managed in its project's Automation tab. -->
-									<a
-										class="text-xs font-medium underline-offset-4 hover:underline"
-										href={projectTabHref(config, 'automation')}>Project automation</a
-									>
 								{/if}
 							</TableCell>
 							<TableCell class="font-mono text-xs text-muted-foreground">
@@ -328,17 +330,10 @@
 								{config.next_run_at ? new Date(config.next_run_at).toLocaleString() : '—'}
 							</TableCell>
 							<TableCell class="text-right">
-								{#if config.task_func === 'system.maintain'}
+								{#if config.owner?.kind === 'system_maintenance'}
 									<span class="text-xs text-muted-foreground">Managed by Auto Hub</span>
-								{:else if config.task_func === 'pipeline.dispatch_project'}
-									<!-- Owned rows link to the owning project's tab; the dispatch interval lives in Automation. -->
-									<Button variant="outline" size="sm" href={projectTabHref(config, 'automation')}>
-										Project automation
-									</Button>
-								{:else if config.task_func === 'pipeline.connection_test'}
-									<Button variant="outline" size="sm" href={projectTabHref(config, 'connections')}>
-										Project connections
-									</Button>
+								{:else if !config.generic_mutation_allowed}
+									<span class="text-xs text-muted-foreground">Managed by owner</span>
 								{:else}
 									<div class="flex items-center justify-end gap-1.5">
 										<Button variant="outline" onclick={() => toggleEnable(config)}>

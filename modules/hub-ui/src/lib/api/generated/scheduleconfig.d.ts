@@ -285,6 +285,12 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            owner?: components["schemas"]["ScheduleOwner"];
+            /**
+             * Generic Mutation Allowed
+             * @default true
+             */
+            generic_mutation_allowed: boolean;
             /**
              * Last Run At
              * @description Timestamp of the most recent execution.
@@ -295,6 +301,19 @@ export interface components {
              * @description Timestamp of the next scheduled execution.
              */
             next_run_at: string | null;
+        };
+        /** ScheduleOwner */
+        ScheduleOwner: {
+            /**
+             * Kind
+             * @default operator
+             * @enum {string}
+             */
+            kind: "system_maintenance" | "project_dispatch" | "connection_test" | "project_agent_schedule" | "project_observation" | "operator";
+            /** Project Id */
+            project_id?: string | null;
+            /** Object Id */
+            object_id?: string | null;
         };
         ValidationError: CommonComponents["schemas"]["ValidationError"];
     };
@@ -308,12 +327,15 @@ export interface operations {
     get_schedule_configs_api_v1_schedule_configs_get: {
         parameters: {
             query?: {
+                skip_count?: boolean;
                 /** @description offset for pagination */
                 offset?: number;
                 /** @description limit for pagination */
                 limit?: number;
                 /** @description Case-insensitive literal substring search; percent and underscore are ordinary characters. */
                 search?: string | null;
+                /** @description Filter query parameter (project_id) */
+                project_id?: string | null;
                 /** @description Filter by name (case-insensitive substring) */
                 name?: string | null;
                 /** @description Filter by task function path (case-insensitive substring) */

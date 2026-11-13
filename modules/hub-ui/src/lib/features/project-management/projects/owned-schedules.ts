@@ -6,57 +6,26 @@ type ScheduleConfig = components['schemas']['ScheduleConfigRead'];
 export const DISPATCH_TASK = 'pipeline.dispatch_project';
 export const OBSERVATION_TASK = 'pipeline.observe_project';
 export const CONNECTION_TEST_TASK = 'pipeline.connection_test';
-const PIPELINE_TASK_PREFIX = 'pipeline.';
-
-/** Schedule configurations a project owns, by owner kind. Agent schedules load from their own API. */
+/** Schedule configurations selected by the server's verified project owner. */
 export interface OwnedSchedules {
 	dispatch: ScheduleConfig[];
 	observation: ScheduleConfig[];
 	connectionTest: ScheduleConfig[];
 }
 
-/** Every pipeline-owned configuration in one paginated read; `task_func` is a server substring filter. */
-async function pipelineConfigs(): Promise<ScheduleConfig[]> {
-	return allPages(async (offset, limit) =>
+export async function loadOwnedSchedules(projectId: string): Promise<OwnedSchedules> {
+	const configs = await allPages<ScheduleConfig>(async (offset, limit) =>
 		responseData(
 			await api.GET('/api/v1/schedule_configs', {
-				params: { query: { task_func: PIPELINE_TASK_PREFIX, offset, limit } }
+				params: { query: { project_id: projectId, offset, limit, skip_count: false } }
 			}),
-			'Could not load project schedules'
+			'Failed to load project schedules'
 		)
 	);
-}
-
-function namesProject(config: ScheduleConfig, projectId: string): boolean {
-	return config.payload.project_id === projectId;
-}
-
-/**
- * Dispatch and CI observation configurations name their project in `payload.project_id`.
- * Connection-test configurations carry only `payload.test_id`, so they are matched against the
- * project's own test IDs. Current connection tests advance through system maintenance; these rows
- * exist only for tests started before that.
- */
-export async function loadOwnedSchedules(projectId: string): Promise<OwnedSchedules> {
-	const configs = await pipelineConfigs();
-	const byTask = (taskFunc: string) => configs.filter((config) => config.task_func === taskFunc);
-	const legacyTests = byTask(CONNECTION_TEST_TASK);
-	// Most projects have no legacy connection-test rows, so their tests are read only when needed.
-	let testIds = new Set<string>();
-	if (legacyTests.length > 0) {
-		const tests = await api.GET('/api/v1/projects/{project_id}/connection-tests', {
-			params: { path: { project_id: projectId } }
-		});
-		testIds = new Set((tests.data ?? []).map((test) => test.id));
-	}
 	return {
-		dispatch: byTask(DISPATCH_TASK).filter((config) => namesProject(config, projectId)),
-		observation: byTask(OBSERVATION_TASK).filter((config) => namesProject(config, projectId)),
-		connectionTest: legacyTests.filter(
-			(config) =>
-				namesProject(config, projectId) ||
-				(typeof config.payload.test_id === 'string' && testIds.has(config.payload.test_id))
-		)
+		dispatch: configs.filter((config) => config.owner?.kind === 'project_dispatch'),
+		observation: configs.filter((config) => config.owner?.kind === 'project_observation'),
+		connectionTest: configs.filter((config) => config.owner?.kind === 'connection_test')
 	};
 }
 

@@ -1,10 +1,23 @@
+from dataclasses import replace
+from typing import Annotated
+from uuid import UUID
+
 from app.features.scheduling.schedule_configs.models import ScheduleConfig
 from app_layer_base.base.deps.filters.combine import create_combined_filter_dependency
 from app_layer_base.base.deps.filters.decorators import filter_for
 from app_layer_base.base.deps.ordering.base import order_by_for
 from app_layer_base.base.deps.ordering.combine import create_order_by_dependency
 from app_layer_base.base.deps.query_options import create_list_query_options_dependency
+from app_layer_base.base.repos.query_options import ListQueryOptions
+from fastapi import Depends
 from sqlalchemy import func, or_
+
+from .owner_repos import project_filter
+
+
+@filter_for(bound_type=UUID, alias="project_id")
+def filter_project_id(value: UUID | None):
+    return project_filter(value) if value is not None else None
 
 
 @filter_for(bound_type=str, alias="search", max_length=200)
@@ -82,6 +95,7 @@ def order_id(desc: bool):
 # Combine filters and ordering criteria into their respective dependencies
 schedule_config_filters = create_combined_filter_dependency(
     filter_search,
+    filter_project_id,
     filter_name,
     filter_task_func,
     filter_enabled,
@@ -99,7 +113,14 @@ schedule_config_ordering = create_order_by_dependency(
 )
 
 # Export the combined list query options dependency
-schedule_config_query_options = create_list_query_options_dependency(
+_schedule_config_query_options = create_list_query_options_dependency(
     filters_dependency=schedule_config_filters,
     order_by_dependency=schedule_config_ordering,
 )
+
+
+def schedule_config_query_options(
+    options: Annotated[ListQueryOptions, Depends(_schedule_config_query_options)],
+    skip_count: bool = False,
+) -> ListQueryOptions:
+    return replace(options, skip_count=skip_count)

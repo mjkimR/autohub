@@ -383,6 +383,24 @@ test('sections are grouped into Work and Setup and the breadcrumb names the proj
 });
 
 const scheduleConfig = (id: string, name: string, task_func: string, payload: object) => ({
+	owner: {
+		kind:
+			(
+				{
+					'pipeline.dispatch_project': 'project_dispatch',
+					'pipeline.observe_project': 'project_observation',
+					'pipeline.connection_test': 'connection_test'
+				} as Record<string, string>
+			)[task_func] ?? 'operator',
+		project_id:
+			task_func === 'pipeline.connection_test'
+				? id === 't1'
+					? 'p1'
+					: 'p2'
+				: ((payload as { project_id?: string }).project_id ?? null),
+		object_id: id
+	},
+	generic_mutation_allowed: task_func === 'pipeline.observe_project',
 	id,
 	name,
 	description: null,
@@ -423,10 +441,10 @@ function mockOwnedSchedules({ legacyTests = true } = {}) {
 		...(legacyTests ? legacy : [])
 	];
 	api.GET.mockImplementation(
-		(path: string, options?: { params?: { query?: { task_func?: string } } }) => {
+		(path: string, options?: { params?: { query?: { project_id?: string } } }) => {
 			if (path === '/api/v1/schedule_configs') {
-				const task = options?.params?.query?.task_func ?? '';
-				const items = configs.filter((config) => config.task_func.includes(task));
+				const projectId = options?.params?.query?.project_id;
+				const items = configs.filter((config) => config.owner.project_id === projectId);
 				return Promise.resolve({ data: { items, total_count: items.length } });
 			}
 			if (path === '/api/v1/projects/{project_id}/connection-tests')
@@ -482,7 +500,7 @@ test('automation shows every schedule the project owns and nothing another proje
 	// One paginated read covers every pipeline kind; rows are split by exact task here.
 	const configReads = api.GET.mock.calls.filter(([path]) => path === '/api/v1/schedule_configs');
 	expect(configReads).toHaveLength(1);
-	expect(configReads[0][1]).toMatchObject({ params: { query: { task_func: 'pipeline.' } } });
+	expect(configReads[0][1]).toMatchObject({ params: { query: { project_id: 'p1' } } });
 	const tests = screen.getByRole('region', { name: 'Connection tests' });
 	expect(within(tests).getByRole('link', { name: 'Connections' }).getAttribute('href')).toBe(
 		'/projects/p1?tab=connections'
@@ -492,8 +510,8 @@ test('automation shows every schedule the project owns and nothing another proje
 	expect(screen.queryByRole('dialog')).toBeNull();
 });
 
-test('automation reads connection tests only when legacy connection-test schedules exist', async () => {
-	mockOwnedSchedules({ legacyTests: false });
+test('automation avoids separate connection-test reads even for retained schedules', async () => {
+	mockOwnedSchedules({ legacyTests: true });
 	render(ProjectDetailView, { projectId: 'p1', tab: 'automation' });
 
 	expect(await screen.findByText('Dispatch Application')).toBeTruthy();

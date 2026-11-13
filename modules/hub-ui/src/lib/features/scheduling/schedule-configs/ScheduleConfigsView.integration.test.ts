@@ -12,6 +12,26 @@ vi.mock('$lib/api', () => ({ api }));
 vi.mock('svelte-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 const config = (id: string, name: string, task_func: string, enabled = true) => ({
+	owner: {
+		kind:
+			(
+				{
+					'system.maintain': 'system_maintenance',
+					'pipeline.dispatch_project': 'project_dispatch',
+					'pipeline.connection_test': 'connection_test',
+					'pipeline.observe_project': 'project_observation',
+					'jules.session': 'project_agent_schedule'
+				} as Record<string, string>
+			)[task_func] ?? 'operator',
+		project_id:
+			task_func === 'system.maintain' ||
+			task_func === 'pipeline.connection_test' ||
+			task_func === 'hello_world'
+				? null
+				: 'project-1',
+		object_id: 'owner-1'
+	},
+	generic_mutation_allowed: ['hello_world', 'pipeline.observe_project'].includes(task_func),
 	id,
 	name,
 	description: null,
@@ -76,7 +96,7 @@ test('shows why the backend refused to change a managed schedule', async () => {
 	render(ScheduleConfigsView);
 	await screen.findByText('Weekly audit');
 
-	await user.click(screen.getByRole('button', { name: 'Resume' }));
+	await user.click(screen.getByRole('button', { name: 'Pause' }));
 
 	await waitFor(() =>
 		expect(toast.error).toHaveBeenCalledWith(
@@ -103,7 +123,7 @@ test('routes project dispatch management to the Automation tab that holds the in
 	);
 	render(ScheduleConfigsView);
 	await screen.findByText('Dispatch sandbox');
-	expect(screen.getByRole('link', { name: 'Project automation' }).getAttribute('href')).toBe(
+	expect(screen.getByRole('link', { name: /Project automation for/ }).getAttribute('href')).toBe(
 		'/projects/project-1?tab=automation'
 	);
 	expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
@@ -122,6 +142,7 @@ test('connection test workers expose no generic mutation controls', async () => 
 							config('probe', 'Connection test', 'pipeline.connection_test'),
 							{
 								...config('scoped', 'Scoped connection test', 'pipeline.connection_test'),
+								owner: { kind: 'connection_test', project_id: 'project-1', object_id: 'test-1' },
 								payload: { project_id: 'project-1', test_id: 'test-1' }
 							}
 						]
@@ -132,9 +153,10 @@ test('connection test workers expose no generic mutation controls', async () => 
 	await screen.findByText('Connection test');
 	expect(
 		screen
-			.getAllByRole('link', { name: 'Project connections' })
+			.getAllByRole('link', { name: /Project connections for/ })
 			.map((link) => link.getAttribute('href'))
-	).toEqual(['/projects', '/projects/project-1?tab=connections']);
+	).toEqual(['/projects/project-1?tab=connections']);
+	expect(screen.getByText('Owner unavailable')).toBeTruthy();
 	expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
 	expect(screen.queryByTitle('Edit Schedule')).toBeNull();
 	expect(screen.queryByTitle('Delete Schedule')).toBeNull();
@@ -226,12 +248,12 @@ test.each(['cron', 'interval'] as const)(
 	}
 );
 
-test('a managed schedule edit refusal keeps the editor and its input available', async () => {
+test('an allowed schedule edit refusal keeps the editor and its input available', async () => {
 	api.PUT.mockResolvedValue({ error: { detail: 'Edit this schedule from its project' } });
 	const user = userEvent.setup();
 	render(ScheduleConfigsView);
 	await screen.findByText('Weekly audit');
-	await user.click(screen.getAllByTitle('Edit Schedule')[1]);
+	await user.click(screen.getByTitle('Edit Schedule'));
 	await fireEvent.input(screen.getByLabelText('Schedule Name'), {
 		target: { value: 'Changed audit' }
 	});
@@ -249,6 +271,7 @@ test('pages and searches schedules on the server, then recovers the last page af
 	let deleted = false;
 	api.GET.mockImplementation(async (path, options) => {
 		if (path === '/api/v1/tasks/specs') return { data: [] };
+		if (path === '/api/v1/projects') return { data: { items: [], total_count: 0 } };
 		const query = options.params.query;
 		if (query.search)
 			return { data: { items: [config('match', 'Search match', 'hello_world')], total_count: 1 } };
@@ -333,10 +356,172 @@ test('a CI observation row links to its project Automation tab and keeps its con
 	);
 	render(ScheduleConfigsView);
 	await screen.findByText('Observe sandbox');
-	expect(screen.getByRole('link', { name: 'Project automation' }).getAttribute('href')).toBe(
+	expect(screen.getByRole('link', { name: /Project automation for/ }).getAttribute('href')).toBe(
 		'/projects/project-1?tab=automation'
 	);
 	expect(screen.getByRole('button', { name: 'Pause' })).toBeTruthy();
 	expect(screen.getByTitle('Edit Schedule')).toBeTruthy();
 	expect(screen.getByTitle('Delete Schedule')).toBeTruthy();
+});
+
+test('agent ownership hides generic actions while unlinked provider tasks stay editable', async () => {
+	api.GET.mockImplementation(async (path: string) =>
+		path === '/api/v1/tasks/specs'
+			? { data: [] }
+			: path === '/api/v1/projects'
+				? { data: { items: [{ id: 'project-1', name: 'Application' }], total_count: 1 } }
+				: {
+						data: {
+							items: [
+								config('agent', 'Owned agent', 'jules.session'),
+								{
+									...config('free', 'Free provider', 'jules.session'),
+									owner: { kind: 'operator', project_id: null, object_id: null },
+									generic_mutation_allowed: true
+								}
+							],
+							total_count: 2
+						}
+					}
+	);
+	render(ScheduleConfigsView);
+	await screen.findByText('Owned agent');
+	expect(
+		screen.getByRole('link', { name: 'Agent schedules for Application' }).getAttribute('href')
+	).toBe('/projects/project-1?tab=automation');
+	const owned = screen.getByText('Owned agent').closest('tr')!;
+	expect(within(owned).queryByRole('button')).toBeNull();
+	const free = screen.getByText('Free provider').closest('tr')!;
+	expect(within(free).getByRole('button', { name: 'Pause' })).toBeTruthy();
+	expect(within(free).queryByText('Project Managed')).toBeNull();
+});
+
+test('project filter resets pagination, composes filters and project options failure retries independently', async () => {
+	let failOptions = true;
+	api.GET.mockImplementation(async (path, options) => {
+		if (path === '/api/v1/tasks/specs') return { data: [] };
+		if (path === '/api/v1/projects')
+			return failOptions
+				? { error: { detail: 'offline' } }
+				: {
+						data: {
+							items: [
+								{ id: 'project-1', name: 'Application' },
+								{ id: 'project-2', name: 'Other' }
+							],
+							total_count: 2
+						}
+					};
+		return {
+			data: {
+				items: [config('s1', 'Nightly demo', 'hello_world')],
+				total_count: options.params.query.project_id ? 1 : 51
+			}
+		};
+	});
+	const user = userEvent.setup();
+	render(ScheduleConfigsView);
+	await screen.findByText('Nightly demo');
+	await screen.findByText(/Failed to load project options/);
+	await user.click(screen.getByRole('button', { name: 'Next page' }));
+	failOptions = false;
+	await user.click(screen.getByRole('button', { name: /Retry/ }));
+	await screen.findByRole('option', { name: 'Application' });
+	await fireEvent.change(screen.getByRole('combobox', { name: 'Project' }), {
+		target: { value: 'project-1' }
+	});
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenLastCalledWith('/api/v1/schedule_configs', {
+			params: {
+				query: {
+					search: '',
+					enabled: undefined,
+					project_id: 'project-1',
+					offset: 0,
+					limit: 50,
+					skip_count: false
+				}
+			}
+		})
+	);
+	await fireEvent.input(screen.getByPlaceholderText('Search by schedule or task func...'), {
+		target: { value: 'night' }
+	});
+	await fireEvent.change(screen.getByRole('combobox', { name: 'Schedule status' }), {
+		target: { value: 'false' }
+	});
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenLastCalledWith('/api/v1/schedule_configs', {
+			params: {
+				query: {
+					search: 'night',
+					enabled: false,
+					project_id: 'project-1',
+					offset: 0,
+					limit: 50,
+					skip_count: false
+				}
+			}
+		})
+	);
+	await fireEvent.change(screen.getByRole('combobox', { name: 'Project' }), {
+		target: { value: '' }
+	});
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenLastCalledWith('/api/v1/schedule_configs', {
+			params: {
+				query: { search: 'night', enabled: false, offset: 0, limit: 50, skip_count: false }
+			}
+		})
+	);
+});
+
+test('resolved similar names remain distinct and failed project refresh preserves selection with ID fallback', async () => {
+	let failOptions = false;
+	const owned = [
+		{
+			...config('one', 'Same schedule', 'pipeline.observe_project'),
+			owner: { kind: 'project_observation', project_id: 'project-1', object_id: 'project-1' }
+		},
+		{
+			...config('two', 'Same schedule', 'pipeline.observe_project'),
+			owner: { kind: 'project_observation', project_id: 'project-2', object_id: 'project-2' }
+		}
+	];
+	api.GET.mockImplementation(async (path) =>
+		path === '/api/v1/tasks/specs'
+			? { data: [] }
+			: path === '/api/v1/projects'
+				? failOptions
+					? { error: {} }
+					: {
+							data: {
+								items: [
+									{ id: 'project-1', name: 'Application' },
+									{ id: 'project-2', name: 'Other' }
+								],
+								total_count: 2
+							}
+						}
+				: { data: { items: owned, total_count: 2 } }
+	);
+	const user = userEvent.setup();
+	render(ScheduleConfigsView);
+	await screen.findByRole('link', { name: 'Project automation for Application' });
+	expect(
+		screen.getByRole('link', { name: 'Project automation for Other' }).getAttribute('href')
+	).toBe('/projects/project-2?tab=automation');
+	await fireEvent.change(screen.getByRole('combobox', { name: 'Project' }), {
+		target: { value: 'project-1' }
+	});
+	failOptions = true;
+	await user.click(screen.getByRole('button', { name: 'Refresh' }));
+	await screen.findByText(/Failed to load project options/);
+	expect((screen.getByRole('combobox', { name: 'Project' }) as HTMLSelectElement).value).toBe(
+		'project-1'
+	);
+	expect(
+		api.GET.mock.calls.filter(([path]) => path === '/api/v1/schedule_configs').at(-1)?.[1].params
+			.query.project_id
+	).toBe('project-1');
 });
