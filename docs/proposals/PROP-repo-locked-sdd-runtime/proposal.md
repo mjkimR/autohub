@@ -90,48 +90,108 @@ Code facts this design rests on (head of this branch):
 - The SDK bridge selects the runtime with the same `runtime_scope(repository)`
   (`execution/flows/bridge.py`).
 
-Draft design (Planning recommendation, subject to the questions):
+Design after challenger round 01 (`envelopes/challenger-01.yaml`). Items marked
+**(open)** wait for the user's answers under Open decisions below.
 
-- **D1 Source**: the evaluated commit's root `pyproject.toml` and `uv.lock` are
-  parsed (never executed) in the Hub process. A lock without a `devkit-spec`
-  package refuses with a new repository diagnostic instead of falling back.
-- **D2 Install set**: the lock-graph closure of `devkit-spec`, `devkit-dist`
-  and every package the committed receipt's `packages` names (for this pilot:
-  `devkit-catalog`, `g-tools`), not the whole dev environment. Those exact
-  pinned requirements are installed with `--no-deps`, so a Godot or web
-  project's unrelated tooling is never installed.
-- **D3 Identity**: `cli_version` becomes a digest of that install set (name,
-  version, exact source and Git revision) plus the interpreter's minor version,
-  so unrelated lock changes keep a run's identity. A change of the set mid-run
-  keeps rule 9's refusal with a repository diagnostic to re-enroll (see Q1).
-- **D4 Two-phase isolation**: an install phase in the same OS sandbox with
-  network enabled, only `pyproject.toml`/`uv.lock` visible, the venv and uv
-  cache writable, and a dedicated read-only package-source credential
-  (server secret, never the project's connector token). The evaluation phase is
-  unchanged: no network, no credentials, venv read-only.
-- **D5 Cache**: a per-instance directory keyed by the identity digest, built
-  under a per-digest single-flight lock into a temporary path and renamed into
-  place with its `pin.json`, bounded by an LRU cap. Install has its own timeout,
-  longer than the 25-second command limit. Cloud Run's in-memory filesystem
-  makes cache size a memory cost; a cold install repeats per instance.
+- **D1 Source and resolution point**: the runtime is resolved after fetch, per
+  evaluated commit, from its root `pyproject.toml` and `uv.lock` (parsed, never
+  executed, in the Hub process). `checkout()` no longer selects a runtime on
+  entry. Paths and the commit whose lock they use:
+
+  | Path | Commit |
+  | --- | --- |
+  | Activity start admission (`policy.py` start_blocker) | base |
+  | Inspect, readiness, enrollment, decisions, final lint | PR head |
+  | Milestone preview and batch evidence | resolved milestone ref |
+  | SDK existing-PR bridge | operator checkout HEAD |
+
+- **D2 Install set**: the locked dependency group(s) of the root project that
+  declare `devkit-spec` (or the main dependencies when declared there),
+  rendered by uv itself with `uv sync --frozen --only-group <group>
+  --no-install-project` into the target venv. This covers every bundle package
+  the committed presets can select, including the `RECEIPT_STALE`
+  regeneration path, and leaves markers, forks and hashes to uv. The rest of
+  the repository's environment is never installed. A missing bundle after
+  install is a repository lock defect (`SDD_BUNDLES_MISSING`, now checked
+  against the installed entry points).
+- **D3 Identity**: the runtime identity is the SHA-256 of `uv export --frozen`
+  for that group plus the interpreter's minor version: a deterministic,
+  identity-only pin schema (no cache path, timestamps or ordering). Batch
+  evidence stores this identity instead of the whole `runtime_pin()` and its
+  `uv.lock` configuration hash narrows to the same digest. Whether a changed
+  identity on a later head refuses continuation is **(open, Q-A)**.
+- **D4 Install isolation and sources** **(open, Q-B)**: the install runs in the
+  OS sandbox with a writable venv and uv cache, only the manifest and lock
+  visible, `/etc/resolv.conf` and CA certificates bound read-only, and a pinned
+  `uv` copied into the runtime image stage. Evaluation is unchanged: no
+  network, no credentials, venv read-only. How private Git sources are fetched
+  and whether build backends run with network egress is the open decision.
+- **D5 Install lifecycle and cache**: installation is decoupled from request
+  budgets. A per-digest cross-process file lock (`fcntl`) makes one build per
+  instance; an existing complete target counts as success. The build runs to
+  completion in the background even when the caller's deadline expires;
+  callers meanwhile receive a retryable `SDD_RUNTIME_PREPARING` diagnostic
+  (`retry: safe`). Builds go to a temporary directory renamed into place with
+  `pin.json`. Eviction is lease-protected (never a venv an evaluation holds)
+  under an explicit byte cap; the uv cache is pruned after each install.
+  git-safe commands no longer use the devkit venv: they run in isolation with
+  the image's Git only, so branch creation and decision commits never wait for
+  a runtime install.
 - **D6 Python**: the image's interpreter (3.13) when the repository's
-  `requires-python` admits it; otherwise refuse with a diagnostic. No on-demand
-  interpreter downloads.
-- **D7 Retirement**: remove `AUTOHUB_SDD_PROFILES`, the `config/sdd-runtime*`
-  manifests, image-packaged profiles and `RUNTIME_REVISION_MISMATCH` (identical
-  by construction). `check_bundles` becomes a post-install inventory check of
-  the receipt's bundles against the installed entry points (a repository lock
-  defect). Keep the `RECEIPT_STALE` regeneration exception: a receipt can still
-  lag its own lock. The runtime status probe installs and starts devkit from the
-  project's default-branch lock. The bridge uses its checkout's lock.
-- **Migration**: runs admitted under a server pin carry an old `cli_version`
-  and are refused after deployment; the operator settles active native runs
-  before rollout (the live canary repository is the only active consumer).
+  `requires-python` admits it; otherwise refuse with a repository diagnostic.
+  No on-demand interpreter downloads.
+- **D7 Retirement and probe**: remove `AUTOHUB_SDD_PROFILES`,
+  `config/sdd-runtime-app-common` and repository mapping. Whether a default
+  image runtime remains as a fallback for repositories without a devkit lock is
+  **(open, Q-C)**. Stop emitting `RUNTIME_REVISION_MISMATCH` (identical by
+  construction) but keep its diagnostic catalog entry for historical records.
+  Keep the `RECEIPT_STALE` regeneration exception. Split the runtime status
+  probe: a host isolation probe (image interpreter and Git in the sandbox, no
+  repository, no install) keeps rule 15; a separate project-lock probe reports
+  `preparing`, `ready` or a lock diagnostic.
+- **D8 Migration and rollback**: before rollout the operator settles active
+  native runs, open batch selections and approved but unresumed SDK bridge
+  claims; their stored identities refer to the server pin and are refused
+  afterward. Rolling back the deployment likewise strands runs enrolled under
+  lock-derived identities, so a rollback repeats the settlement. The live
+  canary `mjkimR/test-sandbox` has no `.devkit/` or `uv.lock` (checked through
+  the GitHub API on 2026-11-13), so it is not an SDD consumer today.
+- **Acceptance evidence to plan**: a measured cold-install time and venv plus
+  cache size for the g-scavenger-crew lock on the Cloud Run shape (cpu=1,
+  1Gi), which sets the byte cap and `--memory`; a forked or marker-gated
+  fixture lock; concurrent cold requests across worker processes.
 
 - Contracts affected: `CAP-SDD-runtime-isolation` (scope exclusion, rules 1-4,
   6, 9, 10, 11, 15), `CAP-SDK-existing-pr-bridge` profile selection,
   `ARCH-07-deployment`, `ARCH-11-risks-and-technical-debt` and the operations
   guides for the SDD runtime and execution targets.
+
+### Open decisions for plan-accept
+
+- **Q-A (identity on a changed head)**: when a later head of an admitted run
+  resolves a different runtime identity (a devkit bump, or a base merge that
+  changed it), either keep rule 9's refusal and require re-enrollment, or treat
+  the repository's committed lock as authority: continue with the new runtime
+  while the effective workflow, policy and configuration digests keep their
+  existing refusal. Recommendation: continue; those digests already detect
+  every contract change the runtime pin was guarding.
+- **Q-B (install trust and credentials)**: git sources such as devkit and
+  g-tools ship no wheels, so installing them runs build-backend code. Options:
+  (1) run the install in the sandbox with network egress and a dedicated
+  read-only source token; (2) fetch Git sources in the Hub process with the
+  project's GitHub connector token (as `checkout()` already does), then install
+  in the sandbox with no credentials, build steps without network using build
+  backends pinned in the image, and network only for registry artifact
+  downloads. Whether uv can separate download from build this way is a
+  Development check; if not, the fallback is an offline install from artifacts
+  the Hub process downloads. Option 1 exposes the token and the Cloud Run
+  metadata server (service-account token) to build code and needs the token
+  granted on every new private source. Recommendation: option 2.
+- **Q-C (repositories without a devkit lock)**: keep a default image runtime
+  as a fallback for repositories whose root lock has no `devkit-spec`, or
+  refuse them with a repository diagnostic. Recommendation: refuse; no known
+  consumer relies on a lockless setup, and one runtime source keeps identity
+  simple.
 
 ## 4. Lifecycle & Retirement Criteria
 
