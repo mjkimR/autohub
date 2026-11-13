@@ -193,3 +193,11 @@ revocation remains outside this ordinary-run contract.
 WHEN an authenticated caller supplies a decision key and fingerprint, Hub MUST resolve only that indexed discovery entry before invoking the existing owner review. IF the entry is missing or no longer actionable, THEN Hub MUST return HTTP404. IF the fingerprint changed, THEN Hub MUST return HTTP409. Check: `modules/hub/tests/integration/features/notifications/test_decision_notices.py`, `test_exact_selection_late_page_and_no_provider_calls`; `modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.integration.test.ts`.
 
 `GET /api/v1/pipeline-runs/decisions/selection` accepts `key` of at most 255 characters and a 64-character lowercase hexadecimal `fingerprint`. It returns the existing discovery-entry read shape. Lookup performs no list-page scan or provider call. The selected entry then follows the existing owner review, including native inspection and CAS effects; the URL itself grants no mutation authority.
+
+## Owed items
+
+Each actionable decision-inbox row is one counted `decision` owed item in `CAP-PR-owed-items`, keyed
+`decision:<decision_key>`; its run is held by the decision and is not listed separately. `actionable_total_count`
+keeps its meaning and equals the owed `decision` count for the same scope. WHEN Hub returns a PR run, it MUST report
+`has_pending_decision` true exactly while the run has an actionable decision-inbox row, so run rows need no decisions
+page. Check: [`test_pending_decision_flag.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_pending_decision_flag.py).

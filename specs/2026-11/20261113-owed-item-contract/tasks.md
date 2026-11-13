@@ -23,7 +23,7 @@ plan: PLAN-owed-item-contract
   - **_Boundary**: modules/hub-ui/src/lib/api/
   - _Requirements: AC-13_
   - **Verification**: `just gen-ui-api`, `just check-ui-api`, `uv run devkit rules check`
-- [ ] **Task 2.2**: Living Spec: owed-item capability, owner predicates, use cases, UX notes and steering
+- [x] **Task 2.2**: Living Spec: owed-item capability, owner predicates, use cases, UX notes and steering
   - **_Boundary**: docs/capabilities/, docs/usecases/, docs/ux/, docs/steering/
   - _Requirements: AC-01, AC-09_
   - **Verification**: `just docs-check`, `uv run devkit rules check`

@@ -5,6 +5,7 @@ summary: Define one owed-item model and read surface so every exception class th
 status: in-progress
 created: 2026-11-13
 related_capabilities:
+  - CAP-PR-owed-items
   - CAP-PR-operator-decisions
   - CAP-PR-pull-request-delivery
   - CAP-WORK-work-plan-execution

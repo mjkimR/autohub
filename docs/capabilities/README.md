@@ -9,6 +9,7 @@ production rollout; see [delivery status](../operations/deployment-status.md).
 | --- | --- |
 | Project configuration and connectors | `CAP-PROJ-project-connections` |
 | PR delivery and operator questions | `CAP-PR-pull-request-delivery`, `CAP-PR-operator-decisions` |
+| Operator debt across object types | `CAP-PR-owed-items` |
 | CI observation and provider dispatch | `CAP-PR-ci-observation`, `CAP-PR-agent-dispatch` |
 | Signed events and recoverable wakeups | `CAP-PR-webhook-advancement` |
 | Pre-PR plans and dependencies | `CAP-WORK-work-plan-execution` |

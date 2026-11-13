@@ -174,3 +174,10 @@ The original named tests were source-inspected. Executed affected-suite and reco
 integration examples use controlled GitHub responses; neither source/test
 inspection nor this document establishes live provider behavior, deployment of
 the inspected source or Auto Hub's own SDD baseline.
+
+## Owed items
+
+WHILE a PR run is `paused` or `blocked` and no decision, Work Item recovery or replacement, SDD batch attention or Work
+Item `attention` describes it, the run is a counted `stopped-run` owed item in `CAP-PR-owed-items`; a deliberate pause
+counts too. A `failed` run is a quiet `failed-run` item without count weight that links its Work Item when one exists.
+Every PR run response carries `has_pending_decision` (`CAP-PR-operator-decisions`).

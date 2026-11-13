@@ -15,6 +15,7 @@ capabilities:
   - CAP-PR-agent-dispatch
   - CAP-PR-ci-observation
   - CAP-PR-webhook-advancement
+  - CAP-PR-owed-items
 entrypoints:
   - modules/hub/app/features/project_management/projects/api/v1.py
   - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
@@ -122,6 +123,8 @@ entrypoints:
 - **Minimal guarantee**: an enrollment refusal creates no Run; an admitted Run
   retains identities and history for recovery. A stale continuation cannot
   overwrite a newer cancellation. Stopping Hub does not undo external effects.
+- **Owed item**: a paused or blocked run not held by a decision is a counted `stopped-run` owed item; a failed
+  run is a quiet `failed-run` item (`CAP-PR-owed-items`).
 
 ## 5. Acceptance Criteria (Given / When / Then)
 
