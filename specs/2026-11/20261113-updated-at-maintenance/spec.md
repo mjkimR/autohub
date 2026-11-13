@@ -1,34 +1,24 @@
 ---
-id: PROP-updated-at-maintenance
+id: SPEC-updated-at-maintenance
 title: Maintain updated_at on every owner write
-summary: "Maintain updated_at for Hub ORM and SQLAlchemy Core writes, preserve explicit owner exceptions, and correct last-write readers without reconstructing historical timestamps."
-status: accepted                         # draft | reviewing | accepted | rejected
-created_at: 2026-11-13
-target_area: capabilities/execution/
-priority: medium                      # critical | high | medium | low
-size: M                               # S | M | L | XL (XL: would need two or more specs or task kinds; decompose before Planning)
-planning_effort: medium               # low | medium | high (hint for Planning)
-dev_effort: medium                    # low | medium | high (hint for Development)
-boundaries:
-  owns:
-    - capabilities/execution/
-    - capabilities/delivery/
-    - capabilities/work-plans/
-    - modules/hub/app/common/
-    - modules/hub/app/features/
-    - modules/hub/migrations/
-    - modules/hub/tests/
-  excludes:
-    - docs/decisions/
-    - modules/hub-ui/
-    - packages/sdk/
-task_kind: bugfix                     # feature | bugfix: the spec follows sdd-spec-<task_kind>
-workflow: sdd-proposal
+summary: Maintain updated_at for Hub ORM and SQLAlchemy Core writes, preserve explicit owner exceptions, and correct last-write readers without reconstructing historical timestamps.
+status: planned
+created: 2026-11-13
+related_capabilities: []
+related_usecases: []
+workflow: sdd-spec-bugfix
 ---
+<!-- devkit:skeleton -->
 
-# [PROP-updated-at-maintenance] Maintain updated_at on every owner write
+# [SPEC-updated-at-maintenance] Maintain updated_at on every owner write
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-updated-at-maintenance on 2026-11-13.
+- **Preserved Materials**: `docs/materials/2026-11/20261113-updated-at-maintenance`
+- Target Docs Blueprint: `PROP-updated-at-maintenance-target` (Living Spec targets for this plan and reconcile.md)
+
+### 1. Background & Hypothesis
 
 `SPEC-owed-item-contract` found that `updated_at` does not advance on ordinary writes
 (`FB-timestamp-updated-at-never-maintained`). Every Hub model inherits it from `TimestampMixin` in the pinned
@@ -49,7 +39,7 @@ Only three write paths set it by hand:
 Operator and webhook transitions of a PR run (`pipeline_runs/usecases/control.py`, `transitions.py`,
 `interactions.py`), and every write to the other models, do not set it.
 
-### Affected models
+#### Affected models
 
 All 47 models in 18 files inherit `TimestampMixin`. The ones whose `updated_at` is read as a last-write or state-entry
 time:
@@ -74,12 +64,34 @@ own last update"). Tests pass because fixtures set `updated_at` explicitly
 
 Hypothesis: maintaining `updated_at` on Hub ORM and SQLAlchemy Core updates makes these last-write contracts true. Explicit owner exceptions and the observation rotation described below remain visible.
 
-## Source feedback
+## 2. Defect Characterization
+
+- **Current behavior**: <trigger, environment and the observed wrong result, with evidence>
+- **Expected behavior and its basis**: <the result the existing contract requires, citing its capability, use case, ADR or test>
+- **Behavior to preserve**: <call paths, input boundaries and contracts that must keep working, with their tests>
+- **Reproduction conditions**: <the command, data and environment that reproduce the defect>
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: <what this change will not do>
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] <scenario>
+- **Given** <precondition>
+- **When** <action>
+- **Then** <expected result>
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### Source feedback
 
 - `FB-timestamp-updated-at-never-maintained`: received in full. Its Evidence line "only flows/repos.py sets it
   explicitly" is incomplete; the survey above adds the lease release and connection-test step writers.
 
-## 2. Technical Spike Questions
+### 2. Technical Spike Questions
 
 - **Q1 (mechanism and ownership)**: Is the fix an ORM `onupdate` on a Hub-owned mixin or event listener, a database
   trigger per table, or a change to `TimestampMixin` in app-common (an upstream change Hub adopts by moving its pin)?
@@ -95,12 +107,12 @@ Hypothesis: maintaining `updated_at` on Hub ORM and SQLAlchemy Core updates make
 - **Q4 (existing rows)**: Do existing rows keep their creation-time values, or does a migration backfill a better
   estimate where one exists (for example a final run's last attempt `finished_at`)?
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
-### Planning decisions
+#### Planning decisions
 
 The proposed direction is a local timestamp mixin repair, with no database migration or app-common pin change.
-Evidence is retained in `materials/timestamp-write-evidence.md` at the assigned source HEAD.
+Evidence is retained in `docs/materials/2026-11/20261113-updated-at-maintenance/timestamp-write-evidence.md` at the assigned source HEAD.
 
 1. Add a Hub-owned `TimestampMixin` subclass in the existing `modules/hub/app/common/` package. Override only
    `updated_at`, keeping `DateTime(timezone=True)`, `nullable=False` and `server_default=func.now()`, and add
@@ -129,7 +141,7 @@ Evidence is retained in `materials/timestamp-write-evidence.md` at the assigned 
    historical stored value; the change makes no claim that all historical finish or retention evidence is repaired.
    No production repair, rollout or destructive retention sweep is part of this proposal.
 
-### Options compared
+#### Options compared
 
 | Option | Assessment |
 | --- | --- |
@@ -138,7 +150,7 @@ Evidence is retained in `materials/timestamp-write-evidence.md` at the assigned 
 | Upstream app-common change and pin adoption | Repairs other consumers too, but changes a separate package's contract and release/pin scope. Hub-specific exceptions are still needed. Upstream work is not required for this bounded Hub bugfix. |
 | ORM event listener only | Leaves Core UPDATE paths uncovered and introduces registration/ordering behavior. Smaller in lines, incomplete for the agreed reader outcomes. |
 
-### Acceptance and Development verification
+#### Acceptance and Development verification
 
 - **STAMP-01**: Given a newly created Hub owner, when its real ORM service/repository writes a changed persisted
   field without assigning `updated_at`, then `updated_at` records the controlled later UTC instant and `created_at`
@@ -177,7 +189,8 @@ Non-goals:
 2. Changing retention windows, owed-item kinds or their order.
 3. hub-ui changes; the screens already display `updated_at` as an update time.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
+
 <!--
 - Preliminary decisions: devkit spec proposal padr updated-at-maintenance "<title>" --summary "<Y-statement: For <context>, we <decision>, to <quality>, accepting <downside>.>" records a PADR in decisions/.
 - Research: collect benchmarks and references in materials/ (created with its first file).
@@ -187,3 +200,10 @@ Non-goals:
 - On rejection: change only status: rejected, with the user's decision and reason as a decision sentence in the
   commit message (no quote); a later hygiene pass writes the rejection ADR and deletes the proposal directory.
 -->
+
+### Target Area & Boundaries
+
+- Target Area: capabilities/execution/
+- Planned Boundaries: `capabilities/execution/`, `capabilities/delivery/`, `capabilities/work-plans/`, `modules/hub/app/common/`, `modules/hub/app/features/`, `modules/hub/migrations/`, `modules/hub/tests/`
+- Excluded Boundaries: `docs/decisions/`, `modules/hub-ui/`, `packages/sdk/`
+
