@@ -69,7 +69,7 @@
 	const needsYou = $derived(
 		shared ? (shared.value.status === 'known' ? shared.value.byProject : null) : localNeedsYou
 	);
-	const needsYouError = $derived(shared ? '' : localNeedsYouError);
+	const needsYouError = $derived(shared ? shared.error : localNeedsYouError);
 
 	async function loadNeedsYou() {
 		const current = ++needsYouRequest;

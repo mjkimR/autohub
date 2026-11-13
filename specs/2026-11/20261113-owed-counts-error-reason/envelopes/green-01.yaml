@@ -1,0 +1,16 @@
+kind: green
+stage: fix-verify
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:15:00.976011Z'
+status: completed
+summary: Shared failure tooltip restored with bounded errors, recovery and session fencing
+findings: []
+assumptions:
+- Focused tests ran on uncommitted fix source before this evidence commit
+checks:
+  resolved: PASS same shared-store tooltip regression now passes
+  preserved: 'PASS focused store Projects and shell suites: 54 passed, including stale success/failure, request reuse and neutral shell states'
+diff_scope:
+  base: fe706528a666e8ead32388bdeb066e8fcf43365e
+  head: ''

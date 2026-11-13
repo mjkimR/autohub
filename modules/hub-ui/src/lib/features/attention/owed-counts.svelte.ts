@@ -1,5 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { api, type components } from '$lib/api';
+import { apiErrorMessage } from '$lib/api/errors';
 import { session } from '$lib/stores/session.svelte';
 import type { OwedKind } from './owed-links';
 
@@ -70,6 +71,7 @@ export const OWED_UNKNOWN_LABEL = 'Owed items unknown';
  */
 export class OwedCountsStore {
 	value = $state<OwedCounts>({ status: 'unknown' });
+	error = $state('');
 	#checkedAt = 0;
 	#inflight = false;
 
@@ -79,15 +81,24 @@ export class OwedCountsStore {
 		this.#checkedAt = Date.now();
 		const generation = session.generation;
 		let next: OwedCounts = { status: 'unknown' };
+		const fallback = 'Needs-you counts are unavailable';
+		let error = '';
 		try {
-			const { data } = await api.GET('/api/v1/owed-items/counts');
-			next = summarizeOwedCounts(data);
+			const response = await api.GET('/api/v1/owed-items/counts');
+			if (response.error) error = apiErrorMessage(response.error, fallback);
+			else {
+				next = summarizeOwedCounts(response.data);
+				if (next.status === 'unknown') error = fallback;
+			}
 		} catch {
-			// Failure stays neutral: an outage must never look like operator debt.
+			error = fallback;
 		} finally {
 			this.#inflight = false;
 		}
-		if (generation === session.generation) this.value = next;
+		if (generation === session.generation) {
+			this.value = next;
+			this.error = error;
+		}
 	}
 
 	/** Refresh unless a check started within `minMs`; hidden tabs never poll. */

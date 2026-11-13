@@ -268,3 +268,19 @@ test('inside the shell, an unknown shared count stays a neutral dash', async () 
 	expect(row.querySelector('[data-owed-count]')).toBeNull();
 	expect(countsCalls()).toHaveLength(0);
 });
+
+test('a shared counts failure keeps the reason in both neutral tooltip copies without another read', async () => {
+	withCounts(async () => ({ error: { detail: 'Database busy' } }));
+	const store = new OwedCountsStore();
+	await store.refresh();
+	render(ProjectsView, { context: new Map([[OWED_COUNTS_CONTEXT, store]]) });
+	await screen.findByText('Application');
+	const unknowns = document.querySelectorAll('[data-owed-unknown]');
+	expect(unknowns).toHaveLength(2);
+	for (const mark of unknowns) {
+		expect(mark.getAttribute('title')).toBe('Needs-you count unavailable: Database busy');
+		expect(mark.textContent).toContain('—');
+	}
+	expect(document.querySelector('[data-owed-count]')).toBeNull();
+	expect(countsCalls()).toHaveLength(1);
+});

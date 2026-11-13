@@ -1,0 +1,19 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:18:50.756874Z'
+status: completed
+summary: Restored Projects shared counts failure tooltips with recovery and session fences; independent code and reconciliation reviews passed
+findings: []
+assumptions:
+- Local integration is Host-owned under auto policy; no remote publication performed
+unverified_areas:
+- No real browser walkthrough or live deployment verification
+checks:
+  tests: PASS focused Vitest 54 tests with Red then Green real-store tooltip regression
+  build: PASS full just check backend SDK UI types and UI production build
+  lint: PASS full just lint and final just docs-check zero errors/warnings
+diff_scope:
+  base: fe706528a666e8ead32388bdeb066e8fcf43365e
+  head: 1ea7e81ef9488fc528e9ca51f67ed725bcb6e4eb

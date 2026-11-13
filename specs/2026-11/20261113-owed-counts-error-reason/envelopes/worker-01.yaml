@@ -1,0 +1,23 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:19:05.646338Z'
+status: completed
+summary: Completed shared counts tooltip restoration, Red/Green tests, independent code review, independent reconciliation, feedback sweep and final report; integration remains Host-owned
+findings: []
+assumptions:
+- Codex emulated boundaries checked by exact worktree cwd per-operation escalations clean HEAD and pre/post reviewer snapshots
+- Kept fe706528 input base despite main advancing; no base merge or input-only material edits
+unverified_areas:
+- No real browser walkthrough or live deployment verification; Host integrated batch verification remains pending
+checks:
+  sync_start: PASS exit=0
+  tests: PASS focused Vitest54 including real-store Projects shell and error/session lifecycle
+  build: PASS just check backend SDK UI types and UI production build
+  lint: PASS just lint and final docs-check zero errors/warnings
+  scope: PASS only four declared UI files Unit records and UX-projects changed
+diff_scope:
+  base: fe706528a666e8ead32388bdeb066e8fcf43365e
+  head: 8599a50b8348954fdee55d977938e6cf24122881
+activity_effort: medium
