@@ -1,0 +1,19 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:58:12.923642Z'
+status: completed
+summary: SDD evaluation installs devkit from the evaluated commit's uv.lock (Hub-side fetch, sandboxed offline builds, per-instance cache, retryable preparing state); server profiles removed; Living Spec rewritten; code review 6 rounds and reconcile 4 rounds closed
+findings: []
+assumptions:
+- Serving hosts must run Linux bubblewrap; macOS sandbox-exec is development-only (user accepted)
+- Before rollout, settle active native runs, open batch selections and approved bridge claims; the deployed Hub has not been updated or verified with this change
+- 'The project''s GitHub connector must be able to read every private Git source its lock names (for the pilot: mjkimR/devkit and mjkimR/g-foundation)'
+checks:
+  tests: PASS just test 1492 passed/81 skipped; just test-sdd 147 passed/7 PG-only skipped; just test-sdd-pg 154 passed; just test-ui 438 passed
+  build: PASS just check; docker build of docker/hub.Dockerfile and an in-image Linux bubblewrap cold install (materials/cold-install.md)
+  lint: PASS just lint; devkit rules check --ci --base ba24dd5
+diff_scope:
+  base: ba24dd5a7de494f2e9e7b026c104d80d097f02ac
+  head: 7ac481e6dd91399f52e098a09cdd55bd2510992f
