@@ -3,6 +3,7 @@
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	type Item = components['schemas']['WorkItemRead'];
 	type Recovery = components['schemas']['WorkItemRecoveryRead'];
 	type Command = components['schemas']['WorkItemRecover'];
@@ -140,11 +141,7 @@
 			{#if item.pull_url}<a class="underline" href={item.pull_url}>Inspect original PR</a>{/if}
 			<label class="block"
 				>Recovery reason
-				<textarea
-					class="block w-full rounded border bg-background p-2"
-					bind:value={reason}
-					maxlength="500"
-					disabled={busy || uncertain}></textarea>
+				<Textarea bind:value={reason} maxlength={500} disabled={busy || uncertain} />
 			</label>
 			<Button size="sm" onclick={submit} disabled={busy || (!uncertain && !reason.trim())}
 				>{uncertain ? 'Check original request' : 'Confirm retry'}</Button

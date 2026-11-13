@@ -4,6 +4,7 @@
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import { Input } from '$lib/components/ui/input';
 	type Plan = components['schemas']['WorkPlanRead'];
 	type Item = components['schemas']['WorkItemWrite'];
@@ -72,7 +73,6 @@
 	let error = $state('');
 	let bulkOpen = $state(false);
 	let bulk = $state('');
-	const textareaClass = 'min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm';
 	function toggle(values: string[], value: string) {
 		return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 	}
@@ -256,7 +256,7 @@
 		</p>
 	</div>
 	<label class="block space-y-2 text-sm"
-		>Goal and scope<textarea class={textareaClass} bind:value={description}></textarea></label
+		>Goal and scope<Textarea class="min-h-24" bind:value={description} /></label
 	>
 	{#if plans.some((plan) => plan.id !== editing?.id)}
 		<fieldset class="space-y-2 rounded-lg border p-4">
@@ -284,11 +284,11 @@
 				depends_on (task keys within this plan).
 			</p>
 			<label class="block text-sm"
-				>Task list<textarea
-					class={textareaClass + ' mt-2 font-mono'}
+				>Task list<Textarea
+					class="mt-2 min-h-24 font-mono"
 					bind:value={bulk}
 					placeholder={'[{"key":"a","title":"Schema","description":"Create schema","acceptance":"Tests pass","depends_on":[]}]'}
-				></textarea></label
+				/></label
 			>
 			<Button type="button" variant="outline" onclick={importItems}>Use task list</Button>
 		</div>{/if}
@@ -316,16 +316,18 @@
 				/></label
 			>
 			<label class="block space-y-2 text-sm"
-				>Specification<textarea
+				>Specification<Textarea
 					required={!draft}
-					class={textareaClass}
-					bind:value={item.description}></textarea></label
+					class="min-h-24"
+					bind:value={item.description}
+				/></label
 			>
 			<label class="block space-y-2 text-sm"
-				>Acceptance criteria<textarea
+				>Acceptance criteria<Textarea
 					required={!draft}
-					class={textareaClass}
-					bind:value={item.acceptance}></textarea></label
+					class="min-h-24"
+					bind:value={item.acceptance}
+				/></label
 			>
 			{#if items.length > 1}<div class="space-y-2">
 					<p class="text-sm font-medium">Wait for tasks in this plan</p>

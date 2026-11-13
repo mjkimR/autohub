@@ -5,6 +5,7 @@
 	import type { components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import { Badge } from '$lib/components/ui/badge';
 	import {
 		ShieldCheck,
@@ -45,7 +46,7 @@
 	let error = $state('');
 	let feedback = $state('');
 	let mode = $state<'revise' | 'reject' | 'revoke' | null>(null);
-	let editor = $state<HTMLTextAreaElement>();
+	let editor = $state<HTMLElement | null>(null);
 	async function choose(action: typeof mode) {
 		mode = action;
 		error = '';
@@ -302,10 +303,10 @@
 							The run will be canceled. Already dispatched agent work may continue.
 						</p>{/if}
 					<label class="block space-y-2 text-sm"
-						>{mode === 'revise' ? 'Requested changes' : 'Decision reason (optional)'}<textarea
-							bind:this={editor}
-							class="min-h-24 w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm leading-relaxed focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-							maxlength="8000"
+						>{mode === 'revise' ? 'Requested changes' : 'Decision reason (optional)'}<Textarea
+							bind:ref={editor}
+							class="min-h-24 leading-relaxed"
+							maxlength={8000}
 							bind:value={feedback}
 							disabled={busy ||
 								disabled ||
@@ -313,7 +314,8 @@
 								questionPending}
 							placeholder={mode === 'revise'
 								? 'Describe the changes and what should stay the same.'
-								: 'Add context for the decision history.'}></textarea></label
+								: 'Add context for the decision history.'}
+						/></label
 					>
 					<div class="flex flex-wrap items-center gap-2">
 						<Button

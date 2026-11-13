@@ -2,6 +2,7 @@
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import { toast } from 'svelte-sonner';
 	let {
 		test,
@@ -118,14 +119,13 @@
 			</label>
 			<label class="grid gap-1 text-sm"
 				>Review notes
-				<textarea
-					class="rounded-md border bg-background p-2"
+				<Textarea
 					bind:value={note}
 					required
-					maxlength="1000"
+					maxlength={1000}
 					disabled={busy}
 					placeholder="For example: no session was created; checked the provider history."
-				></textarea>
+				/>
 			</label>
 			<div class="flex gap-2">
 				<Button type="submit" size="sm" disabled={busy || !confirmed || !note.trim()}

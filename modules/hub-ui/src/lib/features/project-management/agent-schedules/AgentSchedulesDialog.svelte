@@ -8,6 +8,7 @@
 	import { toast } from 'svelte-sonner';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import { Input } from '$lib/components/ui/input';
 	import {
 		Dialog,
@@ -249,14 +250,14 @@
 					<label for="asPrompt" class="text-xs font-semibold text-muted-foreground uppercase"
 						>Prompt</label
 					>
-					<textarea
+					<Textarea
 						id="asPrompt"
 						bind:value={prompt}
 						required
-						rows="5"
-						class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs"
+						rows={5}
+						class="min-h-28"
 						placeholder="What the agent should do each run. The delivery contract for the work type is appended by the hub."
-					></textarea>
+					/>
 				</div>
 				<div class="grid gap-3 sm:grid-cols-3">
 					<div class="space-y-1.5">

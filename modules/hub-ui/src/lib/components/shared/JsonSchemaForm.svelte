@@ -2,6 +2,7 @@
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Code2, SlidersHorizontal, AlertCircle } from '@lucide/svelte';
 
@@ -119,12 +120,13 @@
 					<span>{rawError}</span>
 				</div>
 			{/if}
-			<textarea
-				class="min-h-40 w-full rounded-lg border border-border bg-muted/40 p-3 font-mono text-xs focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+			<Textarea
+				class="min-h-40 font-mono text-xs"
 				value={rawJson}
 				oninput={handleRawChange}
 				{disabled}
-				spellcheck="false"></textarea>
+				spellcheck="false"
+			/>
 		</div>
 	{:else if schema?.properties && Object.keys(schema.properties).length > 0}
 		<div class="space-y-4">

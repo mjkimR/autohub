@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import { Input } from '$lib/components/ui/input';
 	import type { components } from '$lib/api';
 	import type { Template } from './template-intent.svelte';
@@ -60,14 +61,12 @@
 	<label class="block space-y-1"
 		>Candidate target branch<Input required bind:value={branch} /></label
 	>
+	<label class="block space-y-1">Goal and scope<Textarea bind:value={description} /></label>
 	<label class="block space-y-1"
-		>Goal and scope<textarea class="w-full rounded border p-2" bind:value={description}
-		></textarea></label
-	>
-	<label class="block space-y-1"
-		>Local tasks (JSON: key, title, description, acceptance, depends_on)<textarea
-			class="min-h-48 w-full rounded border p-2 font-mono text-sm"
-			bind:value={items}></textarea></label
+		>Local tasks (JSON: key, title, description, acceptance, depends_on)<Textarea
+			class="min-h-48 font-mono"
+			bind:value={items}
+		/></label
 	>
 	<p class="text-sm text-muted-foreground">
 		Only specification and local task dependencies are saved. Attachments, execution/approval

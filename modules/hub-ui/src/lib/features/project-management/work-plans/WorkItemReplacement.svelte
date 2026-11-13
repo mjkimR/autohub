@@ -5,6 +5,7 @@
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	type Read = components['schemas']['ReplacementRead'];
 	type Item = components['schemas']['WorkItemRead'];
 	type Link = components['schemas']['ReplacementLinkRead'];
@@ -364,12 +365,12 @@
 					</p>
 				{/if}
 				<label class="block"
-					>Replacement reason<textarea
-						class="block w-full rounded border bg-background p-2"
+					>Replacement reason<Textarea
 						bind:value={reason}
 						oninput={() => (confirmed = false)}
-						maxlength="500"
-						disabled={busy}></textarea></label
+						maxlength={500}
+						disabled={busy}
+					/></label
 				>
 				<label
 					><input type="checkbox" bind:checked={confirmed} disabled={busy} /> I reviewed both specifications,
