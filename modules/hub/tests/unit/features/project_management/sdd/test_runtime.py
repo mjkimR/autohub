@@ -244,6 +244,25 @@ async def test_caller_polls_an_install_claimed_by_another_process(tmp_path, monk
     assert len(attempts) == 3
 
 
+async def test_polling_a_foreign_claim_retries_only_at_the_poll_interval(tmp_path, monkeypatch):
+    monkeypatch.setattr(runtime, "select", lambda root: selection())
+    monkeypatch.setattr(runtime, "INSTALL_WAIT_SECONDS", 0.2)
+    monkeypatch.setattr(runtime, "POLL_SECONDS", 0.05)
+    monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+    attempts = []
+
+    async def build(chosen, token):
+        attempts.append(token)
+        return False  # another worker keeps the claim for the whole wait
+
+    monkeypatch.setattr("app.features.project_management.sdd.runtime_install.build", build)
+    runtime._installs.clear()
+    with runtime.runtime_source(tmp_path, "token"), pytest.raises(ProjectError) as raised:
+        await runtime.ensure_runtime()
+    assert raised.value.code == "SDD_RUNTIME_PREPARING"
+    assert 2 <= len(attempts) <= 7
+
+
 async def test_wait_ends_with_preparing_and_leaves_the_install_running(tmp_path, monkeypatch):
     monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
     monkeypatch.setattr(runtime, "select", lambda root: selection())

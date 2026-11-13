@@ -114,10 +114,14 @@ async def _await_install(source: RuntimeSource) -> tuple[Selection, str]:
         task = install_task(selection.identity)
         if task is not None and not task.done():
             await asyncio.wait({task}, timeout=remaining)  # asyncio.wait leaves the shared task running
-        else:  # another process holds the build lock: poll its outcome
-            await asyncio.sleep(min(POLL_SECONDS, remaining))
+        if task is None or _claimed_elsewhere(task):  # another process installs: poll, never spin on the claim
+            await asyncio.sleep(max(0.0, min(POLL_SECONDS, deadline - loop.time())))
         state = _state(selection, source.token, start=True)
     return selection, state
+
+
+def _claimed_elsewhere(task: asyncio.Task) -> bool:
+    return task.done() and not task.cancelled() and task.exception() is None and task.result() is False
 
 
 async def ensure_runtime() -> Path:
