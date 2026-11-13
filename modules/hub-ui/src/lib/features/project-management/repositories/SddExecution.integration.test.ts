@@ -116,7 +116,9 @@ test('a preparing lock runtime is reported as progress and a failed one as an er
 	});
 	render(SddExecution, { projectId: 'project' });
 	await user.click(screen.getByRole('button', { name: 'Check runtime' }));
-	expect(await screen.findByText(/repository lock dddddddddddd installing; check again shortly/)).toBeTruthy();
+	expect(
+		await screen.findByText(/repository lock dddddddddddd installing; check again shortly/)
+	).toBeTruthy();
 	api.GET.mockResolvedValueOnce({
 		data: {
 			ok: true,
@@ -127,7 +129,9 @@ test('a preparing lock runtime is reported as progress and a failed one as an er
 	});
 	await user.click(screen.getByRole('button', { name: 'Check runtime' }));
 	expect(await screen.findByRole('alert')).toBeTruthy();
-	expect(screen.getByText(/repository lock unavailable\. Grant the connector read access/)).toBeTruthy();
+	expect(
+		screen.getByText(/repository lock unavailable\. Grant the connector read access/)
+	).toBeTruthy();
 });
 
 test('eligible registration previews waits and policy without answering them', async () => {

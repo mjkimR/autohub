@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Provision a separate, locked devkit-spec environment. Never install from a PR's manifest."""
+"""Provision a locked environment from an operator-reviewed manifest.
+
+Two manifests use it: ``config/sdd-build`` (the pinned hatchling backend serving images package as
+``/opt/sdd-build`` for offline source builds) and ``config/sdd-runtime`` (the devkit seed runtime that integration
+tests and local development use). Serving hosts install repository runtimes from each repository's own lock.
+"""
 
 import argparse
 import hashlib
@@ -17,7 +22,7 @@ parser.add_argument(
     "--manifest",
     type=Path,
     default=Path(__file__).resolve().parents[1] / "config/sdd-runtime",
-    help="Operator-reviewed directory containing pyproject.toml and uv.lock",
+    help="Reviewed directory containing pyproject.toml and uv.lock (config/sdd-runtime or config/sdd-build)",
 )
 options = parser.parse_args()
 source = options.manifest.resolve()
@@ -40,7 +45,7 @@ lock_digest = hashlib.sha256((source / "uv.lock").read_bytes()).hexdigest()
 if (destination / "pin.json").exists():
     previous = json.loads((destination / "pin.json").read_text())
     if previous.get("lock_sha256") != lock_digest:
-        raise SystemExit("Runtime changed: provision a fresh destination, then switch AUTOHUB_SDD_HOME")
+        raise SystemExit("Manifest changed: provision a fresh destination")
 for name in ("pyproject.toml", "uv.lock"):
     shutil.copyfile(source / name, destination / name)
 env = {**os.environ, "UV_PROJECT_ENVIRONMENT": str(destination / ".venv")}
@@ -59,14 +64,14 @@ versions = subprocess.check_output(
         str(python),
         "-I",
         "-c",
-        "import json,sys; from importlib.metadata import version, entry_points; "
-        "print(json.dumps({'packages': {n: version(n) for n in sys.argv[1:]}, 'python_prefix': sys.base_prefix, 'bundles': sorted(ep.name for ep in entry_points(group='devkit.bundles'))}))",
+        "import json,sys; from importlib.metadata import distributions, entry_points; "
+        "installed = {d.metadata['Name'].lower(): d.version for d in distributions()}; "
+        "print(json.dumps({'packages': {n: installed[n] for n in sys.argv[1:] if n in installed}, 'python_prefix': sys.base_prefix, 'bundles': sorted(ep.name for ep in entry_points(group='devkit.bundles'))}))",
         *PACKAGES,
     ],
     text=True,
 )
 pin = json.loads(versions)
-# Hub compares these revisions with a repository's own uv.lock to warn when agents may run another devkit-spec.
 pin.update(provider="devkit-spec", lock_sha256=lock_digest, revisions=lock_revisions(source / "uv.lock"))
 (destination / "pin.json").write_text(json.dumps(pin, indent=2) + "\n")
 print(f"SDD runtime installed: {destination}")

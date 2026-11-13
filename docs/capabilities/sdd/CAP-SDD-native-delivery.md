@@ -69,9 +69,10 @@ CI observation and merge control.
    `activity_effort` before the proposal's activity-specific effort hint.
    Check: [test_activities.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_activities.py), `test_activity_effort_uses_the_proposal_hint_unless_overridden`.
 8. **Evaluation ownership**: WHEN an activity or proposal operation needs repository
-   evaluation, Hub MUST delegate it to `CAP-SDD-runtime-isolation` rather than
-   install or select tooling from the target request.
-   Check: [test_profiles.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_profiles.py).
+   evaluation, Hub MUST delegate runtime selection and installation to
+   `CAP-SDD-runtime-isolation`, which uses the evaluated commit's own lock, rather
+   than installing tooling named by the request.
+   Check: [test_lock_runtime.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py).
 9. **Readiness is observational**: WHEN readiness or related executions are read,
    Hub MUST leave execution unstarted and Git unchanged.
    Check: [test_native.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_native.py), `test_native_enrollment_requires_spec_and_readiness_is_read_only`, `test_spec_runs_are_exact_project_scoped_and_do_not_advance`.

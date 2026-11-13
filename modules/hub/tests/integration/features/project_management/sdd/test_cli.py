@@ -1,10 +1,8 @@
 """Use real Git and installed sdd, including policy and version pins."""
 
 import json
-import os
 import subprocess
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 import pytest
 from app.features.project_management.pipeline_runs.requests import request_digest
@@ -26,7 +24,9 @@ async def direct_publication(plan):
 
 
 def devkit_binary() -> str:
-    return str(Path(os.environ["AUTOHUB_SDD_HOME"]) / ".venv/bin/devkit")
+    from tests.integration.sdd_runtime import devkit_binary as seeded
+
+    return seeded()
 
 
 def run(root, *args):
@@ -86,7 +86,7 @@ def commit_stale_receipt(root, bundle, asset_id, suffix):
     return commit(root, f"Stale receipt for {asset_id}"), manifest.read_text()
 
 
-async def test_real_cli_reads_gate_and_rejects_changed_version(checkout):
+async def test_real_cli_reads_gate_and_rejects_changed_workflow(checkout):
     root, head = checkout
     service = SddService()
     evidence = await service.evaluate(root, SPEC, head, head, None, False)
@@ -94,8 +94,9 @@ async def test_real_cli_reads_gate_and_rejects_changed_version(checkout):
     assert not evidence["integrated"]
     assert evidence["warnings"] == []
     assert evidence["snapshot"]["policy"]["approvals"]["dev-integration"]["policy"] == "ask"
-    with pytest.raises(ProjectError, match="version"):
-        await service.evaluate(root, SPEC, head, head, {**evidence["snapshot"], "cli_version": "unsupported"}, False)
+    # A changed runtime identity alone continues (ADR-repository-locked-runtime); the workflow pin still refuses.
+    continued = await service.evaluate(root, SPEC, head, head, {**evidence["snapshot"], "cli_version": "older"}, False)
+    assert continued["snapshot"]["cli_version"] == evidence["snapshot"]["cli_version"]
     with pytest.raises(ProjectError, match="workflow or policy"):
         await service.evaluate(root, SPEC, head, head, {**evidence["snapshot"], "workflow_hash": "changed"}, False)
 
@@ -373,12 +374,12 @@ async def test_unresolved_problem_blocks_until_a_resolution_envelope(checkout, t
     assert not resolved["hold"]["blocked"] and resolved["hold"]["problems"] == []
 
 
-async def test_runtime_status_starts_devkit_inside_the_sandbox(checkout):
+async def test_runtime_status_starts_an_interpreter_inside_the_sandbox(checkout):
     status = await SddService().runtime_status()
     assert status["ok"], status
     assert status["isolation"] in ("sandbox-exec", "bubblewrap")
-    assert "devkit" in status["detail"]
-    assert set(status["revisions"]) >= {"devkit-spec", "devkit-agt"}
+    assert status["detail"].startswith("Python 3.")
+    assert "state" not in status  # no project head: nothing is selected or installed
 
 
 PROPOSAL = "docs/proposals/PROP-demo"

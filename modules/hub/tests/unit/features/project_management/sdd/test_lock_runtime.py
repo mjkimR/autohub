@@ -91,7 +91,7 @@ def test_symlinked_manifest_is_refused(tmp_path):
     root = consumer(tmp_path)
     (root / "pyproject.toml").unlink()
     (root / "pyproject.toml").symlink_to(FIXTURE / "pyproject.toml")
-    with pytest.raises(ProjectError, match="uv.lock") as raised:
+    with pytest.raises(ProjectError, match=r"uv\.lock") as raised:
         select(root)
     assert raised.value.code == "SDD_RUNTIME_UNLOCKED"
 

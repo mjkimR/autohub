@@ -177,7 +177,8 @@ export function runtimeLockSummary(status: RuntimeLockStatus): string {
 	const identity = status.identity ? ` ${status.identity.slice(0, 12)}` : '';
 	if (status.state === 'ready')
 		return `repository lock${identity} ready · bundles: ${(status.bundles ?? []).join(', ') || 'unknown'}`;
-	if (status.state === 'preparing') return `repository lock${identity} installing; check again shortly`;
+	if (status.state === 'preparing')
+		return `repository lock${identity} installing; check again shortly`;
 	if (status.state === 'failed') return `repository lock${identity} unavailable`;
 	return 'repository lock not checked';
 }

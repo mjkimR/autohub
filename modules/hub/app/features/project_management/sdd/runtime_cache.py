@@ -14,7 +14,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-DEFAULT_CAP_BYTES = 768 * 1024 * 1024
+DEFAULT_CAP_BYTES = 256 * 1024 * 1024  # about eight 29 MiB entries; see the spec materials
 FAILURE_SECONDS = 60
 STAGING_PREFIX = ".staging-"
 

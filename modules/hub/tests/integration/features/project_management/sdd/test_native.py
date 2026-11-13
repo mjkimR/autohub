@@ -203,8 +203,8 @@ async def test_native_enrollment_requires_spec_and_readiness_is_read_only(client
     assert missing.status_code == 422
     runtime = await client.get(f"/api/v1/projects/{project['id']}/sdd/runtime")
     assert runtime.status_code == 200, runtime.text
-    status = runtime.json()  # ok on a provisioned host; otherwise the detail names the installer
-    assert status["ok"] or "install-sdd" in status["detail"]
+    status = runtime.json()  # the host probe plus the default-branch head's lock state (no real remote here)
+    assert status["ok"] and status["profile"] == "repository-lock" and status["state"] is not None
     ready = await client.post(
         f"/api/v1/projects/{project['id']}/sdd/readiness", json={"pull_number": 7, "spec_dir": SPEC}
     )

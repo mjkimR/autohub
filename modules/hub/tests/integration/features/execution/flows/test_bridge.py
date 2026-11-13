@@ -1,5 +1,4 @@
 import json
-import os
 import subprocess
 from uuid import UUID
 
@@ -33,17 +32,14 @@ SPEC = "specs/2026-10/20261009-fixture"
 
 
 @pytest.fixture
-def checkout(tmp_path):
-    from pathlib import Path
+def checkout(tmp_path, monkeypatch):
+    from tests.integration.sdd_runtime import devkit_binary, use_fixture_runtime, write_manifest
 
-    runtime = os.environ.get("AUTOHUB_SDD_HOME")
-    if not runtime:
-        if os.environ.get("AUTOHUB_REQUIRE_SDD"):
-            pytest.fail("required devkit-spec runtime was not provisioned")
-        pytest.skip("requires just test-sdd")
-    binary = str(Path(runtime) / ".venv/bin/devkit")
+    binary = devkit_binary()
     root = (tmp_path / "checkout").resolve()
     root.mkdir()
+    write_manifest(root)  # the fixture repository locks the seed runtime as its own devkit
+    use_fixture_runtime(root, monkeypatch)
 
     def run(*args):
         return subprocess.check_output(args, cwd=root, text=True, stderr=subprocess.PIPE).strip()

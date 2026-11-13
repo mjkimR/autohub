@@ -106,20 +106,6 @@ fi
 echo "==> Submitting build to Google Cloud Build (Image: $IMAGE_URI)..."
 cd "$ROOT_DIR"
 
-# Optional private-release credential, passed only to BuildKit's secret mount.
-BUILD_SECRET_ENV=""
-BUILD_SECRET_ARG=""
-BUILD_SECRET_CONFIG=""
-if [[ -n "${SDD_BUILD_SECRET:-}" ]]; then
-  [[ "$SDD_BUILD_SECRET" =~ ^[A-Za-z0-9_-]+$ ]] || { echo 'Invalid SDD_BUILD_SECRET name' >&2; exit 1; }
-  BUILD_SECRET_ENV="  secretEnv: ['GH_TOKEN']"
-  BUILD_SECRET_ARG=", '--secret', 'id=sdd_token,env=GH_TOKEN'"
-  BUILD_SECRET_CONFIG="availableSecrets:
-  secretManager:
-  - versionName: projects/${PROJECT_ID}/secrets/${SDD_BUILD_SECRET}/versions/latest
-    env: GH_TOKEN"
-fi
-
 gcloud builds submit \
   --project="$PROJECT_ID" \
   --gcs-source-staging-dir="${CLOUDBUILD_BUCKET}/source" \
@@ -128,9 +114,7 @@ gcloud builds submit \
 steps:
 - name: 'gcr.io/cloud-builders/docker'
   env: ['DOCKER_BUILDKIT=1']
-${BUILD_SECRET_ENV}
-  args: ['build', '-f', 'docker/hub.Dockerfile', '-t', '${IMAGE_URI}', '.'${BUILD_SECRET_ARG}]
-${BUILD_SECRET_CONFIG}
+  args: ['build', '-f', 'docker/hub.Dockerfile', '-t', '${IMAGE_URI}', '.']
 images:
 - '${IMAGE_URI}'
 timeout: '1800s'

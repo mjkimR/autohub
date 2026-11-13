@@ -96,6 +96,8 @@ class MergeScenario:
             return httpx2.Response(200, json=workflow_run)
         if path == "/actions/jobs/1/logs":
             return httpx2.Response(200, text="lint failed")
+        if path == "/commits/HEAD":  # the default-branch head the SDD runtime check inspects
+            return httpx2.Response(200, json={"sha": self.head_sha})
         raise AssertionError(f"Unexpected GitHub request: {path}")
 
 

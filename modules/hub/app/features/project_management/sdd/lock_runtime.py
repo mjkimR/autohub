@@ -17,11 +17,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from app.features.project_management.projects.errors import ProjectError
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.utils import canonicalize_name
-
-from app.features.project_management.projects.errors import ProjectError
 
 MANIFEST_LIMIT = 1024 * 1024
 LOCK_LIMIT = 8 * 1024 * 1024
@@ -111,7 +110,7 @@ def _names(entries) -> set[str]:
 def choose_group(project: dict) -> str | None:
     """The first dependency group naming devkit-spec, or None when the main dependencies name it."""
     groups = project.get("dependency-groups")
-    for name, entries in (groups.items() if isinstance(groups, dict) else []):
+    for name, entries in groups.items() if isinstance(groups, dict) else []:
         if isinstance(name, str) and "devkit-spec" in _names(entries):
             return name
     if "devkit-spec" in _names((project.get("project") or {}).get("dependencies")):

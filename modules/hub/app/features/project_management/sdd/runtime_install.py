@@ -138,8 +138,20 @@ async def install_wheels(selection: Selection, staged: Path) -> Path:
         requirements = staged / "registry.txt"
         requirements.write_text("\n".join(selection.registry) + "\n")
         await run(
-            [uv, "pip", "install", "-q", "--python", str(venv / "bin/python"), "--no-deps", "--only-binary", ":all:"]
-            + ["--require-hashes", "-r", str(requirements)],
+            [
+                uv,
+                "pip",
+                "install",
+                "-q",
+                "--python",
+                str(venv / "bin/python"),
+                "--no-deps",
+                "--only-binary",
+                ":all:",
+                "--require-hashes",
+                "-r",
+                str(requirements),
+            ],
             cwd=staged,
             env=env,
             timeout=INSTALL_TIMEOUT,
@@ -174,8 +186,18 @@ async def build_sources(packages: dict[str, Path], staged: Path, venv: Path) -> 
     if len(built) != len(packages):
         raise InstallFailure("SDD_RUNTIME_INSTALL_FAILED")
     await run(
-        [uv_binary(), "pip", "install", "-q", "--python", str(venv / "bin/python"), "--offline", "--no-deps"]
-        + ["--no-index", *built],
+        [
+            uv_binary(),
+            "pip",
+            "install",
+            "-q",
+            "--python",
+            str(venv / "bin/python"),
+            "--offline",
+            "--no-deps",
+            "--no-index",
+            *built,
+        ],
         cwd=staged,
         env=env,
         timeout=INSTALL_TIMEOUT,
@@ -186,7 +208,9 @@ async def build_sources(packages: dict[str, Path], staged: Path, venv: Path) -> 
 async def write_pin(selection: Selection, staged: Path, venv: Path) -> dict:
     """Probe the new venv inside the sandbox and record an identity-only pin (no paths beyond the prefix)."""
     output = await run(
-        isolated_python(staged, venv / "bin/python", str(Path(os.path.realpath(interpreter())).parent.parent), INVENTORY),
+        isolated_python(
+            staged, venv / "bin/python", str(Path(os.path.realpath(interpreter())).parent.parent), INVENTORY
+        ),
         cwd=staged,
         env=_plain_env(staged),
         timeout=PROBE_TIMEOUT,

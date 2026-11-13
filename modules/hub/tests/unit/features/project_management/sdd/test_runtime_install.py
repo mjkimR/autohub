@@ -112,6 +112,7 @@ async def test_unreadable_source_records_a_failure_without_an_entry(fake, select
 async def test_a_held_claim_skips_the_install(fake, selection):
     calls, _ = fake
     claim = runtime_cache.try_build_lock(IDENTITY)
+    assert claim is not None
     try:
         assert await runtime_install.build(selection, TOKEN) is False
     finally:
@@ -122,6 +123,8 @@ async def test_a_held_claim_skips_the_install(fake, selection):
 def test_linux_sandbox_unshares_network_and_binds_one_writable_directory(monkeypatch, tmp_path):
     monkeypatch.setattr(isolation.sys, "platform", "linux")
     monkeypatch.setattr(isolation.shutil, "which", lambda name: "/usr/bin/bwrap" if name == "bwrap" else None)
-    command = isolation.isolated_build(tmp_path, Path("/opt/sdd-build/.venv/bin/python"), Path("/usr/bin/uv"), ("build",))
+    command = isolation.isolated_build(
+        tmp_path, Path("/opt/sdd-build/.venv/bin/python"), Path("/usr/bin/uv"), ("build",)
+    )
     assert "--unshare-all" in command and command.count("--bind") == 1
     assert command[command.index("--bind") + 1] == str(tmp_path)

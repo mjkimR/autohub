@@ -42,17 +42,17 @@ plan: PLAN-repo-locked-sdd-runtime
 
 ## Phase 3: Test seam, image and evidence
 
-- [ ] **Task 3.1**: Integration test seam: fixture repositories carry the seed lock, the cache is seeded from `.cache/sdd`, app-common profile tests replaced; network-free sandboxed build test
-  - **_Boundary**: `modules/hub/tests/conftest.py`, `modules/hub/tests/integration/features/execution/flows/test_bridge.py`, `modules/hub/tests/integration/features/project_management/sdd/`, `scripts/test-sdd.sh`
+- [x] **Task 3.1**: Integration test seam: fixture repositories carry the seed lock, the cache is seeded from `.cache/sdd`, app-common profile tests replaced; network-free sandboxed build test
+  - **_Boundary**: `modules/hub/tests/conftest.py`, `modules/hub/tests/integration/features/execution/flows/test_bridge.py`, `modules/hub/tests/integration/features/project_management/sdd/`, `scripts/test-sdd.sh`, `modules/hub/tests/integration/sdd_runtime.py` (scope extension: shared offline seed for fixture repositories), `modules/hub/tests/integration/features/project_management/pipeline_runs/test_merge_stage.py` (scope extension: the fake GitHub answers the default-branch head the runtime check reads), `docs/capabilities/sdd/CAP-SDD-native-delivery.md` (scope extension: rule 8 check link pointed at the removed profile test)
   - _Requirements: AC-01, AC-02, AC-04, AC-10, AC-12, AC-16_
   - **Verification**: `just install-sdd`, `just test-sdd`, `just test-sdd-pg`
 
-- [ ] **Task 3.2**: Serving image and scripts: pinned build environment, `uv` in the runtime stage, profiles and app-common manifest removed, installer generalized
-  - **_Boundary**: `docker/hub.Dockerfile`, `docker/helper/deploy_cloud_run.sh`, `config/sdd-build/`, `config/sdd-runtime-app-common/`, `config/sdd-runtime/`, `scripts/install-sdd.py`, `justfile`
+- [x] **Task 3.2**: Serving image and scripts: pinned build environment, `uv` in the runtime stage, profiles and app-common manifest removed, installer generalized
+  - **_Boundary**: `docker/hub.Dockerfile`, `docker/helper/deploy_cloud_run.sh`, `config/sdd-build/`, `config/sdd-runtime-app-common/`, `config/sdd-runtime/`, `scripts/install-sdd.py`, `justfile`, `docker/build_hub.sh` (scope extension: the unused private-source build secret was removed), `scripts/check-devkit.py` (scope extension: the pin check listed the removed app-common manifest)
   - _Requirements: AC-10, AC-18_
   - **Verification**: `just install-sdd .cache/sdd-build config/sdd-build`, `docker build -f docker/hub.Dockerfile .` when Docker is available, `just lint`, `just check`
 
-- [ ] **Task 3.3**: Cold-install measurement of the g-scavenger-crew lock recorded and the cache byte cap default set from it
+- [x] **Task 3.3**: Cold-install measurement of the g-scavenger-crew lock recorded and the cache byte cap default set from it
   - **_Boundary**: `specs/2026-11/20261113-repo-locked-sdd-runtime/materials/`, `modules/hub/app/features/project_management/sdd/runtime_cache.py`
   - _Requirements: AC-18_
   - **Verification**: `materials/cold-install.md` records seconds and MiB; `just test tests/unit/features/project_management/sdd/test_runtime_cache.py`

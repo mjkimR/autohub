@@ -22,7 +22,7 @@ SUBDIRECTORIES = {
 }
 DEVELOPMENT_PACKAGES = set(SUBDIRECTORIES)
 RUNTIME_PACKAGES = DEVELOPMENT_PACKAGES - {"devkit-catalog"}
-PROFILES = (".", "config/sdd-runtime", "config/sdd-runtime-app-common")
+PROFILES = (".", "config/sdd-runtime")  # the seed runtime; serving hosts install from repository locks
 VIEWER = "devkit-viewer-0.1.0.tgz"
 
 

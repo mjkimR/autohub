@@ -116,7 +116,10 @@ async def ensure_runtime() -> Path:
 
 
 def runtime_home() -> Path:
-    source = _source.get()
+    try:
+        source = current_source()
+    except ProjectError:
+        source = None
     if source is None or source.home is None:
         raise ProjectError(503, "The SDD runtime has not been resolved", code="SDD_RUNTIME_UNAVAILABLE")
     return source.home
@@ -130,7 +133,9 @@ def runtime_pin() -> dict:
             raise ValueError("runtime pin mismatch")
         return pin
     except (OSError, ValueError, KeyError, TypeError):
-        raise ProjectError(422, "The cached SDD runtime is inconsistent; retry", code="SDD_RUNTIME_UNAVAILABLE") from None
+        raise ProjectError(
+            422, "The cached SDD runtime is inconsistent; retry", code="SDD_RUNTIME_UNAVAILABLE"
+        ) from None
 
 
 def runtime_identity() -> dict:

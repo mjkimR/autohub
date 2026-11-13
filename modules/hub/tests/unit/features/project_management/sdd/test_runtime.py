@@ -159,9 +159,8 @@ async def test_cold_cache_starts_one_install_and_reports_preparing(tmp_path, mon
     runtime._installs.clear()
 
     async def caller():
-        with runtime.runtime_source(tmp_path, "token"):
-            with pytest.raises(ProjectError) as raised:
-                await runtime.ensure_runtime()
+        with runtime.runtime_source(tmp_path, "token"), pytest.raises(ProjectError) as raised:
+            await runtime.ensure_runtime()
         return raised.value
 
     errors = await asyncio.gather(*(caller() for _ in range(5)))
@@ -169,7 +168,9 @@ async def test_cold_cache_starts_one_install_and_reports_preparing(tmp_path, mon
     assert builds == ["token"]
     assert all(error.status == 503 and error.code == "SDD_RUNTIME_PREPARING" for error in errors)
     release.set()
-    await runtime.install_task(IDENTITY)
+    task = runtime.install_task(IDENTITY)
+    assert task is not None
+    await task
 
 
 async def test_caller_deadline_does_not_cancel_the_install(tmp_path, monkeypatch):
@@ -196,7 +197,10 @@ async def test_caller_deadline_does_not_cancel_the_install(tmp_path, monkeypatch
         async with asyncio.timeout(0.05):
             await slow_request()
     await asyncio.wait_for(finished.wait(), 2)
-    assert runtime.install_task(IDENTITY).done() and not runtime.install_task(IDENTITY).cancelled()
+    task = runtime.install_task(IDENTITY)
+    assert task is not None
+    await asyncio.wait_for(task, 2)
+    assert not task.cancelled()
 
 
 async def test_recorded_failure_is_reported_without_reinstalling(tmp_path, monkeypatch):
