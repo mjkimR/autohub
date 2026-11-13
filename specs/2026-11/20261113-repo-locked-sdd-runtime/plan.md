@@ -93,24 +93,33 @@ Snapshot `cli_version` is `devkit-lock:<identity>`. `pin.json` keeps `provider: 
  "lock_sha256": "<identity>|null", "lock_detail": "<catalog text>|null"}
 ```
 
-Install steps (all in a staging directory under the cache root, then `rename` to the entry):
+Install steps (all in a staging directory under the cache root, then `rename` to the entry). Only the Hub process
+writes the staging root, `pin.json` and the rename; sandboxes write `work/` (builds) or `.venv` (later steps):
 
 1. Hub process: shallow `git fetch` of each distinct (repository, revision) from `https://github.com/` with
-   `credential_env(token)`; check out the revision; copy each `subdirectory` to `src/<package>`.
+   `credential_env(token)` into `work/src/`; check out the revision.
 2. Hub process: `uv venv` with the image interpreter, then
-   `uv pip install --no-deps --only-binary :all: --require-hashes -r registry.txt` (wheels only: no package code runs).
-3. Sandbox per Git package: `uv build --wheel --offline --no-build-isolation --python /opt/sdd-build/.venv/bin/python
-   --out-dir wheels src/<package>`; staging writable, build environment and interpreter read-only, network
-   unshared, environment limited to `PATH`, `HOME`, `TMPDIR`, `LANG`, `UV_OFFLINE=1`, `UV_CACHE_DIR`.
-4. Hub process: `uv pip install --offline --no-deps --no-index wheels/*.whl` into the venv.
-5. Probe bundles and versions in the sandbox with the new venv; write `pin.json`; remove `src/`, `wheels/` and the uv
-   cache; rename the staging directory to `entry(identity)`; run `evict`.
+   `uv pip install --no-deps --only-binary :all: --require-hashes -r registry.txt` (wheels only: no package code
+   runs). This is the last Hub-process use of the venv's interpreter.
+3. Sandbox per Git package, writable `work/` only: `uv build --wheel --offline --no-build-isolation --python
+   /opt/sdd-build/.venv/bin/python --out-dir work/wheels <source>`; network unshared, environment limited to
+   `PATH`, `HOME`, `TMPDIR`, `LANG`, `UV_OFFLINE=1`, `UV_CACHE_DIR`.
+4. Hub process: check that `work/` is still the directory it created and that every built wheel is a regular file.
+   Sandbox, writable `.venv` only: `uv pip install --offline --no-deps --no-index <wheels>`; then check `.venv`.
+5. Sandbox, writable `.venv` only: inventory probe (bundles, versions); check `.venv`. The Hub writes `pin.json`
+   (`O_NOFOLLOW`, `O_EXCL`) with its own `python_prefix`, removes `work/` and scratch, renames the staging
+   directory to `entry(identity)` and runs `evict` in a thread.
+
+Devkit commands read the interpreter prefix the Hub computes, never the pin's value. An entry whose `.venv` is a
+symlink is refused.
 
 ## 4. Storage & State Management
 
 - No database migration. Snapshot `cli_version` values change format; stored snapshots keep their old values and
   continue under AC-04 because identity changes no longer refuse.
-- Cache state is per instance and disposable: entries, `.lease`, `.build` and `.failed` files under the cache root.
+- Cache state is per instance and disposable: entries, `.lease`, `.build` and `.failed-<scope>` files under the cache
+  root. A failure marker is scoped to a hash of the credential that failed. `prune` removes staging whose build
+  claim is free and expired markers; staging still in progress counts against the cap.
 - `AUTOHUB_SDD_CACHE_BYTES` (default set from AC-18's measurement) bounds entries; the transient uv cache is pruned.
 - Batch basis evidence stored before rollout carries the old `runtime` shape; the batch driver compares it as a
   change, which the operator settles before rollout (Section 5).

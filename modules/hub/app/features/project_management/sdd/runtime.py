@@ -110,6 +110,11 @@ async def ensure_runtime() -> Path:
         source.home = source.stack.enter_context(cache.lease(selection.identity))
     except BlockingIOError:  # an eviction holds the entry right now
         raise ProjectError(503, PREPARING, code="SDD_RUNTIME_PREPARING") from None
+    home = source.home
+    if home.is_symlink() or (home / ".venv").is_symlink() or not (home / ".venv").is_dir():
+        source.stack.close()
+        source.stack, source.home = ExitStack(), None
+        raise ProjectError(422, FAILURES["SDD_RUNTIME_INSTALL_FAILED"], code="SDD_RUNTIME_INSTALL_FAILED")
     if not cache.complete(selection.identity):  # evicted between the check and the lease
         source.stack.close()
         source.stack = ExitStack()

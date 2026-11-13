@@ -18,7 +18,7 @@ from .diagnostics import SddEvaluationError, capture, collect, diagnostic, failu
 from .evidence import anchor_metadata, answer_resolutions, proposal_metadata, reports, review_gaps
 from .gates import INTEGRATION_GATE
 from .isolation import isolated_python, isolation_runner
-from .lock_runtime import interpreter
+from .lock_runtime import interpreter, interpreter_prefix
 from .policy import base_policy
 from .runtime import configured_version, current_source, ensure_runtime, resolve, restore
 from .units import is_proposal, read_status, unit_anchor
@@ -133,7 +133,7 @@ class SddService:
         """
         status = {"profile": "repository-lock", "provider": "devkit-spec", "isolation": isolation_runner()}
         python = interpreter()
-        prefix = str(Path(python).resolve().parent.parent)
+        prefix = interpreter_prefix()
         with TemporaryDirectory(prefix="autohub-sdd-probe-") as directory:
             probe = Path(directory).resolve()
             try:

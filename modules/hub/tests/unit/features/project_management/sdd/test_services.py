@@ -283,7 +283,7 @@ async def test_runtime_endpoint_reports_both_failures_without_an_error(monkeypat
             raise ProjectError(422, "connector unavailable")
 
     async def runtime_status(self, *args):
-        return {"profile": "repository-lock", "isolation": None, "ok": False, "detail": "no sandbox"}
+        return {"profile": "repository-lock", "isolation": None, "ok": False, "state": None, "detail": "no sandbox"}
 
     monkeypatch.setattr(usecases, "AsyncTransaction", transaction)
     monkeypatch.setattr(services.SddService, "runtime_status", runtime_status)
@@ -291,3 +291,45 @@ async def test_runtime_endpoint_reports_both_failures_without_an_error(monkeypat
     use_case.projects, use_case.observer = Projects(), Observer()  # type: ignore[assignment]
     status = await use_case.runtime("project")
     assert status.ok is False and status.state == "failed" and status.lock_detail
+
+
+async def test_lock_status_reports_preparing_while_an_eviction_holds_the_entry(monkeypatch, tmp_path):
+    from contextlib import asynccontextmanager, contextmanager
+
+    from app.features.project_management.sdd import runtime_cache
+    from app.features.project_management.sdd.lock_runtime import Selection
+
+    @asynccontextmanager
+    async def checkout(repository, head, base, token):
+        yield tmp_path
+
+    async def resolve(source, start=True):
+        return Selection("dev", "x", "c" * 64, "3.13", (), ()), "ready"
+
+    @contextmanager
+    def busy(identity):
+        raise BlockingIOError
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(services, "checkout", checkout)
+    monkeypatch.setattr(services, "current_source", lambda: None)
+    monkeypatch.setattr(services, "resolve", resolve)
+    monkeypatch.setattr(runtime_cache, "lease", busy)
+    status = await services.SddService().lock_status("o/r", HEAD, "token")
+    assert status["state"] == "preparing"
+
+
+async def test_host_probe_timeout_kills_the_sandboxed_process_group(monkeypatch, tmp_path):
+    import asyncio
+    import os
+
+    marker = tmp_path / "child.pid"
+    script = f"sleep 30 & echo $! > {marker}; wait"
+    real_timeout = asyncio.timeout
+    monkeypatch.setattr(services.asyncio, "timeout", lambda seconds: real_timeout(0.5))
+    with pytest.raises(TimeoutError):
+        await services._probe(["/bin/sh", "-c", script], tmp_path)
+    child = int(marker.read_text())
+    await asyncio.sleep(0.2)
+    with pytest.raises(ProcessLookupError):
+        os.kill(child, 0)

@@ -19,6 +19,7 @@ def provision(tmp_path, monkeypatch, **extra) -> Path:
     monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
     home = runtime_cache.entry(IDENTITY)
     home.mkdir(parents=True)
+    (home / ".venv").mkdir()
     pin = {"provider": "devkit-spec", "identity": IDENTITY, "python_prefix": "/usr", "bundles": [], **extra}
     (home / "pin.json").write_text(json.dumps(pin))
     return home
@@ -351,3 +352,29 @@ def test_handoff_requires_eligible_choice_and_integration_uses_own_authority():
         validate_answer(evidence, {"request": "question:worker-01.q1", "action": "accept", "value": "zzz"})
     with pytest.raises(ProjectError, match="Write the decision"):
         validate_answer(evidence, {"request": "question:worker-01.q1", "action": "accept", "note": "  "})
+
+
+async def test_symlinked_entry_venv_is_refused(tmp_path, monkeypatch):
+    home = provision(tmp_path, monkeypatch)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (home / ".venv").rmdir()
+    (home / ".venv").symlink_to(elsewhere)
+    monkeypatch.setattr(runtime, "select", lambda root: selection())
+    with runtime.runtime_source(tmp_path, "token"), pytest.raises(ProjectError) as raised:
+        await runtime.ensure_runtime()
+    assert raised.value.code == "SDD_RUNTIME_INSTALL_FAILED"
+
+
+async def test_devkit_sandbox_reads_the_hub_prefix_not_the_recorded_one(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(runtime, "ensure_runtime", AsyncMock(return_value=tmp_path))
+    monkeypatch.setattr(runtime, "runtime_pin", lambda: {"python_prefix": "/"})
+    monkeypatch.setattr(
+        isolation, "isolated_command", lambda home, root, args, prefix: seen.append(prefix) or ["sandbox"]
+    )
+    monkeypatch.setattr(checkout, "_command", AsyncMock(return_value="ok"))
+    await checkout.command("devkit", "--version", cwd=tmp_path)
+    from app.features.project_management.sdd.lock_runtime import interpreter_prefix
+
+    assert seen == [interpreter_prefix()] and seen[0] != "/"

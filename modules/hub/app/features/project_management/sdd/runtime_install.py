@@ -4,8 +4,10 @@ The Hub process fetches GitHub sources with the project's connector token into `
 registry wheels into a fresh venv (installing a wheel runs no package code, and the venv's interpreter is not run
 again outside a sandbox afterwards). Each Git source is then built offline in an OS sandbox that can write only
 ``work/``, with the image's pinned build backend; the built wheels are installed offline in a sandbox, and the
-inventory is probed in one. The Hub process writes ``pin.json`` from values it computes itself and publishes the
-staging directory atomically as the cache entry.
+inventory is probed in one. Those later sandboxes can write only ``.venv``; the staging root, ``pin.json`` and the
+publish rename stay Hub-only, and the Hub verifies after every sandboxed step that ``work/`` and ``.venv`` are still
+the directories it created (a sandbox process may outlive its step on macOS). The Hub writes ``pin.json`` from
+values it computes itself and publishes the staging directory atomically as the cache entry.
 """
 
 import asyncio
@@ -22,8 +24,8 @@ from app.features.project_management.projects.errors import ProjectError
 
 from . import runtime_cache as cache
 from .checkout import credential_env, remote_url
-from .isolation import isolated_build, isolated_python
-from .lock_runtime import Selection, build_home, interpreter, uv_binary
+from .isolation import isolated_build, isolated_python, sandboxed
+from .lock_runtime import Selection, build_home, interpreter, interpreter_prefix, uv_binary
 
 FETCH_TIMEOUT = 180
 INSTALL_TIMEOUT = 600
@@ -155,6 +157,20 @@ async def install_wheels(selection: Selection, staged: Path) -> Path:
     return venv
 
 
+def _identity(path: Path) -> tuple[int, int]:
+    info = os.lstat(path)
+    return info.st_dev, info.st_ino
+
+
+def _check_same(path: Path, expected: tuple[int, int]) -> None:
+    """A sandbox-writable directory must still be the real directory the Hub created, never a substitute."""
+    try:
+        if path.is_symlink() or not path.is_dir() or _identity(path) != expected:
+            raise InstallFailure("SDD_RUNTIME_INSTALL_FAILED")
+    except OSError:
+        raise InstallFailure("SDD_RUNTIME_INSTALL_FAILED") from None
+
+
 def built_wheels(staged: Path, expected: int) -> list[str]:
     """The regular wheel files the builds produced; a symlink anywhere on the way is refused."""
     wheels = staged / WORK / "wheels"
@@ -175,6 +191,7 @@ async def build_sources(packages: dict[str, Path], staged: Path, venv: Path) -> 
     if not build_python.exists():
         raise InstallFailure("SDD_RUNTIME_INSTALL_FAILED")
     work = staged / WORK
+    work_identity = _identity(work)
     (work / "wheels").mkdir()
     (work / "home").mkdir()
     build_env = {**_plain_env(work / "home"), "UV_OFFLINE": "1"}
@@ -189,18 +206,24 @@ async def build_sources(packages: dict[str, Path], staged: Path, venv: Path) -> 
             code="SDD_RUNTIME_INSTALL_FAILED",
             group=True,
         )
+    _check_same(work, work_identity)
     built = built_wheels(staged, len(packages))
-    # The venv now holds registry packages: only a sandbox may run its interpreter.
-    install_env = {**_plain_env(staged / WORK / "home"), "UV_OFFLINE": "1"}
-    args = ("pip", "install", "-q", "--python", str(venv / "bin/python"), "--offline", "--no-deps", "--no-index")
+    # The venv now holds registry packages: only a sandbox may run its interpreter, and it writes only the venv.
+    scratch = venv / ".tmp"
+    scratch.mkdir()
+    venv_identity = _identity(venv)
+    install_env = {**_plain_env(scratch), "UV_OFFLINE": "1"}
+    args = [str(uv), "pip", "install", "-q", "--python", str(venv / "bin/python"), "--offline", "--no-deps"]
+    readable = [work / "wheels", Path(interpreter_prefix()), uv.parent]
     await run(
-        isolated_build(staged, venv / "bin/python", uv, (*args, *built)),
-        cwd=staged,
+        sandboxed(venv, readable, [*args, "--no-index", *built]),
+        cwd=venv,
         env=install_env,
         timeout=INSTALL_TIMEOUT,
         code="SDD_RUNTIME_INSTALL_FAILED",
         group=True,
     )
+    _check_same(venv, venv_identity)
 
 
 def _inventory(output: str) -> dict:
@@ -231,15 +254,19 @@ def _write_new(path: Path, text: str) -> None:
 
 async def write_pin(selection: Selection, staged: Path, venv: Path) -> dict:
     """Probe the venv's inventory in the sandbox; the prefix and identity come from the Hub, never the probe."""
-    prefix = str(Path(os.path.realpath(interpreter())).parent.parent)
+    prefix = interpreter_prefix()
+    scratch = venv / ".tmp"
+    scratch.mkdir(exist_ok=True)
+    venv_identity = _identity(venv)
     output = await run(
-        isolated_python(staged, venv / "bin/python", prefix, INVENTORY),
-        cwd=staged,
-        env=_plain_env(staged / WORK / "home"),
+        isolated_python(venv, venv / "bin/python", prefix, INVENTORY),
+        cwd=venv,
+        env=_plain_env(scratch),
         timeout=PROBE_TIMEOUT,
         code="SDD_RUNTIME_INSTALL_FAILED",
         group=True,
     )
+    _check_same(venv, venv_identity)
     inventory = _inventory(output)
     pin = {
         "provider": "devkit-spec",
@@ -257,7 +284,7 @@ async def write_pin(selection: Selection, staged: Path, venv: Path) -> dict:
 
 
 def _clean(staged: Path) -> None:
-    for name in (WORK, ".uv-cache", "registry.txt"):
+    for name in (WORK, ".uv-cache", "registry.txt", ".venv/.tmp"):
         path = staged / name
         if path.is_dir() and not path.is_symlink():
             shutil.rmtree(path, ignore_errors=True)

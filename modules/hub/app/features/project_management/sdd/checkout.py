@@ -81,10 +81,12 @@ async def command(*args: str, cwd: Path, env: dict | None = None, allow_failure:
         from .isolation import isolated_command, isolated_git
 
         if args[0] == "devkit":
-            from .runtime import ensure_runtime, runtime_pin
+            from .lock_runtime import interpreter_prefix
+            from .runtime import ensure_runtime
 
             home = await ensure_runtime()
-            invocation = isolated_command(home, cwd, args[1:], runtime_pin()["python_prefix"])
+            # The prefix the sandbox may read is the Hub's own, never a value a cached runtime recorded.
+            invocation = isolated_command(home, cwd, args[1:], interpreter_prefix())
         else:
             invocation = isolated_git(cwd, args[1:])  # Git never waits for a devkit runtime
         temp = cwd / ".devkit/transient/hub-tmp"

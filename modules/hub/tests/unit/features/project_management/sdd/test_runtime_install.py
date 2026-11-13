@@ -41,12 +41,18 @@ def fake(tmp_path, monkeypatch):
         runtime_install, "isolated_build", lambda writable, py, uv, args: ["SANDBOX", str(writable), *args]
     )
     monkeypatch.setattr(runtime_install, "isolated_python", lambda writable, py, prefix, code: ["SANDBOX-PY", code])
+    monkeypatch.setattr(
+        runtime_install, "sandboxed", lambda writable, readable, invocation: ["SANDBOX", str(writable), *invocation]
+    )
+    hooks = {}
 
     async def run(args, *, cwd, env, timeout, code, group=False):
         calls.append({"args": [str(a) for a in args], "env": env, "code": code, "cwd": cwd})
         step = args[5] if args[0] == "git" else args[0]  # git -c ... -c ... <step>
         if failures.get(step) == code:
             raise runtime_install.InstallFailure(code)
+        if len(args) > 1 and args[1] == "venv":
+            Path(args[-1]).mkdir(parents=True)
         if "checkout" in args:
             for sub in ("packages/devkit-spec", "packages/devkit-dist"):
                 (Path(cwd) / sub).mkdir(parents=True, exist_ok=True)
@@ -56,10 +62,13 @@ def fake(tmp_path, monkeypatch):
             out.mkdir(exist_ok=True)
             (out / f"{Path(args[-1]).name}-1.0-py3-none-any.whl").write_text("")
         if args[0] == "SANDBOX-PY":
+            if hook := hooks.get("probe"):
+                hook(cwd)
             return json.dumps(probe["output"])
         return ""
 
     monkeypatch.setattr(runtime_install, "run", run)
+    probe["hooks"] = hooks
     return calls, failures, probe
 
 
@@ -138,7 +147,7 @@ async def test_builds_write_only_work_and_the_wheel_install_runs_sandboxed(fake,
     builds = [call for call in sandboxed if "build" in call["args"]]
     installs = [call for call in sandboxed if "pip" in call["args"]]
     assert all(Path(call["args"][1]).name == runtime_install.WORK for call in builds)
-    assert len(installs) == 1 and Path(installs[0]["args"][1]).name.startswith(runtime_cache.STAGING_PREFIX)
+    assert len(installs) == 1 and Path(installs[0]["args"][1]).name == ".venv"  # the wheel install writes only the venv
     hub_uv = [call for call in calls if call["args"][0] not in ("SANDBOX", "SANDBOX-PY", "git")]
     # After registry wheels are installed, the Hub process never runs uv against the venv again.
     assert [call["args"][1:3] for call in hub_uv] == [["venv", "-q"], ["pip", "install"]]
@@ -180,3 +189,27 @@ def test_symlinked_build_output_is_refused(tmp_path):
     (wheels / "a-1.0-py3-none-any.whl").symlink_to(target)
     with pytest.raises(runtime_install.InstallFailure):
         runtime_install.built_wheels(tmp_path, 1)
+
+
+async def test_a_swapped_venv_after_the_probe_fails_the_install(fake, selection, tmp_path):
+    _, _, probe = fake
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+
+    def swap(venv):
+        import shutil
+
+        shutil.rmtree(venv)
+        Path(venv).symlink_to(elsewhere)
+
+    probe["hooks"]["probe"] = swap
+    assert await runtime_install.build(selection, TOKEN) is True
+    assert runtime_cache.failure(IDENTITY, runtime_cache.token_scope(TOKEN)) == "SDD_RUNTIME_INSTALL_FAILED"
+    assert not runtime_cache.complete(IDENTITY) and not list(elsewhere.iterdir())
+
+
+async def test_later_sandboxes_cannot_write_the_staging_root(fake, selection):
+    calls, _, _ = fake
+    await runtime_install.build(selection, TOKEN)
+    writable = [Path(call["args"][1]).name for call in calls if call["args"][0] == "SANDBOX"]
+    assert set(writable) == {runtime_install.WORK, ".venv"}

@@ -66,6 +66,11 @@ def interpreter() -> Path:
     return Path(os.environ.get("AUTOHUB_SDD_PYTHON") or sys.executable)
 
 
+def interpreter_prefix() -> str:
+    """The interpreter's installation prefix as the Hub computes it; never taken from a runtime's own output."""
+    return str(Path(os.path.realpath(interpreter())).parent.parent)
+
+
 def python_version() -> str:
     return f"{sys.version_info.major}.{sys.version_info.minor}"
 
