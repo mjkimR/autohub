@@ -18,15 +18,16 @@ entrypoints:
 
 The repository browser reads GitHub through the project's connector. SDD projects
 also embed the pinned `devkit-viewer` component, with Hub-owned execution links and
-separate start/decision controls. The selected branch determines the document view;
-a PR's inspected revision independently determines execution readiness.
+separate activity-start controls. The selected branch determines the document view.
+Activity starts forward intent without evaluating repository readiness. Retained
+native decision evidence is read-only; ordinary PR questions use their Run controls.
 
 ## 2. Scope & Boundary
 
 - **In-Scope**: repository information, directory/file reads, authenticated viewer
   transport, branch-specific roadmap inspection and recorded execution lineage.
 - **Out-of-Scope**: devkit-viewer's Markdown/diagram/index rendering internals;
-  GitHub repository storage; native SDD execution and decisions owned by
+  GitHub repository storage; activity orchestration owned by
   `CAP-SDD-native-delivery`; document authoring; repository edits.
 - **Scope Excluded**: read-triggered execution or approval, cross-branch roadmap
   aggregation, inferred lineage from similar slugs, milestone batch execution and

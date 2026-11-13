@@ -1,0 +1,56 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T06:49:53.972934Z'
+status: completed
+summary: round 1; REVISE six documentation target, serving, architecture, preview, ADR and actor-flow reflection findings.
+findings:
+- issue: Reconciliation omits three promoted or relocated current documentation targets
+  evidence: reconcile.md target list; git diff --no-renames adds the new ADR and moved boundary-evidence.md and reverse-references.txt
+  failure_condition: Target coverage is treated as complete despite missing current ADR and evidence destinations
+  suggested_action: Add all three destination paths as modified targets
+  resolution: open
+  severity: P1
+- issue: Cloud Run guidance requires the removed serving evaluator
+  evidence: docs/operations/cloud-run-deployment.md:191-210; docker/hub.Dockerfile:38; sdd/api.py:77
+  failure_condition: Operator expects runtime packaging cache installation and an ok runtime probe which are retired
+  suggested_action: Replace evaluator paragraphs with ordinary serving and retirement rollout boundary and register the target
+  resolution: open
+  severity: P1
+- issue: Architecture context assigns removed workflow evaluation to Hub
+  evidence: docs/architecture/ARCH-03-system-context.md:26,40; docs/architecture/README.md:7,10
+  failure_condition: Context and index describe a Hub evaluator runtime and cache absent from implementation
+  suggested_action: Remove evaluator actor and edge and update repository agent CI ownership and index descriptions
+  resolution: open
+  severity: P1
+- issue: Repository contracts offer the removed milestone preview panel
+  evidence: docs/ux/repository/UX-repository.md:50; docs/usecases/repository/UC-inspect-repository-documents.md:93,180
+  failure_condition: Operator follows documented interaction or DOC-INSPECT-10 but no live preview panel exists
+  suggested_action: Remove obsolete preview interaction extension and acceptance scenario and register the use case target
+  resolution: open
+  severity: P1
+- issue: Accepted ADR clauses retain retired evaluator and native discovery guarantees
+  evidence: ADR-milestone-readiness-boundary:39; ADR-decision-inbox-read-projection:33; ADR-mcp-delivery-owner-adapters:38
+  failure_condition: Accepted decisions still require isolated preview actionable native entries and exact native inspection
+  suggested_action: Supersede milestone preview and native-only inbox and MCP clauses with reciprocal metadata and notes while preserving independent decisions
+  resolution: open
+  severity: P1
+- issue: Question notification and repository flows promise live native controls
+  evidence: docs/usecases/delivery/UC-resolve-run-question.md:27,207; docs/usecases/notifications/UC-receive-decision-notice.md:29; CAP-DOC-repository-viewer:21
+  failure_condition: Current guidance promises native approval revocation inspection controls and notice actions after retirement
+  suggested_action: Describe ordinary question review and resume and read-only native history and register both use case targets
+  resolution: open
+  severity: P1
+assumptions:
+- Read-only emulated independent reviewer; approved removal authorizes supersession of native-only decisions.
+unverified_areas:
+- No tests, image build, browser, live GitHub/provider or deployment executed by reviewer.
+checks:
+  scope: PASS no-renames diff and implementation contract inspection
+  reflection: FAIL six findings require correction
+  git_boundary: PASS clean HEAD and tree17615776e314c8b1e7674f3123c33c72c4195d7c unchanged
+diff_scope:
+  base: 725317b9e4450a1abfda7d20d0b72571191ce7ed
+  head: 1be703ba0f2b79c6a4e65c84b402be50e114cec9
+activity_effort: high

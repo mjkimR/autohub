@@ -3,13 +3,14 @@ id: ADR-milestone-readiness-boundary
 title: Keep milestone readiness separate from execution
 summary: "For milestone work selection, we pin a read-only Hub preview to a repository commit and reuse devkit eligibility, to preserve execution authority, accepting refresh before later admission."
 proposal: SPEC-sdd-milestone-readiness
-status: accepted
+status: superseded
+superseded_by: ADR-repository-owned-sdd-execution
 created_at: 2026-11-05
 ---
 
 # [ADR-milestone-readiness-boundary] Keep milestone readiness separate from execution
 
-- **Status**: Accepted
+- **Status**: Superseded
 - **Date**: 2026-11-05
 
 ---
@@ -32,6 +33,8 @@ The repository viewer shows branch-specific milestone proposals. Native activity
 3. Viewer-only readiness badges: reuse navigation but cannot provide authoritative runtime admission or Hub-owned selection without vendor changes.
 
 ## 4. Decision Outcome
+
+Superseded in part by `ADR-repository-owned-sdd-execution`: all decisions defining executable milestone readiness previews.
 
 Choose the separate Hub panel because it meets the observation goal with existing ownership.
 

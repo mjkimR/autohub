@@ -188,26 +188,20 @@ gcloud run deploy "$SERVICE_NAME" \
   --set-secrets="APP_SECRETS_JSON=autohub-secrets:latest"
 ```
 
-The image contains Git, bubblewrap, `uv` and the pinned build environment
-`/opt/sdd-build`, and sets `AUTOHUB_SDD_BUILD` and
-`AUTOHUB_SDD_CACHE=/tmp/autohub-sdd-runtimes`. Each instance installs the devkit
-runtime a repository's `uv.lock` pins on first use, with that project's GitHub
-connector token; the service needs outbound access to GitHub and PyPI. The cache
-lives in in-memory `/tmp` and counts against `--memory`; adjust
-`AUTOHUB_SDD_CACHE_BYTES` (default 256 MiB) through the
-[runtime operations guide](sdd-runtime.md#serving-host) when changing memory.
-Remove `AUTOHUB_SDD_HOME` and `AUTOHUB_SDD_PROFILES` from older services.
-`ARCH-07-deployment` and `CAP-SDD-runtime-isolation` own the runtime-cache and
-request-isolation contracts.
+The serving image contains no SDD evaluator, devkit installer, build environment
+or repository runtime cache. Remove obsolete `AUTOHUB_SDD_*` variables and
+`AUTOHUB_FLOW_DELIVERY_TARGETS` from existing service configuration. SDD activity
+starts use the ordinary GitHub and agent-provider connections; they require no
+bubblewrap probe or evaluator-specific execution environment.
 
-Native SDD evaluation runs devkit inside bubblewrap, which needs unprivileged user
-namespaces: add `--execution-environment=gen2` to the deploy command for a service
-that evaluates SDD runs, then confirm on the deployed host with
-`GET /api/v1/projects/{id}/sdd/runtime` (or the SDD panel's **Check runtime**), which
-must report `ok: true` with `isolation: bubblewrap`. See
-`CAP-SDD-runtime-isolation` for the runtime contract and the
-[runtime operations guide](sdd-runtime.md#isolation-and-deployment) for operational
-setup, including the [rollout and rollback settlement](sdd-runtime.md#rollout-and-rollback).
+Deploy the matching backend, UI and retirement migration together. The migration
+stops legacy local execution and preserves its history and unsettled ownership;
+it does not cancel already dispatched provider work. Follow the
+[activity rollout and rollback procedure](sdd-runtime.md#rollout-and-rollback)
+before admitting replacement work. Use the
+[live canary procedure](sdd-runtime.md#live-canary-after-deployment) to record
+ordinary Draft activity, question/resume and current-head CI behavior on the
+deployed revision. `ARCH-07-deployment` owns the serving boundary.
 
 Record the deployed Service URL output (e.g. `https://autohub-xxxx-du.a.run.app`):
 

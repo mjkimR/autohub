@@ -23,7 +23,6 @@ flowchart LR
     Hub -->|Session requests and observation| Jules[Jules]
     GitHub -->|Codex mentions| Codex[Codex cloud]
     Codex -->|Implementation pushes| GitHub
-    Hub -->|Isolated repository workflow evaluation| Devkit[Reviewed devkit runtime]
     Hub -->|Bound task execution| Worker[Configured SDK worker]
     Hub -->|Operator notices| Telegram[Telegram]
 ```
@@ -36,8 +35,8 @@ flowchart LR
 | Machine client | Discover/call MCP tools or submit SDK contracts | Registered machine identity and required scopes bound each call |
 | External scheduler | Trigger due scheduler work | A trigger requests dispatch; it does not certify delivery success |
 | GitHub | Repository data, PRs, CI, webhooks and merge | Current PR revision and actual merge state remain authoritative |
-| Coding provider | Implement changes or return a report | A reply alone is not proof of a pushed implementation |
-| devkit runtime | Evaluate repository-native workflow and decision artifacts | Workflow evidence does not replace Hub merge authorization |
+| Coding provider | Implement changes or return a report; follow repository setup and workflow instructions | A reply alone is not proof of a pushed implementation |
+| Repository-owned GitHub Actions | Execute repository verification and publish checks | Hub observes current-head results; the repository owns its verification policy |
 | SDK worker | Execute an admitted release's configured target | Registering a release does not deploy worker code |
 | Telegram | Carry outbound notices | Notification delivery grants no execution or approval authority |
 

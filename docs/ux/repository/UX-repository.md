@@ -47,7 +47,6 @@ visible retry path. Binary file handling belongs to the Git file renderer.
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Open milestone preview | `UC-inspect-repository-documents` 4c | populated | populated | `UX-sdd-milestone-preview` | `CAP-DOC-repository-viewer` | Continue the milestone observation goal in its separate panel. |
 | Choose branch or file | `UC-inspect-repository-documents` 3 | populated | loading |  | `CAP-DOC-repository-viewer` | The selected ref/path content loads without mutating the repository. |
 | Refresh / Retry | `UC-inspect-repository-documents` 4 | error | loading |  | `CAP-DOC-repository-viewer` | The requested read is retried; SDD refresh reloads repository identity and remounts its viewer. |
 | Sdd View / Git Browser | global: choose a read-only repository representation | populated | populated |  | `CAP-DOC-repository-viewer` | The selected mode replaces the content surface. |

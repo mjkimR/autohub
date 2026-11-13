@@ -3,7 +3,7 @@ id: ADR-repository-owned-sdd-execution
 title: Keep repository SDD execution outside Hub
 summary: "For connected-repository SDD work, we delegate setup and workflow execution to the repository and its agent, to keep Hub focused on PR orchestration, accepting failures discovered after dispatch."
 proposal: SPEC-optimistic-sdd-orchestration
-supersedes: [ADR-repository-locked-runtime, ADR-repository-path-sources, ADR-offline-source-build, ADR-sdd-batch-ledger]
+supersedes: [ADR-repository-locked-runtime, ADR-repository-path-sources, ADR-offline-source-build, ADR-sdd-batch-ledger, ADR-milestone-readiness-boundary, ADR-decision-inbox-read-projection, ADR-mcp-delivery-owner-adapters]
 status: accepted
 created_at: 2026-11-13
 ---
@@ -66,10 +66,19 @@ Supersedes in part `ADR-offline-source-build`: all decisions assigning source fe
 
 Supersedes in part `ADR-sdd-batch-ledger`: all decisions defining live graph-based native SDD batch admission and progression.
 
+Supersedes in part `ADR-milestone-readiness-boundary`: all decisions defining executable milestone readiness previews.
+
+Supersedes in part `ADR-decision-inbox-read-projection`: actionable native SDD discovery entries, their refreshed mutation review and native waiting-age semantics.
+
+Supersedes in part `ADR-mcp-delivery-owner-adapters`: the exact native decision inspection tool and its write-scope requirement.
+
 This decision replaces all in-force decisions in `ADR-repository-locked-runtime`,
 `ADR-repository-path-sources`, `ADR-offline-source-build` and
-`ADR-sdd-batch-ledger`. Each is superseded. `ADR-sdd-development` remains accepted
-because it governs Auto Hub's own contributor workflow.
+`ADR-sdd-batch-ledger`, plus `ADR-milestone-readiness-boundary`. Each is superseded.
+The ordinary discovery projection, saved-answer behavior, absence of inbox
+mutation authority and MCP identity, read scope, disclosure and replay decisions
+remain in force. `ADR-sdd-development` remains accepted because it governs Auto
+Hub's own contributor workflow.
 
 The open-proposal inventory in `SPEC-optimistic-sdd-orchestration` has no proposal
 whose sole outcome is embedded SDD evaluation. Keep unrelated outcomes; adjust

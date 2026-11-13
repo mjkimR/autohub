@@ -9,6 +9,8 @@ created_at: 2026-11-05
 
 # [ADR-decision-inbox-read-projection] Discover decisions through an owner-backed read projection
 
+Superseded in part by `ADR-repository-owned-sdd-execution`: actionable native SDD discovery entries, their refreshed mutation review and native waiting-age semantics.
+
 ## 1. Context & Problem Statement
 
 Ordinary question rows and native SDD evidence have different lifecycles. Per-run repository evaluation cannot bound a cross-project list request. Native snapshots lack per-subject waiting timestamps. A mixed worklist must preserve the owner of every decision and its current authority.

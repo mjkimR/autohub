@@ -8,6 +8,8 @@ targets:
   resolution: modified
 - file: docs/architecture/ARCH-02-constraints.md
   resolution: modified
+- file: docs/architecture/ARCH-03-system-context.md
+  resolution: modified
 - file: docs/architecture/ARCH-05-1-containers.md
   resolution: modified
 - file: docs/architecture/ARCH-05-2-components.md
@@ -21,6 +23,8 @@ targets:
 - file: docs/architecture/ARCH-10-quality-requirements.md
   resolution: modified
 - file: docs/architecture/ARCH-11-risks-and-technical-debt.md
+  resolution: modified
+- file: docs/architecture/README.md
   resolution: modified
 - file: docs/capabilities/README.md
   resolution: modified
@@ -48,11 +52,19 @@ targets:
   resolution: modified
 - file: docs/capabilities/sdk/CAP-SDK-task-flow-execution.md
   resolution: modified
+- file: docs/decisions/2026-11/20261105-milestone-readiness-boundary.md
+  resolution: modified
+- file: docs/decisions/2026-11/20261106-decision-inbox-read-projection.md
+  resolution: modified
+- file: docs/decisions/2026-11/20261106-mcp-delivery-owner-adapters.md
+  resolution: modified
 - file: docs/decisions/2026-11/20261106-sdd-batch-ledger.md
   resolution: modified
 - file: docs/decisions/2026-11/20261113-offline-source-build.md
   resolution: modified
 - file: docs/decisions/2026-11/20261113-repository-locked-runtime.md
+  resolution: modified
+- file: docs/decisions/2026-11/20261113-repository-owned-sdd-execution.md
   resolution: modified
 - file: docs/decisions/2026-11/20261113-repository-path-sources.md
   resolution: modified
@@ -62,9 +74,15 @@ targets:
   resolution: modified
 - file: docs/development/toolchain.md
   resolution: modified
+- file: docs/materials/2026-11/20261113-optimistic-sdd-orchestration/boundary-evidence.md
+  resolution: modified
+- file: docs/materials/2026-11/20261113-optimistic-sdd-orchestration/reverse-references.txt
+  resolution: modified
 - file: docs/materials/2026-11/20261113-optimistic-sdd-orchestration/verification.md
   resolution: modified
 - file: docs/operations/README.md
+  resolution: modified
+- file: docs/operations/cloud-run-deployment.md
   resolution: modified
 - file: docs/operations/deployment-status.md
   resolution: modified
@@ -87,6 +105,12 @@ targets:
 - file: docs/steering/ux-objects.md
   resolution: modified
 - file: docs/usecases/README.md
+  resolution: modified
+- file: docs/usecases/delivery/UC-resolve-run-question.md
+  resolution: modified
+- file: docs/usecases/notifications/UC-receive-decision-notice.md
+  resolution: modified
+- file: docs/usecases/repository/UC-inspect-repository-documents.md
   resolution: modified
 - file: docs/usecases/sdd/UC-complete-sdd-workflow.md
   resolution: modified
@@ -164,8 +188,8 @@ checks. `UX-sdd-claim-recovery` includes inspected acknowledgment and exact retr
 documents remove evaluator ownership and describe retained recovery guarantees.
 Contributor/operations guidance removes serving runtime and bridge provisioning;
 Auto Hub's own development tooling remains repository-owned. AC-11 covers the
-image/scripts/CI boundary. AC-12 covers this reflection and the four superseded
-runtime/path/build/batch ADRs; `ADR-sdd-development` remains accepted.
+image/scripts/CI boundary. AC-12 covers this reflection and the five superseded
+runtime/path/build/batch/preview ADRs and partial native-only inbox/MCP supersession; `ADR-sdd-development` remains accepted.
 
 The initial target blueprint was extended to the actual reverse-reference impact:
 ordinary delivery/decision/owed-item/SDK/MCP/repository contracts and UX,
@@ -211,3 +235,19 @@ runtime/workflow contracts point at API refusal/control doors, and the bridge
 contract points at registration and receipt observation. Only those selected
 pairs were applied through the entrypoint CLI; no broad directory was added.
 The independent reconciliation envelope records final semantic verification.
+
+## Reconciliation Review Corrections
+
+Independent round 1 identified omitted rename destinations and stale serving,
+system-context, preview, decision and actor-flow descriptions. The target list
+now uses rename-disabled destination enumeration, including the promoted ADR and
+moved evidence. Deployment guidance and the architecture context describe the
+ordinary serving and repository-owned execution boundary. Repository inspection
+keeps document navigation without executable preview. Question and notice flows
+use ordinary Run controls and retain native evidence as history.
+
+The milestone-preview ADR is superseded in full. Native-only inbox and MCP
+clauses are superseded in part with reciprocal notes; independent projection,
+identity, disclosure and replay decisions remain accepted. Historical decision
+text remains intact. A fresh high-effort round verifies this entire correction
+batch against the original implementation and acceptance criteria.
