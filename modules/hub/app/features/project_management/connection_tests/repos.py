@@ -39,7 +39,7 @@ class ConnectionTestRepository:
                 or_(ConnectionTest.status == ACTIVE, ConnectionTest.cleanup_status != "completed"),
                 or_(ConnectionTest.lease_until.is_(None), ConnectionTest.lease_until < now),
             )
-            .values(lease_token=token, lease_until=now + timedelta(seconds=90))
+            .values(lease_token=token, lease_until=now + timedelta(seconds=90), updated_at=ConnectionTest.updated_at)
             .execution_options(synchronize_session=False)
         )
         if result.rowcount != 1:  # type: ignore[attr-defined]

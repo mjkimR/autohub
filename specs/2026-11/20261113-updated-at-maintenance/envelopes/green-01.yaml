@@ -1,0 +1,16 @@
+kind: green
+stage: fix-verify
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:04:31.419072Z'
+status: completed
+summary: Hub mapped timestamps advance while explicit owner exceptions and historical reads are preserved
+findings: []
+assumptions:
+- Focused tests ran on source before this commit; full repository checks are collected separately
+checks:
+  resolved: PASS focused SQLite 13 passed and PostgreSQL 13 passed
+  preserved: PASS no-op and rejected writes, explicit Core override, pure leases and notification marks, release rotation, owed/retention owner paths
+diff_scope:
+  base: 4503b82a4db447717f8b50f4e21ee88ddc1154c0
+  head: ''

@@ -305,7 +305,9 @@ class PipelineRunRepository:
                 PipelineRun.state.in_(ACTIVE_RUN_STATES),
                 or_(PipelineRun.lease_token.is_(None), PipelineRun.lease_expires_at <= now),
             )
-            .values(lease_owner=owner, lease_token=token, lease_expires_at=expires_at)
+            .values(
+                lease_owner=owner, lease_token=token, lease_expires_at=expires_at, updated_at=PipelineRun.updated_at
+            )
             .returning(PipelineRun)
             .execution_options(synchronize_session="fetch", populate_existing=True)
         )
@@ -329,7 +331,7 @@ class PipelineRunRepository:
                 PipelineRun.lease_token == token,
                 PipelineRun.lease_expires_at > now,
             )
-            .values(lease_expires_at=expires_at)
+            .values(lease_expires_at=expires_at, updated_at=PipelineRun.updated_at)
             .returning(PipelineRun)
             .execution_options(synchronize_session="fetch", populate_existing=True)
         )
@@ -378,7 +380,7 @@ class PipelineRunRepository:
         return list(rows.all())
 
     async def mark_stop_announced(self, session: AsyncSession, run_id: UUID, revision: int) -> None:
-        # Bookkeeping, not a change to the run: its last update stays the moment its state last changed.
+        # Bookkeeping, not a change to the run: preserve its prior last-write/observation timestamp.
         await session.execute(
             update(PipelineRun)
             .where(PipelineRun.id == run_id)
