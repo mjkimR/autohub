@@ -8,7 +8,7 @@ target: .devkit/config.toml worktree.setup
 origin: agent
 severity: workaround
 recurring: false
-status: open
+status: resolved
 created_at: 2026-11-13
 ---
 
@@ -34,3 +34,7 @@ ls modules/hub-ui/node_modules -> No such file or directory
 just gen-ui-api -> npm error 404 ... error: recipe `gen-ui-api` failed with exit code 1
 just init hub-ui; just gen-ui-api -> Generated 27 API contract files from domain tags.
 ```
+
+## Disposition
+
+Resolved by `SPEC-frontend-workflow-setup`. Configured worktree setup reuses `just init`, initializing locked Python packages, locked devkit assets and frontend dependencies. The configured-command regression and phase-failure cases pass; actual `just init` and subsequent `devkit sync --check` pass. Fresh native worktree creation was not run; pinned lifecycle inspection verifies setup precedes the subsequent asset sync without a held recursive lock.
