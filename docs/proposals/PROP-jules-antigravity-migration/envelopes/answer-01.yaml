@@ -1,0 +1,15 @@
+kind: answer
+stage: direction-handoff
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T05:46:04.517432Z'
+status: completed
+summary: Selected defer; keep the migration queued and preserve current Jules behavior.
+findings: []
+checks: {}
+answers_to: worker-01.yaml
+answers:
+- question: migration-direction
+  choice: defer
+  decision: Defer the migration until an officially supported unattended Remote Agents authentication, creation, observation, outcome and response-loss recovery contract is established; preserve current Jules behavior.
+  by: user
