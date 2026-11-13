@@ -1,0 +1,17 @@
+kind: scout
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T06:07:07.651521Z'
+status: completed
+summary: Read-only Scout mapped embedded evaluation, reusable PR questions and CI, and coupled batch/bridge retirement.
+findings: []
+assumptions:
+- Codex read-only support role is emulated; before/after tree and HEAD were unchanged.
+unverified_areas:
+- Exact migration implementation and live GitHub/provider behavior remain Development verification.
+checks:
+  source: PASS bounded local source and reverse-reference inspection
+diff_scope:
+  base: 9cc90ff27daa15256ea38488464e6330089d8a69
+  head: 9cc90ff27daa15256ea38488464e6330089d8a69

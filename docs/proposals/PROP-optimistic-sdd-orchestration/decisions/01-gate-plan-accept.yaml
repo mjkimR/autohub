@@ -1,0 +1,10 @@
+request: gate:plan-accept
+kind: approve
+action: accept
+workflow: sdd-proposal
+stage: direction-handoff
+note: Approve optimistic single-activity PR orchestration and retirement of embedded
+  SDD evaluation, milestone batches and built-in SDK bridges; preserve history and
+  generic delivery.
+by: user
+at: '2026-11-13T06:12:11.553011Z'
