@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-owed-counts-error-reason
-status: pending
+status: resolved
 targets:
   - file: docs/ux/projects/UX-projects.md
     resolution: modified

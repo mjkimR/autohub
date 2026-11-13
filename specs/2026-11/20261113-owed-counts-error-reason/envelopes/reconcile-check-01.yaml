@@ -1,0 +1,18 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:18:19.161897Z'
+status: completed
+summary: Independent reconcile-reviewer verified UX-projects shared failure loading retry and recovery reflection; no other contract target required
+findings: []
+assumptions:
+- Codex isolation emulated by explicit read paths and pre/post snapshot audit
+unverified_areas:
+- No browser walkthrough or live deployment verified
+checks:
+  reconciliation: PASS implementation tests UX reflection and ledger agree
+  isolation: PASS clean unchanged HEAD and snapshot9547c33fb7dffed65f603ef2dc3d842f457d3ea9
+diff_scope:
+  base: fe706528a666e8ead32388bdeb066e8fcf43365e
+  head: e747c1cfedbc4e8f4d21995071c0b5a6355a40d3
