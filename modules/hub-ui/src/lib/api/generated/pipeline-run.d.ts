@@ -807,6 +807,7 @@ export interface components {
              */
             head_sha?: string | null;
         };
+        RunOrigin: CommonComponents["schemas"]["RunOrigin"];
         ValidationError: CommonComponents["schemas"]["ValidationError"];
         /** WorkflowAnswer */
         WorkflowAnswer: {

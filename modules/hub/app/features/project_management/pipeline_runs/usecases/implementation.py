@@ -20,6 +20,7 @@ from app.features.project_management.pipeline_runs.models import (
     PipelineRunState,
     RunQuestion,
 )
+from app.features.project_management.pipeline_runs.origin_reads import read_run
 from app.features.project_management.pipeline_runs.questions import parse_question
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.schemas import (
@@ -96,23 +97,23 @@ class ImplementationProgress:
         pr, replies = result.pull, result.replies
         if pr.get("state") == "closed":
             await finish_closed_pull(self.repo, session, run, pr, now)
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
         if not observed.optimistic and observed.posted_at is not None and pr["head"]["sha"] != observed.delivered_head:
             run.state = PipelineRunState.AWAITING_CI
             run.next_action_at = None
             run.revision += 1
             attempt.state = ExecutionAttemptState.RUNNING
             await session.flush()
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
         if await self.apply_questions(session, run, observed, result):
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
         if observed.optimistic and observed.posted_at is not None and pr["head"]["sha"] != observed.delivered_head:
             run.state = PipelineRunState.AWAITING_CI
             run.next_action_at = None
             run.revision += 1
             attempt.state = ExecutionAttemptState.RUNNING
             await session.flush()
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
         quota_replied_at = max((reply.replied_at for reply in replies if reply.is_quota_limit), default=None)
         if delivery is not None and delivery.posted_at is not None and quota_replied_at is not None:
             run.quota_block_count += 1
@@ -131,7 +132,7 @@ class ImplementationProgress:
             run.next_action_at = None
             run.revision += 1
             await session.flush()
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
         replied_at = min((reply.replied_at for reply in replies if not reply.is_quota_limit), default=None)
         if (
             delivery is not None
@@ -146,7 +147,7 @@ class ImplementationProgress:
             run.next_action_at = None
             run.revision += 1
             await session.flush()
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
         if (
             delivery is not None
             and observed.posted_at is not None
@@ -172,9 +173,9 @@ class ImplementationProgress:
             run.next_action_at = None
             run.revision += 1
             await session.flush()
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
 
-        return PipelineRunRead.model_validate(run)
+        return await read_run(session, run)
 
     async def apply_questions(
         self, session: AsyncSession, run: PipelineRun, observed: ImplementationInput, result: ImplementationObservation

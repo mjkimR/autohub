@@ -14,6 +14,7 @@ from app.features.project_management.pipeline_runs.models import (
     ExecutionDelivery,
     PipelineRunState,
 )
+from app.features.project_management.pipeline_runs.origin_reads import read_run
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.schemas import (
     ImplementationRequest,
@@ -56,9 +57,9 @@ class PipelineRunDelivery:
             if run is None:
                 await raise_lease_conflict(self.repo, session, run_id, "dispatch implementation")
             if run.state != PipelineRunState.DISPATCHING:
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
             if run.next_action_at is not None and as_utc(run.next_action_at) > now:
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
             project = await self.projects.get(session, run.project_id)
             if (
                 not project.enabled
@@ -146,7 +147,7 @@ class PipelineRunDelivery:
             if self.ai_catalogs is not None:
                 await self.ai_catalogs.record_dispatch_delivered(session, run.ai_catalog_id, posted_at)
             await session.flush()
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
 
     async def _guard_dispatch(self, run_id: UUID, owner: str, token: UUID, expected_revision: int) -> None:
         """Reserve a lease longer than the bounded I/O and recheck authorization before posting."""

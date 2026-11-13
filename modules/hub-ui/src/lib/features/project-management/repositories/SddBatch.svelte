@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { untrack, tick } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { Input } from '$lib/components/ui/input';
@@ -17,7 +17,18 @@
 			batches.reset(project);
 			batchId = id;
 			if (id) void batches.refresh(id);
+			else batches.clear();
 		});
+	});
+	$effect(() => {
+		const id = batches.batch?.id;
+		if (id)
+			void tick().then(() => {
+				if (batches.batch?.id !== id) return;
+				const heading = document.getElementById(`sdd-batch-${id}`);
+				heading?.focus({ preventScroll: true });
+				heading?.scrollIntoView?.({ block: 'nearest' });
+			});
 	});
 </script>
 
@@ -34,7 +45,7 @@
 		<Button
 			size="sm"
 			variant="outline"
-			disabled={batches.busy}
+			disabled={batches.busy || batches.listBusy}
 			onclick={() => batches.load(projectId)}>Load retained batches</Button
 		>
 		<label class="text-sm"
@@ -42,7 +53,7 @@
 				class="mt-1"
 				bind:value={batchId}
 				placeholder="Exact retained batch ID"
-				disabled={batches.busy}
+				disabled={batches.busy || batches.listBusy}
 			/></label
 		>
 		<Button
@@ -57,7 +68,7 @@
 				class="mt-1 flex"
 				aria-label="Retained batches"
 				value={batches.batch?.id || ''}
-				disabled={batches.busy}
+				disabled={batches.busy || batches.listBusy}
 				onchange={(event) => {
 					batchId = event.currentTarget.value;
 					void batches.refresh(batchId);
@@ -68,13 +79,24 @@
 			></label
 		>{/if}
 	{#if batches.busy}<p role="status" class="text-xs text-muted-foreground">
-			Loading retained batch evidence…
+			Loading retained batch {batches.requestedId}…
 		</p>{/if}
-	{#if batches.error}<p role="alert" class="text-sm text-destructive">{batches.error}</p>{/if}
+	{#if batches.error}<section role="alert" class="space-y-2 text-sm">
+			<p>Batch unavailable: {batches.requestedId}. {batches.error}</p>
+			{#if batches.requestedId}<Button size="sm" variant="outline" onclick={() => batches.refresh()}
+					>Retry batch</Button
+				>{/if}
+			<Button size="sm" variant="outline" href={`/projects/${projectId}?tab=repository`}
+				>Browse repository</Button
+			>
+		</section>{/if}
 	{#if batches.batch}
-		<p class="text-xs break-all">
+		<h4 id={`sdd-batch-${batches.batch.id}`} tabindex="-1" class="text-xs break-all">
 			Batch {batches.batch.id} · {batches.batch.state} · revision {batches.batch.revision}
-		</p>
+		</h4>
+		<Button size="sm" variant="outline" disabled={batches.busy} onclick={() => batches.refresh()}
+			>Refresh status</Button
+		>
 		{#if batches.batch.detail}<p class="text-sm text-muted-foreground">
 				{batches.batch.detail}
 			</p>{/if}

@@ -4,8 +4,9 @@
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
-	import { ArrowLeft, FolderGit2, RefreshCw } from '@lucide/svelte';
+	import { ArrowLeft, RefreshCw } from '@lucide/svelte';
 	import RunHeader from './RunHeader.svelte';
+	import RunOrigins from '../RunOrigins.svelte';
 	import RunNextStep from './RunNextStep.svelte';
 	import RunActions from '../RunActions.svelte';
 	import RunDecisions from '../RunDecisions.svelte';
@@ -171,17 +172,7 @@
 			{#key run.id}<RunNextStep {run} />{/key}
 		{/if}
 
-		{#if run.sdd_snapshot?.spec_dir}
-			<p class="flex flex-wrap items-center gap-2 text-sm">
-				<FolderGit2 aria-hidden="true" class="size-4 text-muted-foreground" />
-				<span class="text-muted-foreground">SDD unit</span>
-				<a
-					class="font-mono text-xs break-all underline underline-offset-4"
-					href={`/projects/${run.project_id}?tab=repository&unit=${encodeURIComponent(String(run.sdd_snapshot.spec_dir))}`}
-					>{String(run.sdd_snapshot.spec_dir)}</a
-				>
-			</p>
-		{/if}
+		<RunOrigins {run} />
 
 		{#key decisionsGeneration}
 			<section

@@ -42,7 +42,7 @@ test.each([
 	[
 		'sdd-batch-attention',
 		{ subject: { id: BATCH }, context: { sdd_batch_id: BATCH } },
-		`${project}?tab=repository`
+		`${project}?tab=repository&batch=${BATCH}`
 	],
 	['connection-test-cleanup', {}, `${project}?tab=connections`]
 ] as const)('%s resolves to its owner (%#)', (kind, overrides, href) => {

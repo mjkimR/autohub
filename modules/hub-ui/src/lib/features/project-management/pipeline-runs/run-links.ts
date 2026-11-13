@@ -21,3 +21,15 @@ export function legacyRunRedirect(search: string): string | null {
 	if (!runId) return null;
 	return runHref(runId, null, params.get('view') === 'decisions' ? 'decisions' : undefined);
 }
+
+/** Addressed subjects are browse requests and convey no execution authority. */
+export function repositorySubjectHref(
+	projectId: string,
+	subject: { unit?: string; ref?: string; batch?: string }
+): string {
+	const params = new URLSearchParams({ tab: 'repository' });
+	if (subject.unit) params.set('unit', subject.unit);
+	if (subject.ref) params.set('ref', subject.ref);
+	if (subject.batch) params.set('batch', subject.batch);
+	return `/projects/${encodeURIComponent(projectId)}?${params}`;
+}

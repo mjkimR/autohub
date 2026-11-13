@@ -3,9 +3,9 @@
 from typing import Annotated
 
 from app.features.project_management.pipeline_runs.models import FINAL_RUN_STATES, RunResumeReceipt
+from app.features.project_management.pipeline_runs.origin_reads import read_run
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.requests import request_digest
-from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
@@ -125,7 +125,7 @@ class SddClaimHistory:
             if receipt:
                 if receipt.pipeline_run_id != run_id or receipt.request_digest != digest:
                     raise ProjectError(409, "Reconciliation request ID belongs to another operation")
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
             if run.revision != request.expected_revision:
                 raise ProjectError(409, "Run evidence changed; inspect its current revision")
             if not (run.sdd_progress or {}).get("retirement", {}).get("external_work_unreconciled"):
@@ -146,4 +146,4 @@ class SddClaimHistory:
             await session.flush()
             # Match the persisted timestamp representation used by replay reads, including SQLite.
             await session.refresh(run)
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)

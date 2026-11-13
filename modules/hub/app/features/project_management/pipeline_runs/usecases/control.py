@@ -14,6 +14,7 @@ from app.features.project_management.pipeline_runs.models import (
     PipelineRunState,
     RunResumeReceipt,
 )
+from app.features.project_management.pipeline_runs.origin_reads import read_run
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.requests import build_implementation_request, request_digest
 from app.features.project_management.pipeline_runs.schemas import (
@@ -65,7 +66,7 @@ class PipelineRunControl:
             run.lease_expires_at = None
             run.revision += 1
             await session.flush()
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
 
     async def resume_run(
         self,
@@ -99,7 +100,7 @@ class PipelineRunControl:
             if receipt:
                 if receipt.pipeline_run_id != run_id or receipt.request_digest != digest:
                     raise ProjectError(409, "Resume request ID was already used for different input")
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
             return None
 
         async def remember(session, attempt_id=None):
@@ -203,7 +204,7 @@ class PipelineRunControl:
                 await finish_closed_pull(self.repo, session, run, pr, now)
                 await remember(session)
                 await session.refresh(run)
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
             if pull.head_ref != run.branch:
                 raise ProjectError(409, "Pull request branch changed; enroll it again")
             if response is not None and response[0].head_sha != pull.head_sha:
@@ -255,7 +256,7 @@ class PipelineRunControl:
                 await remember(session, active.id)
                 await session.flush()
                 await session.refresh(run)
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
             if active is not None:
                 active.state = ExecutionAttemptState.FAILED
                 active.finished_at = now
@@ -304,7 +305,7 @@ class PipelineRunControl:
             run.revision += 1
             await session.flush()
             await session.refresh(run)
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
 
     async def cancel_run(self, run_id: UUID) -> PipelineRunRead:
         now = get_current_utc_time()
@@ -327,7 +328,7 @@ class PipelineRunControl:
                 active_attempt.failure_detail = "Run was canceled"
                 active_attempt.finished_at = now
             await session.flush()
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
 
     async def attach_pr(self, run_id: UUID, request: AttachPRRequest) -> PipelineRunRead:
         async with AsyncTransaction() as session:
@@ -352,7 +353,7 @@ class PipelineRunControl:
             ):
                 active_attempt.state = ExecutionAttemptState.RUNNING
             await session.flush()
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
 
     async def complete_attempt(
         self, run_id: UUID, attempt_id: UUID, request: CompleteAttemptRequest

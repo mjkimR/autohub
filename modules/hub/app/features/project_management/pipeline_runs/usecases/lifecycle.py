@@ -19,6 +19,7 @@ from app.features.project_management.pipeline_runs.models import (
     PipelineRun,
     PipelineRunState,
 )
+from app.features.project_management.pipeline_runs.origin_reads import read_run
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.requests import build_implementation_request
 from app.features.project_management.pipeline_runs.schemas import (
@@ -189,7 +190,7 @@ class PipelineRunUseCase:
                     await bind_enrollment(session, project, run, admission)
                 if inspect_only:
                     await self._record_external_implementation(session, run, repository)
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
         except IntegrityError:
             raise ProjectError(409, ACTIVE_RUN_CONFLICT, fix=ACTIVE_RUN_FIX) from None
 

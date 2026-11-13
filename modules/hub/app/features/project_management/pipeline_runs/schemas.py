@@ -65,12 +65,24 @@ class EnrollPullRequest(BaseModel):
     )
 
 
+class RunOrigin(BaseModel):
+    kind: Literal["work_plan", "provider_session", "native_sdd"]
+    id: UUID
+    work_plan_id: UUID | None = None
+    catalog_id: UUID | None = None
+    unit: str | None = None
+    batch_id: UUID | None = None
+    url: str | None = None
+
+
 class PipelineRunRead(UUIDSchemaMixin, TimestampSchemaMixin):
     model_config = ConfigDict(from_attributes=True)
 
     project_id: UUID
     ai_catalog_id: UUID
     requested_catalog_id: UUID | None = None
+    enrollment_source: Literal["unknown", "work_plan", "provider_session", "native_sdd", "multiple"] = "unknown"
+    related_origins: list[RunOrigin] = Field(default_factory=list)
     sdd_snapshot: dict | None = None
     sdd_progress: dict | None = None
     project_revision: int

@@ -15,7 +15,7 @@
 	$effect(() => {
 		const spec = selectedSpec;
 		untrack(() => {
-			if (spec) state.spec = spec;
+			state.spec = spec;
 		});
 	});
 </script>
