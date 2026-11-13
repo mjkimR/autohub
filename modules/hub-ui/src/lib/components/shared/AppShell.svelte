@@ -5,7 +5,15 @@
 	import { api } from '$lib/api';
 	import { page } from '$app/state';
 	import ThemeToggle from '$lib/components/shared/ThemeToggle.svelte';
+	import SidebarLink from '$lib/components/shared/SidebarLink.svelte';
+	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import {
+		PENDING_DECISION_NAV_MIN_MS,
+		PendingDecisions,
+		pendingDecisionPhrase,
+		pendingDecisionText
+	} from '$lib/features/project-management/pipeline-runs/pending-decisions.svelte';
 	import {
 		Server,
 		Menu,
@@ -20,7 +28,10 @@
 		KeyRound,
 		Bot,
 		BellRing,
-		Webhook
+		Webhook,
+		Inbox,
+		UserCheck,
+		KeySquare
 	} from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
@@ -52,11 +63,29 @@
 		}
 	}
 
+	// Operator-owed decisions light the shell; zero and unknown stay neutral.
+	const pending = new PendingDecisions();
+	const pendingText = $derived(pendingDecisionText(pending.value));
+	const pendingPhrase = $derived(pendingDecisionPhrase(pending.value));
+
 	onMount(() => {
 		checkHealth();
 		void loadProfile();
 		const interval = setInterval(checkHealth, 10000);
-		return () => clearInterval(interval);
+		const stopPending = pending.start();
+		return () => {
+			clearInterval(interval);
+			stopPending();
+		};
+	});
+
+	// Deciding happens on other screens; re-check on navigation, throttled for the shared DB budget.
+	let lastPath = page.url.pathname;
+	$effect(() => {
+		const path = page.url.pathname;
+		if (path === lastPath) return;
+		lastPath = path;
+		pending.refreshIfStale(PENDING_DECISION_NAV_MIN_MS);
 	});
 
 	const navSections = [
@@ -69,7 +98,7 @@
 			items: [
 				{ href: '/projects', label: 'Projects', icon: FolderKanban },
 				{ href: '/projects/runs', label: 'Pipeline runs', icon: Workflow },
-				{ href: '/decisions', label: 'Decisions', icon: Workflow }
+				{ href: '/decisions', label: 'Decisions', icon: Inbox }
 			]
 		},
 		{
@@ -97,6 +126,14 @@
 		}
 	] as const;
 
+	const adminSection = {
+		label: 'Administration',
+		items: [
+			{ href: '/admin/users', label: 'Account approval', icon: UserCheck },
+			{ href: '/admin/machines', label: 'Machine keys', icon: KeySquare }
+		]
+	} as const;
+
 	function isActive(href: string) {
 		if (
 			href === '/projects' &&
@@ -108,9 +145,7 @@
 	}
 
 	function currentPageLabel() {
-		if (page.url.pathname === '/admin/users') return 'Account approval';
-		if (page.url.pathname === '/admin/machines') return 'Machine keys';
-		for (const section of navSections) {
+		for (const section of [...navSections, adminSection]) {
 			for (const item of section.items) {
 				if (isActive(item.href)) return item.label;
 			}
@@ -120,7 +155,13 @@
 </script>
 
 <div class="flex min-h-screen min-w-0 flex-col bg-background text-foreground lg:flex-row">
-	<header class="flex items-center gap-3 border-b border-border p-3 lg:hidden">
+	<header
+		class={[
+			'flex items-center gap-3 border-b border-border p-3 lg:hidden',
+			pendingText && 'border-t-2 border-t-attention-text'
+		]}
+		data-pending-rule={pendingText ? 'true' : undefined}
+	>
 		<Button
 			variant="outline"
 			aria-controls="primary-navigation"
@@ -129,6 +170,18 @@
 			><Menu class="size-4" /> Menu</Button
 		>
 		<span class="min-w-0 flex-1 truncate text-sm font-semibold">{currentPageLabel()}</span>
+		{#if pendingText}
+			<a
+				href="/decisions"
+				aria-label="Decisions: {pendingPhrase}"
+				class="inline-flex min-h-11 items-center rounded-lg px-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+			>
+				<Badge variant="attention" class="tabular-nums">
+					<span aria-hidden="true" class="size-1.5 rounded-full bg-attention-text"></span>
+					{pendingText} pending
+				</Badge>
+			</a>
+		{/if}
 		<ThemeToggle />
 	</header>
 	<!-- Left Sidebar -->
@@ -151,7 +204,7 @@
 
 		<!-- Nav Links -->
 		<nav class="flex-1 space-y-5 overflow-y-auto py-4" aria-label="Primary navigation">
-			{#each navSections as section (section.label)}
+			{#each isAdmin ? [...navSections, adminSection] : navSections as section (section.label)}
 				<div>
 					<p
 						class="px-3 pb-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
@@ -160,36 +213,25 @@
 					</p>
 					<div class="space-y-1">
 						{#each section.items as item (item.href)}
-							<a
+							<SidebarLink
 								href={item.href}
-								aria-current={isActive(item.href) ? 'page' : undefined}
-								class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors {isActive(
-									item.href
-								)
-									? 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground shadow-xs'
-									: 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
+								label={item.label}
+								icon={item.icon}
+								active={isActive(item.href)}
 							>
-								<item.icon class="size-4 shrink-0" />
-								<span>{item.label}</span>
-							</a>
+								{#snippet trailing()}
+									{#if item.href === '/decisions' && pendingText}
+										<Badge variant="attention" class="tabular-nums" data-pending-count>
+											<span aria-hidden="true">{pendingText}</span>
+											<span class="sr-only">{pendingPhrase}</span>
+										</Badge>
+									{/if}
+								{/snippet}
+							</SidebarLink>
 						{/each}
 					</div>
 				</div>
 			{/each}
-			{#if isAdmin}
-				<a
-					href="/admin/users"
-					aria-current={isActive('/admin/users') ? 'page' : undefined}
-					class="block rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-sidebar-accent"
-					>Account approval</a
-				>
-				<a
-					href="/admin/machines"
-					aria-current={isActive('/admin/machines') ? 'page' : undefined}
-					class="block rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-sidebar-accent"
-					>Machine keys</a
-				>
-			{/if}
 		</nav>
 
 		<!-- Bottom User & Status Area -->
@@ -246,14 +288,18 @@
 	<main class="min-w-0 flex-1">
 		<!-- Top Bar -->
 		<header
-			class="sticky top-0 z-20 hidden h-16 items-center justify-between border-b border-border/80 bg-background/80 px-8 backdrop-blur-md lg:flex"
+			class={[
+				'sticky top-0 z-20 hidden h-16 items-center justify-between border-b border-border/80 bg-background/80 px-8 backdrop-blur-md lg:flex',
+				pendingText && 'border-t-2 border-t-attention-text'
+			]}
+			data-pending-rule={pendingText ? 'true' : undefined}
 		>
 			<div class="flex items-center gap-2">
 				<span class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
 					Autohub
 				</span>
 				<span class="text-muted-foreground/60">/</span>
-				<span class="text-sm font-semibold text-foreground capitalize">
+				<span class="text-sm font-semibold text-foreground">
 					{currentPageLabel()}
 				</span>
 			</div>

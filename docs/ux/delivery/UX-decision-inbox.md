@@ -39,7 +39,7 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
   - Native SDD activity (request kind/title/identity, First observed waiting age, evidence head, last inspected time).
   - Review (secondary-weight button; opens exact owner subject after freshness verification). The row background stays neutral, so the status badge, not the button, carries the row's emphasis.
 - Pagination (Next; loaded previous cursor pages; Refresh restarts at first page).
-- Application shell (global navigation to other screens).
+- Application shell (global navigation to other screens; its pending-decision count counts the rows that carry the attention left rule here, per `UX-app-shell`).
 
 ## 3. States
 

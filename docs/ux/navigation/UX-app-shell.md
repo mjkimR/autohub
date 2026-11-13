@@ -1,7 +1,7 @@
 ---
 id: UX-app-shell
 title: Authenticated navigation panel
-summary: "Provide navigation, health indication and session controls around each authenticated management screen. Supports exact pending-decision navigation."
+summary: "Provide navigation, health indication and session controls around each authenticated management screen, and signal operator-owed decisions from any screen. Supports exact pending-decision navigation."
 area: navigation
 element: panel
 status: active
@@ -16,7 +16,7 @@ capabilities:
 ## 1. Purpose
 
 - **Primary task**: navigate the management console within an admitted Browser session.
-- **Facts to commit**: the active destination, API-session status and Core Online/Offline indicator.
+- **Facts to commit**: the active destination, API-session status, Core Online/Offline indicator and, while any are owed, the pending-decision count.
 - **Secondary items**: administrative links appear after the profile identifies a superadministrator; feature content stays in the selected screen.
 
 ## 2. Content
@@ -28,24 +28,41 @@ The navigation is secondary to the active screen. It is a persistent side region
 - Project connection and PR run (destinations): Projects and Pipeline runs.
 - Schedule configuration and Schedule job (destinations): Schedule configs and Schedule jobs.
 - Connector and AI catalog (destinations): configuration links, alongside notification and system settings.
-- Account and Machine key (administrative destinations): Account approval and Machine keys when the profile allows them.
+- Account and Machine key (administrative destinations): an Administration section with Account approval and Machine keys when the profile allows them.
 - Service health (indicator): a periodic shallow health check reports Core Online or Offline.
 - Theme preference (toggle): also accessible in the narrow header.
 
 Decisions opens `UX-decision-inbox` from the project management navigation and highlights the current destination.
+
+Active destination (every navigation link, administrative ones included; emphasis per `docs/steering/visual-style.md`):
+
+- The active link carries `aria-current="page"`, semibold text, the neutral accent fill and a 1px ink outline (`sidebar-ring`, at least 3:1 against the sidebar and the fill in both themes), so it is identifiable without color. The left rule stays reserved for attention.
+- When the sidebar list overflows, the active link is scrolled into view.
+- Keyboard focus shows a translucent ink ring, distinct from the 1px active outline.
+
+Pending-decision signal (attention, operator debt):
+
+- Source: one read of the existing Decision inbox list (`GET /api/v1/pipeline-runs/decisions`, all visible projects, no filters, first 50 rows) on mount, once a minute while the tab is visible, when the tab becomes visible again, and on navigation at most once every 15 seconds. No other request is added.
+- Count: rows that carry attention in `UX-decision-inbox` (actionable "Needs decision" and "Answer saved — resume pending"); "Answer publication pending" rows are not counted. When more rows exist than were read, the count is a lower bound shown as "N+" and announced as "N or more pending decisions".
+- When the count is above zero: a 2px `attention-text` rule across the top bar (the desktop top bar and the narrow header), an `attention` Badge with the count on the Decisions link (accessible name "Decisions N pending decisions"), and on narrow displays an "N pending" Badge link to `UX-decision-inbox` in the header.
+- Zero, loading, error and an undecidable sample (more rows exist but none read are owed) stay neutral: no rule, no Badge.
 
 ## 3. States
 
 - **populated**: authenticated children and navigation remain usable; choose a destination or Logout.
 - **menu-open**: narrow navigation is expanded; selecting another URL implicitly closes its route-bound menu state.
 - **offline**: the health indicator changes without itself removing the session or navigation.
+- **decisions-owed**: the pending-decision count is above zero; the top rule and count Badges appear. Open Decisions to act.
+- **decisions-neutral**: the count is zero, loading, failed or undecidable; the shell shows no attention mark.
 - **sign-out-error**: a failed logout produces a toast; the operator can retry.
 
 ## 4. Interactions
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Decisions | global: navigate to pending operator work | populated | populated | `UX-decision-inbox` | | The cross-project worklist opens. |
+| Decisions | global: navigate to pending operator work | populated, decisions-owed, decisions-neutral | populated | `UX-decision-inbox` | | The cross-project worklist opens. |
+| Pending count Badge link (narrow header) | global: navigate to pending operator work | decisions-owed | populated | `UX-decision-inbox` | | The cross-project worklist opens. |
+| Count check (mount, minute, tab visible, throttled navigation) | global: keep the shell signal current | decisions-owed, decisions-neutral | decisions-owed, decisions-neutral | | | The rule and Badges follow the new count; failures fall back to neutral. |
 | Display the admitted console | `UC-access-hub` 2, `UC-access-hub` 3 | populated | populated |  | `CAP-ACCESS-authentication-authorization` | The requested feature screen is rendered inside the shell. |
 | Logout | `UC-access-hub` 5 | populated | populated | `UX-sign-in` | `CAP-ACCESS-authentication-authorization` | Successful logout replaces the shell with the sign-in screen; failure is a toast. |
 | Open Dashboard | global: navigation between management surfaces | populated | populated | `UX-dashboard` |  | System Overview becomes the selected screen. |
@@ -66,4 +83,4 @@ Decisions opens `UX-decision-inbox` from the project management navigation and h
 
 ## 5. Evidence
 
-Implementation inspected: `modules/hub-ui/src/lib/components/shared/AppShell.svelte` and `modules/hub-ui/src/routes/+layout.svelte`. Session behavior is covered by the inspected `modules/hub-ui/src/lib/api/client.test.ts` and `modules/hub-ui/src/lib/stores/session.test.ts`.
+Implementation inspected: `modules/hub-ui/src/lib/components/shared/AppShell.svelte`, `modules/hub-ui/src/lib/components/shared/SidebarLink.svelte`, `modules/hub-ui/src/lib/features/project-management/pipeline-runs/pending-decisions.svelte.ts` and `modules/hub-ui/src/routes/+layout.svelte`. `AppShell.integration.test.ts` covers the active outline on primary and administrative links and the owed, lower-bound, zero, error, failure and loading count states; `pending-decisions.test.ts` covers the count rules; `layout-contrast.test.ts` checks the sidebar text and outline pairs in both themes. Session behavior is covered by the inspected `modules/hub-ui/src/lib/api/client.test.ts` and `modules/hub-ui/src/lib/stores/session.test.ts`.

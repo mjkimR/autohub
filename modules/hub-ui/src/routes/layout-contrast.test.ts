@@ -124,7 +124,12 @@ function pairs(theme: Theme): Pair[] {
 		ui('primary', 'background'),
 		// The attention stroke (inbox left rule, chip dot) is drawn with attention-text.
 		ui('attention-text', 'card'),
-		ui('attention-text', 'background')
+		ui('attention-text', 'background'),
+		// Sidebar links: inactive text, active text and the active ink outline (UX-app-shell).
+		text('muted-foreground', 'sidebar'),
+		text('sidebar-accent-foreground', 'sidebar-accent'),
+		ui('sidebar-ring', 'sidebar'),
+		ui('sidebar-ring', 'sidebar-accent')
 	];
 	for (const status of ['success', 'info', 'warning', 'destructive']) {
 		list.push(text(status, 'card'));
