@@ -3,7 +3,7 @@ id: PROP-run-origin-links-target
 title: Target Living Spec for run origin links
 summary: "Draft related-origin reads and exact Repository subject selection across existing contracts, use cases and screens."
 status: draft
-proposal: PROP-run-origin-links
+proposal: SPEC-run-origin-links
 created_at: 2026-11-13
 targets:
   - file: docs/capabilities/delivery/CAP-PR-pull-request-delivery.md

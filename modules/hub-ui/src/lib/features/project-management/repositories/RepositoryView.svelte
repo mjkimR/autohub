@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { NativeSelect } from '$lib/components/ui/native-select';
-	import { onMount } from 'svelte';
+	import { untrack, onDestroy } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { RepositorySelection, unitDirectory } from './repository-selection.svelte';
 	import { page } from '$app/state';
 	import { GitBranch, FolderGit2, Sparkles, RefreshCw, Layers } from '@lucide/svelte';
 	import { SddViewer } from 'devkit-viewer';
@@ -26,15 +28,48 @@
 
 	let isSdd = $derived(project.project_type === 'sdd');
 	let selectedSpec = $state('');
+	const selection = new RepositorySelection();
+	const requestedUnit = $derived(page.url.searchParams.get('unit') || '');
+	const requestedRef = $derived(page.url.searchParams.get('ref') || '');
+	const requestedBatch = $derived(page.url.searchParams.get('batch') || '');
 	$effect(() => {
-		void project?.id;
-		selectedSpec = '';
+		const id = project.id,
+			sdd = isSdd,
+			unit = requestedUnit,
+			ref = requestedRef;
+		userSelectedMode = null;
+		++readVersion;
+		tree = activeBlob = readmeBlob = null;
+		currentPath = '';
+		error = '';
+		untrack(() => {
+			if (project.github) void selection.select(id, sdd, unit, ref);
+		});
 	});
+	$effect(() => {
+		info = selection.info;
+		currentRef = selection.ref;
+		selectedSpec = selection.unit;
+		loading = selection.status === 'loading';
+		if (selection.status === 'ready') untrack(() => void loadTree('', selection.ref));
+	});
+	onDestroy(() => selection.destroy());
+	function retrySelection() {
+		void selection.select(project.id, isSdd, requestedUnit, requestedRef);
+	}
+	function browse() {
+		const url = new URL(page.url);
+		url.searchParams.delete('unit');
+		if (selection.missingRef) url.searchParams.delete('ref');
+		void goto(`${url.pathname}${url.search}`, { noScroll: true, keepFocus: true });
+	}
+
 	let userSelectedMode = $state<'default' | 'sdd' | null>(null);
 	let viewerMode = $derived(userSelectedMode ?? (isSdd ? 'sdd' : 'default'));
 	let viewerRevision = $state(0);
 	let loading = $state(true);
 	let error = $state('');
+	let readVersion = 0;
 
 	let breadcrumbs = $derived.by(() => {
 		if (!currentPath) return [];
@@ -45,24 +80,9 @@
 		}));
 	});
 
-	async function loadInfo() {
-		try {
-			const res = await api.GET('/api/v1/projects/{project_id}/repository/info', {
-				params: { path: { project_id: project.id } }
-			});
-			if (res.error) throw new Error(apiErrorMessage(res.error, 'Could not load repository info'));
-			if (res.data) {
-				info = res.data;
-				if (!currentRef) {
-					currentRef = res.data.default_branch;
-				}
-			}
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load repository info';
-		}
-	}
-
 	async function loadTree(path: string = '', ref: string = currentRef) {
+		const version = ++readVersion,
+			projectId = project.id;
 		loading = true;
 		error = '';
 		activeBlob = null;
@@ -74,6 +94,7 @@
 					query: { path, ref }
 				}
 			});
+			if (version !== readVersion || projectId !== project.id) return;
 			if (res.error) throw new Error(apiErrorMessage(res.error, 'Could not load directory tree'));
 			if (res.data) {
 				tree = res.data;
@@ -89,13 +110,16 @@
 				}
 			}
 		} catch (err) {
+			if (version !== readVersion || projectId !== project.id) return;
 			error = err instanceof Error ? err.message : 'Failed to load directory';
 		} finally {
-			loading = false;
+			if (version === readVersion && projectId === project.id) loading = false;
 		}
 	}
 
 	async function loadReadme(path: string, ref: string = currentRef) {
+		const projectId = project.id,
+			version = readVersion;
 		try {
 			const res = await api.GET('/api/v1/projects/{project_id}/repository/blob', {
 				params: {
@@ -103,6 +127,7 @@
 					query: { path, ref }
 				}
 			});
+			if (ref !== currentRef || projectId !== project.id || version !== readVersion) return;
 			if (res.data) {
 				readmeBlob = res.data;
 			}
@@ -112,6 +137,8 @@
 	}
 
 	async function openFile(item: RepoItem) {
+		const version = ++readVersion,
+			projectId = project.id;
 		loading = true;
 		error = '';
 		try {
@@ -121,24 +148,32 @@
 					query: { path: item.path, ref: currentRef }
 				}
 			});
+			if (version !== readVersion || projectId !== project.id) return;
 			if (res.error) throw new Error(apiErrorMessage(res.error, 'Could not load file content'));
 			if (res.data) {
 				activeBlob = res.data;
 				currentPath = item.path;
 			}
 		} catch (err) {
+			if (version !== readVersion || projectId !== project.id) return;
 			error = err instanceof Error ? err.message : 'Failed to load file';
 		} finally {
-			loading = false;
+			if (version === readVersion && projectId === project.id) loading = false;
 		}
 	}
 
 	async function refreshSdd() {
-		await loadInfo();
+		await selection.select(project.id, isSdd, requestedUnit, requestedRef || currentRef);
 		viewerRevision++;
 	}
 
 	function handleBranchChange(newRef: string) {
+		if (requestedUnit || requestedRef) {
+			const url = new URL(page.url);
+			url.searchParams.set('ref', newRef);
+			void goto(`${url.pathname}${url.search}`, { noScroll: true, keepFocus: true });
+			return;
+		}
 		currentRef = newRef;
 		if (activeBlob) {
 			void openFile({
@@ -152,17 +187,6 @@
 			void loadTree(currentPath, newRef);
 		}
 	}
-
-	onMount(async () => {
-		if (project.github) {
-			await loadInfo();
-			if (currentRef) {
-				await loadTree('', currentRef);
-			}
-		} else {
-			loading = false;
-		}
-	});
 </script>
 
 <div class="space-y-6">
@@ -170,6 +194,15 @@
 		<div class="rounded-xl border bg-card p-8 text-center">
 			<FolderGit2 class="mx-auto h-10 w-10 text-muted-foreground/60" />
 			<h3 class="mt-3 font-semibold text-foreground">No Repository Connected</h3>
+			{#if requestedUnit || requestedBatch}
+				<p role="alert" class="mt-2 text-sm">
+					{requestedUnit ? 'Unit unavailable' : 'Batch unavailable'}: no repository is connected for
+					the requested subject.
+				</p>
+				<Button variant="outline" size="sm" href={`/projects/${project.id}?tab=repository`}
+					>Browse repository</Button
+				>
+			{/if}
 			<p class="mt-1 text-sm text-muted-foreground">
 				Connect a GitHub repository in the Connections tab to view and browse source files.
 			</p>
@@ -275,6 +308,27 @@
 			</div>
 		</div>
 
+		{#if requestedUnit && selection.status === 'loading'}<p role="status">
+				Loading requested unit {requestedUnit}…
+			</p>{/if}
+		{#if selection.status === 'unavailable' || selection.status === 'error'}
+			<section role="alert" class="space-y-2 rounded-lg border p-4">
+				<h3 class="font-semibold">Unit unavailable</h3>
+				<p class="text-sm">{requestedUnit || requestedRef}: {selection.error}</p>
+				{#if selection.status === 'error'}<Button
+						variant="outline"
+						size="sm"
+						onclick={retrySelection}>Retry unit</Button
+					>{/if}
+				<Button variant="outline" size="sm" onclick={browse}>Browse repository</Button>
+			</section>
+		{/if}
+		{#if requestedBatch && !isSdd}<p role="alert">
+				Batch unavailable: this project does not support SDD batch selection.
+			</p>
+			<Button variant="outline" size="sm" href={`/projects/${project.id}?tab=repository`}
+				>Browse repository</Button
+			>{/if}
 		{#if error}
 			<div
 				role="alert"
@@ -296,7 +350,7 @@
 				Loading repository…
 			</div>
 		{:else if viewerMode === 'sdd'}
-			{#if isSdd}{#key project.id}<SddExecution
+			{#if isSdd && (!requestedUnit || selection.status === 'ready')}{#key project.id}<SddExecution
 						projectId={project.id}
 						repository={project.github.repository}
 						{selectedSpec}
@@ -304,24 +358,25 @@
 						projectId={project.id}
 						repository={project.github?.repository ?? ''}
 					/>{/key}{/if}
-			{#if isSdd}<SddBatch
-					projectId={project.id}
-					selectedBatchId={page.url.searchParams.get('batch') || ''}
-				/>{/if}
+			{#if isSdd}<SddBatch projectId={project.id} selectedBatchId={requestedBatch} />{/if}
 			<!-- Native Sdd Viewer -->
 			<section class="rounded-xl border bg-card p-4 shadow-xs">
-				{#key viewerRevision}
-					<SddViewer
-						dataSource={repositoryDataSource(project.id)}
-						branch={currentRef || 'main'}
-						repoId={project.github?.repository || project.name}
-						initialPath="docs/"
-						onselectpath={(path) => {
-							selectedSpec =
-								path.match(/^(specs\/\d{4}-\d{2}\/[^/]+|docs\/proposals\/PROP-[^/]+)/)?.[1] || '';
-						}}
-					/>
-				{/key}
+				{#if selection.status === 'ready'}{#key `${project.id}-${currentRef}-${requestedUnit}-${viewerRevision}`}
+						<SddViewer
+							dataSource={repositoryDataSource(project.id)}
+							branch={currentRef || 'main'}
+							repoId={project.github?.repository || project.name}
+							initialView={selectedSpec ? 'files' : 'dashboard'}
+							initialPath={selectedSpec
+								? `${selectedSpec}/${selectedSpec.startsWith('specs/') ? 'spec.md' : 'proposal.md'}`
+								: 'docs/'}
+							onselectpath={(path) => {
+								const unit =
+									path.match(/^(specs\/\d{4}-\d{2}\/[^/]+|docs\/proposals\/PROP-[^/]+)/)?.[1] || '';
+								selectedSpec = unitDirectory.test(unit) ? unit : '';
+							}}
+						/>
+					{/key}{/if}
 			</section>
 		{:else if activeBlob}
 			<!-- File Content Viewer -->

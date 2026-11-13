@@ -5,8 +5,8 @@ from typing import Annotated
 from app.features.project_management.pipeline_runs.discovery_repo import DecisionDiscoveryRepository
 from app.features.project_management.pipeline_runs.discovery_service import decode_cursor, page_result
 from app.features.project_management.pipeline_runs.models import FINAL_RUN_STATES
+from app.features.project_management.pipeline_runs.origin_reads import read_run
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
-from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.repos import ProjectRepository
 from app_layer_base.core.database.transaction import AsyncTransaction
@@ -69,4 +69,4 @@ class DecisionDiscoveryUseCase:
             from app.features.project_management.sdd.execution import require_current
 
             require_current(run)
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)

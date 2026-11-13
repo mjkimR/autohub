@@ -1,7 +1,7 @@
 ---
 id: UX-sdd-batch
 title: Retained SDD batch history
-summary: "The repository panel shows exact stored SDD batch selections, members and owner outcomes after live graph-based admission has been retired."
+summary: "Inspect exact retained SDD batch addresses without live execution authority. Detail and once-per-project list loading preserve selection and independent errors across address changes."
 area: sdd
 element: panel
 status: active
@@ -27,6 +27,9 @@ capabilities:
 
 No create, phase preference, pause/resume or next-admission control is shown.
 Stored eligibility or graph fields are historical, not a current readiness claim.
+An addressed batch loads by exact project-scoped detail GET without a list prerequisite and focuses its `sdd-batch-<id>` heading.
+Load retained batches fetches options once per project/mount and retains an addressed old batch outside the latest fifty.
+Refresh status deliberately reloads selected detail. List and detail errors stay independent; neither replaces the requested subject with old history.
 
 ## 3. States
 
@@ -44,4 +47,9 @@ Stored eligibility or graph fields are historical, not a current readiness claim
 | Load/open exact batch | `UC-execute-sdd-batch` 1 | empty, populated | loading | | `CAP-SDD-native-delivery` | The exact retained selection loads. |
 | Inspect members/claims | `UC-execute-sdd-batch` 2 | populated | populated | | `CAP-SDD-native-delivery` | Stored outcomes and uncertainty are visible. |
 | Open owner | `UC-execute-sdd-batch` 3 | populated | populated | `UX-run-page` | `CAP-SDD-native-delivery` | Exact retained Run/PR opens. |
+| Refresh status | `UC-execute-sdd-batch` 2 | populated | loading | | `CAP-SDD-native-delivery` | Only selected detail reloads. |
 | Retry read / Browse repository | `UC-execute-sdd-batch` 1a | error | loading | `UX-repository` | `CAP-SDD-native-delivery` | No replacement subject is silently selected. |
+
+## 5. Evidence
+
+`SddBatch.integration.test.ts`, `sdd-batches.integration.test.ts` and `RepositoryView.integration.test.ts` enforce exact old subject loading, once-only lists, same-project/project-change races and persistent detail failure. Opening history sends no mutation. No live provider or browser walkthrough is asserted.

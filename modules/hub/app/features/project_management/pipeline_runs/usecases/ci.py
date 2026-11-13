@@ -14,6 +14,7 @@ from app.features.project_management.pipeline_runs.models import (
     PipelineRun,
     PipelineRunState,
 )
+from app.features.project_management.pipeline_runs.origin_reads import read_run
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.requests import request_digest
 from app.features.project_management.pipeline_runs.schemas import (
@@ -159,7 +160,7 @@ class CIProgress:
         ):
             wait_on_github(run, DRAFT_WAIT_REASON, now, MERGE_RECHECK_DELAY)
             await session.flush()
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
         if pull_result.status != VerificationStatus.PASSED and run.pause_reason is not None:
             # An earlier wait (a blocked merge, say) no longer describes this head.
             run.pause_reason = None
@@ -180,7 +181,7 @@ class CIProgress:
                     active_attempt.failure_code = "CI_ENVIRONMENT_FAILURE"
                     active_attempt.failure_detail = pull_result.reason
                 await session.flush()
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
             if not project_read.github.automation.auto_fix_ci:
                 run.state = PipelineRunState.PAUSED
                 run.pause_reason = "CI failed; automatic CI fixes are disabled for this project"
@@ -192,7 +193,7 @@ class CIProgress:
                     active_attempt.failure_code = "CI_FAILED"
                     active_attempt.failure_detail = pull_result.reason
                 await session.flush()
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
             ci_fixes = [
                 attempt
                 for attempt in await self.repo.list_attempts(session, run.id)
@@ -254,16 +255,16 @@ class CIProgress:
                     active_attempt.state = ExecutionAttemptState.COMPLETED
                     active_attempt.finished_at = now
                 await session.flush()
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
 
             if observed.head_changed:
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
             merge = observed.merge or {"merged": False}
             mergeable_state = observed.mergeable_state
             if merge.get("merged") is not True and mergeable_state not in MERGE_NEEDS_UPDATE:
                 wait_on_github(run, _merge_wait_reason(mergeable_state), now, MERGE_RECHECK_DELAY)
                 await session.flush()
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
             if merge.get("merged") is True:
                 run.state = PipelineRunState.COMPLETED
                 run.pause_reason = None
@@ -332,7 +333,7 @@ class CIProgress:
                 run.revision += 1
                 await session.flush()
 
-        return PipelineRunRead.model_validate(run)
+        return await read_run(session, run)
 
     async def _failed_job_log_excerpt(self, connector_id: UUID, repository: str, run, failed_names: list[str]) -> str:
         """Best-effort evidence for a fix request; log access never blocks state handling."""

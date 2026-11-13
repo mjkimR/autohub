@@ -1,7 +1,7 @@
 ---
 id: UX-pipeline-runs
 title: PR Runs
-summary: "The PR runs screen lists PR run state, ownership and pending decisions with one state-driven action per row, and opens each run's page and the enrollment dialog."
+summary: "List PR run state, pending decisions and compact retained-origin links with one state-driven action per row. Exact owner links remain secondary to each run action."
 area: delivery
 element: screen
 status: active
@@ -49,6 +49,7 @@ detail screen. The page title is "PR runs" (glossary term).
   - More actions (overflow menu): Open run, Decisions, Attempts & errors, Resume (only
     when allowed), Pause, Advance now, Attach PR, Inspect PR and Cancel run, each when
     it applies. Controls are ink with no status hue; Cancel run is the destructive item.
+  - Related origin (secondary context): the proven category, current SDD unit and retained Work Plan/Item, Provider session and SDD history/batch links. Origin unknown never asserts manual enrollment. Absent external URLs stay text; long identifiers wrap.
 - `UX-enroll-pull-request` (modal; opened by Enroll PR).
 
 Pending decisions come from one Decision inbox read of up to 100 entries for the
@@ -87,6 +88,7 @@ on this screen.
 | Resume | `UC-deliver-pull-request` *c | populated | operating |  | `CAP-PR-pull-request-delivery` | A blocked-run reason is confirmed when present; the resumed state or refusal is shown. Not offered while a decision holds the run; in the overflow menu when the run's decisions are unknown. |
 | Cancel run | `UC-deliver-pull-request` *b | populated | operating |  | `CAP-PR-pull-request-delivery` | Browser confirmation precedes cancellation; the refreshed row shows the outcome. |
 | Inspect PR / Open on GitHub | global: open GitHub for PR review and readiness outside Hub | populated | populated | end | `CAP-PR-pull-request-delivery` | The PR opens in a separate tab for external readiness/review. |
+| Open related origin | `UC-deliver-pull-request` 4 | populated | populated | `UX-repository` | `CAP-PR-pull-request-delivery` | Unit/branch and batch links open exact Repository subjects; Work Item/Plan links use their Plans anchors and Provider URLs open separately. |
 | Navigate to Projects | global: leave execution inspection through the application navigation | populated | populated | `UX-projects` |  | Project connections are shown. |
 
 ## 5. Evidence
@@ -96,5 +98,5 @@ on this screen.
 - [RunStateBadge.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunStateBadge.svelte) and [presentation.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/presentation.ts), with [presentation.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/presentation.test.ts) covering every run state.
 - [PipelineRunsView.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/PipelineRunsView.integration.test.ts); test assertions were inspected.
 
-This description is derived from source inspection. It does not claim a browser
+`RunOrigins.integration.test.ts` enforces the shared secondary reference presentation. This description is derived from source inspection. It does not claim a browser
 walkthrough, a fresh test execution or a live provider result.

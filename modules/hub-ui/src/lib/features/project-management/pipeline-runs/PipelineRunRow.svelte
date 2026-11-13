@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { components } from '$lib/api';
 	import RunStateBadge from './RunStateBadge.svelte';
+	import RunOrigins from './RunOrigins.svelte';
 	import RunActions from './RunActions.svelte';
 	import { decisionWait, decisionWaitLabel, type RunDecisions } from './run-actions';
 	import { runHref } from './run-links';
@@ -81,6 +82,7 @@
 			>
 				{run.pull_snapshot?.title || 'No title'}
 			</a>
+			<RunOrigins {run} />
 		</div>
 	</TableCell>
 

@@ -11,6 +11,7 @@ from app.features.project_management.connection_tests.models import TEST_BRANCH_
 from app.features.project_management.connection_tests.repos import ConnectionTestRepository
 from app.features.project_management.pipeline_runs.adapters.base import DeliveryTarget
 from app.features.project_management.pipeline_runs.models import PipelineRun, PipelineRunState
+from app.features.project_management.pipeline_runs.origin_reads import read_run
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from app.features.project_management.pipeline_runs.usecases.ci import CIProgress
@@ -182,7 +183,7 @@ class PipelineRunProgress:
             ):
                 return await block_for_project_change(self.repo, session, run, now)
             if run.state not in (PipelineRunState.IMPLEMENTING, PipelineRunState.AWAITING_CI):
-                return PipelineRunRead.model_validate(run)
+                return await read_run(session, run)
             target = DeliveryTarget(project.github_connector_id, project.github_repository, run.pull_number)
             if run.state == PipelineRunState.IMPLEMENTING:
                 implementation_input = await implementing.prepare(session, run, target)
@@ -217,7 +218,7 @@ class PipelineRunProgress:
             async with AsyncTransaction() as session:
                 run, _ = await self._validate(session, checkpoint)
                 if await implementing.apply_questions(session, run, question_input, observed):
-                    return PipelineRunRead.model_validate(run)
+                    return await read_run(session, run)
 
         assert project_read is not None
         result = await ci.observe(project_read, pull_number, observer, lambda: self._authorize_merge(checkpoint))

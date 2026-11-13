@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from app.features.project_management.pipeline_runs.origin_reads import read_runs
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
@@ -58,7 +59,7 @@ class SddUseCase:
         async with AsyncTransaction() as session:
             await self.projects.get(session, project_id)
             rows = await SddRepository().runs(session, project_id, spec_dir)
-            return [PipelineRunRead.model_validate(row) for row in rows]
+            return await read_runs(session, rows)
 
     async def decisions(self, run_id):
         async with AsyncTransaction() as session:

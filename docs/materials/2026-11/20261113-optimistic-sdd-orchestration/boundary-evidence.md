@@ -35,12 +35,12 @@ architecture, use-case and UX consumers; completed specs retain history.
 
 The independent proposal anchors besides this request are
 `PROP-jules-antigravity-migration`, `SPEC-owed-counts-error-reason`,
-`PROP-run-origin-links`, `PROP-schedule-config-ownership`,
+`SPEC-run-origin-links`, `PROP-schedule-config-ownership`,
 `SPEC-sidebar-overflow-cues` and `SPEC-updated-at-maintenance`.
 There are six, not counting each proposal's target blueprint as separate work.
 The proposal list/search and body inspection found no open dedicated runtime or
 workflow-evaluation expansion to reject. Runtime and path-source changes are
-completed specs. Native batch links in `PROP-run-origin-links` still apply to
+completed specs. Native batch links in `SPEC-run-origin-links` still apply to
 retained history; `SPEC-updated-at-maintenance` is an independent timestamp fix.
 Keep their independent outcomes and reconcile their affected SDD assumptions.
 

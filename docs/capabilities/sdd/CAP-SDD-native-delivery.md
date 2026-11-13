@@ -1,7 +1,7 @@
 ---
 id: CAP-SDD-native-delivery
 title: Repository-owned SDD activity delivery
-summary: "Hub starts explicit SDD activity intent through ordinary PR delivery without evaluating repository readiness. Repository agents own setup and workflow execution; legacy native batches and decisions remain historical evidence."
+summary: "Start explicit repository-owned SDD activity intent through ordinary PR delivery. Exact project-scoped retained batch addresses remain read-only history independently of current unit selection."
 area: sdd
 status: active
 usecases:
@@ -52,6 +52,8 @@ its work, questions and GitHub outcome.
 11. **Uncertain reservation**: WHILE a retired claim or an unleased uncertain publication without a Run retains external ownership, Hub MUST require explicit project-scoped reconciliation before releasing that reservation. Check: `modules/hub/tests/integration/features/project_management/sdd/test_optimistic_api.py`.
 12. **No implicit conversion**: Hub MUST NOT convert a legacy native Run into an optimistic Run through generic resume. Check: `modules/hub/app/features/project_management/sdd/execution.py` and retirement migration tests.
 
+13. **Exact retained batch**: WHEN a Repository address names a batch, Hub MUST load its exact project-scoped detail without requiring membership in the latest-fifty list. Missing subjects never select another batch. Check: `test_origins.py`, `sdd-batches.integration.test.ts` and `RepositoryView.integration.test.ts`.
+
 ## 4. Interfaces & Data Contracts
 
 All paths are under `/api/v1/projects/{project_id}/sdd` and require the existing
@@ -84,6 +86,11 @@ and does not adopt/delete a remote branch; an existing branch remains a conflict
 for a distinct start. Active owners must be followed or settled through their Run. A retired Run
 acknowledgment alone does not release an independently retained unsettled claim;
 new enrollment checks both holds.
+
+Repository `batch=<UUID>` addresses restore exact retained detail independently of the selected unit.
+The client merges addressed detail into retained options; Load retained batches fetches the list once per project/mount and preserves detail selection.
+Refresh status deliberately reloads selected detail. Detail and list failures remain separate; older address/project responses cannot replace the current subject.
+Opening, changing or reloading history sends no create, resume or control request.
 
 Legacy local Stop can settle future batch admission;
 it neither resumes admitted work nor cancels external agent work.

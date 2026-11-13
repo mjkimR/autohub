@@ -1,7 +1,7 @@
 ---
 id: UX-run-page
 title: PR Run Page
-summary: "The PR run page is the home of one PR run: its identity, state and wait reason, one state-driven next action, decisions, execution attempts and the recovery path of an ended run."
+summary: "The PR run page shows one state-driven next action, retained origin links, decisions, attempts and ended-run recovery using returned Work Item IDs without owner scans."
 area: delivery
 element: screen
 status: active
@@ -35,8 +35,7 @@ itself with that route, keeping its section anchor. The old list links `/project
 and `/projects/{projectId}?tab=runs&run={id}` redirect here; `view=decisions` lands on the Decisions section. A run
 opened under another project's path redirects to its own project.
 
-The header and its action row are primary. Sections follow in this order: the next step of an ended run, the SDD
-unit back-link, Decisions, Execution attempts. Section anchors are `#next-step`, `#decisions` and `#attempts`.
+The header and its action row are primary. Sections follow in this order: the next step of an ended run, Related origins, Decisions, Execution attempts. Section anchors are `#next-step`, `#decisions` and `#attempts`.
 
 - PR run (breadcrumb): Projects › Project connection › Runs › PR number.
 - PR run (header): state badge, decision-wait marker when a decision is pending, SDD badge for SDD runs, PR title,
@@ -54,11 +53,12 @@ unit back-link, Decisions, Execution attempts. Section anchors are `#next-step`,
     (non-terminal run; confirmed). Refresh reloads the run, its decision status and attempts; it keeps the
     Decisions section mounted (draft answer and notices stay), which has its own Refresh decisions.
 - PR run (next step; failed or canceled run): states that the run cannot be resumed and that its record is kept.
-  - Work Item (owning item; when a Work Plan item names this run): item key, title and Work Plan, with Open Work
+  - Work Item (owning item; when a Work Plan item names this run): item and Work Plan IDs from the Run read, with Open Work
     Item recovery to that item in `UX-work-plans` and Review attempt errors.
   - Replacement guidance (when no Work Item names this run): Enroll PR opens the project's Runs tab
     (`UX-pipeline-runs`) and Work Plans opens the Plans tab.
-- SDD unit (back-link; SDD run): the unit path opens the project Repository tab with that unit (`UX-repository`).
+- PR run (Related origin): the proven category or Origin unknown, followed by retained Work Plan/Work Item links, current SDD unit, related claim history/batch links and exact external Provider session URLs. Missing session URLs remain ID text; category evidence can be known without an available subject link.
+- SDD unit links include the Run branch and open that unit in `UX-repository`; related history is labeled separately from the current unit.
 - `UX-run-decisions` (Decisions section; the run's wait reason stays in the header).
 - `UX-attempt-history` (Execution attempts section).
 
@@ -97,7 +97,9 @@ ink; Cancel run is the quiet destructive variant.
 | Cancel run | `UC-deliver-pull-request` *b | populated | operating |  | `CAP-PR-pull-request-delivery` | Confirmation precedes cancellation; the ended state and next step load. |
 | Inspect PR | global: open GitHub for PR review and readiness outside Hub | populated | populated | end | `CAP-PR-pull-request-delivery` | The PR opens in a separate tab. |
 | Refresh / Retry | `UC-complete-sdd-workflow` 1, `UC-complete-sdd-workflow` 2, `UC-complete-sdd-workflow` 3, `UC-complete-sdd-workflow` 7, `UC-start-sdd-activity` 5 | populated, error | loading |  | `CAP-PR-pull-request-delivery` | The run, its pending decisions and its attempts reload; the Decisions section keeps its draft and notices; a failure keeps the last data. |
-| SDD unit link | global: return from an SDD run to its unit | populated | populated | `UX-repository` | `CAP-SDD-native-delivery` | The project's Repository tab opens. |
+| SDD unit / batch origin | `UC-deliver-pull-request` 4 | populated, ended | populated | `UX-repository` | `CAP-PR-pull-request-delivery` | The exact named unit/branch or retained batch opens, or its unavailable explanation appears. |
+| Work Plan / Work Item origin | `UC-deliver-pull-request` 4 | populated, ended | populated | `UX-work-plans` | `CAP-PR-pull-request-delivery` | The existing exact object anchor opens. |
+| Provider session origin | global: inspect retained external evidence | populated, ended | populated | end | `CAP-PR-pull-request-delivery` | The retained external URL opens separately; absent URLs remain text. |
 | Breadcrumb Projects / project / Runs | global: navigate up from the run | populated, not-found, error | populated | `UX-pipeline-runs` |  | Projects, the project or its run list opens. |
 | Back to project runs | global: leave a missing run | not-found | populated | `UX-pipeline-runs` |  | The project's run list opens. |
 
@@ -116,5 +118,5 @@ ink; Cancel run is the quiet destructive variant.
   test assertions were inspected and run with `just test-ui`.
 
 The page reads pending decisions from the Decision inbox list (up to five pages of 100 for the project); the run
-record carries no Work Item reference, so the owning Work Item is found from the project's Work Plans. This
-description does not claim a live provider result.
+record supplies its retained Work Item/Plan IDs, so recovery sends no Work Plan list scan. This
+description does not claim a live provider result. `RunOrigins.integration.test.ts` and `RunPageView.integration.test.ts` enforce exact links, unknown/missing URL states and recovery without owner scans.

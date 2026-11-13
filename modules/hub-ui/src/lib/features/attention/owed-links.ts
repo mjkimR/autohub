@@ -1,6 +1,9 @@
 import type { components } from '$lib/api';
 import { DECISIONS_HREF } from '$lib/components/shared/app-shell-nav';
-import { runHref } from '$lib/features/project-management/pipeline-runs/run-links';
+import {
+	repositorySubjectHref,
+	runHref
+} from '$lib/features/project-management/pipeline-runs/run-links';
 import { projectTabHref } from '$lib/features/project-management/projects/project-tabs';
 
 export type OwedItem = components['schemas']['OwedItemRead'];
@@ -29,7 +32,7 @@ export function owedHref(item: Pick<OwedItem, 'kind' | 'subject' | 'context'>): 
 		case 'work-item-attention':
 			return workItemId ? `${plans}#work-item-${encodeURIComponent(workItemId)}` : plans;
 		case 'sdd-batch-attention':
-			return projectTabHref(project, 'repository');
+			return repositorySubjectHref(project, { batch: item.context.sdd_batch_id ?? undefined });
 		case 'connection-test-cleanup':
 			return projectTabHref(project, 'connections');
 	}

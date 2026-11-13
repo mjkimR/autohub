@@ -1,7 +1,7 @@
 ---
 id: CAP-DOC-repository-viewer
 title: Repository document and execution inspection
-summary: "Auto Hub serves authenticated repository files and embeds the pinned devkit viewer for branch-specific documents and milestone proposals. Reading documents exposes project-scoped execution links without starting or approving work."
+summary: "Serve branch-specific repository documents and validate addressed unit/ref selections shared by the viewer and activity context. Inspection rejects stale or unavailable subjects without starting or approving work."
 area: repository
 status: active
 usecases:
@@ -71,6 +71,9 @@ native decision evidence is read-only; ordinary PR questions use their Run contr
 
 10. **Read-only milestone documents**: WHEN an SDD repository is inspected, Hub MUST keep milestone/document navigation separate from activity execution intent. It provides no executable readiness preview or eligible ordering. Check: repository UI integration tests and `RepositoryView.svelte` source inspection.
 
+11. **Addressed unit**: WHEN a Repository URL names a recognized proposal/spec directory, Hub MUST validate its document at the explicit browse ref or default branch before selecting it in both viewer and activity context. A missing explicit branch never falls back. Check: `repository-selection.integration.test.ts` and `RepositoryView.integration.test.ts`.
+12. **Selection isolation**: WHEN project or unit/ref address changes, Hub MUST reject older read results and retain the current requested subject or its explicit unavailable state. Check: `RepositoryView.integration.test.ts` pending-directory navigation regression.
+
 ## 4. Interfaces & Data Contracts
 
 | Interface | Input / result |
@@ -86,12 +89,23 @@ entries are omitted. Branch enumeration reads at most 1,000 entries and retains
 the default branch even when enumeration is incomplete.
 
 `project_type: general` uses the Git browser; `project_type: sdd` defaults to
-`Sdd View` and permits `Git Browser`. The SDD viewer starts at `docs/`. Selecting
+`Sdd View` and permits `Git Browser`. The SDD viewer starts at `docs/` unless a unit address selects its exact document. Selecting
 `docs/proposals/PROP-<slug>/proposal.md` or a file under `specs/YYYY-MM/<unit>/`
 fills the bound unit selector; it does not submit an execution request.
 Milestone roots are `docs/roadmap/` and `docs/packages/<name>/roadmap/`, each with
 flat `_archive/`. Proposal anchors establish milestone membership; historical spec
 milestone fields do not.
+
+### Repository subject addresses
+
+`?tab=repository&unit=<directory>&ref=<branch>` selects a recognized `docs/proposals/PROP-<slug>` or `specs/YYYY-MM/<unit>` directory.
+The optional `ref` is the visible browse branch; run-generated addresses retain the Run branch for unmerged units.
+It is not immutable PR-head evidence or execution authority.
+Reload and viewer-mode changes preserve the address; browser query navigation replaces selection.
+Invalid, missing, inaccessible or non-SDD unit requests show Unit unavailable, Retry for read failure and Browse repository.
+Browse clears the unit and resets an unavailable explicit ref to default.
+An unavailable unit supplies no activity-start control for that subject.
+An independent `batch` query selects the retained-history panel under `CAP-SDD-native-delivery`.
 
 ### Embedded document views
 

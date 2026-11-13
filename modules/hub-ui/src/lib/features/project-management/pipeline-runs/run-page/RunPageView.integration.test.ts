@@ -121,7 +121,12 @@ test('resume acts on the current revision and reloads the run', async () => {
 });
 
 test('a failed Work Item run links to that Work Item recovery', async () => {
-	current = { ...run, state: 'failed', pause_reason: null };
+	current = {
+		...run,
+		state: 'failed',
+		pause_reason: null,
+		related_origins: [{ kind: 'work_plan', id: 'item-1', work_plan_id: 'plan-1' }]
+	};
 	plans = [
 		{
 			id: 'plan-1',
@@ -133,7 +138,10 @@ test('a failed Work Item run links to that Work Item recovery', async () => {
 	expect(
 		(await screen.findByRole('link', { name: 'Open Work Item recovery' })).getAttribute('href')
 	).toBe('/projects/project-1?tab=plans#work-item-item-1');
-	expect(screen.getByText(/T1: Add API/)).toBeTruthy();
+	expect(screen.getByRole('link', { name: 'Work Item item-1' })).toBeTruthy();
+	expect(
+		api.GET.mock.calls.some(([path]) => path === '/api/v1/projects/{project_id}/work-plans')
+	).toBe(false);
 	expect(screen.getByRole('heading', { name: 'Next step' })).toBeTruthy();
 	expect(screen.queryByRole('link', { name: 'Next step' })).toBeNull();
 });
@@ -155,7 +163,7 @@ test('an SDD run links back to its unit in the repository view', async () => {
 	renderPage();
 	expect(
 		(await screen.findByRole('link', { name: 'specs/2026-10/feature' })).getAttribute('href')
-	).toBe('/projects/project-1?tab=repository&unit=specs%2F2026-10%2Ffeature');
+	).toBe('/projects/project-1?tab=repository&unit=specs%2F2026-10%2Ffeature&ref=feature%2F7');
 });
 
 test('a missing run shows not found with a way back', async () => {

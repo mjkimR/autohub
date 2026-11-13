@@ -7,6 +7,7 @@ from app.features.project_management.pipeline_runs.models import (
     PipelineRun,
     PipelineRunState,
 )
+from app.features.project_management.pipeline_runs.origin_reads import read_run
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.schemas import (
     PipelineRunRead,
@@ -87,4 +88,4 @@ async def block_for_project_change(
         attempt.failure_code = "PROJECT_CHANGED"
         attempt.failure_detail = reason
     await session.flush()
-    return PipelineRunRead.model_validate(run)
+    return await read_run(session, run)

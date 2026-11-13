@@ -166,6 +166,14 @@ export interface components {
             ai_catalog_id: string;
             /** Requested Catalog Id */
             requested_catalog_id?: string | null;
+            /**
+             * Enrollment Source
+             * @default unknown
+             * @enum {string}
+             */
+            enrollment_source: "unknown" | "work_plan" | "provider_session" | "native_sdd" | "multiple";
+            /** Related Origins */
+            related_origins?: components["schemas"]["RunOrigin"][];
             /** Sdd Snapshot */
             sdd_snapshot?: {
                 [key: string]: unknown;
@@ -251,6 +259,29 @@ export interface components {
             head_sha: string;
             /** Linked Issues */
             linked_issues?: components["schemas"]["LinkedIssue"][];
+        };
+        /** RunOrigin */
+        RunOrigin: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "work_plan" | "provider_session" | "native_sdd";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Work Plan Id */
+            work_plan_id?: string | null;
+            /** Catalog Id */
+            catalog_id?: string | null;
+            /** Unit */
+            unit?: string | null;
+            /** Batch Id */
+            batch_id?: string | null;
+            /** Url */
+            url?: string | null;
         };
         /** RunSnapshot */
         RunSnapshot: {

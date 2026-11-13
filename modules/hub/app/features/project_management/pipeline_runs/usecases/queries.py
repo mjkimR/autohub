@@ -5,6 +5,7 @@ from typing import Annotated
 from uuid import UUID
 
 from app.features.project_management.pipeline_runs.models import FINAL_RUN_STATES, PipelineRunState
+from app.features.project_management.pipeline_runs.origin_reads import read_run, read_runs
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.schemas import (
     ExecutionAttemptList,
@@ -46,14 +47,14 @@ class PipelineRunQueries:
                 pull_number=pull_number,
                 group_key=group_key,
             )
-            return PipelineRunList(items=[PipelineRunRead.model_validate(row) for row in rows], total_count=total)
+            return PipelineRunList(items=await read_runs(session, rows), total_count=total)
 
     async def get(self, run_id: UUID) -> PipelineRunRead:
         async with AsyncTransaction() as session:
             run = await self.repo.get(session, run_id)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
-            return PipelineRunRead.model_validate(run)
+            return await read_run(session, run)
 
     async def list_attempts(self, run_id: UUID, *, offset: int = 0, limit: int | None = None) -> ExecutionAttemptList:
         async with AsyncTransaction() as session:

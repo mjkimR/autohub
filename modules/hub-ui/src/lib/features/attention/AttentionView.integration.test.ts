@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import ProjectExceptionStrip from '$lib/features/project-management/projects/ProjectExceptionStrip.svelte';
 import AttentionView from './AttentionView.svelte';
 import { OWED_KINDS } from './owed-kinds';
-import { ITEM, PLAN, PROJECT, RUN, owedItem } from './owed-fixtures';
+import { BATCH, ITEM, PLAN, PROJECT, RUN, owedItem } from './owed-fixtures';
 import type { OwedItem } from './owed-links';
 import { OWED_COUNTS_CONTEXT, OwedCountsStore } from './owed-counts.svelte';
 
@@ -26,7 +26,7 @@ const pageOf = (items: OwedItem[], next: string | null = null): { data: Page } =
 const everyKind = (): OwedItem[] => [
 	owedItem('failed-run', { subject: { id: 'f1' }, context: { run_id: 'f1' } }),
 	owedItem('connection-test-cleanup'),
-	owedItem('sdd-batch-attention'),
+	owedItem('sdd-batch-attention', { context: { sdd_batch_id: BATCH } }),
 	owedItem('work-item-attention', { context: { work_item_id: ITEM } }),
 	owedItem('work-item-replacement', { context: { work_item_id: ITEM } }),
 	owedItem('work-item-recovery', { context: { work_item_id: ITEM } }),
@@ -89,7 +89,7 @@ test.each([
 		`/projects/${PROJECT}?tab=plans#work-item-${ITEM}`
 	],
 	['work-item-attention', 'Inspect Work Item', `/projects/${PROJECT}?tab=plans#work-item-${ITEM}`],
-	['sdd-batch-attention', 'Inspect batch', `/projects/${PROJECT}?tab=repository`],
+	['sdd-batch-attention', 'Inspect batch', `/projects/${PROJECT}?tab=repository&batch=${BATCH}`],
 	['connection-test-cleanup', 'Review cleanup', `/projects/${PROJECT}?tab=connections`],
 	['failed-run', 'Inspect run', `/projects/${PROJECT}/runs/f1#next-step`]
 ])(
@@ -132,7 +132,11 @@ test('a decision without a known run opens the inbox', async () => {
 });
 
 test('only some kinds present renders only their groups', async () => {
-	pages = async () => pageOf([owedItem('sdd-batch-attention'), owedItem('decision')]);
+	pages = async () =>
+		pageOf([
+			owedItem('sdd-batch-attention', { context: { sdd_batch_id: BATCH } }),
+			owedItem('decision')
+		]);
 	render(AttentionView);
 	await waitFor(() => expect(groupOrder()).toEqual(['decision', 'sdd-batch-attention']));
 	expect(document.querySelector('[data-owed-empty]')).toBeNull();

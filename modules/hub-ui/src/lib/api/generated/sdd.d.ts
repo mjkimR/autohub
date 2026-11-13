@@ -462,6 +462,7 @@ export interface components {
              */
             acknowledge_external_work: true;
         };
+        RunOrigin: CommonComponents["schemas"]["RunOrigin"];
         /**
          * StartActivityRequest
          * @description Start Planning or Development of a proposal in the cloud: Hub makes the branch and pull request.
