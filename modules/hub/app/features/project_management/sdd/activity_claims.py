@@ -68,6 +68,7 @@ class ActivityClaims:
         from .batch_models import SddActivityClaim
         from .schemas import StartActivityRequest
 
+        owner_reference = f"/api/v1/projects/{project_id}/sdd/claims/{claim_id}"
         lease = str(uuid4())
         async with AsyncTransaction() as session:
             project = await self.projects.get(session, project_id, lock=True)
@@ -85,17 +86,21 @@ class ActivityClaims:
                 return await self.runs.get(claim.run_id)
             cp = dict(claim.checkpoint)
             if cp.get("refusal"):
-                raise ProjectError(cp["refusal"]["status"], cp["refusal"]["detail"])
+                raise ProjectError(
+                    cp["refusal"]["status"],
+                    f"{cp['refusal']['detail']}; inspect {owner_reference}",
+                    code=cp["refusal"].get("code"),
+                )
             if claim.settled:
                 raise ProjectError(
                     409,
-                    "Native activity already settled; its detailed run was retired. Inspect the retained outcome; replay creates no new activity",
+                    f"Activity already settled; inspect {owner_reference}. Replay creates no new activity",
                 )
             expires = cp.get("lease_expires_at")
             if expires and datetime.fromisoformat(expires) > get_current_utc_time():
-                raise ProjectError(409, "Native activity reconciliation is already in flight")
+                raise ProjectError(409, f"Activity reconciliation is already in flight; inspect {owner_reference}")
             if project_basis(project) != cp["project"]:
-                raise ProjectError(409, "Project changed after native admission claim")
+                raise ProjectError(409, f"Project changed after activity claim; inspect {owner_reference}")
             cp.update(lease=lease, lease_expires_at=(get_current_utc_time() + timedelta(minutes=5)).isoformat())
             claim.checkpoint = cp
             request, activity, actor = StartActivityRequest(**cp["request"]), claim.activity, claim.actor
@@ -148,6 +153,7 @@ class ActivityClaims:
                     no_effect = not row.checkpoint.get("ref_attempted") and not row.checkpoint.get("pull_number")
                     refusal = {
                         "status": exc.status if isinstance(exc, ProjectError) else 503,
+                        "code": exc.code if isinstance(exc, ProjectError) else None,
                         "detail": exc.detail
                         if isinstance(exc, ProjectError)
                         else "Activity start failed before branch or PR publication",
@@ -164,6 +170,8 @@ class ActivityClaims:
                     }
                     if no_effect:
                         row.settled = True
+            if isinstance(exc, ProjectError):
+                raise ProjectError(exc.status, f"{exc.detail}; inspect {owner_reference}", code=exc.code) from exc
             raise
 
 

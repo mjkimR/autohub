@@ -308,3 +308,32 @@ async def test_optimistic_settlement_refuses_current_authority(client, project, 
     await session.refresh(claim)
     assert not claim.settled and "reconciliation" not in claim.checkpoint
     assert github.paths == []
+
+
+async def test_uncertain_original_start_exposes_exact_claim_recovery(client, project, session, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.features.project_management.projects.errors import ProjectError
+    from app.features.project_management.projects.repos import ProjectRepository
+    from app.features.project_management.projects.services import ProjectService
+    from app.features.project_management.sdd import activities
+    from app.features.project_management.sdd.activity_claims import ActivityClaims
+    from app.features.project_management.sdd.schemas import StartActivityRequest
+
+    projects = ProjectService(ProjectRepository())
+    owner = await projects.get(session, UUID(project["id"]))
+    claims = ActivityClaims(projects, AsyncMock(), AsyncMock())
+    claim = await claims.reserve(session, owner, "dev", "demo", StartActivityRequest(request_id=uuid4()), "operator")
+    claim_id = claim.id
+    await session.commit()
+
+    async def uncertain(*args, checkpoint, **kwargs):
+        await checkpoint(initial_sha="b" * 40, branch="dev-demo", ref_attempted=True, pr_attempted=True)
+        raise ProjectError(409, "Original activity PR outcome is uncertain", code="SDD_PUBLICATION_UNCERTAIN")
+
+    monkeypatch.setattr(activities.ActivityStarter, "start", uncertain)
+    for _ in range(2):
+        with pytest.raises(ProjectError) as error:
+            await claims.execute(owner.id, claim_id)
+        assert error.value.status == 409 and error.value.code == "SDD_PUBLICATION_UNCERTAIN"
+        assert f"/api/v1/projects/{owner.id}/sdd/claims/{claim_id}" in error.value.detail

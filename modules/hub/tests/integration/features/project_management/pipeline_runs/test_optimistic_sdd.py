@@ -110,7 +110,10 @@ async def test_agent_question_after_push_pauses_before_ci_and_uses_current_head(
     assert resumed.json()["state"] == "dispatching"
 
 
-async def test_direct_enrollment_cannot_steal_an_unsettled_activity_candidate(client, project, github, session):
+@pytest.mark.parametrize("saved_number", [True, False])
+async def test_direct_enrollment_cannot_steal_an_unsettled_activity_candidate(
+    client, project, github, session, saved_number
+):
     from uuid import UUID, uuid4
 
     from app.features.project_management.sdd.batch_models import SddActivityClaim
@@ -122,11 +125,22 @@ async def test_direct_enrollment_cannot_steal_an_unsettled_activity_candidate(cl
         request_digest="original",
         unit=UNIT,
         activity="plan",
-        checkpoint={"execution_version": 2, "uncertain": True, "pull_number": 7},
+        checkpoint={
+            "execution_version": 2,
+            "uncertain": True,
+            "pr_attempted": True,
+            "branch": github.pulls[7]["head"]["ref"],
+            "initial_sha": scenarios.HEAD,
+            **({"pull_number": 7} if saved_number else {}),
+        },
     )
     session.add(claim)
     await session.commit()
     github.paths.clear()
     refused = await scenarios.enroll(client, project)
     assert refused.status_code == 409 and str(claim.id) in refused.text, refused.text
-    assert not github.paths
+    assert f"/api/v1/projects/{project['id']}/sdd/claims/{claim.id}" in refused.json()["detail"]
+    if saved_number:
+        assert not github.paths
+    else:
+        assert set(github.paths) <= {"/repos/owner/app/pulls/7", "/repos/owner/app/issues/3"}

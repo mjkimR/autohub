@@ -199,4 +199,3 @@ and accepted ADRs. The preliminary decision identifies the ADRs to supersede.
 Development rechecks the inventory and aligns surviving partial proposals under
 exclusive ownership before they are used for a later handoff. If another live
 branch owns one, coordinate that change rather than rewriting it from this task.
-

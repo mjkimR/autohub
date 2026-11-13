@@ -158,7 +158,9 @@ class PipelineRunUseCase:
                     raise ProjectError(422, "Project is disabled")
                 if project.revision != expected_revision:
                     raise ProjectError(409, "Project changed during pull request enrollment; retry")
-                await reject_unreconciled_replacement(session, project_id, snapshot.number, admission)
+                await reject_unreconciled_replacement(
+                    session, project_id, snapshot.number, admission, branch=snapshot.head_ref
+                )
                 if await self.repo.get_active_for_pull(session, project_id, snapshot.number, lock=True) is not None:
                     raise ProjectError(409, ACTIVE_RUN_CONFLICT, fix=ACTIVE_RUN_FIX)
                 catalog = await self.resolve_catalog(session, project, request.catalog)
