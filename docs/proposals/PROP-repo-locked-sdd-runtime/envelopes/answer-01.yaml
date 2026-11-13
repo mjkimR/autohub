@@ -1,0 +1,23 @@
+kind: answer
+stage: direction-handoff
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T01:11:32.503447Z'
+status: completed
+summary: q-a, q-b, q-c decided
+findings: []
+checks: {}
+answers_to: worker-01.yaml
+answers:
+- question: q-a
+  choice: continue
+  decision: A changed runtime identity on a later head continues with the new runtime; effective workflow, policy and configuration digests keep their refusal.
+  by: user
+- question: q-b
+  choice: hub-fetch-offline-build
+  decision: Hub fetches private Git sources with the project's connector token; the sandbox builds without network or credentials and uses network only for registry downloads, with a Hub-downloaded offline install as the fallback.
+  by: user
+- question: q-c
+  choice: refuse
+  decision: A repository whose root lock lacks devkit-spec is refused with a repository diagnostic; no default image runtime remains.
+  by: user
