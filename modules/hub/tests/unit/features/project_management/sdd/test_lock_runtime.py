@@ -139,3 +139,17 @@ def test_classification_keeps_markers_and_hashes():
     )
     assert registry == (f"colorama==0.4.6 ; sys_platform == 'win32' --hash=sha256:{digest}",)
     assert git[0].repository == "mjkimR/devkit" and git[0].subdirectory == "packages/devkit-spec"
+
+
+def test_registry_package_from_another_index_is_refused(tmp_path):
+    def mirrored(name, text):
+        if name != "uv.lock":
+            return text
+        return text.replace(
+            'name = "click"\nversion = "8.5.1"\nsource = { registry = "https://pypi.org/simple" }',
+            'name = "click"\nversion = "8.5.1"\nsource = { registry = "https://mirror.example/simple" }',
+        )
+
+    with pytest.raises(ProjectError) as raised:
+        select(consumer(tmp_path, edit=mirrored))
+    assert raised.value.code == "SDD_RUNTIME_SOURCE_UNSUPPORTED"

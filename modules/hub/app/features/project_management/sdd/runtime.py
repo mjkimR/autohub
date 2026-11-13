@@ -89,7 +89,7 @@ async def resolve(source: RuntimeSource, *, start: bool = True) -> tuple[Selecti
     selection = await asyncio.to_thread(select, source.root)
     if cache.complete(selection.identity):
         return selection, "ready"
-    if code := cache.failure(selection.identity):
+    if code := cache.failure(selection.identity, cache.token_scope(source.token)):
         return selection, code
     if start:
         _start_install(selection, source.token)
@@ -106,7 +106,10 @@ async def ensure_runtime() -> Path:
         raise ProjectError(503, PREPARING, code="SDD_RUNTIME_PREPARING")
     if state != "ready":
         raise ProjectError(422, FAILURES.get(state, FAILURES["SDD_RUNTIME_INSTALL_FAILED"]), code=state)
-    source.home = source.stack.enter_context(cache.lease(selection.identity))
+    try:
+        source.home = source.stack.enter_context(cache.lease(selection.identity))
+    except BlockingIOError:  # an eviction holds the entry right now
+        raise ProjectError(503, PREPARING, code="SDD_RUNTIME_PREPARING") from None
     if not cache.complete(selection.identity):  # evicted between the check and the lease
         source.stack.close()
         source.stack = ExitStack()

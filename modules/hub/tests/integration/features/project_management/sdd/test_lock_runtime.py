@@ -73,7 +73,14 @@ class CustomBuildHook(BuildHookInterface):
             network = "open"
         except OSError:
             network = "blocked"
-        observed = {"network": network, "secret": os.environ.get("SDD_TEST_SECRET")}
+        planted = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(self.root))), ".venv", "planted.pth")
+        try:
+            with open(planted, "w") as handle:
+                handle.write("import os; os.system('touch /tmp/escaped')")
+            venv = "written"
+        except OSError:
+            venv = "denied"
+        observed = {"network": network, "secret": os.environ.get("SDD_TEST_SECRET"), "venv": venv}
         with open(os.path.join(self.root, "observed.txt"), "w") as handle:
             handle.write(repr(observed))
 """
@@ -85,7 +92,7 @@ async def test_source_build_hook_cannot_reach_the_network_or_credentials(tmp_pat
         pytest.skip("requires the pinned build environment (just install-sdd .cache/sdd-build config/sdd-build)")
     monkeypatch.setenv("SDD_TEST_SECRET", "host-secret")
     staged = tmp_path / "staged"
-    source = staged / "src/probe"
+    source = staged / runtime_install.WORK / "src/probe"
     source.mkdir(parents=True)
     (source / "pyproject.toml").write_text(
         '[build-system]\nrequires = ["hatchling"]\nbuild-backend = "hatchling.build"\n\n'
@@ -99,4 +106,6 @@ async def test_source_build_hook_cannot_reach_the_network_or_credentials(tmp_pat
     await runtime_install.build_sources({"probe": source}, staged, venv)
     observed = (source / "observed.txt").read_text()
     assert "'network': 'blocked'" in observed and "host-secret" not in observed
-    assert list((staged / "wheels").glob("probe-1.0-*.whl"))
+    assert "'venv': 'denied'" in observed and not (venv / "planted.pth").exists()
+    assert list((staged / runtime_install.WORK / "wheels").glob("probe-1.0-*.whl"))
+    assert list(venv.glob("lib/python*/site-packages/probe-1.0.dist-info"))  # installed by the sandboxed step

@@ -261,3 +261,33 @@ async def test_prior_warnings_are_retained_when_a_later_cli_call_fails(repo, mon
     with pytest.raises(SddCommandError) as result:
         await evaluate(repo, approved=False)
     assert {row["code"] for row in result.value.diagnostics} == {"RECEIPT_STALE", "WORKFLOW_DRIFT"}
+
+
+async def test_runtime_endpoint_reports_both_failures_without_an_error(monkeypatch):
+    """A host without isolation and an unreadable head still yield a status (not a server error)."""
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace
+
+    from app.features.project_management.sdd import usecases
+
+    @asynccontextmanager
+    async def transaction():
+        yield None
+
+    class Projects:
+        async def get(self, session, project_id):
+            return SimpleNamespace(github_repository="o/r", github_connector_id="connector")
+
+    class Observer:
+        async def get_token(self, connector, kind):
+            raise ProjectError(422, "connector unavailable")
+
+    async def runtime_status(self, *args):
+        return {"profile": "repository-lock", "isolation": None, "ok": False, "detail": "no sandbox"}
+
+    monkeypatch.setattr(usecases, "AsyncTransaction", transaction)
+    monkeypatch.setattr(services.SddService, "runtime_status", runtime_status)
+    use_case = usecases.SddUseCase.__new__(usecases.SddUseCase)
+    use_case.projects, use_case.observer = Projects(), Observer()  # type: ignore[assignment]
+    status = await use_case.runtime("project")
+    assert status.ok is False and status.state == "failed" and status.lock_detail

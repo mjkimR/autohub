@@ -206,7 +206,7 @@ async def test_caller_deadline_does_not_cancel_the_install(tmp_path, monkeypatch
 async def test_recorded_failure_is_reported_without_reinstalling(tmp_path, monkeypatch):
     monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
     monkeypatch.setattr(runtime, "select", lambda root: selection())
-    runtime_cache.record_failure(IDENTITY, "SDD_RUNTIME_SOURCE_UNAVAILABLE")
+    runtime_cache.record_failure(IDENTITY, "SDD_RUNTIME_SOURCE_UNAVAILABLE", runtime_cache.token_scope("token"))
     monkeypatch.setattr(runtime, "_start_install", lambda *args: pytest.fail("reinstalled during the retry delay"))
     with runtime.runtime_source(tmp_path, "token"), pytest.raises(ProjectError) as raised:
         await runtime.ensure_runtime()

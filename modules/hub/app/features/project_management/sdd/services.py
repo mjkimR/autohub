@@ -2,6 +2,9 @@
 
 import asyncio
 import json
+import os
+import signal
+from contextlib import suppress
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -97,6 +100,30 @@ def read_hold(current: dict) -> dict:
     }
 
 
+async def _probe(invocation: list[str], cwd: Path) -> str:
+    """Run the host probe for at most 30 seconds; a hung sandbox is killed with its process group."""
+    process = await asyncio.create_subprocess_exec(
+        *invocation,
+        cwd=cwd,
+        env={"PATH": "/usr/bin:/bin", "HOME": str(cwd), "LANG": "C.UTF-8"},
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    try:
+        async with asyncio.timeout(30):
+            output, _ = await process.communicate()
+    except BaseException:
+        if process.returncode is None:
+            with suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+            await process.wait()
+        raise
+    if process.returncode:
+        raise OSError("probe failed")
+    return output.decode(errors="replace")
+
+
 class SddService:
     async def runtime_status(self, repository=None, head=None, token=None) -> dict:
         """The host probe and, for a project head, the state of its lock-derived runtime.
@@ -111,22 +138,12 @@ class SddService:
             probe = Path(directory).resolve()
             try:
                 invocation = isolated_python(probe, python, prefix, "import sys; print(sys.version.split()[0])")
-                async with asyncio.timeout(30):
-                    process = await asyncio.create_subprocess_exec(
-                        *invocation,
-                        cwd=probe,
-                        env={"PATH": "/usr/bin:/bin", "HOME": directory, "LANG": "C.UTF-8"},
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.DEVNULL,
-                    )
-                    output, _ = await process.communicate()
-                if process.returncode:
-                    raise OSError
+                output = await _probe(invocation, probe)
             except ProjectError as exc:
-                return {**status, "ok": False, "state": None, "detail": str(exc)}
+                return {**status, "ok": False, "detail": str(exc)}
             except (OSError, TimeoutError):
-                return {**status, "ok": False, "state": None, "detail": "The sandboxed interpreter did not start"}
-        status.update(ok=True, detail="Python " + output.decode(errors="replace").strip()[:40])
+                return {**status, "ok": False, "detail": "The sandboxed interpreter did not start"}
+        status.update(ok=True, detail="Python " + output.strip()[:40])
         if repository and head and token:
             status.update(await self.lock_status(repository, head, token))
         return status
@@ -143,7 +160,11 @@ class SddService:
         if state == "ready":
             from . import runtime_cache
 
-            pin = json.loads((runtime_cache.entry(selection.identity) / "pin.json").read_text())
+            try:
+                with runtime_cache.lease(selection.identity) as home:
+                    pin = json.loads((home / "pin.json").read_text())
+            except (OSError, ValueError):  # evicted or being evicted since the lookup
+                return {**result, "state": "preparing"}
             result.update(bundles=pin.get("bundles", []), revisions=pin.get("revisions", {}))
             return {**result, "state": "ready"}
         if state == "preparing":

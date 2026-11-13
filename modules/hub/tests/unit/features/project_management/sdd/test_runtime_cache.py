@@ -93,3 +93,37 @@ def test_eviction_stops_when_only_leased_entries_remain():
     with cache.lease(IDENTITY):
         assert cache.evict(0) == []
     assert cache.complete(IDENTITY)
+
+
+def test_failure_markers_are_scoped_to_the_credential():
+    cache.record_failure(IDENTITY, "SDD_RUNTIME_SOURCE_UNAVAILABLE", cache.token_scope("narrow"))
+    assert cache.failure(IDENTITY, cache.token_scope("narrow")) == "SDD_RUNTIME_SOURCE_UNAVAILABLE"
+    assert cache.failure(IDENTITY, cache.token_scope("broad")) is None
+    assert "narrow" not in cache.token_scope("narrow")
+    cache.clear_failure(IDENTITY)
+    assert cache.failure(IDENTITY, cache.token_scope("narrow")) is None
+
+
+def test_prune_removes_abandoned_staging_and_counts_active_staging(root):
+    abandoned = root / f"{cache.STAGING_PREFIX}{'1' * 64}-99"
+    abandoned.mkdir(parents=True)
+    active = root / f"{cache.STAGING_PREFIX}{'2' * 64}-98"
+    active.mkdir()
+    (active / "blob").write_bytes(b"x" * 500)
+    claim = cache.try_build_lock("2" * 64)
+    assert claim is not None
+    try:
+        assert cache.prune() == 500
+    finally:
+        claim.release()
+    assert not abandoned.exists() and active.exists()
+
+
+def test_lease_never_waits_for_an_eviction(root):
+    import fcntl
+
+    cache.publish(IDENTITY, _stage(IDENTITY))
+    with open(root / f"{IDENTITY}.lease", "a+") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)  # an eviction in progress
+        with pytest.raises(BlockingIOError), cache.lease(IDENTITY):
+            pass

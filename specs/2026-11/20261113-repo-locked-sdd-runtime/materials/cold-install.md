@@ -19,6 +19,7 @@ Measured on 2026-11-13 for `SPEC-repo-locked-sdd-runtime` AC-18.
 | 1 | 11.3 s | 29 MiB | not sampled |
 | 2 | 11.4 s | 29 MiB | not sampled |
 | 3 | 11.1 s | 29 MiB | 153 MiB |
+| 4 (after review round 1 hardening: sandboxed wheel install) | 12.4 s | 29 MiB | not sampled |
 
 The entry's `pin.json` lists the bundles `advisory`, `app-uiux-improve`, `authoring`, `cli-tool`,
 `command-design`, `deep-research`, `design-explore`, `devkit`, `docs`, `g-foundation`, `git-commits`, `harness`,

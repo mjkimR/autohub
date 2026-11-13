@@ -106,7 +106,9 @@ class SddUseCase:
                 head = await _basis(WorkGitHub(client), repository, "HEAD")
         except ProjectError:
             status = await SddService().runtime_status()
-            return SddRuntimeStatus(**status, state="failed", lock_detail="The repository head could not be read")
+            return SddRuntimeStatus(
+                **{**status, "state": "failed", "lock_detail": "The repository head could not be read"}
+            )
         return SddRuntimeStatus(**await SddService().runtime_status(repository, head, token))
 
     async def readiness(self, project_id, request):

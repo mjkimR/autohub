@@ -3,10 +3,15 @@
 An entry ``<root>/<identity>`` is complete once its ``pin.json`` exists; it is published by renaming a finished
 staging directory, so readers never see a partial runtime. ``fcntl`` locks coordinate processes: an exclusive
 ``.build`` lock admits one installer per identity, and shared ``.lease`` locks keep an entry from eviction while an
-evaluation uses it. A ``.failed`` marker holds the last install failure code for a short retry delay.
+evaluation uses it. A ``.failed-<scope>`` marker holds the last install failure code for a short retry delay, scoped
+to the credential that failed so another project's connector is not refused by it.
+
+Entries are content-addressed and shared by every project on the instance that locks the same runtime; Hub
+accepts that sharing because one operator owns every project of an instance.
 """
 
 import fcntl
+import hashlib
 import json
 import os
 import shutil
@@ -90,10 +95,13 @@ def publish(identity: str, staged: Path) -> Path:
 
 @contextmanager
 def lease(identity: str):
-    """Hold the entry against eviction for one evaluation; touching the file records recent use."""
+    """Hold the entry against eviction for one evaluation; touching the file records recent use.
+
+    Never waits: while an eviction holds the entry, BlockingIOError tells the caller to treat it as preparing.
+    """
     path = _lock_file(identity, ".lease")
     with open(path, "a+") as handle:
-        fcntl.flock(handle, fcntl.LOCK_SH)
+        fcntl.flock(handle, fcntl.LOCK_SH | fcntl.LOCK_NB)
         os.utime(path)
         try:
             yield entry(identity)
@@ -101,17 +109,23 @@ def lease(identity: str):
             fcntl.flock(handle, fcntl.LOCK_UN)
 
 
-def record_failure(identity: str, code: str) -> None:
-    _lock_file(identity, ".failed").write_text(json.dumps({"code": code, "at": time.time()}))
+def token_scope(token: str | None) -> str:
+    """A non-reversible label of the credential an install used; never the credential itself."""
+    return hashlib.sha256((token or "").encode()).hexdigest()[:16]
+
+
+def record_failure(identity: str, code: str, scope: str = "") -> None:
+    _lock_file(identity, f".failed-{scope}").write_text(json.dumps({"code": code, "at": time.time()}))
 
 
 def clear_failure(identity: str) -> None:
-    _lock_file(identity, ".failed").unlink(missing_ok=True)
+    for marker in cache_root().glob(f"{identity}.failed-*"):
+        marker.unlink(missing_ok=True)
 
 
-def failure(identity: str) -> str | None:
-    """The last install failure code while its retry delay lasts."""
-    path = _lock_file(identity, ".failed")
+def failure(identity: str, scope: str = "") -> str | None:
+    """The last install failure code for this credential while its retry delay lasts."""
+    path = _lock_file(identity, f".failed-{scope}")
     try:
         data = json.loads(path.read_text())
     except (OSError, ValueError):
@@ -133,13 +147,42 @@ def _size(path: Path) -> int:
     return total
 
 
+def prune() -> int:
+    """Remove staging left by crashed installs (whose build claim is free) and expired failure markers.
+
+    Returns the bytes of staging still in progress, which count against the cap.
+    """
+    root, active = cache_root(), 0
+    for staged in root.glob(f"{STAGING_PREFIX}*"):
+        identity = staged.name[len(STAGING_PREFIX) :].rsplit("-", 1)[0]
+        claim = try_build_lock(identity)
+        if claim is None:
+            active += _size(staged)
+            continue
+        try:
+            shutil.rmtree(staged, ignore_errors=True)
+        finally:
+            claim.release()
+    for marker in root.glob("*.failed-*"):
+        try:
+            if time.time() - marker.stat().st_mtime > FAILURE_SECONDS:
+                marker.unlink(missing_ok=True)
+        except OSError:
+            continue
+    return active
+
+
 def evict(limit: int | None = None) -> list[str]:
-    """Remove least-recently-leased complete entries until the total fits; never one whose lease is held."""
+    """Remove least-recently-leased complete entries until the total fits; never one whose lease is held.
+
+    Blocking file work: callers on the event loop run it in a thread.
+    """
     limit = cap_bytes() if limit is None else limit
     root = cache_root()
+    in_progress = prune()
     entries = [path for path in root.iterdir() if path.is_dir() and (path / "pin.json").is_file()]
     sizes = {path.name: _size(path) for path in entries}
-    total = sum(sizes.values())
+    total = sum(sizes.values()) + in_progress
 
     def last_used(path: Path) -> float:
         lease_file = root / f"{path.name}.lease"

@@ -214,3 +214,5 @@ identity stored in snapshots is `devkit-lock:<identity>`.
   requests resume progress.
 - Settling active native runs, open batch selections and approved bridge claims before rollout is an operator
   procedure, not code.
+- Cache entries are content-addressed and shared by all projects of an instance that lock the same runtime; one
+  operator owns every project of an instance. Install failure markers are scoped to the credential that failed.

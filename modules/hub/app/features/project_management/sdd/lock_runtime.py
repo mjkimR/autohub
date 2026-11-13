@@ -205,6 +205,23 @@ def classify(export: str) -> tuple[tuple[GitSource, ...], tuple[str, ...]]:
     return tuple(git), tuple(registry)
 
 
+PYPI = "https://pypi.org/simple"
+
+
+def check_registries(lock: dict, registry: tuple[str, ...]) -> None:
+    """uv export names no index, so the lock tells whether each exported registry package comes from PyPI."""
+    sources: dict[str, set[str]] = {}
+    for package in lock.get("package", []) if isinstance(lock.get("package"), list) else []:
+        if isinstance(package, dict) and isinstance(package.get("name"), str):
+            source = package.get("source")
+            url = source.get("registry") if isinstance(source, dict) else None
+            sources.setdefault(canonicalize_name(package["name"]), set()).add(url if isinstance(url, str) else "")
+    for line in registry:
+        name = canonicalize_name(line.split("==", 1)[0].split("[", 1)[0])
+        if sources.get(name, {""}) - {PYPI}:
+            raise _refuse("SDD_RUNTIME_SOURCE_UNSUPPORTED", UNSUPPORTED)
+
+
 def identity(export: str) -> str:
     document = {"export": export, "python": python_version(), "build": build_digest()}
     return hashlib.sha256(json.dumps(document, sort_keys=True).encode()).hexdigest()
@@ -224,6 +241,10 @@ def select(root: Path) -> Selection:
     check_python(project)
     export = render(manifest, lock, group)
     git, registry = classify(export)
+    try:
+        check_registries(tomllib.loads(lock), registry)
+    except (tomllib.TOMLDecodeError, RecursionError):
+        raise _refuse("SDD_RUNTIME_UNLOCKED", UNLOCKED) from None
     if not any(source.package == "devkit-spec" for source in git) and not any(
         canonicalize_name(line.split("==", 1)[0].split("[", 1)[0]) == "devkit-spec" for line in registry
     ):

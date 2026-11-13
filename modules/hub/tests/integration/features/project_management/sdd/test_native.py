@@ -113,6 +113,22 @@ async def test_single_owner_approval_to_ci_merge_and_idempotent_receipt(client, 
     assert replay.status_code == 200 and replay.json()["state"] == "completed"
 
 
+async def test_continued_run_records_the_new_runtime_identity(client, run, monkeypatch):
+    """A head evaluated with another lock-derived runtime keeps the run and stores the new identity (AC-04)."""
+    assert run["sdd_snapshot"]["cli_version"] == "fixture"
+
+    async def inspect(self, repository, spec_dir, pull, token, **kwargs):
+        value = evidence(pull["head"]["sha"], pull["base"]["sha"], kwargs.get("approved", False))
+        value["snapshot"]["cli_version"] = "devkit-lock:" + "e" * 64
+        return value
+
+    monkeypatch.setattr(native.SddService, "inspect", inspect)
+    observed = await merge.advance(client, run)
+    assert observed["state"] == "paused"
+    assert observed["sdd_snapshot"]["cli_version"] == "devkit-lock:" + "e" * 64
+    assert observed["sdd_snapshot"]["workflow_hash"] == run["sdd_snapshot"]["workflow_hash"]
+
+
 async def test_resume_never_means_approval_and_reject_stops(client, run, github):
     waiting = await merge.advance(client, run)
     resumed, _ = await decide(client, waiting)

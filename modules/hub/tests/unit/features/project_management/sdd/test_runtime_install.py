@@ -34,10 +34,13 @@ def fake(tmp_path, monkeypatch):
     build.mkdir(parents=True)
     (build / "python").write_text("")
     monkeypatch.setenv("AUTOHUB_SDD_BUILD", str(tmp_path / "build"))
-    monkeypatch.setattr(runtime_install, "isolated_build", lambda staging, py, uv, args: ["SANDBOX", *args])
-    monkeypatch.setattr(runtime_install, "isolated_python", lambda writable, py, prefix, code: ["SANDBOX-PY", code])
     calls = []
     failures = {}
+    probe = {"output": {"python_prefix": "/", "packages": {"devkit-spec": "0.1.6"}, "bundles": ["spec", "docs"]}}
+    monkeypatch.setattr(
+        runtime_install, "isolated_build", lambda writable, py, uv, args: ["SANDBOX", str(writable), *args]
+    )
+    monkeypatch.setattr(runtime_install, "isolated_python", lambda writable, py, prefix, code: ["SANDBOX-PY", code])
 
     async def run(args, *, cwd, env, timeout, code, group=False):
         calls.append({"args": [str(a) for a in args], "env": env, "code": code, "cwd": cwd})
@@ -48,18 +51,16 @@ def fake(tmp_path, monkeypatch):
             for sub in ("packages/devkit-spec", "packages/devkit-dist"):
                 (Path(cwd) / sub).mkdir(parents=True, exist_ok=True)
                 (Path(cwd) / sub / "pyproject.toml").write_text("[project]\n")
-        if args[0] == "SANDBOX":
+        if args[0] == "SANDBOX" and "--out-dir" in args:
             out = Path(args[args.index("--out-dir") + 1])
             out.mkdir(exist_ok=True)
             (out / f"{Path(args[-1]).name}-1.0-py3-none-any.whl").write_text("")
         if args[0] == "SANDBOX-PY":
-            return json.dumps(
-                {"python_prefix": "/usr/local", "packages": {"devkit-spec": "0.1.6"}, "bundles": ["spec", "docs"]}
-            )
+            return json.dumps(probe["output"])
         return ""
 
     monkeypatch.setattr(runtime_install, "run", run)
-    return calls, failures
+    return calls, failures, probe
 
 
 async def test_install_publishes_a_complete_entry_with_an_identity_pin(fake, selection):
@@ -72,7 +73,7 @@ async def test_install_publishes_a_complete_entry_with_an_identity_pin(fake, sel
 
 
 async def test_token_is_used_only_by_hub_process_fetches(fake, selection):
-    calls, _ = fake
+    calls, _, _ = fake
     await runtime_install.build(selection, TOKEN)
     fetches = [call for call in calls if call["args"][0] == "git"]
     others = [call for call in calls if call["args"][0] != "git"]
@@ -90,9 +91,9 @@ async def test_token_is_used_only_by_hub_process_fetches(fake, selection):
 
 
 async def test_sources_build_in_the_sandbox_offline_and_wheels_install_hashed(fake, selection):
-    calls, _ = fake
+    calls, _, _ = fake
     await runtime_install.build(selection, TOKEN)
-    builds = [call for call in calls if call["args"][0] == "SANDBOX"]
+    builds = [call for call in calls if call["args"][0] == "SANDBOX" and "build" in call["args"]]
     assert len(builds) == 2
     assert all({"--offline", "--no-build-isolation", "--wheel"} <= set(call["args"]) for call in builds)
     assert all(call["env"].get("UV_OFFLINE") == "1" for call in builds)
@@ -101,16 +102,16 @@ async def test_sources_build_in_the_sandbox_offline_and_wheels_install_hashed(fa
 
 
 async def test_unreadable_source_records_a_failure_without_an_entry(fake, selection):
-    _, failures = fake
+    _, failures, _ = fake
     failures["fetch"] = "SDD_RUNTIME_SOURCE_UNAVAILABLE"
     assert await runtime_install.build(selection, TOKEN) is True
-    assert runtime_cache.failure(IDENTITY) == "SDD_RUNTIME_SOURCE_UNAVAILABLE"
+    assert runtime_cache.failure(IDENTITY, runtime_cache.token_scope(TOKEN)) == "SDD_RUNTIME_SOURCE_UNAVAILABLE"
     assert not runtime_cache.complete(IDENTITY)
     assert not list(runtime_cache.cache_root().glob(".staging-*"))
 
 
 async def test_a_held_claim_skips_the_install(fake, selection):
-    calls, _ = fake
+    calls, _, _ = fake
     claim = runtime_cache.try_build_lock(IDENTITY)
     assert claim is not None
     try:
@@ -128,3 +129,54 @@ def test_linux_sandbox_unshares_network_and_binds_one_writable_directory(monkeyp
     )
     assert "--unshare-all" in command and command.count("--bind") == 1
     assert command[command.index("--bind") + 1] == str(tmp_path)
+
+
+async def test_builds_write_only_work_and_the_wheel_install_runs_sandboxed(fake, selection):
+    calls, _, _ = fake
+    await runtime_install.build(selection, TOKEN)
+    sandboxed = [call for call in calls if call["args"][0] == "SANDBOX"]
+    builds = [call for call in sandboxed if "build" in call["args"]]
+    installs = [call for call in sandboxed if "pip" in call["args"]]
+    assert all(Path(call["args"][1]).name == runtime_install.WORK for call in builds)
+    assert len(installs) == 1 and Path(installs[0]["args"][1]).name.startswith(runtime_cache.STAGING_PREFIX)
+    hub_uv = [call for call in calls if call["args"][0] not in ("SANDBOX", "SANDBOX-PY", "git")]
+    # After registry wheels are installed, the Hub process never runs uv against the venv again.
+    assert [call["args"][1:3] for call in hub_uv] == [["venv", "-q"], ["pip", "install"]]
+
+
+async def test_pin_prefix_comes_from_the_hub_not_the_probe(fake, selection):
+    await runtime_install.build(selection, TOKEN)
+    pin = json.loads((runtime_cache.entry(IDENTITY) / "pin.json").read_text())
+    assert pin["python_prefix"] != "/"  # the probe claimed "/"
+    assert Path(pin["python_prefix"]).is_absolute()
+
+
+@pytest.mark.parametrize(
+    "output",
+    [["not", "an", "object"], {"packages": {"devkit-spec": 1}, "bundles": []}, {"packages": {}, "bundles": []}],
+)
+async def test_malformed_inventory_records_a_failure(fake, selection, output):
+    _, _, probe = fake
+    probe["output"] = output
+    assert await runtime_install.build(selection, TOKEN) is True
+    assert runtime_cache.failure(IDENTITY, runtime_cache.token_scope(TOKEN)) == "SDD_RUNTIME_INSTALL_FAILED"
+    assert not runtime_cache.complete(IDENTITY)
+
+
+async def test_unexpected_errors_still_back_off(fake, selection, monkeypatch):
+    async def broken(*args):
+        raise OSError("disk full at /secret/path")
+
+    monkeypatch.setattr(runtime_install, "write_pin", broken)
+    assert await runtime_install.build(selection, TOKEN) is True
+    assert runtime_cache.failure(IDENTITY, runtime_cache.token_scope(TOKEN)) == "SDD_RUNTIME_INSTALL_FAILED"
+
+
+def test_symlinked_build_output_is_refused(tmp_path):
+    wheels = tmp_path / runtime_install.WORK / "wheels"
+    wheels.mkdir(parents=True)
+    target = tmp_path / "outside.whl"
+    target.write_text("")
+    (wheels / "a-1.0-py3-none-any.whl").symlink_to(target)
+    with pytest.raises(runtime_install.InstallFailure):
+        runtime_install.built_wheels(tmp_path, 1)
