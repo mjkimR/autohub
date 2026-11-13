@@ -77,10 +77,18 @@
 					current.done.includes(item.id)
 			)
 	);
+	// Open workflow requests other than the integration gate are decided in SddWorkflowRequests.
+	let openRequests = $derived(Array.isArray(current.requests) ? current.requests.map(record) : []);
+	let planRequestOpen = $derived(openRequests.some((r) => r.id === 'gate:plan-accept'));
+	let requestOwed = $derived(
+		waiting && openRequests.some((r) => r.id !== `gate:${INTEGRATION_GATE}`)
+	);
+	// An open plan-accept request is answered only by the proposal controls (accept_plan/reject_plan);
+	// Hub refuses a gate approval for it, so reapproval is offered only once no request is open.
 	let canApprove = $derived(
 		waiting &&
 			(stage.human_gate === INTEGRATION_GATE ||
-				progress.waiting_for_plan_approval ||
+				(progress.waiting_for_plan_approval && !planRequestOpen) ||
 				(!approval.actor && passedIntegration) ||
 				(progress.approval_withheld &&
 					record(progress.plan_decision).commit_sha === progress.head_sha))
@@ -136,13 +144,6 @@
 	}
 </script>
 
-{#if showOutcome}<DecisionOutcome
-		runId={run.id}
-		head={decisionBasis(run)}
-		revision={run.revision}
-		{terminal}
-		onrefresh={onchange}
-	/>{/if}
 <SddNextAction {run} />
 {#if spec.startsWith('docs/proposals/PROP-')}<SddPlanningEvidence {progress} {evidenceUrl} />{/if}
 <SddWorkflowRequests
@@ -179,17 +180,24 @@
 			<Badge variant="outline"
 				>{terminal
 					? 'Closed'
-					: approval.actor
-						? 'Approved'
-						: canApprove
-							? progress.waiting_for_plan_approval
-								? 'plan-accept'
-								: INTEGRATION_GATE
-							: 'In progress'}</Badge
+					: requestOwed && !canApprove
+						? 'Request open'
+						: approval.actor
+							? 'Approved'
+							: canApprove
+								? progress.waiting_for_plan_approval
+									? 'plan-accept'
+									: INTEGRATION_GATE
+								: 'In progress'}</Badge
 			>
 		</div>
 		{#if questionPending}<p class="rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm">
 				Answer or dismiss the pending question above before making an integration decision.
+			</p>
+		{:else if requestOwed && !canApprove}<p class="text-sm leading-relaxed text-muted-foreground">
+				No approval is owed in this panel. Decide the {planRequestOpen
+					? 'proposal'
+					: 'workflow request'} above; the run actions below are secondary.
 			</p>
 		{:else if progress.approval_withheld}<p class="text-sm leading-relaxed text-muted-foreground">
 				Review the updated evidence and approve again in Hub. The existing PR ready status will not
@@ -343,31 +351,42 @@
 					</div>
 				</div>
 			{:else}
-				<div class="flex flex-wrap gap-2">
-					{#if canApprove}<Button
-							disabled={busy ||
-								disabled ||
-								decisionIntent(run.id).competingUnresolved ||
-								questionPending}
-							onclick={() => void decide('approve')}
-							><ShieldCheck class="size-4" />{busy
-								? 'Approving…'
-								: progress.waiting_for_plan_approval
-									? 'Approve proposal'
-									: 'Approve integration'}<ArrowRight class="size-4" /></Button
-						>{/if}
-					{#if waiting}<Button
-							variant="outline"
-							disabled={busy ||
-								disabled ||
-								decisionIntent(run.id).competingUnresolved ||
-								questionPending}
-							onclick={() => void choose('revise')}>Request changes</Button
-						>{/if}
-				</div>
+				{#if !(requestOwed && !canApprove)}<div class="flex flex-wrap gap-2">
+						{#if canApprove}<Button
+								disabled={busy ||
+									disabled ||
+									decisionIntent(run.id).competingUnresolved ||
+									questionPending}
+								onclick={() => void decide('approve')}
+								><ShieldCheck class="size-4" />{busy
+									? 'Approving…'
+									: progress.waiting_for_plan_approval
+										? 'Approve proposal'
+										: 'Approve integration'}<ArrowRight class="size-4" /></Button
+							>{/if}
+						{#if waiting}<Button
+								variant="outline"
+								disabled={busy ||
+									disabled ||
+									decisionIntent(run.id).competingUnresolved ||
+									questionPending}
+								onclick={() => void choose('revise')}>Request changes</Button
+							>{/if}
+					</div>{/if}
 				<details class="text-xs">
-					<summary class="cursor-pointer text-muted-foreground">Other actions</summary>
+					<summary class="cursor-pointer text-muted-foreground"
+						>{requestOwed && !canApprove ? 'Other run actions' : 'Other actions'}</summary
+					>
 					<div class="mt-3 flex flex-wrap gap-2">
+						{#if waiting && requestOwed && !canApprove}<Button
+								size="sm"
+								variant="outline"
+								disabled={busy ||
+									disabled ||
+									decisionIntent(run.id).competingUnresolved ||
+									questionPending}
+								onclick={() => void choose('revise')}>Request changes</Button
+							>{/if}
 						{#if waiting}<Button
 								size="sm"
 								variant="destructive"
@@ -397,3 +416,10 @@
 		</div>
 	{/if}
 </section>
+{#if showOutcome}<DecisionOutcome
+		runId={run.id}
+		head={decisionBasis(run)}
+		revision={run.revision}
+		{terminal}
+		onrefresh={onchange}
+	/>{/if}

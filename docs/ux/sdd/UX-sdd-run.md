@@ -40,6 +40,13 @@ behind Other actions or an explicit feedback editor.
 
 Diagnostic guidance is read-only. Reinspect after repair describes a recovery condition, not an automatic retry or another decision action. Safe generic guidance represents unknown diagnostics; the panel does not display raw stderr through diagnostic records.
 
+An open workflow request other than the integration gate is the owed decision in
+`UX-sdd-workflow-request`; a plan-accept request is headed Accept or reject this
+proposal. While such a request is open and no integration approval applies, this
+panel offers no approval, says that no approval is owed here and keeps Request
+changes and Stop run under Other run actions. Proposal reapproval is offered only
+when no plan-accept request is open, because Hub refuses gate approval for one.
+
 Pending Hub questions disable integration decisions. Request changes requires
 nonblank feedback. Stop run and Withdraw approval expose their effect before the
 operator confirms the specific action.

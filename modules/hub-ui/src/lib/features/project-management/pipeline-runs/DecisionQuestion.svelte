@@ -4,19 +4,33 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { MessageSquare, Check } from '@lucide/svelte';
 	import { questionStateLabel } from './presentation';
+	import DecisionAnswerComposer from './DecisionAnswerComposer.svelte';
 	let {
 		question,
 		actionable = false,
 		disabled = false,
 		onresume,
-		onoutcome = () => {}
+		onoutcome = () => {},
+		onsave
 	}: {
 		question: components['schemas']['QuestionRead'];
 		actionable?: boolean;
 		disabled?: boolean;
-		onresume: (id: string) => void;
+		/** Resume with the selected saved answer; a rejected promise marks Save and resume partial. */
+		onresume: (id: string) => void | Promise<unknown>;
 		onoutcome?: (id: string) => void;
+		/** Save an answer and resolve with its saved answer ID; enables the answer composer. */
+		onsave?: (answer: string) => Promise<string | undefined | void>;
 	} = $props();
+	let resumeError = $state<{ id: string; message: string } | null>(null);
+	async function resumeWith(id: string) {
+		resumeError = null;
+		try {
+			await onresume(id);
+		} catch (e) {
+			resumeError = { id, message: e instanceof Error ? e.message : 'Resume failed' };
+		}
+	}
 </script>
 
 <article class="space-y-4 rounded-xl border bg-card p-4 sm:p-5">
@@ -47,13 +61,25 @@
 						><Check class="size-3" />Applied to an execution attempt</span
 					>
 				{:else if actionable}
-					<Button size="sm" {disabled} onclick={() => onresume(answer.id)}
+					<Button size="sm" {disabled} onclick={() => resumeWith(answer.id)}
 						>Resume with this answer</Button
 					>
 				{/if}
 			</div>
+			{#if resumeError?.id === answer.id}<p role="alert" class="text-sm text-destructive">
+					{resumeError.message}
+				</p>{/if}
 		</div>
 	{/each}
+	{#if actionable && onsave}
+		<!-- A saved, unapplied answer owes an explicit resume; writing a different answer is secondary. -->
+		<DecisionAnswerComposer
+			{disabled}
+			{onsave}
+			{onresume}
+			secondary={(question.answers ?? []).some((answer) => !answer.applied_attempt_id)}
+		/>
+	{/if}
 	{#if question.resolution}<p class="border-t pt-3 text-sm text-muted-foreground">
 			{question.resolution}
 		</p>{/if}

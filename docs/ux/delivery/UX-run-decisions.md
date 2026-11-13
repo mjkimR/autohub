@@ -31,7 +31,7 @@ actions occupy linked panels; question/approval histories sit beside them.
 
 - PR run (PR title, state, current revision, last successful local load time, wait reason and terminal notice).
 - Run question (pending text, saved answer list, application state).
-  - Run question (Your answer editor and Save answer action).
+  - Run question (Your answer editor with Save and resume and Save only; collapsed as Answer differently while a saved answer awaits resume).
   - Run question (reasoned dismissal; inside a disclosure).
 - Run question (earlier-question history with Previous/Next pagination).
 - `UX-sdd-run` (native evidence and integration direction; for SDD runs).
@@ -41,6 +41,21 @@ actions occupy linked panels; question/approval histories sit beside them.
 Only the latest history page offers actions. Loading compares question and run
 revisions; mismatched data requires refresh rather than enabling stale controls.
 Saving an answer does not resume; selecting a saved answer is a separate action.
+
+### Answer composer
+
+When the parent supplies a save operation, the question card owns the answer
+editor. Save and resume issues two owner requests: it saves the answer, then
+resumes with that saved answer explicitly selected; Save only stops after the
+save. An unconfirmed save keeps the text and sends no resume. If the resume
+fails, or the saved answer cannot be identified, the answer stays saved, the run
+stays paused and the card explains that the saved answer's Resume with this
+answer is the next step. While an unapplied saved answer exists, its resume is
+the primary action and the editor collapses under Answer differently.
+
+The decision outcome region appears only for a retained submission or read
+subject. Otherwise the browser-reload explanation is a collapsed secondary
+disclosure that does not lead the decision content.
 
 Inbox entry supplies an exact question/request identity. Native inspection persists current evidence before controls enable. A changed or resolved selection cannot inherit editors or authority. After an acknowledged mutation the inbox reloads its current cursor page before owner reload; a resolved selection remains disabled. Closing restores the originating row or nearest remaining row and retains filters.
 
@@ -67,7 +82,8 @@ The selected decision outcome is retained beside its owner controls. It identifi
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
 | Refresh decisions | `UC-resolve-run-question` 1, `UC-decide-sdd-proposal` 1 | populated | loading |  | `CAP-PR-operator-decisions` | Current run/questions replace the inspected basis or show a conflict. |
-| Save answer | `UC-resolve-run-question` 2 | populated | busy |  | `CAP-PR-operator-decisions` | A status confirms that the answer is saved and the run remains stopped. |
+| Save answer / Save only | `UC-resolve-run-question` 2 | populated | busy |  | `CAP-PR-operator-decisions` | A status confirms that the answer is saved and the run remains stopped. |
+| Save and resume | `UC-resolve-run-question` 2, `UC-resolve-run-question` 4 | populated | busy, saved |  | `CAP-PR-operator-decisions` | The answer is saved, then applied by a separate resume naming it; a failed resume leaves it saved with the run paused. |
 | Resume with saved answer | `UC-resolve-run-question` 4, `UC-complete-sdd-workflow` 3d | populated | busy |  | `CAP-PR-operator-decisions` | The selected answer is applied or a refusal is shown; delivery may remain pending. |
 | Ask and pause | `UC-resolve-run-question` 1a | empty | busy |  | `CAP-PR-operator-decisions` | The question is recorded and progression is blocked. |
 | Dismiss without resuming | `UC-resolve-run-question` 4c | populated | busy |  | `CAP-PR-operator-decisions` | The dismissal is retained; execution remains stopped. |
@@ -90,7 +106,9 @@ Embedded panels retain the visible parent context and its Close exit; they add n
 ## 5. Evidence
 
 - [RunDecisionsDialog.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunDecisionsDialog.svelte).
-- [DecisionQuestion.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionQuestion.svelte).
+- [DecisionQuestion.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionQuestion.svelte) and [DecisionAnswerComposer.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionAnswerComposer.svelte).
+- [DecisionOutcome.svelte](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionOutcome.svelte).
+- [DecisionQuestion.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionQuestion.integration.test.ts) and [DecisionOutcome.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionOutcome.integration.test.ts).
 - [RunDecisionsDialog.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunDecisionsDialog.integration.test.ts); test assertions were inspected.
 
 This description is derived from source inspection. It does not claim a browser
