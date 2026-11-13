@@ -143,7 +143,7 @@ symlink is refused.
 | No isolation runner | 422 `SDD_ISOLATION_UNAVAILABLE` (unchanged), also for builds |
 | Process crash mid-install | staging directory left under `.staging-*`; the next build lock holder removes stale staging |
 
-A failure marker expires after 10 minutes, longer than the bridge and default dispatch cadence so observers see the failure, and a corrected setup is then retried without operator action. A native run that stays preparing for more than 20 minutes is blocked with a remediation reason; the bridge retries only `SDD_RUNTIME_PREPARING`. Install runs
+A failure marker expires after 10 minutes, longer than the bridge and default dispatch cadence so observers see the failure, and a corrected setup is then retried without operator action. A native run that stays preparing for more than 45 minutes is blocked with a remediation reason; the bridge retries only `SDD_RUNTIME_PREPARING`. Install runs
 as a process-level task shielded from caller cancellation; between requests Cloud Run CPU throttling slows it.
 The bridge maps 503 to its existing `bridge-unavailable` retryable result.
 

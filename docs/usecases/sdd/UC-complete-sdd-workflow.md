@@ -103,7 +103,7 @@ The operator can locate the pending subject through `UX-decision-inbox` before o
   evaluates with it, records the new runtime identity and continues at step 3; if
   it is still being installed, Hub keeps the run's state, records the
   `SDD_RUNTIME_PREPARING` diagnostic and inspects the head again on a later
-  dispatcher tick, returning to step 3 once the install completes; after 20
+  dispatcher tick, returning to step 3 once the install completes; after 45
   minutes of preparing, Hub blocks the run with a remediation reason and the
   operator resumes it after fixing the runtime setup.
    Interface: `UX-sdd-run`.

@@ -18,11 +18,12 @@ from .gates import INTEGRATION_GATE, PLAN_ACCEPT_REQUEST
 from .services import SddService
 from .units import is_proposal, proposal_slug
 
-# Longer than a cold install's fetch, wheel and build timeouts; beyond it a preparing runtime is reported as failed.
-PREPARING_LIMIT = timedelta(minutes=20)
+# Above the worst-case sum of one install's step timeouts (about 36 minutes for a single Git source), so only a runtime
+# that keeps failing or is reinstalled over and over reaches it.
+PREPARING_LIMIT = timedelta(minutes=45)
 PREPARING_EXPIRED = (
-    "The repository's locked devkit runtime did not become available within 20 minutes; check the runtime status "
-    "(SDD_RUNTIME_INSTALL_FAILED or SDD_RUNTIME_SOURCE_UNAVAILABLE) and resume after fixing it"
+    "The repository's locked devkit runtime did not become available within 45 minutes. Check the runtime status: "
+    "resume once it reports ready, or fix the reported install failure first"
 )
 
 # What an agent is told about a warning. The human remediation of RECEIPT_STALE (commit a new receipt) would end
@@ -333,8 +334,10 @@ class SddProgress:
             since = progress.setdefault("runtime_preparing_since", now.isoformat())
             if as_utc(now) - as_utc(datetime.fromisoformat(since)) > PREPARING_LIMIT:
                 progress.pop("runtime_preparing_since")
+                progress.pop("waiting_for_approval", None)
                 progress["error"] = PREPARING_EXPIRED
                 run.state, run.pause_reason = "blocked", PREPARING_EXPIRED
+                run.revision += 1
             run.sdd_progress = progress
         elif observed.get("error"):
             progress = dict(run.sdd_progress or {})

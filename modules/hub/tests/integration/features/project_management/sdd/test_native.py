@@ -156,7 +156,30 @@ async def test_runtime_preparing_beyond_the_limit_blocks_the_run(client, run, mo
     monkeypatch.setattr(progress, "PREPARING_LIMIT", timedelta(seconds=-1))
     observed = await merge.advance(client, run)
     assert observed["state"] == "blocked" and observed["pause_reason"] == progress.PREPARING_EXPIRED
+    assert observed["revision"] == run["revision"] + 1
     assert "runtime_preparing_since" not in observed["sdd_progress"]  # a resume starts a fresh window
+    assert "waiting_for_approval" not in observed["sdd_progress"]
+
+
+async def test_preparing_window_persists_across_observations_and_resets_on_success(client, run, monkeypatch):
+    from app.features.project_management.projects.errors import ProjectError
+
+    preparing = {"on": True}
+    original = native.SddService.inspect
+
+    async def inspect(self, repository, spec_dir, pull, token, **kwargs):
+        if preparing["on"]:
+            raise ProjectError(503, "installing", code="SDD_RUNTIME_PREPARING")
+        return await original(self, repository, spec_dir, pull, token, **kwargs)
+
+    monkeypatch.setattr(native.SddService, "inspect", inspect)
+    first = await merge.advance(client, run)
+    since = first["sdd_progress"]["runtime_preparing_since"]
+    second = await merge.advance(client, first)
+    assert second["sdd_progress"]["runtime_preparing_since"] == since  # the window is not restarted
+    preparing["on"] = False
+    recovered = await merge.advance(client, second)
+    assert "runtime_preparing_since" not in recovered["sdd_progress"]
 
 
 async def test_resume_never_means_approval_and_reject_stops(client, run, github):

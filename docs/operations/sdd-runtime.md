@@ -76,7 +76,7 @@ returns them as HTTP errors; a running native run blocks with them.
 
 | Reported condition | Operator action |
 | --- | --- |
-| `SDD_RUNTIME_PREPARING` (HTTP 503) | Wait for the install and retry; a running native run keeps its state and is inspected again on later dispatcher ticks, and blocks after 20 minutes of preparing until it is resumed |
+| `SDD_RUNTIME_PREPARING` (HTTP 503) | Wait for the install and retry; a running native run keeps its state and is inspected again on later dispatcher ticks, and blocks after 45 minutes of preparing until it is resumed |
 | `SDD_RUNTIME_UNLOCKED` | Commit a root `uv.lock` current with a `pyproject.toml` that declares `devkit-spec` |
 | `SDD_RUNTIME_SOURCE_UNSUPPORTED` | Lock devkit packages only from PyPI wheels or exact `https://github.com/` revisions |
 | `SDD_RUNTIME_PYTHON_UNSUPPORTED` | Widen `requires-python` to include Python 3.13 |
@@ -89,6 +89,10 @@ returns them as HTTP errors; a running native run blocks with them.
 | `RECEIPT_STALE` warning | Run `devkit sync` with the locked `devkit-spec`, commit the receipt, then enroll again; disposable restoration does not update its committed identity |
 | Final lint cannot load a stale receipt's recorded rule | Align the committed receipt with the locked runtime and enroll again; generic resume cannot dispatch an agent to repair that setup failure |
 | Workflow, policy or configuration identity changed | Review the new contract and create a new enrollment rather than renewing the old run implicitly |
+
+Install failures stay visible for 10 minutes. Keep the external dispatcher and maintenance trigger at an interval
+shorter than that so SDK bridge checks report the failure instead of retrying `bridge-unavailable`; native runs
+block after 45 minutes of preparing whatever the interval.
 
 A changed runtime identity alone continues a run and records the new
 `devkit-lock:<identity>`. `SDD_PROFILE_INVALID` and `RUNTIME_REVISION_MISMATCH`

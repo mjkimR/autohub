@@ -117,7 +117,7 @@ their treatment to be reconsidered.
 - **Consequence**: readiness after a scale-out, restart or lock change reports a
   retryable refusal, and a native run whose next head needs a cold install waits,
   keeping its state, until a later dispatcher tick finds the runtime installed or
-  20 minutes pass and the run blocks with a remediation reason.
+  45 minutes pass and the run blocks with a remediation reason.
   Request-based CPU throttling can lengthen an
   install. Many distinct locks evict each other above `AUTOHUB_SDD_CACHE_BYTES`.
 - **Treatment**: callers retry `SDD_RUNTIME_PREPARING`; operators size

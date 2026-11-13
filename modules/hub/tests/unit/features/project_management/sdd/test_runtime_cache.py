@@ -137,3 +137,11 @@ def test_each_install_gets_a_fresh_unguessable_staging_path(root):
     assert first != second and second.parent == root
     assert second.name.startswith(f"{cache.STAGING_PREFIX}{IDENTITY}-")
     assert "-" not in second.name[len(f"{cache.STAGING_PREFIX}{IDENTITY}-") :]  # prune parses the identity
+
+
+def test_failure_marker_outlives_the_observation_cadence(monkeypatch):
+    """A failure stays visible to observers ticking every few minutes (bridge and default dispatch)."""
+    cache.record_failure(IDENTITY, "SDD_RUNTIME_INSTALL_FAILED")
+    now = time.time()
+    monkeypatch.setattr(cache.time, "time", lambda: now + 5 * 60)
+    assert cache.failure(IDENTITY) == "SDD_RUNTIME_INSTALL_FAILED"
