@@ -533,6 +533,8 @@ async def test_connection_cleanup_review_until_completed(client, owed, github, s
     pending_scan.evidence = {"output_discovery_pending": True}
     no_evidence = await connection_test(session, owed, repository="owner/none")
     no_evidence.evidence = {"unconfirmed_pulls": {}}
+    running = await connection_test(session, owed, repository="owner/running")
+    running.status = "running"
     await session.commit()
     rows = await items(client)
     assert {row["subject"]["id"] for row in rows} == {str(open_review.id), str(pending_scan.id)}
@@ -588,9 +590,14 @@ async def test_keyset_pages_filters_and_errors(client, owed, github, session):
     ordered = [(row["waiting_since"], row["key"]) for row in first["items"] + second["items"]]
     assert ordered == sorted(ordered)
     assert {row["kind"] for row in second["items"]} == {"stopped-run"}
-    single = (await client.get(URL, params={"limit": 1})).json()
-    following = (await client.get(URL, params={"limit": 1, "cursor": single["next_cursor"]})).json()
-    assert following["items"][0]["key"] != single["items"][0]["key"]
+    # A one-row walk follows the same (waiting_since, key) order, ties included.
+    walked, cursor = [], None
+    for _ in range(3):
+        params = {"limit": 1, **({"cursor": cursor} if cursor else {})}
+        step = (await client.get(URL, params=params)).json()
+        walked.append(step["items"][0]["key"])
+        cursor = step["next_cursor"]
+    assert walked == keys[:3]
     assert {row["kind"] for row in await items(client, kind="stopped-run")} == {"stopped-run"}
     assert len(await items(client, kind="stopped-run")) == 5
     assert (await client.get(URL, params={"limit": 101})).status_code == 422
@@ -666,3 +673,19 @@ async def test_failed_runs_yield_to_batch_and_work_item_attention(client, owed, 
     assert sorted((row["kind"], row["subject"]["id"]) for row in rows) == sorted(
         [("sdd-batch-attention", str(held.id)), ("work-item-attention", str(attention.id))]
     )
+
+
+async def test_server_default_timestamps_page_without_gaps(client, owed, session):
+    # Server defaults store whole seconds; rows sharing that second must survive a page boundary.
+    for i in range(5):
+        await plan(session, owed, state="proposed", title=f"Same second {i}")
+    await session.commit()
+    keys, cursor = [], None
+    while True:
+        params = {"limit": 2, **({"cursor": cursor} if cursor else {})}
+        page = (await client.get(URL, params=params)).json()
+        keys += [row["key"] for row in page["items"]]
+        cursor = page["next_cursor"]
+        if not page["has_more"]:
+            break
+    assert len(keys) == len(set(keys)) == 5

@@ -5,7 +5,7 @@ Owner features keep their writes; a schema change there must update the predicat
 """
 
 from collections.abc import Callable, Collection
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from app.features.ai_catalogs.models import AICatalog
@@ -421,13 +421,18 @@ class OwedItemRepository:
 
     async def page(self, session, *, now, cleanup_adapters, project_id, kind, after, limit):
         owed = self._union(now, cleanup_adapters, project_id, kind)
+        waiting = owed.c.waiting_since
+        sqlite = session.get_bind().dialect.name == "sqlite"
+        if sqlite:
+            # SQLite keeps timestamps as text in mixed precision ("...:54" from server defaults, "...:54.000000" from
+            # binds); compare and order on julianday so equal instants compare equal.
+            waiting = func.julianday(waiting)
         statement = select(owed)
         if after:
             timestamp, key = after
-            statement = statement.where(
-                or_(owed.c.waiting_since > timestamp, and_(owed.c.waiting_since == timestamp, owed.c.sort_key > key))
-            )
-        statement = statement.order_by(owed.c.waiting_since, owed.c.sort_key).limit(limit + 1)
+            bound = func.julianday(timestamp.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S.%f")) if sqlite else timestamp
+            statement = statement.where(or_(waiting > bound, and_(waiting == bound, owed.c.sort_key > key)))
+        statement = statement.order_by(waiting, owed.c.sort_key).limit(limit + 1)
         return list((await session.execute(statement)).mappings().all())
 
     async def counts(self, session, *, now, cleanup_adapters, project_id):
