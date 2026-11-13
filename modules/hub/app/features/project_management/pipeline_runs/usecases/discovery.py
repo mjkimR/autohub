@@ -33,7 +33,8 @@ class DecisionDiscoveryUseCase:
             if project_id and not await ProjectRepository().get(session, project_id):
                 raise ProjectError(404, "Project not found")
             rows = await self.repo.page(session, project_id, kind, question_state, after, limit)
-            return page_result(rows, limit, filters)
+            total = await self.repo.count_actionable(session, project_id, kind, question_state)
+            return page_result(rows, limit, filters, total)
 
     async def selection(self, key, fingerprint):
         from app.features.project_management.pipeline_runs.discovery_schemas import DecisionEntryRead

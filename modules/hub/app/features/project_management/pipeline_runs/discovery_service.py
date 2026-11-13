@@ -27,7 +27,7 @@ def decode_cursor(cursor, filters):
         raise ProjectError(422, "Invalid decision cursor or changed filters") from None
 
 
-def page_result(rows, limit, filters):
+def page_result(rows, limit, filters, actionable_total_count):
     items = rows[:limit]
     more = len(rows) > limit
     cursor = None
@@ -55,4 +55,5 @@ def page_result(rows, limit, filters):
         ],
         has_more=more,
         next_cursor=cursor,
+        actionable_total_count=actionable_total_count,
     )

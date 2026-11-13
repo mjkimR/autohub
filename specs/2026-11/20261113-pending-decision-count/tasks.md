@@ -8,7 +8,7 @@ plan: PLAN-pending-decision-count
 
 ## Phase 1: Backend count
 
-- [ ] **Task 1.1**: Exact actionable count on the decision list, with integration tests
+- [x] **Task 1.1**: Exact actionable count on the decision list, with integration tests
   - **_Boundary**: `modules/hub/app/features/project_management/pipeline_runs/discovery_schemas.py`, `modules/hub/app/features/project_management/pipeline_runs/discovery_repo.py`, `modules/hub/app/features/project_management/pipeline_runs/discovery_service.py`, `modules/hub/app/features/project_management/pipeline_runs/usecases/discovery.py`, `modules/hub/tests/integration/features/project_management/pipeline_runs/test_discovery.py`
   - _Requirements: AC-01, AC-02, AC-03, AC-04_
   - **Verification**: `just test tests/integration/features/project_management/pipeline_runs/test_discovery.py tests/integration/mcp`, `just test-pg tests/integration/features/project_management/pipeline_runs/test_discovery.py`
