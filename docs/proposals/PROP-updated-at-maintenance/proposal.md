@@ -2,7 +2,7 @@
 id: PROP-updated-at-maintenance
 title: Maintain updated_at on every owner write
 summary: "Maintain updated_at for Hub ORM and SQLAlchemy Core writes, preserve explicit owner exceptions, and correct last-write readers without reconstructing historical timestamps."
-status: reviewing                         # draft | reviewing | accepted | rejected
+status: accepted                         # draft | reviewing | accepted | rejected
 created_at: 2026-11-13
 target_area: capabilities/execution/
 priority: medium                      # critical | high | medium | low
