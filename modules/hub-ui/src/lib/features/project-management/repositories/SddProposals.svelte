@@ -5,6 +5,7 @@
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	type Proposal = components['schemas']['ProposalState'];
 	let { projectId, repository = '' }: { projectId: string; repository?: string } = $props();
 	let base = $state('main');
@@ -159,10 +160,7 @@
 					<div class="space-y-2">
 						<label class="block text-sm"
 							>Rejection reason (kept in the commit message)
-							<textarea
-								class="mt-1 min-h-16 w-full rounded border bg-background p-2"
-								bind:value={reason}
-								maxlength="8000"></textarea>
+							<Textarea class="mt-1" bind:value={reason} maxlength={8000} />
 						</label>
 						<Button
 							size="sm"

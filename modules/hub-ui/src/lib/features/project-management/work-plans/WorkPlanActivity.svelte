@@ -3,6 +3,7 @@
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import WorkPlanChanges from './WorkPlanChanges.svelte';
 
 	let { projectId, planId, revision }: { projectId: string; planId: string; revision: number } =
@@ -97,12 +98,13 @@
 			>
 				<label class="block space-y-2 text-sm"
 					>Comment
-					<textarea
-						class="min-h-20 w-full rounded-md border bg-background p-2"
+					<Textarea
+						class="min-h-20"
 						required
 						maxlength={8000}
 						disabled={saving}
-						bind:value={body}></textarea>
+						bind:value={body}
+					/>
 				</label>
 				<p class="text-xs text-muted-foreground">
 					Comments add context. They do not change the specification or start work. Use Run

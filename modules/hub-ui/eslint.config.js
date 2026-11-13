@@ -73,8 +73,8 @@ export default defineConfig(
 							pattern: '^(CardTitle|CardDescription|DialogTitle|DialogDescription|Badge)$',
 							allow: ['layout', 'typography']
 						},
-						// Inputs may make room for icons and use monospace for identifiers.
-						{ pattern: '^Input$', allow: ['layout', 'spacing', 'typography'] },
+						// Inputs may make room for icons and use monospace for identifiers or JSON.
+						{ pattern: '^(Input|Textarea)$', allow: ['layout', 'spacing', 'typography'] },
 						// Table cells carry content styling (muted or monospace values).
 						{
 							pattern: '^(TableCell|TableHead)$',

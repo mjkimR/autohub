@@ -3,6 +3,7 @@
 	import type { components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	let {
 		run,
 		disabled = false,
@@ -201,11 +202,12 @@
 				: planAccept
 					? 'Note (optional for acceptance; the rejection reason, kept in the commit message)'
 					: 'Note (optional)'}
-			<textarea
-				class="min-h-20 w-full rounded-lg border bg-background p-3"
-				maxlength="8000"
+			<Textarea
+				class="min-h-20"
+				maxlength={8000}
 				bind:value={note}
-				disabled={busy || disabled || review.competingUnresolved}></textarea>
+				disabled={busy || disabled || review.competingUnresolved}
+			/>
 		</label>
 		{#if planAccept}
 			<div class="flex flex-wrap gap-2">

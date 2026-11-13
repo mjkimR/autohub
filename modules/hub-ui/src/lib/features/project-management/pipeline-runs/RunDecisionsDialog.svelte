@@ -12,6 +12,7 @@
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import { Input } from '$lib/components/ui/input';
 	import {
 		Dialog,
@@ -320,12 +321,13 @@
 					{#if ready && !terminal && offset === 0 && pending}
 						<section class="space-y-3" aria-label="Answer the pending question">
 							<label class="block space-y-2 text-sm font-medium"
-								>Your answer<textarea
-									class="min-h-28 w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm leading-relaxed font-normal focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-									maxlength="8000"
+								>Your answer<Textarea
+									class="min-h-28 leading-relaxed font-normal"
+									maxlength={8000}
 									placeholder="Describe the decision and any constraints to keep."
 									disabled={locked}
-									bind:value={text}></textarea></label
+									bind:value={text}
+								/></label
 							>
 							<div class="flex flex-wrap items-center justify-between gap-3">
 								<p class="text-xs text-muted-foreground">
@@ -391,11 +393,12 @@
 							<summary class="cursor-pointer font-medium">Ask a new question</summary>
 							<div class="mt-4 space-y-3">
 								<label class="block space-y-2"
-									>Question requiring a decision<textarea
-										class="min-h-24 w-full rounded-lg border bg-background p-3"
-										maxlength="8000"
+									>Question requiring a decision<Textarea
+										class="min-h-24"
+										maxlength={8000}
 										bind:value={text}
-										disabled={locked}></textarea></label
+										disabled={locked}
+									/></label
 								><Button
 									variant="outline"
 									disabled={locked || !text.trim()}
