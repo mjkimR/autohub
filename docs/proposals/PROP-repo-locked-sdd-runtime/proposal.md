@@ -2,7 +2,7 @@
 id: PROP-repo-locked-sdd-runtime
 title: Install the SDD evaluation runtime from the repository lock
 summary: Auto Hub evaluates SDD work with the devkit packages pinned by the target repository's uv.lock, installed inside isolation, instead of a server profile that must contain every selected bundle. This removes per-repository provisioning.
-status: reviewing                       # draft | reviewing | accepted | rejected
+status: accepted                       # draft | reviewing | accepted | rejected
 created_at: 2026-11-13
 target_area: capabilities/sdd/
 priority: high                        # critical | high | medium | low
