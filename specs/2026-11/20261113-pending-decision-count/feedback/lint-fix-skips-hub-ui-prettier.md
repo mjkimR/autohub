@@ -8,7 +8,7 @@ target: scripts/lint.sh
 origin: agent
 severity: workaround
 recurring: false
-status: open
+status: resolved
 created_at: 2026-11-13
 ---
 
@@ -33,3 +33,7 @@ created_at: 2026-11-13
 [warn] Code style issues found in the above file. Run Prettier with --write to fix.
 scripts/lint.sh:28: ... npm --prefix "$(resolve_module_path hub-ui)" run lint
 ```
+
+## Disposition
+
+Resolved by `SPEC-frontend-workflow-setup`. Fixing UI lint runs `npm run format` before `npm run lint -- --fix`, so Prettier writes formatting and ESLint receives its fixing flag. Command regressions verify both fixture repairs, read-only preservation, aliases and failure propagation. Actual full `just lint` and `just check` pass.

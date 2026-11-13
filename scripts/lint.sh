@@ -25,5 +25,10 @@ fi
 
 if should_run "$target" "hub-ui"; then
     activate_frontend_node
-    uv run --no-active --no-sync devkit run -- npm --prefix "$(resolve_module_path hub-ui)" run lint
+    if [[ "${lint_args[*]:-}" == "--fix" ]]; then
+        uv run --no-active --no-sync devkit run -- npm --prefix "$(resolve_module_path hub-ui)" run format
+        uv run --no-active --no-sync devkit run -- npm --prefix "$(resolve_module_path hub-ui)" run lint -- --fix
+    else
+        uv run --no-active --no-sync devkit run -- npm --prefix "$(resolve_module_path hub-ui)" run lint
+    fi
 fi

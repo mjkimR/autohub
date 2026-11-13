@@ -1,0 +1,14 @@
+kind: green
+stage: fix-verify
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:16:20.857833Z'
+status: completed
+summary: All-module initialization and fixing lint resolve the two command defects while preserving read-only checks and failures.
+findings: []
+checks:
+  resolved: PASS focused command regressions 12 passed; real just init, just lint and just check exit 0
+  preserved: PASS read-only fixtures unchanged, phase failures stop, module aliases and backend selection preserved; no tracked locks or product sources changed
+diff_scope:
+  base: 2bd4356acf905300583ee4581f7bb9a50e032695
+  head: 992aae8dd0b61effbef7ea97145d2f502d3a44c1

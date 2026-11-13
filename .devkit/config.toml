@@ -26,7 +26,7 @@ app-uiux-improve = "core"
 approach = "sdd"
 
 [worktree]
-setup = "uv sync --no-active --locked --all-packages"
+setup = "just init"
 
 [workflow.approvals]
 dev-integration = "auto"

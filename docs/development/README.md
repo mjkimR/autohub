@@ -45,9 +45,15 @@ The UI runs on port 5173 and proxies `/api` to `http://127.0.0.1:8389`.
 Use module arguments `hub`, `hub-ui` or `sdk` for targeted initialization/checks.
 The root [justfile](../../justfile) owns command syntax and defaults.
 
+Task worktrees run `just init` as their configured setup. This initializes the
+locked Python workspace, restores locked devkit assets and installs frontend
+dependencies before the required backend/UI checks. The later worktree asset
+restore is idempotent. All modules are initialized even for a backend-only task
+because completion checks include the frontend.
+
 | Work | Contributor command |
 | --- | --- |
-| Format/lint | `just lint`; read-only equivalent: `just lint-check` |
+| Format/lint | `just lint` applies Python/UI formatting and supported lint fixes; `just lint-check` checks without fixes |
 | Living Spec and documentation hygiene | `just docs-check` |
 | Python/UI types and production UI build | `just check` |
 | Backend or UI tests | `just test`, `just test-ui`; see [test selection](testing.md) |
