@@ -1,0 +1,15 @@
+kind: red
+stage: reproduce
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:00:18.320420Z'
+status: completed
+summary: Metadata inventory and configuration service reproduce missing owner timestamp maintenance
+findings: []
+assumptions:
+- Reproduction ran on uncommitted tests before source changes
+checks:
+  reproduced: PASS two assertions failed as characterized; 2 failed in 1.08s; log /var/folders/4_/wzc3s9g57_b2yz788lj9kywh0000gn/T/devkit-run-501/a3602718e5db/20261113-155949-uv-run-djmyg_7r.log
+diff_scope:
+  base: 4503b82a4db447717f8b50f4e21ee88ddc1154c0
+  head: ''
