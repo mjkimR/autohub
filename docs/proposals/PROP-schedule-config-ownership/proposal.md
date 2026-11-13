@@ -14,20 +14,20 @@ boundaries:
     - capabilities/execution/
     - capabilities/projects/
     - capabilities/agents/
+    - docs/decisions/
     - ux/execution/
     - ux/projects/
+    - docs/steering/ux-objects.md
     - modules/hub/app/features/scheduling/schedule_configs/
     - modules/hub/app/features/project_management/agent_schedules/
     - modules/hub/app/features/project_management/projects/
     - modules/hub/app/features/project_management/connection_tests/
-    - modules/hub/migrations/
     - modules/hub/tests/
     - modules/hub-ui/src/lib/api/
     - modules/hub-ui/src/lib/features/scheduling/schedule-configs/
     - modules/hub-ui/src/lib/features/project-management/projects/
     - modules/hub-ui/src/lib/features/project-management/agent-schedules/
   excludes:
-    - docs/decisions/
     - modules/hub/app/features/execution/
     - packages/sdk/
 task_kind: feature                    # feature | bugfix: the spec follows sdd-spec-<task_kind>
@@ -79,54 +79,125 @@ Hypothesis: one server-side owner on the schedule configuration read (owner kind
 `project_id` list filter let the schedule list link and guard every owned row, and let the project screens read their
 schedules with one filtered request instead of a cross-project scan and a test-ID match.
 
-## 2. Technical Spike Questions
+## 2. Planning Decisions
 
-- **Q1 (derive or persist)**: Is the owner derived at read time (payload `project_id`, the agent-schedule reverse
-  link, the connection test's `project_id` through `payload.test_id`) or persisted as columns on `schedule_configs`
-  with a backfill migration? How does the list filter by project with either choice on PostgreSQL and SQLite, within
-  the one-connection-per-request budget?
-- **Q2 (owner vocabulary)**: Which owner kinds exist (installation maintenance, project dispatch, project CI
-  observation, project agent schedule, legacy connection test, operator)? Is `jules.sync_sessions` operator-owned, as
-  `CAP-AGENT-provider-sessions` rule 8 implies, and should the `PROJECT_MANAGED_TASKS` badge follow the owner instead
-  of the task name?
-- **Q3 (row actions)**: Does the read expose whether the generic list may change a row, so `ScheduleConfigsView`
-  hides the actions the server refuses (agent-schedule rows) and links to the owner (`UX-agent-schedules`) instead?
-- **Q4 (legacy connection-test rows)**: Are the legacy rows still worth an owner lookup, or does maintenance retire
-  them so the frontend test-ID match can simply be dropped?
+Evidence was inspected at source HEAD `e1a50a8064597d65fd44906f1b65c01ad93c2425`; no product tests or live service
+checks were run in Planning. `PADR-schedule-owner-projection` compares derived reads with persisted owner columns.
+
+| Question | Settled direction | Consequence |
+| --- | --- | --- |
+| Q1: derive or persist | Derive from existing task identity, payload and owner relationships. Add no owner columns or backfill. | Reads use a bounded page projection and the existing request session; PostgreSQL and SQLite need filter parity tests. |
+| Q2: vocabulary | Return `owner.kind`, nullable `owner.project_id` and nullable `owner.object_id` using the table below. | A provider task name alone does not prove project ownership. An unlinked `jules.session` and `jules.sync_sessions` are operator-owned. |
+| Q3: actions | Return `generic_mutation_allowed` independently of ownership. | CI observation remains generically mutable. Reserved maintenance, dispatch, connection-test tasks and agent-owned entries retain their existing HTTP 409 protection. |
+| Q4: retained tests | Resolve retained connection-test ownership through `payload.test_id` on the server. Do not delete these configurations. | The browser no longer needs a separate connection-test read, including its current 30-test history limit. |
+
+### Read contract and resolution order
+
+All responses using `ScheduleConfigRead`, including successful create/patch/put responses, contain the same
+read-only owner projection and `generic_mutation_allowed` boolean. Neither field is a writable ownership assertion.
+The existing read fields and mutation request shapes remain compatible.
+
+Apply this table top to bottom. `object_id` names the existing owning object, rather than the schedule configuration.
+Resolve IDs against retained rows; missing, malformed or dangling payload references produce null owner IDs without
+failing the whole list. A reserved task remains protected even when its owner cannot be resolved.
+
+| Condition | `owner.kind` | `project_id` / `object_id` | Generic mutations |
+| --- | --- | --- | --- |
+| `system.maintain` | `system_maintenance` | null / null | false |
+| `pipeline.dispatch_project` | `project_dispatch` | retained payload project / same project | false |
+| `pipeline.connection_test` | `connection_test` | retained test's project / retained test | false |
+| Remaining configuration linked by `ProjectAgentSchedule.schedule_config_id` | `project_agent_schedule` | schedule's project / agent schedule | false |
+| Remaining `pipeline.observe_project` | `project_observation` | retained payload project / same project | true |
+| Everything else | `operator` | null / null | true |
+
+The existing create/retarget checks for reserved task names remain in place. Reuse a shared classification policy
+for read action metadata and the existing guard; do not make protection conditional on resolving a project.
+An unlinked provider-session task remains an ordinary operator configuration, matching existing backend authority.
+The owner projection is navigation metadata, not an authorization grant.
+
+### Query and layer design
+
+- Keep `Router → UseCase → Service → Repository`. Repositories resolve database relationships; a service assembles
+  owner metadata and action policy. Routers return the typed read model without performing queries.
+- Fetch page owner metadata in batches through the same caller-owned `AsyncSession`. Do not construct a dependency
+  that checks out another connection. Detail and mutation reads use the same projector with a one-row batch.
+- `project_id` is an optional UUID list filter. Apply it before pagination and counting; compose it with existing
+  search, enabled, task and ordering filters. A valid unknown project returns an empty page and count zero.
+  Invalid UUID syntax returns the existing FastAPI validation response, HTTP 422.
+- The filter follows the resolution precedence above. Use correlated existence predicates for owner rows rather than
+  fan-out joins that duplicate configurations. Compare payload UUID text safely across SQLite and PostgreSQL;
+  malformed JSON values must not reach a database UUID cast that can fail the request. Test canonical and unhyphenated
+  UUID text and exclude references that do not resolve to a retained owner.
+- A counted page uses at most five SQL statements independent of page size: count and page selection, then up to
+  three bounded lookup batches for agent schedules, connection tests and referenced projects. A `skip_count` read
+  omits the count. Test the bound at 1 and 50 returned rows with every owner kind, on both supported databases.
+  This is an implementation acceptance bound, not a Planning performance measurement.
+- SQL statements remain sequential on one session; no per-row owner queries, parallel sessions or external reads.
+  No new feature dependency edge is intended: scheduling already imports these project-management owners in its
+  mutation guard. If enforcing architecture checks identify a new edge, return it to the Host before expanding scope.
 
 ## 3. Proposed Design & Impact
 
-Direction, to be settled in Planning:
+### Delivery scope
 
-1. **Backend**: `ScheduleConfigRead` gains an owner (kind, project ID, owner object ID) and
-   `GET /api/v1/schedule_configs` gains a `project_id` filter; the managed-row guard in `ManagedScheduleHook` uses the
-   same owner resolution.
-2. **Schedule list**: `ScheduleConfigsView.svelte` links every owned row to its owner screen (Automation, Connections
-   or `UX-agent-schedules`) and offers only the actions the owner allows.
-3. **Follow-up simplification**: once the backend exists, `owned-schedules.ts` reads
-   `GET /api/v1/schedule_configs?project_id=<id>` and drops the cross-project scan, the `payload.project_id` filter and
-   the connection-test ID lookup; `OwnedSchedules.svelte` follows. `AgentSchedulesPanel.svelte` keeps its own API.
+1. Enrich `ScheduleConfigRead` and implement the filtered, bounded owner projection without changing stored rows.
+2. Replace `ScheduleConfigsView.svelte` task-name badges/action decisions with server ownership and mutation metadata.
+   Add a Project filter beside existing filters. Resolve owner links from verified IDs: Automation for dispatch,
+   observation and agent schedules; Connections for legacy tests. For an unresolved protected owner show
+   `Owner unavailable`, with no fabricated link and no generic mutation actions.
+3. Make `owned-schedules.ts` request `GET /api/v1/schedule_configs?project_id=<id>` with pagination. Partition
+   dispatch, observation and connection-test rows by `owner.kind`; ignore agent-owned configurations in this panel
+   because `AgentSchedulesPanel.svelte` retains its dedicated API. Drop the all-project scan and test-ID matching.
+4. Update the owning capability and UX documents from the ledger and Screens in `target-docs.md`. Promote only
+   `PADR-schedule-owner-projection` into `docs/decisions/` at handoff; no other decision edits are in scope.
 
-Expected impact: `CAP-EXEC-scheduling-maintenance` (schedule configuration read and list filters),
-`CAP-AGENT-provider-sessions` and `CAP-PROJ-project-connections` where they state owned entries, `UX-schedule-configs`,
-`UX-project-detail` (Automation tab owned schedules), typed client regeneration (`just gen-ui-api`), and a migration
-if Q1 persists the owner.
+The generic list links an agent-owned entry to the existing project's Automation section. Selecting or scrolling
+to one exact agent schedule is excluded; the returned owner ID preserves a future addressing option without
+adding a separate deep-link mechanism here.
 
-Size: `M`. One feature spec: a read field, a filter and their two hub-ui consumers.
+### Acceptance examples
 
-Non-goals:
+- **OWNER-01**: Given each owner kind and an unlinked `jules.session`/`jules.sync_sessions`, when list, detail or a
+  successful mutation returns a configuration, then its owner and generic mutation flag follow the resolution table.
+- **OWNER-02**: Given two projects and mixed owner kinds, when the list filters one project with search, enabled,
+  ordering and pagination, then both count and rows cover only that project's resolved configurations without
+  duplicates. Unknown projects return empty; malformed UUID query values return 422.
+- **OWNER-03**: Given dangling or malformed payload IDs, when the list or detail is read, then it succeeds with null
+  IDs for unresolved ownership. Reserved tasks remain immutable and project filtering excludes unresolved owners.
+- **OWNER-04**: Given agent-owned, reserved and editable observation/operator configurations, when the operator
+  inspects their rows, then only allowed generic mutation actions appear and owner links target the correct project
+  tab. A crafted mutation still receives the existing 409 protection for managed configurations.
+- **OWNER-05**: Given a project with more than 30 retained connection tests and a legacy schedule naming an older
+  retained test, when Automation loads schedules, then the server returns that configuration and the browser uses no
+  cross-project configuration scan or separate connection-test request.
+- **OWNER-06**: Given counted pages of 1 and 50 configurations spanning all kinds, when the API reads them on SQLite
+  and PostgreSQL, then it checks out at most one request connection and issues at most five SQL statements per read.
+- **OWNER-07**: Given the schedule list Project filter, when the operator selects or clears a project, then pagination
+  resets to the first page and the request composes `project_id` with existing filters. A failed project-options load
+  has a retry and leaves the unfiltered list usable.
 
-1. Changing who may edit which schedule, or the 409 guards themselves.
-2. Moving agent schedules or project dispatch onto a different storage model.
-3. A cross-project schedule dashboard.
+### Verification plan
+
+Backend HTTP coverage extends schedule-config API tests, existing project-dispatch protection tests and agent
+schedule tests. Add malformed/dangling IDs, cross-database UUID matching, count/pagination parity and query/connection
+budget coverage. UI integration coverage extends `ScheduleConfigsView.integration.test.ts` and project owned-schedule
+loading tests to check links, action absence/presence, filter reset and exact request parameters. Regenerate and check
+the typed client with `just gen-ui-api` and `just check-ui-api`.
+
+Development runs targeted SQLite and PostgreSQL coverage, affected frontend tests, then repository `just lint` and
+`just check`. The source inventory in `materials/20261113-schedule-owner-evidence.md` distinguishes inspected tests
+from actual execution. Size remains `M`; Development effort remains `medium` because this adds a public read contract
+and both API and UI consumers.
+
+### Non-goals
+
+1. **Scope Excluded**: changing generic schedule mutation authority, task execution, due-time logic or existing 409 guards.
+2. **Scope Excluded**: owner columns, migrations, backfills, automatic legacy-row retirement or a schedule storage rewrite.
+3. **Scope Excluded**: a cross-project schedule dashboard, new agent-schedule APIs or exact agent/test deep-link selection.
+4. **Scope Excluded**: unrelated provider migration and decisions beyond the single owner-projection PADR.
 
 ## 4. Lifecycle & Retirement Criteria
-<!--
-- Preliminary decisions: devkit spec proposal padr schedule-config-ownership "<title>" --summary "<Y-statement: For <context>, we <decision>, to <quality>, accepting <downside>.>" records a PADR in decisions/.
-- Research: collect benchmarks and references in materials/ (created with its first file).
-- On acceptance (plan-accept): devkit spec proposal accept schedule-config-ownership --by user records gate:plan-accept and status:
-  accepted, then the Planning branch is merged; an eligible draft may instead be accepted with --direct on the base,
-  without Planning. Development starts with devkit spec proposal handoff schedule-config-ownership.
-- On rejection: change only status: rejected, with the user's decision and reason as a decision sentence in the
-  commit message (no quote); a later hygiene pass writes the rejection ADR and deletes the proposal directory.
--->
+
+Planning settles the read direction and delivery scope. `plan-accept` remains pending the Host's review and the user's
+acceptance. No API implementation, mutation, migration, acceptance or handoff occurs in this Planning turn.
+No deferred product work is required to satisfy OWNER-01 through OWNER-07.
