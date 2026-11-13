@@ -1,5 +1,6 @@
 """Observe a single existing PR owner; never create another PR run or merge controller."""
 
+from pathlib import Path
 from uuid import UUID
 
 from app.features.configuration.connectors.crypto import ConnectorCredentialCipher, get_credential_key_provider
@@ -14,7 +15,7 @@ from app.features.project_management.pipelines.services import PipelineObservati
 from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.repos import ProjectRepository
 from app.features.project_management.projects.services import ProjectService
-from app.features.project_management.sdd.profiles import runtime_scope
+from app.features.project_management.sdd.runtime import runtime_source
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 from pydantic import BaseModel, ConfigDict, Field
@@ -36,13 +37,16 @@ class BridgeInputs(BaseModel):
     evidence_digest: str | None = None
 
 
-def control():
-    observer = PipelineObservationService(
+def observer():
+    return PipelineObservationService(
         ReadConnectorTokenUseCase(
             ConnectorRepository(), ConnectorCredentialCipher(get_credential_key_provider())
         ).execute
     )
-    return PipelineRunControl(PipelineRunRepository(), ProjectService(ProjectRepository()), observer)
+
+
+def control():
+    return PipelineRunControl(PipelineRunRepository(), ProjectService(ProjectRepository()), observer())
 
 
 class PRBridgeWorker:
@@ -80,8 +84,10 @@ class PRBridgeWorker:
     async def evidence(self, action, data):
         async with AsyncTransaction() as session:
             project = await ProjectService(ProjectRepository()).get(session, UUID(action.binding["project_id"]))
-            repository = project.github_repository
-        with runtime_scope(repository):
+            connector = project.github_connector_id
+        # The runtime comes from the operator checkout's own lock; the token only fetches its locked sources.
+        token = await observer().get_token(connector, "github") if connector else None
+        with runtime_source(Path(action.binding["checkout"]), token):
             return await read_evidence(action.binding["checkout"], data.spec_dir, data.head_sha)
 
     async def check(self, action, data):

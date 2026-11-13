@@ -79,16 +79,21 @@ class SddDiagnostic(BaseModel):
 
 
 class SddRuntimeStatus(BaseModel):
-    """The host's SDD runtime: its pin and whether devkit starts inside the sandbox (the new-host canary)."""
+    """The host probe (an interpreter started inside the sandbox) and the project head's locked runtime state."""
 
     ok: bool
-    profile: str = "default"
+    profile: str = "repository-lock"
+    state: Literal["ready", "preparing", "failed"] | None = Field(
+        default=None, description="Lock-derived runtime of the default-branch head; empty without a connection"
+    )
+    identity: str | None = None
     bundles: list[str] = Field(default_factory=list)
     provider: str | None = None
     lock_sha256: str | None = None
     revisions: dict[str, str] = Field(default_factory=dict)
     isolation: str | None = None
     detail: str | None = None
+    lock_detail: str | None = None
 
 
 class SddReadiness(BaseModel):

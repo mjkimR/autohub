@@ -24,8 +24,12 @@ def repo(tmp_path, monkeypatch):
         return policy
 
     monkeypatch.setattr(services, "base_policy", base_policy)
-    monkeypatch.setattr(services, "configured_version", lambda: "devkit-spec:unit")
-    monkeypatch.setattr(services, "revision_warnings", lambda root: [])
+    monkeypatch.setattr(services, "configured_version", lambda: "devkit-lock:unit")
+
+    async def ensure_runtime():
+        return root
+
+    monkeypatch.setattr(services, "ensure_runtime", ensure_runtime)
     return root
 
 
@@ -165,40 +169,68 @@ def test_read_hold_bounds_repository_text():
     assert hold["malformed_workers"] == [{"file": "bad.yaml", "reason": "no kind"}]
 
 
-async def test_runtime_status_reports_the_pin_and_an_isolated_start(monkeypatch, tmp_path):
-    from app.features.project_management.sdd import runtime
-
-    pin = {"provider": "devkit-spec", "lock_sha256": "abc", "revisions": {"devkit-spec": "f" * 40}}
-    monkeypatch.setattr(services, "runtime_pin", lambda: pin)
+async def test_runtime_status_probes_the_host_without_installing(monkeypatch):
     monkeypatch.setattr(services, "isolation_runner", lambda: "sandbox-exec")
+    seen = []
 
-    async def command(*args, cwd, **kwargs):
-        assert args == ("devkit", "--version") and not str(cwd).startswith(str(tmp_path))
-        return "devkit, version 0.1.1\n"
+    def isolated_python(writable, python, prefix, code, *args):
+        seen.append(code)
+        return ["/bin/echo", "3.13.2"]
 
-    monkeypatch.setattr(services, "command", command)
+    monkeypatch.setattr(services, "isolated_python", isolated_python)
+    monkeypatch.setattr(services.SddService, "lock_status", lambda *args: pytest.fail("no project head given"))
     status = await services.SddService().runtime_status()
     assert status == {
-        "ok": True,
-        "profile": "default",
-        "bundles": [],
+        "profile": "repository-lock",
         "provider": "devkit-spec",
-        "lock_sha256": "abc",
-        "revisions": {"devkit-spec": "f" * 40},
         "isolation": "sandbox-exec",
-        "detail": "devkit, version 0.1.1",
+        "ok": True,
+        "detail": "Python 3.13.2",
     }
+    assert seen and "devkit" not in seen[0]
 
-    async def failing(*args, cwd, **kwargs):
-        raise SddCommandError("COMMAND_FAILED", "SDD evaluation failed (COMMAND_FAILED).")
+    def failing(*args):
+        raise ProjectError(422, "requires an isolated runner", code="SDD_ISOLATION_UNAVAILABLE")
 
-    monkeypatch.setattr(services, "command", failing)
+    monkeypatch.setattr(services, "isolated_python", failing)
     status = await services.SddService().runtime_status()
-    assert status["ok"] is False and "COMMAND_FAILED" in status["detail"] and status["isolation"] == "sandbox-exec"
-    monkeypatch.setattr(services, "runtime_pin", runtime.runtime_pin)
-    monkeypatch.setenv("AUTOHUB_SDD_HOME", str(tmp_path / "absent"))
-    status = await services.SddService().runtime_status()
-    assert status["ok"] is False and "install-sdd" in status["detail"]
+    assert status["ok"] is False and "isolated runner" in status["detail"]
+
+
+@pytest.mark.parametrize(
+    "state,expected",
+    [("ready", "ready"), ("preparing", "preparing"), ("SDD_RUNTIME_SOURCE_UNAVAILABLE", "failed")],
+)
+async def test_project_lock_state_is_reported_with_its_identity(monkeypatch, tmp_path, state, expected):
+    from contextlib import asynccontextmanager
+
+    from app.features.project_management.sdd import runtime_cache
+    from app.features.project_management.sdd.lock_runtime import Selection
+
+    monkeypatch.setenv("AUTOHUB_SDD_CACHE", str(tmp_path / "cache"))
+    identity = "c" * 64
+    if state == "ready":
+        runtime_cache.entry(identity).mkdir(parents=True)
+        (runtime_cache.entry(identity) / "pin.json").write_text(
+            '{"bundles": ["spec"], "revisions": {"devkit-spec": "' + "a" * 40 + '"}}'
+        )
+
+    @asynccontextmanager
+    async def checkout(repository, head, base, token):
+        yield tmp_path
+
+    async def resolve(source, start=True):
+        return Selection("dev", "x", identity, "3.13", (), ()), state
+
+    monkeypatch.setattr(services, "checkout", checkout)
+    monkeypatch.setattr(services, "current_source", lambda: None)
+    monkeypatch.setattr(services, "resolve", resolve)
+    status = await services.SddService().lock_status("o/r", HEAD, "token")
+    assert status["state"] == expected and status["identity"] == identity
+    if state == "ready":
+        assert status["bundles"] == ["spec"] and status["revisions"] == {"devkit-spec": "a" * 40}
+    if expected == "failed":
+        assert "token" not in status["lock_detail"]
 
 
 async def test_policy_notices_are_projected_but_do_not_change_execution_authority(repo, monkeypatch):

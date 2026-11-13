@@ -8,34 +8,34 @@ plan: PLAN-repo-locked-sdd-runtime
 
 ## Phase 1: Runtime building blocks
 
-- [ ] **Task 1.1**: Lock selection, export classification, identity and Python check, with unit tests
+- [x] **Task 1.1**: Lock selection, export classification, identity and Python check, with unit tests
   - **_Boundary**: `modules/hub/app/features/project_management/sdd/lock_runtime.py`, `modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py`, `modules/hub/tests/unit/features/project_management/sdd/fixtures/`
   - _Requirements: AC-03, AC-05, AC-06, AC-07_
   - **Verification**: `just test tests/unit/features/project_management/sdd/test_lock_runtime.py`
 
-- [ ] **Task 1.2**: Runtime cache with cross-process build locks, leases, failure markers and eviction, with unit tests
+- [x] **Task 1.2**: Runtime cache with cross-process build locks, leases, failure markers and eviction, with unit tests
   - **_Boundary**: `modules/hub/app/features/project_management/sdd/runtime_cache.py`, `modules/hub/tests/unit/features/project_management/sdd/test_runtime_cache.py`
   - _Requirements: AC-08, AC-13_
   - **Verification**: `just test tests/unit/features/project_management/sdd/test_runtime_cache.py`
 
-- [ ] **Task 1.3**: Installer with Hub-side fetch and wheel install, sandboxed offline builds and atomic publish; build isolation command; unit tests
+- [x] **Task 1.3**: Installer with Hub-side fetch and wheel install, sandboxed offline builds and atomic publish; build isolation command; unit tests
   - **_Boundary**: `modules/hub/app/features/project_management/sdd/runtime_install.py`, `modules/hub/app/features/project_management/sdd/isolation.py`, `modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py`
   - _Requirements: AC-09, AC-10, AC-11_
   - **Verification**: `just test tests/unit/features/project_management/sdd/test_runtime_install.py`
 
 ## Phase 2: Wiring
 
-- [ ] **Task 2.1**: Lazy runtime resolution in checkout scopes, single-flight background install, git-safe independence, bundle check from the entry, profile removal
+- [x] **Task 2.1**: Lazy runtime resolution in checkout scopes, single-flight background install, git-safe independence, bundle check from the entry, profile removal
   - **_Boundary**: `modules/hub/app/features/project_management/sdd/runtime.py`, `modules/hub/app/features/project_management/sdd/profiles.py`, `modules/hub/app/features/project_management/sdd/checkout.py`, `modules/hub/app/features/project_management/sdd/isolation.py`, `modules/hub/tests/unit/features/project_management/sdd/test_runtime.py`, `modules/hub/tests/unit/features/project_management/sdd/test_profiles.py`, `modules/hub/tests/unit/features/project_management/sdd/test_activities.py`
   - _Requirements: AC-01, AC-02, AC-08, AC-09, AC-12_
   - **Verification**: `just test tests/unit/features/project_management/sdd`
 
-- [ ] **Task 2.2**: Identity continuation, batch evidence identity, milestone identity and bridge runtime source
-  - **_Boundary**: `modules/hub/app/features/project_management/sdd/services.py`, `modules/hub/app/features/project_management/sdd/batch_evidence.py`, `modules/hub/app/features/project_management/sdd/batch_driver.py`, `modules/hub/app/features/project_management/sdd/milestones.py`, `modules/hub/app/features/execution/flows/bridge.py`, `modules/hub/tests/unit/features/project_management/sdd/test_services.py`, `modules/hub/tests/unit/features/project_management/sdd/test_batch_evidence.py`
+- [x] **Task 2.2**: Identity continuation, batch evidence identity, milestone identity and bridge runtime source
+  - **_Boundary**: `modules/hub/app/features/project_management/sdd/services.py`, `modules/hub/app/features/project_management/sdd/batch_evidence.py`, `modules/hub/app/features/project_management/sdd/batch_driver.py`, `modules/hub/app/features/project_management/sdd/milestones.py`, `modules/hub/app/features/execution/flows/bridge.py`, `modules/hub/tests/unit/features/project_management/sdd/test_services.py`, `modules/hub/tests/unit/features/project_management/sdd/test_batch_evidence.py`, `modules/hub/app/features/project_management/sdd/progress.py` (scope extension: a continued run records the new runtime identity on its snapshot)
   - _Requirements: AC-04, AC-15, AC-16_
   - **Verification**: `just test tests/unit/features/project_management/sdd`
 
-- [ ] **Task 2.3**: Diagnostics catalog, split runtime status endpoint, regenerated client and UI runtime line
+- [x] **Task 2.3**: Diagnostics catalog, split runtime status endpoint, regenerated client and UI runtime line
   - **_Boundary**: `modules/hub/app/features/project_management/sdd/diagnostics.py`, `modules/hub/app/features/project_management/sdd/services.py`, `modules/hub/app/features/project_management/sdd/usecases.py`, `modules/hub/app/features/project_management/sdd/api.py`, `modules/hub/app/features/project_management/sdd/schemas.py`, `modules/hub/tests/unit/features/project_management/sdd/test_diagnostics.py`, `modules/hub/tests/unit/features/project_management/sdd/test_services.py`, `modules/hub-ui/src/lib/api/`, `modules/hub-ui/src/lib/features/project-management/repositories/`
   - _Requirements: AC-14, AC-17_
   - **Verification**: `just test tests/unit/features/project_management/sdd`, `just gen-ui-api`, `just test-ui`

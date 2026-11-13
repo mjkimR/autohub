@@ -94,9 +94,11 @@ export class SddExecutionState {
 			const status = result.data;
 			const revision = status.revisions?.['devkit-spec']?.slice(0, 12);
 			const summary = `Runtime ${status.isolation ?? 'without a sandbox'}: ${status.ok ? 'ok' : 'unavailable'}${revision ? ` · devkit-spec ${revision}` : ''}`;
-			if (status.ok)
-				this.runtime = `${summary} · profile ${status.profile ?? 'default'} · bundles: ${(status.bundles ?? []).join(', ') || 'unknown'}`;
-			else this.runtimeError = `${summary}. ${status.detail ?? ''}`.trim();
+			const lock = runtimeLockSummary(status);
+			if (!status.ok) this.runtimeError = `${summary}. ${status.detail ?? ''}`.trim();
+			else if (status.state === 'failed')
+				this.runtimeError = `${summary} · ${lock}. ${status.lock_detail ?? ''}`.trim();
+			else this.runtime = `${summary} · ${lock}`;
 		} catch (error) {
 			if (generation === this.generation && project === this.projectId())
 				this.runtimeError = error instanceof Error ? error.message : 'Runtime check failed';
@@ -162,4 +164,20 @@ export class SddExecutionState {
 			if (generation === this.generation) this.busy = false;
 		}
 	}
+}
+
+type RuntimeLockStatus = {
+	state?: 'ready' | 'preparing' | 'failed' | null;
+	identity?: string | null;
+	bundles?: string[];
+};
+
+/** The project head's lock-derived runtime, as one line of the runtime check. */
+export function runtimeLockSummary(status: RuntimeLockStatus): string {
+	const identity = status.identity ? ` ${status.identity.slice(0, 12)}` : '';
+	if (status.state === 'ready')
+		return `repository lock${identity} ready · bundles: ${(status.bundles ?? []).join(', ') || 'unknown'}`;
+	if (status.state === 'preparing') return `repository lock${identity} installing; check again shortly`;
+	if (status.state === 'failed') return `repository lock${identity} unavailable`;
+	return 'repository lock not checked';
 }

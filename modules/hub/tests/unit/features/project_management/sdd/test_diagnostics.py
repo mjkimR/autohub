@@ -81,14 +81,26 @@ async def test_error_diagnostics_never_leak_upstream_values(tmp_path, monkeypatc
     [
         ("SDD_RUNTIME_UNAVAILABLE", "runtime"),
         ("SDD_PROFILE_INVALID", "runtime"),
-        ("SDD_BUNDLES_MISSING", "runtime"),
+        ("SDD_BUNDLES_MISSING", "repository"),
         ("SDD_RECEIPT_MISSING", "repository"),
+        ("SDD_RUNTIME_UNLOCKED", "repository"),
+        ("SDD_RUNTIME_SOURCE_UNSUPPORTED", "repository"),
+        ("SDD_RUNTIME_PYTHON_UNSUPPORTED", "repository"),
+        ("SDD_RUNTIME_SOURCE_UNAVAILABLE", "runtime"),
+        ("SDD_RUNTIME_INSTALL_FAILED", "runtime"),
+        ("SDD_RUNTIME_PREPARING", "runtime"),
     ],
 )
 def test_host_failures_have_safe_actionable_diagnostics(code, category):
     rows = diagnostics.failure(ProjectError(422, "secret details", code=code))
     assert rows[0]["code"] == code and rows[0]["category"] == category
     assert "secret" not in json.dumps(rows) and rows[0]["action"]
+    assert rows[0]["retry"] == ("safe" if code == "SDD_RUNTIME_PREPARING" else "after_fix")
+
+
+def test_retired_revision_mismatch_warning_stays_readable():
+    row = diagnostics.diagnostic("RUNTIME_REVISION_MISMATCH", severity="warning")
+    assert row["code"] == "RUNTIME_REVISION_MISMATCH" and "devkit revisions" in row["message"]
 
 
 async def test_diagnostic_capture_is_task_local_and_nested_reads_share_one_evaluation():

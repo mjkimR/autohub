@@ -17,7 +17,7 @@ CLI_FIXES = {
     "SYNC_CONFLICT": "Resolve the file conflict devkit sync reported in the repository and commit the result.",
     "OVERRIDE_DRIFT": "Review the override drift devkit sync reported and commit the resolved overrides.",
     "RULES_LOAD_FAILED": "Commit the receipt produced by the reviewed runtime; the recorded rules did not load.",
-    "SELECTION_INVALID": "Provision the project's selected bundles in the reviewed runtime profile.",
+    "SELECTION_INVALID": "Lock the packages providing the project's selected bundles in its devkit dependency group.",
     "WORKFLOW_DRIFT": "Review the workflow change and explicitly rebind the spec.",
     "DECISION_RECORD_INVALID": "Repair the invalid decision record before resuming.",
     "ENVELOPE_INVALID": "Repair the invalid report before resuming.",
@@ -45,9 +45,24 @@ CLI_FIXES = {
 
 CLI_FIXES.update(
     {
-        "SDD_RUNTIME_UNAVAILABLE": "Provision the reviewed SDD runtime with just install-sdd and verify its lock.",
-        "SDD_PROFILE_INVALID": "Correct the server-owned SDD runtime profiles and repository mappings.",
-        "SDD_BUNDLES_MISSING": "Provision a reviewed runtime profile containing the repository's selected bundles.",
+        "SDD_RUNTIME_UNAVAILABLE": "Check the host's uv binary and SDD runtime cache, then retry.",
+        # Retired with server profiles; kept so historical records stay readable.
+        "SDD_PROFILE_INVALID": "Server runtime profiles are retired; runtimes come from each repository's uv.lock.",
+        "SDD_BUNDLES_MISSING": "Lock the packages providing the selected bundles in the devkit dependency group.",
+        "SDD_RUNTIME_UNLOCKED": (
+            "Commit a root uv.lock whose project declares devkit-spec in a dependency group or its dependencies."
+        ),
+        "SDD_RUNTIME_SOURCE_UNSUPPORTED": (
+            "Lock devkit packages only from PyPI wheels or https://github.com Git sources."
+        ),
+        "SDD_RUNTIME_PYTHON_UNSUPPORTED": "Widen requires-python to include the Python version Hub provides.",
+        "SDD_RUNTIME_PREPARING": "Hub is installing the repository's locked devkit runtime; retry shortly.",
+        "SDD_RUNTIME_SOURCE_UNAVAILABLE": (
+            "Grant the project's GitHub connector read access to the Git sources its lock names, then retry."
+        ),
+        "SDD_RUNTIME_INSTALL_FAILED": (
+            "Check that locked registry packages provide wheels and Git sources build with hatchling, then retry."
+        ),
         "SDD_RECEIPT_MISSING": "Commit the repository's devkit configuration and installation receipt before enrolling.",
     }
 )
@@ -61,9 +76,12 @@ _RUNTIME = {
     "COMMAND_FAILED",
     "SDD_RUNTIME_UNAVAILABLE",
     "SDD_PROFILE_INVALID",
-    "SDD_BUNDLES_MISSING",
     "RUNTIME_REVISION_MISMATCH",
+    "SDD_RUNTIME_PREPARING",
+    "SDD_RUNTIME_SOURCE_UNAVAILABLE",
+    "SDD_RUNTIME_INSTALL_FAILED",
 }
+_SAFE_RETRY = {"SDD_RUNTIME_PREPARING"}
 _DECISION = {"SPEC_PROPOSAL_GATE_NOT_OPEN", "SPEC_PROPOSAL_POLICY_NOT_AUTO"}
 _TARGETS = {
     "RECEIPT_STALE": [".devkit/installation.json"],
@@ -73,6 +91,10 @@ _TARGETS = {
     "SPEC_LIFECYCLE_INACTIVE": [".devkit/config.toml"],
     "SPEC_APPROVAL_KEY_IGNORED": [".devkit/config.toml"],
     "RUNTIME_REVISION_MISMATCH": ["uv.lock"],
+    "SDD_RUNTIME_UNLOCKED": ["pyproject.toml", "uv.lock"],
+    "SDD_RUNTIME_SOURCE_UNSUPPORTED": ["uv.lock"],
+    "SDD_RUNTIME_PYTHON_UNSUPPORTED": ["pyproject.toml"],
+    "SDD_BUNDLES_MISSING": ["pyproject.toml", "uv.lock"],
 }
 _NOTICES = {
     "SPEC_APPROVAL_KEY_IGNORED": (
@@ -83,6 +105,7 @@ _NOTICES = {
         "The committed devkit receipt differs from the reviewed runtime.",
         "Align and commit the receipt with the reviewed runtime, then enroll a new execution.",
     ),
+    # Historical only: lock-derived runtimes match the repository by construction.
     "RUNTIME_REVISION_MISMATCH": (
         "The repository and reviewed runtime use different devkit revisions.",
         "Review the repository lock and runtime revision before continuing.",
@@ -116,7 +139,7 @@ def diagnostic(code: str, *, severity: str = "error") -> dict:
         "category": "runtime" if known in _RUNTIME else "decision" if known in _DECISION else "repository",
         "message": message,
         "action": action,
-        "retry": "after_fix" if severity == "error" else "never",
+        "retry": ("safe" if known in _SAFE_RETRY else "after_fix") if severity == "error" else "never",
         "target_files": list(_TARGETS.get(known, [])),
     }
 

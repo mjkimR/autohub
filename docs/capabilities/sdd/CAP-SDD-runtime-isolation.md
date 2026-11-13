@@ -11,7 +11,7 @@ usecases:
   - UC-complete-sdd-workflow
 entrypoints:
   - modules/hub/app/features/project_management/sdd/runtime.py
-  - modules/hub/app/features/project_management/sdd/profiles.py
+  - modules/hub/app/features/project_management/sdd/lock_runtime.py
   - modules/hub/app/features/project_management/sdd/services.py
   - modules/hub/app/features/project_management/sdd/isolation.py
 ---
@@ -46,15 +46,15 @@ runtime and effective workflow define the identity retained by an admitted run.
 2. **Server mapping validation**: IF server profile/repository mappings are invalid,
    THEN Hub MUST refuse with `SDD_PROFILE_INVALID` rather than silently choose a
    fallback profile.
-   Check: [test_profiles.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_profiles.py), `test_invalid_server_mapping_never_falls_back`.
+   Check: [test_profiles.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_invalid_server_mapping_never_falls_back`.
 3. **Evaluation-local selection**: WHEN evaluating mapped repositories concurrently,
    Hub MUST retain each operation's selected runtime and reset that selection when
    its scope ends, including after failure.
-   Check: [test_profiles.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_profiles.py), `test_repository_profiles_are_task_local_and_reset_after_failure`.
+   Check: [test_profiles.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_repository_profiles_are_task_local_and_reset_after_failure`.
 4. **Bundle inventory**: WHERE the runtime pin records bundle inventory, WHEN a
    selected preset or committed receipt requires an unavailable bundle, Hub MUST
    refuse with `SDD_BUNDLES_MISSING` before sync or dependency installation.
-   Check: [test_profiles.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_profiles.py), `test_bundle_preflight_uses_selection_and_receipt_without_running_project_code`.
+   Check: [test_profiles.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_bundle_preflight_uses_selection_and_receipt_without_running_project_code`.
 5. **Receipt required**: IF the committed installation receipt is missing, THEN Hub
    MUST refuse with `SDD_RECEIPT_MISSING` without initializing or syncing the repository.
    Check: [test_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_missing_receipt_never_syncs_or_initializes`.
@@ -73,7 +73,7 @@ runtime and effective workflow define the identity retained by an admitted run.
 9. **Pinned execution**: IF runtime identity or the admitted effective workflow,
    policy or configuration changes without an authorized workflow transition, THEN
    Hub MUST refuse continuation under that changed contract.
-   Check: [test_cli.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_cli.py), `test_real_cli_reads_gate_and_rejects_changed_version`, `test_accepted_handoff_authorizes_only_the_selected_definition`; [test_profiles.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_profiles.py), `test_workflow_pin_is_stable_across_checkouts_but_covers_effective_semantics`.
+   Check: [test_cli.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_cli.py), `test_real_cli_reads_gate_and_rejects_changed_version`, `test_accepted_handoff_authorizes_only_the_selected_definition`; [test_profiles.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_workflow_pin_is_stable_across_checkouts_but_covers_effective_semantics`.
 10. **Revision parity warning**: WHEN a readable root lock provides a compared
     package's exact Git revision different from the runtime pin, Hub MUST report
     `RUNTIME_REVISION_MISMATCH` without exposing its source URL or credentials.
@@ -102,7 +102,7 @@ runtime and effective workflow define the identity retained by an admitted run.
 16. **Notice projection**: WHEN isolated evaluation returns JSON notices, Hub MUST retain at most 20 distinct Hub-authored diagnostic records across that evaluation's nested reads, including successful commands and later failures.
     Check: [test_diagnostics.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_diagnostics.py), `test_notices_only_select_catalog_values_and_are_bounded`, `test_successful_subprocess_notices_are_collected_without_stderr`, `test_diagnostic_capture_is_task_local_and_nested_reads_share_one_evaluation`; [test_services.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_services.py), `test_prior_warnings_are_retained_when_a_later_cli_call_fails`.
 17. **Diagnostic identity boundary**: WHEN notices change without an effective policy or workflow change, Hub MUST exclude those notices from semantic execution identity rather than refuse continuation solely for diagnostic metadata.
-    Check: [test_services.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_services.py), `test_policy_notices_are_projected_but_do_not_change_execution_authority`; [test_profiles.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_profiles.py).
+    Check: [test_services.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_services.py), `test_policy_notices_are_projected_but_do_not_change_execution_authority`; [test_profiles.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py).
 
 ## 4. Interfaces & Data Contracts
 
@@ -150,7 +150,7 @@ Readiness failures caused by evaluated runtime/CLI errors retain safe diagnostic
 ## 5. Source and Verification Boundary
 
 The contract derives from [runtime.py](../../../modules/hub/app/features/project_management/sdd/runtime.py),
-[profiles.py](../../../modules/hub/app/features/project_management/sdd/profiles.py),
+[profiles.py](../../../modules/hub/app/features/project_management/sdd/lock_runtime.py),
 [services.py](../../../modules/hub/app/features/project_management/sdd/services.py),
 [contracts.py](../../../modules/hub/app/features/project_management/sdd/contracts.py),
 [diagnostics.py](../../../modules/hub/app/features/project_management/sdd/diagnostics.py),

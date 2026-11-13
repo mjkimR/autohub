@@ -56,7 +56,14 @@ test('start sends the chosen activity effort and the runtime check reports the h
 	api.GET.mockImplementation(async (path: string) =>
 		path.endsWith('/sdd/runtime')
 			? {
-					data: { ok: true, isolation: 'bubblewrap', revisions: { 'devkit-spec': 'f'.repeat(40) } }
+					data: {
+						ok: true,
+						isolation: 'bubblewrap',
+						state: 'ready',
+						identity: 'c'.repeat(64),
+						bundles: ['spec', 'docs'],
+						revisions: { 'devkit-spec': 'f'.repeat(40) }
+					}
 				}
 			: { data: [] }
 	);
@@ -74,7 +81,11 @@ test('start sends the chosen activity effort and the runtime check reports the h
 	);
 	render(SddExecution, { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' });
 	await user.click(screen.getByRole('button', { name: 'Check runtime' }));
-	expect(await screen.findByText(/Runtime bubblewrap: ok · devkit-spec ffffffffffff/)).toBeTruthy();
+	expect(
+		await screen.findByText(
+			/Runtime bubblewrap: ok · devkit-spec ffffffffffff · repository lock cccccccccccc ready · bundles: spec, docs/
+		)
+	).toBeTruthy();
 	await user.selectOptions(screen.getByLabelText('Activity effort'), 'high');
 	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
 	await screen.findByText(/Inspected commit/);
@@ -89,13 +100,34 @@ test('an unavailable runtime is reported as an error with its detail', async () 
 		data: {
 			ok: false,
 			isolation: null,
-			detail: 'Provision the locked runtime with just install-sdd'
+			detail: 'The sandboxed interpreter did not start'
 		}
 	});
 	render(SddExecution, { projectId: 'project' });
 	await user.click(screen.getByRole('button', { name: 'Check runtime' }));
 	expect(await screen.findByRole('alert')).toBeTruthy();
 	expect(screen.getByText(/Runtime without a sandbox: unavailable/)).toBeTruthy();
+});
+
+test('a preparing lock runtime is reported as progress and a failed one as an error', async () => {
+	const user = userEvent.setup();
+	api.GET.mockResolvedValueOnce({
+		data: { ok: true, isolation: 'bubblewrap', state: 'preparing', identity: 'd'.repeat(64) }
+	});
+	render(SddExecution, { projectId: 'project' });
+	await user.click(screen.getByRole('button', { name: 'Check runtime' }));
+	expect(await screen.findByText(/repository lock dddddddddddd installing; check again shortly/)).toBeTruthy();
+	api.GET.mockResolvedValueOnce({
+		data: {
+			ok: true,
+			isolation: 'bubblewrap',
+			state: 'failed',
+			lock_detail: 'Grant the connector read access'
+		}
+	});
+	await user.click(screen.getByRole('button', { name: 'Check runtime' }));
+	expect(await screen.findByRole('alert')).toBeTruthy();
+	expect(screen.getByText(/repository lock unavailable\. Grant the connector read access/)).toBeTruthy();
 });
 
 test('eligible registration previews waits and policy without answering them', async () => {

@@ -559,16 +559,23 @@ export interface components {
         };
         /**
          * SddRuntimeStatus
-         * @description The host's SDD runtime: its pin and whether devkit starts inside the sandbox (the new-host canary).
+         * @description The host probe (an interpreter started inside the sandbox) and the project head's locked runtime state.
          */
         SddRuntimeStatus: {
             /** Ok */
             ok: boolean;
             /**
              * Profile
-             * @default default
+             * @default repository-lock
              */
             profile: string;
+            /**
+             * State
+             * @description Lock-derived runtime of the default-branch head; empty without a connection
+             */
+            state?: ("ready" | "preparing" | "failed") | null;
+            /** Identity */
+            identity?: string | null;
             /** Bundles */
             bundles?: string[];
             /** Provider */
@@ -583,6 +590,8 @@ export interface components {
             isolation?: string | null;
             /** Detail */
             detail?: string | null;
+            /** Lock Detail */
+            lock_detail?: string | null;
         };
         /**
          * SddWarning

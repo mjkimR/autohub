@@ -357,6 +357,9 @@ class SddProgress:
                         else {}
                     ),
                 }
+            elif evidence.get("snapshot", {}).get("cli_version") not in (None, run.sdd_snapshot.get("cli_version")):
+                # The runtime follows the repository's lock; record the identity this head was evaluated with.
+                run.sdd_snapshot = {**run.sdd_snapshot, "cli_version": evidence["snapshot"]["cli_version"]}
             await retain_publications(session, run.id, evidence)
             run.sdd_progress = evidence
             plan = evidence.get("plan_decision")
