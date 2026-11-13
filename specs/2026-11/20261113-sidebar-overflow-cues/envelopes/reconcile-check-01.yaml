@@ -1,0 +1,16 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T07:35:36.946023Z'
+status: completed
+summary: Independent reconcile reviewer verifies the sole UX-app-shell target and no-impact reasoning against AC-01 through AC-05 with no findings
+findings: []
+assumptions:
+- Codex read-only role emulated by exact paths and identical snapshot23d6245eca4e91660e9d3a4c6f9d737332096361; no native boundary guarantee
+checks:
+  reconciliation: PASS implementation, states/interactions, observer fallback, reveal/focus and evidence limits agree
+  targets: PASS only docs/ux/navigation/UX-app-shell.md changed and is recorded
+diff_scope:
+  base: 9c16c3e0aa80ec039f2806f5b9db50b6e0f34ed8
+  head: 149db768157db0bdb15fc104f803eaa5e104afe5

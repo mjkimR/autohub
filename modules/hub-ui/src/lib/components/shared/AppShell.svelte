@@ -19,6 +19,7 @@
 		provideOwedCounts
 	} from '$lib/features/attention/owed-counts.svelte';
 	import SidebarNavGroup from '$lib/components/shared/SidebarNavGroup.svelte';
+	import SidebarNavViewport from '$lib/components/shared/SidebarNavViewport.svelte';
 	import {
 		ADMIN_GROUP,
 		ATTENTION_HREF,
@@ -96,7 +97,7 @@
 <div class="flex min-h-screen min-w-0 flex-col bg-background text-foreground lg:flex-row">
 	<header
 		class={[
-			'flex items-center gap-3 border-b border-border p-3 lg:hidden',
+			'flex h-18 shrink-0 items-center gap-3 border-b border-border p-3 lg:hidden',
 			owedCount && 'border-t-2 border-t-attention-text'
 		]}
 		data-owed-rule={owedCount ? 'true' : undefined}
@@ -136,12 +137,12 @@
 	<aside
 		id="primary-navigation"
 		class={[
-			'w-full shrink-0 flex-col border-b border-sidebar-border bg-sidebar px-4 py-6 text-sidebar-foreground lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:border-r lg:border-b-0',
+			'shell-navigation w-full shrink-0 flex-col border-b border-sidebar-border bg-sidebar px-4 py-6 text-sidebar-foreground lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-64 lg:border-r lg:border-b-0',
 			menuOpen ? 'flex' : 'hidden'
 		]}
 	>
 		<!-- Brand / Logo -->
-		<div class="flex items-center gap-3 px-2 pb-6">
+		<div class="flex shrink-0 items-center gap-3 px-2 pb-6">
 			<div
 				class="flex size-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
 			>
@@ -151,7 +152,7 @@
 		</div>
 
 		<!-- Nav Links -->
-		<nav class="flex-1 space-y-5 overflow-y-auto py-4" aria-label="Primary navigation">
+		<SidebarNavViewport {menuOpen} {current}>
 			{#each groups as group (group.id)}
 				<SidebarNavGroup {group} {current}>
 					{#snippet link(item)}
@@ -183,10 +184,10 @@
 					{/snippet}
 				</SidebarNavGroup>
 			{/each}
-		</nav>
+		</SidebarNavViewport>
 
 		<!-- Bottom User & Status Area -->
-		<div class="space-y-4 border-t border-sidebar-border pt-4">
+		<div class="shrink-0 space-y-4 border-t border-sidebar-border pt-4">
 			<div class="flex items-center justify-between px-2">
 				<div class="flex items-center gap-2 text-xs">
 					{#if isOnline}

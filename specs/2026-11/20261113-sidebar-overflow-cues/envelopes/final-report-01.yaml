@@ -1,0 +1,19 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T07:36:13.512844Z'
+status: completed
+summary: Delivered viewport-bounded decorative sidebar edge shadows, active/focus clearance and Menu reveal alignment; independent code and reconciliation reviews passed with no findings
+findings: []
+assumptions:
+- Local integration route will be chosen by Host under auto policy; this worker performed no merge/publication
+unverified_areas:
+- Browser API/page data mocked; no live backend, authentication or deployment check; Host combined-head verification pending
+checks:
+  tests: PASS focused sidebar/shell36 plus navigation/contrast80; real Chrome31 layout cases on authored components and CSS
+  build: 'PASS just check all: backend/SDK types, Svelte0 errors/warnings and production UI build'
+  lint: PASS just lint all; final docs-check and committed CI rules zero errors/warnings
+diff_scope:
+  base: 9c16c3e0aa80ec039f2806f5b9db50b6e0f34ed8
+  head: 61cc416aab9cbb2669610ff4540387989c1d5c7e
