@@ -1,0 +1,38 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T07:43:27.970904Z'
+status: completed
+review: review-01.yaml
+summary: Independent reviewer confirms all four exact-selection and origin-label findings resolved on c64cef4
+findings:
+- issue: Pending Git Browser reads survive address changes and display stale content
+  evidence: RepositoryView.svelte selection effect and loadTree; ignored review-01/repository.test.ts:221 renders stale-response.txt after invalid address navigation
+  failure_condition: Old directory request resolves after same-project address changes and Git Browser opens
+  suggested_action: Invalidate browser reads and clear incompatible content when project/unit/ref selection changes
+  resolution: resolved
+  severity: P2
+- issue: Loading retained batches erases addressed detail failure
+  evidence: sdd-batches.svelte.ts load clears shared error; ignored review-01/batch.test.ts:14 expected Not found but found empty error
+  failure_condition: Exact detail fails and subsequent list read succeeds
+  suggested_action: Separate list and selected-detail errors and preserve the requested unavailable subject
+  resolution: resolved
+  severity: P2
+- issue: SDD Refresh silently resets manually selected branch
+  evidence: RepositoryView.svelte refreshSdd passes requestedRef; ignored review-01/repository.test.ts:197 expected dev-demo but found main
+  failure_condition: Repository opens without ref query, operator selects dev-demo then Refresh
+  suggested_action: Refresh the current selected browse ref while honoring later URL navigation
+  resolution: resolved
+  severity: P2
+- issue: Known native SDD evidence can display Origin unknown
+  evidence: RunOrigins.svelte unknown conditional ignores enrollment_source; ignored review-01/origins.test.ts reproduces native_sdd snapshot without spec_dir
+  failure_condition: Nonempty retained SDD snapshot has no unit path and no reverse origins
+  suggested_action: Label proven enrollment_source separately from available subject links
+  resolution: resolved
+  severity: P3
+checks:
+  tests: PASS permanent focused15 full frontend579; final UI lint types build and rules35
+diff_scope:
+  base: ''
+  head: c64cef43a657f3b18b35b523945b62b3f49ab488
