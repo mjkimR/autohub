@@ -1,0 +1,24 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T08:30:54.015062Z'
+status: completed
+summary: Completed bounded schedule owner/filter Development, owner-aware UI, independent repaired P2 review and six-target reconciliation; ready for Host integration
+findings: []
+assumptions:
+- Codex boundaries emulated through absolute worktree cwd, per-operation approvals, clean commits and reviewer snapshot audits; no native guarantee
+- Public CRUD projects owners explicitly; internal dispatcher DTO defaults and persisted manual-only reads preserve existing execution behavior
+unverified_areas:
+- Host combined-head verification pending; no deployment live browser or provider execution performed
+checks:
+  sync_start: PASS exit=0
+  tests: PASS fullSQLite1303 skipped25; ownerSQLite36 PostgreSQL36; final fullUI594 focused16
+  build: PASS full just check and final frontend types0errors productionbuild
+  lint: PASS full just lint finalUIlint docs/hygiene CIrules35 and generated API freshness
+  review: PASS independent P2 fixed and reverified; separate six-target reconcile no findings
+  scope: PASS all authored changes in initial Unit backend/UI/test/generated and exact Living Spec boundaries
+diff_scope:
+  base: e3be22b459230c1288c7d5b48161b11d345392ff
+  head: 49c62995320dd8c7cdf3788176ea7d3ecbe16d23
+activity_effort: medium
