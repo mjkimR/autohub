@@ -1,7 +1,7 @@
 ---
 id: UX-attention
 title: Attention landing
-summary: "Triage every owed item across projects and object types at the console root, grouped by consequence, and follow each item's one primary action to the owner screen that resolves it."
+summary: "Triage owed items by consequence and follow each primary action to its exact owner, including addressed retained SDD batches in Repository."
 area: delivery
 element: screen
 status: active
@@ -63,7 +63,7 @@ the read stays single-flight, so a shell read already in flight is reused rather
     - Held PR run: the run page; failed PR run: the run page Next step section (`#next-step`).
     - Work Plan to review: the project Plans tab at the plan (`?tab=plans#work-plan-<id>`); Work Item recovery,
       replacement and attention: the Plans tab at the Work Item (`#work-item-<id>`) when the item names one.
-    - SDD batch: the project Repository tab; connection-test cleanup: the project Connections tab.
+    - SDD batch: the project Repository tab at its exact `batch` ID; connection-test cleanup: the project Connections tab.
   - AI catalog hold (row context): on the affected row only, quiet text "AI catalog quota is exhausted until <time>"
     or "AI catalog is unavailable" with a link to AI catalogs. A hold is never its own item and never attention.
 - Pagination: Load more appends the next page and says how many longest-waiting items are shown; groups fill in as
@@ -95,7 +95,7 @@ the read stays single-flight, so a shell read already in flight is reused rather
 | Inspect Work Item | `UC-execute-work-plan` 4c | populated, partial | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | The Plans tab opens at the Work Item in attention. |
 | Inspect recovery | `UC-execute-work-plan` 5c | populated, partial | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | The Plans tab opens at the recovering Work Item. |
 | Accept replacement | `UC-execute-work-plan` 6c | populated, partial | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | The Plans tab opens at the Work Item whose replacement evidence awaits acceptance. |
-| Inspect batch | `UC-execute-sdd-batch` 1 | populated, partial | populated | `UX-sdd-batch` | `CAP-SDD-workflow-control` | The project Repository tab opens; load its retained batches to inspect the batch. A batch deep link is a follow-up (`FB-attention-sdd-batch-deep-link`). |
+| Inspect batch | `UC-execute-sdd-batch` 1 | populated, partial | populated | `UX-sdd-batch` | `CAP-SDD-workflow-control` | The project Repository tab loads the exact context batch directly, including old retained subjects outside the latest list, without execution. |
 | Review cleanup | `UC-verify-project-connection` 7 | populated, partial | populated | `UX-connection-tests` | `CAP-CONN-connection-verification` | The project Connections tab opens with the cleanup review. |
 | Open project | global: inspect the item's owning project | populated, partial | populated | `UX-project-detail` |  | The project detail opens. |
 | Open AI catalogs (hold context) | global: inspect the catalog that holds a run | populated, partial | populated | `UX-ai-catalogs` |  | AI catalog configuration opens. |
@@ -106,6 +106,9 @@ the read stays single-flight, so a shell read already in flight is reused rather
 | Show all projects (filtered empty) | global: leave the project filter | empty | loading |  |  | The landing reloads for all projects. |
 
 ## 5. Evidence
+
+`owed-links.test.ts` and `AttentionView.integration.test.ts` enforce exact `context.sdd_batch_id` addresses. `RepositoryView.integration.test.ts` verifies direct detail selection without a list prerequisite or mutations.
+
 
 Implementation inspected: `modules/hub-ui/src/routes/+page.svelte`,
 `modules/hub-ui/src/lib/features/attention/AttentionView.svelte`, `OwedGroupSection.svelte`, `OwedRow.svelte`,

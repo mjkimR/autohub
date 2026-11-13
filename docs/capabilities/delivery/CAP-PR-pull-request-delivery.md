@@ -1,7 +1,7 @@
 ---
 id: CAP-PR-pull-request-delivery
 title: Pull Request Delivery
-summary: "PR Runs own implementation, current-head CI and policy-controlled merging. Guarded Work Item recovery retains terminal Run identity and budgets while ordinary paused/blocked resume keeps its existing meaning."
+summary: "Deliver ordinary PRs through guarded implementation, CI and merge, preserving explicit recovery authority. Run reads project retained origin relationships in bounded queries without inventing original enrollment channels."
 area: delivery
 status: active
 usecases:
@@ -70,6 +70,10 @@ the same executor after `CAP-WORK-work-plan-execution` prepares an Item's PR.
 25. **Recovery owner race**: IF ordinary enrollment wins active ownership while Work Item recovery reconciles, THEN Hub MUST close the losing recovery without dispatching. Check: [`test_work_item_terminal_recovery.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_work_item_terminal_recovery.py), `test_ordinary_enrollment_wins_during_recovery_io_without_loser_dispatch` (PostgreSQL).
 26. **Recovery push adoption**: WHEN recovery establishes an already implemented current head, Hub MUST continue CI without repeating implementation. Check: `test_pushed_implementation_advances_ci_without_delivery` in the recovery integration suite.
 
+27. **Retained origins**: WHEN returning a Run read, Hub MUST project every distinct retained Work Item/Plan, Provider session and project-scoped SDD claim/batch reference in deterministic kind/ID order. Check: `modules/hub/tests/integration/features/project_management/pipeline_runs/test_origins.py`.
+28. **Evidence categories**: WHEN no retained relationship or nonempty SDD snapshot proves a category, Hub MUST label the origin unknown rather than infer manual, webhook or SDK enrollment. One proven category is returned directly; several return multiple. Check: `test_origins.py` and `RunOrigins.integration.test.ts`.
+29. **Bounded origin reads**: WHEN enriching a selected Run page, Hub MUST use at most three additional sequential bulk SELECTs on the caller session without changing page membership, ordering or total. Check: `test_origins.py` on SQLite/PostgreSQL, including one HTTP request checkout.
+
 ## 4. Interfaces & Data Contracts
 
 ### Public HTTP surface
@@ -102,6 +106,17 @@ Attempts retain `request_snapshot`, canonical `request_digest`,
 `idempotency_key`, kind and provider correlation. Deliveries belong to attempts;
 the exact delivery recovery/marker contract belongs to `CAP-PR-agent-dispatch`.
 A deliberate resume without a push can create a new attempt and send new work.
+
+### Retained origin read
+
+`PipelineRunRead` adds `enrollment_source` (`unknown`, `work_plan`, `provider_session`, `native_sdd`, `multiple`) and `related_origins`.
+Each reference has `kind` and `id`; Work Items include `work_plan_id`, Provider sessions include `catalog_id` and optional exact `url`, and SDD claims include `unit` and optional `batch_id`.
+The same projection applies to list/get, project-scoped unit history and mutations returning a Run.
+A nonempty SDD snapshot proves a native SDD binding independently of available subject links.
+These are retained relationships, not immutable original-entry provenance; owner retention can remove them.
+Lookup failures fail the read instead of producing a false unknown result.
+The run page and list show compact secondary links; an absent external URL stays text.
+Ended Work Item recovery consumes returned IDs without scanning Work Plans.
 
 ### Work Item recovery owner
 

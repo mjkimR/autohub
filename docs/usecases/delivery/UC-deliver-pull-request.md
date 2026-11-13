@@ -1,7 +1,7 @@
 ---
 id: UC-deliver-pull-request
 title: Deliver a Pull Request
-summary: "An operator delegates an ordinary PR and obtains a verified merge or visible recoverable stop. Work Item-linked terminal recovery preserves its original Run while admission, uncertainty and budgets govern continuation."
+summary: "An operator delegates an ordinary PR and obtains a verified merge or visible recoverable stop. Inspection follows exact retained origins and Work Item recovery while admission, uncertainty and budgets govern continuation."
 area: delivery
 primary_actor: Operator
 supporting_actors:
@@ -47,6 +47,7 @@ entrypoints:
 
 4. Hub observes the provider's push and the repository's verification result through scheduled or webhook advancement (`CAP-PR-agent-dispatch`, `CAP-PR-ci-observation`, `CAP-PR-webhook-advancement`).
    Interface: `UX-pipeline-runs`, `UX-run-page`, `UX-attempt-history`.
+   The operator can inspect retained origins and follow their exact Work Item, SDD unit/batch or external Provider session (`CAP-PR-pull-request-delivery`).
 
 5. The operator marks the PR ready when its work is acceptable (`CAP-PR-pull-request-delivery`).
    Off screen: the operator changes PR readiness in GitHub outside the Hub interface.
@@ -127,6 +128,14 @@ entrypoints:
   run is a quiet `failed-run` item (`CAP-PR-owed-items`).
 
 ## 5. Acceptance Criteria (Given / When / Then)
+
+### PR-ORIGIN-01: Inspect the exact retained owner
+
+- **Covers**: main success scenario step 4 and *d.
+- **Given** a Run linked to a Work Item or retained SDD subject.
+- **When** the operator follows its secondary origin or recovery link.
+- **Then** the exact owner opens; missing origin evidence is unknown and grants no execution authority.
+
 
 Rules used from `CAP-PR-pull-request-delivery`: enrollment/active ownership,
 catalog selection, existing implementation, approval, repairs/waits and final

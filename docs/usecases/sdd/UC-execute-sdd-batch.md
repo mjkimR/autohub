@@ -1,12 +1,15 @@
 ---
 id: UC-execute-sdd-batch
 title: Inspect retained native SDD batches
-summary: "The former graph-derived native batch creation, resume and sequential admission path is retired. Operators can inspect retained owner evidence without reviving its authority."
+summary: "Inspect an exact retained native batch from its Repository address, including history outside the latest list. Missing subjects and delayed responses never substitute another owner or revive retired execution."
 area: sdd
 primary_actor: Project operator
 supporting_actors: []
 status: deprecated
 capabilities: [CAP-SDD-native-delivery]
+entrypoints:
+  - modules/hub-ui/src/lib/features/project-management/repositories/SddBatch.svelte
+  - modules/hub/app/features/project_management/sdd/api.py
 ---
 
 # [UC-execute-sdd-batch] Inspect retained native SDD batches
@@ -21,9 +24,9 @@ capabilities: [CAP-SDD-native-delivery]
 
 ## 2. Main Success Scenario
 
-1. The operator opens the retained owner subject (`CAP-SDD-native-delivery`).
-   Interface: `UX-sdd-batch`, `UX-project-detail`, `UX-attention`.
-2. Hub displays the stored identity/outcome as historical evidence (`CAP-SDD-native-delivery`).
+1. The operator opens the retained owner subject, including an exact batch address from Attention or a Run (`CAP-SDD-native-delivery`).
+   Interface: `UX-sdd-batch`, `UX-project-detail`, `UX-attention`, `UX-repository`.
+2. Hub displays the exact stored identity/outcome as historical evidence, including batches outside the latest list (`CAP-SDD-native-delivery`).
    Interface: `UX-sdd-batch`, `UX-project-detail`, `UX-attention`.
 3. The operator follows the linked Run/PR or leaves the retired subject (`CAP-SDD-native-delivery`).
    Interface: `UX-sdd-batch`, `UX-project-detail`, `UX-attention`.
@@ -60,5 +63,19 @@ Applicable rules: `CAP-SDD-native-delivery` retained history and retirement.
 - **Given** a request for graph-derived native batch creation, resume and sequential admission.
 - **When** the retired boundary receives it.
 - **Then** no repository evaluation or new work is performed.
+
+### RETIRED-03: Restore an old batch address
+
+- **Covers**: main success scenario steps 1–2.
+- **Given** an addressed batch outside the latest fifty.
+- **When** its Repository link opens.
+- **Then** exact detail loads directly; later list loading occurs once and preserves selection without mutations.
+
+### RETIRED-04: Keep current history and failure identity
+
+- **Covers**: 1a.
+- **Given** a failed addressed batch or a delayed response for an earlier project/batch.
+- **When** another list or detail read completes.
+- **Then** the requested subject and its error remain accurate; neither older history nor another batch substitutes for it.
 
 Retained mutation tombstones return `SDD_EXECUTION_RETIRED`. Local batch Stop settles future admission only; it does not resume work or cancel a provider.

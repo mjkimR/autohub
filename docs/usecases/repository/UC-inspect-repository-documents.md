@@ -1,7 +1,7 @@
 ---
 id: UC-inspect-repository-documents
 title: Inspect repository documents and their executions
-summary: "A project operator reads a document or milestone proposal at a selected repository branch and follows its recorded execution links. Inspection leaves repository content, run state and approval unchanged."
+summary: "A project operator opens branch-specific documents, including exact addressed units, and follows recorded execution links. Missing subjects and stale responses never replace the requested selection or grant authority."
 area: repository
 primary_actor: Project operator
 supporting_actors:
@@ -21,7 +21,7 @@ entrypoints:
 - **Goal**: Understand the selected repository document and its recorded execution
   context, so the operator can choose subsequent work from the correct branch.
 - **Scope**: Auto Hub repository browser and embedded SDD document viewer.
-- **Trigger**: The operator opens a project's repository view.
+- **Trigger**: The operator opens a project's repository view or an exact unit address from a Run.
 - **Preconditions**: The operator is authenticated to Auto Hub.
 
 ## 2. Main Success Scenario
@@ -35,7 +35,7 @@ entrypoints:
    Interface: `UX-repository`.
 
 3. The operator selects a branch and a proposal or spec document, directly or
-   through a milestone member (`CAP-DOC-repository-viewer`, rules 2, 6).
+   through a milestone member, or accepts an addressed unit and browse branch (`CAP-DOC-repository-viewer`).
    Interface: `UX-repository`.
 
 4. Hub displays the selected document from that branch
@@ -89,6 +89,9 @@ entrypoints:
   action while retaining the selected document; the use case ends with execution
   context unresolved rather than claiming no runs exist.
    Interface: `UX-sdd-execution`.
+
+- **3b.** An addressed unit or branch is malformed, missing, inaccessible or unsupported: Hub names the unavailable subject and offers Browse repository; a transient read failure also offers Retry. No unknown unit is passed to activity controls. The operator returns to ordinary browsing or retries step 3.
+   Interface: `UX-repository`.
 
 ## 4. Postconditions
 
@@ -173,6 +176,20 @@ roadmap navigation, lineage, read-only execution links and visible refusal.
 - **When**: Hub presents the result.
 - **Then**: The document remains selected and the execution area shows an error
   with retry instead of an empty-success claim.
+
+### DOC-INSPECT-10: Open an unmerged addressed unit
+
+- **Covers**: main success scenario steps 1–5.
+- **Given** a Run address naming a unit on its recorded branch.
+- **When** Repository opens, reloads or switches viewer modes.
+- **Then** the document and activity context select that same unit and branch without starting work.
+
+### DOC-INSPECT-11: Explain unavailable or stale addresses
+
+- **Covers**: 3b.
+- **Given** an invalid/missing address or an earlier pending selection read.
+- **When** selection changes or lookup completes.
+- **Then** only the current subject or its unavailable explanation is shown; a missing explicit branch never silently falls back.
 
 ## 6. Source and Verification Boundary
 
