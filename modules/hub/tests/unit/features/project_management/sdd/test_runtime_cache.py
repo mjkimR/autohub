@@ -127,3 +127,13 @@ def test_lease_never_waits_for_an_eviction(root):
         fcntl.flock(handle, fcntl.LOCK_EX)  # an eviction in progress
         with pytest.raises(BlockingIOError), cache.lease(IDENTITY):
             pass
+
+
+def test_each_install_gets_a_fresh_unguessable_staging_path(root):
+    """A process left by an earlier install keeps no path grant into a later install of the same identity."""
+    first = cache.staging(IDENTITY)
+    first.rmdir()  # the earlier install failed and was removed
+    second = cache.staging(IDENTITY)
+    assert first != second and second.parent == root
+    assert second.name.startswith(f"{cache.STAGING_PREFIX}{IDENTITY}-")
+    assert "-" not in second.name[len(f"{cache.STAGING_PREFIX}{IDENTITY}-") :]  # prune parses the identity

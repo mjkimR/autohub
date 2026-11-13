@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import shutil
+import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -73,12 +74,14 @@ def try_build_lock(identity: str) -> BuildLock | None:
 
 
 def staging(identity: str) -> Path:
-    """A fresh staging directory; only the build lock holder calls this, after removing stale staging."""
+    """A fresh, unguessable staging directory; only the build lock holder calls this, after removing stale staging.
+
+    A unique name per install means a sandbox process left by an earlier install (macOS sandbox-exec cannot end
+    detached processes) holds no path grant into a later one.
+    """
     for stale in cache_root().glob(f"{STAGING_PREFIX}{identity}-*"):
         shutil.rmtree(stale, ignore_errors=True)
-    path = cache_root() / f"{STAGING_PREFIX}{identity}-{os.getpid()}"
-    path.mkdir()
-    return path
+    return Path(tempfile.mkdtemp(prefix=f"{STAGING_PREFIX}{identity}-", dir=cache_root()))
 
 
 def publish(identity: str, staged: Path) -> Path:

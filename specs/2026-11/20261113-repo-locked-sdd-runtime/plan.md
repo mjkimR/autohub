@@ -93,7 +93,8 @@ Snapshot `cli_version` is `devkit-lock:<identity>`. `pin.json` keeps `provider: 
  "lock_sha256": "<identity>|null", "lock_detail": "<catalog text>|null"}
 ```
 
-Install steps (all in a staging directory under the cache root, then `rename` to the entry). Only the Hub process
+Install steps (all in a fresh `mkdtemp` staging directory under the cache root, then `rename` to the entry; the
+unique name keeps a process left by an earlier install out of a later one). Only the Hub process
 writes the staging root, `pin.json` and the rename; sandboxes write `work/` (builds) or `.venv` (later steps):
 
 1. Hub process: shallow `git fetch` of each distinct (repository, revision) from `https://github.com/` with

@@ -214,5 +214,8 @@ identity stored in snapshots is `devkit-lock:<identity>`.
   requests resume progress.
 - Settling active native runs, open batch selections and approved bridge claims before rollout is an operator
   procedure, not code.
+- Serving hosts use Linux bubblewrap. macOS sandbox-exec cannot end detached processes a sandboxed step leaves,
+  so it is supported for local development only; macOS-only containment beyond the existing checks is out of
+  scope.
 - Cache entries are content-addressed and shared by all projects of an instance that lock the same runtime; one
   operator owns every project of an instance. Install failure markers are scoped to the credential that failed.
