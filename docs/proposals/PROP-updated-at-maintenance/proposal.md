@@ -1,7 +1,7 @@
 ---
 id: PROP-updated-at-maintenance
 title: Maintain updated_at on every owner write
-summary: "Make updated_at advance on every write to Hub-owned rows, so owed-item waiting times, run finish times and run retention read the last write instead of the creation time."
+summary: "Maintain updated_at for Hub ORM and SQLAlchemy Core writes, preserve explicit owner exceptions, and correct last-write readers without reconstructing historical timestamps."
 status: reviewing                         # draft | reviewing | accepted | rejected
 created_at: 2026-11-13
 target_area: capabilities/execution/
@@ -73,7 +73,7 @@ The contracts that rely on it: `CAP-PR-owed-items` (`waiting_since` "otherwise t
 own last update"). Tests pass because fixtures set `updated_at` explicitly
 (`tests/integration/features/execution/maintenance/test_retention.py`).
 
-Hypothesis: maintaining `updated_at` on every ORM and Core update makes these contracts true without changing them.
+Hypothesis: maintaining `updated_at` on Hub ORM and SQLAlchemy Core updates makes these last-write contracts true. Explicit owner exceptions and the observation rotation described below remain visible.
 
 ## Source feedback
 
@@ -86,7 +86,7 @@ Hypothesis: maintaining `updated_at` on every ORM and Core update makes these co
   trigger per table, or a change to `TimestampMixin` in app-common (an upstream change Hub adopts by moving its pin)?
   The app-common skill and `devkit rules check` architecture rules apply to the first option. SQLite tests must keep
   working with the chosen mechanism.
-- **Q2 (Core updates)**: ORM `onupdate` does not cover `update()` statements that list explicit values. Which Core
+- **Q2 (Core updates)**: SQLAlchemy `onupdate` covers `update().values(...)` when that statement omits `updated_at`; an explicit `updated_at` value overrides it. Which Core
   updates (`pipeline_runs/repos.py`, `connection_tests/repos.py`, `flows/repos.py` and others found by search) need
   `updated_at` added, and which must keep it unchanged, like `mark_stop_announced`, which writes
   `updated_at=PipelineRun.updated_at` on purpose?
@@ -98,16 +98,79 @@ Hypothesis: maintaining `updated_at` on every ORM and Core update makes these co
 
 ## 3. Proposed Design & Impact
 
-Direction, to be settled in Planning: every write that changes a Hub-owned row advances `updated_at`, through one
-mechanism chosen in Q1, with explicit exceptions for the bookkeeping writes Q3 names. A regression test per affected
-reader updates a row through its real write path, without setting `updated_at` in the fixture, and asserts the
-reader's result: owed `waiting_since` per kind, run `finished_at`, retention eligibility and unannounced-stop
-selection.
+### Planning decisions
 
-Expected impact: the shared model base or migrations, the listed Core update statements, their tests, and wording in
-`CAP-PR-owed-items`, `CAP-EXEC-scheduling-maintenance` and `CAP-WORK-work-plan-execution` only where a bookkeeping
-exception or a state-entry time changes what they state. If Q3 shows that `waiting_since` needs dedicated state-entry
-columns, that is a contract change and goes to a separate feature proposal.
+The proposed direction is a local timestamp mixin repair, with no database migration or app-common pin change.
+Evidence is retained in `materials/timestamp-write-evidence.md` at the assigned source HEAD.
+
+1. Add a Hub-owned `TimestampMixin` subclass in the existing `modules/hub/app/common/` package. Override only
+   `updated_at`, keeping `DateTime(timezone=True)`, `nullable=False` and `server_default=func.now()`, and add
+   `onupdate=get_current_utc_time` as a callable. All 47 Hub classes in 18 model files import this mixin. Keep the
+   framework's `Base`, UUID mixin, metadata and transaction ownership. This changes no schema, public field or SDK
+   runtime dependency. A metadata-coverage test discovers Hub timestamp-bearing models and checks the local
+   `onupdate` policy so a missed import cannot silently preserve the defect.
+2. Use column-level `onupdate` for ORM flushes and SQLAlchemy Core updates against mapped Hub metadata. The probe
+   confirms that explicit values for other columns do not disable it. Keep the explicit business timestamps in
+   flow revision/activation and `ConnectionTestRepository.finish_step`; do not replace their caller-owned clock.
+   Raw SQL and reflected tables without this metadata are outside this mechanism. The scanned application has no
+   raw SQL owner UPDATE; `discovery_projection.py` updates a timestamp-free discovery table.
+3. Keep `PipelineRunRepository.mark_stop_announced`'s explicit `updated_at=PipelineRun.updated_at`. Add the same
+   preservation to pure PipelineRun lease acquisition/renewal and ConnectionTest lease claim, preventing a lease
+   alone from becoming their user-visible last update. Keep PipelineRun lease release's existing `updated_at=now`:
+   `list_active` deliberately orders observing/uncertain runs by that value to rotate a bounded batch. Removing the
+   bump without a replacement observation clock would starve later runs. The run's `updated_at` therefore remains
+   a last-write/observation time, not an exact state-entry or finish event timestamp.
+4. Other owner writes, including changed observation evidence, retry scheduling, Work Item/mirror leases and
+   retained-link retirement, follow last-write semantics. They are not silently exempted as a category. An ORM
+   flush with no emitted owner UPDATE does not advance its timestamp. `waiting_since` continues to use the owner's
+   last write as `CAP-PR-owed-items` states; repeated writes can move it and it is not a stopwatch for entry into an
+   owed state. No dedicated state-entry clock is needed to restore that existing contract.
+5. Preserve existing rows without backfill. Historical true update times cannot be recovered uniformly. A row's
+   first subsequent non-exempt write gets a maintained timestamp. Before that write an old row can still expose its
+   historical stored value; the change makes no claim that all historical finish or retention evidence is repaired.
+   No production repair, rollout or destructive retention sweep is part of this proposal.
+
+### Options compared
+
+| Option | Assessment |
+| --- | --- |
+| Hub-owned mixin override and explicit owner exceptions | Recommended: covers ORM and metadata-backed Core writes, works with SQLite/PostgreSQL, preserves the current DB schema and package pin. Requires switching all Hub imports and testing clock semantics. |
+| Database triggers on every table | Covers writers outside SQLAlchemy, but requires two database implementations, schema migration and an escape rule for announcement bookkeeping. No application writer in the inventory needs that extra scope. |
+| Upstream app-common change and pin adoption | Repairs other consumers too, but changes a separate package's contract and release/pin scope. Hub-specific exceptions are still needed. Upstream work is not required for this bounded Hub bugfix. |
+| ORM event listener only | Leaves Core UPDATE paths uncovered and introduces registration/ordering behavior. Smaller in lines, incomplete for the agreed reader outcomes. |
+
+### Acceptance and Development verification
+
+- **STAMP-01**: Given a newly created Hub owner, when its real ORM service/repository writes a changed persisted
+  field without assigning `updated_at`, then `updated_at` records the controlled later UTC instant and `created_at`
+  stays unchanged. Cover configuration CRUD and the timestamp model inventory.
+- **STAMP-02**: Given a Hub row, when a mapped Core UPDATE supplies other values, then its timestamp advances.
+  When the write supplies an explicit business timestamp or the same-column preservation expression, that value
+  wins. Cover actual owner methods on SQLite and PostgreSQL.
+- **STAMP-03**: Given each owed owner kind backed by `updated_at` (failed/stopped run, proposed Plan, attention Item,
+  replacement link and attention SDD batch), when its actual owner path changes it, then the owed read returns the
+  saved updated timestamp without fixture assignment of the expected result. Decision/recovery/connection-finish
+  clocks keep their existing precedence. Rejected writes and ordinary unchanged ORM flushes preserve the time.
+- **STAMP-04**: Given an operator or webhook terminal transition of a run with an old stored timestamp, when its
+  finish read or maintenance retention selection runs, then it uses the transition's maintained timestamp. A run
+  canceled now is not eligible solely because it was created over 30 days ago. Use a controlled old clock at
+  creation and a controlled later clock for the real write, rather than directly setting the expected timestamp.
+- **STAMP-05**: Given a run selected for stop notification, when its announcement mark is stored, then the timestamp
+  remains unchanged. Pure lease acquisition/renewal and ConnectionTest claim also preserve it. A successful run
+  lease release still rotates the observation queue; a population above the batch limit is not starved. Mixed
+  business/lease writes still advance their owner timestamp.
+- **STAMP-06**: Given a preexisting historical row, when the code starts or reads it without a write, then neither
+  timestamp changes. The next non-exempt owner write maintains `updated_at`; no backfill or trigger is installed.
+
+Development stays `medium`: one mechanism and local reader regressions, with mandatory code review and separate
+reconcile verification for the cross-feature impact. Reproduce the existing failure before the repair, then run
+focused SQLite tests and PostgreSQL timestamp/retention/observation coverage, `just lint`, `just check`, and document
+rules. Planning's in-memory probe is evidence of mechanism feasibility, not execution of those regression checks.
+
+Expected Living Spec impact: clarify last-write versus observation and state-entry time in `CAP-PR-owed-items` and
+`CAP-EXEC-scheduling-maintenance`; update enforcing-test references in those contracts and
+`CAP-WORK-work-plan-execution`. Their actor goals and public interfaces remain the same. No screen or UX draft is
+needed. These document targets are listed in `target-docs.md`.
 
 Non-goals:
 
