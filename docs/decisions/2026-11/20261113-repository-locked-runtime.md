@@ -44,7 +44,7 @@ accepted the risk that a pull request changes its lock to steer its own evaluati
 - The evaluation runtime is installed from the evaluated commit's root `uv.lock`: the locked dependency group that declares `devkit-spec`, rendered by uv. → `CAP-SDD-runtime-isolation` rule 1 (MUST)
 - The commit is the base for activity start admission, the pull request head for inspection, decisions and final lint, the milestone ref for previews and batches, and the operator checkout for the SDK bridge. → `CAP-SDD-runtime-isolation` rule 1 (MUST)
 - The runtime identity is the digest of the uv export of that group plus the interpreter minor version. → `CAP-SDD-runtime-isolation` rule 2 (MUST)
-- A changed runtime identity on a later head continues with the new runtime; effective workflow, policy and configuration digests keep their refusal. → `CAP-SDD-runtime-isolation` rule 20 (MUST)
+- A changed runtime identity on a later head continues with the new runtime; effective workflow, policy and configuration digests keep their refusal. → `CAP-SDD-runtime-isolation` rules 20-21 (MUST)
 - A repository whose root lock lacks `devkit-spec` is refused with a repository diagnostic; no server profile or default image runtime remains. → `CAP-SDD-runtime-isolation` rule 3 (MUST)
 - Installation runs outside request budgets, single-flight per digest across processes, and callers receive a retryable preparing diagnostic meanwhile. → `CAP-SDD-runtime-isolation` rules 6-7 (MUST)
 

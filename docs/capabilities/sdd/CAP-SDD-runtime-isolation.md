@@ -56,7 +56,10 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
 1. **Lock selection**: WHEN the first devkit command of a checkout scope runs, Hub
    MUST select the runtime from that checkout's root `pyproject.toml` and `uv.lock`:
    the first dependency group that declares `devkit-spec`, else the main
-   dependencies.
+   dependencies. The checkout MUST be the base for Planning and Development start
+   admission, the PR head for inspection, decisions and final lint, the milestone ref
+   for previews and batches, the operator checkout for the SDK bridge and the
+   default-branch head for runtime status.
    Check: [test_lock_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_group_selection_renders_only_the_devkit_group`, `test_main_dependencies_are_selected_without_a_group`; [test_lock_runtime.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py), `test_evaluation_uses_the_locked_runtime_and_records_its_identity`.
 2. **Runtime identity**: Hub MUST derive the runtime identity from the selected
    group's `uv export` text, the image interpreter's `major.minor` version and the
@@ -66,7 +69,8 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
 3. **Unlocked repository**: IF the commit has no readable root `pyproject.toml` or
    `uv.lock`, declares `devkit-spec` in no dependency group or main dependency, or
    its lock cannot be exported unchanged, THEN Hub MUST refuse with HTTP 422
-   `SDD_RUNTIME_UNLOCKED` and start no install.
+   `SDD_RUNTIME_UNLOCKED` and start no install; no server profile or default image
+   runtime is used instead.
    Check: [test_lock_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_repository_without_a_lock_is_refused`, `test_repository_whose_project_does_not_declare_devkit_spec_is_refused`, `test_symlinked_manifest_is_refused`; [test_lock_runtime.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py), `test_repository_without_a_devkit_lock_is_refused_through_checkout`.
 4. **Unsupported sources**: IF the selected export contains an option line, a path,
    URL or editable requirement, a Git source outside `https://github.com/` or
@@ -101,7 +105,9 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
 9. **Sandboxed build steps**: WHEN Hub builds a locked Git source, installs the
    built wheels or probes the installed inventory, it MUST run that step in OS
    isolation without network, with a minimal environment and one writable
-   directory (`work/` for builds, `.venv` for the wheel install and probe).
+   directory (`work/` for builds, `.venv` for the wheel install and probe); builds
+   MUST use the image's pinned build environment (`AUTOHUB_SDD_BUILD`) without build
+   isolation.
    Check: [test_runtime_install.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_linux_sandbox_unshares_network_and_binds_one_writable_directory`, `test_sources_build_in_the_sandbox_offline_and_wheels_install_hashed`, `test_builds_write_only_work_and_the_wheel_install_runs_sandboxed`, `test_later_sandboxes_cannot_write_the_staging_root`, `test_probe_and_install_write_only_the_venv_and_read_the_hub_prefix`; [test_lock_runtime.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py), `test_source_build_hook_cannot_reach_the_network_or_credentials`.
 10. **Hub-authored pin**: WHEN an install finishes, Hub MUST write `pin.json` with
     the identity and interpreter prefix it computed itself, never values reported
@@ -203,7 +209,7 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
 
 ### Evaluated commit and selection
 
-The evaluated commit is the base for Planning start admission, the PR head for
+The evaluated commit (rule 1) is the base for Planning and Development start admission, the PR head for
 inspection, decisions and final lint, the milestone ref for previews and batches,
 the operator checkout for the SDK bridge and the default-branch head for runtime
 status. Selection reads root `pyproject.toml` (at most 1 MiB) and `uv.lock` (at
@@ -256,7 +262,8 @@ Install steps, in a fresh staging directory:
    evict over the cap.
 
 The Hub-process Git fetches (step 1) run with the Hub environment plus the connector
-credential header, with hooks and fsmonitor disabled. The uv and sandboxed install
+credential header, with `HOME` set to the staging directory, system Git configuration,
+terminal prompts and credential helpers disabled, and hooks and fsmonitor off. The uv and sandboxed install
 subprocesses (steps 2-6) receive only `PATH`, `HOME`, `TMPDIR`, `LANG`, `NO_COLOR` and
 uv settings (`UV_NO_CONFIG`, `UV_PYTHON_DOWNLOADS`, `UV_CACHE_DIR`, and
 `UV_OFFLINE` for sandboxed builds and installs). `pin.json` holds `provider`
@@ -298,7 +305,7 @@ row projects as `COMMAND_FAILED` with category `runtime`. `SDD_PROFILE_INVALID` 
   after the head was read; an unreadable head reports `failed` whatever the probe),
   `identity` and `lock_sha256` (both the identity), `bundles` and `revisions`
   (from the entry's pin when `ready`) and `lock_detail` (catalog text when
-  `failed`, including an unreadable head).
+  `failed`, or a fixed Hub message when the head cannot be read or inspected).
 
 The lock-state read may start a background install. A passing probe establishes
 interpreter startup inside isolation on that serving host, not a repository
