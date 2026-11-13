@@ -6,7 +6,8 @@
 	import { countedPage, responseData } from '$lib/api/pagination';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
-	import { Badge, type BadgeVariant } from '$lib/components/ui/badge';
+	import { Badge } from '$lib/components/ui/badge';
+	import { getScheduleJobStatusPresentation } from './presentation';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import {
@@ -17,15 +18,7 @@
 		TableHead,
 		TableCell
 	} from '$lib/components/ui/table';
-	import {
-		History,
-		RefreshCw,
-		Search,
-		CheckCircle2,
-		XCircle,
-		Clock,
-		AlertTriangle
-	} from '@lucide/svelte';
+	import { History, RefreshCw, Search } from '@lucide/svelte';
 
 	type ScheduleJob = components['schemas']['ScheduleJobRead'];
 
@@ -50,20 +43,6 @@
 				),
 			offset
 		);
-	}
-
-	// A pending job is routine scheduler work, not operator debt, so it stays neutral (outline).
-	function getStatusVariant(status: string): { variant: BadgeVariant; icon: typeof Clock } {
-		switch (status) {
-			case 'success':
-				return { variant: 'success', icon: CheckCircle2 };
-			case 'failure':
-				return { variant: 'destructive', icon: XCircle };
-			case 'pending':
-				return { variant: 'outline', icon: Clock };
-			default:
-				return { variant: 'secondary', icon: AlertTriangle };
-		}
 	}
 
 	onMount(() => {
@@ -143,7 +122,7 @@
 					</TableRow>
 				{:else}
 					{#each jobs as job (job.id)}
-						{@const st = getStatusVariant(job.status)}
+						{@const st = getScheduleJobStatusPresentation(job.status)}
 						<TableRow
 							class="grid min-w-0 gap-1 p-3 md:table-row md:p-0 [&>td]:min-w-0 [&>td]:whitespace-normal"
 						>
@@ -151,9 +130,9 @@
 								{job.name}
 							</TableCell>
 							<TableCell>
-								<Badge variant={st.variant} class="capitalize">
+								<Badge variant={st.variant}>
 									<st.icon aria-hidden="true" />
-									{job.status}
+									{st.label}
 								</Badge>
 								{#if job.error_message}
 									<p class="mt-1 max-w-md text-xs whitespace-normal text-destructive">

@@ -244,10 +244,7 @@
 				{#if loading && configs.length === 0}
 					<TableRow>
 						<TableCell colspan={6} class="h-32 text-center text-muted-foreground">
-							<div class="flex items-center justify-center gap-2">
-								<RefreshCw class="size-4 animate-spin" />
-								<span>Loading configurations...</span>
-							</div>
+							<span role="status">Loading configurations...</span>
 						</TableCell>
 					</TableRow>
 				{:else if loadError}

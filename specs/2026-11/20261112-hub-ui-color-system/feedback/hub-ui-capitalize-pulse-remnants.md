@@ -8,7 +8,7 @@ target: docs/steering/visual-style.md
 origin: agent
 severity: noise
 recurring: false
-status: open
+status: resolved
 created_at: 2026-11-13
 ---
 
@@ -39,3 +39,22 @@ state badge), ScheduleJobsView.svelte (job status badge), AttemptHistoryDialog.s
 ProjectConnectionCheckDialog.svelte (status text).
 animate-pulse: RunDecisionsDialog.svelte and SddDecisionHistory.svelte loading text.
 ```
+
+## Disposition
+
+Resolved on branch `uiux-label-motion-cleanup` (hub-ui follow-up outside SDD, by explicit user instruction).
+
+- Labels: `modules/hub-ui/src/lib/labels.ts` adds `displayLabel`, a written label map lookup with a sentence-case
+  fallback. Schedule job status (`ScheduleJobsView`, `DashboardView` recent jobs) shares
+  `features/scheduling/schedule-jobs/presentation.ts`; attempt and question states use `attemptStateLabel` and
+  `questionStateLabel` in `features/project-management/pipeline-runs/presentation.ts`; the connection check status
+  maps `VerificationStatus` in `ProjectConnectionCheckDialog`. Underlying API values are unchanged.
+- Motion: `RunDecisionsDialog` and `SddDecisionHistory` loading text no longer pulses; the attempt history and
+  schedule config loading placeholders drop their spinning icon and read as static `role="status"` text. A spinning
+  icon remains only on a busy Refresh control.
+- `docs/steering/visual-style.md` states both rules generally, without the "new or changed" qualifier.
+- Verification: `just test-ui` passed (54 files, 414 tests, including new `labels.test.ts` and presentation tests),
+  `just lint` and `just check` passed.
+- Remaining outside this branch: `AppShell.svelte` still renders the signed-in user's name with `capitalize`; that
+  file is owned by a parallel branch and was not touched here. Drop the class there (or reopen this record) so
+  `rg "capitalize|animate-pulse" modules/hub-ui/src` outside `src/lib/components/ui/` finds nothing.

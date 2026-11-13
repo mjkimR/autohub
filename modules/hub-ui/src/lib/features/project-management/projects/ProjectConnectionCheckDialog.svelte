@@ -6,6 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Badge } from '$lib/components/ui/badge';
+	import { displayLabel } from '$lib/labels';
 	import {
 		Dialog,
 		DialogContent,
@@ -27,6 +28,13 @@
 
 	type Project = components['schemas']['ProjectRead'];
 	type ConnectionCheck = components['schemas']['ConnectionCheck'];
+	const VERIFICATION_STATUS_LABELS: Record<components['schemas']['VerificationStatus'], string> = {
+		passed: 'Passed',
+		waiting: 'Waiting',
+		failed: 'Failed',
+		blocked: 'Blocked',
+		closed: 'Closed'
+	};
 	let {
 		project: checkingProject,
 		onclose,
@@ -191,8 +199,8 @@
 						<div class="grid grid-cols-2 gap-2 text-muted-foreground">
 							<div>Head: <span class="font-mono">{pull.head_sha.slice(0, 7)}</span></div>
 							<div>
-								Status: <span class="font-semibold text-foreground capitalize"
-									>{pull.result.status}</span
+								Status: <span class="font-semibold text-foreground"
+									>{displayLabel(pull.result.status, VERIFICATION_STATUS_LABELS)}</span
 								>
 							</div>
 						</div>

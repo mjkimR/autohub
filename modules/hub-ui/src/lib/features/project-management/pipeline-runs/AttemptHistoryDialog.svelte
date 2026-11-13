@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import AttemptTimeline from './AttemptTimeline.svelte';
+	import { attemptStateLabel } from './presentation';
 	import { api, type components } from '$lib/api';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
 	import { responseData } from '$lib/api/pagination';
@@ -14,7 +15,7 @@
 		DialogFooter,
 		DialogDescription
 	} from '$lib/components/ui/dialog';
-	import { RefreshCw, GitBranch, Clock, ExternalLink, History, Key } from '@lucide/svelte';
+	import { GitBranch, Clock, ExternalLink, History, Key } from '@lucide/svelte';
 
 	type PipelineRun = components['schemas']['PipelineRunRead'];
 	type ExecutionAttempt = components['schemas']['ExecutionAttemptRead'];
@@ -116,10 +117,12 @@
 				</p>
 			{/if}
 			{#if loadingAttempts}
-				<div class="flex h-32 items-center justify-center text-muted-foreground">
-					<RefreshCw class="size-5 animate-spin" />
-					<span class="ml-2 text-sm">Loading attempts...</span>
-				</div>
+				<p
+					role="status"
+					class="flex h-32 items-center justify-center text-sm text-muted-foreground"
+				>
+					Loading attempts...
+				</p>
 			{:else if loadError}
 				<LoadError message={loadError} retry={loadAttempts} />
 			{:else if attempts.length === 0}
@@ -170,8 +173,8 @@
 										{attempt.kind}
 									</span>
 								</div>
-								<Badge variant="outline" class="capitalize">
-									{attempt.state}
+								<Badge variant="outline">
+									{attemptStateLabel(attempt.state)}
 								</Badge>
 							</div>
 

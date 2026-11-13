@@ -29,8 +29,9 @@ or neutral grey, so an exception is the most salient element on a screen. Token 
   for work that is held for the operator.
 - Use `success`, `info` and `warning` for routine signals. Their chroma stays low so they never outrank attention or
   failure.
-- Do not give a new or changed live or routine indicator motion, such as `animate-pulse`. Show liveness with an
-  icon and text. Existing loading text that still pulses is tracked in `FB-hub-ui-capitalize-pulse-remnants`.
+- Do not give a live or routine indicator or loading text motion, such as `animate-pulse`. Show liveness with an
+  icon and text, and loading with static `role="status"` text. A spinning icon is reserved for the control whose
+  action is in flight, such as a busy Refresh button.
 - Use theme tokens and component variants, not the raw Tailwind palette (`modules/hub-ui/README.md`, Design-system
   lint).
 
@@ -57,9 +58,9 @@ it.
   screen reader and in both themes.
 - Give each state of one status family a distinct icon. The PR run state badge maps each state to one variant, icon
   and label in `modules/hub-ui/src/lib/features/project-management/pipeline-runs/presentation.ts`.
-- Write a new or changed label, and every casing-sensitive label (one with an acronym such as CI), in display case
-  in code, not with CSS `capitalize`. Existing labels that still use `capitalize` are tracked in
-  `FB-hub-ui-capitalize-pulse-remnants`.
+- Write every label in display case in code, not with CSS `capitalize`, so acronyms such as CI, PR, SDD and AI keep
+  their case. Map raw state or status values to labels with `displayLabel` (`modules/hub-ui/src/lib/labels.ts`)
+  and a written label map, kept beside the presentation mapping when several surfaces show the same values.
 
 ## Contrast
 

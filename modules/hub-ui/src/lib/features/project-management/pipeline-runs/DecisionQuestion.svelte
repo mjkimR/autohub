@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { MessageSquare, Check } from '@lucide/svelte';
+	import { questionStateLabel } from './presentation';
 	let {
 		question,
 		actionable = false,
@@ -23,7 +24,7 @@
 		<span class="flex items-center gap-2"
 			><MessageSquare class="size-4" />{actionable ? 'Your input is needed' : 'Question'}</span
 		>
-		<Badge variant="outline" class="capitalize">{question.state}</Badge>
+		<Badge variant="outline">{questionStateLabel(question.state)}</Badge>
 	</div>
 	<p class="text-base leading-relaxed font-medium break-words whitespace-pre-wrap">
 		{question.question}
