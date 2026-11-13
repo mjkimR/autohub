@@ -1,7 +1,7 @@
 ---
 id: CAP-PROJ-project-connections
 title: Project connections and connector credentials
-summary: "Hub projects bind normalized GitHub repositories to connector references, verification and automation policy. Connector secrets remain encrypted and omitted from public configuration, while revisions fence project edits and owned dispatch schedules follow the connection."
+summary: "Hub projects bind normalized repositories to connector references, verification and automation policy. Secrets stay encrypted, revisions fence edits, and schedule reads expose verified project ownership without changing mutation authority."
 area: projects
 status: active
 usecases:
@@ -107,6 +107,8 @@ The dispatch interval defaults to 60 seconds and accepts 30–3600 seconds. A
 disconnected project has no newly created dispatcher. Reconnection reuses an
 existing dispatcher and retains `last_run_at`; the schedule's enabled state follows
 both project enablement and connection presence.
+
+Generic schedule reads identify retained project dispatch and CI observation configurations through owner metadata. Dispatch remains protected; observation remains generically editable. Retained connection-test configurations resolve their project through the test ID rather than a bounded browser test-history read. Project filtering uses these verified owners before pagination. `CAP-EXEC-scheduling-maintenance` owns the full precedence, malformed-reference and query-budget contract. Checks: `modules/hub/tests/integration/features/scheduling/schedule_configs/test_owners.py` and `modules/hub-ui/src/lib/features/project-management/projects/ProjectDetailView.integration.test.ts`.
 
 The credential patch boundary is determined by fields actually supplied in the
 request. Omitting `credentials` preserves existing ciphertext; supplying it

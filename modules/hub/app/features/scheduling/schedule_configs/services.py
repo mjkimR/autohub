@@ -6,6 +6,7 @@ from uuid import UUID
 
 from app.common.utils.calc_schedule import calc_next_run as _calc_next_run_util
 from app.features.scheduling.schedule_configs.models import ScheduleConfig
+from app.features.scheduling.schedule_configs.ownership import owner_kind
 from app.features.scheduling.schedule_configs.repos import ScheduleConfigRepository
 from app.features.scheduling.schedule_configs.schemas import (
     ScheduleConfigCreate,
@@ -125,16 +126,13 @@ class ManagedScheduleHook(
 
     @staticmethod
     def _refuse_owned_task(task_func: str | None) -> None:
-        from app.features.project_management.connection_tests.models import TEST_TASK
         from app.features.project_management.projects.errors import ProjectError
-        from app.features.project_management.projects.repos import PROJECT_DISPATCH_TASK
-        from app.features.scheduling.schedule_configs.system import MAINTENANCE_TASK
 
-        if task_func == MAINTENANCE_TASK:
+        if task_func and owner_kind(task_func) == "system_maintenance":
             raise ProjectError(409, "System maintenance is managed by Auto Hub and cannot be changed")
-        if task_func == PROJECT_DISPATCH_TASK:
+        if task_func and owner_kind(task_func) == "project_dispatch":
             raise ProjectError(409, "This dispatch schedule is managed by a project; edit the project settings instead")
-        if task_func == TEST_TASK:
+        if task_func and owner_kind(task_func) == "connection_test":
             raise ProjectError(409, "This schedule is managed by a connection test; use the project's Connections tab")
 
     def create_prepare_fields(

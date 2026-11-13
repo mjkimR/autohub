@@ -1,9 +1,12 @@
 import functools
 from datetime import datetime
+from uuid import UUID
 
 from app_layer_base.base.schemas.mixin import TimestampSchemaMixin, UUIDSchemaMixin
 from croniter import CroniterBadCronError, croniter
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from .ownership import OwnerKind
 
 
 @functools.lru_cache(maxsize=1024)
@@ -101,7 +104,27 @@ class ScheduleConfigPatch(BaseModel):
         return self
 
 
+class ScheduleOwner(BaseModel):
+    kind: OwnerKind = "operator"
+    project_id: UUID | None = None
+    object_id: UUID | None = None
+
+
 class ScheduleConfigRead(UUIDSchemaMixin, TimestampSchemaMixin, ScheduleConfigBase):
+    @model_validator(mode="after")
+    def validate_trigger(self) -> "ScheduleConfigRead":
+        # Existing PATCH can clear both triggers, leaving a manual-only persisted configuration.
+        if self.cron_expression is None and self.interval_seconds is None:
+            return self
+        if self.cron_expression is not None and self.interval_seconds is not None:
+            raise ValueError("cron_expression and interval_seconds are mutually exclusive.")
+        if self.cron_expression is not None:
+            _validate_cron_expression(self.cron_expression)
+        return self
+
+    # Defaults preserve internal dispatcher DTO construction; public CRUD reads always project.
+    owner: ScheduleOwner = Field(default_factory=ScheduleOwner)
+    generic_mutation_allowed: bool = True
     last_run_at: datetime | None = Field(description="Timestamp of the most recent execution.")
     next_run_at: datetime | None = Field(description="Timestamp of the next scheduled execution.")
     model_config = ConfigDict(from_attributes=True)

@@ -1,0 +1,21 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T08:22:52.388017Z'
+status: completed
+summary: Independent review found one project-options response race; owner/filter/authority checks otherwise pass
+findings:
+- issue: Older project-option requests overwrite newer results
+  evidence: 'ScheduleConfigsView.svelte:73-85 lacks request generation. Independent ignored review-01/options-race.test.ts failed2 tests: older error replaces newer success, older success removes Current project option.'
+  failure_condition: Initial/Refresh/Retry reads overlap and an older request settles after the latest
+  suggested_action: Fence both success and error by request generation and retain regression coverage
+  resolution: open
+  severity: P2
+assumptions:
+- Codex isolation emulated with absolute cwd, unchanged HEAD/status and temporary-index snapshot audit
+checks:
+  tests: FAIL independent ignored project-options probe 2 failures
+diff_scope:
+  base: e3be22b459230c1288c7d5b48161b11d345392ff
+  head: aa77391f4e122c5cf1ee6d78d68b109b44a69fc2

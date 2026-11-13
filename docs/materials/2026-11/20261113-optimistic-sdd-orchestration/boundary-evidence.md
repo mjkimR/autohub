@@ -35,7 +35,7 @@ architecture, use-case and UX consumers; completed specs retain history.
 
 The independent proposal anchors besides this request are
 `PROP-jules-antigravity-migration`, `SPEC-owed-counts-error-reason`,
-`SPEC-run-origin-links`, `PROP-schedule-config-ownership`,
+`SPEC-run-origin-links`, `SPEC-schedule-config-ownership`,
 `SPEC-sidebar-overflow-cues` and `SPEC-updated-at-maintenance`.
 There are six, not counting each proposal's target blueprint as separate work.
 The proposal list/search and body inspection found no open dedicated runtime or

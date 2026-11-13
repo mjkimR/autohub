@@ -1,7 +1,7 @@
 ---
 id: UX-project-detail
 title: Project Detail
-summary: "Inspect one project connection and what it owes the operator, and move between its Work sections (overview, PR runs, Work Plans, repository) and Setup sections (connections, automation with every owned schedule, settings)."
+summary: "Inspect one project connection and what it owes the operator, and move between its Work sections (overview, PR runs, Work Plans, repository) and Setup sections (connections, automation with server-filtered owned schedules, settings)."
 area: projects
 element: screen
 status: active
@@ -70,7 +70,7 @@ On a narrow screen the two groups stack as two rows.
   - Automation (`automation`), top to bottom:
     - Project connection (automation policy): the `UX-project-settings` automation region, including the dispatch
       interval.
-    - Schedule configuration (owned schedules): every scheduler entry the project owns, grouped by owner kind.
+    - Schedule configuration (owned schedules): the server project-filtered paginated response, grouped by owner kind. This read performs no cross-project scan or separate Connection test lookup. Agent-owned entries are excluded from these groups because the dedicated panel loads them separately.
       - Dispatch: the project's dispatch schedule with cadence, next run and status. It follows the dispatch interval
         and has no controls of its own. Without a GitHub connection the group explains that it appears once one is
         saved.
@@ -139,7 +139,7 @@ Source inspection:
 - `modules/hub-ui/src/lib/features/project-management/projects/ProjectOverview.svelte`
 
 Inspected check: `ProjectDetailView.integration.test.ts` covers the Work/Setup grouping and its `?tab=` URLs, the
-breadcrumb, owned-schedule filtering by project, and pausing, editing, creating and deleting CI observation schedules
+breadcrumb, the exact project_id schedule request without a separate test-history read, owner-kind partitioning, and pausing, editing, creating and deleting CI observation schedules
 in the Automation section. `ProjectExceptionStrip.integration.test.ts` covers the strip's populated, clear,
 failed-runs-only, loading and error states, the link of every kind, the `project` filter of `View in Attention`, one
 counts read per load and one more per section change. Content and transitions are derived from source inspection and mocked-API screenshots;

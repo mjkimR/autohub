@@ -3,7 +3,7 @@ id: PROP-schedule-config-ownership-target
 title: Schedule configuration ownership Living Spec targets
 summary: "Draft schedule ownership read contract, project filter and owner-aware screen changes for the generic list and project Automation region."
 status: draft
-proposal: PROP-schedule-config-ownership
+proposal: SPEC-schedule-config-ownership
 created_at: 2026-11-13
 targets:
   - file: docs/capabilities/execution/CAP-EXEC-scheduling-maintenance.md
@@ -16,7 +16,7 @@ targets:
 
 # [PROP-schedule-config-ownership-target] Schedule ownership Living Spec targets
 
-This draft belongs to `PROP-schedule-config-ownership`. It describes intended documents after Development;
+This draft belongs to `SPEC-schedule-config-ownership`. It describes intended documents after Development;
 current Living Spec files are unchanged. Visual treatment follows `docs/steering/visual-style.md`.
 
 ## Contract ledger
