@@ -111,7 +111,8 @@ their treatment to be reconsidered.
 
 - **Kind**: latency and capacity constraint.
 - **Boundary**: the first evaluation of a lock on an instance installs its runtime
-  in the background and is refused with `SDD_RUNTIME_PREPARING` meanwhile. The
+  in the background; the caller waits up to 60 seconds and is refused with
+  `SDD_RUNTIME_PREPARING` if it is still running. The
   cache is per instance, lives on `/tmp` (in-memory on Cloud Run) and is lost on
   restart. A cold install measured 11-18 seconds, a 29 MiB entry and a 153 MiB
   transient peak at cpu=1, 1 GiB in a local container, not on the serving host.
@@ -119,8 +120,7 @@ their treatment to be reconsidered.
   retryable refusal, and a native run whose next head needs a cold install waits,
   keeping its state, until a later dispatcher tick finds the runtime installed or
   45 minutes pass and the run blocks with a remediation reason.
-  Request-based CPU throttling can lengthen an
-  install. Many distinct locks evict each other above `AUTOHUB_SDD_CACHE_BYTES`.
+  Request-based CPU throttling stalls an install while no request waits on it. Many distinct locks evict each other above `AUTOHUB_SDD_CACHE_BYTES`.
 - **Treatment**: callers retry `SDD_RUNTIME_PREPARING`; operators size
   `AUTOHUB_SDD_CACHE_BYTES` against instance memory. Revisit with a shared cache
   when cold installs dominate evaluation latency or instances multiply.

@@ -3,7 +3,9 @@
 A checkout scope registers its root and the project's connector token; nothing is selected or installed until a
 devkit command needs it, so Git-only operations never wait for a runtime. A complete cache entry is leased for the
 rest of the scope. A missing entry starts one background install per identity, which a caller's deadline cannot
-cancel, and the caller receives a retryable ``SDD_RUNTIME_PREPARING`` refusal meanwhile.
+cancel. The caller waits up to ``INSTALL_WAIT_SECONDS`` for it, because a host that allocates CPU only while a
+request is in flight (Cloud Run's default) barely advances an install no request is waiting on; after that wait it
+receives a retryable ``SDD_RUNTIME_PREPARING`` refusal.
 """
 
 import asyncio
@@ -37,6 +39,9 @@ FAILURES = {
     "SDD_ISOLATION_UNAVAILABLE": "SDD evaluation requires an isolated runner (bubblewrap on Linux, sandbox-exec on macOS)",
 }
 PREPARING = "Hub is installing the repository's locked devkit runtime; retry shortly."
+# A cold install measured 11-18 seconds on the service shape; a bounded wait keeps the request (and its CPU) alive.
+INSTALL_WAIT_SECONDS = 60.0
+POLL_SECONDS = 1.0
 
 
 @dataclass
@@ -84,16 +89,39 @@ def install_task(identity: str) -> asyncio.Task | None:
     return _installs.get(identity)
 
 
+def _state(selection: Selection, token: str | None, *, start: bool) -> str:
+    if cache.complete(selection.identity):
+        return "ready"
+    if code := cache.failure(selection.identity, cache.token_scope(token)):
+        return code
+    if start:
+        _start_install(selection, token)
+    return "preparing"
+
+
 async def resolve(source: RuntimeSource, *, start: bool = True) -> tuple[Selection, str]:
     """The selection and its cache state (``ready``, ``preparing`` or a failure code); may start an install."""
     selection = await asyncio.to_thread(select, source.root)
-    if cache.complete(selection.identity):
-        return selection, "ready"
-    if code := cache.failure(selection.identity, cache.token_scope(source.token)):
-        return selection, code
-    if start:
-        _start_install(selection, source.token)
-    return selection, "preparing"
+    return selection, _state(selection, source.token, start=start)
+
+
+async def _await_install(source: RuntimeSource) -> tuple[Selection, str]:
+    """Resolve, then wait up to INSTALL_WAIT_SECONDS while the install is preparing; never cancels the install."""
+    selection, state = await resolve(source)
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + INSTALL_WAIT_SECONDS
+    while state == "preparing" and (remaining := deadline - loop.time()) > 0:
+        task = install_task(selection.identity)
+        if task is not None and not task.done():
+            await asyncio.wait({task}, timeout=remaining)  # asyncio.wait leaves the shared task running
+        if task is None or _claimed_elsewhere(task):  # another process installs: poll, never spin on the claim
+            await asyncio.sleep(max(0.0, min(POLL_SECONDS, deadline - loop.time())))
+        state = _state(selection, source.token, start=True)
+    return selection, state
+
+
+def _claimed_elsewhere(task: asyncio.Task) -> bool:
+    return task.done() and not task.cancelled() and task.exception() is None and task.result() is False
 
 
 async def ensure_runtime() -> Path:
@@ -101,7 +129,7 @@ async def ensure_runtime() -> Path:
     source = current_source()
     if source.home is not None:
         return source.home
-    selection, state = await resolve(source)
+    selection, state = await _await_install(source)
     if state == "preparing":
         raise ProjectError(503, PREPARING, code="SDD_RUNTIME_PREPARING")
     if state != "ready":

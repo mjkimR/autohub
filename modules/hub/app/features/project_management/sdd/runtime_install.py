@@ -19,6 +19,7 @@ import os
 import re
 import shutil
 import signal
+import time
 from contextlib import suppress
 from pathlib import Path
 
@@ -316,19 +317,34 @@ def _clean(staged: Path) -> None:
             path.unlink(missing_ok=True)
 
 
+def _progress(identity: str):
+    """Log install steps with the identity prefix and elapsed seconds; never tokens, paths or command output."""
+    started = time.monotonic()
+
+    def step(name: str) -> None:
+        logger.info("SDD runtime %s: %s after %.1fs", identity[:12], name, time.monotonic() - started)
+
+    return step
+
+
 async def install(selection: Selection, token: str) -> Path:
     """Build the runtime for ``selection`` into a staging directory and publish it; the caller holds the claim."""
     staged = cache.staging(selection.identity)
+    step = _progress(selection.identity)
     try:
         (staged / WORK).mkdir()
         packages = await fetch_sources(selection, staged, token)
+        step("sources fetched")
         packages.update(stage_paths(selection, staged))
         venv = await install_wheels(selection, staged)
+        step("registry wheels installed")
         venv_identity = _identity(venv)  # recorded before any sandbox could reach the venv
         await build_sources(packages, staged, venv, venv_identity)
+        step("sources built")
         await write_pin(selection, staged, venv, venv_identity)
         _clean(staged)
         target = cache.publish(selection.identity, staged)
+        step("published")
     except BaseException:
         shutil.rmtree(staged, ignore_errors=True)
         raise
@@ -345,10 +361,13 @@ async def build(selection: Selection, token: str) -> bool:
     scope = cache.token_scope(token)
     try:
         if not cache.complete(selection.identity):
+            logger.info("SDD runtime %s: install started", selection.identity[:12])
             await install(selection, token)
     except InstallFailure as exc:
+        logger.warning("SDD runtime %s: install failed (%s)", selection.identity[:12], exc.code)
         cache.record_failure(selection.identity, exc.code, scope)
     except ProjectError as exc:  # no isolation runner: the same refusal later callers will see
+        logger.warning("SDD runtime %s: install refused (%s)", selection.identity[:12], exc.code)
         cache.record_failure(selection.identity, exc.code or "SDD_RUNTIME_INSTALL_FAILED", scope)
     except Exception as exc:  # any other failure still backs off; only its type is logged, never its text
         logger.warning("SDD runtime install failed (%s)", type(exc).__name__)

@@ -76,8 +76,9 @@ entrypoints:
   branch is created; the use case ends until the repository or connector is fixed.
    Interface: `UX-sdd-proposals`.
 
-- **2f.** The base runtime is still being installed: Hub refuses with HTTP
-  503 / `SDD_RUNTIME_PREPARING` before any branch is created. Replaying the same
+- **2f.** The base runtime is still being installed after Hub waited up to 60
+  seconds for it: Hub refuses with HTTP 503 / `SDD_RUNTIME_PREPARING` before any
+  branch is created. Replaying the same
   request returns that recorded refusal; the operator starts the activity again
   after the install and the use case resumes at step 1.
    Interface: `UX-sdd-proposals`.
@@ -210,7 +211,8 @@ admission guarantees.
 ### SDD-START-12: Report a runtime still being prepared
 
 - **Covers**: 2f.
-- **Given**: No cached runtime exists for the base's lock identity.
+- **Given**: No cached runtime exists for the base's lock identity and its
+  install takes longer than the 60-second wait.
 - **When**: The operator starts Planning or Development.
 - **Then**: HTTP 503 `SDD_RUNTIME_PREPARING` is returned with one install started
   and no activity branch or PR exists.

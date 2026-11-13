@@ -56,12 +56,12 @@ above `AUTOHUB_SDD_CACHE_BYTES` (256 MiB by default). The cache is per instance 
 does not survive a restart; on Cloud Run `/tmp` is in-memory and counts against
 the instance's memory.
 
-An install runs as a background task in the worker process that claimed it;
-callers receive `SDD_RUNTIME_PREPARING` until it completes. With request-based
-CPU allocation, Cloud Run throttles CPU between requests and can slow that task;
-`SPEC-repo-locked-sdd-runtime` assumes scheduled dispatcher requests let it
-progress, which has not been observed on the serving host. The deployment does not
-change CPU allocation for it.
+An install runs as a background task in the worker process that claimed it. A
+caller that needs it waits up to 60 seconds and receives `SDD_RUNTIME_PREPARING`
+only if it is still running then. With request-based CPU allocation, Cloud Run
+throttles CPU between requests: on the serving host an install no request waited
+on did not finish within minutes, so the waiting request is what keeps it on CPU.
+The deployment does not change CPU allocation for it.
 
 Constraints:
 

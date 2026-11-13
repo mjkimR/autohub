@@ -133,9 +133,11 @@ the host probe after every deploy. The image build needs no source credential. S
 the [deployment procedure](cloud-run-deployment.md) for serving configuration.
 
 A cold install runs as a background task in one worker process and measured 11-18
-seconds in a local container shaped like the service (cpu=1, 1 GiB). With
-request-based CPU allocation, Cloud Run throttles CPU between requests, which can
-lengthen it; this has not been measured on the serving host.
+seconds in a local container shaped like the service (cpu=1, 1 GiB). The request
+that needs it waits up to 60 seconds, because with request-based CPU allocation
+Cloud Run throttles CPU between requests and an install no request waits on barely
+advances. Logs record `SDD runtime <identity prefix>: install started`, each step
+with its elapsed seconds, and a failure code; they carry no token or command output.
 
 The bridge additionally needs a separately provisioned clean checkout whose own
 root `uv.lock` declares devkit. Its allowlisted target and managed-machine setup
