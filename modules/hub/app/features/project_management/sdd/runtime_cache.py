@@ -21,7 +21,9 @@ from contextlib import contextmanager
 from pathlib import Path
 
 DEFAULT_CAP_BYTES = 256 * 1024 * 1024  # about eight 29 MiB entries; see the spec materials
-FAILURE_SECONDS = 60
+# Longer than any scheduled observation cadence of the bridge or default dispatch, so an observer sees the failure
+# instead of restarting the install on every tick; a fixed setup is retried once it expires.
+FAILURE_SECONDS = 600
 STAGING_PREFIX = ".staging-"
 
 

@@ -85,9 +85,10 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
    refuse the caller with HTTP 503 `SDD_RUNTIME_PREPARING`.
    Check: [test_runtime_cache.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_cache.py), `test_only_one_process_claims_an_identity`; [test_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_cold_cache_starts_one_install_and_reports_preparing`; [test_runtime_install.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_a_held_claim_skips_the_install`.
    A running native run that observes this refusal MUST keep its state and be inspected again on a later
-   dispatcher tick, and the SDK bridge MUST report it as the retryable `bridge-unavailable`, never as a
-   terminal evaluation failure.
-   Check: [test_native.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_native.py), `test_preparing_runtime_keeps_the_run_and_retries_later`; [test_contracts.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_contracts.py), `test_bridge_evidence_reports_a_preparing_runtime_as_retryable`.
+   dispatcher tick until it has been preparing for 20 minutes, then block with a remediation reason; the SDK
+   bridge MUST report only this refusal as the retryable `bridge-unavailable` and keep other evaluation
+   refusals terminal.
+   Check: [test_native.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_native.py), `test_preparing_runtime_keeps_the_run_and_retries_later`, `test_runtime_preparing_beyond_the_limit_blocks_the_run`; [test_contracts.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_contracts.py), `test_bridge_evidence_reports_a_preparing_runtime_as_retryable`, `test_bridge_worker_retries_preparing_and_fails_other_evaluation_errors`, `test_bridge_evidence_keeps_host_misconfiguration_terminal`.
 7. **Caller-independent install**: WHEN a caller's deadline expires during an
    install, Hub MUST continue the install and publish the entry only by renaming
    a complete staging directory to the entry path.
@@ -111,7 +112,7 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
     Check: [test_runtime_install.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_symlinked_build_output_is_refused`, `test_a_swapped_venv_after_the_probe_fails_the_install`, `test_hub_never_acts_below_the_venv_after_a_late_swap`; [test_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_runtime_pin_must_name_its_own_entry`, `test_symlinked_entry_venv_is_refused`.
 12. **Install failure back-off**: IF an install fails, THEN Hub MUST record its
     catalog code (`SDD_RUNTIME_SOURCE_UNAVAILABLE` for a refused fetch, else
-    `SDD_RUNTIME_INSTALL_FAILED`) for 60 seconds, scoped to a hash of the credential
+    `SDD_RUNTIME_INSTALL_FAILED`) for 10 minutes, scoped to a hash of the credential
     used, and refuse callers with that credential with HTTP 422 and that code
     without reinstalling.
     Check: [test_runtime_install.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_unreadable_source_records_a_failure_without_an_entry`, `test_malformed_inventory_records_a_failure`, `test_unexpected_errors_still_back_off`; [test_runtime_cache.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_cache.py), `test_failure_markers_expire`, `test_failure_markers_are_scoped_to_the_credential`; [test_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_recorded_failure_is_reported_without_reinstalling`.
@@ -231,7 +232,7 @@ Hub reads neither `AUTOHUB_SDD_HOME` nor `AUTOHUB_SDD_PROFILES`.
 An entry `<cache>/<identity>` is complete once its `pin.json` exists. Sibling files
 are `<identity>.build` (exclusive install claim), `<identity>.lease` (shared
 evaluation lease; its modification time orders eviction) and
-`<identity>.failed-<scope>` (failure code for 60 seconds; `scope` is the first 16
+`<identity>.failed-<scope>` (failure code for 10 minutes; `scope` is the first 16
 hex characters of the credential's SHA-256). Staging directories are
 `.staging-<identity>-<random>`; the next claim holder removes staging that a
 crashed install left. Entries are content-addressed and shared by every project of

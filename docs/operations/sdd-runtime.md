@@ -76,12 +76,12 @@ returns them as HTTP errors; a running native run blocks with them.
 
 | Reported condition | Operator action |
 | --- | --- |
-| `SDD_RUNTIME_PREPARING` (HTTP 503) | Wait for the install and retry; a running native run keeps its state and is inspected again on later dispatcher ticks |
+| `SDD_RUNTIME_PREPARING` (HTTP 503) | Wait for the install and retry; a running native run keeps its state and is inspected again on later dispatcher ticks, and blocks after 20 minutes of preparing until it is resumed |
 | `SDD_RUNTIME_UNLOCKED` | Commit a root `uv.lock` current with a `pyproject.toml` that declares `devkit-spec` |
 | `SDD_RUNTIME_SOURCE_UNSUPPORTED` | Lock devkit packages only from PyPI wheels or exact `https://github.com/` revisions |
 | `SDD_RUNTIME_PYTHON_UNSUPPORTED` | Widen `requires-python` to include Python 3.13 |
-| `SDD_RUNTIME_SOURCE_UNAVAILABLE` | Grant the project's GitHub connector read access to each locked Git source; a request after the 60-second failure marker expires starts a new install |
-| `SDD_RUNTIME_INSTALL_FAILED` | Check that registry packages provide wheels and Git sources build with hatchling; a request after the 60-second failure marker expires starts a new install |
+| `SDD_RUNTIME_SOURCE_UNAVAILABLE` | Grant the project's GitHub connector read access to each locked Git source; a request after the 10-minute failure marker expires starts a new install |
+| `SDD_RUNTIME_INSTALL_FAILED` | Check that registry packages provide wheels and Git sources build with hatchling; a request after the 10-minute failure marker expires starts a new install |
 | `SDD_RUNTIME_UNAVAILABLE` | Check that the host's `uv` binary runs and the cache directory is writable, then retry |
 | `SDD_ISOLATION_UNAVAILABLE` | Run on a Linux host with bubblewrap and user namespaces and repeat the host probe |
 | `SDD_BUNDLES_MISSING` | Add the packages providing the named bundles to the locked devkit group and commit `uv.lock` |

@@ -142,6 +142,23 @@ async def test_preparing_runtime_keeps_the_run_and_retries_later(client, run, mo
     assert [row["code"] for row in observed["sdd_progress"]["diagnostics"]] == ["SDD_RUNTIME_PREPARING"]
 
 
+async def test_runtime_preparing_beyond_the_limit_blocks_the_run(client, run, monkeypatch):
+    """Whatever the observation cadence, a runtime that never becomes available is surfaced as a block."""
+    from datetime import timedelta
+
+    from app.features.project_management.projects.errors import ProjectError
+    from app.features.project_management.sdd import progress
+
+    async def inspect(self, repository, spec_dir, pull, token, **kwargs):
+        raise ProjectError(503, "installing", code="SDD_RUNTIME_PREPARING")
+
+    monkeypatch.setattr(native.SddService, "inspect", inspect)
+    monkeypatch.setattr(progress, "PREPARING_LIMIT", timedelta(seconds=-1))
+    observed = await merge.advance(client, run)
+    assert observed["state"] == "blocked" and observed["pause_reason"] == progress.PREPARING_EXPIRED
+    assert "runtime_preparing_since" not in observed["sdd_progress"]  # a resume starts a fresh window
+
+
 async def test_resume_never_means_approval_and_reject_stops(client, run, github):
     waiting = await merge.advance(client, run)
     resumed, _ = await decide(client, waiting)

@@ -1,6 +1,6 @@
 """Native stage transitions under the existing PipelineRun lease and transaction."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import NAMESPACE_URL, uuid5
 
 from app.features.project_management.pipeline_runs.interaction_service import RunInteractionService
@@ -17,6 +17,13 @@ from .evidence import in_context
 from .gates import INTEGRATION_GATE, PLAN_ACCEPT_REQUEST
 from .services import SddService
 from .units import is_proposal, proposal_slug
+
+# Longer than a cold install's fetch, wheel and build timeouts; beyond it a preparing runtime is reported as failed.
+PREPARING_LIMIT = timedelta(minutes=20)
+PREPARING_EXPIRED = (
+    "The repository's locked devkit runtime did not become available within 20 minutes; check the runtime status "
+    "(SDD_RUNTIME_INSTALL_FAILED or SDD_RUNTIME_SOURCE_UNAVAILABLE) and resume after fixing it"
+)
 
 # What an agent is told about a warning. The human remediation of RECEIPT_STALE (commit a new receipt) would end
 # this run's contract mid-flight, so the agent is told to leave it to the operator instead.
@@ -320,8 +327,15 @@ class SddProgress:
         if pull.get("state") == "closed":
             await finish_closed_pull(self.repo, session, run, pull, now)
         elif observed.get("preparing"):
-            # Keep the run's state; the next dispatcher tick inspects again once the runtime is installed.
-            run.sdd_progress = {**(run.sdd_progress or {}), "diagnostics": observed.get("diagnostics", [])}
+            # Keep the run's state; the next dispatcher tick inspects again once the runtime is installed. A runtime
+            # that stays unavailable beyond PREPARING_LIMIT blocks the run whatever the observation cadence.
+            progress = {**(run.sdd_progress or {}), "diagnostics": observed.get("diagnostics", [])}
+            since = progress.setdefault("runtime_preparing_since", now.isoformat())
+            if as_utc(now) - as_utc(datetime.fromisoformat(since)) > PREPARING_LIMIT:
+                progress.pop("runtime_preparing_since")
+                progress["error"] = PREPARING_EXPIRED
+                run.state, run.pause_reason = "blocked", PREPARING_EXPIRED
+            run.sdd_progress = progress
         elif observed.get("error"):
             progress = dict(run.sdd_progress or {})
             progress["error"] = observed["error"]
