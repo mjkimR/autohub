@@ -2,7 +2,7 @@
 id: PROP-jules-antigravity-migration
 title: Migrate Jules integration to Antigravity Remote Agents
 summary: "Retire Jules integration and assess a supported Antigravity Remote Agents execution path while preserving existing session and delivery history."
-status: draft
+status: reviewing
 created_at: 2026-11-06
 target_area: capabilities/agents/
 priority: low
