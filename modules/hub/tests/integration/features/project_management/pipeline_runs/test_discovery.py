@@ -90,6 +90,18 @@ async def test_keyset_bounded_and_cursor_filters(client, project, github, sessio
         filtered = (await client.get(URL, params={**params, "limit": 1})).json()
         assert filtered["actionable_total_count"] == total, params
         assert bool(filtered["items"]) is bool(total)
+    other = await client.post(
+        "/api/v1/projects",
+        json={
+            "name": "Other",
+            "repository": "owner/other",
+            "github_connector_id": project["github_connector_id"],
+            "verification": scenarios.VERIFICATION,
+        },
+    )
+    assert other.status_code == 201
+    elsewhere = (await client.get(URL, params={"project_id": other.json()["id"]})).json()
+    assert elsewhere["items"] == [] and elsewhere["actionable_total_count"] == 0
     assert not set(r["key"] for r in first["items"]) & set(r["key"] for r in second["items"])
     assert not github.paths
     assert (await client.get(URL, params={"cursor": "broken"})).status_code == 422
