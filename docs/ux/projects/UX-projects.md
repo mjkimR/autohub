@@ -57,7 +57,9 @@ The route is `/projects`.
 - **loading**: table loading message; refresh is disabled while loading.
 - **error**: load error and unavailable table; Retry requests the list again.
 - **counts unknown**: the Needs-you cells show a neutral `—` while counts load or after the counts read fails; the
-  list itself stays usable. The fallback read's failure reason is the dash's tooltip.
+  list itself stays usable. Failed shared-store and fallback reads name their reason in the dash's tooltip.
+  Initial shared loading has no failure detail. A successful shared refresh clears the reason; while a retry is
+  pending, the previous settled count and reason remain until its response is accepted.
 
 ## 4. Interactions
 
@@ -80,6 +82,9 @@ Source inspection:
 Inspected check: `ProjectsView.integration.test.ts` asserts the Automation and Settings link targets and that the
 list offers no configure, schedule, agent-schedule or delete action. It also asserts the Needs-you column for
 populated, zero, unknown (loading) and failed counts, its link target, the shared shell store with no duplicate
-counts read on mount and Refresh going through that store, and the fallback's one counts read per load that search
+counts read on mount and Refresh going through that store, both responsive shared-failure tooltips naming the API
+reason while retaining a neutral dash, and the fallback's one counts read per load that search
 reuses and Refresh repeats. The content and transitions are derived from
-source inspection. This document does not assert a browser walkthrough or live GitHub/provider verification.
+source inspection. `owed-counts.test.ts` covers bounded failure reasons, API-error precedence, initial loading,
+pending retry, recovery and obsolete-session responses preserving the current counts and reason. This document
+does not assert a browser walkthrough or live GitHub/provider verification.
