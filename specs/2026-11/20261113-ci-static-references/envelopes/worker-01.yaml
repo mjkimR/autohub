@@ -1,0 +1,23 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T08:08:00.542708Z'
+status: completed
+summary: Completed bounded CI static reference validation with Red/Green, independently reverified P2 repair, tooling reconciliation and resolved source feedback; ready for Host integration
+findings: []
+assumptions:
+- Emulated Codex boundaries used exact absolute worktree cwd, separate per-operation escalations, committed-scope audits and before/after reviewer snapshots; no native enforcement guarantee
+unverified_areas:
+- Unsupported shell and computed references remain explicitly unverified skips; no live Actions, deployment or Host integrated-head verification performed
+checks:
+  sync_start: PASS exit=0
+  tests: PASS final28 CI plus12 neighboring command regressions; actual workflows23 checked0skips0errors; original Red17 captured before fix
+  lint: PASS full just lint; final direct script/test Ruff and committed CI/doc/hygiene rules zero errors/warnings
+  build: PASS full just check plus final affected backend types after source repair
+  review: PASS independent initial reviewer and same reviewer fix-range reverify; source snapshots unchanged
+  reconcile: PASS self verified two developer guide targets under medium tooling-only exception; named source FB resolved; entrypoints zero
+diff_scope:
+  base: 7597d1f531cc4d0fc6aad1dd693bbf8862852894
+  head: 7e1dea3fa14920210bdfcfda0f9ad220c844fcc2
+activity_effort: medium
