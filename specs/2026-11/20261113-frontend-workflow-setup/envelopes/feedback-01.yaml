@@ -1,0 +1,13 @@
+kind: feedback
+stage: collect-feedback
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:19:48.165558Z'
+status: completed
+summary: Swept setup, lint, tests, review and reconciliation; the two authorized source observations are resolved and no additional repository observation remains.
+findings: []
+checks:
+  swept: PASS recorded=0 duplicates=0
+diff_scope:
+  base: 2bd4356acf905300583ee4581f7bb9a50e032695
+  head: ed4d8cb3076fb048829369cb45e23365dcfdecbb
