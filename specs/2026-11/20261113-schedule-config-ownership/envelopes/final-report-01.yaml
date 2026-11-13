@@ -1,0 +1,19 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T08:30:27.565477Z'
+status: completed
+summary: Verified schedule owner projection, bounded project filtering, owner-aware UI and six-target Living Spec reflection; independent P2 repaired and separately reverified
+findings: []
+assumptions:
+- Codex boundary enforcement emulated via absolute cwd, per-operation escalation, committed scope audits and reviewer snapshot checks
+unverified_areas:
+- No live deployment browser or provider execution; Host integrated-head verification pending
+checks:
+  tests: PASS fullSQLite1303 skipped25; ownerSQLite36 and PostgreSQL36; final fullUI594 and focused16
+  build: PASS full just check and final UI zero-error types/production build
+  lint: PASS full just lint; final UI lint; docs/hygiene and committed CI rules
+diff_scope:
+  base: e3be22b459230c1288c7d5b48161b11d345392ff
+  head: b38c9fcde6832a46d7c6d852f5712c17123d19c8
