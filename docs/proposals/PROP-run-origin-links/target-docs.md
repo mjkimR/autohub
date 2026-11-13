@@ -1,8 +1,23 @@
 ---
 id: PROP-run-origin-links-target
 title: Target Living Spec for run origin links
+summary: "Draft related-origin reads and exact Repository subject selection across existing contracts, use cases and screens."
 status: draft
+proposal: PROP-run-origin-links
 created_at: 2026-11-13
+targets:
+  - file: docs/capabilities/delivery/CAP-PR-pull-request-delivery.md
+  - file: docs/capabilities/repository/CAP-DOC-repository-viewer.md
+  - file: docs/capabilities/sdd/CAP-SDD-native-delivery.md
+  - file: docs/usecases/delivery/UC-deliver-pull-request.md
+  - file: docs/usecases/repository/UC-inspect-repository-documents.md
+  - file: docs/usecases/sdd/UC-execute-sdd-batch.md
+  - file: docs/ux/delivery/UX-run-page.md
+  - file: docs/ux/delivery/UX-pipeline-runs.md
+  - file: docs/ux/delivery/UX-attention.md
+  - file: docs/ux/repository/UX-repository.md
+  - file: docs/ux/sdd/UX-sdd-batch.md
+  - file: docs/steering/ux-objects.md
 ---
 
 # Target Living Spec for run origin links
