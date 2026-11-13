@@ -1,0 +1,95 @@
+kind: worker
+stage: direction-handoff
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T02:16:11.465101Z'
+status: needs_input
+summary: 'Planning turn 1: status reviewing; scout inventory and one challenger round recorded; settled Q2-Q5, Q7, Q8 and boundaries in proposal.md; six questions for the user (membership, deliberate pauses, Badge destination and Phase 2 sequencing, scope split, layering, naming); plan-accept pending.'
+findings: []
+checks: {}
+diff_scope:
+  base: ''
+  head: 5346adf2a4c70ff47a0fe1fa1721ea5d4b6f8b4e
+questions:
+- id: q1
+  title: Badge membership and weight
+  prompt: Which kinds count toward the shell Badge (owed count), and which appear only as quieter items?
+  context: 'Decides whether the owed count drains. Failed runs are a final state with no in-scope action (resume, pause and cancel refuse them; they leave only through Work Item recovery) and stay up to 30 days until retention prunes them. AI catalog holds and Work Item recoveries in awaiting-admission are system or quota holds that clear by themselves. Counting them keeps the Badge non-zero during normal unattended operation (PRODUCT.md: exceptions first, keep healthy automation quiet). Evidence: materials/owed-state-inventory.md, challenger-01 findings 2 and 3.'
+  options:
+  - id: a
+    description: 'Badge counts operator-actionable kinds only: decisions, paused or blocked runs not held by a decision, proposed Work Plans, Work Item recovery/replacement/dependency acceptance needing the operator (awaiting-admission excluded), Work Items in attention, SDD batches in attention, connection-test cleanup review. Failed runs appear as a quiet list item (no Badge weight) pointing to Work Item recovery when linked; catalog holds are only context on the run or batch they block.'
+    recommended: true
+  - id: b
+    description: As (a), but failed runs also count toward the Badge until they are pruned or recovered (no acknowledge action exists, so they cannot be cleared by the operator).
+    recommended: false
+  - id: c
+    description: Badge stays decisions only; every other kind is a list-only item without Badge weight.
+    recommended: false
+  allow_note: true
+- id: q2
+  title: Deliberate operator pauses
+  prompt: Does a run the operator paused on purpose stay in the owed count?
+  context: 'docs/steering/visual-style.md says a deliberately paused run is attention because only the operator can resume it. The backend records no pause actor: operator pauses and system pauses (CI failure, merge gating) share state paused and differ only in free-text pause_reason. Excluding deliberate pauses needs a new persisted field and a write-path change, which Non-goal 3 currently excludes.'
+  options:
+  - id: a
+    description: Keep every paused or blocked run (not held by a decision) in the owed count, matching visual-style; no new field.
+    recommended: true
+  - id: b
+    description: Exclude deliberate operator pauses; Development adds a pause-actor field and migration, lifting Non-goal 3 for that write.
+    recommended: false
+  allow_note: true
+- id: q3
+  title: Badge destination and Phase 2 order
+  prompt: Where does this contract's count land first, and does Phase 2 (I2 Attention landing, I3 project strip) wait for it?
+  context: 'The shell Badge opens UX-decision-inbox, which lists only decision rows. If the Badge switches to the owed count without a worklist that lists every kind, a count of 1 can open an empty inbox. Non-goal 4 keeps the Phase 2 UI out of this proposal. A hub-ui Phase 1 branch is merging concurrently. Evidence: challenger-01 finding 1; UX-app-shell; SPEC-pending-decision-count Non-goal 5.'
+  options:
+  - id: a
+    description: This proposal ships the backend contract (list and counts reads), the capability and use-case contracts, the glossary and register rows, and the typed client; the shell keeps actionable_total_count. The Phase 2 I2 Attention landing spec builds the all-kinds worklist and switches the Badge and the dashboard Needs-you tile to the owed count together. Phase 2 starts after this contract lands.
+    recommended: true
+  - id: b
+    description: 'Grow this proposal: UX-decision-inbox becomes the all-kinds worklist, and the Badge and Needs-you tile switch here (rewrites Non-goal 4; likely needs decomposition and touches hub-ui).'
+    recommended: false
+  - id: c
+    description: Phase 2 ships first against the current decision count and the dashboard run-state count; this contract follows and the UI migrates later.
+    recommended: false
+  allow_note: true
+- id: q4
+  title: 'Scope split: run fields and notices'
+  prompt: Do run origin fields (Q6) and owed-item notices (Q8) leave this proposal?
+  context: Run origin fields (Work Item, Work Plan, SDD batch, provider session, enrollment source) serve the run page (I1/I5), not the owed contract, whose subject needs only type, ID and project; PipelineRun has no origin columns today and enrollment source is not persisted. Owed-item notices would generalize the decision-notice admission and dedupe rules. With either inside, the work is XL and Planning must return it for decomposition.
+  options:
+  - id: a
+    description: Keep only a per-run pending-decision flag here; run origin fields become a sibling draft proposal; decision notices stay as they are and owed-item notices are deferred. Size stays L.
+    recommended: true
+  - id: b
+    description: Keep run origin fields here too; Planning returns the proposal to Backlog for decomposition.
+    recommended: false
+  allow_note: true
+- id: q5
+  title: Cross-feature read layering
+  prompt: May one read-only aggregate repository read the owning features' models directly?
+  context: 'AGENTS.md layering is Router -> UseCase -> Service -> Repository; ARCH-02 checks only router-to-repository imports, and the dashboard repository already reads PipelineRun, Project and other models. Strict per-feature service composition needs one list and two count queries per kind plus an in-memory merge with a composite cursor: 12-18+ statements on one connection per shell poll. One aggregate repository runs one UNION ALL keyset query and one GROUP BY count in one transaction, within the shared 20-connection budget.'
+  options:
+  - id: a
+    description: Allow a read-only owed-items aggregate repository that reads owner models (dashboard precedent); owner features keep their write paths and services; the spec names the predicates each owner contract guarantees.
+    recommended: true
+  - id: b
+    description: 'Strict service composition: each owner service contributes its kind; accept the per-kind statements and merge cost.'
+    recommended: false
+  allow_note: true
+- id: q6
+  title: Name of the concept
+  prompt: Which term names the concept in the glossary, code and API?
+  context: glossary.md has no entry and ux-objects.md registers no object. 'Attention' already names a color role and the state value attention on SDD batches and Work Items, so 'attention item' collides with a kind of item it contains. 'Operator debt' is prose in visual-style. 'Exception' is the product principle's word but generic. The operator-facing label can differ from the code term; the dashboard tile already says Needs you.
+  options:
+  - id: a
+    description: Glossary and code term 'owed item' (API path owed-items); operator-facing label 'Needs you'.
+    recommended: true
+  - id: b
+    description: '''Attention item'' everywhere (accepting the collision with the attention state value).'
+    recommended: false
+  - id: c
+    description: '''Operator debt'' as the glossary term, ''owed item'' for one row.'
+    recommended: false
+  allow_note: true
+activity_effort: medium
