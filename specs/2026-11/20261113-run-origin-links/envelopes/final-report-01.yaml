@@ -1,0 +1,20 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T07:49:27.303452Z'
+status: completed
+summary: Implemented bounded retained run origins, exact owner recovery links and validated Repository unit/ref/batch selection; independent code and contract reviews passed after all findings were repaired
+findings: []
+assumptions:
+- Related origin is retained relationship evidence, not immutable original manual/webhook/SDK enrollment provenance
+unverified_areas:
+- Host integrated-head batch verification remains pending; no deployment or live provider/browser walkthrough claimed
+checks:
+  tests: PASS full SQLite1238 with25 skipped plus final focused7; PostgreSQL7; final full frontend579 across67 files
+  build: PASS full just check and final UI types zero errors/warnings and production build; generated API freshness
+  lint: PASS full just lint plus final UI lint; docs/hygiene and cumulative committed rules35 zero errors/warnings
+  review: PASS four code findings independently resolved; twelve reconcile targets verified and P3 Markdown continuity repaired
+diff_scope:
+  base: 8e0832edcfd2f42cbf49cd932c6910ec4aea0af4
+  head: cd723ab49c870a2d37f49a6456386f7ec9e36a2f
