@@ -70,7 +70,7 @@ Reusable definition creation follows `UC-reuse-work-plan-templates`; its derived
 - **2c.** The operator saves held work: Hub stores draft/proposed/paused work
   without admission. Explicit validated activation resumes at step 3; incomplete
   work remains held.
-  Interface: `UX-work-plan-editor`, `UX-work-plans`.
+  Interface: `UX-attention`, `UX-project-detail`, `UX-work-plan-editor`, `UX-work-plans`.
 
 - **3a.** Scheduled time, dependency or capacity is not satisfied: the Item stays
   waiting without premature preparation; resumes at step 3 after all conditions hold.
@@ -86,10 +86,10 @@ Reusable definition creation follows `UC-reuse-work-plan-templates`; its derived
   Interface: `UX-work-plans`.
 
 - **4c.** Preparation failed and the operator repaired its cause: the operator reviews unchanged work and confirms recovery; Hub preserves the original Item, prior result and successful predecessors. Accepted work returns through ordinary admission; a definitive refusal ends this continuation with history retained (`CAP-WORK-work-plan-execution`).
-  Interface: `UX-work-plans`.
+  Interface: `UX-attention`, `UX-project-detail`, `UX-work-plans`.
 
 - **5c.** A failed/canceled Run belongs to this Item: the operator requests unchanged-work recovery. Hub reconciles the original PR and delivery, then resumes the same owner within its existing budgets or explains refusal. Capacity/schedule holds remain visible; uncertainty sends no fresh work. Response loss is resolved using the same request identity (`CAP-WORK-work-plan-execution`, `CAP-PR-pull-request-delivery`).
-  Interface: `UX-work-plans`.
+  Interface: `UX-attention`, `UX-project-detail`, `UX-work-plans`.
 
 - **5a.** Run delivery waits or stops: Hub preserves the Item's actual
   Run/PR state; dependents remain held until a correct-target merge is confirmed.
@@ -120,7 +120,7 @@ Reusable definition creation follows `UC-reuse-work-plan-templates`; its derived
   Interface: `UX-work-plans`.
 
 - **5d.** Original work stopped unsuccessfully: the operator compares its specification with a distinct replacement Work Item and explicitly links them. Linking alone keeps dependents held; resumes at step 5 while the replacement follows its independent delivery (`CAP-WORK-work-plan-execution`). Interface: `UX-work-plans`.
-- **6c.** The linked replacement has confirmed merge evidence: the operator reviews one existing local dependent edge and accepts that evidence. Hub retains the original outcome and all remaining holds; resumes at step 3 only when every admission condition holds (`CAP-WORK-work-plan-execution`). Interface: `UX-work-plans`.
+- **6c.** The linked replacement has confirmed merge evidence: the operator reviews one existing local dependent edge and accepts that evidence. Hub retains the original outcome and all remaining holds; resumes at step 3 only when every admission condition holds (`CAP-WORK-work-plan-execution`). Interface: `UX-attention`, `UX-project-detail`, `UX-work-plans`.
 - **6d.** Evidence is no longer wanted before consumption: the operator explicitly withdraws that acceptance or link. Hub retains history; consumed evidence refuses withdrawal with `REPLACEMENT_CONFLICT`, and the withdrawal flow ends (`CAP-WORK-work-plan-execution`). Interface: `UX-work-plans`.
 - **5e.** Replacement identity, retained role or merge evidence is ineligible: Hub refuses without changing original outcomes; the operator inspects evidence and returns to step 5d after correction (`CAP-WORK-work-plan-execution`). Interface: `UX-work-plans`.
 - **\*b.** Replacement response is uncertain: the operator replays the retained original request; authentication/access errors preserve that intent. An authoritative stale refusal requires refresh and explicit review at step 5d or 6c; an identity conflict retains the original operation for investigation (`CAP-WORK-work-plan-execution`). Interface: `UX-work-plans`.

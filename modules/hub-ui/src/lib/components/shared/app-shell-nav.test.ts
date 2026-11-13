@@ -26,7 +26,9 @@ test('only System is collapsible', () => {
 });
 
 test.each([
-	['/', '/', 'Dashboard'],
+	['/', '/', 'Attention'],
+	['/system/health', '/system/health', 'Health'],
+	['/decisions', '/decisions', 'Decisions'],
 	['/projects/runs', '/projects/runs', 'PR runs'],
 	['/projects/runs/', '/projects/runs', 'PR runs'],
 	['/projects/abc', '/projects', 'Project'],
@@ -46,4 +48,13 @@ test('group open state round-trips through storage and defaults closed', () => {
 	expect(readGroupOpen('system')).toBe(true);
 	writeGroupOpen('system', false);
 	expect(readGroupOpen('system')).toBe(false);
+});
+
+test('Attention leads the navigation and Health opens the System group', () => {
+	expect(NAV_GROUPS[0].items.map((item) => [item.href, item.label])).toEqual([
+		['/', 'Attention'],
+		['/decisions', 'Decisions']
+	]);
+	const system = NAV_GROUPS.find((group) => group.id === 'system')!;
+	expect(system.items[0]).toMatchObject({ href: '/system/health', label: 'Health' });
 });

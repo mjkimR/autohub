@@ -25,7 +25,7 @@ again. Public channel responses do not expose the stored token.
 
 ## Check whether the trigger is firing
 
-Read `GET /api/health/deep` or **Scheduler Trigger** on the dashboard. Inspect
+Read `GET /api/health/deep` or **Scheduler Trigger** on System › Health (`/system/health`). Inspect
 `scheduler` and `last_tick_at` before treating an idle run as an agent failure.
 If the trigger is stale, inspect the Cloud Scheduler job, its machine credential
 and recent HTTP results. Follow [scheduler provisioning](cloud-run-deployment.md#6-register-cloud-scheduler-periodic-trigger)

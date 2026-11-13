@@ -4,11 +4,12 @@ import {
 	CalendarClock,
 	FileCode,
 	FolderKanban,
+	HeartPulse,
 	History,
 	Inbox,
 	KeyRound,
 	KeySquare,
-	LayoutDashboard,
+	ListTodo,
 	Settings,
 	UserCheck,
 	Webhook,
@@ -30,7 +31,9 @@ export type NavGroup = {
 	collapsible?: boolean;
 };
 
+export const ATTENTION_HREF = '/';
 export const DECISIONS_HREF = '/decisions';
+export const HEALTH_HREF = '/system/health';
 
 // Grouped by operator job: what is owed, the work itself, setup, then diagnostics.
 export const NAV_GROUPS: readonly NavGroup[] = [
@@ -38,7 +41,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 		id: 'attention',
 		label: 'Attention',
 		items: [
-			{ href: '/', label: 'Dashboard', icon: LayoutDashboard },
+			{ href: ATTENTION_HREF, label: 'Attention', icon: ListTodo },
 			{ href: DECISIONS_HREF, label: 'Decisions', icon: Inbox }
 		]
 	},
@@ -64,6 +67,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 		label: 'System',
 		collapsible: true,
 		items: [
+			{ href: HEALTH_HREF, label: 'Health', icon: HeartPulse },
 			{ href: '/schedules/configs', label: 'Schedule configs', icon: CalendarClock },
 			{ href: '/schedules/jobs', label: 'Schedule jobs', icon: History },
 			{ href: '/operations/webhooks', label: 'Webhook deliveries', icon: Webhook },

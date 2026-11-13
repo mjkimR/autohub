@@ -78,9 +78,10 @@
 	<!-- Header with Live Refresh Indicator -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
-			<h1 class="text-3xl font-bold tracking-tight">System Overview</h1>
+			<h1 class="text-3xl font-bold tracking-tight">System health</h1>
 			<p class="text-sm text-muted-foreground">
-				Real-time orchestrator statistics, lifecycle pipeline status, and health metrics
+				Service health, scheduler heartbeat and delivery activity. What needs you is on
+				<a href="/" class="font-medium text-foreground underline underline-offset-4">Attention</a>.
 			</p>
 		</div>
 		<div class="flex flex-wrap items-center gap-3">
@@ -178,23 +179,12 @@
 				{@render summaryTile('Active Work', dashboard.activeRuns, 'Dispatch / Implementing')}
 				{@render summaryTile('Awaiting CI', dashboard.awaitingCiRuns, 'PR verification check')}
 				{@render summaryTile('Completed', dashboard.completedRuns, 'Passed CI verification')}
-				{#if typeof dashboard.failedRuns === 'number' && dashboard.failedRuns > 0}
-					<a
-						href="/projects/runs"
-						data-attention="true"
-						class="rounded-lg border border-attention bg-attention p-3 text-attention-foreground transition-colors hover:bg-attention/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-none"
-					>
-						<div class="text-xs font-semibold uppercase">Needs you</div>
-						<div class="mt-1 text-2xl font-bold">{dashboard.failedRuns}</div>
-						<p class="mt-0.5 text-xs font-medium">{dashboard.needsYouBreakdown}</p>
-					</a>
-				{:else}
-					{@render summaryTile(
-						'Needs you',
-						dashboard.failedRuns === 0 ? 'No failed or held runs' : dashboard.failedRuns,
-						'Failed, paused, or blocked'
-					)}
-				{/if}
+				<!-- Run-state statistic only: what needs the operator lives on the Attention landing. -->
+				{@render summaryTile(
+					'Held or failed',
+					dashboard.failedRuns,
+					dashboard.stoppedBreakdown ?? 'Failed, paused, or blocked'
+				)}
 			</div>
 		</CardContent>
 	</Card>

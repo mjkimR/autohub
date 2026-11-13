@@ -2,10 +2,12 @@
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import ProjectConnectionCheckDialog from './ProjectConnectionCheckDialog.svelte';
 	import { projectTabHref } from './project-tabs';
+	import { needsYouHref, needsYouPhrase } from './owed-signals';
 	import { PaginatedState } from '$lib/state/paginated.svelte';
 	import { responseData } from '$lib/api/pagination';
 	import ListPagination from '$lib/components/shared/ListPagination.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
+	import { useOwedCounts } from '$lib/features/attention/owed-counts.svelte';
 
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
@@ -57,6 +59,44 @@
 
 	let checkingProject = $state<Project | null>(null);
 
+	// Counted owed items per project come from the shell's shared counts store, never one read
+	// per row. Search and paging reuse it; Refresh, creation and an access check refresh it.
+	// Outside the shell (no store) a local read stands in.
+	const shared = useOwedCounts();
+	let localNeedsYou = $state<Record<string, number> | null>(null);
+	let localNeedsYouError = $state('');
+	let needsYouRequest = 0;
+	const needsYou = $derived(
+		shared ? (shared.value.status === 'known' ? shared.value.byProject : null) : localNeedsYou
+	);
+	const needsYouError = $derived(shared ? '' : localNeedsYouError);
+
+	async function loadNeedsYou() {
+		const current = ++needsYouRequest;
+		try {
+			const counts = responseData(
+				await api.GET('/api/v1/owed-items/counts'),
+				'Needs-you counts are unavailable'
+			);
+			if (current !== needsYouRequest) return;
+			localNeedsYou = counts.by_project ?? {};
+			localNeedsYouError = '';
+		} catch (e) {
+			if (current !== needsYouRequest) return;
+			localNeedsYouError = e instanceof Error ? e.message : 'Needs-you counts are unavailable';
+		}
+	}
+
+	function refreshNeedsYou() {
+		if (shared) void shared.refresh();
+		else void loadNeedsYou();
+	}
+
+	function reloadAll() {
+		refreshNeedsYou();
+		void loadProjects();
+	}
+
 	async function loadProjects(offset = list.offset) {
 		const filters = { search: searchQuery.trim() };
 		await list.load(
@@ -93,7 +133,7 @@
 				isCreateOpen = false;
 				newName = '';
 				newProjectType = 'general';
-				loadProjects();
+				reloadAll();
 			}
 		} catch {
 			toast.error('An error occurred creating the project');
@@ -103,9 +143,36 @@
 	}
 
 	onMount(() => {
-		loadProjects();
+		// The shell already reads counts on mount and navigation; only the fallback reads here.
+		if (!shared) void loadNeedsYou();
+		void loadProjects();
 	});
 </script>
+
+{#snippet owed(project: Project)}
+	{@const count = needsYou?.[project.id] ?? 0}
+	{#if needsYouError || needsYou === null}
+		<!-- Unknown (loading or failed) stays neutral so an outage never reads as operator debt. -->
+		<span
+			class="text-muted-foreground"
+			title={needsYouError ? `Needs-you count unavailable: ${needsYouError}` : undefined}
+			data-owed-unknown
+		>
+			<span aria-hidden="true">—</span><span class="sr-only">Needs-you count unavailable</span>
+		</span>
+	{:else if count > 0}
+		<Badge
+			variant="attention"
+			class="tabular-nums"
+			href={needsYouHref(project.id)}
+			aria-label={`${project.name}: ${needsYouPhrase(count)}`}
+			data-owed-count={count}
+		>
+			<span aria-hidden="true" class="size-1.5 rounded-full bg-attention-text"></span>
+			{count}
+		</Badge>
+	{/if}
+{/snippet}
 
 {#snippet status(project: Project)}
 	{#if project.enabled}
@@ -125,7 +192,7 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-3">
-			<Button variant="outline" size="sm" onclick={() => loadProjects()} disabled={loading}>
+			<Button variant="outline" size="sm" onclick={reloadAll} disabled={loading}>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
 			</Button>
@@ -162,6 +229,7 @@
 					<TableHead class="w-50">Project Name</TableHead>
 					<TableHead class="hidden md:table-cell">Providers & Verification</TableHead>
 					<TableHead class="w-35">Access check</TableHead>
+					<TableHead class="hidden w-25 sm:table-cell">Needs you</TableHead>
 					<TableHead class="hidden w-25 sm:table-cell">Status</TableHead>
 					<TableHead class="hidden w-45 text-right sm:table-cell">Actions</TableHead>
 				</TableRow>
@@ -169,15 +237,15 @@
 			<TableBody>
 				{#if loading}
 					<TableRow>
-						<TableCell colspan={5} class="h-32 text-center text-muted-foreground">
+						<TableCell colspan={6} class="h-32 text-center text-muted-foreground">
 							Loading projects...
 						</TableCell>
 					</TableRow>
 				{:else if list.error}
-					<TableRow><TableCell colspan={5}>List unavailable</TableCell></TableRow>
+					<TableRow><TableCell colspan={6}>List unavailable</TableCell></TableRow>
 				{:else if projects.length === 0}
 					<TableRow>
-						<TableCell colspan={5} class="h-32 text-center text-muted-foreground">
+						<TableCell colspan={6} class="h-32 text-center text-muted-foreground">
 							<div class="flex flex-col items-center justify-center gap-2">
 								<FolderKanban class="size-8 text-muted-foreground/40" />
 								<span>No projects found</span>
@@ -204,8 +272,10 @@
 									<span class="font-mono text-xs font-normal text-muted-foreground md:hidden"
 										>{project.github?.repository ?? 'No GitHub'}</span
 									>
-									<!-- Below sm the status column is hidden; keep the status with the name. -->
-									<span class="font-normal sm:hidden">{@render status(project)}</span>
+									<!-- Below sm the Needs-you and status columns are hidden; keep both with the name. -->
+									<span class="flex items-center gap-1.5 font-normal sm:hidden"
+										>{@render status(project)}{@render owed(project)}</span
+									>
 								</div>
 							</TableCell>
 							<TableCell class="hidden text-xs md:table-cell">
@@ -239,6 +309,7 @@
 									{/if}
 								</button>
 							</TableCell>
+							<TableCell class="hidden sm:table-cell">{@render owed(project)}</TableCell>
 							<TableCell class="hidden sm:table-cell">{@render status(project)}</TableCell>
 							<TableCell class="hidden text-right sm:table-cell">
 								<!-- Configuration has one home: the project's Setup tabs; on a phone the name opens it. -->
@@ -313,7 +384,7 @@
 			<ProjectConnectionCheckDialog
 				project={checkingProject}
 				onclose={() => (checkingProject = null)}
-				onchecked={() => loadProjects()}
+				onchecked={reloadAll}
 			/>
 		{/key}
 	{/if}
