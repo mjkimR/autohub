@@ -28,7 +28,8 @@ These are proposed Development changes. Current contracts remain unchanged durin
 
 No new document kind or ADR is selected. The read projection and query parameters extend existing contracts without
 changing an accepted architecture decision. `CAP-PR-owed-items` needs no behavior change: batch context already exists.
-The source `FB-attention-sdd-batch-deep-link` remains open until Development verifies and reflects the complete fix.
+The source `FB-attention-sdd-batch-deep-link` is promoted to this proposal. Development verifies and reflects the
+complete fix before reporting its implementation complete.
 
 ## Use case draft changes
 
