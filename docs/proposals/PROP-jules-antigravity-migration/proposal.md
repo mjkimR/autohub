@@ -69,7 +69,7 @@ verification. No replacement implementation is ready for acceptance.
 | Option | Supported basis | Consequence |
 | --- | --- | --- |
 | **A — Defer the migration until an official Remote Agents automation contract exists (recommended)** | Remote Agents document interactive App/web/CLI starts and resume by conversation ID; the required unattended protocol is not established. | Keep this proposal as the migration destination and preserve current Jules behavior. Restart when official authentication, create identity, observation/outcome and response-loss recovery contracts can be verified together. |
-| **B — Retire new Jules admission first; defer Antigravity integration separately** | Hub owns admission, schedules and retained history independently of a replacement provider. | Return to Backlog for decomposition into a bounded retirement child and a deferred replacement child. Retirement disables new Jules session/test work and creation/configuration entry points, while preserving legacy collection, adoption, test cleanup and history until their cutover conditions hold. The minimal recovery implementation remains while required. |
+| **B — Retire new Jules admission first; defer Antigravity integration separately** | Hub owns admission, schedules and retained history independently of a replacement provider. | Return to Backlog for decomposition into a bounded retirement child and a deferred replacement child. Retirement disables new Jules session/test work and new-work creation/configuration entry points, while preserving legacy collection, adoption, test cleanup and history until their cutover conditions hold. Connector enablement, credential repair and catalog reassignment needed for legacy recovery remain available until draining is complete. The minimal recovery implementation remains while required. |
 | **C — Use local/headless Antigravity CLI or SDK instead** | Official headless CLI/SDK documentation is separate from Remote Agents. | This changes the requested execution surface and needs a separate proposal covering workspace isolation, deployment and outcomes. It is not a supported substitute within this migration. |
 
 Option A is recommended because no urgent Jules shutdown or retirement deadline is established, and the requested
@@ -83,7 +83,8 @@ retirement independently of replacement availability. Option C is compared as a 
    original provider.
 2. Disabling new Jules admission does not stop collection of known or uncertain sessions or pending task PR
    adoption. The retirement plan must inventory their disposition before removing the collector or usable
-   credentials. A held/unconfirmed remote result is not proof that remote work stopped.
+   credentials. Connector enablement, credential repair and catalog reassignment required to restore legacy recovery
+   remain available until draining is complete. A held/unconfirmed remote result is not proof that remote work stopped.
 3. Existing connection tests retain their captured catalog/connector evidence, provider output discovery, positive
    cleanup ownership and enrollment/merge exclusion. The Jules recipe/recovery implementation is retained while a
    legacy test still needs it. Removing the registry entry alone would strand `adapter_for` and manual cleanup
@@ -96,6 +97,8 @@ retirement independently of replacement availability. Option C is compared as a 
 6. No database backfill, destructive cleanup, provider removal or service cutover runs during Planning. A retirement
    child must define persisted cutover diagnostics and demonstrate old-row readability, new-admission refusal,
    continued pending collection/adoption, and unresolved test cleanup/protection with PostgreSQL and SQLite tests.
+   Acceptance also covers a disabled/expired connector repaired after new admission is refused: legacy recovery
+   resumes without permitting another new Jules session or connection test.
 
 ### Candidate scope
 

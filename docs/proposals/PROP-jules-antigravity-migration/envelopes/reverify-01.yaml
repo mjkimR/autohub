@@ -1,0 +1,27 @@
+kind: reverify
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T05:33:15.300448Z'
+status: completed
+review: challenger-01.yaml
+summary: Applied the concrete credential-repair exception in option B and the named preservation/acceptance passages; no direction changed. Finding 2 remains a user decision.
+findings:
+- issue: Option B removal of configuration entry points could prevent restoring credentials needed to drain legacy work.
+  evidence: docs/proposals/PROP-jules-antigravity-migration/proposal.md:72,84-90,107; docs/operations/provider-connections.md:93-95; CAP-AGENT-provider-sessions; modules/hub/app/features/configuration/connectors/usecases/token.py:23-39.
+  failure_condition: A retained session or unresolved connection test needs provider access after its connector is disabled or token expires, but removed editing paths prevent recovery.
+  suggested_action: Narrow option B to remove new-work creation/configuration while retaining connector enablement, credential repair and any catalog reassignment needed for legacy recovery until its drain conditions are satisfied; state this exception in preservation constraints and retirement acceptance checks.
+  resolution: resolved
+  severity: P2
+- issue: Whether Jules retirement proceeds without an available replacement is an unresolved product direction.
+  evidence: docs/proposals/PROP-jules-antigravity-migration/proposal.md:71-77,127-131; materials/feasibility.md:15-38.
+  failure_condition: Implementation starts before A or B is chosen and silently drops replacement or stops existing Jules admission without an independent retirement decision.
+  suggested_action: 'Decision needed: choose A, defer the migration until official automation/recovery prerequisites hold, or B, return to Backlog for retirement-first and deferred-replacement decomposition. No acceptance or handoff before the answer.'
+  resolution: open
+  severity: P2
+checks:
+  minor-fix: PASS exact suggested wording applied only to cited proposal sections; no public interface or selected decision changed
+  inspection: PASS diff names retained connector enablement, credential repair, reassignment and recovery acceptance without new work
+diff_scope:
+  base: ''
+  head: 99639126cb597c6ad61190c312575c7b24125063
