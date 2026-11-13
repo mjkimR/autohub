@@ -142,7 +142,9 @@ The owner projection is navigation metadata, not an authorization grant.
 
 1. Enrich `ScheduleConfigRead` and implement the filtered, bounded owner projection without changing stored rows.
 2. Replace `ScheduleConfigsView.svelte` task-name badges/action decisions with server ownership and mutation metadata.
-   Add a Project filter beside existing filters. Resolve owner links from verified IDs: Automation for dispatch,
+   Add a Project filter beside existing filters. Show the resolved project name on each project-owned row and in its
+   owner link accessible name; fall back to the verified project ID when project options are unavailable. Resolve
+   owner links from verified IDs: Automation for dispatch,
    observation and agent schedules; Connections for legacy tests. For an unresolved protected owner show
    `Owner unavailable`, with no fabricated link and no generic mutation actions.
 3. Make `owned-schedules.ts` request `GET /api/v1/schedule_configs?project_id=<id>` with pagination. Partition
@@ -166,7 +168,8 @@ adding a separate deep-link mechanism here.
   IDs for unresolved ownership. Reserved tasks remain immutable and project filtering excludes unresolved owners.
 - **OWNER-04**: Given agent-owned, reserved and editable observation/operator configurations, when the operator
   inspects their rows, then only allowed generic mutation actions appear and owner links target the correct project
-  tab. A crafted mutation still receives the existing 409 protection for managed configurations.
+  tab. Rows with similar configuration names in two projects show distinct project identities and accessible owner
+  links. A crafted mutation still receives the existing 409 protection for managed configurations.
 - **OWNER-05**: Given a project with more than 30 retained connection tests and a legacy schedule naming an older
   retained test, when Automation loads schedules, then the server returns that configuration and the browser uses no
   cross-project configuration scan or separate connection-test request.

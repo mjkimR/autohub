@@ -59,6 +59,9 @@ loaded through the existing paginated project API pattern. It composes with sear
 - Schedule configuration (table row): existing name, description, task, cadence, enabled and next-run facts.
   - Owner (secondary fact): `System Managed`, `Project Managed` or ordinary operator ownership, based on the server
     projection, never a provider-task-name guess.
+  - Project connection (verified identity): show its resolved project name beside the row and include that name in
+    the owner link accessible name. When project options cannot supply the name, use the verified project ID,
+    so similarly named schedules from different projects remain distinguishable before navigation.
   - Project connection (owner action): `Project automation` for resolved dispatch/observation; `Agent schedules` for
     resolved agent ownership opens Automation, containing `UX-agent-schedules`; `Project connections` for a resolved
     retained Connection test opens Connections.
