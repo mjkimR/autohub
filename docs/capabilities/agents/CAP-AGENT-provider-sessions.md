@@ -1,7 +1,7 @@
 ---
 id: CAP-AGENT-provider-sessions
 title: Scheduled Provider Sessions and Deliverables
-summary: "Project agent schedules start tracked Jules task or report sessions through catalog admission and retain their completion evidence. Completed task pull requests may enter normal project delivery, while reports remain session messages and collection is independent of schedule enablement."
+summary: "Project agent schedules start tracked Jules task or report sessions and retain deliverables through catalog admission. Generic configuration reads identify linked owners without granting mutation authority; collection remains independent of schedule enablement."
 area: agents
 status: active
 usecases:
@@ -89,6 +89,8 @@ Run-now refuses missing owned entries with HTTP 409 `CONFLICT` and disabled
 entries with HTTP 422 `INVALID_REQUEST`. Unknown/project-mismatched schedules
 return HTTP 404 `NOT_FOUND`. Schema-validation HTTP 422 is distinct from domain
 `INVALID_REQUEST`. Generic owned-entry updates/deletes return HTTP 409.
+
+Generic configuration reads expose a linked entry as `owner.kind=project_agent_schedule`, with its verified project and schedule IDs and generic mutation disabled. Reserved task classification takes precedence over a retained agent relationship. Unlinked jules.session and jules.sync_sessions configurations remain operator-owned and generically editable. `CAP-EXEC-scheduling-maintenance` owns projection/filter precedence and bounded lookup guarantees. Check: `modules/hub/tests/integration/features/scheduling/schedule_configs/test_owners.py`; no provider call is involved in this read projection.
 
 `jules.session` requires a scheduler task context. It accepts `JulesSessionPayload`:
 `catalog_key` (default `personal-jules`), GitHub `repository`, `starting_branch`,

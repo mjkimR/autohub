@@ -62,6 +62,8 @@ The generic schedule list guesses ownership from task names and payloads, expose
 - **When** selection is changed/cleared or project options fail
 - **Then** filter changes reset page one and compose project_id; options failure has Retry, preserves selection and leaves unfiltered reads usable.
 
+AC-01 through AC-07 implement accepted OWNER-01 through OWNER-07 respectively.
+
 ## 5. Design Contracts and Screens
 
 Resolution order is system.maintain; pipeline.dispatch_project; pipeline.connection_test; remaining agent-owned configuration; remaining pipeline.observe_project; operator. Reserved and agent-owned rows deny generic mutation; observation/operator rows allow it. Existing guard authority is preserved. IDs come only from retained owners/projects. Canonical and unhyphenated UUID strings are supported; malformed/nonstring values are unresolved.

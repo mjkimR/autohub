@@ -1,7 +1,7 @@
 ---
 id: CAP-EXEC-scheduling-maintenance
 title: Scheduling and shared maintenance
-summary: "Auto Hub claims due schedules, records bounded task execution and continues installation-wide cleanup through shared maintenance. It does not provide a resident timer or exactly-once remote effects."
+summary: "Auto Hub claims due schedules, records bounded task execution, continues installation-wide cleanup and derives verified schedule owners with bounded project filtering. It does not provide a resident timer or exactly-once remote effects."
 area: execution
 status: active
 usecases:
@@ -107,6 +107,13 @@ of whether a project or agent schedule remains enabled.
     Run lease release retains its explicit update to rotate bounded observation batches.
     Tests: `modules/hub/tests/integration/features/project_management/pipeline_runs/test_timestamp_owners.py`.
 
+19. **Verified schedule ownership**: WHEN a public configuration read returns a row, Hub MUST derive its owner and generic mutation flag using the precedence below.
+    Test: `modules/hub/tests/integration/features/scheduling/schedule_configs/test_owners.py`.
+20. **Project-owned selection**: WHEN project_id filters configuration reads, Hub MUST apply verified owner selection before pagination and counting.
+    Test: `modules/hub/tests/integration/features/scheduling/schedule_configs/test_owners.py`.
+21. **Bounded owner reads**: WHEN a counted configuration page is read, Hub MUST use at most five SQL statements and one request connection independently of page size.
+    Test: `modules/hub/tests/integration/features/scheduling/schedule_configs/test_owners.py`.
+
 ## 4. Interfaces & Data Contracts
 
 | Interface | Contract |
@@ -116,6 +123,25 @@ of whether a project or agent schedule remains enabled.
 | `/api/v1/schedule_jobs` and `/{schedule_job_id}` | Persisted job history and administrative job operations; a successful job does not itself certify a completed PR |
 | `GET /api/health/deep` | Database status plus scheduler `never`, `ok` or `stale` and `last_tick_at`; database failure returns HTTP 503 |
 | `system.maintain` | Installation-owned task, empty payload, minimum interval 60 seconds; it runs only when an external tick selects it |
+
+Public list/detail and successful create/patch/put responses include read-only `owner` (`kind`, nullable `project_id`, nullable `object_id`) and `generic_mutation_allowed`. These fields do not authorize writes and are not mutation inputs. `ADR-schedule-owner-projection` owns the derived-read decision.
+
+Apply this precedence top to bottom:
+
+| Condition | owner.kind | Verified IDs | Generic mutations |
+| --- | --- | --- | --- |
+| system.maintain | system_maintenance | null / null | false |
+| pipeline.dispatch_project | project_dispatch | retained payload project / same project | false |
+| pipeline.connection_test | connection_test | retained test's project / retained test | false |
+| Remaining linked agent schedule | project_agent_schedule | retained schedule's project / agent schedule | false |
+| Remaining pipeline.observe_project | project_observation | retained payload project / same project | true |
+| Everything else | operator | null / null | true |
+
+Missing, malformed, nonstring and dangling payload references yield null unresolved IDs. Canonical and unhyphenated UUID strings are supported, including uppercase text. A retained test or agent ID can remain known while its project is unresolved. Reserved protection does not depend on resolving an owner. An unlinked provider task is operator-owned.
+
+`GET /api/v1/schedule_configs?project_id=<UUID>` composes with existing search, task, enabled and ordering filters. The count and page use the same correlated owner predicate without duplicate configurations. An unknown project returns an empty counted page; invalid query UUID syntax returns HTTP 422. `skip_count=true` omits the count and returns null total_count. Count/page and at most three bounded owner lookup batches remain sequential in the caller's session; malformed JSON never reaches a database UUID cast. Owner/filter/query-budget regressions exercise SQLite and PostgreSQL with pages of 1 and 50 and retained tests beyond the separate history limit.
+
+Persisted manual-only configurations produced by clearing both triggers remain readable. Create/put trigger validation and existing mutation guards are unchanged.
 
 `ScheduleConfig` owns trigger shape, payload, enabled window and next/last run
 instants. `ScheduleJob` owns dispatcher-run identity, outcome, finish time and
