@@ -1,0 +1,10 @@
+kind: feedback
+stage: collect-feedback
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:12:49.840601Z'
+status: completed
+summary: Swept timestamp Development; existing FB-worktree-setup-skips-frontend-install covers missing node_modules; no new repository observations
+findings: []
+checks:
+  swept: PASS recorded=0 duplicates=1; source promoted FB-timestamp-updated-at-never-maintained retained unchanged

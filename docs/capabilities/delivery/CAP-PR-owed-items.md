@@ -1,7 +1,7 @@
 ---
 id: CAP-PR-owed-items
 title: Owed Items for Operator Debt
-summary: "List and count every exception that waits for the operator across projects and object types, one item per root cause, through one read-only aggregate read with a fixed statement count and no provider call."
+summary: "List and count operator exceptions through one aggregate read with fixed statement count and no provider call. Owner-backed waiting times use maintained last-write evidence rather than state-entry duration."
 area: delivery
 status: active
 usecases:
@@ -80,6 +80,16 @@ label is "Needs you".
 
 `waiting_since` is the decision row's waiting time, the recovery's creation time, the connection test's finish time
 (falling back to its `updated_at`) and otherwise the owner row's `updated_at`; Hub keeps no state-entry time.
+
+Hub maintains the owner clock on ORM and mapped Core updates when the write omits an explicit timestamp.
+A repeated owner write can move `waiting_since`; it is not elapsed time in the owed state.
+Pure PR run lease acquisition/renewal, connection-test lease claims and run notification marks preserve the prior clock.
+PR run lease release retains its observation-rotation update, so that run clock can also reflect observation work.
+Rows with historical stored values keep them until their next non-exempt write; no historical update time is reconstructed.
+Checks: [`test_timestamps.py`](../../../modules/hub/tests/integration/common/test_timestamps.py),
+[`test_timestamp_owners.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_timestamp_owners.py)
+and [`test_timestamp_owners.py`](../../../modules/hub/tests/integration/features/project_management/work_plans/test_timestamp_owners.py).
+
 
 ### HTTP surface
 

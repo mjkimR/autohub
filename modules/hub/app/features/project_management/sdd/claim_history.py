@@ -144,4 +144,6 @@ class SddClaimHistory:
                 )
             )
             await session.flush()
+            # Match the persisted timestamp representation used by replay reads, including SQLite.
+            await session.refresh(run)
             return PipelineRunRead.model_validate(run)

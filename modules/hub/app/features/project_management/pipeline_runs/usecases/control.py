@@ -202,6 +202,7 @@ class PipelineRunControl:
             if pr["state"] == "closed":
                 await finish_closed_pull(self.repo, session, run, pr, now)
                 await remember(session)
+                await session.refresh(run)
                 return PipelineRunRead.model_validate(run)
             if pull.head_ref != run.branch:
                 raise ProjectError(409, "Pull request branch changed; enroll it again")
@@ -253,6 +254,7 @@ class PipelineRunControl:
                 run.revision += 1
                 await remember(session, active.id)
                 await session.flush()
+                await session.refresh(run)
                 return PipelineRunRead.model_validate(run)
             if active is not None:
                 active.state = ExecutionAttemptState.FAILED
@@ -301,6 +303,7 @@ class PipelineRunControl:
             run.ai_catalog_id = (await run_catalog(session, project, run)).id
             run.revision += 1
             await session.flush()
+            await session.refresh(run)
             return PipelineRunRead.model_validate(run)
 
     async def cancel_run(self, run_id: UUID) -> PipelineRunRead:

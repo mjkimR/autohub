@@ -1,0 +1,21 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:10:36.435793Z'
+status: completed
+review: review-01.yaml
+summary: Independent reviewer confirms persisted refresh in all three resume success branches and exact-response regression
+findings:
+- issue: Preserve persisted timestamp serialization on ordinary run resume and exact replay
+  evidence: 'Independent ignored resume_probe.py wrapped test_answer_is_saved_without_execution_then_applied_once and failed added equality: first updated_at 2026-11-13T07:08:16.848348Z versus replay 2026-11-13T07:08:16.848348. control.py immediate flush/read at lines 303-304 versus persisted replay line 102.'
+  failure_condition: SQLite exact resume request replay after a successful owner write drops the timezone suffix
+  suggested_action: Refresh successful replay-sensitive resume responses including alternate success branches and compare exact replay timestamps in regression coverage
+  resolution: resolved
+  severity: P2
+checks:
+  tests: PASS interactions SQLite 6 passed 1 skipped; PostgreSQL 7 passed
+  rules: PASS independent committed-range rules 35 with zero errors or warnings
+diff_scope:
+  base: ''
+  head: 0d57d47160c86d7ba0e56e86a68aa1fb1b8d3acd

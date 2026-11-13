@@ -1,0 +1,24 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:13:41.558969Z'
+status: completed
+summary: Completed timestamp maintenance Development with Red/Green coverage, independent code review and resolved P2 replay repair, separate reconciliation and final report; ready for Host local integration
+findings: []
+assumptions:
+- Emulated Codex workers and nested roles used absolute paths, clean HEAD and snapshot/committed-diff audits; no native path enforcement guarantee
+- Host-authorized ignored frontend dependency setup recovered required checks without tracked hub-ui changes after initial bundled initialization rejection
+unverified_areas:
+- Host integrated-head verification remains pending; no remote publication or deployment performed
+checks:
+  sync_start: PASS exit=0
+  tests: PASS full SQLite1220 skipped25 on final source0d57d471; PG focused32 retention16 interactions7
+  lint: PASS just lint all; just lint hub after final repair; just docs-check and committed CI rules zero errors/warnings
+  build: PASS just check all plus final just check hub
+  review: PASS code-reviewer reverified P2 fix; separate reconcile-reviewer no findings
+  scope: PASS all committed writes inside declared unit, feature, test and capability paths; Host explicitly authorized exact adjacent owner read refresh repairs
+diff_scope:
+  base: 4503b82a4db447717f8b50f4e21ee88ddc1154c0
+  head: e3cafffcff011d2227f115432f0ef58cb145ae39
+activity_effort: medium

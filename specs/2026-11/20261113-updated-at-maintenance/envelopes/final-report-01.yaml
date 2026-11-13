@@ -1,0 +1,21 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-bugfix
+segment: 0
+created_at: '2026-11-13T07:13:22.806399Z'
+status: completed
+summary: Maintain all Hub owner timestamps, preserve explicit bookkeeping clocks and observation rotation, and retain exact replay serialization; independent code and reconciliation review complete
+findings: []
+assumptions:
+- No schema, backfill, SDK runtime dependency or public field change; historical rows retain stored values until next non-exempt write
+- Host explicitly authorized exact SDD acknowledgment and ordinary resume persisted-read refresh repairs within inherited feature paths to preserve SQLite replay consistency
+- Codex emulated roles validated by absolute paths and committed-range/tree audits; no native enforcement claimed
+unverified_areas:
+- No live provider or deployed-service verification; Host owns final integrated-head batch checks
+checks:
+  tests: PASS full SQLite 1220 passed 25 skipped on final source 0d57d47160c86d7ba0e56e86a68aa1fb1b8d3acd; focused PostgreSQL 32 passed plus retention16 and interactions7
+  build: PASS just check backend SDK frontend types and production build; just check hub rerun after final source repair, zero errors
+  lint: PASS just lint all; just lint hub after final source repair; just docs-check after reconciliation; committed CI rules zero errors/warnings
+diff_scope:
+  base: 4503b82a4db447717f8b50f4e21ee88ddc1154c0
+  head: cb052e7a65a81552c17f1654937bd021fcda987d

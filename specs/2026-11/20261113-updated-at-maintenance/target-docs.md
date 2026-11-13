@@ -3,7 +3,7 @@ id: PROP-updated-at-maintenance-target
 title: Living Spec targets for maintained owner timestamps
 summary: "Clarify last-write timestamp semantics and enforcing regression evidence without introducing state-entry clocks or historical backfill."
 status: draft
-proposal: PROP-updated-at-maintenance
+proposal: SPEC-updated-at-maintenance
 created_at: 2026-11-13
 targets:
   - file: docs/capabilities/delivery/CAP-PR-owed-items.md

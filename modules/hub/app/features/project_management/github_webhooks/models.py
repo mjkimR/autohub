@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from app_layer_base.base.models.mixin import Base, TimestampMixin, UUIDMixin
+from app.common.models import TimestampMixin
+from app_layer_base.base.models.mixin import Base, UUIDMixin
 from sqlalchemy import Boolean, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 

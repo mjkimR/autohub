@@ -2,7 +2,8 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from app.common.database import JSON_VARIANT
-from app_layer_base.base.models.mixin import Base, TimestampMixin
+from app.common.models import TimestampMixin
+from app_layer_base.base.models.mixin import Base
 from sqlalchemy import (
     Boolean,
     DateTime,

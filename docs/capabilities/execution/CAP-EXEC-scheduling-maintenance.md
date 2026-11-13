@@ -99,6 +99,14 @@ of whether a project or agent schedule remains enabled.
     Test: `modules/hub/tests/integration/features/project_management/work_plans/test_work_plans.py`,
     `test_retention_requires_durable_success_and_preserves_failed_work`.
 
+17. **Maintained owner clocks**: WHEN a Hub ORM or mapped Core write omits `updated_at`, Hub MUST supply its current UTC write time.
+    Explicit business timestamps and same-column preservation expressions take precedence.
+    Unchanged ORM flushes and reads do not issue timestamp updates.
+    Tests: `modules/hub/tests/integration/common/test_timestamps.py`.
+18. **Bookkeeping clocks**: WHEN only acquiring or renewing a PR run lease, claiming a connection-test lease or marking a run notification, Hub MUST preserve its prior `updated_at`.
+    Run lease release retains its explicit update to rotate bounded observation batches.
+    Tests: `modules/hub/tests/integration/features/project_management/pipeline_runs/test_timestamp_owners.py`.
+
 ## 4. Interfaces & Data Contracts
 
 | Interface | Contract |
@@ -114,6 +122,13 @@ instants. `ScheduleJob` owns dispatcher-run identity, outcome, finish time and
 retry state. Registered handlers must be asynchronous. Defaults are a dispatch
 limit of 200, concurrency of 10 and an effective timeout of 270 seconds
 (`GLOBAL_TIMEOUT_SECONDS - GLOBAL_TIMEOUT_BUFFER`); deployment settings can change them.
+
+A run's maintained `updated_at` records its last owner write or observation release, not an exact state-entry or finish event.
+A terminal transition obtains a maintained write time before retention reads it.
+An old stored value remains unchanged until its next non-exempt write; startup and reads perform no historical backfill.
+Raw SQL and reflected tables without Hub's mapped metadata do not receive this application-side update policy.
+The SQLite/PostgreSQL owner regression `test_operator_terminal_and_failed_owed_read_use_maintained_time`
+verifies that an old run canceled now is retained using its maintained timestamp.
 
 Pruning deletes at most 1,000 jobs and 200 PR runs per invocation. Retiring a run
 preserves provider session/report and Work Item completion information, removes
