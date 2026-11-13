@@ -24,7 +24,7 @@ The schedule table is primary at `/schedules/configs`. Search, enabled filtering
 
 - Schedule configuration (table row): name/description, task, cron or interval, enabled status and next-run time.
 - System maintenance (managed row): protected management notice replaces ordinary row actions.
-- Project connection and Connection test (owned row notices): dispatch/verification schedules direct the operator to the owning project feature.
+- Project connection and Connection test (owned row links, secondary weight): a dispatch row links "Project automation" to the project detail Automation tab (`/projects/<id>?tab=automation`), where the dispatch interval is edited; a connection-test row links "Project connections" to that project's Connections tab (`?tab=connections`). A row whose payload names no project (connection-test payloads carry only the test ID) links to the project list instead. Neither row offers toggle, edit or delete.
 - Schedule configuration (other row actions): toggle, edit and delete; the editor is `UX-schedule-editor` and confirmation is `UX-schedule-delete`. Legacy project-managed tasks can carry the managed badge while retaining these actions.
 - Schedule configuration (filter controls): search and All statuses/Active/Paused plus page navigation.
 - Task specification (schema source): independently loaded for editor payload controls; its failure has a separate retry.
@@ -45,9 +45,11 @@ The schedule table is primary at `/schedules/configs`. Search, enabled filtering
 | New Schedule or edit an ordinary row | global: schedule administration is outside the external-scheduler use case | populated | populated | `UX-schedule-editor` | `CAP-EXEC-scheduling-maintenance` | The selected creation or edit form opens. |
 | Enable or disable an ordinary row | global: schedule administration is outside the external-scheduler use case | populated | populated |  | `CAP-EXEC-scheduling-maintenance` | Success or failure is toasted; successful changes refresh the list. |
 | Delete an ordinary row | global: schedule administration is outside the external-scheduler use case | populated | populated | `UX-schedule-delete` | `CAP-EXEC-scheduling-maintenance` | The named schedule and irreversible-action warning are shown. |
+| Project automation (dispatch row) | global: change a project-owned dispatch cadence at its owner | populated | populated | `UX-project-detail` | `CAP-PROJ-project-connections` | The project's Automation tab opens with the dispatch interval field (`UX-project-settings` automation region). |
+| Project connections (connection-test row) | global: manage a project-owned verification at its owner | populated | populated | `UX-project-detail` | `CAP-PROJ-project-connections` | The project's Connections tab opens, or the project list when the row names no project. |
 | Trigger Dispatcher | global: schedule administration is outside the external-scheduler use case | populated | triggering |  | `CAP-EXEC-scheduling-maintenance` | The response toast reports the dispatched count and refreshes configurations. |
 | Navigate through the console | global: navigation between management surfaces | populated | populated | `UX-dashboard` |  | The selected screen replaces the schedule table. |
 
 ## 5. Evidence
 
-Implementation inspected: `modules/hub-ui/src/lib/features/scheduling/schedule-configs/ScheduleConfigsView.svelte`. Inspected check: `modules/hub-ui/src/lib/features/scheduling/schedule-configs/ScheduleConfigsView.integration.test.ts`. Manual dispatch is not asserted to be the machine-identity flow in `UC-run-due-work`.
+Implementation inspected: `modules/hub-ui/src/lib/features/scheduling/schedule-configs/ScheduleConfigsView.svelte`. Inspected check: `modules/hub-ui/src/lib/features/scheduling/schedule-configs/ScheduleConfigsView.integration.test.ts`, including the owned-row link targets (Automation tab for dispatch, Connections tab or project-list fallback for connection tests). Manual dispatch is not asserted to be the machine-identity flow in `UC-run-due-work`.

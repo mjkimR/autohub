@@ -6,12 +6,29 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { NativeSelect } from '$lib/components/ui/native-select';
+	import { displayLabel } from '$lib/labels';
 	import { cn } from '$lib/utils';
 	import { Clock, CornerDownRight } from '@lucide/svelte';
 	import RunDecisionsDialog from './RunDecisionsDialog.svelte';
+	import RunStateBadge from './RunStateBadge.svelte';
 	type Entry = components['schemas']['DecisionEntryRead'];
 	type Run = components['schemas']['PipelineRunRead'];
+	type RunState = components['schemas']['PipelineRunState'];
 	type Kind = Entry['kind'];
+	/** Display labels for decision kinds; filter values stay the raw API kinds. */
+	const KIND_LABELS: Record<Kind, string> = {
+		'run-question': 'Run question',
+		'native-hub-question': 'SDD Hub question',
+		'native-worker-question': 'SDD worker question',
+		'native-workflow': 'SDD workflow request',
+		'native-proposal': 'SDD proposal decision',
+		'native-integration': 'SDD integration decision'
+	};
+	const kindLabel = (value: string) => displayLabel(value, KIND_LABELS);
+	const projectHref = (entry: Entry) => `/projects/${encodeURIComponent(entry.project_id)}`;
+	// The PR run home page (`/projects/[projectId]/runs/[runId]`).
+	const runHref = (entry: Entry) =>
+		`${projectHref(entry)}/runs/${encodeURIComponent(entry.run_id)}`;
 	const kinds: Kind[] = [
 		'run-question',
 		'native-hub-question',
@@ -175,7 +192,7 @@
 		<label class="text-sm"
 			>Kind<NativeSelect class="mt-1 flex" bind:value={kind} onchange={() => load(true)}
 				><option value="">All kinds</option>{#each kinds as value (value)}<option {value}
-						>{value.replaceAll('-', ' ')}</option
+						>{kindLabel(value)}</option
 					>{/each}</NativeSelect
 			></label
 		>
@@ -215,17 +232,21 @@
 		>
 			<div class="min-w-0 space-y-1">
 				<p class="font-medium break-words">{entry.title}</p>
-				<p class="text-sm">
-					<a class="underline" href={entry.pull_url} target="_blank" rel="noreferrer"
-						>PR #{entry.pull_number}</a
+				<p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+					<a class="underline" href={runHref(entry)} data-run-link
+						>Open PR run <span class="sr-only">for PR #{entry.pull_number}</span></a
 					>
-					· {entry.run_state.replaceAll('_', ' ')}
+					<!-- `run_state` is an open string; unknown states fall back to a neutral label. -->
+					<RunStateBadge state={entry.run_state as RunState} />
+					<a class="underline" href={entry.pull_url} target="_blank" rel="noreferrer"
+						>PR #{entry.pull_number} ↗</a
+					>
 				</p>
 				<p class="text-sm">
-					{projects.find((p) => p.id === entry.project_id)?.name ?? entry.project_id} · {entry.kind.replaceAll(
-						'-',
-						' '
-					)} · {entry.subject_id}
+					<a class="underline" href={projectHref(entry)} data-project-link
+						>{projects.find((p) => p.id === entry.project_id)?.name ?? entry.project_id}</a
+					>
+					· {kindLabel(entry.kind)} · {entry.subject_id}
 				</p>
 				<div>
 					{#if !entry.actionable}

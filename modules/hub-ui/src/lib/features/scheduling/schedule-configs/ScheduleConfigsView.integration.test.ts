@@ -85,7 +85,7 @@ test('shows why the backend refused to change a managed schedule', async () => {
 	);
 });
 
-test('routes project dispatch management to project settings', async () => {
+test('routes project dispatch management to the Automation tab that holds the interval', async () => {
 	api.GET.mockImplementation(async (path: string) =>
 		path === '/api/v1/tasks/specs'
 			? { data: [] }
@@ -103,8 +103,8 @@ test('routes project dispatch management to project settings', async () => {
 	);
 	render(ScheduleConfigsView);
 	await screen.findByText('Dispatch sandbox');
-	expect(screen.getByRole('link', { name: 'Project settings' }).getAttribute('href')).toBe(
-		'/projects/project-1?tab=settings'
+	expect(screen.getByRole('link', { name: 'Project automation' }).getAttribute('href')).toBe(
+		'/projects/project-1?tab=automation'
 	);
 	expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
 	expect(screen.queryByTitle('Edit Schedule')).toBeNull();
@@ -118,13 +118,23 @@ test('connection test workers expose no generic mutation controls', async () => 
 			: {
 					data: {
 						total_count: 1,
-						items: [config('probe', 'Connection test', 'pipeline.connection_test')]
+						items: [
+							config('probe', 'Connection test', 'pipeline.connection_test'),
+							{
+								...config('scoped', 'Scoped connection test', 'pipeline.connection_test'),
+								payload: { project_id: 'project-1', test_id: 'test-1' }
+							}
+						]
 					}
 				}
 	);
 	render(ScheduleConfigsView);
 	await screen.findByText('Connection test');
-	expect(screen.getByText('Manage in project Connections')).toBeTruthy();
+	expect(
+		screen
+			.getAllByRole('link', { name: 'Project connections' })
+			.map((link) => link.getAttribute('href'))
+	).toEqual(['/projects', '/projects/project-1?tab=connections']);
 	expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
 	expect(screen.queryByTitle('Edit Schedule')).toBeNull();
 	expect(screen.queryByTitle('Delete Schedule')).toBeNull();

@@ -21,7 +21,7 @@ capabilities:
 ## 1. Purpose
 
 - **Primary task**: Find a pending decision and open its current review context.
-- **Facts to commit**: Project/run, explicit decision kind, question/request identity, saved-versus-applied state, evidence head and observation time, and waiting-age basis.
+- **Facts to commit**: Project/run (both in-app links), explicit decision kind, question/request identity, saved-versus-applied state, evidence head and observation time, and waiting-age basis.
 - **Secondary items**: Decision editors and complete evidence remain in `UX-run-decisions` and its native panels; history stays with the owner.
 
 ## 2. Content
@@ -29,8 +29,9 @@ capabilities:
 The filtered mixed worklist is primary. Filters sit above it, and cursor navigation sits below. No approve/resume control appears in a row.
 
 - Project connection (all-visible-projects default; optional project filter).
-- Run question / Native SDD activity (kind filter and Question state filter: "All states", "Needs decision" for open questions and "Answer saved — resume pending" for answered ones).
-- PR run (row project, run/PR link and state).
+- Run question / Native SDD activity (kind filter with display labels — Run question, SDD Hub question, SDD worker question, SDD workflow request, SDD proposal decision, SDD integration decision — and Question state filter: "All states", "Needs decision" for open questions and "Answer saved — resume pending" for answered ones).
+- PR run (row): "Open PR run" in-app link to the PR run page `/projects/<projectId>/runs/<runId>` (accessible name "Open PR run for PR #N"), the run state as the shared PR run state badge (label, icon and emphasis per `docs/steering/visual-style.md`; never the raw lowercase value), and the external "PR #N ↗" GitHub link.
+- Project connection (row): the project name as an in-app link to `UX-project-detail` (`/projects/<projectId>`), then the kind display label and subject ID.
   - Decision status (one labeled badge; the icon or dot is decorative, emphasis by role per `docs/steering/visual-style.md`):
     - "Needs decision" (attention emphasis, dot, attention left rule) when the row is actionable and its question state is not answered.
     - "Answer saved — resume pending" (attention emphasis, corner-down-right icon, attention left rule) when the Run question is answered but the Run has not resumed; the operator still owes `UC-resolve-run-question` 4.
@@ -60,6 +61,8 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
 | Review proposal decision | `UC-decide-sdd-proposal` 1 | populated | reviewing | `UX-run-decisions` | `CAP-SDD-native-delivery` | Current native evidence loads before proposal controls enable. |
 | Review worker/workflow request | `UC-complete-sdd-workflow` 3b, `UC-complete-sdd-workflow` 3c | populated | reviewing | `UX-run-decisions` | `CAP-SDD-workflow-control` | Exact request is selected in `UX-sdd-workflow-request`; missing identity requires reinspection. |
 | Review integration decision | `UC-complete-sdd-workflow` 4 | populated | reviewing | `UX-run-decisions` | `CAP-SDD-workflow-control` | `UX-sdd-run` receives refreshed evidence and preserves approval fences. |
+| Open project | global: inspect the decision's owning project | populated | populated | `UX-project-detail` | | The project detail opens; the inbox is left. |
+| Open PR run | global: inspect the decision's PR run in its home | populated | populated |  | `CAP-PR-pull-request-delivery` | The PR run page (`/projects/[projectId]/runs/[runId]`) opens; Review in the row remains the decision path from the inbox. |
 | Change filters | global: narrow discovery without deciding | populated | loading | | | Cursor resets; only matching visible subjects load. |
 | Next / Previous | global: browse observed pending decisions | populated | loading | | | Current filters persist; unavailable cursor navigation is disabled. |
 | Refresh / Retry / Clear filters | global: recover discovery | error, empty, populated | loading | | | First page reloads with selected filters or cleared filters. |
@@ -74,7 +77,7 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
 ## 5. Evidence
 
 Source: `modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.svelte`.
-Interaction assertions: `DecisionInbox.integration.test.ts` covers filters, cursor pages, focus restoration, the three decision status labels and the attention marker on the two attention rows only. This source-derived contract claims no live repository walkthrough or deployment.
+Interaction assertions: `DecisionInbox.integration.test.ts` covers filters, cursor pages, focus restoration, the three decision status labels, the attention marker on the two attention rows only, the project and PR run link targets, the run state badge label and the kind display labels. This source-derived contract claims no live repository walkthrough or deployment.
 
 ## 6. Exact notice landing
 

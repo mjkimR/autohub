@@ -10,7 +10,9 @@
 	import { Button } from '$lib/components/ui/button';
 	import {
 		PENDING_DECISION_NAV_MIN_MS,
+		PENDING_DECISIONS_UNKNOWN_LABEL,
 		PendingDecisions,
+		isPendingDecisionUnknown,
 		pendingDecisionPhrase,
 		pendingDecisionText
 	} from '$lib/features/project-management/pipeline-runs/pending-decisions.svelte';
@@ -63,10 +65,11 @@
 		}
 	}
 
-	// Operator-owed decisions light the shell; zero and unknown stay neutral.
+	// Operator-owed decisions light the shell; zero shows nothing, unknown shows a neutral "?".
 	const pending = new PendingDecisions();
 	const pendingText = $derived(pendingDecisionText(pending.value));
 	const pendingPhrase = $derived(pendingDecisionPhrase(pending.value));
+	const pendingUnknown = $derived(isPendingDecisionUnknown(pending.value));
 
 	onMount(() => {
 		checkHealth();
@@ -97,7 +100,7 @@
 			label: 'Project management',
 			items: [
 				{ href: '/projects', label: 'Projects', icon: FolderKanban },
-				{ href: '/projects/runs', label: 'Pipeline runs', icon: Workflow },
+				{ href: '/projects/runs', label: 'PR runs', icon: Workflow },
 				{ href: '/decisions', label: 'Decisions', icon: Inbox }
 			]
 		},
@@ -181,6 +184,15 @@
 					{pendingText} pending
 				</Badge>
 			</a>
+		{:else if pendingUnknown}
+			<a
+				href="/decisions"
+				aria-label="Decisions: {PENDING_DECISIONS_UNKNOWN_LABEL}"
+				title={PENDING_DECISIONS_UNKNOWN_LABEL}
+				class="inline-flex min-h-11 items-center rounded-lg px-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+			>
+				<Badge variant="outline" data-pending-unknown>?</Badge>
+			</a>
 		{/if}
 		<ThemeToggle />
 	</header>
@@ -224,6 +236,15 @@
 										<Badge variant="attention" class="tabular-nums" data-pending-count>
 											<span aria-hidden="true">{pendingText}</span>
 											<span class="sr-only">{pendingPhrase}</span>
+										</Badge>
+									{:else if item.href === '/decisions' && pendingUnknown}
+										<Badge
+											variant="outline"
+											title={PENDING_DECISIONS_UNKNOWN_LABEL}
+											data-pending-unknown
+										>
+											<span aria-hidden="true">?</span>
+											<span class="sr-only">{PENDING_DECISIONS_UNKNOWN_LABEL}</span>
 										</Badge>
 									{/if}
 								{/snippet}
