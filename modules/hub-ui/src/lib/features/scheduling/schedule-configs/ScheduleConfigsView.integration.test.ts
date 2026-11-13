@@ -314,3 +314,29 @@ test('system maintenance is labeled separately and has no mutation controls', as
 	expect(screen.queryByTitle('Edit Schedule')).toBeNull();
 	expect(screen.queryByTitle('Delete Schedule')).toBeNull();
 });
+
+test('a CI observation row links to its project Automation tab and keeps its controls', async () => {
+	api.GET.mockImplementation(async (path: string) =>
+		path === '/api/v1/tasks/specs'
+			? { data: [] }
+			: {
+					data: {
+						total_count: 1,
+						items: [
+							{
+								...config('observe', 'Observe sandbox', 'pipeline.observe_project'),
+								payload: { project_id: 'project-1', pull_numbers: [4] }
+							}
+						]
+					}
+				}
+	);
+	render(ScheduleConfigsView);
+	await screen.findByText('Observe sandbox');
+	expect(screen.getByRole('link', { name: 'Project automation' }).getAttribute('href')).toBe(
+		'/projects/project-1?tab=automation'
+	);
+	expect(screen.getByRole('button', { name: 'Pause' })).toBeTruthy();
+	expect(screen.getByTitle('Edit Schedule')).toBeTruthy();
+	expect(screen.getByTitle('Delete Schedule')).toBeTruthy();
+});

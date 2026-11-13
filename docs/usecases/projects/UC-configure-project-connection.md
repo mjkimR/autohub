@@ -41,7 +41,7 @@ entrypoints:
 
 4. The operator inspects the saved configuration and revision without receiving
    credential contents (`CAP-PROJ-project-connections`).
-   Interface: `UX-project-connections`, `UX-projects`.
+   Interface: `UX-project-connections`, `UX-projects`, `UX-project-detail`.
 
 5. The operator requests a read-only check against a representative PR
    (`CAP-PROJ-project-connections`).

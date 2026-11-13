@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'svelte-sonner';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -81,29 +81,23 @@ test('registers a project by name', async () => {
 	);
 });
 
-test('an edit sends the revision it started from and keeps the automation it did not touch', async () => {
-	const user = userEvent.setup();
+test('rows link into the project Setup tabs instead of a second edit dialog', async () => {
 	render(ProjectsView);
 	await screen.findByText('Application');
 
-	await user.click(screen.getByText('Quick actions'));
-	await user.click(screen.getByRole('button', { name: 'Configure Project' }));
-	// The limit is empty for "no project limit"; a number caps the project's runs in flight.
-	const limit = document.getElementById('maxInFlightRuns') as HTMLInputElement;
-	expect(limit.value).toBe('');
-	await fireEvent.input(limit, { target: { value: '2' } });
-	await user.click(screen.getByRole('button', { name: 'Save Changes' }));
-
-	await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
-	const [path, request] = api.PATCH.mock.calls[0];
-	expect(path).toBe('/api/v1/projects/{project_id}');
-	expect(request.params).toEqual({ path: { project_id: 'p1' } });
-	expect(request.body).toMatchObject({ name: 'Application', enabled: true, expected_revision: 4 });
-	expect(request.body.github.verification.required_jobs).toEqual(['lint', 'test']);
-	expect(request.body.github.automation).toEqual({
-		...project.github.automation,
-		max_in_flight_runs: 2
-	});
+	expect(
+		screen.getByRole('link', { name: 'Automation for Application' }).getAttribute('href')
+	).toBe('/projects/p1?tab=automation');
+	expect(screen.getByRole('link', { name: 'Settings for Application' }).getAttribute('href')).toBe(
+		'/projects/p1?tab=settings'
+	);
+	expect(screen.queryByText('Quick actions')).toBeNull();
+	expect(screen.queryByRole('button', { name: 'Configure Project' })).toBeNull();
+	expect(screen.queryByRole('button', { name: 'Create Schedule' })).toBeNull();
+	expect(screen.queryByRole('button', { name: 'Agent Schedules' })).toBeNull();
+	expect(screen.queryByRole('button', { name: 'Delete Project' })).toBeNull();
+	// The list no longer loads the connector and catalog options only those dialogs needed.
+	expect(api.GET).not.toHaveBeenCalledWith('/api/v1/connectors', expect.anything());
 });
 
 test('a connection check reports what the backend found', async () => {
@@ -112,52 +106,17 @@ test('a connection check reports what the backend found', async () => {
 	render(ProjectsView);
 	await screen.findByText('Application');
 
-	await user.click(screen.getByText('Quick actions'));
-	await user.click(screen.getByRole('button', { name: 'Connection Check' }));
+	// An unchecked project still opens its GitHub access check from the list.
+	expect(screen.getByText('Unchecked')).toBeTruthy();
+	await user.click(
+		screen.getByRole('button', { name: 'Open GitHub access check for Application' })
+	);
 	await user.click(screen.getByRole('button', { name: 'Run Check' }));
 
 	await waitFor(() =>
 		expect(toast.error).toHaveBeenCalledWith('GitHub observation returned HTTP 401')
 	);
 	expect(api.POST.mock.calls[0][0]).toBe('/api/v1/projects/{project_id}/check');
-});
-
-test('an invalid edit shows validation messages and keeps the dialog open', async () => {
-	api.PATCH.mockResolvedValue({
-		error: { detail: [{ msg: 'Dispatch interval must be positive' }] }
-	});
-	const user = userEvent.setup();
-	render(ProjectsView);
-	await screen.findByText('Application');
-	await user.click(screen.getByText('Quick actions'));
-	await user.click(screen.getByRole('button', { name: 'Configure Project' }));
-	await user.click(screen.getByRole('button', { name: 'Save Changes' }));
-
-	await waitFor(() =>
-		expect(toast.error).toHaveBeenCalledWith('Dispatch interval must be positive')
-	);
-	expect(screen.getByRole('button', { name: 'Save Changes' })).toBeTruthy();
-	await waitFor(() =>
-		expect(
-			(screen.getByRole('button', { name: 'Save Changes' }) as HTMLButtonElement).disabled
-		).toBe(false)
-	);
-});
-
-test('a delete asks first and explains a refusal', async () => {
-	vi.stubGlobal('confirm', vi.fn().mockReturnValueOnce(false).mockReturnValue(true));
-	api.DELETE.mockResolvedValue({ error: { detail: 'Project still has pipeline runs' } });
-	const user = userEvent.setup();
-	render(ProjectsView);
-	await screen.findByText('Application');
-
-	await user.click(screen.getByText('Quick actions'));
-	await user.click(screen.getByRole('button', { name: 'Delete Project' }));
-	expect(api.DELETE).not.toHaveBeenCalled();
-
-	await user.click(screen.getByText('Quick actions'));
-	await user.click(screen.getByRole('button', { name: 'Delete Project' }));
-	await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Project still has pipeline runs'));
 });
 
 test('pages past 50 projects and sends search to the server from the first page', async () => {
@@ -205,38 +164,4 @@ test('an HTTP list failure is distinct from no projects and can be retried', asy
 	await user.click(screen.getByRole('button', { name: 'Retry' }));
 	expect(await screen.findByText('Application')).toBeTruthy();
 	expect(screen.queryByRole('alert')).toBeNull();
-});
-
-test('quick schedules keep the selected project and reset the form after closing', async () => {
-	const user = userEvent.setup();
-	render(ProjectsView);
-	await screen.findByText('Application');
-	await user.click(screen.getByText('Quick actions'));
-	await user.click(screen.getByRole('button', { name: 'Create Schedule' }));
-	await user.click(screen.getByRole('button', { name: /Observe CI/ }));
-	await fireEvent.input(screen.getByLabelText('Pull Request Numbers (comma-separated)'), {
-		target: { value: '42, 105' }
-	});
-	await user.click(
-		within(screen.getByRole('dialog')).getByRole('button', { name: 'Create Schedule' })
-	);
-	await waitFor(() =>
-		expect(api.POST).toHaveBeenCalledWith('/api/v1/schedule_configs', {
-			body: {
-				name: 'Observe Application',
-				description: 'CI observation for Application',
-				task_func: 'pipeline.observe_project',
-				cron_expression: null,
-				interval_seconds: 300,
-				payload: { project_id: 'p1', pull_numbers: [42, 105] },
-				enabled: true
-			}
-		})
-	);
-	await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-	await waitFor(() => expect(getComputedStyle(document.body).pointerEvents).not.toBe('none'));
-	await user.click(screen.getByText('Quick actions'));
-	await user.click(screen.getByRole('button', { name: 'Create Schedule' }));
-	expect(screen.queryByLabelText('Pull Request Numbers (comma-separated)')).toBeNull();
-	expect(screen.getByDisplayValue('Dispatch Application')).toBeTruthy();
 });

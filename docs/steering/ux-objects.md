@@ -16,7 +16,7 @@ summary: "Read before describing or changing Auto Hub interfaces; maps shared do
 | AI catalog | Operator | Admission card, concurrency/availability/quota/connector forms | Add, enable/disable, change concurrency, change quota/refresh policy, clear hold, select connector, inspect sessions |
 | Provider session | Operator | Collected session row, report disclosure, session/PR/run links | Inspect report, open provider session, inspect PR or admitted run |
 | Connection test | Operator | Recipe selector, execution/result card, cleanup review region | Start PR test, Check/continue now, Cancel test, Review cleanup, Confirm review |
-| Schedule configuration | Operator | Schedule row, editor, project/agent schedule dialog | Create, edit, enable/disable, delete, request Run now, inspect jobs |
+| Schedule configuration | Operator | Schedule row, editor, project-owned schedule list (Automation tab), CI observation dialog, agent schedule region | Create, edit, enable/disable, delete, request Run now, inspect jobs |
 | Schedule job | Operator | Execution-history row, status/error metadata | Search, filter, refresh, inspect outcome |
 | Task specification | Operator | Registered-task card, payload-schema disclosure | Search, refresh, inspect schema |
 | Work Plan | Operator | Grouped summary card, inline editor, activity/change disclosures | Create, edit draft, submit, pause, resume, revoke, regroup, comment, inspect activity |

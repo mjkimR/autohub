@@ -33,7 +33,7 @@ entrypoints:
 4. Hub dispatches the due session after provider preflight and catalog admission (`CAP-AGENT-provider-sessions`). Off screen: the scheduler dispatches provider work asynchronously rather than advancing an operator screen.
 5. Hub collects the provider's completed task and its PR evidence (`CAP-AGENT-provider-sessions`). Screen: `UX-catalog-sessions`.
 6. Hub adopts the eligible task PR into the connected project's normal delivery workflow (`CAP-AGENT-provider-sessions`). Screen: `UX-catalog-sessions`.
-7. The operator reviews the session result and linked delivery run (`CAP-AGENT-provider-sessions`). Screen: `UX-ai-catalogs`, `UX-catalog-sessions`.
+7. The operator reviews the session result and linked delivery run (`CAP-AGENT-provider-sessions`). Screen: `UX-ai-catalogs`, `UX-catalog-sessions`, `UX-agent-schedules`.
 
 ## 3. Extensions
 

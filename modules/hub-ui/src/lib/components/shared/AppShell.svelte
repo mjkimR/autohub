@@ -16,25 +16,15 @@
 		pendingDecisionPhrase,
 		pendingDecisionText
 	} from '$lib/features/project-management/pipeline-runs/pending-decisions.svelte';
+	import SidebarNavGroup from '$lib/components/shared/SidebarNavGroup.svelte';
 	import {
-		Server,
-		Menu,
-		LayoutDashboard,
-		FolderKanban,
-		CalendarClock,
-		History,
-		Settings,
-		FileCode,
-		LogOut,
-		Workflow,
-		KeyRound,
-		Bot,
-		BellRing,
-		Webhook,
-		Inbox,
-		UserCheck,
-		KeySquare
-	} from '@lucide/svelte';
+		ADMIN_GROUP,
+		DECISIONS_HREF,
+		NAV_GROUPS,
+		activeHref,
+		pageLabel
+	} from '$lib/components/shared/app-shell-nav';
+	import { Server, Menu, LogOut } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
 	let { children } = $props();
@@ -91,70 +81,9 @@
 		pending.refreshIfStale(PENDING_DECISION_NAV_MIN_MS);
 	});
 
-	const navSections = [
-		{
-			label: 'Overview',
-			items: [{ href: '/', label: 'Dashboard', icon: LayoutDashboard }]
-		},
-		{
-			label: 'Project management',
-			items: [
-				{ href: '/projects', label: 'Projects', icon: FolderKanban },
-				{ href: '/projects/runs', label: 'PR runs', icon: Workflow },
-				{ href: '/decisions', label: 'Decisions', icon: Inbox }
-			]
-		},
-		{
-			label: 'Scheduling',
-			items: [
-				{ href: '/schedules/configs', label: 'Schedule configs', icon: CalendarClock },
-				{ href: '/schedules/jobs', label: 'Schedule jobs', icon: History }
-			]
-		},
-		{
-			label: 'Configuration',
-			items: [
-				{ href: '/settings/connectors', label: 'Connectors', icon: KeyRound },
-				{ href: '/settings/ai-catalogs', label: 'AI Catalogs', icon: Bot },
-				{ href: '/settings/notifications', label: 'Notifications', icon: BellRing },
-				{ href: '/settings/system', label: 'System configs', icon: Settings }
-			]
-		},
-		{
-			label: 'Operations',
-			items: [
-				{ href: '/operations/tasks', label: 'Task specs', icon: FileCode },
-				{ href: '/operations/webhooks', label: 'Webhook deliveries', icon: Webhook }
-			]
-		}
-	] as const;
-
-	const adminSection = {
-		label: 'Administration',
-		items: [
-			{ href: '/admin/users', label: 'Account approval', icon: UserCheck },
-			{ href: '/admin/machines', label: 'Machine keys', icon: KeySquare }
-		]
-	} as const;
-
-	function isActive(href: string) {
-		if (
-			href === '/projects' &&
-			page.url.pathname.startsWith('/projects/') &&
-			page.url.pathname !== '/projects/runs'
-		)
-			return true;
-		return page.url.pathname === href;
-	}
-
-	function currentPageLabel() {
-		for (const section of [...navSections, adminSection]) {
-			for (const item of section.items) {
-				if (isActive(item.href)) return item.label;
-			}
-		}
-		return 'Page not found';
-	}
+	const current = $derived(activeHref(page.url.pathname));
+	const currentLabel = $derived(pageLabel(page.url.pathname));
+	const groups = $derived(isAdmin ? [...NAV_GROUPS, ADMIN_GROUP] : NAV_GROUPS);
 </script>
 
 <div class="flex min-h-screen min-w-0 flex-col bg-background text-foreground lg:flex-row">
@@ -172,7 +101,7 @@
 			onclick={() => (menuChoice = { url: page.url.href, open: !menuOpen })}
 			><Menu class="size-4" /> Menu</Button
 		>
-		<span class="min-w-0 flex-1 truncate text-sm font-semibold">{currentPageLabel()}</span>
+		<span class="min-w-0 flex-1 truncate text-sm font-semibold">{currentLabel}</span>
 		{#if pendingText}
 			<a
 				href="/decisions"
@@ -216,42 +145,35 @@
 
 		<!-- Nav Links -->
 		<nav class="flex-1 space-y-5 overflow-y-auto py-4" aria-label="Primary navigation">
-			{#each isAdmin ? [...navSections, adminSection] : navSections as section (section.label)}
-				<div>
-					<p
-						class="px-3 pb-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
-					>
-						{section.label}
-					</p>
-					<div class="space-y-1">
-						{#each section.items as item (item.href)}
-							<SidebarLink
-								href={item.href}
-								label={item.label}
-								icon={item.icon}
-								active={isActive(item.href)}
-							>
-								{#snippet trailing()}
-									{#if item.href === '/decisions' && pendingText}
-										<Badge variant="attention" class="tabular-nums" data-pending-count>
-											<span aria-hidden="true">{pendingText}</span>
-											<span class="sr-only">{pendingPhrase}</span>
-										</Badge>
-									{:else if item.href === '/decisions' && pendingUnknown}
-										<Badge
-											variant="outline"
-											title={PENDING_DECISIONS_UNKNOWN_LABEL}
-											data-pending-unknown
-										>
-											<span aria-hidden="true">?</span>
-											<span class="sr-only">{PENDING_DECISIONS_UNKNOWN_LABEL}</span>
-										</Badge>
-									{/if}
-								{/snippet}
-							</SidebarLink>
-						{/each}
-					</div>
-				</div>
+			{#each groups as group (group.id)}
+				<SidebarNavGroup {group} {current}>
+					{#snippet link(item)}
+						<SidebarLink
+							href={item.href}
+							label={item.label}
+							icon={item.icon}
+							active={item.href === current}
+						>
+							{#snippet trailing()}
+								{#if item.href === DECISIONS_HREF && pendingText}
+									<Badge variant="attention" class="tabular-nums" data-pending-count>
+										<span aria-hidden="true">{pendingText}</span>
+										<span class="sr-only">{pendingPhrase}</span>
+									</Badge>
+								{:else if item.href === DECISIONS_HREF && pendingUnknown}
+									<Badge
+										variant="outline"
+										title={PENDING_DECISIONS_UNKNOWN_LABEL}
+										data-pending-unknown
+									>
+										<span aria-hidden="true">?</span>
+										<span class="sr-only">{PENDING_DECISIONS_UNKNOWN_LABEL}</span>
+									</Badge>
+								{/if}
+							{/snippet}
+						</SidebarLink>
+					{/snippet}
+				</SidebarNavGroup>
 			{/each}
 		</nav>
 
@@ -321,7 +243,7 @@
 				</span>
 				<span class="text-muted-foreground/60">/</span>
 				<span class="text-sm font-semibold text-foreground">
-					{currentPageLabel()}
+					{currentLabel}
 				</span>
 			</div>
 		</header>

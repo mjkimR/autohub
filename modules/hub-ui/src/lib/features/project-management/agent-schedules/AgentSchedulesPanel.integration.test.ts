@@ -1,8 +1,8 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/svelte';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'svelte-sonner';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import AgentSchedulesDialog from './AgentSchedulesDialog.svelte';
+import AgentSchedulesPanel from './AgentSchedulesPanel.svelte';
 
 const { api } = vi.hoisted(() => ({
 	api: { GET: vi.fn(), POST: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() }
@@ -55,7 +55,16 @@ const schedule = {
 			state: 'completed',
 			created_at: '2026-09-14T09:00:00Z',
 			pull_request_url: null,
+			pipeline_run_id: null,
 			result_summary: '3 stale dependencies'
+		},
+		{
+			id: 'ses2',
+			state: 'in_progress',
+			created_at: '2026-09-07T09:00:00Z',
+			pull_request_url: 'https://github.com/owner/app/pull/7',
+			pipeline_run_id: 'run-7',
+			result_summary: null
 		}
 	],
 	created_at: '2026-09-10T00:00:00Z',
@@ -73,15 +82,18 @@ afterEach(() => {
 	document.body.style.removeProperty('pointer-events');
 });
 
-test('lists the project schedules with their recent sessions', async () => {
-	render(AgentSchedulesDialog, {
-		props: { project, catalogs: [codex, jules], onclose: vi.fn() } as never
-	});
+test('lists the project schedules inline with recent sessions linked to their PR run page', async () => {
+	render(AgentSchedulesPanel, { props: { project, catalogs: [codex, jules] } as never });
 
 	expect(await screen.findByText('Weekly hygiene')).toBeTruthy();
-	expect(screen.getByText('report')).toBeTruthy();
-	expect(screen.getByText(/cron 0 9 \* \* 1/)).toBeTruthy();
+	expect(screen.queryByRole('dialog')).toBeNull();
+	expect(screen.getByText('Report')).toBeTruthy();
+	expect(screen.getByText(/Cron 0 9 \* \* 1/)).toBeTruthy();
 	expect(screen.getByText('3 stale dependencies')).toBeTruthy();
+	expect(screen.getByText('In progress')).toBeTruthy();
+	expect(
+		screen.getAllByRole('link', { name: 'PR run' }).map((a) => a.getAttribute('href'))
+	).toEqual(['/projects/p1/runs/run-7']);
 	expect(api.GET).toHaveBeenCalledWith('/api/v1/projects/{project_id}/agent-schedules', {
 		params: { path: { project_id: 'p1' } }
 	});
@@ -89,9 +101,7 @@ test('lists the project schedules with their recent sessions', async () => {
 
 test('creates a schedule from only session-capable catalogs', async () => {
 	const user = userEvent.setup();
-	render(AgentSchedulesDialog, {
-		props: { project, catalogs: [codex, jules], onclose: vi.fn() } as never
-	});
+	render(AgentSchedulesPanel, { props: { project, catalogs: [codex, jules] } as never });
 	await screen.findByText('Weekly hygiene');
 
 	await user.click(screen.getByRole('button', { name: 'New schedule' }));
@@ -122,12 +132,10 @@ test('creates a schedule from only session-capable catalogs', async () => {
 
 test('run now queues the schedule', async () => {
 	const user = userEvent.setup();
-	render(AgentSchedulesDialog, {
-		props: { project, catalogs: [jules], onclose: vi.fn() } as never
-	});
+	render(AgentSchedulesPanel, { props: { project, catalogs: [jules] } as never });
 	await screen.findByText('Weekly hygiene');
 
-	await user.click(screen.getByRole('button', { name: 'Run now' }));
+	await user.click(screen.getByRole('button', { name: 'Run now: Weekly hygiene' }));
 
 	await waitFor(() =>
 		expect(api.POST).toHaveBeenCalledWith(
@@ -145,9 +153,7 @@ test('shows the field message when the hub rejects the schedule as invalid', asy
 			detail: [{ loc: ['body'], msg: 'Value error, Invalid cron expression', type: 'value_error' }]
 		}
 	});
-	render(AgentSchedulesDialog, {
-		props: { project, catalogs: [jules], onclose: vi.fn() } as never
-	});
+	render(AgentSchedulesPanel, { props: { project, catalogs: [jules] } as never });
 	await screen.findByText('Weekly hygiene');
 
 	await user.click(screen.getByRole('button', { name: 'New schedule' }));
@@ -163,9 +169,7 @@ test('shows the field message when the hub rejects the schedule as invalid', asy
 test('a failed list can be retried without showing a successful empty state', async () => {
 	api.GET.mockResolvedValue({ error: { detail: 'Unavailable' } });
 	const user = userEvent.setup();
-	render(AgentSchedulesDialog, {
-		props: { project, catalogs: [jules], onclose: vi.fn() } as never
-	});
+	render(AgentSchedulesPanel, { props: { project, catalogs: [jules] } as never });
 	expect(await screen.findByRole('alert')).toBeTruthy();
 	expect(screen.queryByText('No agent schedules yet.')).toBeNull();
 	api.GET.mockResolvedValue({ data: { items: [schedule] } });
@@ -176,13 +180,32 @@ test('a failed list can be retried without showing a successful empty state', as
 test('a disconnected run-now request explains the failure and keeps the schedule', async () => {
 	api.POST.mockRejectedValue(new TypeError('offline'));
 	const user = userEvent.setup();
-	render(AgentSchedulesDialog, {
-		props: { project, catalogs: [jules], onclose: vi.fn() } as never
-	});
+	render(AgentSchedulesPanel, { props: { project, catalogs: [jules] } as never });
 	await screen.findByText('Weekly hygiene');
-	await user.click(screen.getByRole('button', { name: 'Run now' }));
+	await user.click(screen.getByRole('button', { name: 'Run now: Weekly hygiene' }));
 	await waitFor(() =>
 		expect(toast.error).toHaveBeenCalledWith('Request failed. Check your connection and retry.')
 	);
 	expect(screen.getByText('Weekly hygiene')).toBeTruthy();
+});
+
+test('edit opens the inline form with the schedule and saves it in place', async () => {
+	api.PUT.mockResolvedValue({ data: schedule });
+	const user = userEvent.setup();
+	render(AgentSchedulesPanel, { props: { project, catalogs: [jules] } as never });
+	await screen.findByText('Weekly hygiene');
+
+	await user.click(screen.getByRole('button', { name: 'Edit: Weekly hygiene' }));
+	const form = screen.getByRole('form', { name: 'Edit Weekly hygiene' });
+	expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Weekly hygiene');
+	expect(screen.queryByRole('button', { name: 'New schedule' })).toBeNull();
+	await user.click(within(form).getByRole('button', { name: 'Save changes' }));
+
+	await waitFor(() =>
+		expect(api.PUT).toHaveBeenCalledWith(
+			'/api/v1/projects/{project_id}/agent-schedules/{schedule_id}',
+			expect.objectContaining({ params: { path: { project_id: 'p1', schedule_id: 's1' } } })
+		)
+	);
+	expect(await screen.findByRole('button', { name: 'New schedule' })).toBeTruthy();
 });

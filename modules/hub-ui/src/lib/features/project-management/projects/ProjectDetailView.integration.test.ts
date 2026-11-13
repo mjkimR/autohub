@@ -1,14 +1,15 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import ProjectDetailView from './ProjectDetailView.svelte';
 import ProjectSettingsForm from './ProjectSettingsForm.svelte';
 import ConnectionTestsPanel from './ConnectionTestsPanel.svelte';
 import type { components } from '$lib/api';
-import { projectTab } from './project-tabs';
+import { projectTab, projectTabGroups } from './project-tabs';
+import { toast } from 'svelte-sonner';
 
 const { api } = vi.hoisted(() => ({
-	api: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), DELETE: vi.fn() }
+	api: { GET: vi.fn(), POST: vi.fn(), PUT: vi.fn(), PATCH: vi.fn(), DELETE: vi.fn() }
 }));
 vi.mock('$lib/api', () => ({ api }));
 vi.mock('svelte-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() } }));
@@ -130,7 +131,9 @@ beforeEach(() => {
 });
 afterEach(() => {
 	cleanup();
+	document.body.style.removeProperty('pointer-events');
 	vi.clearAllMocks();
+	vi.unstubAllGlobals();
 });
 
 test('detail exposes bookmarkable tabs and opens project-scoped runs', async () => {
@@ -233,9 +236,22 @@ test('an ambiguous start retries the same request ID and disables another test w
 	).toBe(true);
 });
 
-test('unknown tab falls back to overview', () => {
+test('unknown tab falls back to overview and every grouped tab keeps its query value', () => {
 	expect(projectTab('missing')).toBe('overview');
-	expect(projectTab('connections')).toBe('connections');
+	for (const id of [
+		'overview',
+		'repository',
+		'runs',
+		'plans',
+		'connections',
+		'automation',
+		'settings'
+	])
+		expect(projectTab(id)).toBe(id);
+	expect(projectTabGroups.map((group) => group.tabs.map((tab) => tab.id))).toEqual([
+		['overview', 'runs', 'plans', 'repository'],
+		['connections', 'automation', 'settings']
+	]);
 });
 
 test('Jules selection posts its catalog ID and shows session evidence separately from Codex', async () => {
@@ -332,4 +348,259 @@ test('general settings save project_type successfully', async () => {
 			})
 		})
 	);
+});
+
+test('sections are grouped into Work and Setup and the breadcrumb names the project', async () => {
+	render(ProjectDetailView, { projectId: 'p1', tab: 'automation' });
+	await screen.findByRole('heading', { name: 'Application', level: 1 });
+
+	const breadcrumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+	expect(within(breadcrumb).getByRole('link', { name: 'Projects' }).getAttribute('href')).toBe(
+		'/projects'
+	);
+	expect(within(breadcrumb).getByText('Application').getAttribute('aria-current')).toBe('page');
+
+	const sections = screen.getByRole('navigation', { name: 'Project sections' });
+	const links = (name: string) =>
+		within(within(sections).getByRole('group', { name })).getAllByRole('link');
+	expect(links('Work').map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
+		['Overview', '/projects/p1?tab=overview'],
+		['Runs', '/projects/p1?tab=runs'],
+		['Plans', '/projects/p1?tab=plans'],
+		['Repository', '/projects/p1?tab=repository']
+	]);
+	expect(links('Setup').map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
+		['Connections', '/projects/p1?tab=connections'],
+		['Automation', '/projects/p1?tab=automation'],
+		['Settings', '/projects/p1?tab=settings']
+	]);
+	expect(
+		within(sections)
+			.getAllByRole('link')
+			.filter((link) => link.getAttribute('aria-current') === 'page')
+			.map((link) => link.textContent)
+	).toEqual(['Automation']);
+});
+
+const scheduleConfig = (id: string, name: string, task_func: string, payload: object) => ({
+	id,
+	name,
+	description: null,
+	task_func,
+	cron_expression: null,
+	interval_seconds: 300,
+	payload,
+	enabled: true,
+	next_run_at: '2026-09-22T00:10:00Z',
+	last_run_at: null,
+	created_at: '2026-09-21T00:00:00Z',
+	updated_at: '2026-09-21T00:00:00Z'
+});
+
+function mockOwnedSchedules({ legacyTests = true } = {}) {
+	const previous = api.GET.getMockImplementation()!;
+	const legacy = [
+		scheduleConfig('t1', 'Legacy probe', 'pipeline.connection_test', { test_id: 't1' }),
+		scheduleConfig('t2', 'Other probe', 'pipeline.connection_test', { test_id: 'other' })
+	];
+	const configs = [
+		scheduleConfig('d1', 'Dispatch Application', 'pipeline.dispatch_project', {
+			project_id: 'p1'
+		}),
+		scheduleConfig('d2', 'Dispatch Other', 'pipeline.dispatch_project', { project_id: 'p2' }),
+		scheduleConfig('o1', 'Observe Application', 'pipeline.observe_project', {
+			project_id: 'p1',
+			pull_numbers: [42, 105]
+		}),
+		scheduleConfig('o2', 'Observe Other', 'pipeline.observe_project', {
+			project_id: 'p2',
+			pull_numbers: [1]
+		}),
+		// Another pipeline task that names the project is not an owned schedule kind.
+		scheduleConfig('x1', 'Unrelated pipeline task', 'pipeline.dispatch_project_audit', {
+			project_id: 'p1'
+		}),
+		...(legacyTests ? legacy : [])
+	];
+	api.GET.mockImplementation(
+		(path: string, options?: { params?: { query?: { task_func?: string } } }) => {
+			if (path === '/api/v1/schedule_configs') {
+				const task = options?.params?.query?.task_func ?? '';
+				const items = configs.filter((config) => config.task_func.includes(task));
+				return Promise.resolve({ data: { items, total_count: items.length } });
+			}
+			if (path === '/api/v1/projects/{project_id}/connection-tests')
+				return Promise.resolve({ data: [probe] });
+			if (path === '/api/v1/projects/{project_id}/agent-schedules')
+				return Promise.resolve({
+					data: {
+						items: [
+							{
+								id: 'as1',
+								project_id: 'p1',
+								schedule_config_id: 'cfg-as1',
+								ai_catalog_id: 'jules',
+								work_type: 'task',
+								title: 'Weekly hygiene',
+								prompt: 'Tidy up.',
+								starting_branch: 'main',
+								enabled: true,
+								cron_expression: '0 9 * * 1',
+								interval_seconds: null,
+								task_func: 'jules.session',
+								next_run_at: null,
+								last_run_at: null,
+								recent_sessions: [],
+								created_at: '2026-09-10T00:00:00Z',
+								updated_at: '2026-09-10T00:00:00Z'
+							}
+						]
+					}
+				});
+			return previous(path, options);
+		}
+	);
+}
+
+test('automation shows every schedule the project owns and nothing another project owns', async () => {
+	mockOwnedSchedules();
+	render(ProjectDetailView, { projectId: 'p1', tab: 'automation' });
+
+	expect(await screen.findByText('Dispatch Application')).toBeTruthy();
+	expect(screen.getByText('Observe Application')).toBeTruthy();
+	expect(screen.getByText('PR #42, PR #105')).toBeTruthy();
+	expect(screen.getByText('Legacy probe')).toBeTruthy();
+	expect(await screen.findByText('Weekly hygiene')).toBeTruthy();
+	expect(screen.getByRole('button', { name: 'Run now: Weekly hygiene' })).toBeTruthy();
+	// Each fact is separated from the next, never run together.
+	expect(screen.getAllByText(/^Every 5 min · next \S/).length).toBeGreaterThan(0);
+	expect(screen.getByText(/^Cron 0 9 \* \* 1 · next \S/)).toBeTruthy();
+	expect(screen.queryByText('Dispatch Other')).toBeNull();
+	expect(screen.queryByText('Observe Other')).toBeNull();
+	expect(screen.queryByText('Other probe')).toBeNull();
+	expect(screen.queryByText('Unrelated pipeline task')).toBeNull();
+	// One paginated read covers every pipeline kind; rows are split by exact task here.
+	const configReads = api.GET.mock.calls.filter(([path]) => path === '/api/v1/schedule_configs');
+	expect(configReads).toHaveLength(1);
+	expect(configReads[0][1]).toMatchObject({ params: { query: { task_func: 'pipeline.' } } });
+	const tests = screen.getByRole('region', { name: 'Connection tests' });
+	expect(within(tests).getByRole('link', { name: 'Connections' }).getAttribute('href')).toBe(
+		'/projects/p1?tab=connections'
+	);
+	// Dispatch follows the project's interval, so it has no controls of its own here.
+	expect(screen.queryByRole('button', { name: 'Edit Dispatch Application' })).toBeNull();
+	expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+test('automation reads connection tests only when legacy connection-test schedules exist', async () => {
+	mockOwnedSchedules({ legacyTests: false });
+	render(ProjectDetailView, { projectId: 'p1', tab: 'automation' });
+
+	expect(await screen.findByText('Dispatch Application')).toBeTruthy();
+	expect(
+		api.GET.mock.calls.some(([path]) => path === '/api/v1/projects/{project_id}/connection-tests')
+	).toBe(false);
+});
+
+test('automation pauses, edits and deletes a CI observation schedule in place', async () => {
+	mockOwnedSchedules();
+	vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+	api.PATCH.mockResolvedValue({ data: {} });
+	api.PUT.mockResolvedValue({ data: {} });
+	api.DELETE.mockResolvedValue({ data: {} });
+	const user = userEvent.setup();
+	render(ProjectDetailView, { projectId: 'p1', tab: 'automation' });
+	await screen.findByText('Observe Application');
+
+	await user.click(screen.getByRole('button', { name: 'Pause' }));
+	await waitFor(() =>
+		expect(api.PATCH).toHaveBeenCalledWith('/api/v1/schedule_configs/{schedule_config_id}', {
+			params: { path: { schedule_config_id: 'o1' } },
+			body: { enabled: false }
+		})
+	);
+
+	await user.click(await screen.findByRole('button', { name: 'Edit Observe Application' }));
+	const dialog = await screen.findByRole('dialog');
+	const pulls = within(dialog).getByLabelText('Pull request numbers') as HTMLInputElement;
+	expect(pulls.value).toBe('42, 105');
+	await fireEvent.input(pulls, { target: { value: '42, 7' } });
+	await user.click(within(dialog).getByRole('button', { name: 'Save changes' }));
+	await waitFor(() =>
+		expect(api.PUT).toHaveBeenCalledWith('/api/v1/schedule_configs/{schedule_config_id}', {
+			params: { path: { schedule_config_id: 'o1' } },
+			body: expect.objectContaining({
+				task_func: 'pipeline.observe_project',
+				payload: { project_id: 'p1', pull_numbers: [42, 7] }
+			})
+		})
+	);
+	await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+	await waitFor(() => expect(getComputedStyle(document.body).pointerEvents).not.toBe('none'));
+
+	await user.click(screen.getByRole('button', { name: 'Delete Observe Application' }));
+	await waitFor(() =>
+		expect(api.DELETE).toHaveBeenCalledWith('/api/v1/schedule_configs/{schedule_config_id}', {
+			params: { path: { schedule_config_id: 'o1' } }
+		})
+	);
+});
+
+test('a new CI observation is created for this project only', async () => {
+	mockOwnedSchedules();
+	api.POST.mockResolvedValue({ data: {} });
+	const user = userEvent.setup();
+	render(ProjectDetailView, { projectId: 'p1', tab: 'automation' });
+	await screen.findByText('Observe Application');
+
+	await user.click(screen.getByRole('button', { name: 'New CI observation' }));
+	const dialog = await screen.findByRole('dialog');
+	// The project dispatch schedule is derived from the project; it cannot be created here.
+	expect(within(dialog).queryByText(/Dispatch/)).toBeNull();
+	await fireEvent.input(within(dialog).getByLabelText('Pull request numbers'), {
+		target: { value: '9' }
+	});
+	await user.click(within(dialog).getByRole('button', { name: 'Create schedule' }));
+	await waitFor(() =>
+		expect(api.POST).toHaveBeenCalledWith('/api/v1/schedule_configs', {
+			body: {
+				name: 'Observe Application',
+				description: 'CI observation for Application',
+				task_func: 'pipeline.observe_project',
+				cron_expression: null,
+				interval_seconds: 300,
+				payload: { project_id: 'p1', pull_numbers: [9] },
+				enabled: true
+			}
+		})
+	);
+});
+
+test('the automation policy saves the revision it started from and keeps untouched fields', async () => {
+	const user = userEvent.setup();
+	render(ProjectDetailView, { projectId: 'p1', tab: 'automation' });
+	const limit = (await screen.findByLabelText('Max runs in flight')) as HTMLInputElement;
+	expect(limit.value).toBe('2');
+	await fireEvent.input(limit, { target: { value: '' } });
+	await user.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+	await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
+	const [, request] = api.PATCH.mock.calls[0];
+	expect(request.body).toMatchObject({ name: 'Application', expected_revision: 4 });
+	expect(request.body.github.verification).toEqual(project.github.verification);
+	expect(request.body.github.automation).toEqual({
+		...project.github.automation,
+		max_in_flight_runs: null
+	});
+});
+
+test('project deletion lives in Settings, asks first and explains a refusal', async () => {
+	vi.stubGlobal('confirm', vi.fn().mockReturnValueOnce(false).mockReturnValue(true));
+	api.DELETE.mockResolvedValue({ error: { detail: 'Project still has pipeline runs' } });
+	const user = userEvent.setup();
+	render(ProjectDetailView, { projectId: 'p1', tab: 'settings' });
+	await user.click(await screen.findByRole('button', { name: 'Delete project' }));
+	expect(api.DELETE).not.toHaveBeenCalled();
+	await user.click(screen.getByRole('button', { name: 'Delete project' }));
+	await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Project still has pipeline runs'));
 });

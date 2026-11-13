@@ -1,17 +1,14 @@
 <script lang="ts">
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import ProjectConnectionCheckDialog from './ProjectConnectionCheckDialog.svelte';
-	import ProjectScheduleDialog from './ProjectScheduleDialog.svelte';
-	import ProjectSettingsDialog from './ProjectSettingsDialog.svelte';
+	import { projectTabHref } from './project-tabs';
 	import { PaginatedState } from '$lib/state/paginated.svelte';
-	import { allPages, responseData } from '$lib/api/pagination';
+	import { responseData } from '$lib/api/pagination';
 	import ListPagination from '$lib/components/shared/ListPagination.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
 
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
-	import { apiErrorMessage } from '$lib/api/errors';
-	import AgentSchedulesDialog from '$lib/features/project-management/agent-schedules/AgentSchedulesDialog.svelte';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -37,25 +34,18 @@
 		Plus,
 		RefreshCw,
 		Search,
-		Trash2,
 		CheckCircle2,
-		XCircle,
-		Settings2,
-		Activity,
+		CircleCheck,
+		CirclePause,
 		AlertCircle,
-		GitBranch,
-		CalendarClock
+		CircleDashed,
+		GitBranch
 	} from '@lucide/svelte';
 
 	type Project = components['schemas']['ProjectRead'];
-	type Connector = components['schemas']['ConnectorRead'];
-	type AICatalog = components['schemas']['AICatalogRead'];
 
 	const list = new PaginatedState<Project>();
 	let projects = $derived(list.items);
-	let connectors = $state<Connector[]>([]);
-	let catalogs = $state<AICatalog[]>([]);
-	let schedulesProject = $state<Project | null>(null);
 	let loading = $derived(list.loading);
 	let searchQuery = $state('');
 
@@ -65,29 +55,7 @@
 	let newName = $state('');
 	let newProjectType = $state<'general' | 'sdd'>('general');
 
-	let editingProject = $state<Project | null>(null);
-
 	let checkingProject = $state<Project | null>(null);
-	let schedulingProject = $state<Project | null>(null);
-
-	async function loadConnectors() {
-		try {
-			const [options, result] = await Promise.all([
-				allPages(async (offset, limit) =>
-					responseData(
-						await api.GET('/api/v1/connectors', { params: { query: { offset, limit } } }),
-						'Failed to load connectors'
-					)
-				),
-				api.GET('/api/v1/ai-catalogs')
-			]);
-			const catalogData = responseData(result, 'Failed to load AI catalogs');
-			connectors = options;
-			catalogs = catalogData.items;
-		} catch {
-			toast.error('Failed to load project options; refresh to retry');
-		}
-	}
 
 	async function loadProjects(offset = list.offset) {
 		const filters = { search: searchQuery.trim() };
@@ -134,40 +102,18 @@
 		}
 	}
 
-	function openEdit(project: Project) {
-		editingProject = project;
-	}
-
-	function openCheck(project: Project) {
-		checkingProject = project;
-	}
-	function openSchedule(project: Project) {
-		schedulingProject = project;
-	}
-
-	async function handleDelete(projectId: string) {
-		if (!confirm('Are you sure you want to delete this project?')) return;
-		try {
-			const res = await api.DELETE('/api/v1/projects/{project_id}', {
-				params: { path: { project_id: projectId } }
-			});
-			if (res.error) {
-				const detail = apiErrorMessage(res.error, 'Failed to delete project');
-				toast.error(detail);
-			} else {
-				toast.success('Project deleted');
-				loadProjects();
-			}
-		} catch {
-			toast.error('Failed to delete project');
-		}
-	}
-
 	onMount(() => {
 		loadProjects();
-		loadConnectors();
 	});
 </script>
+
+{#snippet status(project: Project)}
+	{#if project.enabled}
+		<Badge variant="secondary"><CircleCheck aria-hidden="true" />Active</Badge>
+	{:else}
+		<Badge variant="secondary"><CirclePause aria-hidden="true" />Disabled</Badge>
+	{/if}
+{/snippet}
 
 <div class="space-y-6">
 	<!-- Page Header -->
@@ -179,15 +125,7 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-3">
-			<Button
-				variant="outline"
-				size="sm"
-				onclick={() => {
-					loadProjects();
-					loadConnectors();
-				}}
-				disabled={loading}
-			>
+			<Button variant="outline" size="sm" onclick={() => loadProjects()} disabled={loading}>
 				<RefreshCw class="size-4 {loading ? 'animate-spin' : ''}" />
 				Refresh
 			</Button>
@@ -222,10 +160,10 @@
 			<TableHeader>
 				<TableRow>
 					<TableHead class="w-50">Project Name</TableHead>
-					<TableHead>Providers & Verification</TableHead>
-					<TableHead class="w-35">Last CI Check</TableHead>
-					<TableHead class="w-25">Status</TableHead>
-					<TableHead class="w-45 text-right">Actions</TableHead>
+					<TableHead class="hidden md:table-cell">Providers & Verification</TableHead>
+					<TableHead class="w-35">Access check</TableHead>
+					<TableHead class="hidden w-25 sm:table-cell">Status</TableHead>
+					<TableHead class="hidden w-45 text-right sm:table-cell">Actions</TableHead>
 				</TableRow>
 			</TableHeader>
 			<TableBody>
@@ -256,14 +194,21 @@
 											>{project.name}</a
 										>
 										{#if project.project_type === 'sdd'}
-											<Badge variant="warning">sdd</Badge>
+											<Badge variant="outline">SDD</Badge>
 										{/if}
 									</div>
-									<span class="font-mono text-xs text-muted-foreground">rev {project.revision}</span
+									<span class="font-mono text-xs font-normal text-muted-foreground"
+										>rev {project.revision}</span
 									>
+									<!-- Below md the repository column is hidden; keep the repository with the name. -->
+									<span class="font-mono text-xs font-normal text-muted-foreground md:hidden"
+										>{project.github?.repository ?? 'No GitHub'}</span
+									>
+									<!-- Below sm the status column is hidden; keep the status with the name. -->
+									<span class="font-normal sm:hidden">{@render status(project)}</span>
 								</div>
 							</TableCell>
-							<TableCell class="text-xs">
+							<TableCell class="hidden text-xs md:table-cell">
 								<div class="flex flex-wrap items-center gap-1.5">
 									{#if project.github}
 										<Badge variant="info" class="font-mono">
@@ -279,108 +224,35 @@
 								</div>
 							</TableCell>
 							<TableCell>
-								{#if project.last_check}
-									{#if project.last_check.ready}
-										<button
-											type="button"
-											class="rounded-4xl transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-											onclick={() => openCheck(project)}
-											aria-label="Open connection check"
-										>
-											<Badge variant="success">
-												<CheckCircle2 class="size-3" />
-												Access OK
-											</Badge>
-										</button>
+								<button
+									type="button"
+									class="rounded-4xl transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+									onclick={() => (checkingProject = project)}
+									aria-label={`Open GitHub access check for ${project.name}`}
+								>
+									{#if !project.last_check}
+										<Badge variant="outline"><CircleDashed aria-hidden="true" />Unchecked</Badge>
+									{:else if project.last_check.ready}
+										<Badge variant="success"><CheckCircle2 aria-hidden="true" />Access OK</Badge>
 									{:else}
-										<button
-											type="button"
-											class="rounded-4xl transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-											onclick={() => openCheck(project)}
-											aria-label="Open connection check"
-										>
-											<Badge variant="warning">
-												<AlertCircle class="size-3" />
-												Issue
-											</Badge>
-										</button>
+										<Badge variant="warning"><AlertCircle aria-hidden="true" />Issue</Badge>
 									{/if}
-								{:else}
-									<span class="text-xs text-muted-foreground">Unchecked</span>
-								{/if}
+								</button>
 							</TableCell>
-							<TableCell>
-								{#if project.enabled}
-									<Badge variant="success">
-										<CheckCircle2 class="size-3" />
-										Active
-									</Badge>
-								{:else}
-									<Badge variant="secondary">
-										<XCircle class="size-3" />
-										Disabled
-									</Badge>
-								{/if}
-							</TableCell>
-							<TableCell class="text-right">
-								<div class="flex items-center justify-end gap-3">
-									<a class="text-sm text-primary hover:underline" href={`/projects/${project.id}`}
-										>Open</a
+							<TableCell class="hidden sm:table-cell">{@render status(project)}</TableCell>
+							<TableCell class="hidden text-right sm:table-cell">
+								<!-- Configuration has one home: the project's Setup tabs; on a phone the name opens it. -->
+								<div class="flex items-center justify-end gap-3 text-sm">
+									<a
+										class="font-medium underline-offset-4 hover:underline"
+										href={projectTabHref(project.id, 'automation')}
+										aria-label={`Automation for ${project.name}`}>Automation</a
 									>
-									<details class="relative">
-										<summary class="cursor-pointer text-xs text-muted-foreground"
-											>Quick actions</summary
-										>
-										<div
-											class="mt-2 flex flex-wrap justify-end gap-1 rounded-lg border bg-popover p-2 shadow-md"
-										>
-											<Button
-												variant="subtle"
-												size="icon"
-												onclick={() => openCheck(project)}
-												title="Connection Check"
-												aria-label="Connection Check"
-											>
-												<Activity class="size-4" />
-											</Button>
-											<Button
-												variant="subtle"
-												size="icon"
-												onclick={() => openSchedule(project)}
-												title="Create Scheduled Automation"
-												aria-label="Create Schedule"
-											>
-												<CalendarClock class="size-4" />
-											</Button>
-											<Button
-												variant="subtle"
-												size="icon"
-												onclick={() => (schedulesProject = project)}
-												title="Agent Schedules"
-												aria-label="Agent Schedules"
-											>
-												<CalendarClock class="size-4" />
-											</Button>
-											<Button
-												variant="subtle"
-												size="icon"
-												onclick={() => openEdit(project)}
-												title="Configure Project"
-												aria-label="Configure Project"
-											>
-												<Settings2 class="size-4" />
-											</Button>
-											<Button
-												variant="subtle-destructive"
-												size="icon"
-												onclick={() => handleDelete(project.id)}
-												title="Delete Project"
-												aria-label="Delete Project"
-											>
-												<Trash2 class="size-4" />
-											</Button>
-										</div>
-									</details>
+									<a
+										class="font-medium underline-offset-4 hover:underline"
+										href={projectTabHref(project.id, 'settings')}
+										aria-label={`Settings for ${project.name}`}>Settings</a
+									>
 								</div>
 							</TableCell>
 						</TableRow>
@@ -396,14 +268,6 @@
 			total={list.total}
 			{loading}
 			onpage={loadProjects}
-		/>
-	{/if}
-
-	{#if schedulesProject}
-		<AgentSchedulesDialog
-			project={schedulesProject}
-			{catalogs}
-			onclose={() => (schedulesProject = null)}
 		/>
 	{/if}
 
@@ -444,30 +308,12 @@
 		</DialogContent>
 	</Dialog>
 
-	{#if editingProject}
-		<ProjectSettingsDialog
-			project={editingProject}
-			{connectors}
-			{catalogs}
-			onclose={() => (editingProject = null)}
-			onsaved={() => loadProjects()}
-		/>
-	{/if}
-
 	{#if checkingProject}
 		{#key checkingProject.id}
 			<ProjectConnectionCheckDialog
 				project={checkingProject}
 				onclose={() => (checkingProject = null)}
 				onchecked={() => loadProjects()}
-			/>
-		{/key}
-	{/if}
-	{#if schedulingProject}
-		{#key schedulingProject.id}
-			<ProjectScheduleDialog
-				project={schedulingProject}
-				onclose={() => (schedulingProject = null)}
 			/>
 		{/key}
 	{/if}
