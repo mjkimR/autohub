@@ -51,11 +51,12 @@ configured bridge targets use the procedure below.
 
 ## SDK flow bridge with an existing PR
 
-Provision the [reviewed SDD runtime profiles](sdd-runtime.md#runtime-profiles)
-and Git before configuring bridge targets. Mount or otherwise provision a clean
-checkout on the Hub host whose HEAD matches the PR being reviewed. The standard
-image packages Git and the reviewed Python runtimes, but does not provision
-that repository checkout for the bridge.
+Check the [serving host](sdd-runtime.md#serving-host) before configuring bridge
+targets. Mount or otherwise provision a clean checkout on the Hub host whose HEAD
+matches the PR being reviewed and whose root `uv.lock` meets the
+[consumer requirements](sdd-runtime.md#consumer-requirements). The standard image
+packages Git, `uv` and the pinned build environment, but does not provision that
+repository checkout for the bridge.
 
 Set a server-owned delivery mapping before registering the consumer's release:
 
@@ -65,9 +66,10 @@ AUTOHUB_FLOW_DELIVERY_TARGETS='{"local":{"provider":"planhub","environment":"loc
 
 This example permits `autohub.sdd:local` and `autohub.pr_delivery:local` for the
 named provider/environment and existing project. The checkout path must be
-absolute. Assign the project's [runtime profile](sdd-runtime.md#assign-repositories)
-so the check uses the intended pinned CLI and bundles. Release registration
-installs neither the runtime nor checkout dependencies.
+absolute. The check uses the devkit runtime the checkout's own lock pins; the
+project's GitHub connector must be able to read that lock's Git sources. Release
+registration installs neither the runtime nor checkout dependencies; the first
+check of an uncached lock starts the runtime install.
 
 Check the mounted checkout and intended existing paused PR run before submitting
 the flow. Review the evidence through `UC-resume-verified-pr` and use a machine

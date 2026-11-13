@@ -14,7 +14,7 @@ not a fresh check of the serving environment.
 | Operator task | Procedure |
 | --- | --- |
 | Provision hosting, secrets, queues and external scheduler | [Cloud Run deployment](cloud-run-deployment.md) |
-| Provision/select/upgrade isolated repository runtimes | [SDD runtime](sdd-runtime.md) |
+| Prepare hosts and repositories for lock-derived SDD runtimes | [SDD runtime](sdd-runtime.md) |
 | Configure accounts, managed keys, MCP clients and Google login | [Access](access.md) |
 | Connect Codex/Jules accounts, select catalogs and verify a repository | [Provider connections](provider-connections.md) |
 | Bind HTTP workers or an existing-PR bridge | [Execution targets](execution-targets.md) |

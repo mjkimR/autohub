@@ -204,7 +204,7 @@ identity stored in snapshots is `devkit-lock:<identity>`.
 - Repository build and evaluation code runs only inside the OS sandbox, with no network and no credentials.
 - The connector token is used only by Hub-process Git fetches, through the same credential mechanism as checkout.
 - Registry artifacts are wheels installed with hash verification; installing a wheel executes no package code.
-- Diagnostics remain Hub-authored catalog text (`CAP-SDD-runtime-isolation` rule 14).
+- Diagnostics remain Hub-authored catalog text (`CAP-SDD-runtime-isolation` rule 25).
 
 ## 6. Assumptions
 

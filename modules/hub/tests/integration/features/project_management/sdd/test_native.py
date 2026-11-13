@@ -129,6 +129,19 @@ async def test_continued_run_records_the_new_runtime_identity(client, run, monke
     assert observed["sdd_snapshot"]["workflow_hash"] == run["sdd_snapshot"]["workflow_hash"]
 
 
+async def test_preparing_runtime_keeps_the_run_and_retries_later(client, run, monkeypatch):
+    """A retry-safe SDD_RUNTIME_PREPARING never blocks a running native run."""
+    from app.features.project_management.projects.errors import ProjectError
+
+    async def inspect(self, repository, spec_dir, pull, token, **kwargs):
+        raise ProjectError(503, "installing", code="SDD_RUNTIME_PREPARING")
+
+    monkeypatch.setattr(native.SddService, "inspect", inspect)
+    observed = await merge.advance(client, run)
+    assert observed["state"] == run["state"] and observed["pause_reason"] is None
+    assert [row["code"] for row in observed["sdd_progress"]["diagnostics"]] == ["SDD_RUNTIME_PREPARING"]
+
+
 async def test_resume_never_means_approval_and_reject_stops(client, run, github):
     waiting = await merge.advance(client, run)
     resumed, _ = await decide(client, waiting)

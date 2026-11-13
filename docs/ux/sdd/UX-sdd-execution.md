@@ -29,11 +29,15 @@ check, and related execution links remain read-only supporting context.
 
 - SDD unit (directory input; follows a recognized viewer selection).
 - PR run (existing positive PR number and activity effort).
-- Native SDD activity (runtime profile/isolation/bundle status).
+- Native SDD activity (runtime check line: host sandbox and `ok`/unavailable result, then the default-branch head's repository lock as `ready` with its short identity and bundles, `installing; check again shortly`, `unavailable` with its catalog detail, or `not checked` without a project connection).
 - Native SDD activity (Execution preview with registration eligibility, inspected head/CLI version, next reported stage, existing problems/questions/requests and informational approval policy).
 - Native SDD activity (structured diagnostic code/severity, responsibility category, summary, next step, static file targets and read-only retry guidance; unmatched historical warnings remain visible).
 - Native SDD activity (registered execution link to `UX-run-decisions`).
 - PR run (recent unit-related execution rows, lineage and external PR links).
+
+The runtime check line is a status message when the host probe passes and the
+repository lock is ready, installing or not checked; it becomes an alert when the
+host probe fails or the repository lock is unavailable.
 
 Start execution is enabled only after readiness for the current project/unit/PR
 combination and is disabled after that combination registers successfully. A
@@ -57,7 +61,7 @@ Milestone subset inspection belongs to `UX-sdd-milestone-preview`. Its result su
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Check runtime | global: diagnose the server-selected native execution runtime | populated | loading |  | `CAP-SDD-runtime-isolation` | Profile/isolation/bundle information or an unavailable/error diagnostic appears. |
+| Check runtime | global: diagnose the host sandbox and the project's repository-locked runtime | populated | loading |  | `CAP-SDD-runtime-isolation` | The host sandbox result and the repository lock state (ready with identity and bundles, installing, or unavailable with its detail) appear; a request failure appears as an error. |
 | Check readiness | `UC-complete-sdd-workflow` 1 | populated | loading |  | `CAP-SDD-workflow-control` | Registration eligibility, inspected head, first stage, current waits, approval policy and safe diagnostics appear, or a setup/refusal error retains its safe guidance. |
 | Start execution | `UC-complete-sdd-workflow` 1 | ready | loading |  | `CAP-SDD-workflow-control` | Successful registration offers the retained execution link and disables resubmitting that combination. |
 | Open execution & decisions | `UC-complete-sdd-workflow` 3 | registered | populated | `UX-run-decisions` | `CAP-SDD-workflow-control` | The selected run opens in its decision dialog. |
@@ -67,6 +71,7 @@ Milestone subset inspection belongs to `UX-sdd-milestone-preview`. Its result su
 ## 5. Evidence
 
 - [SddExecution.svelte](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddExecution.svelte).
+- [sdd-execution.svelte.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/sdd-execution.svelte.ts) (runtime check line).
 - [SddReadinessPreview.svelte](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddReadinessPreview.svelte).
 - [SddRunLinks.svelte](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddRunLinks.svelte).
 - [SddExecution.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddExecution.integration.test.ts); test assertions were inspected.

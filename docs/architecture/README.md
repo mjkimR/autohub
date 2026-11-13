@@ -7,7 +7,7 @@
 | 5. Building blocks | `ARCH-05-1-containers`: backend, SPA, database, isolated runtime and SDK |
 | 5. Components | `ARCH-05-2-components`: internal coordinators, provider ports, registries and UI integration points |
 | 6. Runtime | `ARCH-06-execution`: execution paths, checkpoints and recovery sequences |
-| 7. Deployment | `ARCH-07-deployment`: image composition, migrations, database namespace and SDD profiles |
+| 7. Deployment | `ARCH-07-deployment`: image composition, migrations, database namespace, SDD build backend and runtime cache |
 | 8. Cross-cutting concepts | `ARCH-08-crosscutting-concepts`: shared identity, fencing, authority, secret and error boundaries |
 | 10. Quality requirements | `ARCH-10-quality-requirements`: measurable scenarios and their enforcing checks |
 | 11. Risks and technical debt | `ARCH-11-risks-and-technical-debt`: active constraints, consequences, treatments and reopening conditions |

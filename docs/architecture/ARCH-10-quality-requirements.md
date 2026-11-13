@@ -104,7 +104,7 @@ outside any broader latency promise.
 
 - **Source**: repository-defined Python rule code.
 - **Stimulus**: it attempts to read a host file, inherit a host secret variable and open a network connection.
-- **Environment**: a provisioned reviewed runtime with the supported OS isolation runner; a separate unit case removes all runners.
+- **Environment**: a fixture repository whose lock selects the seed runtime, with the supported OS isolation runner; a separate unit case removes all runners.
 - **Response**: isolated evaluation denies the file/network access and omits the secret environment value; missing isolation refuses execution.
 - **Measure**: the probe records `file: denied`, a null secret variable and a denied/unreachable network errno; the no-runner case raises instead of constructing an unsandboxed command.
 - **Owner**: `CAP-SDD-runtime-isolation`.
@@ -130,10 +130,33 @@ outside any broader latency promise.
 - **Owner**: `CAP-ACCESS-authentication-authorization`.
 - **Check**: [test_access_logging.py](../../modules/hub/tests/unit/test_access_logging.py), `test_google_callback_query_is_removed_from_access_log`, `test_other_request_queries_are_preserved`, `test_filter_installation_is_idempotent`.
 
+## Q-12: Keep runtime build code away from credentials, network and the venv
+
+- **Source**: a locked Git source's hatchling build hook.
+- **Stimulus**: during a runtime install it opens a network connection, reads a host secret variable and writes a `.pth` file into the runtime's `.venv`.
+- **Environment**: the pinned build environment (`.cache/sdd-build` or `/opt/sdd-build`) with the supported OS isolation runner.
+- **Response**: the build runs offline in the sandbox that can write only `work/`; the built wheel is then installed by a separate sandboxed step.
+- **Measure**: the hook records `network: blocked`, no secret value and `venv: denied`; no planted `.pth` file exists and the wheel is installed.
+- **Owner**: `CAP-SDD-runtime-isolation`.
+- **Check**: [test_lock_runtime.py](../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py), `test_source_build_hook_cannot_reach_the_network_or_credentials`; [test_runtime_install.py](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py), `test_token_is_used_only_by_hub_process_fetches`.
+
+## Q-13: Install a cold runtime once per identity
+
+- **Source**: concurrent evaluations of one repository lock.
+- **Stimulus**: five evaluations in one worker request devkit commands for a runtime identity with no complete cache entry; separately, two worker processes claim the same identity's install.
+- **Environment**: one per-instance cache directory; the install is held open until released.
+- **Response**: one install starts; every caller that cannot use the entry yet is refused as retryable; a caller whose deadline expires does not cancel the install.
+- **Measure**: one install call with the caller's token; all five callers receive HTTP 503 `SDD_RUNTIME_PREPARING`; of two processes exactly one obtains the claim; the install task finishes uncancelled after a 0.05-second caller deadline.
+- **Owner**: `CAP-SDD-runtime-isolation`.
+- **Check**: [test_runtime_cache.py](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_cache.py), `test_only_one_process_claims_an_identity`; [test_runtime.py](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py), `test_cold_cache_starts_one_install_and_reports_preparing`, `test_caller_deadline_does_not_cancel_the_install`.
+
 ## Verification limits
 
 These scenarios define checks of controlled failures and invariants. They do not
 prove every possible remote race, every sensitive logging field or arbitrary
 worker cooperation. Publication-lock and overlapping-cursor assertions require
-PostgreSQL; real CLI isolation requires its provisioned runner. Skips and fixture
+PostgreSQL; real CLI isolation requires its provisioned runner; the real build
+isolation case skips without the pinned build environment. The cold-install cost
+recorded for `SPEC-repo-locked-sdd-runtime` is a measurement, not a scenario
+check. Skips and fixture
 results cannot stand in for those environments or for a serving-host canary.

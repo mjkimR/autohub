@@ -32,8 +32,9 @@ are manually installed starter files.
 
 [SDD projects](docs/operations/sdd-runtime.md) connect devkit proposals/specs to cloud
 Planning and Development runs. The repository viewer reads milestone proposal members
-from the selected branch and links units to their executions. Runtime profiles and rollout
-requirements are documented in the integration guide.
+from the selected branch and links units to their executions. Hub evaluates each repository
+with the devkit runtime its own `uv.lock` pins; consumer requirements, serving-host checks and
+rollout settlement are documented in the integration guide.
 
 ## Development
 
@@ -69,7 +70,7 @@ and [selected tooling](docs/development/toolchain.md#selected-agent-assets).
 - [Documentation guide](docs/README.md): architecture, protocols, AI catalogs, and operator notices.
 - [Capability contracts](docs/capabilities/README.md) and [use cases](docs/usecases/README.md): implemented guarantees, actor goals, acceptance examples and source/test ownership.
 - [Developing Auto Hub](docs/development/README.md): contributor setup, checks, migrations, toolchain updates and extension guides.
-- [Operations](docs/operations/README.md): deployment, accounts/clients, provider connections, runtime profiles and recovery.
+- [Operations](docs/operations/README.md): deployment, accounts/clients, provider connections, the SDD runtime and recovery.
 - [Connector encryption](modules/hub/README.md#connector-credential-encryption): key configuration and rotation constraints.
 - [Frontend](modules/hub-ui/README.md): UI tooling and API generation.
 - [Agent guide](AGENTS.md): code boundaries and required checks.

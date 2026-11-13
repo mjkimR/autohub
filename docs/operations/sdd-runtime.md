@@ -1,114 +1,133 @@
 # Operate the isolated SDD runtime
 
-Provision the reviewed runtime before enrolling native SDD work. Its product
-contract is `CAP-SDD-runtime-isolation`; `CAP-SDD-workflow-control` owns workflow
-and integration decisions. Deployment structure belongs to `ARCH-07-deployment`.
-Contributor test selection and pin changes belong in the
+Native SDD evaluation runs devkit from the runtime that each evaluated commit's
+own `uv.lock` pins; Hub installs it on first use into a per-instance cache. Its
+product contract is `CAP-SDD-runtime-isolation`; `CAP-SDD-workflow-control` owns
+workflow and integration decisions. Deployment structure belongs to
+`ARCH-07-deployment`. Contributor test setup belongs in the
 [development testing guide](../development/testing.md).
 
-## Runtime profiles
+No server runtime profile exists. Onboarding a devkit-adopted repository needs no
+image change, profile mapping or redeploy. Hub reads neither `AUTOHUB_SDD_HOME`
+nor `AUTOHUB_SDD_PROFILES`; remove them from serving configuration.
 
-The standard image contains `/opt/sdd` and `/opt/sdd-app-common`. The latter adds
-the app-common bundle. From a trusted Auto Hub checkout, a separately provisioned
-host can install the same reviewed profiles:
+## Consumer requirements
+
+A connected repository is evaluable when its evaluated commit has:
+
+- A committed root `pyproject.toml` that declares `devkit-spec` in a dependency
+  group (Hub uses the first such group) or in its main dependencies, and a
+  committed root `uv.lock` that is current for it. Only that group is installed.
+- A `requires-python` range that includes the image interpreter (Python 3.13).
+- Locked packages of that group from PyPI as hashed wheels, or Git sources on
+  `https://github.com/` pinned to exact revisions. Path, URL, editable and
+  custom-index sources are refused, as are registry packages without wheels.
+- Git sources that the project's GitHub connector token can read and that build
+  with hatchling, the backend the image pins.
+- Packages providing every bundle its `.devkit/config.toml` presets and
+  `.devkit/installation.json` receipt name.
+- Committed regular `.devkit/config.toml` and `.devkit/installation.json` files and
+  its bound proposal/spec anchor. Keep managed copies and agent projections ignored.
+
+Readiness is an inspection, not execution or merge authorization.
+
+## Serving host
+
+Serve native SDD from Linux with bubblewrap. The host must permit unprivileged
+user namespaces. macOS sandbox-exec cannot end detached processes a sandboxed step
+leaves, so use it for local development only. There is no unsandboxed fallback.
+
+The standard image packages Git, bubblewrap, `uv` and the pinned build environment
+`/opt/sdd-build`; it contains no devkit runtime. The Hub process needs outbound
+access to `https://github.com/` and PyPI for installs.
+
+| Variable | Default | Set it when |
+| --- | --- | --- |
+| `AUTOHUB_SDD_CACHE` | `/tmp/autohub-sdd-runtimes` | The cache needs another writable directory |
+| `AUTOHUB_SDD_CACHE_BYTES` | `268435456` (256 MiB) | Instance memory or the number of distinct locks differs from the default sizing |
+| `AUTOHUB_SDD_BUILD` | `/opt/sdd-build` | A host is not using the standard image layout |
+
+The default cap holds about eight 29 MiB entries and leaves room on a 1 GiB
+instance for one install's 153 MiB transient peak (measured for
+`SPEC-repo-locked-sdd-runtime`). On Cloud Run, `/tmp` is in-memory: the cache
+counts against instance memory and is empty after each instance start. Entries
+are shared by every project of the instance that locks the same runtime.
+
+## Check a host and a project
+
+Use **Check runtime** in the SDD panel or:
 
 ```sh
-just install-sdd /opt/sdd
-just install-sdd /opt/sdd-app-common config/sdd-runtime-app-common
+curl -s "$SERVICE_URL/api/v1/projects/<project-id>/sdd/runtime"
 ```
 
-Use only operator-reviewed manifests/locks under `config/sdd-runtime*`; never use
-a target PR's manifest. Provisioning needs read access to the pinned private
-sources. The installer can consume `GH_TOKEN` during provisioning without storing
-it in manifest URLs or `pin.json`. It records runtime lock digest, package
-versions, Python prefix, bundle inventory and exact available Git revisions.
+1. Require `ok: true` with `isolation: bubblewrap` on the actual serving host. The
+   host probe starts the image interpreter inside the sandbox and installs nothing;
+   a passing image build does not prove the serving host can run the sandbox.
+2. Read `state` for the project's default-branch head: `ready` lists `bundles` and
+   `revisions`; `preparing` means an install is running, so check again shortly;
+   `failed` carries `lock_detail` with the remediation. Checking the state can
+   start that install.
 
-The installer refuses to replace a destination whose recorded lock differs.
-Provision a fresh destination for an update. A runtime directory and its lock/pin
-must stay available and consistent for the runs admitted against that identity.
-No request installs a target repository's dependencies.
+## Troubleshooting
 
-## Assign repositories
-
-Configure mappings on the server after provisioning their absolute paths:
-
-```sh
-export AUTOHUB_SDD_HOME=/opt/sdd
-export AUTOHUB_SDD_PROFILES='{"profiles":{"app-common":"/opt/sdd-app-common"},"repositories":{"owner/repository":"app-common"}}'
-```
-
-Unmapped repositories use the default runtime. Repository names match without
-case; invalid or unknown mappings fail rather than silently using another profile.
-The same mapping applies to activity creation, readiness, decisions and SDK evidence.
-
-For another bundle set, add a reviewed manifest/lock under a distinct config
-directory, pass that directory as the second `just install-sdd` argument and package
-its runtime directory in the deployment image. Confirm its `pin.json` inventory
-contains the repository's selected and receipt-recorded bundles.
-
-When changing runtime identity:
-
-1. Identify active runs using the affected profile and settle their external work.
-2. Provision the reviewed replacement in a fresh directory or deployment image;
-   retain existing runtime directories while their admitted runs need them.
-3. Switch the serving configuration to the replacement's absolute paths.
-4. Check the selected profile on the serving host through **Check runtime** or
-   `GET /api/v1/projects/{project_id}/sdd/runtime`.
-5. Align each consumer's committed config/receipt with the reviewed packages before
-   enrolling replacement runs. A changed receipt/configuration requires new enrollment.
-
-Do not treat a profile switch as an in-place workflow upgrade for an existing run.
-The lock/runtime/workflow/configuration identity remains part of its admitted
-contract and any bridge evidence digest.
-
-## Consumer configuration and recovery
-
-The connected repository needs committed regular `.devkit/config.toml` and
-`.devkit/installation.json` files and its bound proposal/spec anchor. Keep managed
-copies and agent projections ignored. Readiness is an inspection, not execution
-or merge authorization.
+Readiness reports these codes as `ready: false` with a diagnostic; enrollment
+returns them as HTTP errors; a running native run blocks with them.
 
 | Reported condition | Operator action |
 | --- | --- |
-| `SDD_RUNTIME_UNAVAILABLE` | Provision/check the selected runtime and its matching lock/pin |
-| `SDD_PROFILE_INVALID` | Correct server-owned profile paths and repository mappings |
-| `SDD_ISOLATION_UNAVAILABLE` | Provision/enable a supported isolation runner on a compatible host and repeat its runtime probe |
-| `SDD_BUNDLES_MISSING` | Provision the missing bundle set and assign that reviewed profile |
+| `SDD_RUNTIME_PREPARING` (HTTP 503) | Wait for the install and retry; a running native run keeps its state and is inspected again on later dispatcher ticks |
+| `SDD_RUNTIME_UNLOCKED` | Commit a root `uv.lock` current with a `pyproject.toml` that declares `devkit-spec` |
+| `SDD_RUNTIME_SOURCE_UNSUPPORTED` | Lock devkit packages only from PyPI wheels or exact `https://github.com/` revisions |
+| `SDD_RUNTIME_PYTHON_UNSUPPORTED` | Widen `requires-python` to include Python 3.13 |
+| `SDD_RUNTIME_SOURCE_UNAVAILABLE` | Grant the project's GitHub connector read access to each locked Git source; a request after the 60-second failure marker expires starts a new install |
+| `SDD_RUNTIME_INSTALL_FAILED` | Check that registry packages provide wheels and Git sources build with hatchling; a request after the 60-second failure marker expires starts a new install |
+| `SDD_RUNTIME_UNAVAILABLE` | Check that the host's `uv` binary runs and the cache directory is writable, then retry |
+| `SDD_ISOLATION_UNAVAILABLE` | Run on a Linux host with bubblewrap and user namespaces and repeat the host probe |
+| `SDD_BUNDLES_MISSING` | Add the packages providing the named bundles to the locked devkit group and commit `uv.lock` |
 | `SDD_RECEIPT_MISSING` | Have the repository adopt and commit its consumer configuration/receipt before enrollment |
-| `RECEIPT_STALE` warning | Align and commit the consumer receipt with reviewed packages, then enroll again; disposable restoration does not update its committed identity |
-| `RUNTIME_REVISION_MISMATCH` warning | Compare the consumer's locked Git revisions with the runtime pin; the warning cannot inspect the agent's installed environment |
-| Final lint cannot load a stale receipt's recorded rule | Fix the consumer/runtime receipt alignment and enroll again; generic resume cannot dispatch an agent to repair that setup failure |
-| Workflow, policy or runtime identity changed | Review the new contract and create a new enrollment rather than renewing the old run implicitly |
+| `RECEIPT_STALE` warning | Run `devkit sync` with the locked `devkit-spec`, commit the receipt, then enroll again; disposable restoration does not update its committed identity |
+| Final lint cannot load a stale receipt's recorded rule | Align the committed receipt with the locked runtime and enroll again; generic resume cannot dispatch an agent to repair that setup failure |
+| Workflow, policy or configuration identity changed | Review the new contract and create a new enrollment rather than renewing the old run implicitly |
 
-A stale-receipt warning permits only the documented disposable restore exception.
-Other sync failures still stop evaluation. Do not ask the active worker to change
-`.devkit/` to clear the warning mid-run.
+A changed runtime identity alone continues a run and records the new
+`devkit-lock:<identity>`. `SDD_PROFILE_INVALID` and `RUNTIME_REVISION_MISMATCH`
+appear only on records retained from the server-profile model. A stale-receipt
+warning permits only the documented disposable restore exception. Other sync
+failures still stop evaluation. Do not ask the active worker to change `.devkit/`
+to clear the warning mid-run.
+
+## Rollout and rollback
+
+Records admitted under server profiles carry `devkit-spec:<lock>` CLI identities
+and the old batch `runtime` shape; batch comparisons treat that shape as a change.
+Before deploying the repository-locked runtime, and again before rolling back to an
+image with server profiles:
+
+1. Settle active native runs: let them finish, or cancel them and inspect provider
+   work already posted to GitHub.
+2. Settle open batch selections.
+3. Settle approved bridge claims that have not resumed their PR.
+4. Deploy, then check the host probe and each project's lock state as above.
+5. Enroll replacement runs and batches against the new image.
+
+Hub enforces none of these steps.
 
 ## Isolation and deployment
 
-Linux evaluation uses bubblewrap; macOS uses sandbox-exec. The host must permit the
-required isolation, including unprivileged namespaces for bubblewrap. Installing
-the binary or successfully building an image does not prove that the serving host
-can execute it. There is no unsandboxed fallback.
+For Cloud Run, configure `--execution-environment=gen2` for the namespace support
+bubblewrap needs; the deployment helper does not select it automatically. Verify
+the host probe after every deploy. The image build needs no source credential. See
+the [deployment procedure](cloud-run-deployment.md) for serving configuration.
 
-The runtime probe starts devkit inside isolation without a PR. Require `ok: true`
-for the intended profile on the actual serving host before native SDD rollout.
-Unsupported isolation needs a compatible execution host. For Cloud Run, configure
-an execution environment with the required namespace support; the deployment helper
-does not select that environment automatically. If selecting the second-generation
-environment, configure `--execution-environment=gen2` and still verify the probe.
+A cold install runs as a background task in one worker process and measured 11-18
+seconds in a local container shaped like the service (cpu=1, 1 GiB). With
+request-based CPU allocation, Cloud Run throttles CPU between requests, which can
+lengthen it; this has not been measured on the serving host.
 
-The image packages Git, bubblewrap and the locked runtime files. Local builds can
-supply the private-source credential through the BuildKit `sdd_token` secret.
-The Cloud Build helper accepts `SDD_BUILD_SECRET=<Secret Manager secret name>` in
-the same GCP project; its build identity needs secret access. The final image
-contains private devkit assets and follows their source access policy.
-See the [deployment procedure](cloud-run-deployment.md) for serving configuration.
-
-The bridge additionally needs a separately provisioned clean checkout. Its
-allowlisted target and managed-machine setup belong in the
-[SDK worker operations guide](execution-targets.md); runtime provisioning does not create
-that checkout or deploy worker code.
+The bridge additionally needs a separately provisioned clean checkout whose own
+root `uv.lock` declares devkit. Its allowlisted target and managed-machine setup
+belong in the [SDK worker operations guide](execution-targets.md).
 
 ## Migrating legacy runs
 
@@ -125,11 +144,13 @@ anchored by the [migration regression](../../modules/hub/tests/integration/featu
 
 ## Live canary after deployment
 
-Use a designated test repository and PR with the matching committed runtime
-receipt and bound workflow. Run this external-write test only against its approved
-target; local CLI/mock tests do not establish provider or GitHub behavior.
+Use a designated test repository and PR with a committed devkit lock, matching
+committed receipt and bound workflow. Run this external-write test only against
+its approved target; local CLI/mock tests do not establish provider or GitHub
+behavior.
 
-1. Check readiness, start the native run, and follow its link from the spec view.
+1. Check the runtime state until it is `ready`, check readiness, start the native
+   run, and follow its link from the spec view.
 2. Reach a draft human gate; verify the wait releases its execution slot and the
    Decisions dialog links report evidence to the actual inspected commit.
 3. Exercise a provider question, save an answer, then explicitly resume with it.

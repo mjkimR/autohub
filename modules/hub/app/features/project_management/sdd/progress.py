@@ -237,6 +237,9 @@ class SddProgress:
                 }
             return {"pull": pull, "evidence": evidence}
         except ProjectError as exc:
+            if getattr(exc, "code", None) == "SDD_RUNTIME_PREPARING":
+                # The head's locked runtime is installing: retry on a later tick instead of blocking the run.
+                return {"pull": pull, "preparing": True, "diagnostics": failure(exc)}
             return {
                 "pull": pull,
                 "error": str(exc),
@@ -316,6 +319,9 @@ class SddProgress:
         pull = observed["pull"]
         if pull.get("state") == "closed":
             await finish_closed_pull(self.repo, session, run, pull, now)
+        elif observed.get("preparing"):
+            # Keep the run's state; the next dispatcher tick inspects again once the runtime is installed.
+            run.sdd_progress = {**(run.sdd_progress or {}), "diagnostics": observed.get("diagnostics", [])}
         elif observed.get("error"):
             progress = dict(run.sdd_progress or {})
             progress["error"] = observed["error"]

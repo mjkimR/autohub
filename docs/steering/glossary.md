@@ -10,6 +10,7 @@ summary: "Read before naming product concepts or distinguishing scheduler, PR, S
 | Project connection | One GitHub repository's saved connector, policy and verification configuration; excludes an individual execution. | `CAP-PROJ-project-connections` | repository task | `Project`, `projects` |
 | PR run | Durable delivery of one enrolled PR through implementation, observation and merge/control outcomes. | `CAP-PR-pull-request-delivery` | job, SDK run | `PipelineRun` |
 | Execution attempt | One implementation/fix request within a PR run, with immutable request and delivery correlation. | `CAP-PR-pull-request-delivery` | scheduler attempt | `ExecutionAttempt` |
+| Runtime identity | Digest of the locked devkit dependency group a commit's `uv.lock` selects, the interpreter version and the build backend lock; it names the SDD runtime Hub installs and evaluates with. | `CAP-SDD-runtime-isolation` | runtime profile | `Selection.identity`, `devkit-lock:<identity>` |
 | Run question | A request for operator input bound to a PR run and its attempt/head; a saved answer does not itself resume work. | `CAP-PR-operator-decisions` | approval, command | `RunQuestion`, `RunAnswer` |
 | Work Plan | A batch of pre-PR requirements with Plan dependencies and admission controls. | `CAP-WORK-work-plan-execution` | SDD proposal | `WorkPlan` |
 | Work Plan template | Reusable project-owned definition, excluding Work Plan execution, Schedule configuration and SDK release. | `CAP-WORK-work-plan-execution` | execution clone | `WorkPlanTemplate` |

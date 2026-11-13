@@ -38,10 +38,11 @@ or confirms it. Use `uv run devkit add <bundle>:<preset>` for approved additions
 and review `.devkit/config.toml`, `.devkit/installation.json` and generated
 guidance together.
 
-These packages support changes to Auto Hub itself. The separate
-`config/sdd-runtime*` manifests provision execution in connected repositories;
-catalog selection in the contributor environment does not add catalog packages
-to those runtimes.
+These packages support changes to Auto Hub itself. Connected repositories are
+evaluated with the runtime their own `uv.lock` pins; `config/sdd-runtime` is only
+the seed runtime for Hub's SDD tests, and `config/sdd-build` pins the hatchling
+backend that images use to build locked sources. Catalog selection in the
+contributor environment changes neither.
 
 ## app-common assets
 
@@ -62,14 +63,16 @@ their assets. Initialize frontend dependencies with `just init hub-ui` there
 when the change needs UI checks.
 Never edit `.devkit/managed/` or projected agent files directly.
 
-## devkit and runtime profile updates
+## devkit and seed runtime updates
 
-The backend development environment and both `config/sdd-runtime*` manifests are
+The backend development environment and the `config/sdd-runtime` seed manifest are
 reviewed against one devkit commit. Update root sources/override-dependencies and
-both runtime profiles together; regenerate their locks from the intended refs.
-Retain the backend's separate app-common pin when reviewing a toolchain update.
+the seed manifest together; regenerate their locks from the intended refs. Retain
+the backend's separate app-common pin when reviewing a toolchain update. A change
+to `config/sdd-build` changes every runtime identity, because its lock digest is
+part of the identity.
 
-`just check-devkit` checks the three source/override/lock sets, release versions,
+`just check-devkit` checks the two source/override/lock sets, release versions,
 viewer provenance receipt, artifact SHA-256 and npm integrity offline. A mismatch
 fails with `DEVKIT_PINS_INVALID`. Backend lint and SDD CI run it before runtime
 provisioning.
@@ -81,10 +84,10 @@ provisioning.
 5. Run `just check-devkit`, `just lint`, `just check`, `just check-ui-api`, and the
    affected backend, SDK, frontend and isolated SDD contracts.
 
-Keep previous reviewed runtime directories intact when provisioning a different
-lock; [testing](testing.md#isolated-sdd-contracts) uses fresh destinations.
-Switching a serving host and settling admitted runs is a separate
-[operator procedure](../operations/sdd-runtime.md#assign-repositories).
+Install a changed seed lock into a fresh destination;
+[testing](testing.md#isolated-sdd-contracts) describes the recipes. Settling
+admitted runs when the serving runtime model changes is a separate
+[operator procedure](../operations/sdd-runtime.md#rollout-and-rollback).
 
 ## UI artifacts and generated declarations
 

@@ -54,19 +54,29 @@ npm --prefix modules/hub-ui test -- --fsModuleCache=false
 
 ## Isolated SDD contracts
 
-Provision both reviewed profiles locally. A changed lock requires fresh
-destinations rather than overwriting an older runtime:
+Install the seed runtime and the pinned build environment, then run the
+contracts:
 
 ```sh
-just install-sdd .cache/sdd-review
-just install-sdd .cache/sdd-review-app-common config/sdd-runtime-app-common
-AUTOHUB_TEST_SDD_APP_COMMON="$PWD/.cache/sdd-review-app-common" just test-sdd .cache/sdd-review
-AUTOHUB_TEST_SDD_APP_COMMON="$PWD/.cache/sdd-review-app-common" just test-sdd-pg .cache/sdd-review
+just install-sdd
+just install-sdd .cache/sdd-build config/sdd-build
+just test-sdd
+just test-sdd-pg
 ```
 
-Provisioning needs read access to the pinned sources. PostgreSQL contracts need
-Docker/testcontainers; native CLI tests also require supported OS isolation.
-The dedicated recipes fail when the runtime/isolation boundary cannot run.
+`config/sdd-runtime` is the seed manifest. Fixture repositories commit it as their
+own `pyproject.toml` and `uv.lock`; the suite seeds the cache entry for that lock's
+identity from `.cache/sdd`, so evaluation runs the production selection, lease and
+isolated devkit without network access. `just test-sdd` points
+`AUTOHUB_SDD_BUILD` at `.cache/sdd-build` and `AUTOHUB_SDD_CACHE` at
+`.cache/sdd-test-runtimes` unless they are already set. The real build-isolation
+case needs `.cache/sdd-build`. A changed seed lock requires a fresh destination;
+the installer refuses to overwrite one recorded for another lock.
+
+Installing the seed runtime needs read access to its pinned GitHub sources.
+PostgreSQL contracts need Docker/testcontainers; native CLI tests also require
+supported OS isolation (bubblewrap on Linux, sandbox-exec on macOS). The dedicated
+recipes fail when the seed runtime, build environment or isolation cannot run.
 They do not silently turn missing prerequisites into a passing CLI contract.
 Serving-host installation and live verification belong in
 [SDD runtime operations](../operations/sdd-runtime.md).
@@ -101,7 +111,7 @@ same root recipes after preparing their environments:
 | --- | --- |
 | `backend` | Backend lint/types/SQLite and standalone SDK lint/types/tests/build |
 | `backend-postgres` | PostgreSQL tests, migration upgrade/check and one-step downgrade/upgrade |
-| `sdd-contract` | Pin consistency, both locked profiles, OS-isolated SQLite/PostgreSQL contracts |
+| `sdd-contract` | Pin consistency, seed runtime installation, OS-isolated SQLite/PostgreSQL contracts |
 | `frontend` | UI lint/types/build/tests and generated API freshness |
 
 The SDD job requires `SDD_READ_TOKEN` for reviewed runtime source access. Execute

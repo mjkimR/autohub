@@ -46,6 +46,8 @@ async def _read_evidence(checkout: str, spec_dir: str, head_sha: str) -> str:
     try:
         evidence = await SddService().evaluate(root, spec_dir, head_sha, head_sha, None, False)
     except ProjectError as exc:
+        if exc.status >= 500:  # e.g. SDD_RUNTIME_PREPARING: the bridge reports a retryable unavailability
+            raise
         raise BridgeRejected("workflow-evaluation-failed") from exc
     if not approval_gate(evidence):
         raise BridgeRejected("workflow-not-ready-for-integration")

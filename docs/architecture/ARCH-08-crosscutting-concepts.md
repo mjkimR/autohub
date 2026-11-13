@@ -102,12 +102,17 @@ and [connection guards](../../modules/hub/app/features/project_management/connec
 
 ## Credential and process boundaries
 
-Repository workflow evaluation uses the server-selected reviewed runtime in OS
-isolation. It exposes a disposable writable checkout and read-only tools without
-inherited host credentials or network access. Missing isolation is a refusal,
-not an invitation to run repository code directly. Git publication has a separate
-host-controlled boundary that can use the connector's credential.
-`CAP-SDD-runtime-isolation` owns both the runtime contract and its limits.
+Repository workflow evaluation uses the runtime the evaluated commit's own
+`uv.lock` pins, in OS isolation. It exposes a disposable writable checkout and
+read-only tools without inherited host credentials or network access. Installing
+that runtime keeps the same split: the Hub process fetches locked Git sources with
+the connector's credential and installs hashed wheels, which runs no package code;
+every step that runs repository build code or the new runtime's interpreter is
+sandboxed without network, credentials or write access outside one directory
+(`ADR-offline-source-build`). Missing isolation is a refusal, not an invitation to
+run repository code directly. Git publication has a separate host-controlled
+boundary that can use the connector's credential. `CAP-SDD-runtime-isolation`
+owns both the runtime contract and its limits.
 
 Configured SDK HTTP workers are a different trust boundary: the host intentionally
 calls their approved addresses and resolves a configured credential-variable name
@@ -116,8 +121,10 @@ caller an arbitrary checkout path. `CAP-SDK-task-flow-execution` and
 `CAP-SDK-existing-pr-bridge` own these bindings; operational configuration belongs
 in [execution targets](../operations/execution-targets.md).
 
-The checks in [runtime unit tests](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py)
-and [real CLI isolation tests](../../modules/hub/tests/integration/features/project_management/sdd/test_cli.py)
+The checks in [runtime unit tests](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime.py),
+[install unit tests](../../modules/hub/tests/unit/features/project_management/sdd/test_runtime_install.py),
+[real CLI isolation tests](../../modules/hub/tests/integration/features/project_management/sdd/test_cli.py)
+and [real build isolation tests](../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py)
 distinguish command construction from actual restricted file/network access.
 They do not assert that the entire Hub process has no credentials or network.
 
