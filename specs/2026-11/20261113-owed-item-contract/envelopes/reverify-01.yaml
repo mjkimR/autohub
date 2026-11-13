@@ -1,0 +1,40 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:12:20.806605Z'
+status: completed
+review: review-01.yaml
+summary: 'Implementer-verified fixes: failed-run suppression (3f64fc9, test_failed_runs_yield_to_batch_and_work_item_attention), SQLite julianday keyset (cd004ff, test_server_default_timestamps_page_without_gaps), RETURNING constraint documented in models.py; just test 1445 passed, owed test-pg 15 passed'
+findings:
+- issue: failed-run is suppressed only by Work Item recovery or replacement, not by SDD batch attention or Work Item attention, contrary to the suppression order
+  evidence: modules/hub/app/features/project_management/owed_items/repos.py:241-249 vs repos.py:215-223
+  failure_condition: A failed run whose Work Item is in attention or whose run is claimed by a batch in attention is listed twice
+  suggested_action: Add ~_run_in_attention_batch and item.state != attention to the failed_run branch with tests
+  resolution: resolved
+  severity: P2
+- issue: On SQLite the keyset cursor drops rows sharing a whole-second server-default timestamp with the cursor row (text comparison of mixed timestamp formats)
+  evidence: owed_items/repos.py:149, repos.py:416-419, services.py:77
+  failure_condition: SQLite; owed rows with server-default waiting_since in the same second split across a page boundary
+  suggested_action: Normalise the sort column on SQLite and add a paging test with server-default timestamps
+  resolution: resolved
+  severity: P3
+- issue: Lease UPDATE ... RETURNING(PipelineRun) paths do not return has_pending_decision; a populate_existing refresh may expire it and a later PipelineRunRead serialization would lazy-load
+  evidence: modules/hub/app/features/project_management/pipeline_runs/repos.py:312,335-336,358; pipeline_runs/models.py:231-237
+  failure_condition: A run refreshed through a lease RETURNING path and then serialized as PipelineRunRead in the same async session
+  suggested_action: Document the constraint or include the flag in RETURNING
+  resolution: resolved
+  severity: P3
+- issue: 'Some assertions are weaker than their criteria: no statement count around a mutation response for the flag, the limit=1 walk only asserts a different key, AC-08 has no ACTIVE test case'
+  evidence: pipeline_runs/test_pending_decision_flag.py:23-63; owed_items/test_owed_items.py:560-562, 496-512
+  failure_condition: Regressions in tie ordering or admitting an active connection test would pass
+  suggested_action: Compare the limit=1 walk with limit=100 order; add an ACTIVE connection test; assert mutation responses
+  resolution: waived
+  waiver: 'Parts b and c fixed in cd004ff; part a stays: question ask and dismiss responses are QuestionRead without the run flag, and post-flush freshness without a statement is pinned by test_flag_follows_the_projection_inside_one_transaction'
+  severity: P3
+checks:
+  tests: PASS just test 1445 passed 76 skipped; just test-pg owed_items 15 passed
+  lint: PASS just lint-check
+diff_scope:
+  base: bb227d633f19d79aff0252b5025cdba5edb5b1e0
+  head: cd004ffe22b16a103b6ff17b5a5a346c57621d4b
