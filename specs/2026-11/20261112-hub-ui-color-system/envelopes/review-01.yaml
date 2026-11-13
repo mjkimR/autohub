@@ -1,0 +1,32 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-12T23:28:34.941562Z'
+status: completed
+summary: 'AC-01..AC-12 confirmed against eb2debd..eee3362. Tokens match table (neutral surfaces/charts chroma 0, status chroma <= 0.08, attention family registered); attention Badge variant; presentation.ts maps 9 states, none to warning, RunStateBadge at all four call sites with tests incl. fallback; needsYouBreakdown null when zero/unknown, tile link only when count > 0, four integration tests; layout-contrast.test.ts covers listed pairs in both themes; DecisionInbox three branches with data-attention, left rule, outline actions, relabelled filter options; AC-08/09 cleanup confirmed by rg; AC-10 tests/rules/eslint pass, eslint.config.js unchanged; AC-11 interaction triggers survive. Deviations: min-w-0 class-only fix in boundary; display-case labels coherent with AC-04 and steering doc; ink controls match visual-style.md; all changed files inside T1-T5 boundary union. Contract amendments (label preamble, overflow fix pulled in, branding cleanup) lacked named authority -> finding 1.'
+findings:
+- issue: 'Contract amendments during build without named authority: (a) spec section 4 preamble defines run labels as display-case strings instead of CSS-capitalized lowercase; (b) 390px dashboard overflow removed from Out-of-Unit and implemented; (c) "Scheduler Manager" subtitle removed and README opening renamed to "Autohub", recorded as in-scope polish.'
+  evidence: spec.md:76-77 (preamble), spec.md:348-352 (polish bullet), Out-of-Unit list (overflow line removed in 10525f0); AppShell.svelte:150; modules/hub-ui/README.md:3
+  failure_condition: Later readers or spec-sync take the amendments as approved contract with no user/policy decision.
+  suggested_action: Host confirms with the user and records the authority, or reverts (b) and (c).
+  resolution: open
+  severity: P3
+- issue: layout-contrast.test.ts hard-codes badge tint alphas (0.15 success/info/warning; 0.10 light / 0.20 dark destructive) instead of reading them from badge.svelte; coupling is only a comment.
+  evidence: layout-contrast.test.ts:80-82 (tintAlpha); badge.svelte:9-15
+  failure_condition: Raising a badge tint opacity (e.g. bg-warning/25) drops status-on-tint contrast below 4.5:1 while just test-ui stays green.
+  suggested_action: Read bg-<status>/NN alphas from badge.svelte (or badgeVariants), or assert badge.svelte still contains the exact fragments.
+  resolution: open
+  severity: P3
+assumptions:
+- Reviewed committed content only; working tree clean; no probe written.
+- 390px overflow fix judged from markup; no viewport rendering run by reviewer.
+- Favicon dark switching relies on prefers-color-scheme inside the SVG style.
+checks:
+  tests: 'PASS just test-ui (rerun at eee3362): 52 files / 406 tests'
+  lint: 'PASS devkit rules check --ci --base main: errors=0 warnings=0 (35 rules); PASS eslint --max-warnings 0 on 29 touched authored hub-ui files'
+  build: SKIP NOT RERUN just check / just lint; implementer reported PASS at same head eee3362
+diff_scope:
+  base: eb2debd50f37988df6983fb1aec91e3bef35bd6e
+  head: eee336228afdbd3e3252c68dd3b22ef35b88c768
+activity_effort: medium
