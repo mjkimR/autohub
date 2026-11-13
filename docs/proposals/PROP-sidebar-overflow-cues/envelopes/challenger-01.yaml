@@ -1,0 +1,23 @@
+kind: challenger
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T07:02:51.899462Z'
+status: completed
+summary: Shadow and wrapper direction fits; Menu reveal must restore active-link visibility before measuring cues.
+findings:
+- issue: Reveal the active destination after opening the bounded narrow Menu.
+  evidence: proposal.md visibility update only remeasures; SidebarLink.svelte:18-22 reacts to active/link changes, while AppShell.svelte:136-141 keeps the hidden navigation mounted.
+  failure_condition: Load a lower System or administrative destination with Menu closed on a short narrow viewport, then open Menu; the active-link effect ran while hidden and remeasurement leaves it outside the newly bounded scrollport.
+  suggested_action: Add visibility-settled active-link scrolling before cue measurement, preserving explicitly collapsed System; verify the lower-route closed-to-open case in real layout without surrounding-page scrolling.
+  resolution: open
+  severity: P1
+assumptions:
+- 'Codex emulated route: read-only role commands, explicit cwd and identical pre/post snapshot ee82fed474c71fb78a61f18621e197f0dad6c7c8; HEAD unchanged.'
+unverified_areas:
+- No browser layout or product tests ran; theme visibility and focus clearance await Development.
+checks:
+  inspection: PASS proposal, screen delta and sidebar source/contracts inspected
+diff_scope:
+  base: 7e780ab7e45757bdf44e6edd330767f62ffd41dc
+  head: 69343ab89071b41c87ba6a747fbf95d391afe953
