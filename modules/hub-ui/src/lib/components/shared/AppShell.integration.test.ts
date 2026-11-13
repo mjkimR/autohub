@@ -261,3 +261,25 @@ test.each([
 	const active = nav().querySelector('[aria-current="page"]');
 	expect(active?.querySelector('span')?.textContent?.trim() ?? null).toBe(activeName);
 });
+
+test('opening Menu realigns its displayed current destination without opening a collapsed System', async () => {
+	page.url = new URL('http://hub.test/operations/tasks');
+	render(AppShell, { children });
+	const navigation = nav();
+	const active = within(navigation).getByRole('link', { name: 'Task specs' });
+	const menu = screen.getByRole('button', { name: 'Menu' });
+	Object.defineProperties(navigation, {
+		clientHeight: { get: () => (menu.getAttribute('aria-expanded') === 'true' ? 100 : 0) },
+		scrollHeight: { get: () => 500 }
+	});
+	vi.spyOn(navigation, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 10, 200, 100));
+	vi.spyOn(active, 'getClientRects').mockReturnValue([new DOMRect()] as unknown as DOMRectList);
+	vi.spyOn(active, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 250, 150, 40));
+	await fireEvent.click(menu);
+	await waitFor(() => expect(navigation.scrollTop).toBe(184));
+	await fireEvent.click(systemToggle());
+	await fireEvent.click(menu);
+	await fireEvent.click(menu);
+	expect(systemToggle().getAttribute('aria-expanded')).toBe('false');
+	expect(systemList().hidden).toBe(true);
+});
