@@ -26,7 +26,7 @@ workflow: sdd-proposal
 
 ## 1. Background & Hypothesis
 
-Split from `PROP-owed-item-contract` on the user's decision in its Planning: run origin fields serve the run page, not
+Split from `SPEC-owed-item-contract` on the user's decision in its Planning: run origin fields serve the run page, not
 the owed-item contract, whose subject needs only type, ID and project.
 
 The app-wide UX review of 2026-11-13 (designer increment I5; relationships R4, R11 and R19) found that a PR run has no
@@ -55,7 +55,7 @@ enrollment source.
 
 Non-goals:
 
-1. The per-run pending-decision flag, which `PROP-owed-item-contract` delivers.
+1. The per-run pending-decision flag, which `SPEC-owed-item-contract` delivers.
 2. Changing how runs are enrolled or linked.
 
 ## 4. Lifecycle & Retirement Criteria

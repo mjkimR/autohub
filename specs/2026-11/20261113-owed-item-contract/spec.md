@@ -1,32 +1,23 @@
 ---
-id: PROP-owed-item-contract
+id: SPEC-owed-item-contract
 title: Owed item contract for operator debt
 summary: Define one owed-item model and read surface so every exception class that waits for the operator reaches them through one count and one worklist with consistent definitions.
-status: accepted                      # draft | reviewing | accepted | rejected
-created_at: 2026-11-13
-target_area: capabilities/delivery/
-priority: high                        # critical | high | medium | low
-size: L                               # S | M | L | XL (XL: would need two or more specs or task kinds; decompose before Planning)
-planning_effort: medium               # low | medium | high (hint for Planning)
-dev_effort: medium                    # low | medium | high (hint for Development)
-boundaries:
-  owns:
-    - capabilities/
-    - usecases/
-    - ux/
-    - steering/
-    - modules/hub/app/features/
-    - modules/hub/tests/
-    - modules/hub-ui/src/lib/api/
-  excludes:
-    - docs/decisions/
-task_kind: feature                    # feature | bugfix: the spec follows sdd-spec-<task_kind>
-workflow: sdd-proposal
+status: planned
+created: 2026-11-13
+related_capabilities: []
+related_usecases: []
+workflow: sdd-spec-feature
 ---
+<!-- devkit:skeleton -->
 
-# [PROP-owed-item-contract] Owed item contract for operator debt
+# [SPEC-owed-item-contract] Owed item contract for operator debt
 
-## 1. Background & Hypothesis
+## 1. Problem Statement & Motivation
+
+Handed off from proposal PROP-owed-item-contract on 2026-11-13.
+- **Preserved Materials**: `docs/materials/2026-11/20261113-owed-item-contract`
+
+### 1. Background & Hypothesis
 
 Auto Hub succeeds through unattended throughput: agents deliver, and the operator steps in only on exceptions
 ("Exceptions first" in the product principles). The operator therefore needs one place that lists every exception
@@ -82,12 +73,31 @@ Constraints that bound every option:
   capped at 3 + 3. A request uses one connection at a time. No session is held across external I/O. No
   `AsyncTransaction` is nested inside another.
 - Backend layering stays `Router → UseCase → Service → Repository`. The cross-feature owed read uses one read-only
-  aggregate repository over owner models (`PADR-owed-items-aggregate-read`); it was first drafted as composing
+  aggregate repository over owner models (`ADR-owed-items-aggregate-read`); it was first drafted as composing
   through services,
   not through another feature's repositories.
 - Owed-item reads make no GitHub or other provider call, like the decision list (`SPEC-pending-decision-count` AC-04).
 
-## 2. Technical Spike Questions
+## 2. User Stories
+
+- **US-1**: As a developer/agent, I want to implement Owed item contract for operator debt so that system capabilities are extended.
+
+## 3. Non-Goals
+
+1. **Scope Excluded**: <what this change will not do>
+
+## 4. Acceptance Criteria & Behavioral Contracts
+
+### [AC-01] <scenario>
+- **Given** <precondition>
+- **When** <action>
+- **Then** <expected result>
+
+## 5. Carried Proposal Notes
+
+Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+
+### 2. Technical Spike Questions
 
 - **Q1 (membership and weight)**: Which candidate kinds (§3) count toward the shell Badge, and which appear only as
   quieter items? Expected AI catalog holds and deliberate operator pauses are the boundary cases. Does a deliberate
@@ -117,7 +127,7 @@ Constraints that bound every option:
   "attention item" or "exception"? `docs/steering/glossary.md` has no entry, and `docs/steering/ux-objects.md`
   registers no such object.
 
-## 3. Proposed Design & Impact
+### 3. Proposed Design & Impact
 
 Direction settled in Planning (§5 records each decision):
 
@@ -148,7 +158,7 @@ Direction settled in Planning (§5 records each decision):
   - A list read filtered by project and kind, keyset-paginated by (`waiting_since`, `key`), page limit at most 100.
   - A counts read: owed total, counts by kind and by project, aggregates only.
   - Both run in one connection and one transaction with a fixed number of statements independent of row counts and no
-    provider call, through one read-only aggregate repository (`PADR-owed-items-aggregate-read`).
+    provider call, through one read-only aggregate repository (`ADR-owed-items-aggregate-read`).
   - The owed decision-kind count equals `actionable_total_count` for the same visible scope.
 - **Per-run pending-decision flag**: `PipelineRunRead` gains a boolean saying the run has an actionable decision, so
   run rows no longer derive it from one 100-row decisions page.
@@ -185,7 +195,8 @@ Non-goals:
 
 Size: `L`. One feature spec delivers the model, the read API, the per-run flag and the contracts.
 
-## 4. Lifecycle & Retirement Criteria
+### 4. Lifecycle & Retirement Criteria
+
 <!--
 - Preliminary decisions: devkit spec proposal padr owed-item-contract "<title>" --summary "<Y-statement: For <context>, we <decision>, to <quality>, accepting <downside>.>" records a PADR in decisions/.
 - Research: collect benchmarks and references in materials/ (created with its first file).
@@ -196,10 +207,10 @@ Size: `L`. One feature spec delivers the model, the read API, the per-run flag a
   commit message (no quote); a later hygiene pass writes the rejection ADR and deletes the proposal directory.
 -->
 
-## 5. Planning Decisions
+### 5. Planning Decisions
 
-Evidence: `materials/owed-state-inventory.md` (scout round 1), `envelopes/challenger-01.yaml` and the user's answers
-in `envelopes/answer-01.yaml`.
+Evidence: `docs/materials/2026-11/20261113-owed-item-contract/owed-state-inventory.md` (scout round 1), historical Git `05223e96102b84351f213fabaa73a0cada91bafe:docs/proposals/PROP-owed-item-contract/envelopes/challenger-01.yaml` and the user's answers
+in historical Git `05223e96102b84351f213fabaa73a0cada91bafe:docs/proposals/PROP-owed-item-contract/envelopes/answer-01.yaml`.
 
 - **Q1 (membership, user)**: only operator-actionable kinds are counted (§3). Failed runs are quiet items without
   count weight because no in-scope action clears them; catalog holds and `awaiting-admission` recoveries are system
@@ -226,6 +237,7 @@ in `envelopes/answer-01.yaml`.
   landing switches the Badge and Needs-you tile together after this contract lands. Phase 2a navigation regroup and
   project workspace work proceed independently.
 - **Q10 (naming, user)**: "owed item" in glossary, code and API path; label "Needs you".
-- **Layering (user)**: one read-only aggregate repository (`PADR-owed-items-aggregate-read`).
+- **Layering (user)**: one read-only aggregate repository (`ADR-owed-items-aggregate-read`).
 - **Boundaries**: `owns` names the backend features and tests, the generated typed client, use cases, capabilities,
   UX documents and steering; no hub-ui screen path.
+
