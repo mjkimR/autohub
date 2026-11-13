@@ -76,13 +76,58 @@ workflow, rule and bundle versions the agents used.
 
 ## 3. Proposed Design & Impact
 
-To be settled in Planning. Initial direction:
+Code facts this design rests on (head of this branch):
 
-- A two-phase isolated runner: an install phase with network limited to the
-  needed package sources and a scoped read credential, producing a read-only
-  venv keyed by the lock's digest; then the existing evaluation phase with no
-  network and no credentials, using that venv's devkit.
-- Runtime identity becomes the installed lock digest instead of the server pin.
+- Every devkit call runs `<home>/.venv/bin/python -m devkit_dist` inside
+  bubblewrap/sandbox-exec with the checkout writable, `<home>` read-only and no
+  network (`isolation.py`). `<home>` comes from the selected profile
+  (`profiles.py`) and its `pin.json` (written by `scripts/install-sdd.py`).
+- Run identity is `cli_version = "devkit-spec:" + pin.lock_sha256`; a snapshot
+  whose `cli_version` differs refuses evaluation ("SDD CLI version differs from
+  the execution pin", `services.py`).
+- Every devkit command has a 25-second timeout (`checkout.py`); the checkout is
+  fetched with the project's GitHub connector token, which never enters the sandbox.
+- The SDK bridge selects the runtime with the same `runtime_scope(repository)`
+  (`execution/flows/bridge.py`).
+
+Draft design (Planning recommendation, subject to the questions):
+
+- **D1 Source**: the evaluated commit's root `pyproject.toml` and `uv.lock` are
+  parsed (never executed) in the Hub process. A lock without a `devkit-spec`
+  package refuses with a new repository diagnostic instead of falling back.
+- **D2 Install set**: the lock-graph closure of `devkit-spec`, `devkit-dist`
+  and every package the committed receipt's `packages` names (for this pilot:
+  `devkit-catalog`, `g-tools`), not the whole dev environment. Those exact
+  pinned requirements are installed with `--no-deps`, so a Godot or web
+  project's unrelated tooling is never installed.
+- **D3 Identity**: `cli_version` becomes a digest of that install set (name,
+  version, exact source and Git revision) plus the interpreter's minor version,
+  so unrelated lock changes keep a run's identity. A change of the set mid-run
+  keeps rule 9's refusal with a repository diagnostic to re-enroll (see Q1).
+- **D4 Two-phase isolation**: an install phase in the same OS sandbox with
+  network enabled, only `pyproject.toml`/`uv.lock` visible, the venv and uv
+  cache writable, and a dedicated read-only package-source credential
+  (server secret, never the project's connector token). The evaluation phase is
+  unchanged: no network, no credentials, venv read-only.
+- **D5 Cache**: a per-instance directory keyed by the identity digest, built
+  under a per-digest single-flight lock into a temporary path and renamed into
+  place with its `pin.json`, bounded by an LRU cap. Install has its own timeout,
+  longer than the 25-second command limit. Cloud Run's in-memory filesystem
+  makes cache size a memory cost; a cold install repeats per instance.
+- **D6 Python**: the image's interpreter (3.13) when the repository's
+  `requires-python` admits it; otherwise refuse with a diagnostic. No on-demand
+  interpreter downloads.
+- **D7 Retirement**: remove `AUTOHUB_SDD_PROFILES`, the `config/sdd-runtime*`
+  manifests, image-packaged profiles and `RUNTIME_REVISION_MISMATCH` (identical
+  by construction). `check_bundles` becomes a post-install inventory check of
+  the receipt's bundles against the installed entry points (a repository lock
+  defect). Keep the `RECEIPT_STALE` regeneration exception: a receipt can still
+  lag its own lock. The runtime status probe installs and starts devkit from the
+  project's default-branch lock. The bridge uses its checkout's lock.
+- **Migration**: runs admitted under a server pin carry an old `cli_version`
+  and are refused after deployment; the operator settles active native runs
+  before rollout (the live canary repository is the only active consumer).
+
 - Contracts affected: `CAP-SDD-runtime-isolation` (scope exclusion, rules 1-4,
   6, 9, 10, 11, 15), `CAP-SDK-existing-pr-bridge` profile selection,
   `ARCH-07-deployment`, `ARCH-11-risks-and-technical-debt` and the operations
