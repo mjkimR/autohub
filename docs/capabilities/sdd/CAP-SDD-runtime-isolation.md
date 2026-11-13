@@ -79,7 +79,9 @@ an admitted run; the runtime identity is recorded with it and follows the lock.
    Check: [test_lock_runtime.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_lock_runtime.py), `test_repository_without_a_lock_is_refused`, `test_repository_whose_project_does_not_declare_devkit_spec_is_refused`, `test_symlinked_manifest_is_refused`; [test_lock_runtime.py](../../../modules/hub/tests/integration/features/project_management/sdd/test_lock_runtime.py), `test_repository_without_a_devkit_lock_is_refused_through_checkout`.
 4. **Unsupported sources**: IF the selected export contains an option line other
    than `-e ./<path>`, a path requirement that is not a `./<path>` inside the
-   checkout or carries hashes or a marker, a URL or archive requirement, a Git
+   checkout whose components use only ASCII letters, digits, `.`, `_` and `-`, a
+   path requirement that carries hashes or a marker or whose path the lock names
+   as no `editable` or `directory` source, a URL or archive requirement, a Git
    source outside `https://github.com/` or without an exact 40-character revision,
    a registry requirement without SHA-256 hashes, a registry package whose lock
    source is not `https://pypi.org/simple`, or a path source whose directory is

@@ -22,7 +22,8 @@ A connected repository is evaluable when its evaluated commit has:
 - Locked packages of that group from PyPI as hashed wheels, Git sources on
   `https://github.com/` pinned to exact revisions, or path sources inside the
   repository (editable, non-editable or uv workspace members), such as an
-  in-repository or snapshot bundle. Path sources outside the repository, reached
+  in-repository or snapshot bundle, whose path uses only ASCII letters, digits,
+  `.`, `_` and `-`. Path sources outside the repository, reached
   through a symlink or containing one, URL, archive and custom-index sources are
   refused, as are registry packages without wheels.
 - Path sources of at most 10,000 files and 32 MiB in total, excluding `.git`,

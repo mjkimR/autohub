@@ -1,0 +1,24 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T04:39:44.405248Z'
+status: completed
+summary: 'Independent reconcile-reviewer (nested native subagent) verified all six targets and the no-impact claims; one P2: the path component character limit and the lock-name requirement are missing from CAP rule 4 and the operations guide.'
+findings:
+- issue: CAP-SDD-runtime-isolation rule 4 and the operations guide omit the refusal of path components outside ASCII letters, digits, '.', '_' and '-', and of a path line the lock does not name as an editable or directory source.
+  evidence: modules/hub/app/features/project_management/sdd/lock_runtime.py:35,198,347; docs/capabilities/sdd/CAP-SDD-runtime-isolation.md:81; docs/operations/sdd-runtime.md:25
+  failure_condition: A repository locks a bundle at a path containing a space or non-ASCII character and is refused for a reason neither document states.
+  suggested_action: Add the allowed character set and the lock-name condition to rule 4 and the operations path-source bullet.
+  resolution: open
+  severity: P2
+assumptions:
+- Read-only verified by index snapshot before and after
+unverified_areas:
+- Test suites not rerun by the reviewer
+checks:
+  refs: PASS cited tests exist 14/14
+diff_scope:
+  base: 32c69e53124dd6aae4e84cfe8a2613a12b386d23
+  head: 1075e534d116a55945341e8a8027ef5f17bef6a4
+activity_effort: medium

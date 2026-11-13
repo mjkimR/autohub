@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-repo-path-runtime-sources
-status: pending
+status: resolved
 targets:
   - file: docs/capabilities/sdd/CAP-SDD-runtime-isolation.md
     resolution: modified
