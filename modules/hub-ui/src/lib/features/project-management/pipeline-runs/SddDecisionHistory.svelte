@@ -85,9 +85,7 @@
 			}}><RefreshCw class={loading ? 'size-3.5 animate-spin' : 'size-3.5'} /></Button
 		>
 	</div>
-	{#if loading}<p role="status" class="animate-pulse text-xs text-muted-foreground">
-			Loading decision history…
-		</p>
+	{#if loading}<p role="status" class="text-xs text-muted-foreground">Loading decision history…</p>
 	{:else if error}<p role="status" class="text-xs text-destructive">
 			{error}. Use refresh to retry.
 		</p>

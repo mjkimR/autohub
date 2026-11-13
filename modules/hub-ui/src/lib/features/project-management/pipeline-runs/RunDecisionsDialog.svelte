@@ -253,10 +253,7 @@
 				>
 					<CircleCheck class="mt-0.5 size-4 shrink-0" />{saved}
 				</div>{/if}
-			{#if !ready && !error}<p
-					role="status"
-					class="mb-5 animate-pulse text-sm text-muted-foreground"
-				>
+			{#if !ready && !error}<p role="status" class="mb-5 text-sm text-muted-foreground">
 					Loading the latest decisions…
 				</p>{/if}
 			<div class="flex flex-col gap-6 md:flex-row md:items-start">

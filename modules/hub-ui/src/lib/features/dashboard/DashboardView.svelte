@@ -5,6 +5,7 @@
 	import DashboardHealth from './DashboardHealth.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
 	import RunStateBadge from '$lib/features/project-management/pipeline-runs/RunStateBadge.svelte';
+	import { getScheduleJobStatusPresentation } from '$lib/features/scheduling/schedule-jobs/presentation';
 	import {
 		Card,
 		CardHeader,
@@ -336,6 +337,7 @@
 			{:else}
 				<div class="divide-y divide-border/60">
 					{#each dashboard.recentJobs as job (job.id)}
+						{@const st = getScheduleJobStatusPresentation(job.status)}
 						<div class="flex items-center justify-between py-2.5 text-xs">
 							<div class="min-w-0 flex-1 pr-3">
 								<div class="font-medium text-foreground">
@@ -346,15 +348,10 @@
 								</div>
 							</div>
 							<div class="flex items-center gap-2">
-								{#if job.status === 'success'}
-									<Badge variant="success">Success</Badge>
-								{:else if job.status === 'failure'}
-									<Badge variant="destructive">Failure</Badge>
-								{:else}
-									<Badge variant="outline" class="capitalize">
-										{job.status}
-									</Badge>
-								{/if}
+								<Badge variant={st.variant}>
+									<st.icon aria-hidden="true" />
+									{st.label}
+								</Badge>
 								<span class="font-mono text-xs text-muted-foreground">
 									{new Date(job.created_at).toLocaleTimeString([], {
 										hour: '2-digit',

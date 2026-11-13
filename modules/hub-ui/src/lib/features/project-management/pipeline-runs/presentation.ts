@@ -1,8 +1,10 @@
 import { Ban, Check, CircleDashed, Clock, Hammer, OctagonX, Pause, Slash } from '@lucide/svelte';
 import type { components } from '$lib/api';
 import type { BadgeVariant } from '$lib/components/ui/badge';
+import { displayLabel } from '$lib/labels';
 
 type RunState = components['schemas']['PipelineRunState'];
+type AttemptState = components['schemas']['ExecutionAttemptState'];
 
 export type RunStatePresentation = {
 	variant: BadgeVariant;
@@ -24,19 +26,13 @@ const RUN_STATE_LABELS: Record<RunState, string> = {
 	failed: 'Failed'
 };
 
-/** Sentence-case label for a state newer than this client, e.g. `foo_bar` → `Foo bar`. */
-function fallbackLabel(state: string): string {
-	const words = state.replaceAll('_', ' ');
-	return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
 /**
  * One state → badge variant, icon and label mapping for every PR run badge.
  * Chroma is operator debt: only runs waiting for the operator (paused, blocked) take `attention`,
  * failures take `destructive`, and routine progress stays quiet or neutral.
  */
 export function getRunStatePresentation(state: RunState): RunStatePresentation {
-	const label = RUN_STATE_LABELS[state] ?? fallbackLabel(state);
+	const label = displayLabel(state, RUN_STATE_LABELS);
 	switch (state) {
 		case 'queued':
 			return { variant: 'outline', icon: CircleDashed, label };
@@ -62,4 +58,31 @@ export function getRunStatePresentation(state: RunState): RunStatePresentation {
 
 export function getStateBadgeVariant(state: RunState): BadgeVariant {
 	return getRunStatePresentation(state).variant;
+}
+
+const ATTEMPT_STATE_LABELS: Record<AttemptState, string> = {
+	planned: 'Planned',
+	dispatching: 'Dispatching',
+	running: 'Running',
+	suspended: 'Suspended',
+	completed: 'Completed',
+	failed: 'Failed'
+};
+
+/** Display label for an execution attempt state. */
+export function attemptStateLabel(state: AttemptState): string {
+	return displayLabel(state, ATTEMPT_STATE_LABELS);
+}
+
+/** Run question states; `QuestionRead.state` is an open string, so unknown states fall back. */
+const QUESTION_STATE_LABELS: Record<string, string> = {
+	open: 'Open',
+	answered: 'Answered',
+	applied: 'Applied',
+	dismissed: 'Dismissed'
+};
+
+/** Display label for a run question state. */
+export function questionStateLabel(state: string): string {
+	return displayLabel(state, QUESTION_STATE_LABELS);
 }

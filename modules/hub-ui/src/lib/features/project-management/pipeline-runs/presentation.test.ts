@@ -1,7 +1,12 @@
 import { Ban, Check, CircleDashed, Clock, Hammer, OctagonX, Pause, Slash } from '@lucide/svelte';
 import { describe, expect, test } from 'vitest';
 import type { components } from '$lib/api';
-import { getRunStatePresentation, getStateBadgeVariant } from './presentation';
+import {
+	attemptStateLabel,
+	getRunStatePresentation,
+	getStateBadgeVariant,
+	questionStateLabel
+} from './presentation';
 
 type RunState = components['schemas']['PipelineRunState'];
 
@@ -33,5 +38,18 @@ describe('getRunStatePresentation', () => {
 	test('an unknown future state falls back to a neutral labeled badge', () => {
 		const view = getRunStatePresentation('rehydrating' as RunState);
 		expect(view).toEqual({ variant: 'secondary', icon: CircleDashed, label: 'Rehydrating' });
+	});
+});
+
+describe('attempt and question state labels', () => {
+	test('attempt states read in display case', () => {
+		expect(attemptStateLabel('planned')).toBe('Planned');
+		expect(attemptStateLabel('suspended')).toBe('Suspended');
+	});
+
+	test('question states read in display case, unknown states fall back', () => {
+		expect(questionStateLabel('open')).toBe('Open');
+		expect(questionStateLabel('dismissed')).toBe('Dismissed');
+		expect(questionStateLabel('needs_review')).toBe('Needs review');
 	});
 });
