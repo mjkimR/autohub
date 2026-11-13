@@ -62,7 +62,7 @@ cannot derive:
 
 - `PipelineRunRead` (`modules/hub/app/features/project_management/pipeline_runs/schemas.py`) carries no origin: no
   Work Item, Work Plan, SDD batch, provider session or enrollment source. Run → Work Item (R4), run → SDD batch (R11)
-  and run → provider session (R19) have no path back.
+  and run → provider session (R19) have no path back. Planning moved these origin fields to `PROP-run-origin-links`.
 - No run field says that the run has a pending decision. Run list rows derive it from one decisions page, so the
   answer is unknown beyond 100 rows.
 - No endpoint lists Work Plans or SDD batch attention across projects.
@@ -81,7 +81,9 @@ Constraints that bound every option:
 - Auto Hub shares one Aiven PostgreSQL with another application: 20 connections, no pooler, and Auto Hub's pool is
   capped at 3 + 3. A request uses one connection at a time. No session is held across external I/O. No
   `AsyncTransaction` is nested inside another.
-- Backend layering stays `Router → UseCase → Service → Repository`; a cross-feature read composes through services,
+- Backend layering stays `Router → UseCase → Service → Repository`. The cross-feature owed read uses one read-only
+  aggregate repository over owner models (`PADR-owed-items-aggregate-read`); it was first drafted as composing
+  through services,
   not through another feature's repositories.
 - Owed-item reads make no GitHub or other provider call, like the decision list (`SPEC-pending-decision-count` AC-04).
 
@@ -117,52 +119,71 @@ Constraints that bound every option:
 
 ## 3. Proposed Design & Impact
 
-Direction, to be settled in Planning:
+Direction settled in Planning (§5 records each decision):
 
-- **Owed item model**: one row per owed exception, with the following fields. The field set is open (Q5).
+- **Owed item model**: one row per root cause that waits for the operator, with these fields:
+  - `key`: `<kind>:<subject id>`, stable and deep-link-ready; the decision kind embeds `decision_key` unchanged.
   - `kind`: the exception class.
   - `cause`: why it waits, in operator terms.
   - `subject`: the object type, its ID and the project.
-  - `primary_action`: one action the operator takes next.
+  - `primary_action`: the one action the operator takes next, routed to the owner's existing action.
   - `waiting_since`.
-  - A stable `key` that is deep-link-ready.
-- **Candidate kinds** (membership and Badge weight are Q1):
-  1. Run questions and Native SDD activity requests: the existing actionable decision-inbox rows.
-  2. Failed, paused and blocked PR runs, split into held by decision, held by operator and failed (Q2).
-  3. Work Plans in `proposed` awaiting a decision.
-  4. Work Item recovery and replacement or dependency acceptance.
-  5. SDD batches in `attention`.
-  6. Connection-test cleanup review.
-  7. AI catalog holds that block queued work.
-- **Read surface**: one authenticated read API returns the owed list (filterable by project and kind, cursor
-  paginated), the total count, counts by kind and per-project counts. MCP exposure follows the decision list's
-  precedent if Planning keeps it in scope. Each owning feature contributes its kind through its service layer.
-- **One definition everywhere**: the shell Badge, the inbox or Attention worklist, the project strip, the dashboard
-  Needs-you tile and notices count and route the same set. The second definition in `UX-dashboard` is removed or
-  restated against the owed set.
+  - `counted`: whether the item carries count weight (false for quiet items).
+  - `context`: related objects suppressed into this item, and any catalog hold blocking its subject.
+- **Counted kinds** (they make up the owed count):
+  1. Actionable decision-inbox rows: Run questions and Native SDD activity requests.
+  2. Paused or blocked PR runs not held by a decision, deliberate operator pauses included; a blocked run whose
+     question was dismissed belongs here.
+  3. Work Plans in `proposed`.
+  4. Work Item recovery, replacement or dependency acceptance that needs the operator; recoveries in
+     `awaiting-admission` are excluded.
+  5. Work Items in `attention`.
+  6. SDD batches in `attention`.
+  7. Connection-test cleanup review.
+- **Quiet items** (listed, no count weight): failed PR runs, linking to the Work Item recovery when one exists.
+- **Context only** (never an item): AI catalog holds, shown on the run or batch they block.
+- **Root-cause suppression**: the most specific actionable owner wins: decision > Work Item recovery or replacement >
+  SDD batch attention > Work Item `attention` > run state. A run held by a decision appears only as the decision.
+- **Read surface** under `/api/v1/owed-items`:
+  - A list read filtered by project and kind, keyset-paginated by (`waiting_since`, `key`), page limit at most 100.
+  - A counts read: owed total, counts by kind and by project, aggregates only.
+  - Both run in one connection and one transaction with a fixed number of statements independent of row counts and no
+    provider call, through one read-only aggregate repository (`PADR-owed-items-aggregate-read`).
+  - The owed decision-kind count equals `actionable_total_count` for the same visible scope.
+- **Per-run pending-decision flag**: `PipelineRunRead` gains a boolean saying the run has an actionable decision, so
+  run rows no longer derive it from one 100-row decisions page.
+- **Consumers**: this proposal ships the backend contract, its documents and the regenerated typed client. The shell
+  keeps `actionable_total_count`. The Phase 2 Attention landing (I2) builds the all-kinds worklist and switches the
+  shell Badge and the dashboard Needs-you tile to the owed count together, after this contract lands.
+- **Naming**: the glossary and code term is "owed item" (API path `owed-items`); the operator-facing label is
+  "Needs you".
 - **Expected impact**:
-  - A new or extended capability in `capabilities/delivery/` (or a new area if Planning chooses).
-  - The reciprocal use cases (`UC-resolve-run-question`, `UC-receive-decision-notice` and the owning use cases of
-    each kind).
-  - UX deltas to `UX-app-shell`, `UX-decision-inbox` and `UX-dashboard`.
-  - A glossary entry and a `ux-objects.md` register row.
-  - Typed client regeneration (`just gen-ui-api`).
-  - Possibly a migration if Q3 selects a persisted projection.
+  - A new owed-item capability in `capabilities/delivery/`, with each owning capability (work-plans, sdd,
+    connections, agents) stating the predicate that makes its object owed.
+  - `CAP-NOTIFY-operator-notifications` states that run-stop and decision notices are not the owed count.
+  - Reciprocal use cases for the counted kinds' owners (`UC-resolve-run-question` and the owning use cases).
+  - `UX-app-shell` and `UX-dashboard` record the owed count as the future source of the Badge and Needs-you tile,
+    without a screen change here.
+  - A glossary entry and a `docs/steering/ux-objects.md` register row; `docs/steering/visual-style.md` Attention
+    restated against the owed set.
+  - Typed client regeneration (`just gen-ui-api`). No migration, unless a measured need adds partial indexes.
 
 Non-goals:
 
 1. A Thread or Desk concept that groups owed items into conversations or workspaces. The user deferred it.
 2. Changing decision semantics: which Run questions or Native SDD requests are discovered or actionable, answer and
    resume rules, or the separate answer and resume records.
-3. Changing the lifecycle or actions of Work Plans, Work Items, SDD batches, connection tests or AI catalogs. The owed
-   item only reads and routes to existing actions.
-4. Building the Phase 2 UI (Attention landing I2, project strip I3) or the run home (I1) in this proposal. Q9
-   decides which consumer changes land with the contract.
-5. The frontend-only `RepositoryView` `unit` parameter defect from the review. It is outside this backend contract.
+3. Changing the lifecycle or actions of PR runs, Work Plans, Work Items, SDD batches, connection tests or AI catalogs,
+   including a pause-actor field or an acknowledge action for failed runs. The owed item only reads and routes to
+   existing actions.
+4. Any hub-ui screen change: the Phase 2 UI (Attention landing I2, project strip I3), the shell Badge and Needs-you
+   tile switch, and the run home (I1).
+5. The frontend-only `RepositoryView` `unit` parameter defect from the review.
+6. Run origin fields on `PipelineRunRead` (`PROP-run-origin-links`).
+7. Owed-item notices; decision notices stay keyed on `decision_key` and fingerprint.
+8. MCP exposure of owed items.
 
-Size: `L`. One feature spec can deliver the model, the read API and the migration of the shell count. If Planning
-pulls in the run origin fields (Q6) or several UI consumers (Q9) as separate deliverables, the return sets
-`needs_decompose`.
+Size: `L`. One feature spec delivers the model, the read API, the per-run flag and the contracts.
 
 ## 4. Lifecycle & Retirement Criteria
 <!--
@@ -177,36 +198,34 @@ pulls in the run origin fields (Q6) or several UI consumers (Q9) as separate del
 
 ## 5. Planning Decisions
 
-Evidence: `materials/owed-state-inventory.md` (scout round 1) and `envelopes/challenger-01.yaml`. Decisions marked
-*open* wait for the user's answers to `envelopes/worker-01.yaml`.
+Evidence: `materials/owed-state-inventory.md` (scout round 1), `envelopes/challenger-01.yaml` and the user's answers
+in `envelopes/answer-01.yaml`.
 
-- **Q2 (one item per root cause)**: a general suppression rule replaces the decision-versus-run case. Each root
-  cause yields one owed item; the most specific actionable owner wins: decision > Work Item recovery or replacement >
-  SDD batch attention > Work Item `attention` > run state. The others become context on that item. A run held by a
-  decision appears only as the decision, with Answer as its primary action. A blocked run whose question was dismissed
-  has no decision row and appears as a run item. The spec gives an acceptance example for each overlapping pair.
-- **Q3 (read model)**: a query-time union over the owning tables, no persisted projection. Catalog-hold expiry and
-  `waiting_since` are time-based, and a projection would add writes to five features' transactions. The decision kind
-  reads the existing decision discovery projection. The cross-project predicates without an index today
-  (`work_plans.state`, `sdd_batches.state`, `connection_tests.cleanup_status`) may gain partial indexes in Development
-  if a measurement shows the need; the connection-test cleanup predicate needs a code-side adapter check, which the
-  spec settles (filter the SQL candidates, then apply the adapter check to that bounded set).
-- **Q4 (API shape and limits)**: one authenticated list read, filterable by project and kind, keyset-paginated by
-  (`waiting_since`, `key`) with a page limit of at most 100, and a counts read (total, by kind, by project) that issues
-  aggregates only, so the shell check stays one request at its current cadence. Acceptance criterion modeled on
-  `SPEC-pending-decision-count` AC-04: one connection, one transaction, a fixed number of statements independent of
-  row counts, no provider call, no session across external I/O. Paths and names follow the Q10 answer. MCP exposure is
-  out of scope for this proposal.
-- **Q5 (stable keys)**: `key` is `<kind>:<subject id>`; the decision kind embeds the existing `decision_key`
-  unchanged, so notice links already sent still resolve. A resolved item leaves the set and its key is not reused for
-  another subject; a cause change within the same kind and subject keeps the key.
-- **Q6 (run fields)**: *open* (scope question). Recommended: only a per-run pending-decision flag stays here (it
-  serves Q2 and the run rows' 100-row limit); run origin fields move to a sibling draft proposal.
-- **Q7 (existing count)**: `actionable_total_count` on `DecisionPage` stays as is
-  (`SPEC-pending-decision-count` Non-goal 5 allows a separate aggregate beside it). The owed count by kind for
-  decisions equals `actionable_total_count` for the same visible scope; the spec states this as an acceptance criterion.
-- **Q8 (notices)**: decision notices stay keyed on `decision_key` and fingerprint; no owed-item notices in this
-  proposal. Run-stop notices stay a separate alert channel; the capability states that they are not the owed count.
-- **Q1, Q9, Q10 and layering**: *open*, see the questions in `envelopes/worker-01.yaml`.
-- **Boundaries**: `owns` now names the backend features, backend tests, the generated typed client, use cases and the
-  other capability areas whose contracts gain an owed-kind rule (work-plans, sdd, connections, agents, notifications).
+- **Q1 (membership, user)**: only operator-actionable kinds are counted (§3). Failed runs are quiet items without
+  count weight because no in-scope action clears them; catalog holds and `awaiting-admission` recoveries are system
+  holds that clear by themselves, so catalog holds are context only and those recoveries are excluded.
+- **Q1 (deliberate pauses, user)**: every paused or blocked run not held by a decision counts, as
+  `docs/steering/visual-style.md` states; no pause-actor field.
+- **Q2 (one item per root cause)**: the suppression order in §3; the spec gives an acceptance example for each
+  overlapping pair (decision and run, recovery and failed run, batch attention and owner run and native decision, Work
+  Item `attention` and run).
+- **Q3 (read model)**: a query-time union over the owning tables, no persisted projection; catalog-hold expiry and
+  `waiting_since` are time-based. The decision kind reads the existing decision discovery projection. Partial indexes
+  on `work_plans.state`, `sdd_batches.state` or `connection_tests.cleanup_status` are added only on a measured need.
+  The connection-test cleanup predicate filters SQL candidates, then applies the adapter check to that bounded set.
+- **Q4 (API shape and limits)**: §3 read surface, with an acceptance criterion modeled on
+  `SPEC-pending-decision-count` AC-04. MCP is out of scope.
+- **Q5 (stable keys)**: `<kind>:<subject id>`, the decision kind embedding `decision_key`. A resolved item leaves the
+  set and its key is not reused; a cause change within the same kind and subject keeps the key.
+- **Q6 (run fields, user)**: only the per-run pending-decision flag stays; origin fields moved to the draft
+  `PROP-run-origin-links`.
+- **Q7 (existing count)**: `actionable_total_count` stays as is (`SPEC-pending-decision-count` Non-goal 5) and the
+  shell keeps reading it; the owed decision-kind count equals it.
+- **Q8 (notices, user)**: owed-item notices deferred; run-stop notices stay a separate alert channel.
+- **Q9 (consumers and sequencing, user)**: backend contract, documents and typed client only; the Phase 2 Attention
+  landing switches the Badge and Needs-you tile together after this contract lands. Phase 2a navigation regroup and
+  project workspace work proceed independently.
+- **Q10 (naming, user)**: "owed item" in glossary, code and API path; label "Needs you".
+- **Layering (user)**: one read-only aggregate repository (`PADR-owed-items-aggregate-read`).
+- **Boundaries**: `owns` names the backend features and tests, the generated typed client, use cases, capabilities,
+  UX documents and steering; no hub-ui screen path.
