@@ -2,7 +2,7 @@
 id: PROP-owed-counts-error-reason
 title: Preserve shared owed-counts failure reasons
 summary: "Restore the Projects Needs-you failure tooltip through the shared counts store while preserving neutral count presentation and the existing request cadence."
-status: reviewing
+status: accepted
 created_at: 2026-11-13
 target_area: ux/projects/
 priority: low
