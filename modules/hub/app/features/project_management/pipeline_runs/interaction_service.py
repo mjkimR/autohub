@@ -9,6 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def check_revision(run: PipelineRun, expected: int) -> None:
+    from app.features.project_management.sdd.execution import require_current
+
+    require_current(run)
     if run.revision != expected:
         raise ProjectError(409, "Run changed; reload before applying this decision")
     if run.state in FINAL_RUN_STATES:
@@ -83,8 +86,6 @@ class RunInteractionService:
         )
         session.add(row)
         run.state = "blocked"
-        if run.sdd_progress:
-            run.sdd_progress = {**run.sdd_progress, "waiting_for_approval": False}
         run.pause_reason = "Operator decision required: " + question[:500]
         run.next_action_at = None
         if invalidate_lease:

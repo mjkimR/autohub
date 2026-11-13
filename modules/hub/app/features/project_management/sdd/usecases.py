@@ -1,6 +1,5 @@
 from typing import Annotated
 
-from app.features.project_management.branches import unit_branch_mismatch
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
@@ -11,10 +10,8 @@ from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 from fastapi import Depends
 
-from .diagnostics import failure
 from .repos import SddRepository
-from .schemas import ProposalList, SddDiagnostic, SddReadiness, SddRuntimeStatus
-from .services import SddService
+from .schemas import ProposalList
 
 
 class SddUseCase:
@@ -35,6 +32,7 @@ class SddUseCase:
                 raise ProjectError(422, "Select sdd project mode first")
             if not project.enabled or not project.github_repository or not project.github_connector_id:
                 raise ProjectError(422, "Enable the project and connect its GitHub repository")
+            await self.run_use_case.resolve_catalog(session, project, request.catalog)
             claims = ActivityClaims(self.projects, self.observer, self.run_use_case)
             claim = await claims.reserve(session, project, activity, slug, request, actor)
             claim_id = claim.id
@@ -56,96 +54,11 @@ class SddUseCase:
 
         return ProposalList(**await list_proposals(self.observer, project, base_branch, runs_for))
 
-    async def milestone_context(self, project_id):
-        async with AsyncTransaction() as session:
-            project = await self.projects.get(session, project_id)
-            if project.project_type != "sdd":
-                raise ProjectError(422, "Select sdd project mode first")
-            if not project.enabled or not project.github_repository or not project.github_connector_id:
-                raise ProjectError(422, "Enable the project and connect its GitHub repository")
-        return project
-
-    async def milestones(self, project_id, ref):
-        from .milestones import list_milestones
-
-        project = await self.milestone_context(project_id)
-        return await list_milestones(self.observer, project, ref)
-
-    async def milestone_preview(self, project_id, request):
-        from .milestones import preview_milestone
-
-        project = await self.milestone_context(project_id)
-
-        async def runs_for(unit):
-            async with AsyncTransaction() as session:
-                return await SddRepository().runs(session, project_id, unit)
-
-        return await preview_milestone(self.observer, project, request, runs_for)
-
     async def runs(self, project_id, spec_dir):
         async with AsyncTransaction() as session:
             await self.projects.get(session, project_id)
             rows = await SddRepository().runs(session, project_id, spec_dir)
             return [PipelineRunRead.model_validate(row) for row in rows]
-
-    async def runtime(self, project_id):
-        """The host probe plus the lock state of the project's default-branch head, when it is connected."""
-        async with AsyncTransaction() as session:
-            project = await self.projects.get(session, project_id)
-        repository, connector = project.github_repository, project.github_connector_id
-        if not repository or not connector:
-            return SddRuntimeStatus(**await SddService().runtime_status())
-        from app.features.project_management.pipelines import services as pipeline_services
-        from app.features.project_management.work_plans.github import WorkGitHub
-
-        from .milestones import _basis
-
-        try:
-            token = await self.observer.get_token(connector, "github")
-            async with pipeline_services.create_github_client(token) as client:
-                head = await _basis(WorkGitHub(client), repository, "HEAD")
-        except ProjectError:
-            status = await SddService().runtime_status()
-            return SddRuntimeStatus(
-                **{**status, "state": "failed", "lock_detail": "The repository head could not be read"}
-            )
-        return SddRuntimeStatus(**await SddService().runtime_status(repository, head, token))
-
-    async def readiness(self, project_id, request):
-        async with AsyncTransaction() as session:
-            project = await self.projects.get(session, project_id)
-            if project.project_type != "sdd":
-                return SddReadiness(ready=False, reason="Select sdd project mode first")
-            repository, connector = project.github_repository, project.github_connector_id
-            if not repository or not connector or not project.enabled:
-                return SddReadiness(ready=False, reason="Enable the project and connect its GitHub repository")
-        try:
-            pull = await self.observer.get_pull_request(connector, repository, request.pull_number)
-            if pull.get("state") != "open":
-                return SddReadiness(ready=False, reason="Select an open pull request")
-            if mismatch := unit_branch_mismatch(request.spec_dir, str((pull.get("head") or {}).get("ref", ""))):
-                return SddReadiness(ready=False, reason=mismatch)
-            token = await self.observer.get_token(connector, "github")
-            evidence = await SddService().inspect(repository, request.spec_dir, pull, token)
-            if evidence.get("unit_status") == "rejected":
-                return SddReadiness(
-                    ready=False, reason="Rejected proposal: its Planning has ended and hygiene removes it"
-                )
-            return SddReadiness(
-                ready=True,
-                head_sha=evidence["head_sha"],
-                base_sha=evidence["base_sha"],
-                cli_version=evidence["snapshot"]["cli_version"],
-                workflow=evidence["workflow"],
-                current=evidence["current"],
-                warnings=evidence.get("warnings", []),
-                diagnostics=evidence.get("diagnostics", []),
-                policy=evidence["snapshot"].get("policy", {}),
-            )
-        except ProjectError as exc:
-            return SddReadiness(
-                ready=False, reason=str(exc), diagnostics=[SddDiagnostic.model_validate(row) for row in failure(exc)]
-            )
 
     async def decisions(self, run_id):
         async with AsyncTransaction() as session:
@@ -159,3 +72,10 @@ class SddUseCase:
             ]
             rows.sort(key=lambda r: (r.get("revision", 0), r.get("created_at", "")), reverse=True)
             return rows
+
+    async def retired_operation(self, project_id):
+        from .execution import RETIRED_CODE, RETIRED_REASON
+
+        async with AsyncTransaction() as session:
+            await self.projects.get(session, project_id)
+        raise ProjectError(410, RETIRED_REASON, code=RETIRED_CODE)

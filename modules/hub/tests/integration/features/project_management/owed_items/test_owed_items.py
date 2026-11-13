@@ -161,15 +161,22 @@ async def connection_test(session, project, cleanup_status="pending", repository
     return row
 
 
-async def native_question(session, run_id):
-    request = {"id": "question:worker-01.q", "kind": "choose", "answer": "envelope", "title": "Pick", "options": []}
-    await set_run(
+async def activity_question(session, run_id):
+    from app.features.project_management.pipeline_runs.models import RunQuestion
+
+    row = await set_run(
         session,
         run_id,
         state="blocked",
-        sdd_snapshot={"provider": "devkit-spec", "spec_dir": "specs/test", "policy": {}},
-        sdd_progress={"head_sha": "c" * 40, "base_sha": "d" * 40, "current": {"requests": [request]}, "workflow": {}},
+        sdd_snapshot={"provider": "repository-agent", "execution_version": 2, "spec_dir": "docs/proposals/PROP-test"},
+        sdd_progress=None,
     )
+    session.add(
+        RunQuestion(
+            pipeline_run_id=row.id, head_sha="c" * 40, question="Pick", actor="test", source="agent", state="open"
+        )
+    )
+    await session.commit()
 
 
 async def items(client, **params):
@@ -318,7 +325,7 @@ async def test_decisions_suppress_runs_and_match_the_inbox_count(client, owed, g
     root = f"/api/v1/pipeline-runs/{asked['id']}"
     question = (await ask(client, root)).json()
     native = await enroll(client, github, owed, 8)
-    await native_question(session, native["id"])
+    await activity_question(session, native["id"])
     other = await client.post(
         "/api/v1/projects",
         json={
@@ -481,7 +488,7 @@ async def test_batch_attention_suppresses_its_run_and_yields_to_decisions(client
     paused = await enroll(client, github, owed, 7)
     await set_run(session, paused["id"], state="paused")
     decided = await enroll(client, github, owed, 8)
-    await native_question(session, decided["id"])
+    await activity_question(session, decided["id"])
     first = await batch(session, owed, run_id=paused["id"], unit="specs/one")
     second = await batch(session, owed, run_id=decided["id"], unit="specs/two")
     await session.commit()
@@ -495,7 +502,7 @@ async def test_batch_attention_suppresses_its_run_and_yields_to_decisions(client
 
 async def test_a_batch_yielding_to_a_decision_hides_no_other_stopped_run(client, owed, github, session):
     decided = await enroll(client, github, owed, 7)
-    await native_question(session, decided["id"])
+    await activity_question(session, decided["id"])
     paused = await enroll(client, github, owed, 8)
     await set_run(session, paused["id"], state="paused")
     shared = await batch(session, owed, run_id=decided["id"], unit="specs/one")

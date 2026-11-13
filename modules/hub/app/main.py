@@ -139,7 +139,10 @@ def create_app():
 
     @app.exception_handler(ProjectError)
     async def project_error_handler(request, exc: ProjectError):
-        return JSONResponse(status_code=exc.status, content={"detail": exc.detail})
+        content = {"detail": exc.detail}
+        if exc.code.startswith("SDD_"):
+            content["code"] = exc.code
+        return JSONResponse(status_code=exc.status, content=content)
 
     @app.api_route("/mcp", methods=["GET", "POST", "DELETE", "OPTIONS"], include_in_schema=False)
     async def mcp_redirect():

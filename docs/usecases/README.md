@@ -14,12 +14,12 @@ used by that scenario and are recorded on both sides.
 | Operator | Configure an account's admission policy: `UC-configure-agent-catalog` |
 | Operator | Run scheduled provider work: `UC-run-agent-session` |
 | Operator | Verify a repository/provider connection: `UC-verify-project-connection` |
-| Project operator | Start a native SDD activity: `UC-start-sdd-activity` |
-| Project operator | Decide a native SDD proposal: `UC-decide-sdd-proposal` |
-| Project operator | Complete a native workflow: `UC-complete-sdd-workflow` |
+| Project operator | Start repository-owned SDD work: `UC-start-sdd-activity` |
+| Project operator | Inspect retired native proposal decisions: `UC-decide-sdd-proposal` |
+| Project operator | Follow SDD intent through ordinary PR delivery: `UC-complete-sdd-workflow` |
 | Project operator | Inspect repository documents and lineage: `UC-inspect-repository-documents` |
 | Machine client | Execute an admitted task/flow: `UC-execute-task-flow` |
-| Delivery coordinator | Resume a verified existing PR: `UC-resume-verified-pr` |
+| Delivery coordinator | Inspect retired built-in PR bridge authority: `UC-resume-verified-pr` |
 | External scheduler | Dispatch due work: `UC-run-due-work` |
 | Operator | Configure operator notices: `UC-configure-operator-notifications` |
 | Operator | Access the management console: `UC-access-hub` |

@@ -7,12 +7,10 @@ status: active
 usecases:
   - UC-receive-decision-notice
   - UC-resolve-run-question
+  - UC-complete-sdd-workflow
 entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/api/interactions.py
-  - modules/hub/app/features/project_management/pipeline_runs/usecases/interactions.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/control.py
-  - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
-  - modules/hub/app/features/project_management/pipeline_runs/usecases/outcomes.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/discovery.py
 ---
 
@@ -30,19 +28,17 @@ separate resume operation that prepares execution with that direction.
 - **In-Scope**: operator questions, trusted agent question ingestion, stored
   answers, explicit dismissal, ordinary-run answer application and resume replay.
 - **Out-of-Scope**: `CAP-PR-pull-request-delivery` owns dispatch, pause/cancel,
-  CI and merge; `CAP-SDD-workflow-control` owns native workflow questions,
-  approval/revision/revocation and native resume semantics; `CAP-MCP-tool-access`
+  CI and merge; `CAP-SDD-workflow-control` identifies retired native authority;
+  `CAP-MCP-tool-access`
   owns MCP access to the shared operations.
 - **Scope Excluded**: editing recorded question/answer text, automatic answer
   application, treating comments as approval and cancellation of already-sent
   provider work. A saved/applied clarification is not PR merge approval.
 
-The question/answer HTTP handlers and record tables are shared with native SDD
-Runs. `PipelineRunControl.resume_run` delegates a Run with an SDD snapshot to
-`SddControl`; the ordinary resume guarantees below do not replace that branch.
-An ordinary Run rejects native `decision` or `workflow_answer` input rather than
-interpreting it as ordinary clarification. Native revocation is not an ordinary
-question-state transition.
+Optimistic SDD activities use these same ordinary question/answer and resume
+contracts. Descriptive `sdd_snapshot` does not select a second workflow owner.
+Legacy native resume and typed workflow mutations are retired; retained native
+decision evidence remains history rather than actionable discovery.
 
 ## 3. Business Rules & Policies
 
@@ -68,7 +64,7 @@ WHEN an authenticated operator lists decisions, Hub MUST expose visible nontermi
 
 WHEN listing a changing worklist, Hub MUST use oldest waiting time and stable key with a limit-plus-one keyset query and zero provider calls. Ordinary waiting time is question creation time. Check: `test_keyset_bounded_and_cursor_filters` in the same test file.
 
-WHEN listing decisions, Hub MUST report `actionable_total_count`, the exact number of actionable rows the request's `project_id`, `kind` and `question_state` filters admit on visible nonterminal Runs, independent of `cursor` and `limit`, using one aggregate query in the same database transaction as the page rows. Rows awaiting answer publication (`actionable=false`) are not counted. The count covers decision-inbox rows only, not other operator-owed work. Check: `test_keyset_bounded_and_cursor_filters`, `test_native_generation_and_publication_pending`, `test_discovery_question_lifecycle_and_exact_owner` and `test_count_shares_the_page_transaction` in the same test file.
+WHEN listing decisions, Hub MUST report `actionable_total_count`, the exact number of actionable rows the request's `project_id`, `kind` and `question_state` filters admit on visible nonterminal Runs, independent of `cursor` and `limit`, using one aggregate query in the same database transaction as the page rows. Historical native requests are not actionable discovery rows. The count covers decision-inbox rows only, not other operator-owed work. Check: `test_keyset_bounded_and_cursor_filters`, `test_discovery_question_lifecycle_and_exact_owner` and `test_count_shares_the_page_transaction` in the same test file.
 
 The authenticated `GET /api/v1/pipeline-runs/decisions` accepts optional `project_id`, `kind`, `question_state` (open/answered), `cursor` and `limit` (default 20, range 1–100). It returns `items`, `has_more`, `next_cursor` and `actionable_total_count`; malformed or filter-mismatched cursors return 422, unknown projects 404. It follows existing run-read visibility: admitted users share projects; no independent project ACL is introduced. Refresh restarts pagination because new generations may precede a retained cursor.
 
@@ -163,8 +159,10 @@ Unicode without reducing the decoded 8,000-character question limit. Accepted
 reply IDs produce a deterministic question UUID using `uuid5(NAMESPACE_URL,
 f"autohub-question:{run.id}:{reply.external_id}")`; this identity is source-defined
 in `ImplementationProgress.apply`.
-In ordinary implementation observation, an already-moved PR head progresses to
-CI before question parsing; a stale reply cannot re-block that delivered attempt.
+Optimistic activity observation ingests a correlated current-attempt question
+before push/CI continuation, including while its PR remains Draft after a push.
+Head and attempt correlation still reject stale replies. Saving an answer is
+separate from explicit resume and from GitHub ready status.
 The run decision instructions (`CAP-PR-operator-decisions`)
 retain the wire example and operator/client procedure.
 
@@ -185,14 +183,14 @@ and [`adapters/codex_github_mention.py`](../../../modules/hub/app/features/proje
 The named unit/integration tests were inspected, not executed while authoring.
 The concurrent-answer/resume test requires PostgreSQL and skips on SQLite.
 Integration examples use controlled GitHub responses and do not prove live
-provider behavior, deployment or Auto Hub's own SDD baseline. Native decision
+provider behavior, deployment or Auto Hub's own SDD baseline. Retained native decision
 revocation remains outside this ordinary-run contract.
 
 ## Exact notice selection
 
 WHEN an authenticated caller supplies a decision key and fingerprint, Hub MUST resolve only that indexed discovery entry before invoking the existing owner review. IF the entry is missing or no longer actionable, THEN Hub MUST return HTTP404. IF the fingerprint changed, THEN Hub MUST return HTTP409. Check: `modules/hub/tests/integration/features/notifications/test_decision_notices.py`, `test_exact_selection_late_page_and_no_provider_calls`; `modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.integration.test.ts`.
 
-`GET /api/v1/pipeline-runs/decisions/selection` accepts `key` of at most 255 characters and a 64-character lowercase hexadecimal `fingerprint`. It returns the existing discovery-entry read shape. Lookup performs no list-page scan or provider call. The selected entry then follows the existing owner review, including native inspection and CAS effects; the URL itself grants no mutation authority.
+`GET /api/v1/pipeline-runs/decisions/selection` accepts `key` of at most 255 characters and a 64-character lowercase hexadecimal `fingerprint`. It returns the existing discovery-entry read shape. Lookup performs no list-page scan or provider call. The selected entry then follows the existing owner review, including exact question/revision validation; the URL itself grants no mutation authority.
 
 ## Owed items
 

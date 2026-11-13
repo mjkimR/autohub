@@ -107,8 +107,8 @@ Production identity-provider and cookie setup belongs in
 
 ## Contributor guides
 
-- [Testing and CI](testing.md): execution tiers, isolated SDD contracts and optional fixture environments.
-- [Dependency and asset updates](toolchain.md): published refs, runtime locks, viewer artifacts and generated receipts.
+- [Testing and CI](testing.md): execution tiers, activity retirement and controlled worker fixtures.
+- [Dependency and asset updates](toolchain.md): published contributor refs, viewer artifacts and generated receipts.
 - [Provider extensions](provider-extensions.md): quota kinds, transport adapters and connection-test recipes.
 - [Documentation changes](documentation.md): authoring sources, ownership and document validation.
 

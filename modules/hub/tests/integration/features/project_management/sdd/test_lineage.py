@@ -6,13 +6,25 @@ import pytest
 from app.features.project_management.pipeline_runs.models import PipelineRun
 from app_layer_base.core.database.transaction import AsyncTransaction
 
-from tests.integration.features.project_management.sdd import test_native as scenarios
+from tests.integration.features.project_management.pipeline_runs import test_pipeline_runs_api as scenarios
 
 github = scenarios.github
 project = scenarios.project
-inspector = scenarios.inspector
-unit_branch = scenarios.unit_branch
-run = scenarios.run
+SPEC = "specs/2026-10/20261010-native"
+
+
+@pytest.fixture
+async def run(client, project, github, session):
+    response = await scenarios.enroll(client, project)
+    assert response.status_code == 201, response.text
+    row = await session.get(PipelineRun, UUID(response.json()["id"]))
+    assert row is not None
+    row.state = "completed"
+    row.sdd_snapshot = {"provider": "devkit-spec", "spec_dir": SPEC}
+    await session.commit()
+    return response.json()
+
+
 pytestmark = [pytest.mark.integration, pytest.mark.real_commit]
 
 
@@ -38,9 +50,9 @@ async def test_proposal_spec_run_and_pr_lineage_uses_recorded_project_scoped_han
         for index, (project_id, snapshot) in enumerate(
             [
                 (project["id"], {"spec_dir": origin}),
-                (project["id"], {"spec_dir": scenarios.SPEC, "handoff_from": origin}),
+                (project["id"], {"spec_dir": SPEC, "handoff_from": origin}),
                 (project["id"], {"spec_dir": "specs/2026-10/same-slug-without-handoff"}),
-                (other.json()["id"], {"spec_dir": scenarios.SPEC, "handoff_from": origin}),
+                (other.json()["id"], {"spec_dir": SPEC, "handoff_from": origin}),
             ]
         ):
             session.add(
@@ -56,7 +68,7 @@ async def test_proposal_spec_run_and_pr_lineage_uses_recorded_project_scoped_han
     path = f"/api/v1/projects/{project['id']}/sdd/runs"
     for unit, expected in [
         (origin, {str(ids[0]), str(ids[1])}),
-        (scenarios.SPEC, {run["id"], str(ids[0]), str(ids[1])}),
+        (SPEC, {run["id"], str(ids[0]), str(ids[1])}),
     ]:
         result = await client.get(path, params={"spec_dir": unit})
         assert result.status_code == 200, result.text

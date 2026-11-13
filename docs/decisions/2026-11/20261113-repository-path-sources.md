@@ -2,14 +2,17 @@
 id: ADR-repository-path-sources
 title: Install repository path sources from the evaluated checkout
 summary: "For repositories that lock in-repository devkit bundles as path sources, we copy each source inside the checkout in the Hub process, build it offline in the sandbox and hash its content into the runtime identity, to evaluate them like Git sources, accepting bounded per-selection reads."
-status: accepted
+status: superseded
+superseded_by: ADR-repository-owned-sdd-execution
 created_at: 2026-11-13
 supersedes: [ADR-repository-locked-runtime]
 ---
 
 # [ADR-repository-path-sources] Install repository path sources from the evaluated checkout
 
-- **Status**: Accepted
+Superseded in part by `ADR-repository-owned-sdd-execution`: all decisions assigning path-source capture, identity and installation to Hub.
+
+- **Status**: Superseded by `ADR-repository-owned-sdd-execution`
 - **Date**: 2026-11-13
 - **Involved Components/Capabilities**: `capabilities/sdd/`
 

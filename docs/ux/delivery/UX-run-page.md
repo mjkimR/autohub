@@ -10,6 +10,7 @@ usecases:
   - UC-resolve-run-question
   - UC-decide-sdd-proposal
   - UC-complete-sdd-workflow
+  - UC-start-sdd-activity
 capabilities:
   - CAP-PR-pull-request-delivery
   - CAP-PR-operator-decisions
@@ -43,7 +44,7 @@ unit back-link, Decisions, Execution attempts. Section anchors are `#next-step`,
   next scheduled check.
 - PR run (action row): one state-driven primary action, then the secondary actions that apply.
   - Primary action, in priority order: Answer question (open Run question), Resume with saved answer (answered
-    question not yet applied), Review approval (pending native SDD decision), Check decision (answer publication
+    question not yet applied), Inspect retired evidence (legacy SDD history), Check decision (answer application
     pending), Next step (failed run), Resume (paused or blocked run whose decisions are known and none holds it),
     Attach PR (active run without a PR). Decision actions move to the Decisions section; a run held by a pending
     decision never offers a plain Resume. When the run's decisions are unknown (the read failed or was incomplete)
@@ -85,7 +86,7 @@ ink; Cancel run is the quiet destructive variant.
 | --- | --- | --- | --- | --- | --- | --- |
 | Answer question | `UC-resolve-run-question` 2 | populated | populated |  | `CAP-PR-operator-decisions` | The page moves to the Decisions section and its answer editor. |
 | Resume with saved answer | `UC-resolve-run-question` 4 | populated | populated |  | `CAP-PR-operator-decisions` | The page moves to the saved answer in Decisions, where the answer is selected explicitly. |
-| Review approval | `UC-decide-sdd-proposal` 1, `UC-complete-sdd-workflow` 4 | populated | populated |  | `CAP-SDD-native-delivery` | The page moves to the owed native decision in Decisions. |
+| Inspect retained native evidence | `UC-decide-sdd-proposal` 1 | populated | populated | `UX-sdd-run` | `CAP-SDD-native-delivery` | Read-only retired evidence opens without authority. |
 | Next step | `UC-deliver-pull-request` *d | ended | ended |  | `CAP-PR-pull-request-delivery` | The page moves to the next-step section. |
 | Open Work Item recovery | `UC-deliver-pull-request` *d | ended | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | The Plans tab opens with the owning Work Item expanded. |
 | Enroll PR / Work Plans | global: register replacement work for an ended run that no Work Item owns | ended | populated | `UX-pipeline-runs` | `CAP-PR-pull-request-delivery` | The project's Runs or Plans tab opens. |
@@ -95,7 +96,7 @@ ink; Cancel run is the quiet destructive variant.
 | Attach PR | global: associate a PR with eligible work that has no PR number | populated | populated | `UX-attach-pull-request` | `CAP-PR-pull-request-delivery` | The attachment dialog opens; success reloads the run. |
 | Cancel run | `UC-deliver-pull-request` *b | populated | operating |  | `CAP-PR-pull-request-delivery` | Confirmation precedes cancellation; the ended state and next step load. |
 | Inspect PR | global: open GitHub for PR review and readiness outside Hub | populated | populated | end | `CAP-PR-pull-request-delivery` | The PR opens in a separate tab. |
-| Refresh / Retry | global: reload the current run without changing it | populated, error | loading |  | `CAP-PR-pull-request-delivery` | The run, its pending decisions and its attempts reload; the Decisions section keeps its draft and notices; a failure keeps the last data. |
+| Refresh / Retry | `UC-complete-sdd-workflow` 1, `UC-complete-sdd-workflow` 2, `UC-complete-sdd-workflow` 3, `UC-complete-sdd-workflow` 7, `UC-start-sdd-activity` 5 | populated, error | loading |  | `CAP-PR-pull-request-delivery` | The run, its pending decisions and its attempts reload; the Decisions section keeps its draft and notices; a failure keeps the last data. |
 | SDD unit link | global: return from an SDD run to its unit | populated | populated | `UX-repository` | `CAP-SDD-native-delivery` | The project's Repository tab opens. |
 | Breadcrumb Projects / project / Runs | global: navigate up from the run | populated, not-found, error | populated | `UX-pipeline-runs` |  | Projects, the project or its run list opens. |
 | Back to project runs | global: leave a missing run | not-found | populated | `UX-pipeline-runs` |  | The project's run list opens. |

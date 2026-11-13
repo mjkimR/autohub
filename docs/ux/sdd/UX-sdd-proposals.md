@@ -1,63 +1,59 @@
 ---
 id: UX-sdd-proposals
-title: SDD Proposals
-summary: "The proposals panel lists native proposal state on an explicit base branch and offers eligible Planning, Development and proposal-review actions."
+title: SDD activity intent
+summary: "The proposals panel presents descriptive repository units and starts explicit Planning or Development intent without a readiness gate."
 area: sdd
 element: panel
 status: active
 usecases:
   - UC-start-sdd-activity
-  - UC-decide-sdd-proposal
 capabilities:
   - CAP-SDD-native-delivery
 ---
 
-# [UX-sdd-proposals] SDD Proposals
+# [UX-sdd-proposals] SDD activity intent
 
 ## 1. Purpose
 
-- **Primary task**: Start or inspect a native proposal activity.
-- **Facts to commit**: Base branch, proposal identity/status, recommendation and available activity actions.
-- **Secondary items**: Detailed acceptance review opens the run decisions dialog; branch PR links open GitHub.
+- **Primary task**: start one explicit repository activity and open its PR Run.
+- **Facts to commit**: project/repository, unit, base, activity and optional effort/catalog.
+- **Secondary items**: retained Run/PR links stay below each unit; historical batches are a separate disclosure.
 
 ## 2. Content
 
-The proposal list is primary. Base branch and activity-effort controls apply to
-subsequent load/start actions. Each row keeps its actions beside its proposal.
+The selected activity intent is primary. Status is descriptive metadata, not a
+Hub-verified eligibility result. Repository setup and workflow are the working
+agent's responsibility.
 
-- SDD unit (proposal title, ID, display status and optional note).
-- Native SDD activity (Planning/Development recommendations and optional override).
-- PR run (recorded run state and plan/dev PR links).
-- SDD unit (inline rejection-reason editor; when Reject is selected).
-- `UX-run-decisions` (modal reached by Review & accept).
+- SDD unit (path/title/status on the selected base).
+- Native SDD activity (Planning/Development, base and effort/catalog preferences).
+- PR run (tracked Run and exact GitHub PR links).
+- SDD batch (read-only retained-history disclosure).
+- `UX-sdd-claim-recovery` (exact retained owner inspection and explicit acknowledgment; on an ownership conflict).
 
-Only server-offered actions render. A blank effort uses the proposal recommendation.
-Request identities are reused for the same action/base/effort or decision intent;
-a failed action retains its error rather than claiming remote rollback.
+No runtime card, readiness preview, acceptance/rejection control or executable
+milestone selection appears here.
 
 ## 3. States
 
-- **populated**: Review proposals and use an offered activity action.
-- **empty**: No proposals were returned on the chosen base; change the base and refresh.
-- **loading**: Loading proposals is announced; wait for the selected base result.
-- **busy**: One proposal action is pending and competing action buttons are disabled.
-- **rejecting**: An inline reason editor requires nonblank text before Reject proposal.
-- **error**: A load/action error is visible; inspect remote artifacts or refresh before retrying.
+- **populated**: choose explicit intent or open an existing Run.
+- **loading**: the current request is in flight; competing starts are unavailable.
+- **empty**: select a document through **Browse repository**.
+- **error**: retain the selection and original request; retry the exact request.
+- **uncertain**: show the original unit/base/activity/preferences and request identity;
+  **Check original request**/**Retry same request** recover only that intent.
+  Browsing another document does not erase this disclosure or permit a competing start.
+- **ownership-conflict**: identify/link the active Run or retained claim; inspect that
+  owner rather than retrying as replacement work.
+- **reconciliation-required**: identify retained evidence and explain that inspected
+  external work must be explicitly acknowledged before a retired reservation is released.
 
 ## 4. Interactions
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Refresh | `UC-start-sdd-activity` 1 | populated | loading |  | `CAP-SDD-native-delivery` | Proposal state is reloaded for the entered base. |
-| Start review / Start development | `UC-start-sdd-activity` 1 | populated | busy |  | `CAP-SDD-native-delivery` | A started-activity message appears and proposal/run state reloads. |
-| Review & accept | `UC-decide-sdd-proposal` 1 | populated | populated | `UX-run-page` | `CAP-SDD-native-delivery` | The linked PR run page opens at its Decisions section. |
-| Reject… / Reject proposal | `UC-decide-sdd-proposal` 2a | populated | rejecting |  | `CAP-SDD-native-delivery` | A reason editor precedes submission; the decision result or failure is shown. |
-| Open plan/dev PR | global: inspect the activity branch in GitHub | populated | populated | end | `CAP-SDD-native-delivery` | The associated external PR opens. |
-
-## 5. Evidence
-
-- [SddProposals.svelte](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddProposals.svelte).
-- [SddProposals.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddProposals.integration.test.ts); test assertions were inspected.
-
-This description is derived from source inspection. It does not claim a browser
-walkthrough, a fresh test execution or a live provider result.
+| Select unit/activity/base | `UC-start-sdd-activity` 1 | populated | populated | | `CAP-SDD-native-delivery` | Exact intent is shown. |
+| Start activity / Retry same request | `UC-start-sdd-activity` 2, `UC-start-sdd-activity` 3, `UC-start-sdd-activity` 4, `UC-start-sdd-activity` 3b | populated, error, uncertain | loading | | `CAP-SDD-native-delivery` | Original request identity is retained. |
+| Inspect conflicting owner | `UC-start-sdd-activity` 2b, `UC-start-sdd-activity` 3a | ownership-conflict, reconciliation-required | populated | `UX-sdd-claim-recovery` | `CAP-SDD-native-delivery` | The exact retained owner/evidence opens. |
+| Open run | `UC-start-sdd-activity` 5, `UC-start-sdd-activity` 4a | populated | populated | `UX-run-page` | `CAP-SDD-native-delivery` | The exact registered Run opens. |
+| Browse repository | global: leave execution selection | empty, error, populated | populated | `UX-repository` | `CAP-DOC-repository-viewer` | The document browser opens. |

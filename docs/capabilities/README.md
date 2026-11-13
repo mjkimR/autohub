@@ -15,9 +15,9 @@ production rollout; see [delivery status](../operations/deployment-status.md).
 | Pre-PR plans and dependencies | `CAP-WORK-work-plan-execution` |
 | Account admission and provider sessions | `CAP-AGENT-catalog-admission`, `CAP-AGENT-provider-sessions` |
 | Isolated connection diagnostics | `CAP-CONN-connection-verification` |
-| Native repository SDD | `CAP-SDD-native-delivery`, `CAP-SDD-runtime-isolation`, `CAP-SDD-workflow-control` |
+| Repository-owned SDD activity intent | `CAP-SDD-native-delivery`; retired boundaries: `CAP-SDD-runtime-isolation`, `CAP-SDD-workflow-control` |
 | Read-only repository documents and roadmap | `CAP-DOC-repository-viewer` |
-| External task/flow execution and existing-PR bridge | `CAP-SDK-task-flow-execution`, `CAP-SDK-existing-pr-bridge` |
+| External task/flow execution and retired bridge boundary | `CAP-SDK-task-flow-execution`, `CAP-SDK-existing-pr-bridge` |
 | Scheduling, jobs and shared maintenance | `CAP-EXEC-scheduling-maintenance` |
 | Operator notification channels | `CAP-NOTIFY-operator-notifications` |
 | Human and machine access | `CAP-ACCESS-authentication-authorization` |

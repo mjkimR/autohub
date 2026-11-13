@@ -38,11 +38,10 @@ or confirms it. Use `uv run devkit add <bundle>:<preset>` for approved additions
 and review `.devkit/config.toml`, `.devkit/installation.json` and generated
 guidance together.
 
-These packages support changes to Auto Hub itself. Connected repositories are
-evaluated with the runtime their own `uv.lock` pins; `config/sdd-runtime` is only
-the seed runtime for Hub's SDD tests, and `config/sdd-build` pins the hatchling
-backend that images use to build locked sources. Catalog selection in the
-contributor environment changes neither.
+These packages support changes to Auto Hub itself. Connected repositories and
+their working agents own their setup and internal workflow. Hub neither installs
+an evaluator runtime nor restores their managed assets. Contributor catalog
+selection does not change that product boundary.
 
 ## app-common assets
 
@@ -63,31 +62,26 @@ their assets. Initialize frontend dependencies with `just init hub-ui` there
 when the change needs UI checks.
 Never edit `.devkit/managed/` or projected agent files directly.
 
-## devkit and seed runtime updates
+## Contributor devkit updates
 
-The backend development environment and the `config/sdd-runtime` seed manifest are
-reviewed against one devkit commit. Update root sources/override-dependencies and
-the seed manifest together; regenerate their locks from the intended refs. Retain
-the backend's separate app-common pin when reviewing a toolchain update. A change
-to `config/sdd-build` changes every runtime identity, because its lock digest is
-part of the identity.
+Review the root contributor sources, override-dependencies and lock against one
+devkit commit. Retain the backend's separate app-common pin when reviewing a
+toolchain update. There are no evaluator seed/build manifests to update.
 
-`just check-devkit` checks the two source/override/lock sets, release versions,
-viewer provenance receipt, artifact SHA-256 and npm integrity offline. A mismatch
-fails with `DEVKIT_PINS_INVALID`. Backend lint and SDD CI run it before runtime
-provisioning.
+`just check-devkit` checks contributor source/override/lock consistency, release
+versions, viewer provenance receipt, artifact SHA-256 and npm integrity offline.
+A mismatch fails with `DEVKIT_PINS_INVALID`. Backend lint runs this check.
 
 1. Set the intended pushed refs explicitly in the manifests.
 2. Refresh environments and locks from those refs.
 3. Synchronize agent assets using matching installed packages and review generated receipts.
 4. Rebuild vendored artifacts whose source changed, following the owning receipts below.
 5. Run `just check-devkit`, `just lint`, `just check`, `just check-ui-api`, and the
-   affected backend, SDK, frontend and isolated SDD contracts.
+   affected backend, SDK, frontend and activity-retirement contracts.
 
-Install a changed seed lock into a fresh destination;
-[testing](testing.md#isolated-sdd-contracts) describes the recipes. Settling
-admitted runs when the serving runtime model changes is a separate
-[operator procedure](../operations/sdd-runtime.md#rollout-and-rollback).
+The contributor's devkit changes do not provision connected repositories.
+[Activity operations](../operations/sdd-runtime.md#rollout-and-rollback) separately
+cover retired execution and uncertain external work during cutover.
 
 ## UI artifacts and generated declarations
 

@@ -30,11 +30,11 @@ markers to avoid duplicate requests. See [delivery status](docs/operations/deplo
 for implemented behavior and deferred work. [CI templates](templates/github-actions/README.md)
 are manually installed starter files.
 
-[SDD projects](docs/operations/sdd-runtime.md) connect devkit proposals/specs to cloud
-Planning and Development runs. The repository viewer reads milestone proposal members
-from the selected branch and links units to their executions. Hub evaluates each repository
-with the devkit runtime its own `uv.lock` pins; consumer requirements, serving-host checks and
-rollout settlement are documented in the integration guide.
+[SDD activities](docs/operations/sdd-runtime.md) carry explicit Planning or
+Development intent through ordinary PR runs. Repository agents own setup and
+internal workflow; Hub starts work without a devkit runtime or readiness check.
+Both activity kinds start Draft. The repository viewer links documents to runs;
+retired native batch/decision evidence remains read-only.
 
 ## Development
 
@@ -43,8 +43,9 @@ The standalone [pipeline SDK](packages/sdk/README.md) lives in `packages/sdk`.
 It supports local declarations and validation, manifest export, remote task/flow
 contracts, and an HTTP client. The backend now provides release/run/command APIs and durable flow execution
 through system maintenance, with scoped machine keys and configured worker targets.
-See the host contract (`CAP-SDK-task-flow-execution`). The first native SDD/PR bridge resumes an existing paused PR after evidence
-verification and approval; production rollout and live GitHub validation remain separate.
+See the host contract (`CAP-SDK-task-flow-execution`). Built-in SDD/PR bridge
+bindings are retired; generic SDK task/flow execution remains independent.
+Production rollout and live GitHub validation remain separate.
 PostgreSQL is the standard database, with SQLite used for default testing.
 [justfile](justfile) defines commands, aliases, and defaults; run `just --list`.
 
@@ -70,7 +71,7 @@ and [selected tooling](docs/development/toolchain.md#selected-agent-assets).
 - [Documentation guide](docs/README.md): architecture, protocols, AI catalogs, and operator notices.
 - [Capability contracts](docs/capabilities/README.md) and [use cases](docs/usecases/README.md): implemented guarantees, actor goals, acceptance examples and source/test ownership.
 - [Developing Auto Hub](docs/development/README.md): contributor setup, checks, migrations, toolchain updates and extension guides.
-- [Operations](docs/operations/README.md): deployment, accounts/clients, provider connections, the SDD runtime and recovery.
+- [Operations](docs/operations/README.md): deployment, accounts/clients, provider connections, repository activity and recovery.
 - [Connector encryption](modules/hub/README.md#connector-credential-encryption): key configuration and rotation constraints.
 - [Frontend](modules/hub-ui/README.md): UI tooling and API generation.
 - [Agent guide](AGENTS.md): code boundaries and required checks.

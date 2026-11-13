@@ -6,17 +6,15 @@ from app.features.project_management.pipeline_runs.schemas import PipelineRunRea
 from fastapi import APIRouter, Depends, Path, Query
 
 from . import batch_models  # noqa: F401 -- register durable batch metadata
-from .batch_schemas import BatchRead, ControlBatch, CreateBatch
+from .batch_schemas import BatchRead, ControlBatch
 from .batch_usecases import SddBatchUseCase
+from .claim_history import SddClaimHistory
 from .schemas import (
     SPEC_PATTERN,
-    MilestoneList,
-    MilestonePreview,
-    MilestonePreviewRequest,
+    ClaimRead,
     ProposalList,
-    SddInspectionRequest,
-    SddReadiness,
-    SddRuntimeStatus,
+    ReconcileClaimRequest,
+    ReconcileRunRequest,
     StartActivityRequest,
 )
 from .usecases import SddUseCase
@@ -54,7 +52,7 @@ async def start_planning(
     user: CurrentUser,
     use_case: Annotated[SddUseCase, Depends()],
 ):
-    """Start Planning of a draft proposal: Hub creates plan-<slug> and its pull request, then enrolls the run."""
+    """Request Planning: publish a Draft PR and enroll ordinary repository-owned work."""
     return await use_case.start_activity(project_id, "plan", slug, request, f"user:{user.id}")
 
 
@@ -66,51 +64,18 @@ async def start_development(
     user: CurrentUser,
     use_case: Annotated[SddUseCase, Depends()],
 ):
-    """Start Development of an accepted proposal: dev-<slug>, a draft pull request, a handoff-first run."""
+    """Request Development: publish a Draft PR and enroll ordinary repository-owned work."""
     return await use_case.start_activity(project_id, "dev", slug, request, f"user:{user.id}")
 
 
-@router.get("/runtime", response_model=SddRuntimeStatus)
-async def sdd_runtime(project_id: UUID, use_case: Annotated[SddUseCase, Depends()]):
-    """Whether this host can evaluate SDD runs: the runtime pin and an isolated devkit start, without a PR."""
-    return await use_case.runtime(project_id)
-
-
-@router.post("/readiness", response_model=SddReadiness)
-async def inspect_sdd(
-    project_id: UUID,
-    request: SddInspectionRequest,
-    use_case: Annotated[SddUseCase, Depends()],
-):
-    """Inspect a bound spec at a PR revision without starting work or changing Git."""
-    return await use_case.readiness(project_id, request)
-
-
-@router.get("/milestones", response_model=MilestoneList)
-async def list_milestones(
-    project_id: UUID,
-    use_case: Annotated[SddUseCase, Depends()],
-    ref: Annotated[str, Query(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_][A-Za-z0-9_./-]*$")],
-):
-    """Global and package milestones at the selected immutable ref; inspection only."""
-    return await use_case.milestones(project_id, ref)
-
-
-@router.post("/milestone-preview", response_model=MilestonePreview)
-async def preview_milestone(
-    project_id: UUID,
-    request: MilestonePreviewRequest,
-    use_case: Annotated[SddUseCase, Depends()],
-):
-    """Observe bounded member readiness without creating or resuming activities."""
-    return await use_case.milestone_preview(project_id, request)
-
-
-@router.post("/batches", response_model=BatchRead, status_code=201)
-async def create_batch(
-    project_id: UUID, request: CreateBatch, user: CurrentUser, use_case: Annotated[SddBatchUseCase, Depends()]
-):
-    return await use_case.create(project_id, request, f"user:{user.id}")
+@router.get("/runtime", deprecated=True)
+@router.post("/readiness", deprecated=True)
+@router.get("/milestones", deprecated=True)
+@router.post("/milestone-preview", deprecated=True)
+@router.post("/batches", deprecated=True)
+async def retired_sdd_evaluation(project_id: UUID, use_case: Annotated[SddUseCase, Depends()]):
+    """Embedded evaluation and executable native batches have been retired."""
+    return await use_case.retired_operation(project_id)
 
 
 @router.get("/batches", response_model=list[BatchRead])
@@ -132,3 +97,36 @@ async def control_batch(
     use_case: Annotated[SddBatchUseCase, Depends()],
 ):
     return await use_case.control(project_id, batch_id, request, f"user:{user.id}")
+
+
+@router.get("/claims/{claim_id}", response_model=ClaimRead)
+async def get_claim(
+    project_id: UUID,
+    claim_id: UUID,
+    use_case: Annotated[SddClaimHistory, Depends()],
+):
+    return await use_case.get(project_id, claim_id)
+
+
+@router.post("/claims/{claim_id}/reconcile", response_model=ClaimRead)
+async def reconcile_claim(
+    project_id: UUID,
+    claim_id: UUID,
+    request: ReconcileClaimRequest,
+    user: CurrentUser,
+    use_case: Annotated[SddClaimHistory, Depends()],
+):
+    """Acknowledge inspected external work and release only this retired reservation."""
+    return await use_case.reconcile(project_id, claim_id, request, f"user:{user.id}")
+
+
+@router.post("/runs/{run_id}/reconcile", response_model=PipelineRunRead)
+async def reconcile_retired_run(
+    project_id: UUID,
+    run_id: UUID,
+    request: ReconcileRunRequest,
+    user: CurrentUser,
+    use_case: Annotated[SddClaimHistory, Depends()],
+):
+    """Acknowledge retired external work without resuming the retained Run."""
+    return await use_case.reconcile_run(project_id, run_id, request, f"user:{user.id}")

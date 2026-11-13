@@ -1,425 +1,66 @@
 <script lang="ts">
-	import DecisionOutcome from './DecisionOutcome.svelte';
-	import { decisionIntent, decisionBasis } from './decision-intents.svelte';
-	import { SvelteMap } from 'svelte/reactivity';
 	import type { components } from '$lib/api';
-	import { apiErrorMessage } from '$lib/api/errors';
-	import { Button } from '$lib/components/ui/button';
-	import { Textarea } from '$lib/components/ui/textarea';
 	import { Badge } from '$lib/components/ui/badge';
-	import {
-		ShieldCheck,
-		FileText,
-		GitCommitHorizontal,
-		Check,
-		ArrowRight,
-		CirclePause
-	} from '@lucide/svelte';
-	import { tick } from 'svelte';
-	import SddWorkflowRequests from './SddWorkflowRequests.svelte';
+	import { Button } from '$lib/components/ui/button';
 	import SddReports from './SddReports.svelte';
-	import SddPlanningEvidence from './SddPlanningEvidence.svelte';
-	import SddNextAction from './SddNextAction.svelte';
-	import SddDiagnostics from './SddDiagnostics.svelte';
-	let {
-		run,
-		onchange,
-		showOutcome = true,
-		onreconcile = () => {},
-		disabled = false,
-		questionPending = false,
-		selectedRequestId,
-		onbusychange = () => {}
-	}: {
-		run: components['schemas']['PipelineRunRead'];
-		onchange: () => void | Promise<void>;
-		showOutcome?: boolean;
-		onreconcile?: () => void | Promise<void>;
-		disabled?: boolean;
-		questionPending?: boolean;
-		selectedRequestId?: string;
-		onbusychange?: (busy: boolean) => void;
-	} = $props();
-	// The devkit-spec integration gate Hub decides; its label replaces the former G3 badge.
-	const INTEGRATION_GATE = 'dev-integration';
-	let busy = $state(false);
-	let error = $state('');
-	let feedback = $state('');
-	let mode = $state<'revise' | 'reject' | 'revoke' | null>(null);
-	let editor = $state<HTMLElement | null>(null);
-	async function choose(action: typeof mode) {
-		mode = action;
-		error = '';
-		await tick();
-		editor?.focus();
-	}
-	function record(value: unknown): Record<string, unknown> {
-		return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
-	}
-	let progress = $derived(run.sdd_progress || {});
-	let current = $derived(record(progress.current));
-	let stage = $derived(record(current.stage));
-	let approval = $derived(record(progress.approval));
-	let hold = $derived(record(progress.hold));
-	let problems = $derived(Array.isArray(hold.problems) ? hold.problems.map(record) : []);
-	let pendingQuestions = $derived(
-		Array.isArray(hold.pending_questions) ? hold.pending_questions.map(record) : []
+	let { run }: { run: components['schemas']['PipelineRunRead'] } = $props();
+	let snapshot = $derived(run.sdd_snapshot || {});
+	let legacy = $derived(snapshot.execution_version !== 2);
+	let unit = $derived(String(snapshot.spec_dir || ''));
+	let head = $derived(
+		String((legacy ? run.sdd_progress?.head_sha : null) || run.pull_snapshot?.head_sha || '')
 	);
-	let spec = $derived(String(run.sdd_snapshot?.spec_dir || ''));
-	let waiting = $derived(['paused', 'blocked'].includes(run.state));
-	let terminal = $derived(['completed', 'failed', 'canceled'].includes(run.state));
-	let passedIntegration = $derived(
-		Array.isArray(record(progress.workflow).stages) &&
-			(record(progress.workflow).stages as { id: string; human_gate?: string }[]).some(
-				(item: { id: string; human_gate?: string }) =>
-					item.human_gate === INTEGRATION_GATE &&
-					Array.isArray(current.done) &&
-					current.done.includes(item.id)
-			)
-	);
-	// Open workflow requests other than the integration gate are decided in SddWorkflowRequests.
-	let openRequests = $derived(Array.isArray(current.requests) ? current.requests.map(record) : []);
-	let planRequestOpen = $derived(openRequests.some((r) => r.id === 'gate:plan-accept'));
-	let requestOwed = $derived(
-		waiting && openRequests.some((r) => r.id !== `gate:${INTEGRATION_GATE}`)
-	);
-	// An open plan-accept request is answered only by the proposal controls (accept_plan/reject_plan);
-	// Hub refuses a gate approval for it, so reapproval is offered only once no request is open.
-	let canApprove = $derived(
-		waiting &&
-			(stage.human_gate === INTEGRATION_GATE ||
-				(progress.waiting_for_plan_approval && !planRequestOpen) ||
-				(!approval.actor && passedIntegration) ||
-				(progress.approval_withheld &&
-					record(progress.plan_decision).commit_sha === progress.head_sha))
-	);
-
 	let evidenceUrl = $derived(
-		progress.head_sha && spec
-			? `${run.pull_url.split('/pull/')[0]}/tree/${progress.head_sha}/${spec}`
-			: null
+		unit && head ? `${run.pull_url.split('/pull/')[0]}/tree/${head}/${unit}` : null
 	);
-	let workflow = $derived(record(progress.workflow));
-	let stages = $derived(Array.isArray(workflow.stages) ? workflow.stages.map(record) : []);
-	function stageName(id: unknown) {
-		return String(stages.find((item) => item.id === id)?.name || id);
-	}
-	const ids = new SvelteMap<string, string>();
-	async function decide(decision: 'approve' | 'revise' | 'reject' | 'revoke') {
-		if (
-			busy ||
-			disabled ||
-			decisionIntent(run.id).competingUnresolved ||
-			questionPending ||
-			decisionIntent(run.id).unresolved
-		)
-			return;
-		const intent = JSON.stringify([run.id, run.revision, decision, feedback]);
-		if (!ids.has(intent)) ids.set(intent, crypto.randomUUID());
-		busy = true;
-		onbusychange(true);
-		error = '';
-		try {
-			await decisionIntent(run.id).submit(
-				'resume',
-				{
-					request_id: ids.get(intent)!,
-					expected_revision: run.revision,
-					decision,
-					feedback
-				},
-				decisionBasis(run)
-			);
-			const result = { error: null };
-			if (result.error) throw new Error(apiErrorMessage(result.error, 'Decision was not applied'));
-			await onchange();
-			mode = null;
-			feedback = '';
-		} catch (e) {
-			error = e instanceof Error ? e.message : 'Decision failed';
-		} finally {
-			busy = false;
-			onbusychange(false);
-		}
-	}
 </script>
 
-<SddNextAction {run} />
-{#if spec.startsWith('docs/proposals/PROP-')}<SddPlanningEvidence {progress} {evidenceUrl} />{/if}
-<SddWorkflowRequests
-	{onreconcile}
-	{selectedRequestId}
-	{run}
-	{onchange}
-	disabled={disabled || questionPending}
-	{onbusychange}
-/>
-
-<section class="overflow-hidden rounded-xl border bg-card" aria-label="SDD integration decision">
-	<div class="space-y-4 p-4 sm:p-5">
-		<div class="flex items-start gap-3">
-			<div class="rounded-lg bg-muted p-2 text-muted-foreground">
-				<ShieldCheck class="size-5" />
-			</div>
-			<div class="min-w-0 flex-1">
-				<p class="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-					SDD workflow
-				</p>
-				<h3 class="text-lg font-semibold">
-					{terminal
-						? 'Execution finished'
-						: approval.actor
-							? 'Integration authorized'
-							: canApprove
-								? progress.waiting_for_plan_approval
-									? 'Review & approve proposal'
-									: 'Review & approve integration'
-								: String(stage.name || stage.id || 'Inspecting workflow')}
-				</h3>
-			</div>
-			<Badge variant="outline"
-				>{terminal
-					? 'Closed'
-					: requestOwed && !canApprove
-						? 'Request open'
-						: approval.actor
-							? 'Approved'
-							: canApprove
-								? progress.waiting_for_plan_approval
-									? 'plan-accept'
-									: INTEGRATION_GATE
-								: 'In progress'}</Badge
-			>
-		</div>
-		{#if questionPending}<p class="rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm">
-				Answer or dismiss the pending question above before making an integration decision.
-			</p>
-		{:else if requestOwed && !canApprove}<p class="text-sm leading-relaxed text-muted-foreground">
-				No approval is owed in this panel. Decide the {planRequestOpen
-					? 'proposal'
-					: 'workflow request'} above; the run actions below are secondary.
-			</p>
-		{:else if progress.approval_withheld}<p class="text-sm leading-relaxed text-muted-foreground">
-				Review the updated evidence and approve again in Hub. The existing PR ready status will not
-				override your earlier feedback or revocation.
-			</p>
-		{:else if canApprove}<p class="text-sm leading-relaxed text-muted-foreground">
-				Inspect the spec, reviews and final report before authorizing integration. {#if progress.waiting_for_approval}
-					You can also mark the PR ready for review; Hub checks it automatically.{/if}
-			</p>{/if}
-		<div class="space-y-3 rounded-lg bg-muted/40 p-3">
-			<div class="flex items-start gap-2">
-				<FileText class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-				<div class="min-w-0">
-					<p class="mb-1 text-xs text-muted-foreground">Evidence at the inspected commit</p>
-					{#if evidenceUrl}<a
-							class="text-sm font-medium break-all underline underline-offset-4 hover:text-primary"
-							href={evidenceUrl}
-							target="_blank"
-							rel="noreferrer">{spec}</a
-						>{:else}<p class="text-sm text-muted-foreground">Evidence is not available yet.</p>{/if}
-				</div>
-			</div>
-			<div class="flex flex-wrap gap-x-5 gap-y-2 border-t pt-3 text-xs">
-				<span class="flex items-center gap-1.5"
-					><GitCommitHorizontal class="size-3.5 text-muted-foreground" />Head
-					<code title={String(progress.head_sha || '')}
-						>{String(progress.head_sha || 'Pending').slice(0, 10)}</code
-					></span
-				><span class="text-muted-foreground"
-					>Base <code title={String(progress.base_sha || '')}
-						>{String(progress.base_sha || 'Pending').slice(0, 10)}</code
-					></span
-				>
-			</div>
-		</div>
-		{#if run.sdd_snapshot?.provider !== 'devkit-spec' && terminal}<p
-				class="text-xs text-muted-foreground"
-			>
-				Historical specrig execution. Enroll a new SDD run to use devkit-spec.
-			</p>{/if}
-		{#if Array.isArray(current.stale_approvals) && current.stale_approvals.length}<p
-				class="rounded-lg border p-3 text-sm"
-			>
-				Earlier approvals still apply in the repository. Request changes to return the work and
-				require fresh approval and reports.
-			</p>{/if}
-		{#if !spec.startsWith('docs/proposals/PROP-')}<SddReports
-				reports={progress.reports}
-				{evidenceUrl}
-			/>{/if}
-		{#if progress.lint_diagnostic}<p class="rounded-lg border border-warning/30 p-3 text-sm">
-				{String(progress.lint_diagnostic)}
-			</p>{/if}
-		{#if hold.blocked || pendingQuestions.length}
-			<div class="space-y-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm">
-				<p class="font-medium">
-					{hold.blocked ? 'Held by a worker problem' : 'Waiting for answers to worker questions'}
-				</p>
-				{#each problems as problem, index (index)}<p class="text-xs">
-						<code>{String(problem.file)}</code>: {String(problem.cause)}
-						{#if problem.recovery}<span class="text-muted-foreground">
-								· Recovery: {String(problem.recovery)}</span
-							>{/if}
-					</p>{/each}
-				{#each pendingQuestions as item, index (index)}<p class="text-xs">
-						<code>{String(item.file)}</code> · {String(item.id)}: {String(item.title)}
-					</p>{/each}
-				<p class="text-xs text-muted-foreground">
-					No gate passes and nothing is merged while the hold stands.
-				</p>
-			</div>
-		{/if}
-		<SddDiagnostics diagnostics={progress.diagnostics} warnings={progress.warnings} />
-		{#if Array.isArray(current.done) && current.done.length}
-			<details class="text-xs">
-				<summary class="cursor-pointer text-muted-foreground"
-					>Verified stages · {current.done.length}</summary
-				>
-				<ul class="mt-3 grid gap-2 sm:grid-cols-2">
-					{#each current.done as done (String(done))}<li class="flex items-start gap-2">
-							<Check class="size-3.5 shrink-0 text-success" />{stageName(done)}
-						</li>{/each}
-				</ul>
-			</details>
-		{/if}
-		{#if approval.actor}<p class="text-xs text-muted-foreground">
-				Authorized by <span class="font-medium text-foreground">{String(approval.actor)}</span>
-			</p>{/if}
-		{#if progress.pr_draft}<div
-				class="flex items-start gap-2 rounded-lg border p-3 text-xs leading-relaxed text-muted-foreground"
-			>
-				<CirclePause class="mt-0.5 size-4 shrink-0" />
-				<p>
-					<strong class="font-medium text-foreground">PR is still a draft.</strong> Integration approval
-					does not change draft status. Mark the PR ready when it may be merged.
-				</p>
-			</div>{/if}
+<section class="space-y-3 rounded-xl border bg-card p-4" aria-label="Repository activity context">
+	<div class="flex flex-wrap items-center gap-2">
+		<h3 class="text-sm font-semibold">Repository activity</h3>
+		<Badge variant="outline"
+			>{legacy
+				? 'Retired · read only'
+				: String(
+						snapshot.activity_kind || (snapshot.handoff_pending ? 'Development' : 'Repository work')
+					)}</Badge
+		>
 	</div>
-	{#if !terminal && (waiting || approval.actor)}
-		<div class="space-y-4 border-t bg-muted/20 p-4 sm:px-5">
-			{#if mode}
-				<div class="space-y-3">
-					<p class="text-sm font-semibold">
-						{mode === 'revise'
-							? 'What needs to change?'
-							: mode === 'reject'
-								? 'Stop this run'
-								: 'Withdraw integration approval'}
-					</p>
-					{#if mode === 'reject'}<p class="text-xs leading-relaxed text-muted-foreground">
-							The run will be canceled. Already dispatched agent work may continue.
-						</p>{/if}
-					<label class="block space-y-2 text-sm"
-						>{mode === 'revise' ? 'Requested changes' : 'Decision reason (optional)'}<Textarea
-							bind:ref={editor}
-							class="min-h-24 leading-relaxed"
-							maxlength={8000}
-							bind:value={feedback}
-							disabled={busy ||
-								disabled ||
-								decisionIntent(run.id).competingUnresolved ||
-								questionPending}
-							placeholder={mode === 'revise'
-								? 'Describe the changes and what should stay the same.'
-								: 'Add context for the decision history.'}
-						/></label
-					>
-					<div class="flex flex-wrap items-center gap-2">
-						<Button
-							variant={mode === 'reject' ? 'destructive' : 'default'}
-							disabled={busy ||
-								disabled ||
-								questionPending ||
-								(mode === 'revise' && !feedback.trim())}
-							onclick={() => mode && void decide(mode)}
-							>{busy
-								? 'Applying…'
-								: mode === 'revise'
-									? 'Send change request'
-									: mode === 'reject'
-										? 'Reject and stop'
-										: 'Revoke approval'}</Button
-						><Button
-							variant="ghost"
-							disabled={busy}
-							onclick={() => {
-								mode = null;
-								feedback = '';
-							}}>Cancel</Button
-						>
-					</div>
-				</div>
-			{:else}
-				{#if !(requestOwed && !canApprove)}<div class="flex flex-wrap gap-2">
-						{#if canApprove}<Button
-								disabled={busy ||
-									disabled ||
-									decisionIntent(run.id).competingUnresolved ||
-									questionPending}
-								onclick={() => void decide('approve')}
-								><ShieldCheck class="size-4" />{busy
-									? 'Approving…'
-									: progress.waiting_for_plan_approval
-										? 'Approve proposal'
-										: 'Approve integration'}<ArrowRight class="size-4" /></Button
-							>{/if}
-						{#if waiting}<Button
-								variant="outline"
-								disabled={busy ||
-									disabled ||
-									decisionIntent(run.id).competingUnresolved ||
-									questionPending}
-								onclick={() => void choose('revise')}>Request changes</Button
-							>{/if}
-					</div>{/if}
-				<details class="text-xs">
-					<summary class="cursor-pointer text-muted-foreground"
-						>{requestOwed && !canApprove ? 'Other run actions' : 'Other actions'}</summary
-					>
-					<div class="mt-3 flex flex-wrap gap-2">
-						{#if waiting && requestOwed && !canApprove}<Button
-								size="sm"
-								variant="outline"
-								disabled={busy ||
-									disabled ||
-									decisionIntent(run.id).competingUnresolved ||
-									questionPending}
-								onclick={() => void choose('revise')}>Request changes</Button
-							>{/if}
-						{#if waiting}<Button
-								size="sm"
-								variant="destructive"
-								disabled={busy ||
-									disabled ||
-									decisionIntent(run.id).competingUnresolved ||
-									questionPending}
-								onclick={() => void choose('reject')}>Stop run</Button
-							>{/if}{#if approval.actor}<Button
-								size="sm"
-								variant="outline"
-								disabled={busy ||
-									disabled ||
-									decisionIntent(run.id).competingUnresolved ||
-									questionPending}
-								onclick={() => void choose('revoke')}>Withdraw approval</Button
-							>{/if}
-					</div>
-				</details>
-			{/if}
-			{#if error}<p
-					role="alert"
-					class="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
-				>
-					{error}
-				</p>{/if}
-		</div>
+	{#if legacy}
+		<p class="text-sm text-muted-foreground">
+			Native SDD workflow control has been retired. This evidence is historical and cannot resume or
+			approve work. Inspect any external agent and PR activity before registering replacement work.
+		</p>
+	{:else}
+		<p class="text-sm text-muted-foreground">
+			The agent owns repository setup and workflow execution. Use this Run's ordinary questions and
+			controls; GitHub checks and project merge policy govern delivery.
+		</p>
+	{/if}
+	{#if unit}<p class="text-xs break-all">Unit: <code>{unit}</code></p>{/if}
+	{#if snapshot.activity_effort}<p class="text-xs text-muted-foreground">
+			Activity effort: {String(snapshot.activity_effort)}
+		</p>{/if}
+	{#if evidenceUrl}<Button
+			size="sm"
+			variant="link"
+			href={evidenceUrl}
+			target="_blank"
+			rel="noreferrer">Open repository evidence</Button
+		>{/if}
+	{#if legacy && run.sdd_progress}
+		<details class="text-xs">
+			<summary class="cursor-pointer text-muted-foreground"
+				>Retained native execution evidence</summary
+			>
+			<div class="mt-3 space-y-3">
+				<SddReports reports={run.sdd_progress.reports} {evidenceUrl} />
+				<pre class="overflow-auto break-all whitespace-pre-wrap">{JSON.stringify(
+						run.sdd_progress,
+						null,
+						2
+					)}</pre>
+			</div>
+		</details>
 	{/if}
 </section>
-{#if showOutcome}<DecisionOutcome
-		runId={run.id}
-		head={decisionBasis(run)}
-		revision={run.revision}
-		{terminal}
-		onrefresh={onchange}
-	/>{/if}

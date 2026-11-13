@@ -71,7 +71,7 @@ def register_decisions(registry: ToolRegistry, deps: Dependencies):
     register(
         registry,
         "decisions_review",
-        "Inspect the exact key/fingerprint. WRITE: may persist native inspection and increment revision; never approves or resumes. Changed selection refuses.",
+        "Inspect the exact key/fingerprint. WRITE: returns the current ordinary decision owner without repository workflow evaluation; never approves or resumes. Changed selection refuses.",
         Review,
         ReviewView,
         review,

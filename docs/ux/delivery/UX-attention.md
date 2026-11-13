@@ -95,7 +95,7 @@ the read stays single-flight, so a shell read already in flight is reused rather
 | Inspect Work Item | `UC-execute-work-plan` 4c | populated, partial | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | The Plans tab opens at the Work Item in attention. |
 | Inspect recovery | `UC-execute-work-plan` 5c | populated, partial | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | The Plans tab opens at the recovering Work Item. |
 | Accept replacement | `UC-execute-work-plan` 6c | populated, partial | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | The Plans tab opens at the Work Item whose replacement evidence awaits acceptance. |
-| Inspect batch | `UC-execute-sdd-batch` 4c | populated, partial | populated | `UX-sdd-batch` | `CAP-SDD-workflow-control` | The project Repository tab opens; load its retained batches to inspect the batch. A batch deep link is a follow-up (`FB-attention-sdd-batch-deep-link`). |
+| Inspect batch | `UC-execute-sdd-batch` 1 | populated, partial | populated | `UX-sdd-batch` | `CAP-SDD-workflow-control` | The project Repository tab opens; load its retained batches to inspect the batch. A batch deep link is a follow-up (`FB-attention-sdd-batch-deep-link`). |
 | Review cleanup | `UC-verify-project-connection` 7 | populated, partial | populated | `UX-connection-tests` | `CAP-CONN-connection-verification` | The project Connections tab opens with the cleanup review. |
 | Open project | global: inspect the item's owning project | populated, partial | populated | `UX-project-detail` |  | The project detail opens. |
 | Open AI catalogs (hold context) | global: inspect the catalog that holds a run | populated, partial | populated | `UX-ai-catalogs` |  | AI catalog configuration opens. |

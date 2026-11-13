@@ -21,7 +21,7 @@ flowchart TB
     Coordinators --> PR[PR lifecycle and advancement]
     PR --> Delivery[Registered delivery adapter]
     Delivery --> GitHub[GitHub transport]
-    Coordinators --> SDD[Isolated devkit evaluation]
+    Coordinators --> SDD[Activity intent and retained history]
     Coordinators --> Flow[SDK flow runtime and bound worker]
     Tick[Registered scheduler tasks] --> Coordinators
     Maintenance[Shared maintenance] --> Tests[Connection-test recipes]
@@ -39,7 +39,7 @@ exhaustive import graph. Existing feature handlers can use a service directly;
 | Project/connector configuration | `configuration/connectors/`, `project_management/projects/` | API, services, repositories and onboarding | `CAP-PROJ-project-connections` |
 | PR coordination | `project_management/pipeline_runs/usecases/` | `lifecycle.py`, `advancement.py`, `progress.py`, `ci.py`, `control.py` | `CAP-PR-pull-request-delivery` |
 | Operator interactions | `project_management/pipeline_runs/` | `usecases/interactions.py`, `api/interactions.py`, `interaction_service.py`, `interaction_repo.py` | `CAP-PR-operator-decisions` |
-| Decision discovery | `project_management/pipeline_runs/`, `project_management/sdd/` | `discovery_projection.py` transaction hooks, bounded `discovery_repo.py`, exact-inspection `usecases/discovery.py`, native `discovery.py` | `CAP-PR-operator-decisions`, `CAP-SDD-workflow-control` |
+| Decision discovery | `project_management/pipeline_runs/` | `discovery_projection.py` transaction hooks, bounded `discovery_repo.py`, exact owner `usecases/discovery.py` | `CAP-PR-operator-decisions` |
 | PR observation | `project_management/pipelines/` | `github.py`, `services.py` | `CAP-PR-ci-observation` |
 | PR delivery transport | `project_management/pipeline_runs/adapters/` | `base.py`, `registry.py`, `codex_github_mention.py` | `CAP-PR-agent-dispatch` |
 | Webhook intake and continuation | `project_management/github_webhooks/` | `api.py`, `usecases.py`, `repos.py`, `tasks.py` | `CAP-PR-webhook-advancement` |
@@ -48,8 +48,8 @@ exhaustive import graph. Existing feature handlers can use a service directly;
 | Provider sessions | `execution/tasks/domains/jules/`, `ai_catalogs/providers/` | Session orchestration and Jules HTTP client | `CAP-AGENT-provider-sessions` |
 | Diagnostic coordination | `project_management/connection_tests/` | `usecases.py`, `services.py`, `repos.py`, `configuration.py` | `CAP-CONN-connection-verification` |
 | Diagnostic resources/proof | `project_management/connection_tests/` | `github.py`, `ownership.py`, `guards.py` | `CAP-CONN-connection-verification` |
-| Native SDD | `project_management/sdd/` | Activity, runtime, control and publication modules | `CAP-SDD-native-delivery`, `CAP-SDD-runtime-isolation`, `CAP-SDD-workflow-control` |
-| SDK host | `execution/flows/` | API, services, runtime, adapters and bridge | `CAP-SDK-task-flow-execution`, `CAP-SDK-existing-pr-bridge` |
+| Repository activity | `project_management/sdd/` | GitHub activity publication, claim recovery and retired evidence reads | `CAP-SDD-native-delivery` |
+| SDK host | `execution/flows/` | API, services, runtime, adapters and retired bridge settlement | `CAP-SDK-task-flow-execution`, `CAP-SDK-existing-pr-bridge` |
 | Dispatch/maintenance | `execution/dispatchers/`, `execution/tasks/domains/maintenance/` | Dispatch orchestration and shared housekeeping | `CAP-EXEC-scheduling-maintenance` |
 | Notices | `notifications/`, `execution/dispatchers/usecases/` | Notification service and `housekeeping.py` | `CAP-NOTIFY-operator-notifications` |
 

@@ -77,7 +77,9 @@ without selecting what they name:
 
 Hypothesis: exposing origin links on the run read, and giving the Repository tab URL-addressable unit and batch
 selection, lets every run page link, run row and Attention action open its exact subject, closing the one-way
-relationships without frontend derivation.
+relationships without frontend derivation. Native batch links are historical-only
+under `ADR-repository-owned-sdd-execution`; this proposal creates no replacement
+batch control or readiness surface.
 
 ## Source feedback
 
@@ -98,7 +100,7 @@ or enrollment behavior change is needed. Evidence is pinned to `e1a50a8064597d65
 | Q2: read cost | Enrich the paginated run result with at most three additional bulk SELECTs: Work Item joined to Work Plan; Provider sessions; SDD claims joined to members/batches. Reuse the caller's session and transaction sequentially. | Per-run lookups grow with page size and can obscure run-list ordering/counts. Row-multiplying outer joins before pagination change the result. |
 | Q3: consumers | The run page and run rows show compact related-origin links. `RunNextStep` consumes its returned Work Item/Work Plan IDs and no longer scans Work Plans; ID labels are sufficient until the destination opens. | Keeping the scan preserves unbounded browser requests and can disagree with the run read. |
 | Q4: addressing | Keep `?tab=repository&unit=<encoded unit directory>`, add optional `&ref=<encoded branch>` for run links and `&batch=<UUID>`. Query parameters survive reloads and viewer switches. They are selection requests, not permission to execute. | Hash-only addressing supplies a scroll target but cannot initialize a unit or fetch a retained batch. |
-| Q5: selection | A validated unit selects the SDD viewer document and execution panel together. A batch address fetches the exact project-scoped batch detail directly; it does not depend on the latest-50 list. | Loading the bounded list first can omit an older addressed batch. |
+| Q5: selection | A validated unit selects the SDD viewer document and descriptive activity panel together. A batch address fetches the exact project-scoped batch detail directly; it does not depend on the latest-50 list. | Loading the bounded list first can omit an older addressed batch. |
 
 ### Read contract
 
@@ -144,16 +146,15 @@ are additive and the generated UI client is regenerated with `just gen-ui-api`.
   keeps the addressed selection. Repeated load clicks reuse the loaded list; explicit Refresh status remains a
   deliberate detail GET.
 - If both `unit` and `batch` occur, select both independently: the document/execution region honors `unit`, and the
-  retained batch panel honors `batch`. No batch member is silently selected as the unit.
+  read-only retained batch panel honors `batch`. No batch member is silently selected as the unit.
 - A fresh address to an SDD project opens Sdd View. Switching to Git Browser preserves the address and selected unit;
   returning to Sdd View restores it. Browser back/forward or same-project query changes replace the requested
   selection. Changing project invalidates earlier requests, selection and cached list state.
-- If a control for batch A has an unknown outcome while navigation selects batch B, preserve a separate disclosure
-  naming batch A, its action and original request identity. **Retry same request for batch A** is explicitly scoped
-  to A; its result never replaces B's displayed selection. B mutations remain disabled while the one retained intent
-  blocks them. Navigation never retries, replaces or clears A's request.
+- Retained batch addresses are read-only historical subjects under
+  `ADR-repository-owned-sdd-execution`. Opening or changing the selected batch
+  never creates/resumes native work or retransmits an old control request.
 - Missing, malformed, non-SDD-project or inaccessible subjects show a visible explanation and **Browse repository**
-  escape. Missing units do not enable readiness/start controls for that unit. A missing batch never selects another
+  escape. Missing units do not enable activity start controls for that unit. A missing batch never selects another
   batch as if it were the requested one. Network errors offer Retry. Older responses cannot overwrite a later
   project or address. Opening any address sends no start/create/control mutation.
 
@@ -177,9 +178,9 @@ are additive and the generated UI client is regenerated with `just gen-ui-api`.
   lookup settles, then the explanation/Retry/Browse escape remains accurate and no wrong subject is selected.
 - **ORIGIN-08**: Given simultaneous unit and batch parameters, when the SDD view opens, then both named regions are
   selected independently and no start, batch creation or control request is sent.
-- **ORIGIN-09**: Given an unknown control result for batch A, when the operator opens batch B, then B remains the
-  inspected selection, A's retry disclosure names A/action/request, B mutations are disabled and no request is
-  automatically resent. An explicit retry of A cannot replace B's displayed selection.
+- **ORIGIN-09**: Given retired batch A and batch B, when the operator changes the
+  addressed selection, then the exact selected history loads without any batch
+  create/resume/control request or inferred execution authority.
 
 ### Scope and delivery
 

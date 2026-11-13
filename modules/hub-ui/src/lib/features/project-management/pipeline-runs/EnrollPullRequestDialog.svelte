@@ -127,7 +127,7 @@
 
 			{#if native}
 				<label class="block text-sm"
-					>Bound spec directory<Input
+					>Repository unit directory<Input
 						bind:value={specDir}
 						required
 						placeholder="specs/2026-10/20261010-feature"
@@ -155,9 +155,7 @@
 				<span>
 					<span class="font-medium text-foreground">Already implemented</span>
 					<span class="mt-0.5 block text-xs text-muted-foreground"
-						>{native
-							? 'Inspect existing workflow evidence before continuing.'
-							: 'Skip the implementation request and start at CI observation.'}</span
+						>Skip the implementation request and start at GitHub CI observation.</span
 					>
 				</span>
 				<input

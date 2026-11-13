@@ -1,93 +1,55 @@
 <script lang="ts">
-	import { runHref } from '../pipeline-runs/run-links';
-	import RunStateBadge from '../pipeline-runs/RunStateBadge.svelte';
+	import { api, type components } from '$lib/api';
+	import { responseData } from '$lib/api/pagination';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { Input } from '$lib/components/ui/input';
-	import { SvelteMap } from 'svelte/reactivity';
-	import { api, type components } from '$lib/api';
-	import { apiErrorMessage } from '$lib/api/errors';
+	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import { Textarea } from '$lib/components/ui/textarea';
+	import RunStateBadge from '../pipeline-runs/RunStateBadge.svelte';
+	import { runHref } from '../pipeline-runs/run-links';
+	import { sddStarts } from './sdd-starts.svelte';
+	import SddStartOutcome from './SddStartOutcome.svelte';
 	type Proposal = components['schemas']['ProposalState'];
-	type RunState = components['schemas']['PipelineRunState'];
 	let { projectId, repository = '' }: { projectId: string; repository?: string } = $props();
 	let base = $state('main');
 	let effort = $state<'' | 'low' | 'medium' | 'high'>('');
 	let items = $state<Proposal[]>([]);
 	let truncated = $state(false);
 	let loading = $state(false);
-	let busy = $state('');
 	let error = $state('');
-	let message = $state('');
-	let rejecting = $state('');
-	let reason = $state('');
-	// One request id per intent, reused when a lost response is retried.
-	const ids = new SvelteMap<string, string>();
-	const idFor = (intent: string) =>
-		ids.get(intent) ?? ids.set(intent, crypto.randomUUID()).get(intent)!;
+	let starts = $derived(sddStarts(projectId));
+	let generation = 0;
 	const pullUrl = (n: number) => `https://github.com/${repository}/pull/${n}`;
 	async function load() {
+		const project = projectId,
+			branch = base,
+			requested = ++generation;
 		loading = true;
 		error = '';
 		try {
-			const result = await api.GET('/api/v1/projects/{project_id}/sdd/proposals', {
-				params: { path: { project_id: projectId }, query: { base_branch: base } }
-			});
-			if (result.error) throw new Error(apiErrorMessage(result.error, 'Unable to list proposals'));
-			items = result.data?.items ?? [];
-			truncated = !!result.data?.truncated;
+			const result = responseData(
+				await api.GET('/api/v1/projects/{project_id}/sdd/proposals', {
+					params: { path: { project_id: project }, query: { base_branch: branch } }
+				}),
+				'Unable to list proposals'
+			);
+			if (requested !== generation || project !== projectId) return;
+			items = result.items;
+			truncated = !!result.truncated;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Unable to list proposals';
+			if (requested === generation)
+				error = e instanceof Error ? e.message : 'Unable to list proposals';
 		} finally {
-			loading = false;
+			if (requested === generation) loading = false;
 		}
 	}
-	async function act(item: Proposal, action: Proposal['actions'][number]) {
-		busy = item.slug;
-		error = '';
-		message = '';
-		try {
-			if (action === 'start_planning' || action === 'start_development') {
-				const path =
-					action === 'start_planning'
-						? '/api/v1/projects/{project_id}/sdd/proposals/{slug}/planning'
-						: '/api/v1/projects/{project_id}/sdd/proposals/{slug}/development';
-				const result = await api.POST(path, {
-					params: { path: { project_id: projectId, slug: item.slug } },
-					body: {
-						request_id: idFor(`${action}:${item.slug}:${base}:${effort}`),
-						base_branch: base,
-						...(effort ? { activity_effort: effort } : {})
-					}
-				});
-				if (result.error) throw new Error(apiErrorMessage(result.error, 'Could not start'));
-				message = `${item.id}: ${action === 'start_planning' ? 'Planning' : 'Development'} started.`;
-			} else if (item.run) {
-				const decision = action === 'accept' ? 'accept_plan' : 'reject_plan';
-				const note = action === 'reject' ? reason : '';
-				const run = item.run;
-				const result = await api.POST('/api/v1/pipeline-runs/{run_id}/resume', {
-					params: { path: { run_id: run.id } },
-					body: {
-						request_id: idFor(JSON.stringify([run.id, run.revision, decision, note])),
-						expected_revision: run.revision,
-						decision,
-						head_sha: run.head_sha ?? '',
-						feedback: note
-					}
-				});
-				if (result.error)
-					throw new Error(apiErrorMessage(result.error, 'Decision was not applied'));
-				message = `${item.id}: ${action === 'accept' ? 'accepted' : 'rejected'}; the pull request merges by policy.`;
-				rejecting = '';
-				reason = '';
-			}
-			await load();
-		} catch (e) {
-			error = e instanceof Error ? e.message : 'Action failed';
-		} finally {
-			busy = '';
-		}
+	async function start(item: Proposal, activity: 'plan' | 'dev') {
+		await starts.activity(projectId, item.slug, activity, {
+			request_id: crypto.randomUUID(),
+			base_branch: base,
+			...(effort ? { activity_effort: effort } : {})
+		});
+		if (!starts.pending) await load();
 	}
 	$effect(() => {
 		if (projectId) void load();
@@ -98,92 +60,72 @@
 	<div class="flex flex-wrap items-end gap-3">
 		<h3 class="mr-auto text-sm font-semibold">Proposals</h3>
 		<label class="text-sm"
-			>Base branch
-			<Input class="mt-1 w-36" bind:value={base} />
-		</label>
+			>Base branch<Input
+				class="mt-1 w-36"
+				bind:value={base}
+				disabled={starts.busy || !!starts.pending}
+			/></label
+		>
 		<label class="text-sm"
-			>Activity effort
-			<NativeSelect class="mt-1 flex" bind:value={effort} aria-label="Proposal activity effort">
-				<option value="">Use proposal recommendation</option>
-				<option value="low">low</option><option value="medium">medium</option><option value="high"
-					>high</option
-				>
-			</NativeSelect>
-		</label>
-		<Button variant="outline" disabled={loading} onclick={load}>Refresh</Button>
+			>Activity effort<NativeSelect
+				class="mt-1 flex"
+				bind:value={effort}
+				aria-label="Proposal activity effort"
+				disabled={starts.busy || !!starts.pending}
+				><option value="">Use repository recommendation</option><option value="low">low</option
+				><option value="medium">medium</option><option value="high">high</option></NativeSelect
+			></label
+		>
+		<Button variant="outline" disabled={loading} onclick={load}>Refresh proposals</Button>
 	</div>
+	<p class="text-xs text-muted-foreground">
+		Choose the work to request. Both activities open Draft PRs. Proposal status is descriptive; the
+		repository and agent own setup, prerequisites and workflow decisions.
+	</p>
 	{#if loading}<p role="status" class="text-sm text-muted-foreground">Loading proposals…</p>{/if}
 	<ul class="divide-y">
 		{#each items as item (item.slug)}
 			<li class="space-y-2 py-3 text-sm">
 				<div class="flex flex-wrap items-center gap-2">
-					<span class="font-medium">{item.title}</span>
-					<code class="text-xs text-muted-foreground">{item.id}</code>
-					<span class="rounded border px-2 text-xs">{item.display_status}</span>
-					{#if item.plan_pull}<a class="text-xs underline" href={pullUrl(item.plan_pull)}
-							>plan-{item.slug} #{item.plan_pull}</a
+					<span class="font-medium">{item.title}</span><code class="text-xs text-muted-foreground"
+						>{item.id}</code
+					><Badge variant="outline">{item.status}</Badge>
+					{#if item.plan_pull}<Button size="sm" variant="link" href={pullUrl(item.plan_pull)}
+							>Planning PR #{item.plan_pull}</Button
 						>{/if}
-					{#if item.dev_pull}<a class="text-xs underline" href={pullUrl(item.dev_pull)}
-							>dev-{item.slug} #{item.dev_pull}</a
+					{#if item.dev_pull}<Button size="sm" variant="link" href={pullUrl(item.dev_pull)}
+							>Development PR #{item.dev_pull}</Button
 						>{/if}
 					{#if item.run}<a href={runHref(item.run.id, projectId)} class="inline-flex"
 							><span class="sr-only">PR run </span><RunStateBadge
-								state={item.run.state as RunState}
+								state={item.run.state as components['schemas']['PipelineRunState']}
 							/></a
 						>{/if}
 				</div>
 				{#if item.note}<p class="text-xs text-muted-foreground">{item.note}</p>{/if}
-				<p class="text-xs text-muted-foreground">
-					Recommended effort · Planning {item.planning_effort || 'unspecified'} · Development {item.dev_effort ||
-						'unspecified'}
-				</p>
 				<div class="flex flex-wrap gap-2">
-					{#each item.actions as action (action)}
-						{#if action === 'accept' && item.run}
-							<a
-								class="rounded-md border px-3 py-2 text-xs font-medium underline"
-								href={runHref(item.run.id, projectId, 'decisions')}>Review & accept</a
-							>
-						{:else if action === 'reject'}
-							<Button
-								size="sm"
-								variant="outline"
-								disabled={!!busy}
-								onclick={() => (rejecting = rejecting === item.slug ? '' : item.slug)}
-								>Reject…</Button
-							>
-						{:else}
-							<Button size="sm" disabled={!!busy} onclick={() => void act(item, action)}
-								>{action === 'start_planning'
-									? 'Start review'
-									: action === 'start_development'
-										? 'Start development'
-										: 'Accept'}</Button
-							>
-						{/if}
-					{/each}
+					<Button
+						size="sm"
+						disabled={starts.busy || !!starts.pending}
+						onclick={() => start(item, 'plan')}>Start Planning</Button
+					><Button
+						size="sm"
+						variant="outline"
+						disabled={starts.busy || !!starts.pending}
+						onclick={() => start(item, 'dev')}>Start Development</Button
+					>
 				</div>
-				{#if rejecting === item.slug}
-					<div class="space-y-2">
-						<label class="block text-sm"
-							>Rejection reason (kept in the commit message)
-							<Textarea class="mt-1" bind:value={reason} maxlength={8000} />
-						</label>
-						<Button
-							size="sm"
-							variant="destructive"
-							disabled={!!busy || !reason.trim()}
-							onclick={() => void act(item, 'reject')}>Reject proposal</Button
-						>
-					</div>
-				{/if}
 			</li>
 		{/each}
 	</ul>
 	{#if !loading && !items.length && !error}<p class="text-sm text-muted-foreground">
-			No proposals on {base}.
+			No proposals on {base}. Browse the repository or refresh after selecting another base.
 		</p>{/if}
 	{#if truncated}<p class="text-xs text-muted-foreground">Showing the first 50 proposals.</p>{/if}
-	{#if message}<p role="status" class="text-sm">{message}</p>{/if}
+	{#if starts.lastKind === 'activity'}<SddStartOutcome
+			state={starts}
+			{projectId}
+			{repository}
+		/>{/if}
 	{#if error}<p role="alert" class="text-sm text-destructive">{error}</p>{/if}
 </section>

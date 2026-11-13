@@ -67,7 +67,7 @@ async def test_application_outcome_survives_later_pause_and_receipt_replay(clien
     assert (await client.get(root + "/attempts")).json()["total_count"] == 1
 
 
-async def test_exact_native_answer_requires_matching_envelope_and_current_context(client, project, github, session):
+async def test_historical_publication_uses_only_retained_receipt_proof(client, project, github, session):
     run = (await enroll(client, project)).json()
     row = await session.get(PipelineRun, UUID(run["id"]))
     identity = uuid4()
@@ -104,14 +104,15 @@ async def test_exact_native_answer_requires_matching_envelope_and_current_contex
     await session.commit()
     url = f"/api/v1/pipeline-runs/{row.id}/decision-outcomes/{identity}"
     assert (await client.get(url, params={"operation": "resume"})).json()["publication_state"] == "pending"
+    # Current repository envelopes are no longer interpreted by Hub.
     row.sdd_progress = {**row.sdd_progress, "answer_resolutions": [{**resolution, "question": "direction"}]}
+    await session.commit()
+    assert (await client.get(url, params={"operation": "resume"})).json()["publication_state"] == "pending"
+    receipt.decision_evidence = {**(receipt.decision_evidence or {}), "answer_publication": {"file": "answer-01.yaml"}}
     await session.commit()
     result = (await client.get(url, params={"operation": "resume"})).json()
     assert result["publication_state"] == "published"
     assert result["resolved_envelope"] == "answer-01.yaml"
-    from app.features.project_management.sdd.answer_publication import retain_publications
-
-    await retain_publications(session, row.id, row.sdd_progress)
     row.sdd_progress = {**row.sdd_progress, "current": {"workflow": "sdd-proposal", "segment": 1}}
     await session.commit()
     assert (await client.get(url, params={"operation": "resume"})).json()["publication_state"] == "published"
@@ -140,36 +141,3 @@ async def test_prepared_candidates_and_legacy_context_stay_truthful(client, proj
     outcome = (await client.get(url, params={"operation": "resume"})).json()
     assert outcome["publication_state"] is None
     assert "not retained" in outcome["unavailable_reason"]
-
-
-@pytest.mark.parametrize("workflow,segment", [("sdd-proposal", 0), ("sdd-spec-feature", 1)])
-def test_answer_publication_never_uses_a_later_subject(workflow, segment):
-    from app.features.project_management.sdd.answer_publication import matching_publication
-
-    data = {
-        "owner_request_id": "original",
-        "subject_context": {"workflow": "sdd-spec-feature", "segment": 0, "head_sha": "a" * 40},
-        "workflow_answer": {"request": "question:worker-01.q1"},
-        "decision_records": [
-            {
-                "id": "original",
-                "kind": "answer-envelope",
-                "operation": {"request": "question:worker-01.q1"},
-                "answers_to": "worker-01.yaml",
-                "question": "q1",
-            }
-        ],
-    }
-    progress = {
-        "head_sha": "b" * 40,
-        "answer_resolutions": [
-            {
-                "workflow": workflow,
-                "segment": segment,
-                "file": "answer-01.yaml",
-                "answers_to": "worker-01.yaml",
-                "question": "q1",
-            }
-        ],
-    }
-    assert matching_publication(data, progress) is None

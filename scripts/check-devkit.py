@@ -21,8 +21,6 @@ SUBDIRECTORIES = {
     },
 }
 DEVELOPMENT_PACKAGES = set(SUBDIRECTORIES)
-RUNTIME_PACKAGES = DEVELOPMENT_PACKAGES - {"devkit-catalog"}
-PROFILES = (".", "config/sdd-runtime")  # the seed runtime; serving hosts install from repository locks
 VIEWER = "devkit-viewer-0.1.0.tgz"
 
 
@@ -41,54 +39,52 @@ def require(condition: bool, message: str, path: Path) -> None:
 
 def check(root: Path) -> tuple[str, str]:
     """All sources, overrides and resolved packages share one immutable commit and release version."""
-    manifests = {profile: tomllib.loads((root / profile / "pyproject.toml").read_text()) for profile in PROFILES}
-    revision = manifests["."]["tool"]["uv"]["sources"]["devkit-dist"]["rev"]
+    manifest = tomllib.loads((root / "pyproject.toml").read_text())
+    revision = manifest["tool"]["uv"]["sources"]["devkit-dist"]["rev"]
     require(bool(re.fullmatch(r"[0-9a-f]{40}", revision)), "Pin devkit to a full Git commit", root / "pyproject.toml")
-    versions = set()
-    for profile, manifest in manifests.items():
-        path = root / profile / "pyproject.toml"
-        uv = manifest["tool"]["uv"]
-        for name, source in uv["sources"].items():
-            if name.startswith("devkit-"):
-                require(
-                    name in SUBDIRECTORIES
-                    and source.get("git", "").removesuffix(".git") == REPOSITORY
-                    and source.get("rev") == revision
-                    and source.get("subdirectory") == SUBDIRECTORIES[name],
-                    f"Align {name} source with the reviewed devkit commit",
-                    path,
-                )
-        for override in uv.get("override-dependencies", []):
-            if override.startswith("devkit-"):
-                name, separator, url = override.partition(" @ git+")
-                parsed = urlsplit(url)
-                repo, _, rev = parsed.path.rpartition("@")
-                require(
-                    bool(separator)
-                    and name in SUBDIRECTORIES
-                    and f"{parsed.scheme}://{parsed.netloc}{repo}".removesuffix(".git") == REPOSITORY
-                    and rev == revision
-                    and parse_qs(parsed.fragment).get("subdirectory") == [SUBDIRECTORIES[name]],
-                    f"Align {name} override with the reviewed devkit commit",
-                    path,
-                )
-        path = root / profile / "uv.lock"
-        packages = {p["name"]: p for p in tomllib.loads(path.read_text())["package"] if p["name"].startswith("devkit-")}
-        expected = DEVELOPMENT_PACKAGES if profile == "." else RUNTIME_PACKAGES
-        require(set(packages) == expected, "Review the devkit package inventory", path)
-        for name, package in packages.items():
-            parsed = urlsplit(package["source"].get("git", ""))
-            query = parse_qs(parsed.query)
+    path = root / "pyproject.toml"
+    uv = manifest["tool"]["uv"]
+    for name, source in uv["sources"].items():
+        if name.startswith("devkit-"):
             require(
-                f"{parsed.scheme}://{parsed.netloc}{parsed.path}".removesuffix(".git") == REPOSITORY
-                and parsed.fragment == revision
-                and query.get("rev") == [revision]
-                and query.get("subdirectory") == [SUBDIRECTORIES[name]],
-                f"Align the resolved {name} Git source with the reviewed devkit commit",
+                name in SUBDIRECTORIES
+                and source.get("git", "").removesuffix(".git") == REPOSITORY
+                and source.get("rev") == revision
+                and source.get("subdirectory") == SUBDIRECTORIES[name],
+                f"Align {name} source with the reviewed devkit commit",
                 path,
             )
-            versions.add(package["version"])
-    require(len(versions) == 1, "Use one devkit release version in all three locks", root / "uv.lock")
+    for override in uv.get("override-dependencies", []):
+        if override.startswith("devkit-"):
+            name, separator, url = override.partition(" @ git+")
+            parsed = urlsplit(url)
+            repo, _, rev = parsed.path.rpartition("@")
+            require(
+                bool(separator)
+                and name in SUBDIRECTORIES
+                and f"{parsed.scheme}://{parsed.netloc}{repo}".removesuffix(".git") == REPOSITORY
+                and rev == revision
+                and parse_qs(parsed.fragment).get("subdirectory") == [SUBDIRECTORIES[name]],
+                f"Align {name} override with the reviewed devkit commit",
+                path,
+            )
+    path = root / "uv.lock"
+    packages = {p["name"]: p for p in tomllib.loads(path.read_text())["package"] if p["name"].startswith("devkit-")}
+    require(set(packages) == DEVELOPMENT_PACKAGES, "Review the devkit package inventory", path)
+    versions = set()
+    for name, package in packages.items():
+        parsed = urlsplit(package["source"].get("git", ""))
+        query = parse_qs(parsed.query)
+        require(
+            f"{parsed.scheme}://{parsed.netloc}{parsed.path}".removesuffix(".git") == REPOSITORY
+            and parsed.fragment == revision
+            and query.get("rev") == [revision]
+            and query.get("subdirectory") == [SUBDIRECTORIES[name]],
+            f"Align the resolved {name} Git source with the reviewed devkit commit",
+            path,
+        )
+        versions.add(package["version"])
+    require(len(versions) == 1, "Use one devkit release version in the root lock", path)
     version = versions.pop()
     check_viewer(root, revision, version)
     return revision, version
@@ -130,7 +126,7 @@ def main() -> int:
         error = exc if isinstance(exc, DevkitPinsError) else DevkitPinsError(str(exc))
         print(error.render(), file=sys.stderr)
         return int(error.exit_code)
-    print(f"[DEVKIT_PINS: ok version={version} commit={revision} profiles=3 viewer=verified]")
+    print(f"[DEVKIT_PINS: ok version={version} commit={revision} toolchain=root viewer=verified]")
     return 0
 
 

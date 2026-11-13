@@ -18,10 +18,10 @@ tokens remain in `modules/hub-ui/src/routes/layout.css` and the UI components.
 | --- | --- |
 | Project connection | Connector/catalog selections, connection-test results, project/agent schedules, Work Plans, repository documents and PR runs |
 | Work Plan | Work Item requirements and dependencies, retained run/PR links, group, comments and activity |
-| PR run | Execution attempts, Run questions, attached PR and, for native SDD, workflow requests/evidence and decision history |
+| PR run | Execution attempts, Run questions, attached PR and, for SDD activities, descriptive intent and retained legacy evidence |
 | AI catalog | Connector selection, admission/quota policies and collected Provider sessions |
 | Provider session | Report or provider-session link and, when present, a PR or admitted PR run |
-| SDD unit | Selected repository branch/document, proposal readiness and related Native SDD activities/run links |
+| SDD unit | Selected repository branch/document, descriptive activity intent and related Run/PR links |
 | Schedule configuration | Registered Task specification, payload, due/activation state and Schedule jobs |
 | Machine | Scope/activation state and its Machine keys; an issued key has a one-time presentation |
 | Notification channel | Saved destination and delivery feedback for Operator notices |

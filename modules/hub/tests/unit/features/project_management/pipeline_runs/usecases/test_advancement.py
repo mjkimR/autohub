@@ -117,27 +117,17 @@ async def test_initial_catalog_hold_is_reported(lifecycle):
     lifecycle.release_lease.assert_awaited_once()
 
 
-async def test_approval_and_integration_continue_without_another_tick(lifecycle):
-    approval = {"approval": {"actor": "operator"}, "current": {"stage": {"id": "approval"}}}
+async def test_retired_approval_metadata_cannot_restart_a_paused_run(lifecycle):
     lifecycle.get.return_value = state("paused", sdd_progress={"waiting_for_approval": True})
-    lifecycle.observe_run.side_effect = [
-        state("implementing", sdd_progress=approval),
-        state("awaiting_ci", sdd_progress={**approval, "integrated": True}),
-        state("completed"),
-    ]
-    assert (await drive(lifecycle)).state == "completed"
-    assert lifecycle.observe_run.await_count == 3
+    assert (await drive(lifecycle)).state == "paused"
+    lifecycle.observe_run.assert_not_awaited()
 
 
-async def test_automatic_approval_continues_even_when_run_state_is_unchanged(lifecycle):
+async def test_repository_workflow_metadata_never_drives_another_stage(lifecycle):
     lifecycle.get.return_value = state("implementing", sdd_progress={"current": {"stage": {"id": "approval"}}})
-    lifecycle.observe_run.side_effect = [
-        state("implementing", sdd_progress={"approval": {"actor": "policy"}}),
-        state("awaiting_ci"),
-        state("completed"),
-    ]
-    assert (await drive(lifecycle)).state == "completed"
-    assert lifecycle.observe_run.await_count == 3
+    lifecycle.observe_run.return_value = state("implementing", sdd_progress={"approval": {"actor": "policy"}})
+    assert (await drive(lifecycle)).state == "implementing"
+    lifecycle.observe_run.assert_awaited_once()
 
 
 async def test_continuation_has_a_step_limit(lifecycle, monkeypatch):

@@ -53,7 +53,7 @@ On a narrow screen the two groups stack as two rows.
   | `work-item-recovery` | `1 Work Item recovery` | Plans (`?tab=plans`) |
   | `work-item-replacement` | `1 Work Item replacement` | Plans (`?tab=plans`) |
   | `work-item-attention` | `1 Work Item needing attention` | Plans (`?tab=plans`) |
-  | `sdd-batch-attention` | `1 SDD batch in attention` | Repository (`?tab=repository`) |
+  | `sdd-batch-attention` | `1 retained SDD batch` | Repository (`?tab=repository`) |
   | `connection-test-cleanup` | `1 connection-test cleanup` | Connections (`?tab=connections`) |
   | `failed-run` | `1 failed PR run` | Runs (`?tab=runs`); a quiet outline chip without attention weight, never counted |
 
@@ -106,7 +106,7 @@ the parameter values, so existing links and notices keep their targets. A PR run
 | Decision chip | `UC-resolve-run-question` 1 | populated | populated | `UX-pipeline-runs` | `CAP-PR-owed-items`, `CAP-PR-operator-decisions` | The project's Runs section opens; each held run shows its waiting question or approval. |
 | Held PR run / failed PR run chip | `UC-deliver-pull-request` *c, `UC-deliver-pull-request` *d | populated | populated | `UX-pipeline-runs` | `CAP-PR-owed-items`, `CAP-PR-pull-request-delivery` | The project's Runs section opens. |
 | Plan, recovery, replacement or Work Item chip | `UC-execute-work-plan` 2c, `UC-execute-work-plan` 4c, `UC-execute-work-plan` 5c, `UC-execute-work-plan` 6c | populated | populated | `UX-work-plans` | `CAP-PR-owed-items`, `CAP-WORK-work-plan-execution` | The project's Plans section opens. |
-| Batch chip | `UC-execute-sdd-batch` 4c | populated | populated | `UX-repository` | `CAP-PR-owed-items`, `CAP-SDD-workflow-control` | The Repository section opens where retained batches are followed. |
+| Batch chip | `UC-execute-sdd-batch` 1 | populated | populated | `UX-repository` | `CAP-PR-owed-items`, `CAP-SDD-native-delivery` | The Repository section opens where retained batches are followed. |
 | Cleanup chip | `UC-verify-project-connection` 7 | populated | populated | `UX-project-connections` | `CAP-PR-owed-items`, `CAP-CONN-connection-verification` | The Connections section opens with connection test history and cleanup review. |
 | View in Attention | global: see the project's owed items as a list | populated | populated | `UX-attention` | `CAP-PR-owed-items` | The Attention landing opens at `/?project=<projectId>` and lists only this project's owed items. |
 | Change section or reload the project | global: keep the exception strip current without polling | populated | populated |  | `CAP-PR-owed-items` | The strip re-reads the counts once, keeping its last chips until the new counts arrive. |

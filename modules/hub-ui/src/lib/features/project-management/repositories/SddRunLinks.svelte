@@ -62,7 +62,7 @@
 				>
 			</p>
 		{:else if !runs.length}<p class="text-xs text-muted-foreground">
-				No executions found. Check readiness to start from an existing PR.
+				No executions found. Start work from an existing PR or request a proposal activity.
 			</p>
 		{:else}
 			<ul class="space-y-2">

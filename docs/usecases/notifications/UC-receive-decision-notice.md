@@ -26,7 +26,7 @@ entrypoints:
 
 1. The operator follows the exact observed notice link (`CAP-NOTIFY-operator-notifications`). Screen: `UX-sign-in` when required, then `UX-decision-inbox`; retained links are also available in `UX-decision-notice-history`.
 2. Hub authenticates and resolves the exact current subject before owner review (`CAP-PR-operator-decisions`). Screen: `UX-decision-inbox`.
-3. The operator inspects the selected owner review and chooses an explicit owner action (`CAP-PR-operator-decisions`). Screen: `UX-decision-inbox`; the selected owner dialog continues `UC-resolve-run-question`, while native actions continue through `UC-decide-sdd-proposal` or `UC-complete-sdd-workflow`.
+3. The operator inspects the selected ordinary question and chooses an explicit owner action (`CAP-PR-operator-decisions`). Screen: `UX-decision-inbox`; the selected owner dialog continues `UC-resolve-run-question`. Retained native decisions provide history without approval or workflow actions.
 4. The operator inspects delivery evidence and explicitly reviews any resend (`CAP-NOTIFY-operator-notifications`). Screen: `UX-notifications`, `UX-decision-notice-history`.
 
 ## 3. Extensions

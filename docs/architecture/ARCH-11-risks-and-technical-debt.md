@@ -85,56 +85,20 @@ their treatment to be reconsidered.
   publication boundaries change. Test selection and outcomes must identify the
   database actually exercised.
 
-## Runtime drift and admitted work
+## Repository execution and retired authority
 
-- **Kind**: compatibility and trust constraint.
-- **Boundary**: the evaluation runtime follows each evaluated commit's own
-  `uv.lock` (`ADR-repository-locked-runtime`). A changed runtime identity on a
-  later head continues an admitted run; its effective workflow, policy and
-  configuration identity still refuse unauthorized change. A pull request can
-  change its lock, or an in-repository bundle it locks as a path source
-  (`ADR-repository-path-sources`), and so the devkit rules that judge it; the
-  user accepted that risk in the ADR.
-- **Consequence**: a devkit bump inside a run changes the evaluator without
-  re-enrollment; a bump that changes the effective workflow still leaves the run
-  unable to continue. Runs, batch selections and bridge claims admitted under
-  server-profile identities compare against a different `cli_version` format and
-  batch `runtime` shape.
-- **Treatment**: use the snapshot and refusal boundaries in
-  `CAP-SDD-runtime-isolation`, `CAP-SDD-native-delivery` and
-  `CAP-SDK-existing-pr-bridge`. Settle active native runs, open batch selections
-  and approved bridge claims before rolling this runtime model out and again
-  before rolling it back ([operations](../operations/sdd-runtime.md#rollout-and-rollback)).
-  Revisit this boundary when runtime selection or snapshot compatibility changes.
-
-## Cold runtime installs and the per-instance cache
-
-- **Kind**: latency and capacity constraint.
-- **Boundary**: the first evaluation of a lock on an instance installs its runtime
-  in the background; the caller waits up to 60 seconds and is refused with
-  `SDD_RUNTIME_PREPARING` if it is still running. The
-  cache is per instance, lives on `/tmp` (in-memory on Cloud Run) and is lost on
-  restart. A cold install measured 11-18 seconds, a 29 MiB entry and a 153 MiB
-  transient peak at cpu=1, 1 GiB in a local container, not on the serving host.
-- **Consequence**: readiness after a scale-out, restart or lock change reports a
-  retryable refusal, and a native run whose next head needs a cold install waits,
-  keeping its state, until a later dispatcher tick finds the runtime installed or
-  45 minutes pass and the run blocks with a remediation reason.
-  Request-based CPU throttling stalls an install while no request waits on it. Many distinct locks evict each other above `AUTOHUB_SDD_CACHE_BYTES`.
-- **Treatment**: callers retry `SDD_RUNTIME_PREPARING`; operators size
-  `AUTOHUB_SDD_CACHE_BYTES` against instance memory. Revisit with a shared cache
-  when cold installs dominate evaluation latency or instances multiply.
-
-## macOS isolation is development-only
-
-- **Kind**: platform constraint.
-- **Boundary**: macOS `sandbox-exec` cannot end detached processes that a
-  sandboxed step leaves. Install steps use unguessable staging paths and Hub never
-  acts below `.venv` after the first sandbox step, but a leftover process can keep
-  running on the host.
-- **Consequence**: macOS hosts do not give the containment that serving requires.
-- **Treatment**: serve only from Linux hosts with bubblewrap; use macOS for local
-  development and tests. Revisit if macOS serving becomes a requirement.
+- **Kind**: responsibility and cutover constraint.
+- **Boundary**: repository setup and internal workflow are owned by its working
+  agent. Hub starts explicit intent without proving status, dependency or tooling
+  readiness. An agent may discover setup failure after consuming an attempt.
+- **Consequence**: ordinary PR/CI success does not prove the repository followed
+  every internal SDD gate. Retired native Runs and claims can still name external
+  agent work that local cancellation cannot stop.
+- **Treatment**: retain questions and exact history under
+  `CAP-PR-operator-decisions` and `CAP-SDD-native-delivery`. Require explicit
+  reconciliation of uncertain retired ownership before replacement. Repository
+  owners configure actual checks in GitHub Actions. Reconsider only if a separate
+  product requirement justifies a verified repository contract.
 
 ## Retained history and live deployment proof
 
@@ -187,8 +151,8 @@ their treatment to be reconsidered.
   provide controlled completion/reconciliation examples; they do not establish a
   live provider's create-response behavior.
 - [Flow concurrency tests](../../modules/hub/tests/integration/features/execution/flows/test_host.py)
-  and [publication tests](../../modules/hub/tests/integration/features/project_management/sdd/test_plan_publication.py)
-  mark the PostgreSQL-only contention cases.
+  mark the PostgreSQL-only contention cases; activity-claim tests separately cover
+  optimistic publication ownership.
 - [Dispatcher housekeeping](../../modules/hub/app/features/execution/dispatchers/usecases/housekeeping.py)
   and [housekeeping tests](../../modules/hub/tests/integration/features/notifications/test_tick_housekeeping.py)
   anchor trigger visibility and the limits of notification-driven observation.

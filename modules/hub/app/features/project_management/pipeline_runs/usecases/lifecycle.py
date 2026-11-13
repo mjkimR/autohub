@@ -97,6 +97,9 @@ class PipelineRunUseCase:
                 raise ProjectError(422, "Project is disabled")
             if project.github_repository is None or project.github_connector_id is None:
                 raise ProjectError(422, "Project missing GitHub connection for pipeline run")
+            from app.features.project_management.sdd.execution import reject_unreconciled_replacement
+
+            await reject_unreconciled_replacement(session, project_id, request.pull_number, admission)
             if await self.repo.get_active_for_pull(session, project_id, request.pull_number) is not None:
                 raise ProjectError(409, ACTIVE_RUN_CONFLICT, fix=ACTIVE_RUN_FIX)
             repository, connector_id, expected_revision = (
@@ -128,39 +131,26 @@ class PipelineRunUseCase:
         except TimeoutError:
             raise ProjectError(504, "Pull request read exceeded its time budget") from None
 
-        evidence = None
+        from app.features.project_management.sdd.execution import EXECUTION_VERSION
+
+        intent = None
         if native:
             from app.features.project_management.branches import unit_branch_mismatch
-            from app.features.project_management.sdd.services import SddService
 
-            # Enrolling a pull request is the explicit attach of the cloud path: its head must be the unit's branch.
-            activity = "dev" if request.handoff else None
             if request.handoff and not str(request.spec_dir).startswith("docs/proposals/"):
-                raise ProjectError(422, "A handoff-first run starts from a proposal unit")
+                raise ProjectError(422, "Development intent starts from a proposal unit")
+            activity = "dev" if request.handoff else None
             if mismatch := unit_branch_mismatch(str(request.spec_dir), snapshot.head_ref, activity):
                 raise ProjectError(422, mismatch, code="SDD_BRANCH_MISMATCH")
-            pull = await self.observer.get_pull_request(connector_id, repository, request.pull_number)
-            if pull["head"]["sha"] != snapshot.head_sha:
-                raise ProjectError(409, "PR changed during enrollment; retry")
-            evidence = await SddService().inspect(
-                repository,
-                request.spec_dir,
-                pull,
-                token,
-                snapshot={"handoff_pending": True} if request.handoff else None,
-            )
-            if evidence.get("unit_status") == "rejected":
-                raise ProjectError(422, "Rejected proposal: its Planning has ended and hygiene removes it")
-            if request.handoff and evidence.get("unit_status") not in ("accepted", None):
-                raise ProjectError(422, "Development starts from an accepted proposal")
-
-        from app.features.project_management.sdd.progress import awaiting_review
-
-        inspect_only = request.implemented or bool(
-            evidence
-            and (evidence["current"].get("stage") or {}).get("human_gate")
-            and not awaiting_review(evidence)  # a fresh Planning run dispatches its worker before the gate
-        )
+            intent = {
+                "execution_version": EXECUTION_VERSION,
+                "provider": "repository-agent",
+                "spec_dir": request.spec_dir,
+                "activity_kind": "dev" if request.handoff or snapshot.head_ref.startswith("dev-") else "plan",
+                "handoff_pending": request.handoff,
+                **({"activity_effort": request.activity_effort} if request.activity_effort else {}),
+            }
+        inspect_only = request.implemented
         try:
             async with AsyncTransaction() as session:
                 project = await self.projects.get(session, project_id, lock=True)
@@ -168,6 +158,9 @@ class PipelineRunUseCase:
                     raise ProjectError(422, "Project is disabled")
                 if project.revision != expected_revision:
                     raise ProjectError(409, "Project changed during pull request enrollment; retry")
+                await reject_unreconciled_replacement(
+                    session, project_id, snapshot.number, admission, branch=snapshot.head_ref
+                )
                 if await self.repo.get_active_for_pull(session, project_id, snapshot.number, lock=True) is not None:
                     raise ProjectError(409, ACTIVE_RUN_CONFLICT, fix=ACTIVE_RUN_FIX)
                 catalog = await self.resolve_catalog(session, project, request.catalog)
@@ -183,19 +176,9 @@ class PipelineRunUseCase:
                         pull_number=snapshot.number,
                         pull_url=snapshot.url,
                         pull_snapshot=snapshot.model_dump(mode="json"),
-                        sdd_snapshot=(
-                            {
-                                **evidence["snapshot"],
-                                **({"activity_effort": request.activity_effort} if request.activity_effort else {}),
-                                **({"handoff_pending": True} if request.handoff else {}),
-                            }
-                            if evidence
-                            else None
-                        ),
-                        sdd_progress=evidence,
-                        state=(PipelineRunState.IMPLEMENTING if native else PipelineRunState.AWAITING_CI)
-                        if inspect_only
-                        else PipelineRunState.QUEUED,
+                        sdd_snapshot=intent,
+                        sdd_progress=None,
+                        state=PipelineRunState.AWAITING_CI if inspect_only else PipelineRunState.QUEUED,
                         branch=snapshot.head_ref,
                         revision=1,
                     ),
@@ -314,9 +297,7 @@ class PipelineRunUseCase:
         now = get_current_utc_time()
         async with AsyncTransaction() as session:
             run = await self.repo.get(session, run_id, lock=True)
-            if run is None or (
-                run.state not in IN_FLIGHT_RUN_STATES and not (run.sdd_progress or {}).get("waiting_for_approval")
-            ):
+            if run is None or run.state not in IN_FLIGHT_RUN_STATES:
                 return
             if kind == GITHUB_FAILURE_AUTH:
                 wait_on_github(run, GITHUB_AUTH_WAIT_REASON, now, GITHUB_AUTH_RECHECK_DELAY)

@@ -165,7 +165,7 @@ export interface components {
         EnrollPullRequest: {
             /**
              * Spec Dir
-             * @description sdd projects: the unit the pull request works on, a spec bundle or a proposal bundle
+             * @description SDD project activity intent: the proposal or spec directory; repository readiness is not evaluated
              */
             spec_dir?: string | null;
             /** Pull Number */

@@ -1,177 +1,104 @@
-# Operate the isolated SDD runtime
+# Operate repository-owned SDD activities
 
-Native SDD evaluation runs devkit from the runtime that each evaluated commit's
-own `uv.lock` pins; Hub installs it on first use into a per-instance cache. Its
-product contract is `CAP-SDD-runtime-isolation`; `CAP-SDD-workflow-control` owns
-workflow and integration decisions. Deployment structure belongs to
-`ARCH-07-deployment`. Contributor test setup belongs in the
-[development testing guide](../development/testing.md).
-
-No server runtime profile exists. Onboarding a devkit-adopted repository needs no
-image change, profile mapping or redeploy. Hub reads neither `AUTOHUB_SDD_HOME`
-nor `AUTOHUB_SDD_PROFILES`; remove them from serving configuration.
-
-## Consumer requirements
-
-A connected repository is evaluable when its evaluated commit has:
-
-- A committed root `pyproject.toml` that declares `devkit-spec` in a dependency
-  group (Hub uses the first such group) or in its main dependencies, and a
-  committed root `uv.lock` that is current for it. Only that group is installed.
-- A `requires-python` range that includes the image interpreter (Python 3.13).
-- Locked packages of that group from PyPI as hashed wheels, Git sources on
-  `https://github.com/` pinned to exact revisions, or path sources inside the
-  repository (editable, non-editable or uv workspace members), such as an
-  in-repository or snapshot bundle, whose path uses only ASCII letters, digits,
-  `.`, `_` and `-`. Path sources outside the repository, reached
-  through a symlink or containing one, URL, archive and custom-index sources are
-  refused, as are registry packages without wheels.
-- Path sources of at most 10,000 files and 32 MiB in total, excluding `.git`,
-  `.venv` and `__pycache__`. Hub installs them as built wheels, so editing a
-  bundle in a later commit yields a new runtime identity and install.
-- Git sources that the project's GitHub connector token can read, and Git and
-  path sources that build with hatchling, the backend the image pins.
-- Packages providing every bundle its `.devkit/config.toml` presets and
-  `.devkit/installation.json` receipt name.
-- Committed regular `.devkit/config.toml` and `.devkit/installation.json` files and
-  its bound proposal/spec anchor. Keep managed copies and agent projections ignored.
-
-Readiness is an inspection, not execution or merge authorization.
+`CAP-SDD-native-delivery` owns explicit Planning/Development intent over ordinary
+PR delivery. The repository and its working agent own setup, asset management and
+internal workflow. Hub does not install devkit, run or delegate `devkit sync`,
+probe a repository runtime or evaluate its readiness.
 
 ## Serving host
 
-Serve native SDD from Linux with bubblewrap. The host must permit unprivileged
-user namespaces. macOS sandbox-exec cannot end detached processes a sandboxed step
-leaves, so use it for local development only. There is no unsandboxed fallback.
+Use the ordinary backend deployment and matching database migration. No SDD
+runtime profile, source-read token, runtime cache, pinned build environment,
+mounted repository checkout or bubblewrap probe is required. Remove obsolete
+`AUTOHUB_SDD_*` variables and `AUTOHUB_FLOW_DELIVERY_TARGETS` from serving
+configuration. Auto Hub's contributor devkit setup remains separate.
 
-The standard image packages Git, bubblewrap, `uv` and the pinned build environment
-`/opt/sdd-build`; it contains no devkit runtime. The Hub process needs outbound
-access to `https://github.com/` and PyPI for installs.
+## Start and follow work
 
-| Variable | Default | Set it when |
-| --- | --- | --- |
-| `AUTOHUB_SDD_CACHE` | `/tmp/autohub-sdd-runtimes` | The cache needs another writable directory |
-| `AUTOHUB_SDD_CACHE_BYTES` | `268435456` (256 MiB) | Instance memory or the number of distinct locks differs from the default sizing |
-| `AUTOHUB_SDD_BUILD` | `/opt/sdd-build` | A host is not using the standard image layout |
+1. Enable the project and its GitHub/catalog connection.
+2. Select the repository unit, base and Planning/Development intent. Status and
+   size are descriptive; the working agent decides how to handle repository rules.
+3. Start the activity and retain its request identity. Both activity kinds create
+   a Draft PR through GitHub APIs; Hub does not author a proposal-state commit.
+4. Follow the ordinary Run and its agent question/answer/explicit-resume path.
+5. Mark the PR ready in GitHub when it may merge. Hub observes the configured
+   current-head checks and project merge policy.
 
-The default cap holds about eight 29 MiB entries and leaves room on a 1 GiB
-instance for one install's 153 MiB transient peak (measured for
-`SPEC-repo-locked-sdd-runtime`). On Cloud Run, `/tmp` is in-memory: the cache
-counts against instance memory and is empty after each instance start. Entries
-are shared by every project of the instance that locks the same runtime.
+If repository verification is needed, its owner configures GitHub Actions. This
+procedure introduces no Action or runner for readiness or asset restoration.
+A missing setup or internal gate can be reported after the agent starts.
 
-## Check a host and a project
+## Uncertain activity publication
 
-Use **Check runtime** in the SDD panel or:
+Keep the original repository/unit/base/activity/preferences and request UUID after
+a lost response. Check or retry that exact request. A new intent is not a safe
+substitute for resolving the original branch/PR candidate. An ownership conflict
+identifies the owner or retained evidence that must be inspected first.
+
+## Retired execution and claim reconciliation
+
+Legacy native Runs, typed decisions, executable milestone previews and automatic
+native batches cannot resume. Retained tombstones return `SDD_EXECUTION_RETIRED`;
+stored Run/decision/batch/claim evidence remains read-only. Local batch Stop, where
+exposed, only settles future admission and does not cancel external agent work.
+
+Inspect a retained claim with:
 
 ```sh
-curl -s "$SERVICE_URL/api/v1/projects/<project-id>/sdd/runtime"
+curl -s "$SERVICE_URL/api/v1/projects/<project-id>/sdd/claims/<claim-id>"
 ```
 
-1. Require `ok: true` with `isolation: bubblewrap` on the actual serving host. The
-   host probe starts the image interpreter inside the sandbox and installs nothing;
-   a passing image build does not prove the serving host can run the sandbox.
-2. Read `state` for the project's default-branch head: `ready` lists `bundles` and
-   `revisions`; `preparing` means an install is running, so check again shortly;
-   `failed` carries `lock_detail` with the remediation. Checking the state can
-   start that install.
+After inspecting the exact saved candidate, linked Run/PR and any externally
+posted work, explicitly reconcile the selected retired claim or eligible uncertain
+no-Run publication with its returned
+checkpoint digest, a stable request UUID and `acknowledge_external_work: true`.
+The endpoint is `POST /api/v1/projects/<project-id>/sdd/claims/<claim-id>/reconcile`.
+This acknowledgment releases only that reservation and acknowledges its exact
+linked terminal retired Run. It neither resumes the old Run nor creates another
+activity or merge authority. A current optimistic publication is eligible only if it is uncertain, has no
+bound Run and no live lease. Local release does not remove/adopt its remote branch;
+an existing candidate remains a conflict for a distinct new start. A changed
+checkpoint needs fresh inspection; an uncertain provider effect must not be described as canceled.
 
-## Troubleshooting
-
-Readiness reports these codes as `ready: false` with a diagnostic; enrollment
-returns them as HTTP errors; a running native run blocks with them, except
-`SDD_RUNTIME_PREPARING` (see its row).
-
-| Reported condition | Operator action |
-| --- | --- |
-| `SDD_RUNTIME_PREPARING` (HTTP 503) | Wait for the install and retry; a running native run keeps its state and is inspected again on later dispatcher ticks, and blocks after 45 minutes of preparing until it is resumed |
-| `SDD_RUNTIME_UNLOCKED` | Commit a root `uv.lock` current with a `pyproject.toml` that declares `devkit-spec` |
-| `SDD_RUNTIME_SOURCE_UNSUPPORTED` | Lock devkit packages only from PyPI wheels, exact `https://github.com/` revisions or symlink-free path sources inside the repository within the size limits |
-| `SDD_RUNTIME_PYTHON_UNSUPPORTED` | Widen `requires-python` to include Python 3.13 |
-| `SDD_RUNTIME_SOURCE_UNAVAILABLE` | Grant the project's GitHub connector read access to each locked Git source; a request after the 10-minute failure marker expires starts a new install |
-| `SDD_RUNTIME_INSTALL_FAILED` | Check that registry packages provide wheels and Git and path sources build with hatchling; a request after the 10-minute failure marker expires starts a new install |
-| `SDD_RUNTIME_UNAVAILABLE` | Check that the host's `uv` binary runs and the cache directory is writable, then retry |
-| `SDD_ISOLATION_UNAVAILABLE` | Run on a Linux host with bubblewrap and user namespaces and repeat the host probe |
-| `SDD_BUNDLES_MISSING` | Add the packages providing the named bundles to the locked devkit group and commit `uv.lock` |
-| `SDD_RECEIPT_MISSING` | Have the repository adopt and commit its consumer configuration/receipt before enrollment |
-| `RECEIPT_STALE` warning | Run `devkit sync` with the locked `devkit-spec`, commit the receipt, then enroll again; disposable restoration does not update its committed identity |
-| Final lint cannot load a stale receipt's recorded rule | Align the committed receipt with the locked runtime and enroll again; generic resume cannot dispatch an agent to repair that setup failure |
-| Workflow, policy or configuration identity changed | Review the new contract and create a new enrollment rather than renewing the old run implicitly |
-
-Install failures stay visible for 10 minutes. Keep the external dispatcher and maintenance trigger at an interval
-shorter than that so SDK bridge checks report the failure instead of retrying `bridge-unavailable`; native runs
-block after 45 minutes of preparing whatever the interval.
-
-A changed runtime identity alone continues a run and records the new
-`devkit-lock:<identity>`. `SDD_PROFILE_INVALID` and `RUNTIME_REVISION_MISMATCH`
-appear only on records retained from the server-profile model. A stale-receipt
-warning permits only the documented disposable restore exception. Other sync
-failures still stop evaluation. Do not ask the active worker to change `.devkit/`
-to clear the warning mid-run.
+A terminal retired Run without a claim can be acknowledged through
+`POST /api/v1/projects/<project-id>/sdd/runs/<run-id>/reconcile` with a stable
+`request_id`, its inspected `expected_revision` and
+`acknowledge_external_work: true`. The Run stays terminal; the recorded receipt
+clears only its unreconciled-external-work hold. An independently retained
+unsettled claim still needs its own exact claim reconciliation; Run acknowledgment
+alone does not release that reservation. An identical replay returns its retained
+outcome, while a changed request identity conflicts.
 
 ## Rollout and rollback
 
-Records admitted under server profiles carry `devkit-spec:<lock>` CLI identities
-and the old batch `runtime` shape; batch comparisons treat that shape as a change.
-Before deploying the repository-locked runtime, and again before rolling back to an
-image with server profiles:
+1. Stop accepting legacy-native work before deploying the matching backend/UI and
+   retirement migration.
+2. Inspect active provider work and saved native publication candidates. Local
+   migration cancellation cannot stop work already dispatched to a provider.
+3. Apply the migration. It cancels nonterminal old native Runs, revokes local
+   leases, stops legacy batches and preserves snapshots, attempts and exact claims.
+4. Confirm ordinary activity starts, retained history and explicit claim
+   reconciliation on the intended service revision.
+5. Register replacement work only after inspecting and acknowledging uncertain
+   old ownership. Never treat a canceled local Run as proof of remote absence.
 
-1. Settle active native runs: let them finish, or cancel them and inspect provider
-   work already posted to GitHub.
-2. Settle open batch selections.
-3. Settle approved bridge claims that have not resumed their PR.
-4. Deploy, then check the host probe and each project's lock state as above.
-5. Enroll replacement runs and batches against the new image.
+A downgrade does not reactivate retired Runs, batches or claims. Settled history
+is not converted into an optimistic Run.
 
-Hub enforces none of these steps.
+## SDK bridge retirement
 
-## Isolation and deployment
-
-For Cloud Run, configure `--execution-environment=gen2` for the namespace support
-bubblewrap needs; the deployment helper does not select it automatically. Verify
-the host probe after every deploy. The image build needs no source credential. See
-the [deployment procedure](cloud-run-deployment.md) for serving configuration.
-
-A cold install runs as a background task in one worker process and measured 11-18
-seconds in a local container shaped like the service (cpu=1, 1 GiB). The request
-that needs it waits up to 60 seconds, because with request-based CPU allocation
-Cloud Run throttles CPU between requests and an install no request waits on barely
-advances. Logs record `SDD runtime <identity prefix>: install started`, each step
-with its elapsed seconds, and a failure code; they carry no token or command output.
-
-The bridge additionally needs a separately provisioned clean checkout whose own
-root `uv.lock` declares devkit. Its allowlisted target and managed-machine setup
-belong in the [SDK worker operations guide](execution-targets.md).
-
-## Migrating legacy runs
-
-An installation upgrading from the legacy provider must apply migration
-`ba3d1a6089a9` with matching backend/UI. It renames the stored project mode and
-run columns, preserves snapshots/decision history and cancels nonterminal legacy
-runs and their open attempts. The downgrade also settles active work before
-exposing records to the old backend.
-
-Inspect and settle provider work already posted to GitHub before enrolling
-replacement runs: the database migration cannot stop it. Legacy snapshots remain
-read-only and cannot resume against devkit-spec. The migration and its limits are
-anchored by the [migration regression](../../modules/hub/tests/integration/features/project_management/sdd/test_migration.py).
+`autohub.sdd:*` and `autohub.pr_delivery:*` built-in bindings are retired under
+`CAP-SDK-existing-pr-bridge`. New effects return `SDD_BRIDGE_RETIRED`.
+Unreceipted old work settles terminally; an exact receipt-backed delivery can
+observe its existing PR owner without repeating resume. Completed results remain
+readable. Configure generic HTTP SDK workers through
+[execution targets](execution-targets.md) when that independent protocol is needed.
 
 ## Live canary after deployment
 
-Use a designated test repository and PR with a committed devkit lock, matching
-committed receipt and bound workflow. Run this external-write test only against
-its approved target; local CLI/mock tests do not establish provider or GitHub
-behavior.
-
-1. Check the runtime state until it is `ready`, check readiness, start the native
-   run, and follow its link from the spec view.
-2. Reach a draft human gate; verify the wait releases its execution slot and the
-   Decisions dialog links report evidence to the actual inspected commit.
-3. Exercise a provider question, save an answer, then explicitly resume with it.
-   Verify the next request contains that selected answer without implied approval.
-4. Approve integration, revoke before progression, and confirm no merge. Request
-   changes and verify a changed head requires renewed evidence/approval.
-5. Explicitly approve the final evidence, mark the test PR ready, then confirm the
-   configured CI checks and merge policy complete that same PR exactly once.
-6. Keep run/PR links and the approval history as canary evidence. Local mock tests
-   do not establish provider question behavior, GitHub protection or live delivery.
+Use an explicitly approved test repository/PR. Check an optimistic Draft activity
+start, a correlated agent question, saved answer plus explicit resume, and the
+operator's GitHub ready decision followed by current-head CI/merge observation.
+Record service/source identity and exact Run/PR links in
+[delivery status](deployment-status.md). Local fixtures do not establish live
+provider or GitHub behavior.

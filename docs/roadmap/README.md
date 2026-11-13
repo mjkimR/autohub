@@ -22,6 +22,10 @@ uv run devkit docs list milestone --history --all-namespaces -n 0
 uv run devkit docs list spec --history --all-namespaces -n 0
 ```
 
+The native SDD milestone remains delivery history; its former executable batch
+outcome is retired under `ADR-repository-owned-sdd-execution`. Current activity
+and retained-history guarantees belong to `CAP-SDD-native-delivery`.
+
 Milestone closure does not establish deployment or live-provider verification.
 Milestones frame product outcomes; they do not activate execution or grant
 implementation or merge approval.

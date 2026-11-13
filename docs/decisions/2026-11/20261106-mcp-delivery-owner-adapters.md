@@ -9,6 +9,8 @@ created_at: 2026-11-06
 
 # [ADR-mcp-delivery-owner-adapters] Keep MCP delivery adapters within owner authority
 
+Superseded in part by `ADR-repository-owned-sdd-execution`: the exact native decision inspection tool and its write-scope requirement.
+
 - **Status**: Accepted
 - **Date**: 2026-11-06
 

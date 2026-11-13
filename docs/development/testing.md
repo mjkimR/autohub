@@ -52,36 +52,15 @@ the transform cache, use the repository's Node version and run:
 npm --prefix modules/hub-ui test -- --fsModuleCache=false
 ```
 
-## Isolated SDD contracts
+## Repository activity and retirement contracts
 
-Install the seed runtime and the pinned build environment, then run the
-contracts:
+Run the owning SDD activity/API, ordinary PR question/progression and migration
+paths with the standard backend recipes. These tests verify optimistic dispatch,
+exact claim recovery, history and permanent refusal of legacy execution; they do
+not provision another repository's devkit runtime. PostgreSQL concurrency cases
+still require PostgreSQL coverage.
 
-```sh
-just install-sdd
-just install-sdd .cache/sdd-build config/sdd-build
-just test-sdd
-just test-sdd-pg
-```
-
-`config/sdd-runtime` is the seed manifest. Fixture repositories commit it as their
-own `pyproject.toml` and `uv.lock`; the suite seeds the cache entry for that lock's
-identity from `.cache/sdd`, so evaluation runs the production selection, lease and
-isolated devkit without network access. `just test-sdd` points
-`AUTOHUB_SDD_BUILD` at `.cache/sdd-build` and `AUTOHUB_SDD_CACHE` at
-`.cache/sdd-test-runtimes` unless they are already set. The real build-isolation
-case needs `.cache/sdd-build`. A changed seed lock requires a fresh destination;
-the installer refuses to overwrite one recorded for another lock.
-
-Installing the seed runtime needs read access to its pinned GitHub sources.
-PostgreSQL contracts need Docker/testcontainers; native CLI tests also require
-supported OS isolation (bubblewrap on Linux, sandbox-exec on macOS). The dedicated
-recipes fail when the seed runtime, build environment or isolation cannot run.
-They do not silently turn missing prerequisites into a passing CLI contract.
-Serving-host installation and live verification belong in
-[SDD runtime operations](../operations/sdd-runtime.md).
-
-## SDK host and bridge fixtures
+## SDK host and retired bridge fixtures
 
 Run the owning flow integration path with SQLite or PostgreSQL:
 
@@ -95,11 +74,10 @@ a `postgresql+psycopg` URL whose host is `127.0.0.1` and whose database name sta
 with `autohub_test_`. Fixtures create/drop model tables; use a dedicated test DB.
 Local worker HTTP tests bind loopback ports.
 
-The optional two-application test reads `PLANHUB_APPLICATION_TEST_ROOT` and
-`PLANHUB_APPLICATION_TEST_PYTHON` (an installed Python 3.13+ interpreter).
-Without them the optional case is skipped. It launches loopback apps with isolated
-state and planhub's installed SDK. Git/devkit are real; GitHub and PR-owner
-completion are fixtures. It does not establish live CI/merge or production rollout.
+Bridge tests cover deterministic retirement and receipt-backed observe-only
+recovery. They do not require a local repository checkout or devkit seed runtime.
+Generic flow/HTTP worker tests use their own controlled fixtures and do not
+establish deployed worker cooperation or live CI/merge.
 
 ## CI configuration
 
@@ -111,10 +89,7 @@ same root recipes after preparing their environments:
 | --- | --- |
 | `backend` | Backend lint/types/SQLite and standalone SDK lint/types/tests/build |
 | `backend-postgres` | PostgreSQL tests, migration upgrade/check and one-step downgrade/upgrade |
-| `sdd-contract` | Pin consistency, seed runtime installation, OS-isolated SQLite/PostgreSQL contracts |
 | `frontend` | UI lint/types/build/tests and generated API freshness |
 
-The SDD job requires `SDD_READ_TOKEN` for reviewed runtime source access. Execute
-secret-backed checks only from a trusted reviewed branch; never expose those
-credentials through untrusted PR execution. A local pass does not establish a CI
-run or equivalence of secrets, operating-system isolation and PostgreSQL coverage.
+No evaluator-install job or SDD source-read credential is required. A local pass
+does not establish a remote CI run or PostgreSQL coverage.

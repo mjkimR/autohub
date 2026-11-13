@@ -1,7 +1,7 @@
 ---
 id: ARCH-05-1-containers
 title: Containers and code ownership
-summary: "Maps the backend, SPA, database, repository-locked SDD runtime cache and standalone SDK to their code and dependency boundaries."
+summary: "Maps the backend, SPA, database, external repository execution and standalone SDK to their code and dependency boundaries."
 status: active
 ---
 
@@ -14,28 +14,25 @@ flowchart TB
     Browser[Browser SPA] -->|Typed HTTP API| API[FastAPI application]
     Client[SDK or MCP client] --> API
     API --> DB[(PostgreSQL)]
-    API --> Runtime[OS-isolated devkit process]
-    API --> Cache[Per-instance runtime cache]
-    Runtime --> Cache
-    API --> External[GitHub, PyPI, providers and configured workers]
+    API --> External[GitHub, providers and configured workers]
+    Agent[Repository agent] --> Repository[Repository setup and workflow]
+    Repository --> Actions[Repository GitHub Actions]
+    API -->|Observe CI| Actions
     Image[Deployment image] --- API
     Image --- Assets[Compiled SPA assets]
-    Image --- Build[Pinned build environment and uv]
 ```
 
-The diagram separates logical runtime blocks. The standard image serves both the
-API and compiled SPA. It contains no devkit runtime: each evaluation installs the
-runtime its repository's `uv.lock` pins into the per-instance cache, using the
-image's `uv` and pinned build environment (`ADR-repository-locked-runtime`).
+The image serves the API and compiled SPA. Connected-repository work executes
+outside Hub; there is no devkit evaluator process, runtime cache or source-build
+container. `ADR-repository-owned-sdd-execution` records that boundary.
 
 | Block | Code or configuration | Owned responsibility |
 | --- | --- | --- |
-| Backend | `modules/hub/app` | HTTP/MCP adapters, execution coordination, durable state and provider integrations |
-| SPA | `modules/hub-ui/src` | Operator views, browser session state and typed API consumption |
-| Database | `modules/hub/migrations`, `app/common/database_schema.py` | Application records, leases, revision fences and migration-managed structure |
-| SDD process | `app/features/project_management/sdd` | Disposable repository evaluation with the lock-derived runtime identity |
-| Runtime cache | `AUTOHUB_SDD_CACHE`, `config/sdd-build` | Content-addressed lock-derived runtimes per instance; the build environment's lock is part of each identity |
-| Standalone SDK | `packages/sdk/src/autohub_sdk` | Local declarations, manifests and typed remote client contracts |
+| Backend | `modules/hub/app` | HTTP/MCP adapters, coordination, durable state and provider integrations |
+| SPA | `modules/hub-ui/src` | Operator views, browser sessions and typed API consumption |
+| Database | `modules/hub/migrations`, `app/common/database_schema.py` | Records, leases, revision fences and migration-managed structure |
+| Repository agent and Actions | Connected repository/provider | Repository setup, workflow execution and configured verification |
+| Standalone SDK | `packages/sdk/src/autohub_sdk` | Declarations, manifests and typed remote client contracts |
 
 ## Backend decomposition
 
@@ -48,10 +45,8 @@ entrypoint rather than introducing another task implementation.
 
 The backend consumes `autohub-sdk`; the SDK does not import the backend or its
 database. The SDK manifest declares Pydantic as its runtime dependency. Repository
-SDD runtimes are installed separately from the backend environment, from only the
-locked dependency group that declares `devkit-spec`; Hub never installs a target
-repository's whole dependency set. `config/sdd-runtime` is a seed manifest for
-tests and local development, not a serving runtime.
+setup and workflow execution are external to Hub. Auto Hub's own contributor
+devkit dependencies do not provision an evaluator for connected repositories.
 
 The shared devkit-viewer component renders documents through a Hub-provided
 authenticated repository data source. Its source receipt and rebuild procedure

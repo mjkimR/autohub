@@ -8,7 +8,6 @@ usecases:
   - UC-deliver-pull-request
 entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/dispatch.py
-  - modules/hub/app/features/project_management/pipeline_runs/adapters/codex_github_mention.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/delivery.py
   - modules/hub/app/features/project_management/pipeline_runs/usecases/implementation.py
 ---
@@ -100,8 +99,8 @@ A `recovery` delivery consumes this attempt's retained retry allowance. A later 
 The second-silent-expiry branch is source-defined in `ImplementationProgress`;
 the named fixed-clock example tests the first-retry boundary. A silent retry can
 overlap a slow first provider task; the adapter does not claim exactly-once
-provider execution. Native SDD progress uses its own workflow evidence rather
-than these ordinary no-push/watchdog transitions.
+provider execution. Optimistic SDD activity work uses the ordinary PR owner;
+repository workflow interpretation remains with its agent.
 
 CI-fix request evidence carries at most three failed-job excerpts of at most
 1,000 characters each. Selection removes timestamps/ANSI, redacts known secret

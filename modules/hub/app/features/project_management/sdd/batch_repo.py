@@ -70,3 +70,9 @@ class BatchRepository:
         session.add(row)
         await session.flush()
         return row
+
+    async def claim(self, session, project_id, claim_id, *, lock=False):
+        stmt = select(SddActivityClaim).where(
+            SddActivityClaim.id == claim_id, SddActivityClaim.project_id == project_id
+        )
+        return await session.scalar(stmt.with_for_update() if lock else stmt)

@@ -1,0 +1,13 @@
+kind: feedback
+stage: collect-feedback
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T06:53:18.698779Z'
+status: completed
+summary: Swept this Development run and final diff under repo observed coverage; review defects were fixed in scope, no new unrecorded repository-tool feedback and no linked source feedback to dispose.
+findings: []
+checks:
+  swept: PASS recorded=0 duplicates=0
+diff_scope:
+  base: 725317b9e4450a1abfda7d20d0b72571191ce7ed
+  head: 86098cb5327f09d25b88b865c65161946d9d56e8

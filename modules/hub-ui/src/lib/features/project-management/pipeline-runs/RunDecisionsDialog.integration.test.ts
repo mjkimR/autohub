@@ -284,44 +284,6 @@ test('disables saved-answer resume buttons when refreshing fails', async () => {
 	expect(api.POST).not.toHaveBeenCalled();
 });
 
-test('locks other decision controls until a native approval and refresh finish', async () => {
-	const user = userEvent.setup();
-	const nativeRun = {
-		...run,
-		sdd_snapshot: { spec_dir: 'specs/2026-10/feature' },
-		sdd_progress: { current: { stage: { human_gate: 'dev-integration', exit: [] } } }
-	} as unknown as components['schemas']['PipelineRunRead'];
-	api.GET.mockImplementation(async (path: string) => ({
-		data: path.endsWith('/questions')
-			? { items: [], total_count: 0, run_revision: 2 }
-			: path.endsWith('/sdd-decisions')
-				? []
-				: nativeRun
-	}));
-	let finish!: () => void;
-	api.POST.mockImplementation(
-		() =>
-			new Promise((resolve) => {
-				finish = () => resolve({ data: nativeRun });
-			})
-	);
-	render(RunDecisionsDialog, { run: nativeRun, onclose: vi.fn(), onchange: vi.fn() });
-	const approval = screen.getByRole('button', { name: 'Approve integration' }) as HTMLButtonElement;
-	await waitFor(() => expect(approval.disabled).toBe(false));
-	await user.click(approval);
-	expect(
-		(screen.getByRole('button', { name: 'Refresh decisions' }) as HTMLButtonElement).disabled
-	).toBe(true);
-	expect(
-		(screen.getByRole('button', { name: 'Request changes' }) as HTMLButtonElement).disabled
-	).toBe(true);
-	finish();
-	await waitFor(() => expect(approval.disabled).toBe(false));
-	expect(
-		(screen.getByRole('button', { name: 'Refresh decisions' }) as HTMLButtonElement).disabled
-	).toBe(false);
-});
-
 test('failed inbox inspection leaves every mutation disabled', async () => {
 	api.POST.mockResolvedValue({ error: { detail: 'Subject changed' } });
 	const selection = {
@@ -377,49 +339,6 @@ test('acknowledged inbox dismissal refreshes the list without re-reviewing the r
 	expect(screen.queryByRole('alert')).toBeNull();
 });
 
-test('lost proposal response offers separately reviewed reconciliation after request disappears', async () => {
-	const { decisionIntent, decisionBasis } = await import('./decision-intents.svelte');
-	const native = {
-		...run,
-		state: 'blocked' as const,
-		sdd_snapshot: { provider: 'devkit-spec', spec_dir: 'docs/proposals/PROP-demo' },
-		sdd_progress: { head_sha: 'a'.repeat(40), current: { requests: [] } }
-	};
-	api.POST.mockRejectedValueOnce(new Error('lost response'));
-	await expect(
-		decisionIntent(run.id).submit(
-			'resume',
-			{
-				request_id: 'original-proposal',
-				expected_revision: run.revision,
-				decision: 'accept_plan',
-				head_sha: 'a'.repeat(40)
-			},
-			decisionBasis(native)
-		)
-	).rejects.toThrow();
-	api.GET.mockImplementation(async (path: string) => ({
-		data: path.endsWith('/questions')
-			? { items: [], total_count: 0, run_revision: run.revision }
-			: native
-	}));
-	api.POST.mockResolvedValue({ data: native });
-	render(RunDecisionsDialog, { run: native, onclose: vi.fn(), onchange: vi.fn() });
-	const user = userEvent.setup();
-	await user.click(
-		await screen.findByRole('button', { name: 'Review publication reconciliation' })
-	);
-	await user.click(
-		await screen.findByRole('button', { name: 'Confirm publication reconciliation' })
-	);
-	await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(2));
-	const recoveryBody = api.POST.mock.calls[1][1].body;
-	expect(recoveryBody.request_id).not.toBe('original-proposal');
-	expect(recoveryBody.expected_revision).toBe(run.revision);
-	expect(recoveryBody.decision).toBeUndefined();
-	expect(decisionIntent(run.id).intent?.requestId).toBe('original-proposal');
-});
-
 test('retains last successful observation time after a failed refresh', async () => {
 	render(RunDecisionsDialog, { run, onclose: vi.fn(), onchange: vi.fn() });
 	const observed = await screen.findByText(/Last loaded:/);
@@ -428,4 +347,28 @@ test('retains last successful observation time after a failed refresh', async ()
 	await userEvent.setup().click(screen.getByRole('button', { name: 'Refresh decisions' }));
 	await screen.findByRole('alert');
 	expect(screen.getByText(/Last loaded:/).textContent).toBe(prior);
+});
+
+test('optimistic SDD uses the ordinary question composer without a native gate', async () => {
+	const optimistic = {
+		...run,
+		sdd_snapshot: {
+			execution_version: 2,
+			provider: 'repository-agent',
+			spec_dir: 'docs/proposals/PROP-demo'
+		}
+	};
+	api.GET.mockImplementation(async (path: string) => ({
+		data: path.endsWith('/questions')
+			? { items: [question], total_count: 1, run_revision: 2 }
+			: optimistic
+	}));
+	render(RunDecisionsDialog, { run: optimistic, onclose: vi.fn(), onchange: vi.fn() });
+	await screen.findByText('Keep existing behavior?');
+	await waitFor(() =>
+		expect((screen.getByLabelText('Your answer') as HTMLTextAreaElement).disabled).toBe(false)
+	);
+	expect(
+		screen.queryByRole('button', { name: /Approve integration|Review publication reconciliation/ })
+	).toBeNull();
 });

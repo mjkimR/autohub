@@ -7,21 +7,35 @@ from alembic.operations import Operations
 from app.features.project_management.pipeline_runs.models import ExecutionAttempt, PipelineRun
 from sqlalchemy import select, text
 
-from tests.integration.features.project_management.sdd import test_native as native
+from tests.integration.features.project_management.pipeline_runs import test_pipeline_runs_api as scenarios
 from tests.integration.migrations.test_default_ai_catalogs import scripts
 
-github = native.github
-project = native.project
-inspector = native.inspector
-run = native.run
-unit_branch = native.unit_branch
+github = scenarios.github
+project = scenarios.project
+SPEC = "specs/2026-10/20261010-native"
 pytestmark = [pytest.mark.integration, pytest.mark.real_commit]
+
+
+@pytest.fixture
+async def run(client, project, github):
+    github.pulls[7]["head"]["ref"] = "dev-native"
+    response = await client.patch(
+        f"/api/v1/projects/{project['id']}",
+        json={"expected_revision": project["revision"], "project_type": "sdd"},
+    )
+    assert response.status_code == 200, response.text
+    response = await client.post(
+        f"/api/v1/projects/{project['id']}/runs",
+        json={"pull_number": 7, "spec_dir": SPEC, "implemented": True},
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
 
 
 @pytest.mark.parametrize("state", ["implementing", "completed"])
 async def test_migration_preserves_legacy_evidence_and_settles_only_live_work(session, run, state):
     row = await session.get(PipelineRun, UUID(run["id"]))
-    legacy = {"mode": "specrig", "cli_version": "specrig version 0.1.2", "spec_dir": native.SPEC}
+    legacy = {"mode": "specrig", "cli_version": "specrig version 0.1.2", "spec_dir": SPEC}
     row.sdd_snapshot = legacy
     await session.flush()
     attempt = (

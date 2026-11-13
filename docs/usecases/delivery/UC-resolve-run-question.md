@@ -24,8 +24,8 @@ entrypoints:
 
 - **Goal**: make an explicit clarification part of the intended PR execution,
   with a retained record of the question, chosen answer and application.
-- **Scope**: ordinary Auto Hub Run questions and answer application; native SDD
-  workflow approval and revocation are separate decisions.
+- **Scope**: ordinary Auto Hub Run questions and answer application, including
+  optimistic SDD activities. Retained native workflow decisions are read-only.
 - **Trigger**: the operator inspects a Run requiring clarification.
 - **Preconditions**: the operator can access Hub and has identified the Run.
   Hub checks pending-question state, revisions, GitHub binding and current head.
@@ -47,7 +47,12 @@ entrypoints:
 5. Hub verifies the current context and records the answer's application to one prepared attempt (`CAP-PR-operator-decisions`).
    Interface: `UX-run-page`, `UX-run-decisions`.
 
-The operator can locate the pending subject through `UX-decision-inbox` before opening its exact owner review. Optional notice-link entry follows `UC-receive-decision-notice`; authentication and exact current identity are checked before the existing owner controls enable. Native review refreshes and persists the current inspection basis before controls enable. Existing per-run entry points remain available.
+The operator can locate the pending question through `UX-decision-inbox` before
+opening its exact Run review. Optional notice-link entry follows
+`UC-receive-decision-notice`; authentication and exact current identity are checked
+before the ordinary question controls enable. Retained native decisions provide
+history without approval or revocation controls. Existing per-run entry points
+remain available.
 
 ## 3. Extensions
 
@@ -204,7 +209,7 @@ baseline for Auto Hub.
 
 - **Given** an observed pending decision in the shared inbox,
 - **When** the operator selects Review,
-- **Then** the exact owner subject loads and native controls wait for persisted inspection; an obsolete selection stays disabled until explicit reinspection.
+- **Then** the exact ordinary question loads before its controls enable; an obsolete selection stays disabled until explicit reinspection, and native history exposes no mutation controls.
 - **Covers**: 1z and the discovery entry.
 
 

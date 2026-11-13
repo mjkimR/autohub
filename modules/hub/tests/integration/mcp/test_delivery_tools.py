@@ -1,11 +1,9 @@
-from unittest.mock import AsyncMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from app.auth import MCP_READ, MCP_WRITE
-from app.features.project_management.sdd import milestones
+from app.features.project_management.sdd.batch_models import SddBatch
 from tests.integration.features.project_management.pipeline_runs import test_pipeline_runs_api as runs
-from tests.integration.features.project_management.sdd import test_batches as batches
 from tests.integration.features.project_management.work_plans import conftest as work
 from tests.integration.features.project_management.work_plans import test_item_recovery as recovery
 from tests.integration.features.project_management.work_plans import test_replacements as replacement
@@ -16,7 +14,6 @@ key = mcp.key
 project = runs.project
 github = runs.github
 setup_work = work.setup_work
-batch_head = batches.batch_head
 pytestmark = [pytest.mark.integration, pytest.mark.real_commit]
 READS = {
     "decisions_list",
@@ -28,7 +25,6 @@ READS = {
 }
 WRITES = {
     "decisions_review",
-    "sdd_batches_control",
     "work_items_recover",
     "work_items_replacement_link",
     "work_items_replacement_accept",
@@ -89,33 +85,26 @@ async def test_exact_discovery_review_outcome_and_refusal(client, key, project, 
     assert not github.paths
 
 
-async def test_batch_control_owner_replay_and_projection(client, key, project, monkeypatch, batch_head):
-    await client.patch(
-        f"/api/v1/projects/{project['id']}", json={"expected_revision": project["revision"], "project_type": "sdd"}
+async def test_retired_batch_history_projection_without_mutation_tool(client, key, project, session):
+    row = SddBatch(
+        project_id=UUID(project["id"]),
+        request_id=uuid4(),
+        request_digest="0" * 64,
+        actor="operator",
+        basis={},
+        evaluation={},
+        state="stopped",
+        exclusion=False,
     )
-    monkeypatch.setattr(milestones, "preview_milestone", AsyncMock(return_value=batches.preview(project["id"])))
-    response = await client.post(f"/api/v1/projects/{project['id']}/sdd/batches", json=batches.payload())
-    assert response.status_code == 201, response.text
-    row = response.json()
-    ids = {"project_id": project["id"], "batch_id": row["id"]}
-    assert (await mcp.call(client, key, "sdd_batches_list", {"project_id": project["id"]}))["result"]["items"][0][
-        "id"
-    ] == row["id"]
+    session.add(row)
+    await session.commit()
+    ids = {"project_id": project["id"], "batch_id": str(row.id)}
+    listing = (await mcp.call(client, key, "sdd_batches_list", {"project_id": project["id"]}))["result"]
+    assert listing["items"][0]["id"] == str(row.id)
     view = (await mcp.call(client, key, "sdd_batches_get", ids))["result"]
-    assert "basis" not in view and "initial" not in view["members"][0]
-    args = ids | {"control": {"request_id": str(uuid4()), "expected_revision": row["revision"], "action": "pause"}}
-    first = (await mcp.call(client, key, "sdd_batches_control", args))["result"]
-    assert first["state"] == "paused"
-    assert (await mcp.call(client, key, "sdd_batches_control", args))["result"]["revision"] == first["revision"]
-    _, other = await mcp.issue(client, [MCP_WRITE])
-    assert (await mcp.call(client, other["key"], "sdd_batches_control", args, error=True))["error"][
-        "code"
-    ] == "CONFLICT"
-    assert (
-        await mcp.call(
-            client, key, "sdd_batches_control", args | {"control": args["control"] | {"action": "stop"}}, error=True
-        )
-    )["error"]["code"] == "CONFLICT"
+    assert view["state"] == "stopped" and "basis" not in view
+    tools = (await mcp.rpc(client, key, "tools/list")).json()["result"]["tools"]
+    assert "sdd_batches_control" not in {tool["name"] for tool in tools}
 
 
 async def test_recovery_machine_replay_and_safe_history(client, key, setup_work):

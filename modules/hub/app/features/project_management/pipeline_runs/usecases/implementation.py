@@ -18,6 +18,7 @@ from app.features.project_management.pipeline_runs.models import (
     ExecutionReply,
     PipelineRun,
     PipelineRunState,
+    RunQuestion,
 )
 from app.features.project_management.pipeline_runs.questions import parse_question
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
@@ -31,6 +32,7 @@ from app.features.project_management.pipeline_runs.usecases.transitions import (
 )
 from app.features.project_management.pipelines.services import PipelineObservationService
 from app.features.project_management.projects.errors import ProjectError
+from app.features.project_management.sdd.execution import optimistic
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -40,7 +42,7 @@ class ImplementationInput:
     posted_at: datetime | None
     delivered_head: str
     adapter: ExecutionAdapter
-    native: bool = False
+    optimistic: bool = False
 
 
 @dataclass(frozen=True)
@@ -60,7 +62,7 @@ class ImplementationProgress:
             raise ProjectError(409, "Pipeline run has no active implementation attempt")
         delivery = await self.repo.latest_delivery(session, attempt.id)
         return ImplementationInput(
-            native=bool(run.sdd_snapshot),
+            optimistic=optimistic(run),
             target=target,
             posted_at=as_utc(delivery.posted_at) if delivery is not None and delivery.posted_at is not None else None,
             delivered_head=PullRequestSnapshot.model_validate(attempt.request_snapshot["pull_request"]).head_sha,
@@ -73,7 +75,7 @@ class ImplementationProgress:
         target = prepared.target
         pr = await observer.get_pull_request(target.connector_id, target.repository, target.pull_number)
         if pr.get("state") == "closed" or (
-            not prepared.native and prepared.posted_at is not None and pr["head"]["sha"] != prepared.delivered_head
+            not prepared.optimistic and prepared.posted_at is not None and pr["head"]["sha"] != prepared.delivered_head
         ):
             return ImplementationObservation(pr, [])
         replies = await prepared.adapter.collect_replies(observer, target, prepared.posted_at)
@@ -95,44 +97,22 @@ class ImplementationProgress:
         if pr.get("state") == "closed":
             await finish_closed_pull(self.repo, session, run, pr, now)
             return PipelineRunRead.model_validate(run)
-        if not observed.native and observed.posted_at is not None and pr["head"]["sha"] != observed.delivered_head:
+        if not observed.optimistic and observed.posted_at is not None and pr["head"]["sha"] != observed.delivered_head:
             run.state = PipelineRunState.AWAITING_CI
             run.next_action_at = None
             run.revision += 1
             attempt.state = ExecutionAttemptState.RUNNING
             await session.flush()
             return PipelineRunRead.model_validate(run)
-        for reply in replies:
-            if reply.external_id is not None and not await self.repo.has_reply(session, reply.external_id):
-                await self.repo.create_reply(
-                    session,
-                    ExecutionReply(
-                        execution_attempt_id=attempt.id,
-                        external_id=reply.external_id,
-                        author=reply.author,
-                        replied_at=reply.replied_at,
-                        excerpt=reply.body.strip()[:500] or None,
-                        is_quota_limit=reply.is_quota_limit,
-                    ),
-                )
-        for reply in replies:
-            question = parse_question(
-                reply.body, str(attempt.request_snapshot.get("correlation_marker", "")), observed.delivered_head
-            )
-            if question and reply.external_id and reply.author == CODEX_CONNECTOR_LOGIN:
-                await RunInteractionService().ask(
-                    session,
-                    run,
-                    request_id=uuid5(NAMESPACE_URL, f"autohub-question:{run.id}:{reply.external_id}"),
-                    question=question,
-                    actor=f"github:{reply.author}",
-                    source="agent",
-                    head_sha=pr["head"]["sha"] if observed.native else observed.delivered_head,
-                    attempt_id=attempt.id,
-                    # The observing worker still owns this lease and releases it on return.
-                    invalidate_lease=False,
-                )
-                return PipelineRunRead.model_validate(run)
+        if await self.apply_questions(session, run, observed, result):
+            return PipelineRunRead.model_validate(run)
+        if observed.optimistic and observed.posted_at is not None and pr["head"]["sha"] != observed.delivered_head:
+            run.state = PipelineRunState.AWAITING_CI
+            run.next_action_at = None
+            run.revision += 1
+            attempt.state = ExecutionAttemptState.RUNNING
+            await session.flush()
+            return PipelineRunRead.model_validate(run)
         quota_replied_at = max((reply.replied_at for reply in replies if reply.is_quota_limit), default=None)
         if delivery is not None and delivery.posted_at is not None and quota_replied_at is not None:
             run.quota_block_count += 1
@@ -151,8 +131,6 @@ class ImplementationProgress:
             run.next_action_at = None
             run.revision += 1
             await session.flush()
-            return PipelineRunRead.model_validate(run)
-        if observed.native:
             return PipelineRunRead.model_validate(run)
         replied_at = min((reply.replied_at for reply in replies if not reply.is_quota_limit), default=None)
         if (
@@ -197,3 +175,47 @@ class ImplementationProgress:
             return PipelineRunRead.model_validate(run)
 
         return PipelineRunRead.model_validate(run)
+
+    async def apply_questions(
+        self, session: AsyncSession, run: PipelineRun, observed: ImplementationInput, result: ImplementationObservation
+    ) -> bool:
+        """A repository question remains actionable after its attempt pushed a new head."""
+        attempt = await self.repo.active_attempt(session, run.id)
+        if attempt is None:
+            return False
+        for reply in result.replies:
+            if reply.external_id is not None and not await self.repo.has_reply(session, reply.external_id):
+                await self.repo.create_reply(
+                    session,
+                    ExecutionReply(
+                        execution_attempt_id=attempt.id,
+                        external_id=reply.external_id,
+                        author=reply.author,
+                        replied_at=reply.replied_at,
+                        excerpt=reply.body.strip()[:500] or None,
+                        is_quota_limit=reply.is_quota_limit,
+                    ),
+                )
+        for reply in result.replies:
+            question = parse_question(
+                reply.body, str(attempt.request_snapshot.get("correlation_marker", "")), observed.delivered_head
+            )
+            if question and reply.external_id and reply.author == CODEX_CONNECTOR_LOGIN:
+                question_id = uuid5(NAMESPACE_URL, f"autohub-question:{run.id}:{reply.external_id}")
+                previous = await session.get(RunQuestion, question_id)
+                if previous is not None and previous.state not in ("open", "answered"):
+                    continue
+                await RunInteractionService().ask(
+                    session,
+                    run,
+                    request_id=question_id,
+                    question=question,
+                    actor=f"github:{reply.author}",
+                    source="agent",
+                    head_sha=result.pull["head"]["sha"] if observed.optimistic else observed.delivered_head,
+                    attempt_id=attempt.id,
+                    # The observing worker still owns this lease and releases it on return.
+                    invalidate_lease=False,
+                )
+                return True
+        return False

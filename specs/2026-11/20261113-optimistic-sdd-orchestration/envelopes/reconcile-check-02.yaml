@@ -1,0 +1,27 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T06:52:54.072086Z'
+status: completed
+summary: round 2; closes reconcile-check-01; fresh reviewer verified all six P1 fixes and 78 modified targets plus one waiver; one P2 count wording correction remains.
+findings:
+- issue: Verification material understates the fully superseded ADR count
+  evidence: docs/materials/2026-11/20261113-optimistic-sdd-orchestration/verification.md:40; ADR-repository-owned-sdd-execution:75
+  failure_condition: Verification says four while the corrected ADR fully supersedes five decisions
+  suggested_action: Replace The four superseded ADRs with The five superseded ADRs
+  resolution: open
+  severity: P2
+assumptions:
+- Fresh read-only emulated reviewer; no product code changed in correction batch.
+unverified_areas:
+- Reviewer did not rerun product tests or perform live GitHub/provider, deployment, browser or image verification.
+checks:
+  target_coverage: PASS 78 modified targets and one substantive waiver; no missing or duplicate targets
+  round1_fixes: PASS six failure conditions corrected without recurrence
+  implementation_agreement: PASS serving migration APIs discovery MCP and affected UI inspected
+  git_boundary: PASS clean HEAD f799014f711d3522d0a059d63c934f34b98859ca and tree9135de779dccae83d3e1bc03ccab9dd0a74a95f1 unchanged
+diff_scope:
+  base: 1be703ba0f2b79c6a4e65c84b402be50e114cec9
+  head: f799014f711d3522d0a059d63c934f34b98859ca
+activity_effort: high

@@ -6,6 +6,7 @@ area: delivery
 status: active
 usecases:
   - UC-deliver-pull-request
+  - UC-complete-sdd-workflow
   - UC-execute-work-plan
 entrypoints:
   - modules/hub/app/features/project_management/projects/api/v1.py
@@ -33,7 +34,7 @@ the same executor after `CAP-WORK-work-plan-execution` prepares an Item's PR.
   provider implementation occurs outside Hub. `CAP-PR-ci-observation` owns exact
   workflow/job evidence; `CAP-PR-agent-dispatch` owns mention rendering, delivery
   reconciliation and provider watchdogs. `CAP-PR-operator-decisions` owns Run
-  clarification; `CAP-SDD-workflow-control` owns native workflow decisions;
+  clarification; `CAP-SDD-native-delivery` owns descriptive activity intent and retired native history;
   `CAP-SDK-task-flow-execution` owns SDK flow approval.
 - **Scope Excluded**: per-commit human review, remote-provider cancellation,
   exactly-once effects across Hub and GitHub, and automatic creation of a PR by
@@ -121,8 +122,8 @@ Ticks call the common advancement loop with `respect_due=true`. Events/manual
 advances may refresh their first implementation/CI observation early but never
 bypass a future queued/dispatching delivery. A new CI repair clears the obsolete
 observation delay. Selection orders observations before uncertain delivery and
-new work; stopped native approval waits are the explicit SDD exception, not a
-general permission to auto-resume paused Runs.
+new work. Legacy native authority is permanently retired. Paused Runs do not
+auto-resume without their ordinary explicit control.
 
 The project's task uses `MAX_CONCURRENT_TASKS` as its batch/semaphore bound
 (default 10). Observation and dispatch have separate selection budgets. Existing
@@ -177,7 +178,22 @@ the inspected source or Auto Hub's own SDD baseline.
 
 ## Owed items
 
-WHILE a PR run is `paused` or `blocked` and no decision, Work Item recovery or replacement, SDD batch attention or Work
+WHILE a PR run is `paused` or `blocked` and no decision, Work Item recovery or replacement or Work
 Item `attention` describes it, the run is a counted `stopped-run` owed item in `CAP-PR-owed-items`; a deliberate pause
 counts too. A `failed` run is a quiet `failed-run` item without count weight that links its Work Item when one exists.
 Every PR run response carries `has_pending_decision` (`CAP-PR-operator-decisions`).
+
+## SDD activity context
+
+WHEN an optimistic SDD activity is enrolled, Hub MUST use ordinary PR attempts,
+questions, explicit resume and current-head CI without selecting repository
+workflow stages or authoring its workflow decisions. Check: optimistic PR
+progression tests and `pipeline_runs/requests.py` source inspection.
+
+## Verification ownership
+
+Repository verification MUST execute in repository-owned GitHub Actions whose
+configured results Hub observes through `CAP-PR-ci-observation`. Hub MUST NOT add
+a devkit evaluator, runtime installer or asset-restoration service as a delivery
+prerequisite. Check: activity request, API/import and serving-image inspection.
+Repository-internal setup and SDD correctness remain with the working agent.

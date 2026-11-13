@@ -30,7 +30,7 @@ These are proposed Development changes. Current contracts remain unchanged durin
 | --- | --- | --- |
 | `CAP-PR-pull-request-delivery` | Add evidence-derived related-origin read shape, unknown/multiple semantics, cardinality and fixed additional query bound. | `docs/capabilities/delivery/CAP-PR-pull-request-delivery.md` |
 | `CAP-DOC-repository-viewer` | Add validated URL unit selection shared by document and execution panels, read-only behavior and missing-subject handling. | `docs/capabilities/repository/CAP-DOC-repository-viewer.md` |
-| `CAP-SDD-native-delivery` | Document exact retained batch addressing with project-scoped GET, distinct from create/control/admission. | `docs/capabilities/sdd/CAP-SDD-native-delivery.md` |
+| `CAP-SDD-native-delivery` | Document exact retained batch addressing with project-scoped GET, without create/control/admission. | `docs/capabilities/sdd/CAP-SDD-native-delivery.md` |
 | `UC-deliver-pull-request` | Extend run inspection/recovery examples with exact related Work Item navigation and unknown origin. | `docs/usecases/delivery/UC-deliver-pull-request.md` |
 | `UC-inspect-repository-documents` | Extend entry and selection with unit address, missing unit and stale-address responses. | `docs/usecases/repository/UC-inspect-repository-documents.md` |
 | `UC-execute-sdd-batch` | Extend retained-batch inspection step 4 and reload examples with addressed old batch and missing/wrong-project outcomes. | `docs/usecases/sdd/UC-execute-sdd-batch.md` |
@@ -62,7 +62,8 @@ All existing main scenarios and extensions remain. Add these entry/extension exa
 - `UC-execute-sdd-batch` step 4 accepts a Repository batch URL from Attention or a run. It reads the exact batch even
   beyond the latest-50 list and focuses its retained status region. Extension 4d: missing/wrong-project batch shows
   **Batch unavailable**, with **Browse repository**; network failure adds **Retry**. It does not select another batch
-  in the requested batch's place. Step 5 controls remain separately authorized explicit actions.
+  in the requested batch's place. Batch execution controls are retired under
+  `ADR-repository-owned-sdd-execution`.
 
 ## Screens
 
@@ -115,25 +116,25 @@ an extension of existing secondary context, so no alternative page arrangement i
 ### `UX-repository` delta
 
 - **Element**: panel.
-- **Use cases**: `UC-inspect-repository-documents`, `UC-preview-sdd-milestone`, `UC-execute-sdd-batch`.
+- **Use cases**: `UC-inspect-repository-documents`, `UC-execute-sdd-batch`.
 - **Purpose**: Inspect repository documents at the selected branch and open retained execution context. Repository
   identity/ref/path remain the facts for inspection. Batch status remains the existing linked panel above the viewer.
 - **Content**: branch/mode controls remain above the content. A valid `unit` directory initializes both SDD document
-  and execution selection. A `batch` ID is passed to `UX-sdd-batch`; it does not change the selected unit. Both may
+  and descriptive activity selection. A `batch` ID is passed to `UX-sdd-batch`; it does not change the selected unit. Both may
   coexist. An explicit `ref` initializes the visible browse branch, including an active run's unmerged handoff spec.
   Missing branches do not silently fall back. Without `ref`, use the existing default branch. Initial SDD addresses
   open Sdd View; later mode switches preserve query and selection. The browse branch is not immutable PR-head
   evidence and conveys no execution authority.
 - **States**: populated/loading/empty/error remain. **unit-unavailable** names the requested unit and explains
   malformed/missing/non-SDD/inaccessible selection or a missing addressed branch; **Browse repository** clears the unit request and resets an unavailable addressed ref to the default branch before
-  ordinary browsing. Transient failure offers **Retry**. Unknown units enable no native start/readiness controls.
+  ordinary browsing. Transient failure offers **Retry**. Unknown units enable no native activity-start controls.
   **batch-unavailable** is confined to `UX-sdd-batch`; valid unit inspection remains available. Query/project changes
   invalidate earlier lookups. A non-SDD project explains unsupported SDD selection without hiding Git Browser.
 
 | Trigger | Step | From | To | Target | Feedback |
 | --- | --- | --- | --- | --- | --- |
 | Open or navigate to unit address | `UC-inspect-repository-documents` 1, 3 | populated, loading | populated, unit-unavailable, error |  | Document and execution panel agree on the validated unit or explain unavailability. |
-| Open or navigate to batch address | `UC-execute-sdd-batch` 4 | populated | loading | `UX-sdd-batch` | Exact retained batch lookup begins without mutations or a latest-list prerequisite. |
+| Open or navigate to batch address | `UC-execute-sdd-batch` 1 | populated | loading | `UX-sdd-batch` | Exact retained batch lookup begins without mutations or a latest-list prerequisite. |
 | Sdd View / Git Browser | global: select repository representation | populated | populated |  | Address is kept; returning to Sdd View restores the selection. |
 | Retry unit | `UC-inspect-repository-documents` 3b | error | loading |  | Repeat only the current selection's failed read. |
 | Browse repository | `UC-inspect-repository-documents` 3b | unit-unavailable, error | populated |  | Remove the unit request and return to normal repository browsing. |
@@ -143,8 +144,8 @@ an extension of existing secondary context, so no alternative page arrangement i
 
 - **Element**: panel.
 - **Use cases**: `UC-execute-sdd-batch`.
-- **Purpose**: Inspect an exact retained batch's status and choose explicit future-admission controls. Batch ID,
-  revision, state and retained holds stay primary; local create-selection controls remain secondary when inspecting.
+- **Purpose**: Inspect an exact retained batch's historical status. Batch ID,
+  revision, state and stored outcomes stay primary; no live create/admission controls remain.
 - **Content**: addressed batch heading shows its ID, state/revision and retained members/claims. The detail result is
   merged into retained options even when older than the latest list. After load, focus/scroll the heading with the
   stable `sdd-batch-<id>` element ID. A detail GET does not load/reconcile/admit anything beyond observation.
@@ -152,21 +153,18 @@ an extension of existing secondary context, so no alternative page arrangement i
   **Refresh status** deliberately reloads only the selected batch. Opening both unit and batch keeps both regions.
 - **States**: existing durable states remain. **loading** announces the exact requested ID. **batch-unavailable**
   names the absent/malformed/wrong-project ID and offers **Browse repository**; no other batch is substituted.
-  **error** keeps the requested ID and offers **Retry**. Existing unresolved mutations retain their own stable intent;
-  navigation never discards or retransmits them. A separate pending-request disclosure names the original batch,
-  action and request ID. **Retry same request for batch A** always concerns A even while B is inspected, and its
-  result never replaces B's selected detail. B mutations remain disabled while the one retained intent blocks them.
-  Older project/address responses cannot overwrite current data.
+  **error** keeps the requested ID and offers **Retry**. Historical control
+  receipts remain inspect-only, and navigation never retransmits them. The exact
+  selected subject stays separate from earlier retained outcomes. Older
+  project/address responses cannot overwrite current data.
 
 | Trigger | Step | From | To | Target | Feedback |
 | --- | --- | --- | --- | --- | --- |
-| Open exact batch address / Retry | `UC-execute-sdd-batch` 4 | populated, error | loading |  | Exact detail GET selects the named batch or explains failure; sends no mutation. |
-| Load retained batches | `UC-execute-sdd-batch` 4 | populated | populated, error |  | First list GET adds options and preserves selection; repeated clicks do not refetch. |
-| Refresh status | `UC-execute-sdd-batch` 4 | populated | loading |  | Explicit selected detail GET refreshes the retained revision. |
-| Browse repository | `UC-execute-sdd-batch` 4d | batch-unavailable, error | populated | `UX-repository` | Clear the batch query and continue document browsing. |
-| Retry same request for batch A | `UC-execute-sdd-batch` 5 | unresolved A intent while B inspected | same |  | Original A request is retried explicitly; subject/result stay separate from B and B mutations remain disabled until A settles. |
-| Pause/resume/stop future admission | `UC-execute-sdd-batch` 5 | applicable existing durable state | existing confirmation/operating state |  | Existing explicit confirmation, revision fences and stable intent behavior remain. |
-| Return to repository | `UC-execute-sdd-batch` 6 | populated | populated | `UX-repository` | Batch remains retained; leaving the panel does not control it. |
+| Open exact batch address / Retry | `UC-execute-sdd-batch` 1 | populated, error | loading |  | Exact detail GET selects the named batch or explains failure; sends no mutation. |
+| Load retained batches | `UC-execute-sdd-batch` 1 | populated | populated, error |  | First list GET adds options and preserves selection; repeated clicks do not refetch. |
+| Refresh status | `UC-execute-sdd-batch` 1 | populated | loading |  | Explicit selected detail GET refreshes the retained revision. |
+| Browse repository | `UC-execute-sdd-batch` 1a | batch-unavailable, error | populated | `UX-repository` | Clear the batch query and continue document browsing. |
+| Return to repository | `UC-execute-sdd-batch` 3 | populated | populated | `UX-repository` | Batch remains retained; leaving the panel does not control it. |
 
 ## Draft UX object register additions
 
@@ -181,7 +179,7 @@ name their omission in the Development UX verification and keep the element deta
 Development adds backend projection/cardinality/unknown/pagination/query-budget checks on SQLite and PostgreSQL;
 UI link-builder and run-page integration checks; Repository route integration checks for direct/reloaded/navigation
 addresses, an unmerged spec on its run branch, deleted branches, missing subjects, old batches outside latest 50,
-one-time list loading, pending control A while inspecting B and stale response races. These are
+one-time list loading, retained outcome A while inspecting B and stale response races. These are
 planned checks, not executed results. Use existing integration tests and split authored components to meet the
 installed app-common structure limits. Run `just gen-ui-api`, `just lint`, `just check` and relevant tests before
 Development completion.

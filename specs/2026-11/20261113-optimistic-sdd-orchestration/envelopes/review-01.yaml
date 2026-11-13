@@ -1,0 +1,35 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T06:36:50.891778Z'
+status: completed
+summary: 'round 1; REVISE: publication claim bypass, missing recovery reference and required type-check failure.'
+findings:
+- issue: Direct enrollment bypasses a publication claim whose PR number is not saved yet.
+  evidence: sdd/execution.py:41; ignored review-01/test_publication_owner.py:23 produced 1 failed, 1 passed
+  failure_condition: GitHub creates the PR before its response is checkpointed; claim has branch/initial_sha/pr_attempted without pull_number.
+  suggested_action: Under final enrollment project lock, reject unsettled exact candidate branch with validated own admission excluded; add missing-number regression.
+  resolution: open
+  severity: P1
+- issue: Unresolved-start errors omit the reference needed to reach claim recovery.
+  evidence: sdd/execution.py:51; activities.py:133,158; sdd-starts.svelte.ts:85
+  failure_condition: Owner conflict or uncertain original publication freezes intent without mounting the claim recovery panel.
+  suggested_action: Include exact project-scoped /sdd/claims/<claim> reference in direct enrollment and uncertain errors propagated by ActivityClaims.execute; preserve status/code and verify real shape.
+  resolution: open
+  severity: P2
+- issue: Required backend type check fails.
+  evidence: sdd/execution.py:40; just check hub pyright reportArgumentType
+  failure_condition: Type checking raw Python True fallback as SQL predicate.
+  suggested_action: Conditionally add admission exclusion or use sqlalchemy.true and rerun backend check.
+  resolution: open
+  severity: P2
+assumptions:
+- Read-only emulated reviewer; before/after tree 2df09d85529352ed8ce88fd8ff15c0742bcfdd6f and HEAD unchanged.
+checks:
+  tests: PASS supplied SQLite PostgreSQL UI SDK; ownership probe failed as reported
+  lint: PASS committed rules, backend type check FAIL
+diff_scope:
+  base: 725317b9e4450a1abfda7d20d0b72571191ce7ed
+  head: d52613ab82d165b6be64498733a44ca6e3ec7a0d
+activity_effort: high

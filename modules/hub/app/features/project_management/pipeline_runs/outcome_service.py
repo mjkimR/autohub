@@ -40,12 +40,8 @@ class DecisionOutcomeService:
             )
             if workflow.get("request", "").startswith("question:"):
                 result["publication_state"] = "pending"
-                # The receipt's exact request identifies both source question envelope and question ID.
-                from app.features.project_management.sdd.answer_publication import matching_publication
-
-                proof = data.get("answer_publication") or matching_publication(
-                    {**data, "owner_request_id": str(request_id)}, run.sdd_progress or {}
-                )
+                # Historical proof is displayed only when the owner retained it.
+                proof = data.get("answer_publication")
                 if proof:
                     result.update(publication_state="published", resolved_envelope=proof.get("file"))
                 elif not data.get("subject_context"):

@@ -51,11 +51,11 @@ async def maintain_task(payload: MaintenancePayload) -> None:
         # Outbound record failures must not block execution or provider cleanup.
         logger.exception("Work issue synchronization will retry")
     try:
-        from .sdd_batches import maintain_batches
+        from .activity_history import settle_activity_history
 
-        await maintain_batches(observer)
+        await settle_activity_history()
     except Exception:
-        logger.exception("SDD batch maintenance will retry")
+        logger.exception("Activity history settlement will retry")
     try:
         await FlowWorker().tick()
     except Exception:

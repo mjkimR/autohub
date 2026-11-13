@@ -1,419 +1,60 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { session } from '$lib/stores/session.svelte';
 import SddExecution from './SddExecution.svelte';
 
 const { api } = vi.hoisted(() => ({ api: { POST: vi.fn(), GET: vi.fn() } }));
 vi.mock('$lib/api', () => ({ api }));
 beforeEach(() => {
+	session.logout();
 	api.POST.mockReset();
 	api.GET.mockReset().mockResolvedValue({ data: [] });
 });
 afterEach(cleanup);
 
-test('readiness shows best-effort warnings without blocking the start', async () => {
+test('starts existing-PR work directly without runtime or readiness probes', async () => {
+	api.POST.mockResolvedValue({ data: { id: 'run-1' } });
+	render(SddExecution, { projectId: 'project', selectedSpec: 'specs/2026-11/feature' });
 	const user = userEvent.setup();
-	api.POST.mockResolvedValueOnce({
-		data: {
-			ready: true,
-			head_sha: 'a'.repeat(40),
-			cli_version: 'devkit-spec:lock',
-			warnings: [{ code: 'RECEIPT_STALE', detail: 'Receipt differs from the reviewed runtime' }]
-		}
-	});
-	render(SddExecution, { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' });
-	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-	expect(await screen.findByText(/Inspected commit aaaaaaaaaaaa/)).toBeTruthy();
-	expect(screen.getByText('Receipt differs from the reviewed runtime')).toBeTruthy();
-	expect(
-		(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
-	).toBe(false);
-});
-
-test('a failed inspection replaces earlier warnings with its reason', async () => {
-	const user = userEvent.setup();
-	api.POST.mockResolvedValueOnce({
-		data: {
-			ready: true,
-			head_sha: 'a'.repeat(40),
-			cli_version: 'devkit-spec:lock',
-			warnings: [{ code: 'RUNTIME_REVISION_MISMATCH', detail: 'Repository locks another revision' }]
-		}
-	}).mockResolvedValueOnce({ data: { ready: false, reason: 'Select an open pull request' } });
-	render(SddExecution, { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' });
-	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-	expect(await screen.findByText('Repository locks another revision')).toBeTruthy();
-	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-	expect(await screen.findByRole('alert')).toBeTruthy();
-	expect(screen.queryByText('Repository locks another revision')).toBeNull();
-	expect(
-		(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
-	).toBe(true);
-});
-
-test('start sends the chosen activity effort and the runtime check reports the host', async () => {
-	const user = userEvent.setup();
-	api.GET.mockImplementation(async (path: string) =>
-		path.endsWith('/sdd/runtime')
-			? {
-					data: {
-						ok: true,
-						isolation: 'bubblewrap',
-						state: 'ready',
-						identity: 'c'.repeat(64),
-						bundles: ['spec', 'docs'],
-						revisions: { 'devkit-spec': 'f'.repeat(40) }
-					}
-				}
-			: { data: [] }
-	);
-	api.POST.mockImplementation(async (path: string) =>
-		path.endsWith('/sdd/readiness')
-			? {
-					data: {
-						ready: true,
-						head_sha: 'a'.repeat(40),
-						cli_version: 'devkit-spec:lock',
-						warnings: []
-					}
-				}
-			: { data: { id: 'run-1' } }
-	);
-	render(SddExecution, { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' });
-	await user.click(screen.getByRole('button', { name: 'Check runtime' }));
-	expect(
-		await screen.findByText(
-			/Runtime bubblewrap: ok · devkit-spec ffffffffffff · repository lock cccccccccccc ready · bundles: spec, docs/
-		)
-	).toBeTruthy();
 	await user.selectOptions(screen.getByLabelText('Activity effort'), 'high');
-	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-	await screen.findByText(/Inspected commit/);
 	await user.click(screen.getByRole('button', { name: 'Start execution' }));
-	const start = api.POST.mock.calls.find((call) => String(call[0]).endsWith('/runs'));
-	expect(start?.[1].body).toMatchObject({ activity_effort: 'high', implemented: false });
-});
-
-test('an unavailable runtime is reported as an error with its detail', async () => {
-	const user = userEvent.setup();
-	api.GET.mockResolvedValue({
-		data: {
-			ok: false,
-			isolation: null,
-			detail: 'The sandboxed interpreter did not start'
+	await screen.findByRole('link', { name: 'Open PR run' });
+	expect(api.POST).toHaveBeenCalledExactlyOnceWith('/api/v1/projects/{project_id}/runs', {
+		params: { path: { project_id: 'project' } },
+		body: {
+			spec_dir: 'specs/2026-11/feature',
+			pull_number: 1,
+			implemented: false,
+			handoff: false,
+			activity_effort: 'high'
 		}
 	});
-	render(SddExecution, { projectId: 'project' });
-	await user.click(screen.getByRole('button', { name: 'Check runtime' }));
-	expect(await screen.findByRole('alert')).toBeTruthy();
-	expect(screen.getByText(/Runtime without a sandbox: unavailable/)).toBeTruthy();
+	expect(screen.queryByRole('button', { name: /Check runtime|Check readiness/ })).toBeNull();
+	expect(api.GET.mock.calls.every(([path]) => !/runtime|readiness|milestone/.test(path))).toBe(
+		true
+	);
 });
 
-test('a preparing lock runtime is reported as progress and a failed one as an error', async () => {
-	const user = userEvent.setup();
-	api.GET.mockResolvedValueOnce({
-		data: { ok: true, isolation: 'bubblewrap', state: 'preparing', identity: 'd'.repeat(64) }
-	});
-	render(SddExecution, { projectId: 'project' });
-	await user.click(screen.getByRole('button', { name: 'Check runtime' }));
-	expect(
-		await screen.findByText(/repository lock dddddddddddd installing; check again shortly/)
-	).toBeTruthy();
-	api.GET.mockResolvedValueOnce({
-		data: {
-			ok: true,
-			isolation: 'bubblewrap',
-			state: 'failed',
-			lock_detail: 'Grant the connector read access'
-		}
-	});
-	await user.click(screen.getByRole('button', { name: 'Check runtime' }));
-	expect(await screen.findByRole('alert')).toBeTruthy();
-	expect(
-		screen.getByText(/repository lock unavailable\. Grant the connector read access/)
-	).toBeTruthy();
-});
-
-test('eligible registration previews waits and policy without answering them', async () => {
-	const user = userEvent.setup();
-	api.POST.mockResolvedValueOnce({
-		data: {
-			ready: true,
-			head_sha: 'a'.repeat(40),
-			cli_version: 'devkit-spec:lock',
-			current: {
-				stage: { id: 'review', name: 'Review the plan', human_gate: 'plan-accept' },
-				blocked: true,
-				problems: [{ cause: 'The test fixture needs repair' }],
-				pending_questions: [{ id: 'choice', title: 'Which provider should be used?' }],
-				requests: [{ id: 'gate:plan-accept', kind: 'approve', title: 'Accept direction' }]
-			},
-			policy: { approvals: { 'plan-accept': { policy: 'ask', source: 'default' } } }
-		}
-	});
-	render(SddExecution, { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' });
-	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-	const preview = await screen.findByRole('region', { name: 'Execution preview' });
-	expect(preview.textContent).toContain('Eligible to register');
-	expect(preview.textContent).toContain('Review the plan');
-	expect(preview.textContent).toContain('Workflow input reported');
-	expect(preview.textContent).toContain('The test fixture needs repair');
-	expect(preview.textContent).toContain('Which provider should be used?');
-	expect(preview.textContent).toMatch(/Approval requested:\s+Accept direction/);
-	expect(preview.textContent).toContain('Explicit approval required');
-	expect(preview.querySelector('button')).toBeNull();
-	expect(api.POST).toHaveBeenCalledTimes(1);
-	expect(
-		(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
-	).toBe(false);
-});
-
-test('automatic policy is separate from an active approval wait', async () => {
-	const user = userEvent.setup();
-	api.POST.mockResolvedValueOnce({
-		data: {
-			ready: true,
-			head_sha: 'a'.repeat(40),
-			current: { stage: { name: 'Final checks', human_gate: 'dev-integration' }, requests: [] },
-			policy: { approvals: { 'dev-integration': { policy: 'auto', source: 'config' } } }
-		}
-	});
-	render(SddExecution, { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' });
-	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-	expect(await screen.findByText('No workflow input is currently waiting.')).toBeTruthy();
-	expect(screen.getByText(/Delegated by policy/)).toBeTruthy();
-	expect(screen.queryByText('Workflow input reported')).toBeNull();
-});
-
-test('failed readiness keeps structured diagnostics visible and prevents registration', async () => {
-	const user = userEvent.setup();
-	api.POST.mockResolvedValueOnce({
-		data: {
-			ready: false,
-			reason: 'Runtime unavailable',
-			diagnostics: [
-				{
-					code: 'COMMAND_FAILED',
-					severity: 'error',
-					category: 'runtime',
-					message: 'The reviewed runtime could not evaluate this repository.',
-					action: 'Ask the runtime operator to inspect the installation.',
-					retry: 'after_fix',
-					target_files: []
-				}
-			]
-		}
-	});
-	render(SddExecution, { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' });
-	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-	expect(await screen.findByText('COMMAND_FAILED')).toBeTruthy();
-	expect(screen.getByText('Runtime setup')).toBeTruthy();
-	expect(screen.getByText(/Ask the runtime operator/)).toBeTruthy();
-	expect(screen.getByText('Reinspect after repair.')).toBeTruthy();
-	expect(screen.queryByRole('region', { name: 'Execution preview' })).toBeNull();
-	expect(
-		(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
-	).toBe(true);
-});
-
-test('changing the selected unit hides its earlier preview and requires a new inspection', async () => {
-	const user = userEvent.setup();
-	api.POST.mockResolvedValueOnce({
-		data: { ready: true, head_sha: 'a'.repeat(40), current: { stage: { name: 'Old stage' } } }
+test('an unknown enrollment freezes the original PR/unit and retries unchanged', async () => {
+	api.POST.mockRejectedValueOnce(new Error('Lost connection')).mockResolvedValueOnce({
+		data: { id: 'run-2' }
 	});
 	const view = render(SddExecution, {
 		projectId: 'project',
-		selectedSpec: 'specs/2026-10/20261010-feature'
+		selectedSpec: 'specs/2026-11/original'
 	});
-	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-	expect(await screen.findByText('Old stage')).toBeTruthy();
-	await view.rerender({ projectId: 'project', selectedSpec: 'specs/2026-10/20261010-other' });
-	expect(screen.queryByText('Old stage')).toBeNull();
-	expect(
-		(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
-	).toBe(true);
-});
-
-test.each(['success', 'refusal', 'error'])(
-	'late %s inspection for another PR is discarded',
-	async (outcome) => {
-		const user = userEvent.setup();
-		let finish!: (result: unknown) => void;
-		api.POST.mockReturnValueOnce(
-			new Promise((resolve) => {
-				finish = resolve;
-			})
-		);
-		const view = render(SddExecution, {
-			projectId: 'old-project',
-			selectedSpec: 'specs/2026-10/20261010-feature'
-		});
-		await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-		await view.rerender({ projectId: 'new-project', selectedSpec: 'specs/2026-10/20261010-other' });
-		finish(
-			outcome === 'success'
-				? {
-						data: {
-							ready: true,
-							head_sha: 'a'.repeat(40),
-							current: { stage: { name: 'Old stage' } }
-						}
-					}
-				: outcome === 'refusal'
-					? { data: { ready: false, reason: 'Old refusal' } }
-					: { error: { detail: 'Old error' } }
-		);
-		await waitFor(() =>
-			expect(
-				(screen.getByRole('button', { name: 'Check readiness' }) as HTMLButtonElement).disabled
-			).toBe(false)
-		);
-		expect(screen.queryByText('Old stage')).toBeNull();
-		expect(screen.queryByText('Old refusal')).toBeNull();
-		expect(screen.queryByText('Old error')).toBeNull();
-		expect(
-			(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
-		).toBe(true);
-	}
-);
-
-test.each(['project', 'unit', 'pull'])(
-	'cached readiness is invalidated by a %s selection round trip',
-	async (selection) => {
-		const user = userEvent.setup();
-		const props = { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' };
-		api.POST.mockResolvedValueOnce({
-			data: { ready: true, head_sha: 'a'.repeat(40), current: { stage: { name: 'Old stage' } } }
-		}).mockResolvedValueOnce({
-			data: { ready: true, head_sha: 'b'.repeat(40), current: { stage: { name: 'Fresh stage' } } }
-		});
-		const view = render(SddExecution, props);
-		await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-		expect(await screen.findByText('Old stage')).toBeTruthy();
-		if (selection === 'pull') {
-			const pull = screen.getByRole('spinbutton', { name: 'Pull request' });
-			await user.clear(pull);
-			await user.type(pull, '2');
-			await user.clear(pull);
-			await user.type(pull, '1');
-		} else {
-			await view.rerender(
-				selection === 'project'
-					? { ...props, projectId: 'other' }
-					: { ...props, selectedSpec: 'specs/2026-10/20261010-other' }
-			);
-			await view.rerender(props);
-		}
-		expect(screen.queryByText('Old stage')).toBeNull();
-		expect(
-			(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
-		).toBe(true);
-		await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-		expect(await screen.findByText('Fresh stage')).toBeTruthy();
-		expect(
-			(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
-		).toBe(false);
-	}
-);
-
-test.each(['success', 'refusal', 'error'])(
-	'pending %s readiness is invalidated by a selection round trip',
-	async (outcome) => {
-		const user = userEvent.setup();
-		const props = { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' };
-		let finish!: (result: unknown) => void;
-		api.POST.mockReturnValueOnce(
-			new Promise((resolve) => {
-				finish = resolve;
-			})
-		);
-		const view = render(SddExecution, props);
-		await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-		await view.rerender({ ...props, selectedSpec: 'specs/2026-10/20261010-other' });
-		await view.rerender(props);
-		finish(
-			outcome === 'success'
-				? {
-						data: {
-							ready: true,
-							head_sha: 'a'.repeat(40),
-							current: { stage: { name: 'Old stage' } }
-						}
-					}
-				: outcome === 'refusal'
-					? { data: { ready: false, reason: 'Old refusal' } }
-					: { error: { detail: 'Old error' } }
-		);
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(screen.queryByText('Old stage')).toBeNull();
-		expect(screen.queryByText('Old refusal')).toBeNull();
-		expect(screen.queryByText('Old error')).toBeNull();
-		expect(
-			(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
-		).toBe(true);
-	}
-);
-
-test('a discarded inspection cannot finish a newer inspection after a round trip', async () => {
 	const user = userEvent.setup();
-	const props = { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' };
-	let oldFinish!: (result: unknown) => void;
-	let freshFinish!: (result: unknown) => void;
-	api.POST.mockReturnValueOnce(
-		new Promise((resolve) => {
-			oldFinish = resolve;
-		})
-	).mockReturnValueOnce(
-		new Promise((resolve) => {
-			freshFinish = resolve;
-		})
+	await user.click(screen.getByRole('button', { name: 'Start execution' }));
+	await screen.findByText('Start outcome unresolved');
+	await view.rerender({ projectId: 'project', selectedSpec: 'specs/2026-11/different' });
+	expect(screen.getByRole('region', { name: 'Original activity request' }).textContent).toContain(
+		'specs/2026-11/original'
 	);
-	const view = render(SddExecution, props);
-	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-	await view.rerender({ ...props, selectedSpec: 'specs/2026-10/20261010-other' });
-	await view.rerender(props);
-	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-	oldFinish({ data: { ready: true, current: { stage: { name: 'Old stage' } } } });
-	await new Promise((resolve) => setTimeout(resolve, 0));
-	expect(
-		(screen.getByRole('button', { name: 'Check readiness' }) as HTMLButtonElement).disabled
-	).toBe(true);
-	expect(screen.queryByText('Old stage')).toBeNull();
-	freshFinish({ data: { ready: true, current: { stage: { name: 'Fresh stage' } } } });
-	expect(await screen.findByText('Fresh stage')).toBeTruthy();
-	expect(
-		(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
-	).toBe(false);
-});
-
-test('a late start response cannot replace a registration for a newer selection', async () => {
-	const user = userEvent.setup();
-	const props = { projectId: 'project', selectedSpec: 'specs/2026-10/20261010-feature' };
-	let oldFinish!: (result: unknown) => void;
-	api.POST.mockImplementation((path: string, options: { body: { spec_dir: string } }) => {
-		if (path.endsWith('/sdd/readiness'))
-			return Promise.resolve({ data: { ready: true, current: { stage: { name: 'Build' } } } });
-		if (options.body.spec_dir === props.selectedSpec)
-			return new Promise((resolve) => {
-				oldFinish = resolve;
-			});
-		return Promise.resolve({ data: { id: 'new-selection-run' } });
-	});
-	const view = render(SddExecution, props);
-	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-	await user.click(screen.getByRole('button', { name: 'Start execution' }));
-	await view.rerender({ ...props, selectedSpec: 'specs/2026-10/20261010-other' });
-	await user.click(screen.getByRole('button', { name: 'Check readiness' }));
-	await user.click(screen.getByRole('button', { name: 'Start execution' }));
-	expect(
-		(await screen.findByRole('link', { name: 'Open execution & decisions' })).getAttribute('href')
-	).toContain('new-selection-run');
-	oldFinish({ data: { id: 'old-selection-run' } });
-	await new Promise((resolve) => setTimeout(resolve, 0));
-	expect(
-		screen.getByRole('link', { name: 'Open execution & decisions' }).getAttribute('href')
-	).toContain('new-selection-run');
 	expect(
 		(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
 	).toBe(true);
+	await user.click(screen.getByRole('button', { name: 'Retry same request' }));
+	await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(2));
+	expect(api.POST.mock.calls[1]).toEqual(api.POST.mock.calls[0]);
 });
