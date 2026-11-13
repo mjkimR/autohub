@@ -51,8 +51,9 @@ from the checkout itself. Rule 4 of `CAP-SDD-runtime-isolation` and the identity
    is disposable and rebuilt when the identity changes.
 4. **Scope Excluded**: path requirements with environment markers, and build backends other than the image's
    pinned hatchling environment.
-5. **Scope Excluded**: locks whose export needs manifests other than the root `pyproject.toml` and `uv.lock`
-   (for example uv workspace members); they keep their current `SDD_RUNTIME_UNLOCKED` result.
+5. **Scope Excluded**: locks whose export needs manifests other than the root `pyproject.toml` and `uv.lock`;
+   they keep their current `SDD_RUNTIME_UNLOCKED` result. uv workspace members inside the checkout export from
+   those two files as `-e ./<path>` and are installed like any other in-checkout editable source.
 6. **Scope Excluded**: new `pin.json`, runtime status, batch evidence or UI fields; the path content reaches them
    only through the runtime identity.
 
