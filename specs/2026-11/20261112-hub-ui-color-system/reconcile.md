@@ -12,6 +12,8 @@ targets:
     resolution: modified
   - file: docs/steering/visual-style.md
     resolution: modified
+  - file: docs/README.md
+    resolution: modified
 ---
 
 # Reconcile: `SPEC-hub-ui-color-system`
@@ -33,15 +35,22 @@ targets:
 - `UC-resolve-run-question`: step 4 names `UX-decision-inbox` in its Interface line, reciprocal to the new
   Interactions row.
 - `docs/steering/visual-style.md`: created in T5 on this branch (color roles, attention as operator debt, never color
-  alone); the UX documents cite it instead of restating tokens.
+  alone); the UX documents cite it instead of restating tokens. Its display-case and no-motion rules apply to new or
+  changed labels and indicators and to casing-sensitive labels; existing remnants are deferred work.
+- `docs/README.md`: the Read by purpose table lists the visual style steering file.
 
 ## No impact
 
 - Capabilities: no behavior, API or business rule changed (Non-Goal 2); `CAP-PR-operator-decisions` and
   `CAP-PR-pull-request-delivery` describe no colors or labels touched here.
 - `UX-app-shell`: it never documented the removed "Svelte 5 Runes" chip or the "Scheduler Manager" subtitle, so it is
-  unchanged. `UX-run-decisions`, `UX-sdd-execution` and `UX-schedule-jobs` show the same state labels and icons with
-  only token-level emphasis changes that `docs/steering/visual-style.md` owns.
+  unchanged.
+- `UX-run-decisions`, `UX-sdd-execution` and `UX-schedule-jobs`: their labels, icons and variants did change (the
+  shared run state badge in the run decisions header and SDD run links; Badge variants for Schedule job statuses),
+  but these documents name the run state or job status badge without setting its label, icon or emphasis. The
+  shared run state badge (`presentation.ts`, the PR run "state/lease context" representation in
+  `docs/steering/ux-objects.md`) and `docs/steering/visual-style.md` own those details, so the documents stay
+  accurate unchanged.
 - `docs/steering/ux-objects.md`: the PR run row already names its state representation; the register is unchanged.
 - Glossary: no domain term was introduced or renamed; `attention` is a visual role owned by
   `docs/steering/visual-style.md`.
@@ -54,6 +63,8 @@ targets:
 
 - `FB-sidebar-active-indicator`: stronger sidebar active indicator and an administrative-link active style
   (section 7 Follow-ups).
+- `FB-hub-ui-capitalize-pulse-remnants`: untouched hub-ui labels still using CSS `capitalize` and loading text
+  still using `animate-pulse` (reconcile-check-01 finding 3).
 - `FB-shell-pending-decision-count`: shell lighting and a Decisions navigation count once a global pending-decision
   count source exists (Non-Goal 1, section 7 Follow-ups).
 

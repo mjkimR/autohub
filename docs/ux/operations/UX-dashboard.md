@@ -49,7 +49,7 @@ At `/`, health indicators precede the primary PR run summary; supporting object 
 | Refresh or Retry | global: inspect operational state without starting the underlying work | populated | loading |  |  | Independent health/statistics/list requests update their own regions. |
 | Choose Off, 5s, 15s or 30s | global: inspect operational state without starting the underlying work | populated | populated |  |  | The polling choice changes; it does not dispatch work. |
 | Open a project metric or project navigation | global: navigation between management surfaces | populated | populated | `UX-projects` |  | Project connections are listed. |
-| Open the Needs-you tile | global: navigation from the exception count to the runs it counts | populated | populated | `UX-pipeline-runs` |  | Pipeline Runs opens with default filters; the operator filters by state and continues `UC-deliver-pull-request` *a, *b or *c there. |
+| Open the Needs-you tile | global: navigation from the exception count to the runs it counts | populated | populated | `UX-pipeline-runs` |  | Pipeline Runs opens with default filters; the operator filters by state and continues there with Resume Run (`UC-deliver-pull-request` *c), Cancel Run (`UC-deliver-pull-request` *b) or Decisions for a blocked run's question. |
 | View All Runs or open run navigation | global: navigation between management surfaces | populated | populated | `UX-pipeline-runs` |  | PR runs are listed. |
 | Open the schedule metric | global: navigation between management surfaces | populated | populated | `UX-schedule-configs` |  | Schedule configurations are listed. |
 | Open execution history | global: navigation between management surfaces | populated | populated | `UX-schedule-jobs` |  | Schedule jobs are listed. |
