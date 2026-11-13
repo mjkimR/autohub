@@ -4,198 +4,213 @@ title: Install the SDD evaluation runtime from the repository lock
 summary: Auto Hub evaluates SDD work with the devkit packages pinned by the target repository's uv.lock, installed inside isolation, instead of a server profile that must contain every selected bundle. This removes per-repository provisioning.
 status: planned
 created: 2026-11-13
-related_capabilities: []
-related_usecases: []
+related_capabilities:
+  - CAP-SDD-runtime-isolation
+  - CAP-SDD-native-delivery
+  - CAP-SDK-existing-pr-bridge
+related_usecases:
+  - UC-start-sdd-activity
+  - UC-complete-sdd-workflow
+  - UC-execute-sdd-batch
 workflow: sdd-spec-feature
 ---
-<!-- devkit:skeleton -->
 
 # [SPEC-repo-locked-sdd-runtime] Install the SDD evaluation runtime from the repository lock
 
 ## 1. Problem Statement & Motivation
 
-Handed off from proposal PROP-repo-locked-sdd-runtime on 2026-11-13.
+Handed off from proposal PROP-repo-locked-sdd-runtime on 2026-11-13. The decisions are recorded in
+`ADR-repository-locked-runtime` and `ADR-offline-source-build`.
 
-### 1. Background & Hypothesis
+Native SDD evaluation runs devkit from server-provisioned runtime profiles (`AUTOHUB_SDD_HOME`,
+`AUTOHUB_SDD_PROFILES`, `config/sdd-runtime*`) and never installs target repository dependencies
+(`CAP-SDD-runtime-isolation`). Restoring a checkout's managed assets needs the package of every bundle the
+committed receipt records, so a repository whose receipt names a bundle outside the reviewed profiles is refused
+with `SDD_BUNDLES_MISSING` until an operator adds a profile, changes the image and redeploys. Hub's devkit can also
+differ from the devkit the agents used.
 
-Native SDD evaluation runs devkit from a server-provisioned runtime profile
-(`AUTOHUB_SDD_HOME`, `AUTOHUB_SDD_PROFILES`, `config/sdd-runtime*`) and never
-installs target repository dependencies (`CAP-SDD-runtime-isolation`, Scope
-Excluded and rule 4). Before evaluating, Hub restores the Git-ignored managed
-assets with `devkit sync --locked`, which needs the package of every bundle the
-committed receipt records. A profile lacking one refuses with
-`SDD_BUNDLES_MISSING`.
-
-Onboarding a Godot repository for a pilot exposed the cost: its receipt records
-`deep-research` and `response-style` (from `devkit-catalog`) and `g-foundation`
-(from `g-tools`). The first two provide only agent skills and guidance that Hub
-never evaluates, yet they block restoration; the last supplies a rule that final
-lint really runs. Every such repository needs a new reviewed profile, a
-Dockerfile change, a serving-configuration mapping and a redeploy before its
-first run. Hub's evaluator can also differ from the devkit the agents installed,
-which the `RECEIPT_STALE` and `RUNTIME_REVISION_MISMATCH` paths only warn about.
-
-Decision taken at intake (user): trust the target repository's committed lock.
-A lock changed to steer its own evaluation is judged unlikely; dependency
-friction is the larger problem.
-
-Hypothesis: installing the devkit packages from the evaluated commit's `uv.lock`
-inside isolation, cached by lock digest, makes any devkit-adopted repository
-evaluable without operator provisioning, and makes Hub evaluate with the same
-workflow, rule and bundle versions the agents used.
+This spec replaces server profiles with a runtime installed from the evaluated commit's own `uv.lock`, keeps
+repository code away from credentials and network, and makes the install independent of request budgets.
 
 ## 2. User Stories
 
-- **US-1**: As a developer/agent, I want to implement Install the SDD evaluation runtime from the repository lock so that system capabilities are extended.
+- As a project operator, I connect any devkit-adopted repository and Hub evaluates its SDD work without an image
+  change, profile mapping or redeploy (`UC-start-sdd-activity`, `UC-complete-sdd-workflow`).
+- As a project operator, I see evaluation use the same devkit, workflow and rule versions the agents installed from
+  the repository lock.
+- As a project operator, a devkit bump inside an admitted run does not force re-enrollment while the effective
+  workflow, policy and configuration stay the same.
+- As an operator of the serving host, no repository build code can read Hub credentials or reach the network.
+- As a batch operator, batch evidence compares a deterministic runtime identity (`UC-execute-sdd-batch`).
 
 ## 3. Non-Goals
 
-1. **Scope Excluded**: <what this change will not do>
+**Scope Excluded**
+
+- Installing a repository's whole environment: only the locked dependency group that declares `devkit-spec` (or
+  the main dependencies when declared there) is installed.
+- Downloading Python interpreters on demand; the image interpreter is the only one.
+- Git sources outside `https://github.com/`, path, URL or editable sources, and package indexes other than the
+  default PyPI index.
+- Building registry sdists: registry packages must provide wheels.
+- A cache shared across instances or surviving restarts (for example Cloud Storage).
+- Changing the Cloud Run CPU allocation or memory settings; operations guidance only.
+- A fallback server runtime for repositories without a devkit lock.
+
+**When to Reconsider**: a consumer that needs another Git host, a private index or a registry sdist.
 
 ## 4. Acceptance Criteria & Behavioral Contracts
 
-### [AC-01] <scenario>
-- **Given** <precondition>
-- **When** <action>
-- **Then** <expected result>
+Identity, diagnostics and paths named here are the contract `CAP-SDD-runtime-isolation` restates after this spec.
+The runtime identity is the SHA-256 of a JSON document holding the `uv export --frozen --no-header --no-annotate`
+text of the selected group, the image interpreter's `major.minor` and the build environment's lock digest. The CLI
+identity stored in snapshots is `devkit-lock:<identity>`.
 
-## 5. Carried Proposal Notes
+### [AC-01] Evaluate with the runtime of the evaluated commit's lock
 
-Sections of the proposal that did not map to a spec section. Trim or promote them while drafting; they are not contracts.
+- **Given** a repository whose root `pyproject.toml` declares `devkit-spec` in a dependency group, whose `uv.lock`
+  is committed, and a cache entry complete for that lock's identity
+- **When** readiness inspects a pull request head
+- **Then** every devkit command runs with `<cache>/<identity>/.venv/bin/python`, the response is HTTP 200 and the
+  stored snapshot's `cli_version` equals `devkit-lock:<identity>`; `AUTOHUB_SDD_PROFILES` is never read.
 
-### 2. Technical Spike Questions
+### [AC-02] Bundles come from the repository lock
 
-- **Q1 (identity)**: Rule 9 pins runtime identity for an admitted run. When the
-  runtime derives from the evaluated commit's lock, which lock defines a run's
-  identity, and what happens when a PR changes it mid-run: refuse continuation,
-  re-admit, or treat it as an authorized transition?
-- **Q2 (install scope)**: Install the whole locked dev environment
-  (`uv sync --frozen`) or only devkit-related packages selected from the lock?
-  How is a lock without devkit, or with devkit installed some other way, handled?
-- **Q3 (cache and cost)**: Where does a lock-digest venv cache live on Cloud Run
-  (ephemeral disk, per-instance), and what install latency and size are
-  acceptable for readiness, start and decision evaluation?
-- **Q4 (network and credentials)**: The install step needs network and read
-  access to private Git sources (devkit, g-foundation), while evaluation stays
-  without network. Which credential is passed, how is it kept out of the
-  evaluation sandbox and diagnostics, and which source hosts are allowed?
-- **Q5 (Python)**: Which interpreter satisfies the repository's
-  `requires-python`: uv-managed Python downloaded on demand, or a fixed set in
-  the image?
-- **Q6 (retirement)**: What happens to `AUTOHUB_SDD_PROFILES`, `check_bundles`,
-  the `RECEIPT_STALE` regeneration exception, `RUNTIME_REVISION_MISMATCH`, the
-  runtime status endpoint and the SDK existing-PR bridge, which shares profile
-  selection? Is the server profile kept as a fallback or removed?
+- **Given** a receipt that records a bundle provided by a package in the selected group
+- **When** the head is evaluated
+- **Then** managed assets are restored without `SDD_BUNDLES_MISSING`.
+- **Given** a receipt or preset that requires a bundle no installed package provides
+- **When** the head is evaluated
+- **Then** Hub refuses with HTTP 422, code `SDD_BUNDLES_MISSING`, diagnostic category `repository`, before sync.
 
-### 3. Proposed Design & Impact
+### [AC-03] Unrelated lock changes keep the identity
 
-Code facts this design rests on (head of this branch):
+- **Given** two commits whose locks differ only in a package outside the selected group
+- **When** each commit's identity is computed
+- **Then** both identities are equal; a change of a package inside the group yields a different identity.
 
-- Every devkit call runs `<home>/.venv/bin/python -m devkit_dist` inside
-  bubblewrap/sandbox-exec with the checkout writable, `<home>` read-only and no
-  network (`isolation.py`). `<home>` comes from the selected profile
-  (`profiles.py`) and its `pin.json` (written by `scripts/install-sdd.py`).
-- Run identity is `cli_version = "devkit-spec:" + pin.lock_sha256`; a snapshot
-  whose `cli_version` differs refuses evaluation ("SDD CLI version differs from
-  the execution pin", `services.py`).
-- Every devkit command has a 25-second timeout (`checkout.py`); the checkout is
-  fetched with the project's GitHub connector token, which never enters the sandbox.
-- The SDK bridge selects the runtime with the same `runtime_scope(repository)`
-  (`execution/flows/bridge.py`).
+### [AC-04] A changed identity on a later head continues
 
-Design after challenger round 01 (historical Git `f7d54032b2c9d1fc420e8e13696088966cc5e585:docs/proposals/PROP-repo-locked-sdd-runtime/envelopes/challenger-01.yaml`) and the
-user's answers (historical Git `f7d54032b2c9d1fc420e8e13696088966cc5e585:docs/proposals/PROP-repo-locked-sdd-runtime/envelopes/answer-01.yaml`); the decisions are recorded in
-`ADR-repository-locked-runtime` and `ADR-offline-source-build`.
+- **Given** an admitted run whose snapshot `cli_version` names identity X and a later head whose lock resolves
+  identity Y, with unchanged effective workflow, policy and configuration
+- **When** the run is evaluated
+- **Then** evaluation proceeds without the "SDD CLI version differs from the execution pin" refusal and the new
+  snapshot records `devkit-lock:Y`; a changed effective workflow still refuses continuation.
 
-- **D1 Source and resolution point**: the runtime is resolved after fetch, per
-  evaluated commit, from its root `pyproject.toml` and `uv.lock` (parsed, never
-  executed, in the Hub process). `checkout()` no longer selects a runtime on
-  entry. Paths and the commit whose lock they use:
+### [AC-05] Repositories without a devkit lock are refused
 
-  | Path | Commit |
-  | --- | --- |
-  | Activity start admission (`policy.py` start_blocker) | base |
-  | Inspect, readiness, enrollment, decisions, final lint | PR head |
-  | Milestone preview and batch evidence | resolved milestone ref |
-  | SDK existing-PR bridge | operator checkout HEAD |
+- **Given** a commit without a root `uv.lock`, or whose root `pyproject.toml` declares `devkit-spec` in no
+  dependency group and no main dependency
+- **When** any devkit command is requested for it
+- **Then** Hub refuses with HTTP 422, code `SDD_RUNTIME_UNLOCKED`, diagnostic category `repository`, retry
+  `after_fix`, and starts no install.
 
-- **D2 Install set**: the locked dependency group(s) of the root project that
-  declare `devkit-spec` (or the main dependencies when declared there),
-  rendered by uv itself with `uv sync --frozen --only-group <group>
-  --no-install-project` into the target venv. This covers every bundle package
-  the committed presets can select, including the `RECEIPT_STALE`
-  regeneration path, and leaves markers, forks and hashes to uv. The rest of
-  the repository's environment is never installed. A missing bundle after
-  install is a repository lock defect (`SDD_BUNDLES_MISSING`, now checked
-  against the installed entry points).
-- **D3 Identity**: the runtime identity is the SHA-256 of `uv export --frozen`
-  for that group plus the interpreter's minor version: a deterministic,
-  identity-only pin schema (no cache path, timestamps or ordering). Batch
-  evidence stores this identity instead of the whole `runtime_pin()` and its
-  `uv.lock` configuration hash narrows to the same digest. Whether a changed
-  identity on a later head continues with the new runtime, while the
-  effective workflow, policy and configuration digests keep their refusal.
-- **D4 Install isolation and sources**: the install runs in the
-  OS sandbox with a writable venv and uv cache, only the manifest and lock
-  visible, `/etc/resolv.conf` and CA certificates bound read-only, and a pinned
-  `uv` copied into the runtime image stage. Evaluation is unchanged: no
-  network, no credentials, venv read-only. Private Git sources are fetched in
-  the Hub process with the project's connector token, which never enters the
-  sandbox; source builds run without network or credentials using build
-  backends pinned in the image; network, if any, serves registry downloads
-  only. If uv cannot separate download from build, the Hub process downloads
-  every artifact and the sandbox installs fully offline.
-- **D5 Install lifecycle and cache**: installation is decoupled from request
-  budgets. A per-digest cross-process file lock (`fcntl`) makes one build per
-  instance; an existing complete target counts as success. The build runs to
-  completion in the background even when the caller's deadline expires;
-  callers meanwhile receive a retryable `SDD_RUNTIME_PREPARING` diagnostic
-  (`retry: safe`). Builds go to a temporary directory renamed into place with
-  `pin.json`. Eviction is lease-protected (never a venv an evaluation holds)
-  under an explicit byte cap; the uv cache is pruned after each install.
-  git-safe commands no longer use the devkit venv: they run in isolation with
-  the image's Git only, so branch creation and decision commits never wait for
-  a runtime install.
-- **D6 Python**: the image's interpreter (3.13) when the repository's
-  `requires-python` admits it; otherwise refuse with a repository diagnostic.
-  No on-demand interpreter downloads.
-- **D7 Retirement and probe**: remove `AUTOHUB_SDD_PROFILES`,
-  `config/sdd-runtime-app-common` and repository mapping. Whether a default
-  image runtime remains: a repository whose root lock lacks `devkit-spec` is
-  refused with a repository diagnostic. Stop emitting `RUNTIME_REVISION_MISMATCH` (identical by
-  construction) but keep its diagnostic catalog entry for historical records.
-  Keep the `RECEIPT_STALE` regeneration exception. Split the runtime status
-  probe: a host isolation probe (image interpreter and Git in the sandbox, no
-  repository, no install) keeps rule 15; a separate project-lock probe reports
-  `preparing`, `ready` or a lock diagnostic.
-- **D8 Migration and rollback**: before rollout the operator settles active
-  native runs, open batch selections and approved but unresumed SDK bridge
-  claims; their stored identities refer to the server pin and are refused
-  afterward. Rolling back the deployment likewise strands runs enrolled under
-  lock-derived identities, so a rollback repeats the settlement. The live
-  canary `mjkimR/test-sandbox` has no `.devkit/` or `uv.lock` (checked through
-  the GitHub API on 2026-11-13), so it is not an SDD consumer today.
-- **Acceptance evidence to plan**: a measured cold-install time and venv plus
-  cache size for the g-scavenger-crew lock on the Cloud Run shape (cpu=1,
-  1Gi), which sets the byte cap and `--memory`; a forked or marker-gated
-  fixture lock; concurrent cold requests across worker processes.
+### [AC-06] Unsupported sources are refused before any network access
 
-- Contracts affected: `CAP-SDD-runtime-isolation` (scope exclusion, rules 1-4,
-  6, 9, 10, 11, 15), `CAP-SDK-existing-pr-bridge` profile selection,
-  `ARCH-07-deployment`, `ARCH-11-risks-and-technical-debt` and the operations
-  guides for the SDD runtime and execution targets.
+- **Given** a selected group whose export contains a path, URL or editable requirement, a Git source outside
+  `https://github.com/`, or an index option
+- **When** the runtime is resolved
+- **Then** Hub refuses with HTTP 422, code `SDD_RUNTIME_SOURCE_UNSUPPORTED`, and performs no fetch or download.
 
-#### Planning decisions
+### [AC-07] An incompatible Python requirement is refused
 
-- Q-A, Q-B and Q-C were answered by the user with the recommended options
-  (historical Git `f7d54032b2c9d1fc420e8e13696088966cc5e585:docs/proposals/PROP-repo-locked-sdd-runtime/envelopes/answer-01.yaml`): continue on a changed runtime identity, Hub-side
-  source fetch with offline builds, and refusal of repositories without a
-  devkit lock.
-- `ADR-repository-locked-runtime` records the runtime source, identity and
-  lifecycle; `ADR-offline-source-build` records the install trust boundary.
+- **Given** a root `requires-python` that excludes the image interpreter's version
+- **When** the runtime is resolved
+- **Then** Hub refuses with HTTP 422, code `SDD_RUNTIME_PYTHON_UNSUPPORTED`, and starts no install.
 
-### 4. Lifecycle & Retirement Criteria
+### [AC-08] A cold cache prepares once and reports a retryable state
 
-- On Acceptance: recorded with devkit spec proposal accept (after Planning, or --direct for an eligible draft in Backlog); handed off to a spec bundle on dev-<slug>; the proposal is deleted there and its decisions become ADRs
-- On Rejection: status: rejected only, with the user's reason in the commit message; a later hygiene pass writes the rejection ADR and deletes the proposal
+- **Given** no complete cache entry for an identity and two worker processes receiving five concurrent
+  evaluations for it
+- **When** they request devkit commands
+- **Then** exactly one install runs for that identity, every caller that cannot use the entry yet receives HTTP 503,
+  code `SDD_RUNTIME_PREPARING`, retry `safe`, and after the install completes the next evaluation proceeds as in
+  AC-01.
 
+### [AC-09] A caller's deadline does not cancel the install
+
+- **Given** an install for an identity in progress
+- **When** the caller's request deadline expires
+- **Then** the install continues to completion, the entry becomes complete with its `pin.json`, and no partial
+  directory is left at the entry path.
+
+### [AC-10] Build code never sees credentials or the network
+
+- **Given** a selected group with Git sources
+- **When** the runtime is installed
+- **Then** Git sources are fetched in the Hub process with the project's GitHub connector token; every build
+  command runs in the OS sandbox with network unshared and an environment of only `PATH`, `HOME`, `TMPDIR`,
+  `LANG` and uv offline settings; the token appears in no build argument, build environment, `pin.json` or
+  diagnostic; and a build hook that opens a network connection fails.
+
+### [AC-11] An unreadable Git source is reported without upstream text
+
+- **Given** a locked Git source the connector token cannot read
+- **When** the runtime is installed
+- **Then** the entry stays incomplete and later callers receive HTTP 422, code `SDD_RUNTIME_SOURCE_UNAVAILABLE`,
+  with a Hub-authored message that names no URL, token or Git stderr; a retry is allowed after the fix.
+
+### [AC-12] Git-only operations never wait for a runtime
+
+- **Given** a cold cache for the base commit's identity
+- **When** an activity start creates its branch through `git-safe` commands only
+- **Then** the branch is created and no install is started.
+
+### [AC-13] Eviction never removes a runtime in use
+
+- **Given** cache entries whose total size exceeds `AUTOHUB_SDD_CACHE_BYTES`, one of them leased by a running
+  evaluation
+- **When** eviction runs
+- **Then** least-recently-used unleased entries are removed until the total fits or only leased entries remain, and
+  the leased entry stays intact.
+
+### [AC-14] Host and project runtime probes are separate
+
+- **Given** a serving host
+- **When** `GET /api/v1/projects/{project_id}/sdd/runtime` is requested
+- **Then** the response reports the host probe (`isolation`, `ok`) from an interpreter started inside the sandbox
+  without installing anything, and the project lock state `state` = `ready`, `preparing` or `failed` with
+  `identity`, `bundles` and `revisions` when known; `profile` is `repository-lock`.
+
+### [AC-15] Batch evidence compares a deterministic identity
+
+- **Given** the same commit evaluated through two different cache directories
+- **When** batch basis evidence is captured
+- **Then** both `runtime` values are equal and contain only `provider`, `identity`, `python` and `revisions`; the
+  basis no longer hashes the whole `uv.lock`.
+
+### [AC-16] The existing-PR bridge uses its checkout's lock
+
+- **Given** an SDK bridge target with an operator checkout whose lock declares devkit
+- **When** the bridge reads evidence
+- **Then** the runtime identity comes from that checkout's lock and the evidence digest covers the snapshot's
+  `devkit-lock:<identity>`.
+
+### [AC-17] Retired codes stay readable
+
+- **Given** a retained run record with a `RUNTIME_REVISION_MISMATCH` warning
+- **When** its diagnostics are projected
+- **Then** the catalog message is shown; new evaluations never emit that code.
+
+### [AC-18] Cold-install cost is measured
+
+- **Given** the g-scavenger-crew lock and the serving image shape (cpu=1, 1Gi)
+- **When** a cold install is run
+- **Then** the elapsed seconds and the entry plus transient cache size in MiB are recorded under this spec's
+  `materials/`, and the default `AUTOHUB_SDD_CACHE_BYTES` is set from that measurement.
+
+## 5. Security
+
+- Repository build and evaluation code runs only inside the OS sandbox, with no network and no credentials.
+- The connector token is used only by Hub-process Git fetches, through the same credential mechanism as checkout.
+- Registry artifacts are wheels installed with hash verification; installing a wheel executes no package code.
+- Diagnostics remain Hub-authored catalog text (`CAP-SDD-runtime-isolation` rule 14).
+
+## 6. Assumptions
+
+- Hatchling is the only build backend the supported Git sources need; the image's build environment pins it.
+- The serving host can reach PyPI and GitHub from the Hub process.
+- Cloud Run CPU throttling slows a background install between requests but does not stop it; scheduled dispatcher
+  requests resume progress.
+- Settling active native runs, open batch selections and approved bridge claims before rollout is an operator
+  procedure, not code.
