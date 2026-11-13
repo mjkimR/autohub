@@ -12,6 +12,7 @@
 	import ProjectSettingsForm from './ProjectSettingsForm.svelte';
 	import ProjectAutomation from './ProjectAutomation.svelte';
 	import ProjectHeader from './ProjectHeader.svelte';
+	import ProjectExceptionStrip from './ProjectExceptionStrip.svelte';
 	import ProjectSectionNav from './ProjectSectionNav.svelte';
 	import PipelineRunsView from '../pipeline-runs/PipelineRunsView.svelte';
 	import RepositoryView from '../repositories/RepositoryView.svelte';
@@ -23,6 +24,8 @@
 	let error = $state('');
 	let loading = $state(true);
 	let deleting = $state(false);
+	// Each completed project load (including after a save) refreshes the exception strip once.
+	let loads = $state(0);
 	async function load() {
 		try {
 			const results = await Promise.all([
@@ -40,6 +43,7 @@
 			connectors = results[1];
 			catalogs = responseData(results[2], 'Could not load AI catalogs').items;
 			error = '';
+			loads += 1;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Could not load project';
 		} finally {
@@ -80,8 +84,12 @@
 		</div>{/if}
 	{#if loading}<p role="status" class="text-sm text-muted-foreground">Loading project…</p>
 	{:else if project}
-		<!-- Phase 3 seam: the owed-item exception strip renders through ProjectHeader's `signals`. -->
-		<ProjectHeader {project} />
+		<ProjectHeader {project}>
+			{#snippet signals()}
+				<!-- Changing section or reloading the project re-reads the counts; there is no polling. -->
+				<ProjectExceptionStrip {projectId} refreshKey={`${tab}:${loads}`} />
+			{/snippet}
+		</ProjectHeader>
 		<ProjectSectionNav {projectId} {tab} />
 		{#key `${project.id}:${project.revision}:${tab}`}
 			{#if tab === 'overview'}<ProjectOverview {project} />

@@ -9,10 +9,7 @@
 		signals
 	}: {
 		project: components['schemas']['ProjectRead'];
-		/**
-		 * Project-level signals shown under the identity line. Reserved for the owed-item exception
-		 * strip; nothing renders here until that contract exists.
-		 */
+		/** Project-level signals under the identity line: the owed-item exception strip. */
 		signals?: Snippet;
 	} = $props();
 </script>

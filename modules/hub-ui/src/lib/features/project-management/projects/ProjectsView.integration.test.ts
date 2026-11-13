@@ -165,3 +165,76 @@ test('an HTTP list failure is distinct from no projects and can be retried', asy
 	expect(await screen.findByText('Application')).toBeTruthy();
 	expect(screen.queryByRole('alert')).toBeNull();
 });
+
+function countsCalls() {
+	return api.GET.mock.calls.filter(([path]) => path === '/api/v1/owed-items/counts');
+}
+function withCounts(result: () => Promise<{ data?: unknown; error?: unknown }>) {
+	const previous = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation(async (path: string, options?: unknown) =>
+		path === '/api/v1/owed-items/counts' ? result() : previous(path, options)
+	);
+}
+const other = { ...project, id: 'p2', name: 'Library' };
+function twoProjects() {
+	const previous = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation(async (path: string, options?: unknown) =>
+		path === '/api/v1/projects'
+			? { data: { items: [project, other], total_count: 2 } }
+			: previous(path, options)
+	);
+}
+
+test('Needs you shows counted items per project from one counts read per load', async () => {
+	twoProjects();
+	withCounts(async () => ({ data: { total: 3, by_kind: {}, by_project: { p1: 3 } } }));
+	const user = userEvent.setup();
+	render(ProjectsView);
+	expect(screen.getByRole('columnheader', { name: 'Needs you' })).toBeTruthy();
+	// The column and the narrow-layout copy under the name carry the same link.
+	const links = await screen.findAllByRole('link', { name: 'Application: 3 items need you' });
+	expect(links).toHaveLength(2);
+	const counted = links[0];
+	expect(counted.getAttribute('href')).toBe('/projects/p1?tab=overview#needs-you');
+	expect(counted.className).toContain('attention');
+	// A project with nothing owed shows nothing: no zero, no dash.
+	const libraryRow = screen.getByText('Library').closest('tr') as HTMLElement;
+	expect(libraryRow.querySelector('[data-owed-count]')).toBeNull();
+	expect(libraryRow.querySelector('[data-owed-unknown]')).toBeNull();
+	// Never a full-row fill.
+	expect(libraryRow.className).not.toContain('attention');
+	expect((counted.closest('tr') as HTMLElement).className).not.toContain('attention');
+	expect(countsCalls()).toHaveLength(1);
+	expect(countsCalls()[0]).toEqual(['/api/v1/owed-items/counts']);
+
+	// Search and paging reuse the counts; Refresh reads them once more.
+	await fireEvent.input(screen.getByPlaceholderText('Search projects or repositories...'), {
+		target: { value: 'app' }
+	});
+	await waitFor(() => expect(api.GET).toHaveBeenCalledTimes(3));
+	expect(countsCalls()).toHaveLength(1);
+	await user.click(screen.getByRole('button', { name: /Refresh/ }));
+	await waitFor(() => expect(countsCalls()).toHaveLength(2));
+});
+
+test('Needs you stays a neutral dash while counts are unknown', async () => {
+	withCounts(() => new Promise(() => {}));
+	render(ProjectsView);
+	const row = (await screen.findByText('Application')).closest('tr') as HTMLElement;
+	expect(row.querySelector('[data-owed-unknown]')?.textContent).toContain('—');
+	expect(row.querySelector('[data-owed-count]')).toBeNull();
+});
+
+test('a failed counts read is a dash with the reason, not zero', async () => {
+	withCounts(async () => ({ error: { detail: 'Database busy' } }));
+	render(ProjectsView);
+	await screen.findByText('Application');
+	await waitFor(() =>
+		expect(
+			(document.querySelector('[data-owed-unknown][title]') as HTMLElement | null)?.title
+		).toBe('Needs-you count unavailable: Database busy')
+	);
+	expect(document.querySelector('[data-owed-count]')).toBeNull();
+	// The list itself still loads.
+	expect(screen.queryByRole('alert')).toBeNull();
+});
