@@ -74,7 +74,7 @@ def cache_root() -> Path                           # AUTOHUB_SDD_CACHE, default 
 def entry(identity) -> Path                        # <root>/<identity>; complete when pin.json exists
 @contextmanager def lease(identity)                # fcntl LOCK_SH on <root>/<identity>.lease; touches mtime
 def try_build_lock(identity) -> BuildLock | None   # fcntl LOCK_EX|LOCK_NB on <root>/<identity>.build
-def record_failure(identity, code) / failure(identity) -> str | None   # <root>/<identity>.failed, 60 s
+def record_failure(identity, code) / failure(identity) -> str | None   # <root>/<identity>.failed-<scope>, 10 min
 def evict(cap_bytes: int) -> list[str]             # LRU by lease mtime; skips entries whose lease is held
 
 # runtime_install.py
@@ -143,7 +143,7 @@ symlink is refused.
 | No isolation runner | 422 `SDD_ISOLATION_UNAVAILABLE` (unchanged), also for builds |
 | Process crash mid-install | staging directory left under `.staging-*`; the next build lock holder removes stale staging |
 
-A failure marker expires after 60 seconds so a corrected setup is retried without operator action. Install runs
+A failure marker expires after 10 minutes, longer than the bridge and default dispatch cadence so observers see the failure, and a corrected setup is then retried without operator action. A native run that stays preparing for more than 20 minutes is blocked with a remediation reason; the bridge retries only `SDD_RUNTIME_PREPARING`. Install runs
 as a process-level task shielded from caller cancellation; between requests Cloud Run CPU throttling slows it.
 The bridge maps 503 to its existing `bridge-unavailable` retryable result.
 

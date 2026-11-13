@@ -1,0 +1,18 @@
+kind: worker
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:26:32.356348Z'
+status: failed
+summary: Review round 5 after the build-verify return found a P1 beyond the cap
+findings: []
+checks: {}
+diff_scope:
+  base: ''
+  head: 06696421fe409e8a85cfc3194c1e0ad23ffe894b
+problem:
+  cause: 'Failing installs looped as SDD_RUNTIME_PREPARING because the 60 s failure marker expired before the next observation (review-05 #1)'
+  attempts:
+  - Round 5 fixes made PREPARING non-blocking for native runs and retryable in the bridge
+  recovery: 'Host recovery: 10-minute failure markers, a 20-minute preparing limit that blocks native runs, bridge retries only PREPARING, worker-level tests; then one further fresh review round'
+activity_effort: high

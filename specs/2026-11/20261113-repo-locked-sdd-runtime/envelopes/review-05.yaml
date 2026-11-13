@@ -1,0 +1,37 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:20:41.441982Z'
+status: completed
+summary: 'round 5; REVISE after the build-verify return: staging, workflow-pin and CI fixes correct; P1 liveness defect where failing installs loop as PREPARING; two P3'
+findings:
+- issue: 'A persistently failing install is never surfaced: the 60 s failure marker expires before the next observation, so native runs and bridge checks see SDD_RUNTIME_PREPARING forever and restart the install each tick'
+  evidence: modules/hub/app/features/project_management/sdd/runtime_cache.py:24,129-139; runtime.py:85-94; progress.py:240-242,322-324; execution/flows/evidence.py:49-50; projects/schemas.py:30; probe .cache/review-probe/review-05/test_probe_failure_window.py
+  failure_condition: An install that fails faster than the gap between observations minus 60 s (always for dispatch intervals above 60 s)
+  suggested_action: Bound preparing per run and keep failure markers for longer than the observation cadence; apply to the bridge; test markers aged between observations
+  resolution: open
+  severity: P1
+- issue: The bridge re-raises every ProjectError >= 500, including SDD_RUNTIME_UNAVAILABLE, unlike the native observer
+  evidence: modules/hub/app/features/execution/flows/evidence.py:49-50; progress.py:240; lock_runtime.py:163-164; runtime.py:69,132
+  failure_condition: A host missing uv retries a bridge check indefinitely
+  suggested_action: Match only SDD_RUNTIME_PREPARING in evidence.py
+  resolution: open
+  severity: P3
+- issue: No test covers the bridge worker mapping PREPARING to bridge-unavailable and a later 422 to a terminal failure
+  evidence: modules/hub/tests/unit/features/project_management/sdd/test_contracts.py:36-54; modules/hub/app/features/execution/flows/bridge.py:77-79
+  failure_condition: Reordering bridge.execute's exception handling makes PREPARING terminal without a failing test
+  suggested_action: Add a bridge worker test for both mappings
+  resolution: open
+  severity: P3
+assumptions:
+- 'Route: native isolated Claude Code code-reviewer; snapshot unchanged'
+unverified_areas:
+- Live Cloud Run tick spacing; batch driver PREPARING handling
+checks:
+  unit: PASS 53 targeted
+  integration: PASS test_native.py 24 (1 skipped)
+diff_scope:
+  base: 8fef7cf1eec6a3e26aee77ba9098185234174ff1
+  head: 06696421fe409e8a85cfc3194c1e0ad23ffe894b
+activity_effort: high
