@@ -1,0 +1,34 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T06:40:49.997995Z'
+status: completed
+review: review-01.yaml
+summary: 'Closed round 1: final locked enrollment fences the saved candidate branch before PR-number checkpoint; errors identify exact claim recovery; typed SQL excludes own admission conditionally. Restored evaluator-independent historical lineage regression.'
+findings:
+- issue: Direct enrollment bypasses a publication claim whose PR number is not saved yet.
+  evidence: sdd/execution.py:41; ignored review-01/test_publication_owner.py:23 produced 1 failed, 1 passed
+  failure_condition: GitHub creates the PR before its response is checkpointed; claim has branch/initial_sha/pr_attempted without pull_number.
+  suggested_action: Under final enrollment project lock, reject unsettled exact candidate branch with validated own admission excluded; add missing-number regression.
+  resolution: resolved
+  severity: P1
+- issue: Unresolved-start errors omit the reference needed to reach claim recovery.
+  evidence: sdd/execution.py:51; activities.py:133,158; sdd-starts.svelte.ts:85
+  failure_condition: Owner conflict or uncertain original publication freezes intent without mounting the claim recovery panel.
+  suggested_action: Include exact project-scoped /sdd/claims/<claim> reference in direct enrollment and uncertain errors propagated by ActivityClaims.execute; preserve status/code and verify real shape.
+  resolution: resolved
+  severity: P2
+- issue: Required backend type check fails.
+  evidence: sdd/execution.py:40; just check hub pyright reportArgumentType
+  failure_condition: Type checking raw Python True fallback as SQL predicate.
+  suggested_action: Conditionally add admission exclusion or use sqlalchemy.true and rerun backend check.
+  resolution: resolved
+  severity: P2
+assumptions:
+- The batch changes authority/public error output, so a fresh high-effort review round follows; no minor-fix shortcut.
+checks:
+  tests: PASS red missing-number regression reproduced 1 failed 1 passed before fix; full SQLite 1207 passed25skipped; focused PostgreSQL30passed
+  build: PASS just check backend SDK UI types/build
+  lint: PASS just lint-check and diff whitespace check
+activity_effort: high
