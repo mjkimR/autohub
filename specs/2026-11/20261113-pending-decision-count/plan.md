@@ -27,6 +27,9 @@ Chosen: an additive required field `actionable_total_count: int` on the existing
   rows are counted.
 - **Filter consistency by construction**: the count is built from the same filter function as the page, so it
   cannot drift from the list semantics.
+- **Bounded meaning**: the name and its place on `DecisionPage` scope it to actionable decision-inbox rows; it does
+  not claim to be all operator-owed work, so a later broader owed-work aggregate (non-goal 5 of
+  `SPEC-pending-decision-count`) can be added as a separate contract without breaking this one.
 - **Cost**: one extra aggregate statement per list call, in the same transaction and connection. The projection is
   small and bounded by pending decisions on nonterminal Runs.
 

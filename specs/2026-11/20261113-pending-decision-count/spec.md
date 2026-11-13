@@ -2,7 +2,7 @@
 id: SPEC-pending-decision-count
 title: Exact pending-decision count
 summary: Expose an exact count of actionable pending decisions on the decision list and show it unbounded in the app shell signal.
-status: planned
+status: in-progress
 created: 2026-11-13
 related_capabilities:
   - CAP-PR-operator-decisions
@@ -41,6 +41,12 @@ actionable "Needs decision" and "Answer saved — resume pending" rows; "Answer 
 3. **Scope Excluded**: changing which rows are discovered or actionable, the discovery projection, its indexes or any
    migration.
 4. **Scope Excluded**: per-project or per-kind counts in the shell; the shell signal stays global and unfiltered.
+5. **Scope Excluded**: counting other operator-owed work (Work Plan "Needs a decision", Work Item recovery or
+   dependency acceptance, SDD batch attention, connection-test cleanup review, AI catalog holds) or aligning the
+   dashboard "Needs you" definition. The field counts actionable decision-inbox rows only, is named for them and lives
+   on the decision list, so it claims nothing about all pending work.
+   - **When to Reconsider**: a later broader "owed work" aggregate gets its own field or endpoint and its own
+     definition; it can be added beside this count without changing or renaming it.
 
 ## 4. Acceptance Criteria & Behavioral Contracts
 

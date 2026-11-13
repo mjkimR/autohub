@@ -17,7 +17,7 @@ let admin = false;
 beforeEach(() => {
 	admin = false;
 	page.url = new URL('http://hub.test/decisions');
-	decisions = async () => ({ data: { items: [], has_more: false, next_cursor: null } });
+	decisions = async () => ({ data: decisionPage(0) });
 	api.GET.mockReset();
 	api.GET.mockImplementation(async (path: string) => {
 		if (path === '/api/health') return { data: { status: 'ok' } };
@@ -31,7 +31,12 @@ afterEach(() => cleanup());
 const children = createRawSnippet(() => ({ render: () => '<p>content</p>' }));
 const nav = () => screen.getByRole('navigation', { name: 'Primary navigation' });
 const rules = () => document.querySelectorAll('[data-pending-rule]');
-const entry = (actionable: boolean) => ({ actionable });
+const decisionPage = (count: number, items: unknown[] = []) => ({
+	items,
+	has_more: count > items.length,
+	next_cursor: count > items.length ? 'next' : null,
+	actionable_total_count: count
+});
 
 test('the active item carries aria-current and the ink outline, others do not', async () => {
 	render(AppShell, { children });
@@ -56,9 +61,7 @@ test('administrative links use the same active style', async () => {
 });
 
 test('owed decisions light the top rule and label the Decisions count', async () => {
-	decisions = async () => ({
-		data: { items: [entry(true), entry(false), entry(true)], has_more: false, next_cursor: null }
-	});
+	decisions = async () => ({ data: decisionPage(2, [{ actionable: true }]) });
 	render(AppShell, { children });
 	const link = await within(nav()).findByRole('link', { name: 'Decisions 2 pending decisions' });
 	expect(within(link).getByText('2')).toBeTruthy();
@@ -67,21 +70,20 @@ test('owed decisions light the top rule and label the Decisions count', async ()
 		screen.getByRole('link', { name: 'Decisions: 2 pending decisions' }).getAttribute('href')
 	).toBe('/decisions');
 	expect(api.GET).toHaveBeenCalledWith('/api/v1/pipeline-runs/decisions', {
-		params: { query: { limit: 50 } }
+		params: { query: { limit: 1 } }
 	});
 });
 
-test('a full sample is shown as a lower bound', async () => {
-	decisions = async () => ({
-		data: { items: [entry(true)], has_more: true, next_cursor: 'next' }
-	});
+test('a backlog beyond the read page is shown exactly', async () => {
+	decisions = async () => ({ data: decisionPage(137, [{ actionable: false }]) });
 	render(AppShell, { children });
-	await within(nav()).findByRole('link', { name: 'Decisions 1 or more pending decisions' });
-	expect(screen.getByText('1+ pending')).toBeTruthy();
+	await within(nav()).findByRole('link', { name: 'Decisions 137 pending decisions' });
+	expect(screen.getByText('137 pending')).toBeTruthy();
+	expect(screen.queryByText(/\+/)).toBeNull();
 });
 
 test.each([
-	['zero', async () => ({ data: { items: [entry(false)], has_more: false, next_cursor: null } })],
+	['zero', async () => ({ data: decisionPage(0, [{ actionable: false }]) })],
 	['error', async () => ({ error: { detail: 'down' } })],
 	['failure', async () => Promise.reject(new Error('offline'))],
 	['loading', () => new Promise(() => {})]
