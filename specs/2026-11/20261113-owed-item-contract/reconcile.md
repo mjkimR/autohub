@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-owed-item-contract
-status: pending
+status: resolved
 targets:
   - file: docs/capabilities/README.md
     resolution: modified

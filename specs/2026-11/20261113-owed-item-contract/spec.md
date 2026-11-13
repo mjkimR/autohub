@@ -2,7 +2,7 @@
 id: SPEC-owed-item-contract
 title: Owed item contract for operator debt
 summary: Define one owed-item model and read surface so every exception class that waits for the operator reaches them through one count and one worklist with consistent definitions.
-status: in-progress
+status: completed
 created: 2026-11-13
 related_capabilities:
   - CAP-PR-owed-items
