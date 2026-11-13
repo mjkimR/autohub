@@ -1,6 +1,6 @@
 # Hub UI (Svelte 5)
 
-Frontend management console for **Autohub Scheduler Manager**, built with:
+Frontend management console for **Autohub**, built with:
 
 - **Framework**: Svelte 5 (Runes mode), SvelteKit 2 SPA mode
 - **Bundler**: Vite 8
@@ -48,9 +48,12 @@ keep the count at zero in files you change.
 Generated primitives in `src/lib/components/ui/` are excluded because they define the variants.
 
 - **Colors**: use tokens from `src/routes/layout.css`, not the raw Tailwind palette.
-  Status colors are `success`, `warning`, `info` and `destructive`, each with light and dark values.
+  Primary is ink and surfaces are neutral grey. Status colors are `attention`, `destructive`, `success`,
+  `warning` and `info`, each with light and dark values. `attention` marks work waiting for the operator
+  and has `attention-foreground`, `attention-text` and `attention-surface` companions.
+  [Visual style](../../docs/steering/visual-style.md) defines when to use each role.
 - **Badges and buttons**: choose a variant instead of adding color or size classes.
-  Badge adds `success`, `warning` and `info`.
+  Badge adds `attention`, `success`, `warning` and `info`.
   Button adds `subtle` for muted icon and toolbar actions and `subtle-destructive` for quiet delete or sign-out actions.
 - **Component classes**: every component accepts layout classes. The contracts in
   `eslint.config.js` also allow spacing on structural slots (cards, dialogs, tabs, table rows),
@@ -59,7 +62,8 @@ Generated primitives in `src/lib/components/ui/` are excluded because they defin
   If no scale value exists, disable `shadcn/no-arbitrary-values` on that line with a reason.
 
 To add a status color or variant, declare it in `layout.css` or the primitive's `tv()` variants
-rather than restyling call sites.
+rather than restyling call sites. `src/routes/layout-contrast.test.ts` checks the WCAG contrast of the
+key token pairs in both themes; add a pair there when a new token carries text or a required UI mark.
 
 ### OpenAPI Client Generation
 

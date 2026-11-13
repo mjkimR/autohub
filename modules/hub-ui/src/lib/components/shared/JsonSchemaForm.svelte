@@ -89,7 +89,7 @@
 	<!-- Schema Form Header / Mode Switcher -->
 	<div class="flex items-center justify-between border-b border-border/60 pb-2">
 		<div class="flex items-center gap-2">
-			<SlidersHorizontal class="size-4 text-primary" />
+			<SlidersHorizontal class="size-4 text-muted-foreground" />
 			<span class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
 				Payload Configuration
 			</span>

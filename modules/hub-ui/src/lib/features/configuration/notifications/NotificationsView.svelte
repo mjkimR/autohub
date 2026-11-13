@@ -113,7 +113,7 @@
 						<div class="flex items-start justify-between gap-4">
 							<div class="flex gap-3">
 								<div
-									class="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"
+									class="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground"
 								>
 									<BellRing class="size-5" />
 								</div>

@@ -1,0 +1,20 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-12T23:39:46.769002Z'
+status: completed
+summary: 'SPEC-hub-ui-color-system delivered: ink primary and neutral surfaces, amber attention token family and Badge variant, ranked run state badge at four call sites, Needs-you dashboard tile with breakdown and link, Decisions inbox status badges with attention rule, decorative primary and raw palette removed, committed contrast test. Code review round 1 (2 P3) and reconcile round 1 (1 P2, 3 P3) closed; Living Spec updated in UX-dashboard, UX-decision-inbox, UX-pipeline-runs, UC-resolve-run-question, visual style steering and docs README.'
+findings: []
+assumptions:
+- In-place branch dev-hub-ui-color-system via --no-worktree under worktree=auto, because the checkout was clean.
+- Implementation was done by a delegated Impeccable session under coordinator acceptance.
+- Contract amendments (display-case run labels, 390px overflow fix, subtitle removal and README Autohub opening) are approved by user, recorded in spec.md section 6.
+- Deferred work tracked as FB-sidebar-active-indicator, FB-shell-pending-decision-count and FB-hub-ui-capitalize-pulse-remnants.
+checks:
+  tests: 'PASS just test-ui: 52 files / 406 tests'
+  build: PASS just check (pyright hub and sdk, svelte-check, vite build, tests)
+  lint: PASS just lint (devkit rules errors=0 warnings=0, ruff, prettier, eslint)
+diff_scope:
+  base: dea3680fa92b3017057861a2945bba95df06ff68
+  head: 394702db688c09acc9e8d905615a211fef9e194e

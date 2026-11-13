@@ -17,7 +17,9 @@
 		class="flex items-center justify-between rounded-xl border border-border/80 bg-card/60 p-4 backdrop-blur-xs"
 	>
 		<div class="flex items-center gap-3">
-			<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+			<div
+				class="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+			>
 				<Activity class="size-5" />
 			</div>
 			<div>
@@ -44,7 +46,9 @@
 		class="flex items-center justify-between rounded-xl border border-border/80 bg-card/60 p-4 backdrop-blur-xs"
 	>
 		<div class="flex items-center gap-3">
-			<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+			<div
+				class="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+			>
 				<CheckCircle2 class="size-5" />
 			</div>
 			<div>
@@ -71,7 +75,9 @@
 		class="flex items-center justify-between rounded-xl border border-border/80 bg-card/60 p-4 backdrop-blur-xs"
 	>
 		<div class="flex items-center gap-3">
-			<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+			<div
+				class="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+			>
 				<CalendarClock class="size-5" />
 			</div>
 			<div>

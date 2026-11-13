@@ -95,7 +95,7 @@ test('renders current run state and pauses the selected run', async () => {
 	render(PipelineRunsView);
 
 	await screen.findByText('Ship the feature');
-	expect(screen.getByText('implementing')).toBeTruthy();
+	expect(screen.getByText('Implementing', { selector: '[data-run-state]' })).toBeTruthy();
 	await user.click(screen.getByRole('button', { name: 'Pause Run' }));
 
 	await waitFor(() =>

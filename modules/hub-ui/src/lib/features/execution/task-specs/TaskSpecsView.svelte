@@ -99,7 +99,7 @@
 						<div class="flex items-start justify-between gap-2">
 							<div class="flex items-center gap-2">
 								<div
-									class="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary"
+									class="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground"
 								>
 									<Code2 class="size-4" />
 								</div>

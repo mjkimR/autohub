@@ -15,6 +15,7 @@ keeps that evidence separate.
 | Feature guarantees, interfaces and code entrypoints | [Capabilities](capabilities/README.md) |
 | Actor goals and acceptance criteria | [Use cases](usecases/README.md) |
 | Shared UX objects, representations and calls to action | [UX object register](steering/ux-objects.md) |
+| Color roles, Badge variants and emphasis for hub-ui | [Visual style](steering/visual-style.md) |
 | Implemented screens, modals, panels and task-flow links | [UX](ux/README.md) |
 | System boundaries, runtime structure and constraints | [Architecture](architecture/README.md) |
 | Development approach decision | `ADR-sdd-development` |

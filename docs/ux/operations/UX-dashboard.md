@@ -25,18 +25,21 @@ capabilities:
 At `/`, health indicators precede the primary PR run summary; supporting object counts and recent activity follow. Metric values use an unknown marker when statistics cannot be loaded.
 
 - Service health (status summary): API and database indicators, plus scheduler-trigger Firing, Stopped, Never fired or Unknown and the last recorded tick. The trigger heartbeat is distinct from the protected System maintenance schedule.
-- PR run (summary counts): total, active implementation, awaiting CI, completed and stopped/error counts.
+- PR run (summary counts): Total Runs, Active Work, Awaiting CI and Completed as neutral counts of equal weight, and a Needs-you count of failed, paused or blocked PR runs. The Needs-you tile is the only emphasized tile:
+  - above zero: attention emphasis, the count, a per-state breakdown caption of the non-zero counts in the order failed, paused, blocked (for example "1 failed · 2 paused · 1 blocked"), and a link to `UX-pipeline-runs`;
+  - zero: neutral, "No failed or held runs", caption "Failed, paused, or blocked", not a link;
+  - statistics unavailable: neutral, the unknown marker, the same caption, not a link.
 - Project connection, Schedule configuration and Connector (metric cards): aggregate counts that lead to their management screens.
-- PR run (recent list): PR identity/title, branch, state and external PR link when available.
+- PR run (recent list): PR identity/title, branch, state as the PR run state badge (label plus icon, emphasis by role per `docs/steering/visual-style.md`) and external PR link when available.
 - Schedule job (recent list): recent execution outcomes.
-- Refresh controls: manual Refresh and Off/5s/15s/30s polling, with the last fully successful refresh time.
+- Refresh controls: manual Refresh and Off/5s/15s/30s polling, with the last fully successful refresh time. The live-refresh indicator shows an icon and text without motion.
 
 ## 3. States
 
-- **loading**: Refresh is busy and statistics use an unknown marker. API/database indicators initially show Unavailable/Disconnected until their independent checks resolve.
-- **populated**: inspect aggregates and follow a metric/list navigation control.
+- **loading**: Refresh is busy and statistics use an unknown marker on neutral tiles. API/database indicators initially show Unavailable/Disconnected until their independent checks resolve.
+- **populated**: inspect aggregates and follow a metric/list navigation control; the Needs-you tile carries attention emphasis only while its count is above zero.
 - **empty**: recent lists explain that no runs or jobs are recorded; navigation remains available.
-- **degraded**: failed sections show unavailable/unknown indicators; a load warning offers Retry while successful or retained lists remain visible.
+- **degraded**: failed sections show unavailable/unknown indicators (the Needs-you tile stays neutral and is not a link); a load warning offers Retry while successful or retained lists remain visible.
 - **polling-off**: automatic refresh is stopped; manual Refresh remains available.
 
 ## 4. Interactions
@@ -46,6 +49,7 @@ At `/`, health indicators precede the primary PR run summary; supporting object 
 | Refresh or Retry | global: inspect operational state without starting the underlying work | populated | loading |  |  | Independent health/statistics/list requests update their own regions. |
 | Choose Off, 5s, 15s or 30s | global: inspect operational state without starting the underlying work | populated | populated |  |  | The polling choice changes; it does not dispatch work. |
 | Open a project metric or project navigation | global: navigation between management surfaces | populated | populated | `UX-projects` |  | Project connections are listed. |
+| Open the Needs-you tile | global: navigation from the exception count to the runs it counts | populated | populated | `UX-pipeline-runs` |  | Pipeline Runs opens with default filters; the operator filters by state and continues there with Resume Run (`UC-deliver-pull-request` *c), Cancel Run (`UC-deliver-pull-request` *b) or Decisions for a blocked run's question. |
 | View All Runs or open run navigation | global: navigation between management surfaces | populated | populated | `UX-pipeline-runs` |  | PR runs are listed. |
 | Open the schedule metric | global: navigation between management surfaces | populated | populated | `UX-schedule-configs` |  | Schedule configurations are listed. |
 | Open execution history | global: navigation between management surfaces | populated | populated | `UX-schedule-jobs` |  | Schedule jobs are listed. |

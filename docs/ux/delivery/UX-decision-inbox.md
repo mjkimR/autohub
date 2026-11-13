@@ -29,20 +29,24 @@ capabilities:
 The filtered mixed worklist is primary. Filters sit above it, and cursor navigation sits below. No approve/resume control appears in a row.
 
 - Project connection (all-visible-projects default; optional project filter).
-- Run question / Native SDD activity (kind filter and ordinary open/answered filter).
+- Run question / Native SDD activity (kind filter and Question state filter: "All states", "Needs decision" for open questions and "Answer saved — resume pending" for answered ones).
 - PR run (row project, run/PR link and state).
-  - Run question (title, question ID, Needs answer or Answer saved; exact waiting age).
-  - Native SDD activity (request kind/title/identity, First observed waiting age, evidence head, last inspected time; Answer publication pending as a disabled review-only status while its worker envelope is being published).
-  - Review (opens exact owner subject after freshness verification).
+  - Decision status (one labeled badge; the icon or dot is decorative, emphasis by role per `docs/steering/visual-style.md`):
+    - "Needs decision" (attention emphasis, dot, attention left rule) when the row is actionable and its question state is not answered.
+    - "Answer saved — resume pending" (attention emphasis, corner-down-right icon, attention left rule) when the Run question is answered but the Run has not resumed; the operator still owes `UC-resolve-run-question` 4.
+    - "Answer publication pending" (quiet info emphasis, clock icon, no rule) while the Native SDD activity is not actionable and its worker envelope is being published; Review stays disabled.
+  - Run question (title, question ID; exact waiting age).
+  - Native SDD activity (request kind/title/identity, First observed waiting age, evidence head, last inspected time).
+  - Review (secondary-weight button; opens exact owner subject after freshness verification). The row background stays neutral, so the status badge, not the button, carries the row's emphasis.
 - Pagination (Next; loaded previous cursor pages; Refresh restarts at first page).
 - Application shell (global navigation to other screens).
 
 ## 3. States
 
-- **loading**: Explain that pending decisions are loading; filters/navigation remain accessible, Review waits for data.
+- **loading**: Explain that pending decisions are loading and show no attention marks; filters/navigation remain accessible, Review waits for data.
 - **populated**: Review any row; distinguish native observation age from ordinary waiting age. Explain that new or changed decisions can precede the current cursor and Refresh restarts the list.
-- **empty**: No matching observed pending decisions; offer Clear filters and Refresh. This does not assert that every repository is live-evaluated.
-- **error**: Keep filters and offer Retry; no stale row becomes actionable from the failure.
+- **empty**: No matching observed pending decisions and no attention marks; offer Clear filters and Refresh. This does not assert that every repository is live-evaluated.
+- **error**: Keep filters, show no attention marks and offer Retry (secondary weight); no stale row becomes actionable from the failure.
 - **reviewing**: Owner dialog loads fresh context; all mutation controls disabled until exact subject validation succeeds.
 - **changed**: Subject resolved, changed or unavailable; explain the outcome, refresh the worklist and offer explicit Review again for any replacement.
 
@@ -51,6 +55,7 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
 | Review ordinary question | `UC-resolve-run-question` 1 | populated | reviewing | `UX-run-decisions` | `CAP-PR-operator-decisions` | Exact question and current revision load; old question cannot be substituted. |
+| Review saved answer | `UC-resolve-run-question` 4 | populated | reviewing | `UX-run-decisions` | `CAP-PR-operator-decisions` | The exact question opens with its saved answer, ready to select for resume. |
 | Review native Run question | `UC-complete-sdd-workflow` 3d | populated | reviewing | `UX-run-decisions` | `CAP-SDD-workflow-control` | Exact Hub question loads with native answer/application behavior. |
 | Review proposal decision | `UC-decide-sdd-proposal` 1 | populated | reviewing | `UX-run-decisions` | `CAP-SDD-native-delivery` | Current native evidence loads before proposal controls enable. |
 | Review worker/workflow request | `UC-complete-sdd-workflow` 3b, `UC-complete-sdd-workflow` 3c | populated | reviewing | `UX-run-decisions` | `CAP-SDD-workflow-control` | Exact request is selected in `UX-sdd-workflow-request`; missing identity requires reinspection. |
@@ -69,7 +74,7 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
 ## 5. Evidence
 
 Source: `modules/hub-ui/src/lib/features/project-management/pipeline-runs/DecisionInbox.svelte`.
-Interaction assertions: `DecisionInbox.integration.test.ts` covers filters, cursor pages and focus restoration. This source-derived contract claims no live repository walkthrough or deployment.
+Interaction assertions: `DecisionInbox.integration.test.ts` covers filters, cursor pages, focus restoration, the three decision status labels and the attention marker on the two attention rows only. This source-derived contract claims no live repository walkthrough or deployment.
 
 ## 6. Exact notice landing
 
@@ -79,6 +84,6 @@ Keep the current filtered worklist primary. An exact link adds a visible landing
 
 ### States
 
-Keep existing states; add **link-reviewing** with inspection status and Open inbox; **link-changed** for missing/replaced/inaccessible evidence with Refresh inbox; **link-error** with Retry review/Open inbox; **link-invalid** with no request and Open inbox. Automatic initial link review runs once per exact URL identity; rerendering or owner-dialog dismissal does not loop inspection. Failed/dismissed inspection requires explicit Retry review. Ordinary/native head/generation changes never select another subject automatically.
+Keep existing states; add **link-reviewing** with inspection status and Open inbox; **link-changed** for missing/replaced/inaccessible evidence with Refresh inbox; **link-error** with Retry review (secondary weight)/Open inbox; **link-invalid** with no request and Open inbox. Automatic initial link review runs once per exact URL identity; rerendering or owner-dialog dismissal does not loop inspection. Failed/dismissed inspection requires explicit Retry review. Ordinary/native head/generation changes never select another subject automatically.
 
 ### Interactions

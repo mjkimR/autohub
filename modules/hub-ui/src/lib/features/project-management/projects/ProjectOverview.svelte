@@ -47,7 +47,7 @@
 
 <div class="space-y-6">
 	<div class="grid gap-4 sm:grid-cols-3">
-		<a href="?tab=connections" class="rounded-xl border bg-card p-5 hover:border-primary/50"
+		<a href="?tab=connections" class="rounded-xl border bg-card p-5 hover:border-foreground/30"
 			><p class="text-sm text-muted-foreground">AI connections</p>
 			{#if loading || error}<p class="mt-2 text-sm">{loading ? 'Loading…' : 'Unavailable'}</p>
 			{:else if !latestTests.length}<p class="mt-2 text-xl font-semibold">Not verified</p>
@@ -62,14 +62,14 @@
 			{/if}
 		</a>
 
-		<a href="?tab=automation" class="rounded-xl border bg-card p-5 hover:border-primary/50"
+		<a href="?tab=automation" class="rounded-xl border bg-card p-5 hover:border-foreground/30"
 			><p class="text-sm text-muted-foreground">Automatic merge</p>
 			<p class="mt-2 text-xl font-semibold">
 				{project.github?.automation?.auto_merge ? 'Enabled' : 'Disabled'}
 			</p>
 			<p class="mt-2 text-xs text-muted-foreground">Connection tests are always excluded.</p></a
 		>
-		<a href="?tab=connections" class="rounded-xl border bg-card p-5 hover:border-primary/50"
+		<a href="?tab=connections" class="rounded-xl border bg-card p-5 hover:border-foreground/30"
 			><p class="text-sm text-muted-foreground">GitHub / CI access</p>
 			<p class="mt-2 text-xl font-semibold">
 				{project.last_check?.ready

@@ -91,7 +91,7 @@
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div class="flex min-w-0 gap-3">
 								<div
-									class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+									class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
 								>
 									<Bot class="size-5" />
 								</div>

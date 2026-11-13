@@ -1,0 +1,29 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-12T23:31:22.923455Z'
+status: completed
+review: review-01.yaml
+summary: 'Round 1 closed; implementer verified both fixes at 3bbf241 (no new reviewer call: scope unchanged). F1: user approved amendments (a) display-case run labels, (b) 390px overflow fix in this Unit, (c) subtitle removal and README ''Autohub''; recorded in spec.md section 6 naming user. F2: layout-contrast.test.ts reads bg-<status>/NN (and dark: override) per variant from badge.svelte and throws when missing; mutation bg-warning/60 failed 4 pairs, removing bg-info/NN threw.'
+findings:
+- issue: 'Contract amendments during build without named authority: (a) spec section 4 preamble defines run labels as display-case strings instead of CSS-capitalized lowercase; (b) 390px dashboard overflow removed from Out-of-Unit and implemented; (c) "Scheduler Manager" subtitle removed and README opening renamed to "Autohub", recorded as in-scope polish.'
+  evidence: spec.md:76-77 (preamble), spec.md:348-352 (polish bullet), Out-of-Unit list (overflow line removed in 10525f0); AppShell.svelte:150; modules/hub-ui/README.md:3
+  failure_condition: Later readers or spec-sync take the amendments as approved contract with no user/policy decision.
+  suggested_action: Host confirms with the user and records the authority, or reverts (b) and (c).
+  resolution: resolved
+  severity: P3
+- issue: layout-contrast.test.ts hard-codes badge tint alphas (0.15 success/info/warning; 0.10 light / 0.20 dark destructive) instead of reading them from badge.svelte; coupling is only a comment.
+  evidence: layout-contrast.test.ts:80-82 (tintAlpha); badge.svelte:9-15
+  failure_condition: Raising a badge tint opacity (e.g. bg-warning/25) drops status-on-tint contrast below 4.5:1 while just test-ui stays green.
+  suggested_action: Read bg-<status>/NN alphas from badge.svelte (or badgeVariants), or assert badge.svelte still contains the exact fragments.
+  resolution: resolved
+  severity: P3
+checks:
+  tests: 'PASS just test-ui: 52 files / 406 tests'
+  lint: PASS just lint (devkit rules errors=0 warnings=0; prettier+eslint clean)
+  build: PASS just check (pyright hub/sdk, svelte-check, vite build, tests)
+diff_scope:
+  base: eb2debd50f37988df6983fb1aec91e3bef35bd6e
+  head: 3bbf2414acb2d4fe4adc41dfcb43b89df06f7bbc
+activity_effort: medium

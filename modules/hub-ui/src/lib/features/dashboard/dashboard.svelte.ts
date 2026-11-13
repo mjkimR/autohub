@@ -49,6 +49,15 @@ export class DashboardState {
 		const counts = this.stats?.runs_by_state;
 		return counts ? (counts.failed ?? 0) + (counts.paused ?? 0) + (counts.blocked ?? 0) : '—';
 	}
+	/** Non-zero parts of the Needs-you count, e.g. "1 failed · 2 paused"; null when unknown or zero. */
+	get needsYouBreakdown(): string | null {
+		const counts = this.stats?.runs_by_state;
+		if (!counts) return null;
+		const parts = (['failed', 'paused', 'blocked'] as const)
+			.filter((state) => (counts[state] ?? 0) > 0)
+			.map((state) => `${counts[state]} ${state}`);
+		return parts.length ? parts.join(' · ') : null;
+	}
 
 	async load(silent = false) {
 		const generation = ++this.generation;

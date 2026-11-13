@@ -3,7 +3,10 @@
 	import { noticeSelection, clearNoticeReturn } from '$lib/features/auth/login/notice-return';
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
+	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import { cn } from '$lib/utils';
+	import { Clock, CornerDownRight } from '@lucide/svelte';
 	import RunDecisionsDialog from './RunDecisionsDialog.svelte';
 	type Entry = components['schemas']['DecisionEntryRead'];
 	type Run = components['schemas']['PipelineRunRead'];
@@ -148,7 +151,7 @@
 	{#if landing}<p role="status">Inspecting the exact decision from this notice…</p>{/if}
 	{#if noticeError}<div role="alert">
 			<p>{noticeError}</p>
-			<Button disabled={landing} onclick={openNotice}>Retry review</Button><Button
+			<Button variant="outline" disabled={landing} onclick={openNotice}>Retry review</Button><Button
 				variant="outline"
 				onclick={openInbox}>Open inbox</Button
 			>
@@ -186,8 +189,8 @@
 				class="mt-1 block rounded border bg-background p-2"
 				bind:value={questionState}
 				onchange={() => load(true)}
-				><option value="">All states</option><option value="open">Needs answer</option><option
-					value="answered">Answer saved</option
+				><option value="">All states</option><option value="open">Needs decision</option><option
+					value="answered">Answer saved — resume pending</option
 				></select
 			></label
 		>
@@ -204,11 +207,17 @@
 		>
 	</div>
 	{#if error}<p role="alert">{error}</p>
-		<Button onclick={() => load()}>Retry</Button>{/if}
+		<Button variant="outline" onclick={() => load()}>Retry</Button>{/if}
 	{#if busy}<p role="status">Loading observed decisions…</p>{/if}
 	{#if !busy && !error && !items.length}<p>No matching observed pending decisions.</p>{/if}
 	{#each items as entry, index (entry.key)}
-		<article class="flex items-center justify-between gap-4 rounded-lg border p-4">
+		<article
+			data-attention={entry.actionable ? 'true' : undefined}
+			class={cn(
+				'flex items-center justify-between gap-4 rounded-lg border p-4',
+				entry.actionable && 'border-l-3 border-l-attention-text'
+			)}
+		>
 			<div class="min-w-0 space-y-1">
 				<p class="font-medium break-words">{entry.title}</p>
 				<p class="text-sm">
@@ -223,13 +232,24 @@
 						' '
 					)} · {entry.subject_id}
 				</p>
-				<p class="text-sm">
-					{!entry.actionable
-						? 'Answer publication pending'
-						: entry.question_state === 'answered'
-							? 'Answer saved'
-							: 'Needs decision'}
-				</p>
+				<div>
+					{#if !entry.actionable}
+						<Badge variant="info">
+							<Clock aria-hidden="true" />
+							Answer publication pending
+						</Badge>
+					{:else if entry.question_state === 'answered'}
+						<Badge variant="attention">
+							<CornerDownRight aria-hidden="true" />
+							Answer saved — resume pending
+						</Badge>
+					{:else}
+						<Badge variant="attention">
+							<span aria-hidden="true" class="size-1.5 rounded-full bg-attention-text"></span>
+							Needs decision
+						</Badge>
+					{/if}
+				</div>
 				<p class="text-xs text-muted-foreground">
 					{entry.kind === 'run-question' ? 'Waiting since' : 'First observed waiting'}
 					{new Date(entry.waiting_since).toLocaleString()} · Evidence observed {new Date(
@@ -238,6 +258,7 @@
 				</p>
 			</div>
 			<Button
+				variant="outline"
 				data-key={entry.key}
 				disabled={busy || !entry.actionable}
 				onclick={() => review(entry, index)}>Review</Button

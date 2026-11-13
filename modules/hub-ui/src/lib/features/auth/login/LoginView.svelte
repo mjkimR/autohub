@@ -72,14 +72,6 @@
 <div
 	class="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background p-6"
 >
-	<!-- Background glow effects -->
-	<div
-		class="pointer-events-none absolute -top-40 left-1/4 size-96 rounded-full bg-primary/10 blur-3xl"
-	></div>
-	<div
-		class="pointer-events-none absolute right-1/4 -bottom-40 size-96 rounded-full bg-primary/10 blur-3xl"
-	></div>
-
 	<!-- Top right theme toggle -->
 	<div class="absolute top-6 right-6">
 		<ThemeToggle />
@@ -89,7 +81,7 @@
 	<Card class="relative z-10 w-full max-w-md">
 		<CardHeader class="space-y-3 text-center">
 			<div
-				class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+				class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground"
 			>
 				<Server class="size-7" />
 			</div>
