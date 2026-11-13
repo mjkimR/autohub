@@ -1,0 +1,64 @@
+kind: reverify
+stage: spike
+workflow: sdd-proposal
+segment: 0
+created_at: '2026-11-13T02:20:57.215124Z'
+status: completed
+review: challenger-01.yaml
+summary: 'User answers folded: shell keeps actionable_total_count until the Phase 2 Attention landing (F1); failed runs quiet, pauses counted (F2); catalog holds context only, awaiting-admission excluded (F3); origin fields to PROP-run-origin-links, notices deferred (F5); aggregate repository per PADR-owed-items-aggregate-read (F7).'
+findings:
+- issue: 'No in-scope surface lists every owed kind: the shell Badge opens UX-decision-inbox, which lists only decision-projection rows, and Non-goal 4 excludes the I2 Attention landing; moving the Badge to the owed count makes it count items its destination cannot show, keeping it leaves the second definition.'
+  evidence: proposal.md:134-136,153-154,157-159; docs/ux/navigation/UX-app-shell.md:46-48,66; docs/capabilities/delivery/CAP-PR-operator-decisions.md:67-73
+  failure_condition: 'One failed/paused run or proposed Work Plan with zero decisions: Badge shows 1, inbox opens empty.'
+  suggested_action: 'Decision needed: (a) ship API and counts, shell keeps actionable_total_count until the I2 Attention landing spec switches it (SPEC-pending-decision-count Non-goal 5); or (b) grow scope so UX-decision-inbox lists every owed kind, rewriting Non-goal 4.'
+  resolution: resolved
+  severity: P1
+- issue: Failed runs are a final state with no operator action (resume needs paused/blocked; cancel rejects failed with 422); with Non-goal 3 no acknowledge/retry can be added, so failed runs stay in the count until 30-day retention prunes them; visual-style gives failure the destructive role, not Attention.
+  evidence: pipeline_runs/models.py:54,56; pipeline_runs/usecases/control.py:311-312; execution/tasks/domains/maintenance/retention.py:11; docs/steering/visual-style.md:19,28-29,40-42; PRODUCT.md Exceptions first
+  failure_condition: 'Any run fails: Badge stays non-zero up to 30 days with no clearing action; the operator learns to ignore it.'
+  suggested_action: 'Decision needed: (a) failed runs out of the Badge, shown as a quieter failures list pointing to Work Item recovery when linked; or (b) a separate proposal adds acknowledge/retry. Also settle whether a deliberate pause stays Badge debt.'
+  resolution: resolved
+  severity: P1
+- issue: AI catalog holds (mostly policy/quota holds that expire) and Work Item recoveries in awaiting-admission are system holds, not operator debt.
+  evidence: docs/capabilities/agents/CAP-AGENT-catalog-admission.md:41,44,47-48; docs/capabilities/work-plans/CAP-WORK-work-plan-execution.md:75
+  failure_condition: 'A daily quota is reached: Badge rises with no operator action, then drops by itself.'
+  suggested_action: Leave catalog holds out (context on the blocked object at most); define Work Item recovery kind by an operator-actionable predicate excluding awaiting-admission.
+  resolution: resolved
+  severity: P2
+- issue: 'Double counting is broader than decision vs run: failed Work Item run vs recovery, SDD batch attention vs owner run vs native SDD decision, Work Item execution attention vs run.'
+  evidence: CAP-WORK-work-plan-execution.md:74; docs/ux/sdd/UX-sdd-batch.md:45,62; work_plans/execution.py:186-205
+  failure_condition: 'An SDD batch owner run blocks on an activity request: count rises by 3 for one cause.'
+  suggested_action: General suppression rule, one owed item per root cause, most specific actionable owner wins (decision > Work Item recovery > batch attention > run state), with acceptance examples per overlapping pair.
+  resolution: resolved
+  severity: P2
+- issue: 'Scope size: Q6 run origin fields serve the run home (I1/I5), not the owed contract; Q8 owed-item notices would generalize CAP-NOTIFY admission/dedupe rules; either makes the work XL.'
+  evidence: proposal.md:98-104,157-159; CAP-NOTIFY-operator-notifications.md:141-153,173; CAP-PR-operator-decisions.md:191-195
+  failure_condition: Development must change PipelineRunRead, origin joins and notice machinery in one spec.
+  suggested_action: Split Q6 into a sibling proposal (keep only a per-run pending-decision flag if needed); defer Q8 and keep decision notices on decision_key, embedding it unchanged in the decision-kind owed key.
+  resolution: resolved
+  severity: P2
+- issue: 'Background misses a third live definition: run-stop notices announce paused, blocked, failed and in-flight runs with a pause_reason.'
+  evidence: pipeline_runs/repos.py:362-373; CAP-NOTIFY-operator-notifications.md:111
+  failure_condition: Owed set and Telegram stop notices disagree on what needs the operator.
+  suggested_action: Add run-stop notices to Background and state whether they are restated against the owed set or kept as a separate alert channel.
+  resolution: resolved
+  severity: P2
+- issue: Service-only composition is presented as a constraint but ARCH-02 only checks router-to-repository imports, and the dashboard repository already reads other features' models; strict service composition costs N list queries plus a k-way merge and composite cursor per request.
+  evidence: proposal.md:78-79,131-133; docs/architecture/ARCH-02-constraints.md:14; modules/hub/app/features/dashboard/repos.py:1-5
+  failure_condition: Every shell poll runs 12-18+ statements on one connection.
+  suggested_action: 'Decision needed: allow a read-only aggregate repository (dashboard precedent) for one UNION ALL keyset query and one GROUP BY count, or keep strict service composition; shell path requests counts only.'
+  resolution: resolved
+  severity: P2
+- issue: boundaries.owns lists only doc paths; Development also touches modules/hub features, the typed client/shell in modules/hub-ui, docs/usecases/ and other capability areas.
+  evidence: proposal.md:12-18,137-145; .devkit/managed/spec/rules/proposal_boundaries/guide.md:5-7
+  failure_condition: Development worker must justify out-of-boundary edits for most of the change.
+  suggested_action: Add modules/hub/app/features/, modules/hub-ui/src/, docs/usecases/ and each owning capability area to owns.
+  resolution: resolved
+  severity: P2
+- issue: No check for the DB-budget and bounded-union promises; Q3 undecided though time-based holds and waiting_since make a projection need timer refresh and writes in every owner transaction.
+  evidence: proposal.md:69-71,90-92,144; CAP-AGENT-catalog-admission.md:41,47-48; specs/2026-11/20261113-pending-decision-count/spec.md:78-82
+  failure_condition: A projection adds writes to five features' paths and goes stale between ticks.
+  suggested_action: 'Choose query-time union; add an AC modeled on AC-04: one connection, one transaction, fixed statement count independent of rows, no provider call, shell count request issues aggregates only.'
+  resolution: resolved
+  severity: P3
+checks: {}
