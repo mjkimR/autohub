@@ -2,7 +2,7 @@
 id: SPEC-frontend-workflow-setup
 title: Prepare frontend worktrees and apply lint fixes
 summary: "Initialize frontend dependencies in task worktrees and make fixing lint apply UI formatting while preserving read-only lint-check behavior."
-status: planned
+status: in-progress
 created: 2026-11-13
 related_capabilities: []
 related_usecases: []

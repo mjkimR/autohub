@@ -57,9 +57,12 @@ uv run devkit sync --check
 Review the resulting manifests and `uv.lock`. Fresh environments use
 `uv sync --no-active --locked --all-packages` followed by
 `uv run --no-active --no-sync devkit sync --locked` to restore committed assets.
-New worktrees use the configured locked Python setup before devkit restores
-their assets. Initialize frontend dependencies with `just init hub-ui` there
-when the change needs UI checks.
+New worktrees use the configured `just init` setup: locked Python synchronization,
+locked asset restoration and frontend dependency installation. Devkit then
+restores worktree assets again without changing an already synchronized checkout.
+The frontend step activates the repository's pinned Node version through the
+existing recipe. Run `just init hub-ui` to restore frontend dependencies in an
+older task checkout that predates this setup.
 Never edit `.devkit/managed/` or projected agent files directly.
 
 ## Contributor devkit updates

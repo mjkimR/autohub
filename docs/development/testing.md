@@ -52,6 +52,22 @@ the transform cache, use the repository's Node version and run:
 npm --prefix modules/hub-ui test -- --fsModuleCache=false
 ```
 
+## Contributor command regressions
+
+`modules/hub/tests/unit/scripts/test_frontend_workflow.py` executes the configured
+setup, just recipes and npm script shell composition with isolated tool shims.
+It covers locked Python/assets setup, frontend installation, fixing versus
+read-only lint, module aliases and phase failures. Run it through the backend
+recipe:
+
+```sh
+PYTEST_WORKERS=0 just test modules/hub/tests/unit/scripts/test_frontend_workflow.py
+```
+
+These fixtures verify command wiring without installing dependencies or creating
+Git worktrees. A real `just init`, `just lint` and `just check` verify the installed
+contributor environment separately.
+
 ## Repository activity and retirement contracts
 
 Run the owning SDD activity/API, ordinary PR question/progression and migration
