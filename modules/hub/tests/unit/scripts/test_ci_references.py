@@ -199,3 +199,21 @@ def test_directory_changing_run_block_is_unverified(checkout):
     assert result.returncode == 0, result.stderr
     assert "skipped=1" in result.stdout
     assert "unverified" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "unused() {\n  just removed config/missing\n}\necho done",
+        "false &&\n  just removed config/missing",
+        "false ||\n  just removed config/missing",
+        "printf hello |\n  just removed config/missing",
+        "(\n  just removed config/missing\n)",
+    ],
+)
+def test_unsupported_multiline_bodies_never_become_standalone_commands(checkout, command):
+    workflow(checkout, command)
+    result = run(checkout)
+    assert result.returncode == 0, result.stderr
+    assert "checked=0 skipped=1 errors=0" in result.stdout
+    assert "unverified" in result.stdout

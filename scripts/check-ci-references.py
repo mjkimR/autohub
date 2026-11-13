@@ -54,8 +54,15 @@ def commands(run):
         words = list(lexer)
         if words:
             parsed.append(words)
-    # A heredoc body or a control-flow block is not a collection of standalone commands.
-    if any(words[0] in CONTROL or any("<<" in word for word in words) for words in parsed):
+    # Never reinterpret an unsupported block or continued compound command's body.
+    if any(
+        words[0] in CONTROL
+        or any("<<" in word for word in words)
+        or any(word in {"{", "}", "(", ")", "()"} for word in words)
+        or words[0] in {"&&", "||", "|"}
+        or words[-1] in {"&&", "||", "|"}
+        for words in parsed
+    ):
         return [None]
     result = []
     for words in parsed:

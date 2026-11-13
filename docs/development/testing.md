@@ -109,8 +109,8 @@ Failures identify the workflow, job and step and return exit 1.
 The checker supports simple direct command lines and backslash continuations.
 It ignores comments, display-only echo/printf commands and YAML prose fields.
 Computed words, just options, shell assignments, compound commands, control-flow
-blocks, heredocs and directory-changing shell blocks are unsupported skips;
-dynamic working directories also skip their step. The printed skipped count is
+blocks, functions/grouping, heredocs and directory-changing shell blocks are unsupported skips;
+multiline compound continuations skip the whole run block. Dynamic working directories also skip their step. The printed skipped count is
 unverified coverage, not a passed reference check. Nested scripts, variable
 expansion, recipe argument schemas and external actions are not interpreted.
 Invalid YAML, quoting or just introspection fails instead of passing silently.
