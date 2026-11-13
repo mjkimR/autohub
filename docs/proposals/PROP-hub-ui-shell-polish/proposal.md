@@ -6,7 +6,8 @@ status: draft                         # draft | reviewing | accepted | rejected
 created_at: 2026-11-13
 target_area: ux/navigation/
 priority: low                         # critical | high | medium | low
-size: S                               # S | M | L | XL (XL: would need two or more specs or task kinds; decompose before Planning)
+size: XL                              # Mixed bugfix and feature; decompose before Planning
+needs_decompose: true
 planning_effort: low                  # low | medium | high (hint for Planning)
 dev_effort: low                       # low | medium | high (hint for Development)
 boundaries:
@@ -81,14 +82,30 @@ component, `UX-app-shell` (overflow cue) and `UX-projects` (evidence for the in-
 Placement: neither part belongs in `PROP-run-origin-links` (subject links) or `PROP-schedule-config-ownership`
 (schedule owners); both are shell-level signals with no shared code path with those proposals.
 
-Size: `S`, two independent, self-contained fixes. If Q4 settles (a) as a bugfix, the mixed task kinds would make this
-draft `XL` by definition, and it should split into two `S` drafts rather than change size.
+Size: `XL`. Planning confirmed that (a) repairs the failed-read reason already promised by `UX-projects`, while
+(b) adds an overflow cue to `UX-app-shell`. The draft mixes `bugfix` and `feature` task kinds and returns to Backlog
+for decomposition. The current `task_kind: feature` is provisional metadata for the parent, not a classification of
+the counts defect.
 
 Non-goals:
 
 1. Changing the counts poll cadence, throttle or the read itself.
 2. Redesigning the sidebar groups, their order or the collapsed diagnostic groups.
 3. Showing counts error reasons anywhere other than where a count is unavailable.
+
+### Planning return
+
+Planning ended without direction acceptance. The evidence in `materials/decomposition-evidence.md` is pinned to
+`e1a50a8064597d65fd44906f1b65c01ad93c2425`. No test was executed to reproduce the defect during this Planning turn.
+
+The Host should integrate this return, then use the Backlog decomposition procedure to propose separate counts
+error-reason (`bugfix`) and sidebar overflow-cue (`feature`) children. Preserve both outcomes and the existing
+Non-Goals. Child creation and split selection belong to Backlog; this turn creates neither a child nor a gate
+record. The bugfix child needs a failing in-shell error-tooltip regression before its implementation. The feature
+child needs overflowing, scrolled and non-overflowing navigation examples.
+
+Q4 is settled by the existing contract and implementation evidence. Q1-Q3 remain implementation choices for the
+respective children and do not require a user decision in this return. No PADR is warranted by the classification.
 
 ## 4. Lifecycle & Retirement Criteria
 <!--
