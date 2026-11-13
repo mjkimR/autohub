@@ -317,3 +317,60 @@ test('run diagnostics retain recovery context alongside historical warnings', ()
 	expect(screen.queryByText('Duplicate warning')).toBeNull();
 	expect(diagnostics.querySelector('button')).toBeNull();
 });
+
+const planRequest = {
+	id: 'gate:plan-accept',
+	kind: 'approve',
+	title: 'Direction',
+	answer: 'record',
+	options: []
+};
+const proposal = (progress: Record<string, unknown>) =>
+	({
+		...run,
+		state: 'blocked',
+		sdd_snapshot: { provider: 'devkit-spec', spec_dir: 'docs/proposals/PROP-demo' },
+		sdd_progress: { ...run.sdd_progress, ...progress }
+	}) as unknown as components['schemas']['PipelineRunRead'];
+
+test('an open proposal request is the only owed decision; gate actions become secondary', () => {
+	render(SddRunPanel, {
+		run: proposal({
+			current: {
+				stage: { id: 'direction-handoff', name: 'Plan accept', human_gate: 'plan-accept' },
+				requests: [planRequest]
+			}
+		}),
+		onchange: vi.fn()
+	});
+	expect(screen.getByRole('heading', { name: 'Accept or reject this proposal' })).toBeTruthy();
+	expect(screen.getByRole('button', { name: 'Accept proposal' })).toBeTruthy();
+	expect(screen.queryByRole('button', { name: /Approve (proposal|integration)/ })).toBeNull();
+	expect(
+		screen.getByText(/No approval is owed in this panel\. Decide the proposal above/)
+	).toBeTruthy();
+	const other = screen.getByText('Other run actions').closest('details')!;
+	expect(other.open).toBe(false);
+	expect(other.textContent).toContain('Request changes');
+});
+
+test('reapproval is not offered while a plan-accept request is still open', () => {
+	render(SddRunPanel, {
+		run: proposal({
+			approval_withheld: true,
+			waiting_for_plan_approval: true,
+			current: { complete: true, stage: null, requests: [planRequest] }
+		}),
+		onchange: vi.fn()
+	});
+	expect(screen.queryByRole('button', { name: 'Approve proposal' })).toBeNull();
+	expect(screen.queryByText('Review & approve proposal')).toBeNull();
+	expect(screen.getByRole('button', { name: 'Accept proposal' })).toBeTruthy();
+});
+
+test('integration approval stays primary when no workflow request is open', () => {
+	render(SddRunPanel, { run, onchange: vi.fn() });
+	expect(screen.getByRole('button', { name: /Approve integration/ })).toBeTruthy();
+	expect(screen.getByText('Other actions')).toBeTruthy();
+	expect(screen.queryByText(/No approval is owed/)).toBeNull();
+});

@@ -165,7 +165,12 @@
 			<p class="text-xs text-muted-foreground">
 				{planAccept ? 'Proposal decision' : question ? 'Worker question' : 'Workflow decision'} · {current.id}
 			</p>
-			<h3 class="mt-1 font-semibold">{current.title}</h3>
+			<h3 class="mt-1 font-semibold">
+				{planAccept ? 'Accept or reject this proposal' : current.title}
+			</h3>
+			{#if planAccept && current.title}<p class="text-xs text-muted-foreground">
+					Request: {current.title}
+				</p>{/if}
 			<p class="mt-2 text-sm">{current.prompt}</p>
 			{#if current.context}<p class="mt-1 text-xs text-muted-foreground">
 					Context: {current.context}
