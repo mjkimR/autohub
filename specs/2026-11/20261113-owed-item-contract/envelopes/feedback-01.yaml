@@ -1,0 +1,10 @@
+kind: feedback
+stage: collect-feedback
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T03:13:21.199027Z'
+status: completed
+summary: 'Swept this Development turn and the diff: recorded FB-timestamp-updated-at-never-maintained; no duplicates'
+findings: []
+checks:
+  swept: PASS recorded=1 duplicates=0
