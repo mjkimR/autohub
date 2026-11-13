@@ -1,0 +1,40 @@
+kind: worker
+stage: integrate
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-13T04:43:43.810237Z'
+status: completed
+summary: 'Development from specify to final change report: spec/plan/tasks, ADR-repository-path-sources, path source selection, capture, identity and Hub-side staging with unit, fixture and real sandbox tests; initial code review PASS after one P3 fix; reconcile reviewed (one P2 wording fix, self-verified); Living Spec reflected in CAP-SDD-runtime-isolation, operations guide, ARCH-11 and glossary. Not integrated.'
+findings: []
+checks:
+  sync_start: PASS exit=0
+  tests: PASS just test 1536 passed; sdd unit 270 passed; just test-sdd 148 passed 7 skipped
+  build: PASS just check
+  lint: PASS just lint; devkit rules check --ci --base 32c69e5
+diff_scope:
+  base: ''
+  head: 23667244218adfeaa5d339ef6bc60a1d5d2fe434
+scope_extensions:
+- path: docs/decisions/2026-11/20261113-repository-locked-runtime.md
+  task: 1
+  reason: decision-writing requires the partial-supersession pointer in ADR-repository-locked-runtime for its runtime identity clause
+  requirements:
+  - AC-02
+  - AC-03
+- path: modules/hub/app/features/project_management/sdd/diagnostics.py
+  task: 2
+  reason: the SDD_RUNTIME_SOURCE_UNSUPPORTED and SDD_RUNTIME_INSTALL_FAILED catalog text of CAP-SDD-runtime-isolation rule 25 must name in-repository path sources
+  requirements:
+  - AC-01
+  - AC-02
+  - AC-03
+  - AC-04
+- path: docs/steering/glossary.md
+  task: 2
+  reason: the Runtime identity entry restates CAP-SDD-runtime-isolation rule 2, which now covers path source content
+  requirements:
+  - AC-01
+  - AC-02
+  - AC-03
+  - AC-04
+activity_effort: medium
