@@ -493,6 +493,37 @@ async def test_batch_attention_suppresses_its_run_and_yields_to_decisions(client
     assert decision["context"]["sdd_batch_id"] == str(second.id)
 
 
+async def test_a_batch_yielding_to_a_decision_hides_no_other_stopped_run(client, owed, github, session):
+    decided = await enroll(client, github, owed, 7)
+    await native_question(session, decided["id"])
+    paused = await enroll(client, github, owed, 8)
+    await set_run(session, paused["id"], state="paused")
+    shared = await batch(session, owed, run_id=decided["id"], unit="specs/one")
+    member = SddBatchMember(
+        batch_id=shared.id, position=2, anchor_id="specs/two", path="specs/two", initial={}, phase="develop"
+    )
+    session.add(member)
+    await session.flush()
+    session.add(
+        SddActivityClaim(
+            project_id=shared.project_id,
+            member_id=member.id,
+            request_id=uuid4(),
+            actor="operator",
+            request_digest="c" * 64,
+            unit="specs/two",
+            activity="dev",
+            checkpoint={},
+            run_id=UUID(paused["id"]),
+        )
+    )
+    await session.commit()
+    rows = await items(client)
+    # The batch yields to the decision, so the other paused run stays listed on its own.
+    assert sorted(row["kind"] for row in rows) == ["decision", "stopped-run"]
+    assert by_kind(rows, "stopped-run")[0]["subject"]["id"] == paused["id"]
+
+
 async def test_connection_cleanup_review_until_completed(client, owed, github, session):
     open_review = await connection_test(session, owed)
     done = await connection_test(session, owed, cleanup_status="completed", repository="owner/done")
@@ -620,3 +651,18 @@ async def test_one_transaction_and_fixed_statements_without_provider_calls(clien
     assert small == {"list": 1, "list-project": 2, "counts": 1, "counts-project": 2}
     assert len((await client.get(URL, params={"limit": 100})).json()["items"]) == 27
     assert not github.paths
+
+
+async def test_failed_runs_yield_to_batch_and_work_item_attention(client, owed, github, session):
+    batch_run = await enroll(client, github, owed, 7)
+    await set_run(session, batch_run["id"], state="failed")
+    item_run = await enroll(client, github, owed, 8)
+    await set_run(session, item_run["id"], state="failed")
+    held = await batch(session, owed, run_id=batch_run["id"], unit="specs/one")
+    work = await plan(session, owed)
+    attention = await item(session, work, "attention", state="attention", run_id=item_run["id"])
+    await session.commit()
+    rows = await items(client)
+    assert sorted((row["kind"], row["subject"]["id"]) for row in rows) == sorted(
+        [("sdd-batch-attention", str(held.id)), ("work-item-attention", str(attention.id))]
+    )

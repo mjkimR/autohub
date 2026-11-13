@@ -15,7 +15,7 @@ plan: PLAN-owed-item-contract
 - [x] **Task 1.2**: Per-run pending-decision flag on `PipelineRunRead`
   - **_Boundary**: modules/hub/app/features/project_management/pipeline_runs/, modules/hub/tests/integration/features/project_management/pipeline_runs/
   - _Requirements: AC-12_
-  - **Verification**: `just test modules/hub/tests/integration/features/project_management/pipeline_runs`
+  - **Verification**: `just test modules/hub/tests/integration/features/project_management/pipeline_runs` and the same path with `just test-pg`
 
 ## Phase 2: Typed client and Living Spec
 

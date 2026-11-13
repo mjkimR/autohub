@@ -47,7 +47,9 @@ label is "Needs you".
    decision, then Work Item recovery or replacement, then SDD batch attention, then Work Item `attention`, then run
    state. A run with any decision-inbox row is held by that decision. Check: `test_decisions_suppress_runs_and_match_the_inbox_count`,
    `test_failed_runs_are_quiet_and_recovery_wins`, `test_work_plan_and_work_item_kinds` and
-   `test_batch_attention_suppresses_its_run_and_yields_to_decisions`.
+   `test_batch_attention_suppresses_its_run_and_yields_to_decisions` and
+   `test_a_batch_yielding_to_a_decision_hides_no_other_stopped_run` and
+   `test_failed_runs_yield_to_batch_and_work_item_attention`.
 4. **Decision parity**: WHEN counting, Hub MUST report a `decision` count equal to `actionable_total_count` of the
    decision list for the same `project_id` scope. Check: `test_decisions_suppress_runs_and_match_the_inbox_count`.
 5. **Catalog holds are context**: Hub MUST never list an AI catalog as an item; WHEN a stopped run's catalog is held,
@@ -78,7 +80,7 @@ label is "Needs you".
 | `failed-run` | no | `failed` PR run (`CAP-PR-pull-request-delivery`) | `pipeline-run` | `inspect-run` |
 
 `waiting_since` is the decision row's waiting time, the recovery's creation time, the connection test's finish time
-and otherwise the owner row's `updated_at`; Hub keeps no state-entry time.
+(falling back to its `updated_at`) and otherwise the owner row's `updated_at`; Hub keeps no state-entry time.
 
 ### HTTP surface
 
@@ -108,5 +110,6 @@ predicate as the set of adapters with manual cleanup resolution.
 Source: [`owed_items/`](../../../modules/hub/app/features/project_management/owed_items) and the run flag in
 [`pipeline_runs/models.py`](../../../modules/hub/app/features/project_management/pipeline_runs/models.py) and
 [`discovery_projection.py`](../../../modules/hub/app/features/project_management/pipeline_runs/discovery_projection.py).
-The checks above ran on SQLite and PostgreSQL in `SPEC-owed-item-contract`; they use controlled GitHub responses and do
-not establish live deployment behavior.
+In `SPEC-owed-item-contract` the worker ran both test files above with `just test` (SQLite) and `just test-pg`
+(PostgreSQL); the unit's review and final-report envelopes record the commands and counts. The tests use controlled
+GitHub responses and do not establish live deployment behavior.

@@ -42,7 +42,8 @@ or Native SDD request awaiting a decision, including an answered question whose 
 blocked PR runs not held by a decision, proposed Work Plans, Work Item recovery, replacement or attention, SDD batches
 in attention and connection-test cleanup reviews. A deliberately paused run is attention too, because only the
 operator can resume it. A failed run is a quiet owed item without count weight, and an AI catalog hold is never
-attention.
+attention. Until the Attention landing ships, the shell Badge keeps counting decisions only and the dashboard
+Needs-you tile keeps its failed, paused and blocked run sum (`UX-app-shell`, `UX-dashboard`).
 
 - Show attention only on a Badge, a summary tile, a row's left rule or the application shell's top rule (2px, while
   pending decisions are owed; `UX-app-shell`). Never fill a full row background with it, because dense amber lists

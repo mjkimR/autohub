@@ -217,6 +217,7 @@ Work Item `attention` > run state. A run is held by a decision when it has any d
   manual cleanup resolution and passes it into the SQL predicate, so the bounded candidate filter and the keyset page
   stay one statement.
 - **Batch suppression**: a batch whose claimed run has a decision row is suppressed into that decision, since the
-  decision is the most specific actionable owner; the decision's `context.sdd_batch_id` keeps the link.
+  decision is the most specific actionable owner; the decision's `context.sdd_batch_id` keeps the link, and the batch's
+  other stopped runs stay listed because no listed batch describes them.
 - **Scope**: the owed read has the visibility of the decision list: every authenticated user reads every project,
   optionally filtered by `project_id`.

@@ -233,6 +233,7 @@ WHEN a native activity originates in an SDD batch, Hub MUST preserve the same pe
 
 ## Owed items
 
-An SDD batch in `attention` is a counted `sdd-batch-attention` owed item in `CAP-PR-owed-items`, and its claimed runs
-are not listed as stopped runs. WHEN a claimed run has a decision-inbox row, the batch is not listed; that run's
-`decision` item names the batch in `context.sdd_batch_id`.
+An SDD batch in `attention` is a counted `sdd-batch-attention` owed item in `CAP-PR-owed-items`, and while it is
+listed its claimed runs are not listed as stopped runs. WHEN a claimed run has a decision-inbox row, the batch is not
+listed; that run's `decision` item names the batch in `context.sdd_batch_id`, and the batch's other stopped runs stay
+listed on their own.

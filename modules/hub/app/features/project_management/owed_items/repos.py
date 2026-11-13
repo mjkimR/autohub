@@ -101,9 +101,14 @@ def _batch_tables():
 
 
 def _run_in_attention_batch(run_id):
+    """The run is described by a listed batch: in attention and not itself yielding to a decision."""
     claim, member, batch = _batch_tables()
     return exists().where(
-        claim.run_id == run_id, member.id == claim.member_id, batch.id == member.batch_id, batch.state == "attention"
+        claim.run_id == run_id,
+        member.id == claim.member_id,
+        batch.id == member.batch_id,
+        batch.state == "attention",
+        ~_batch_held_by_decision(batch.id),
     )
 
 
@@ -120,7 +125,8 @@ def _attention_batch_of(run_id):
 
 
 def _batch_held_by_decision(batch_id):
-    claim, member, _ = _batch_tables()
+    claim = aliased(SddActivityClaim, name="decision_claim")
+    member = aliased(SddBatchMember, name="decision_member")
     held = aliased(DecisionEntry, name="batch_decision")
     return exists().where(member.batch_id == batch_id, claim.member_id == member.id, held.run_id == claim.run_id)
 
@@ -244,7 +250,11 @@ class OwedItemRepository:
                 .outerjoin(item, item.pipeline_run_id == PipelineRun.id)
                 .where(
                     PipelineRun.state == "failed",
-                    or_(item.id.is_(None), and_(~_counted_recovery(item.id), ~_counted_replacement(item.id))),
+                    ~_run_in_attention_batch(PipelineRun.id),
+                    or_(
+                        item.id.is_(None),
+                        and_(item.state != "attention", ~_counted_recovery(item.id), ~_counted_replacement(item.id)),
+                    ),
                 )
             )
             return statement, project
@@ -291,7 +301,7 @@ class OwedItemRepository:
                 "work-item-replacement",
                 ReplacementLink.id,
                 ReplacementLink.project_id,
-                ReplacementLink.created_at,
+                ReplacementLink.updated_at,
                 title=original.title,
                 state=literal("active", String),
                 detail=ReplacementLink.reason,
