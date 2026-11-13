@@ -172,3 +172,27 @@
 		--tw-ring-offset-color: var(--background);
 	}
 }
+
+/* The narrow header is h-18; only navigation shrinks below its brand and session controls. */
+.shell-navigation {
+	max-height: calc(100dvh - var(--spacing) * 18);
+}
+
+@media (width >= 64rem) {
+	.shell-navigation {
+		max-height: none;
+	}
+}
+
+/* Cues occupy reserved gutters outside the link scrollport, including focus outlines. */
+.navigation-edge-cue {
+	background: linear-gradient(
+		to bottom,
+		transparent,
+		color-mix(in oklch, var(--sidebar-foreground) 18%, transparent)
+	);
+}
+
+.navigation-edge-cue[data-navigation-cue='bottom'] {
+	transform: rotate(180deg);
+}

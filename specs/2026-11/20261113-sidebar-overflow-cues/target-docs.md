@@ -3,7 +3,7 @@ id: PROP-sidebar-overflow-cues-target
 title: Sidebar overflow cue screen delta
 summary: "Draft directional navigation overflow cues and bounded narrow Menu states for the authenticated navigation panel."
 status: draft
-proposal: PROP-sidebar-overflow-cues
+proposal: SPEC-sidebar-overflow-cues
 created_at: 2026-11-13
 targets:
   - file: docs/ux/navigation/UX-app-shell.md
