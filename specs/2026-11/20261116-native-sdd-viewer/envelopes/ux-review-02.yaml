@@ -1,0 +1,29 @@
+kind: ux-review
+stage: specify
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T00:24:14.648661Z'
+status: completed
+summary: Closed the draft UX findings in implemented binary/search recovery, handbook language feedback and full host/usecase coverage.
+findings:
+- issue: Binary and filtered-empty states need explicit recovery.
+  evidence: spec.md Screens and NativeSddViewer integration cover Back to files and Clear search.
+  failure_condition: Binary content or no matching search leaves no next action.
+  suggested_action: Explain binary content and offer file return; distinguish no matches and clear search.
+  resolution: resolved
+- issue: Handbook language selection needs transition feedback.
+  evidence: spec.md Screens and native handbook integration name language and requested path with loading/error feedback.
+  failure_condition: A changed language has no visible requested or successful page identity.
+  suggested_action: Show language, README loading and retry feedback.
+  resolution: resolved
+- issue: Link check needs explicit retained host and use-case coverage.
+  evidence: spec.md Screens declares use case and retained host/execution steps; UX-repository maps native interactions.
+  failure_condition: Draft coverage omits ordinary files, binary outcomes and retained host responsibilities.
+  suggested_action: Declare all use-case coverage and retain linked panels explicitly.
+  resolution: resolved
+assumptions:
+- Author closure of round-one UX findings; no additional UX reviewer round or visual walkthrough
+checks: {}
+diff_scope:
+  base: ''
+  head: b083ac4dc1d2521fbeeaf1c871717555a1251c59
