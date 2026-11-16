@@ -8,6 +8,8 @@ created_at: 2026-11-05
 
 # [ADR-sdd-development] Use devkit SDD for Auto Hub development
 
+Superseded in part by `ADR-native-sdd-viewer`: viewer receipt review during package updates.
+
 - **Status**: Accepted
 - **Date**: 2026-11-05
 - **Deciders**: Repository owner
