@@ -35,14 +35,14 @@ entrypoints:
    Interface: `UX-repository`.
 
 3. The operator selects a branch and a proposal or spec document, directly or
-   through a milestone member, or accepts an addressed unit and browse branch (`CAP-DOC-repository-viewer`).
+   through a milestone member, or accepts an addressed file/unit and browse branch (`CAP-DOC-repository-viewer`).
    Interface: `UX-repository`.
 
 4. Hub displays the selected document from that branch
    (`CAP-DOC-repository-viewer`, rules 2, 5–6).
    Interface: `UX-repository`.
 
-5. Hub retrieves executions related to the selected proposal or spec
+5. Hub retrieves executions beside the selected proposal or spec
    (`CAP-DOC-repository-viewer`, rules 7–8).
    Interface: `UX-sdd-execution`.
 
@@ -220,6 +220,20 @@ roadmap navigation, lineage, read-only execution links and visible refusal.
 - **Given** an inline full document ID with two indexed matches.
 - **When** the operator opens the reference.
 - **Then** Hub explains the ambiguity without selecting either document or changing branches.
+
+### DOC-INSPECT-15: Restore or clear a file address
+
+- **Covers**: main success scenario steps 3–4 and 3a.
+- **Given** an inspected file in either viewer.
+- **When** the operator switches modes, reloads, or navigates browser history to another or absent file address.
+- **Then** the addressed file is restored or the previous document and contextual unit actions are cleared, without execution.
+
+### DOC-INSPECT-16: Inspect progressive discovery
+
+- **Covers**: main success scenario steps 3–4 and 4b.
+- **Given** a branch document scan with completed and pending batches.
+- **When** the operator searches or opens an already discovered document.
+- **Then** completed rows are available during scanning; incomplete-read failures remain visible with retry.
 
 ## 6. Source and Verification Boundary
 

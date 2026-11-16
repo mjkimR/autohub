@@ -2,7 +2,7 @@
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { untrack, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { RepositorySelection, unitDirectory } from './repository-selection.svelte';
+	import { RepositorySelection } from './repository-selection.svelte';
 	import { page } from '$app/state';
 	import { GitBranch, FolderGit2, Sparkles, RefreshCw, Layers } from '@lucide/svelte';
 	import NativeSddViewer from './documents/NativeSddViewer.svelte';
@@ -11,8 +11,9 @@
 	import { Button } from '$lib/components/ui/button';
 	import FileTreeTable from './FileTreeTable.svelte';
 	import FileBlobViewer from './FileBlobViewer.svelte';
-	import SddExecution from './SddExecution.svelte';
-	import SddProposals from './SddProposals.svelte';
+	import SddUnitActions from './SddUnitActions.svelte';
+	import SddStartOutcome from './SddStartOutcome.svelte';
+	import { sddStarts } from './sdd-starts.svelte';
 	import { repositoryDataSource } from './data-source';
 	import type { RepoBlob, RepoInfo, RepoItem, RepoTree } from './types';
 
@@ -27,16 +28,17 @@
 
 	let isSdd = $derived(project.project_type === 'sdd');
 	const documentSource = $derived(repositoryDataSource(project.id));
-	let selectedSpec = $state('');
+	const starts = $derived(sddStarts(project.id));
+	const requestedPath = $derived(page.url.searchParams.get('path') || '');
 	const selection = new RepositorySelection();
 	const requestedUnit = $derived(page.url.searchParams.get('unit') || '');
 	const requestedRef = $derived(page.url.searchParams.get('ref') || '');
+	const selectionUnit = $derived(requestedPath ? '' : requestedUnit);
 	$effect(() => {
 		const id = project.id,
 			sdd = isSdd,
-			unit = requestedUnit,
+			unit = selectionUnit,
 			ref = requestedRef;
-		userSelectedMode = null;
 		++readVersion;
 		tree = activeBlob = readmeBlob = null;
 		currentPath = '';
@@ -48,17 +50,54 @@
 	$effect(() => {
 		info = selection.info;
 		currentRef = selection.ref;
-		selectedSpec = selection.unit;
 		loading = selection.status === 'loading';
 		if (selection.status === 'ready') untrack(() => void loadTree('', selection.ref));
 	});
+	$effect(() => {
+		void project.id;
+		userSelectedMode = null;
+	});
+	$effect(() => {
+		const status = selection.status,
+			path = requestedPath,
+			ref = currentRef,
+			mode = viewerMode;
+		if (status === 'ready' && mode === 'default')
+			untrack(() => {
+				if (path && (activeBlob?.path !== path || activeBlob.ref !== ref))
+					void openFile({
+						name: path.split('/').pop() || path,
+						path,
+						type: 'file',
+						size: 0,
+						sha: ''
+					});
+				else if (!path && activeBlob) void loadTree('', ref);
+			});
+	});
 	onDestroy(() => selection.destroy());
+	function selectDocument(path: string) {
+		if (!path || path === requestedPath) return;
+		const url = new URL(page.url);
+		url.searchParams.set('path', path);
+		url.searchParams.set('ref', currentRef);
+		url.searchParams.delete('unit');
+		void goto(`${url.pathname}${url.search}`, { noScroll: true, keepFocus: true });
+	}
+	function clearDocument() {
+		if (!requestedPath && !requestedUnit) return;
+		const url = new URL(page.url);
+		url.searchParams.delete('path');
+		url.searchParams.delete('unit');
+		void goto(`${url.pathname}${url.search}`, { noScroll: true, keepFocus: true });
+	}
 	function retrySelection() {
-		void selection.select(project.id, isSdd, requestedUnit, requestedRef);
+		void selection.select(project.id, isSdd, selectionUnit, requestedRef);
 	}
 	function browse() {
 		const url = new URL(page.url);
 		url.searchParams.delete('unit');
+		url.searchParams.delete('path');
 		if (selection.missingRef) url.searchParams.delete('ref');
 		void goto(`${url.pathname}${url.search}`, { noScroll: true, keepFocus: true });
 	}
@@ -152,6 +191,7 @@
 			if (res.data) {
 				activeBlob = res.data;
 				currentPath = item.path;
+				selectDocument(item.path);
 			}
 		} catch (err) {
 			if (version !== readVersion || projectId !== project.id) return;
@@ -162,12 +202,17 @@
 	}
 
 	async function refreshSdd() {
-		await selection.select(project.id, isSdd, requestedUnit, requestedRef || currentRef);
+		await selection.select(
+			project.id,
+			isSdd,
+			requestedPath ? '' : requestedUnit,
+			requestedRef || currentRef
+		);
 		viewerRevision++;
 	}
 
 	function handleBranchChange(newRef: string) {
-		if (requestedUnit || requestedRef) {
+		if (isSdd || requestedUnit || requestedRef) {
 			const url = new URL(page.url);
 			url.searchParams.set('ref', newRef);
 			void goto(`${url.pathname}${url.search}`, { noScroll: true, keepFocus: true });
@@ -257,24 +302,26 @@
 			</div>
 
 			<!-- View Mode & Action Controls -->
-			<div class="flex items-center gap-2">
+			<div class="flex flex-wrap items-center gap-2">
 				{#if isSdd}
 					<div class="flex rounded-lg border bg-muted/40 p-0.5 text-xs">
 						<button
 							type="button"
 							onclick={() => (userSelectedMode = 'sdd')}
+							aria-pressed={viewerMode === 'sdd'}
 							class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'sdd' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
 						>
 							<Sparkles
 								class="h-3.5 w-3.5 {viewerMode === 'sdd'
 									? 'text-primary-foreground'
-									: 'text-warning'}"
+									: 'text-muted-foreground'}"
 							/>
-							Sdd View
+							SDD View
 						</button>
 						<button
 							type="button"
 							onclick={() => (userSelectedMode = 'default')}
+							aria-pressed={viewerMode === 'default'}
 							class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'default' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
 						>
 							<Layers class="h-3.5 w-3.5" />
@@ -286,7 +333,7 @@
 				<Button
 					variant="outline"
 					size="sm"
-					class="h-8"
+					disabled={loading}
 					onclick={() =>
 						viewerMode === 'sdd'
 							? refreshSdd()
@@ -306,6 +353,17 @@
 			</div>
 		</div>
 
+		{#if isSdd}<SddStartOutcome
+				state={starts}
+				projectId={project.id}
+				repository={project.github.repository}
+			/>{/if}
+		{#if selection.status === 'loading' && !requestedUnit}<p
+				role="status"
+				class="text-sm text-muted-foreground"
+			>
+				Loading repository…
+			</p>{/if}
 		{#if requestedUnit && selection.status === 'loading'}<p role="status">
 				Loading requested unit {requestedUnit}…
 			</p>{/if}
@@ -342,28 +400,19 @@
 				Loading repository…
 			</div>
 		{:else if viewerMode === 'sdd'}
-			{#if isSdd && (!requestedUnit || selection.status === 'ready')}{#key project.id}<SddExecution
-						projectId={project.id}
-						repository={project.github.repository}
-						{selectedSpec}
-					/><SddProposals
-						projectId={project.id}
-						repository={project.github?.repository ?? ''}
-					/>{/key}{/if}
-			<!-- Native Sdd Viewer -->
+			<!-- Native SDD Viewer -->
 			<section class="rounded-xl border bg-card p-4 shadow-xs">
-				{#if selection.status === 'ready'}{#key `${project.id}-${currentRef}-${requestedUnit}-${viewerRevision}`}
+				{#if selection.status === 'ready'}{#key `${project.id}-${currentRef}-${viewerRevision}`}
 						<NativeSddViewer
 							dataSource={documentSource}
 							branch={currentRef || 'main'}
-							initialPath={requestedUnit && selection.unit
-								? `${selection.unit}/${selection.unit.startsWith('specs/') ? 'spec.md' : 'proposal.md'}`
-								: ''}
-							onselectpath={(path) => {
-								const unit =
-									path.match(/^(specs\/\d{4}-\d{2}\/[^/]+|docs\/proposals\/PROP-[^/]+)/)?.[1] || '';
-								selectedSpec = unitDirectory.test(unit) ? unit : '';
-							}}
+							initialPath={requestedPath ||
+								(requestedUnit && selection.unit
+									? `${selection.unit}/${selection.unit.startsWith('specs/') ? 'spec.md' : 'proposal.md'}`
+									: '')}
+							onselectpath={selectDocument}
+							onclearpath={clearDocument}
+							unitActions={isSdd ? unitActions : undefined}
 						/>
 					{/key}{/if}
 			</section>
@@ -400,3 +449,12 @@
 		{/if}
 	{/if}
 </div>
+
+{#snippet unitActions(path: string)}
+	<SddUnitActions
+		projectId={project.id}
+		repository={project.github?.repository || ''}
+		{path}
+		branch={currentRef}
+	/>
+{/snippet}

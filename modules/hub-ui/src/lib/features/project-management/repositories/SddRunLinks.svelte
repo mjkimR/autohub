@@ -48,8 +48,7 @@
 </script>
 
 {#if specDir}
-	<div class="space-y-2 border-t pt-3">
-		<h4 class="text-xs font-semibold text-muted-foreground">Recent executions for this unit</h4>
+	<div class="space-y-2">
 		{#if loading}<p class="text-xs text-muted-foreground">Loading executions…</p>
 		{:else if error}<p role="status" class="text-xs text-destructive">
 				{error}
@@ -58,7 +57,7 @@
 					class="underline"
 					onclick={() => {
 						retry += 1;
-					}}>Retry</button
+					}}>Retry history</button
 				>
 			</p>
 		{:else if !runs.length}<p class="text-xs text-muted-foreground">

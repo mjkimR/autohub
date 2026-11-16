@@ -235,3 +235,42 @@ test('unique ID references include proposal companion files beyond the proposal 
 	await screen.findByRole('heading', { name: 'Target documents', level: 1 });
 	expect(selected).toHaveBeenLastCalledWith('docs/proposals/PROP-native/target-docs.md');
 });
+
+test('changing the addressed file preserves cached reads while explicit reconfiguration refreshes them', async () => {
+	const source = sourceFor({ 'docs/a.md': '# First', 'docs/b.md': '# Second' });
+	const view = render(NativeSddViewer, {
+		dataSource: source,
+		branch: 'main',
+		initialPath: 'docs/a.md',
+		onselectpath: vi.fn()
+	});
+	await screen.findByRole('heading', { name: 'First', level: 1 });
+	await view.rerender({
+		dataSource: source,
+		branch: 'main',
+		initialPath: 'docs/b.md',
+		onselectpath: vi.fn()
+	});
+	await screen.findByRole('heading', { name: 'Second', level: 1 });
+	await view.rerender({
+		dataSource: source,
+		branch: 'main',
+		initialPath: 'docs/a.md',
+		onselectpath: vi.fn()
+	});
+	await screen.findByRole('heading', { name: 'First', level: 1 });
+	expect(vi.mocked(source.blob).mock.calls.filter(([path]) => path === 'docs/a.md')).toHaveLength(
+		1
+	);
+	view.unmount();
+	render(NativeSddViewer, {
+		dataSource: source,
+		branch: 'main',
+		initialPath: 'docs/a.md',
+		onselectpath: vi.fn()
+	});
+	await screen.findByRole('heading', { name: 'First', level: 1 });
+	expect(vi.mocked(source.blob).mock.calls.filter(([path]) => path === 'docs/a.md')).toHaveLength(
+		2
+	);
+});

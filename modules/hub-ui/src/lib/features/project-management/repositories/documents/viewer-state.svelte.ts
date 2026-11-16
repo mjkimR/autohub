@@ -1,3 +1,4 @@
+import { cacheRepositoryReads } from './read-cache';
 import { SvelteMap } from 'svelte/reactivity';
 import type { RepositoryDataSource } from '../data-source';
 import type { RepoBlob, RepoItem } from '../types';
@@ -22,6 +23,7 @@ export class DocumentViewerState {
 	language = $state('en');
 	requestedPath = $state('');
 	private source!: RepositoryDataSource;
+	private originalSource: RepositoryDataSource | null = null;
 	private ref = '';
 	private requestedReference = '';
 	private controller = new AbortController();
@@ -35,15 +37,24 @@ export class DocumentViewerState {
 	}
 
 	configure(source: RepositoryDataSource, ref: string, initialPath: string) {
+		if (source === this.originalSource && ref === this.ref) return;
+		this.originalSource = source;
 		this.destroy();
-		this.source = source;
+		this.source = cacheRepositoryReads(source);
 		this.ref = ref;
 		this.cache.clear();
 		this.query = '';
 		this.blob = null;
 		this.readError = '';
 		this.requestedPath = '';
-		void this.changeSection(initialPath ? 'files' : 'documents', initialPath);
+		const section = /^docs\/proposals\/PROP-[^/]+\/proposal\.md$/.test(initialPath)
+			? 'proposals'
+			: initialPath.startsWith('specs/')
+				? 'specs'
+				: initialPath
+					? 'files'
+					: 'documents';
+		void this.changeSection(section, initialPath);
 	}
 	async changeSection(section: DocumentSection, initialPath = '') {
 		this.controller.abort();
@@ -65,6 +76,7 @@ export class DocumentViewerState {
 		this.listing = { documents: [], errors: [] };
 		this.loading = true;
 		if (!initialPath) this.selected('');
+		else if (section !== 'files') void this.open(initialPath);
 		try {
 			if (section === 'handbook') {
 				const manifest = await loadHandbook(this.source, this.ref, signal);
@@ -78,7 +90,9 @@ export class DocumentViewerState {
 			} else {
 				const listing =
 					this.cache.get(section) ||
-					(await discoverDocuments(this.source, this.ref, section, signal));
+					(await discoverDocuments(this.source, this.ref, section, signal, false, (partial) => {
+						if (generation === this.generation && !signal.aborted) this.listing = partial;
+					}));
 				if (generation !== this.generation) return;
 				this.listing = listing;
 				if (!listing.errors.length) this.cache.set(section, listing);

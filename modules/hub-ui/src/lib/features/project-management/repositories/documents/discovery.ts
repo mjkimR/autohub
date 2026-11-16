@@ -36,7 +36,8 @@ export async function discoverDocuments(
 	ref: string,
 	section: DocumentSection,
 	signal: AbortSignal,
-	includeProposalFiles = false
+	includeProposalFiles = false,
+	onprogress?: (listing: DocumentListing) => void
 ): Promise<DocumentListing> {
 	const documents: RepositoryDocument[] = [],
 		errors: string[] = [];
@@ -83,6 +84,11 @@ export async function discoverDocuments(
 				}
 			})
 		);
+		if (!signal.aborted)
+			onprogress?.({
+				documents: [...documents].sort((a, b) => a.path.localeCompare(b.path)),
+				errors: [...errors]
+			});
 	}
 	return { documents: documents.sort((a, b) => a.path.localeCompare(b.path)), errors };
 }

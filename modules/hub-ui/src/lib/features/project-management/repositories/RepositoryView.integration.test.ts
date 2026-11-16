@@ -46,7 +46,9 @@ let missing = false;
 beforeEach(() => {
 	api.GET.mockReset();
 	api.POST.mockReset();
-	goto.mockReset();
+	goto.mockReset().mockImplementation(async (url: string) => {
+		page.url = new URL(url, 'http://hub.test');
+	});
 	missing = false;
 	page.url = new URL(
 		`http://hub.test/projects/p?tab=repository&unit=${encodeURIComponent(unit)}&ref=dev-demo&batch=${batch}`
@@ -94,9 +96,7 @@ afterEach(cleanup);
 test('direct and reloaded URL select branch, unit and exact batch without mutations', async () => {
 	const first = render(RepositoryView, { project });
 	await waitFor(() =>
-		expect(
-			(screen.getByLabelText('Unit directory (spec or proposal)') as HTMLInputElement).value
-		).toBe(unit)
+		expect(screen.getByRole('region', { name: 'Selected SDD unit' }).textContent).toContain(unit)
 	);
 	expect((screen.getByLabelText('Repository branch') as HTMLSelectElement).value).toBe('dev-demo');
 	expect(
@@ -115,16 +115,12 @@ test('direct and reloaded URL select branch, unit and exact batch without mutati
 	).toBe(true);
 	expect(api.POST).not.toHaveBeenCalled();
 	await userEvent.setup().click(screen.getByRole('button', { name: 'Git Browser' }));
-	await userEvent.setup().click(screen.getByRole('button', { name: 'Sdd View' }));
-	expect(
-		(screen.getByLabelText('Unit directory (spec or proposal)') as HTMLInputElement).value
-	).toBe(unit);
+	await userEvent.setup().click(screen.getByRole('button', { name: 'SDD View' }));
+	expect(screen.getByRole('region', { name: 'Selected SDD unit' }).textContent).toContain(unit);
 	first.unmount();
 	render(RepositoryView, { project });
 	await waitFor(() =>
-		expect(
-			(screen.getByLabelText('Unit directory (spec or proposal)') as HTMLInputElement).value
-		).toBe(unit)
+		expect(screen.getByRole('region', { name: 'Selected SDD unit' }).textContent).toContain(unit)
 	);
 	expect(api.POST).not.toHaveBeenCalled();
 });
@@ -133,7 +129,7 @@ test('missing and malformed unit cannot expose activity controls ', async () => 
 	missing = true;
 	render(RepositoryView, { project });
 	expect(await screen.findByRole('heading', { name: 'Unit unavailable' })).toBeTruthy();
-	expect(screen.queryByRole('button', { name: 'Start execution' })).toBeNull();
+	expect(screen.queryByRole('button', { name: 'Enroll PR' })).toBeNull();
 	await userEvent.setup().click(screen.getByRole('button', { name: 'Browse repository' }));
 	expect(goto).toHaveBeenCalledWith(expect.stringContaining('tab=repository'), expect.anything());
 	expect(goto.mock.calls[0][0]).not.toContain('unit=');
@@ -153,27 +149,21 @@ test('deleted recorded branch keeps its name and Browse resets the unavailable r
 test('same-project browser query navigation replaces selected unit', async () => {
 	render(RepositoryView, { project });
 	await waitFor(() =>
-		expect(
-			(screen.getByLabelText('Unit directory (spec or proposal)') as HTMLInputElement).value
-		).toBe(unit)
+		expect(screen.getByRole('region', { name: 'Selected SDD unit' }).textContent).toContain(unit)
 	);
 	const next = 'docs/proposals/PROP-next';
 	page.url = new URL(
 		`http://hub.test/projects/p?tab=repository&unit=${next}&ref=main&batch=${batch}`
 	);
 	await waitFor(() =>
-		expect(
-			(screen.getByLabelText('Unit directory (spec or proposal)') as HTMLInputElement).value
-		).toBe(next)
+		expect(screen.getByRole('region', { name: 'Selected SDD unit' }).textContent).toContain(next)
 	);
 	expect((screen.getByLabelText('Repository branch') as HTMLSelectElement).value).toBe('main');
 	page.url = new URL(
 		`http://hub.test/projects/p?tab=repository&unit=${unit}&ref=dev-demo&batch=${batch}`
 	);
 	await waitFor(() =>
-		expect(
-			(screen.getByLabelText('Unit directory (spec or proposal)') as HTMLInputElement).value
-		).toBe(unit)
+		expect(screen.getByRole('region', { name: 'Selected SDD unit' }).textContent).toContain(unit)
 	);
 	expect(api.POST).not.toHaveBeenCalled();
 });
@@ -224,4 +214,82 @@ test('pending directory response is discarded immediately after same-project inv
 	await tick();
 	expect(screen.queryByRole('button', { name: 'stale-response.txt' })).toBeNull();
 	expect(screen.queryByText('stale-response.txt')).toBeNull();
+});
+
+test('file URL restores its exact branch and browser navigation replaces the document without submission', async () => {
+	page.url = new URL('http://hub.test/projects/p?tab=repository&path=docs/guide.md&ref=dev-demo');
+	render(RepositoryView, { project });
+	await screen.findByRole('heading', { name: 'Addressed demo', level: 1 });
+	expect(
+		api.GET.mock.calls.some(
+			([path, opts]) =>
+				path.endsWith('/blob') &&
+				opts.params.query.path === 'docs/guide.md' &&
+				opts.params.query.ref === 'dev-demo'
+		)
+	).toBe(true);
+	page.url = new URL('http://hub.test/projects/p?tab=repository&path=docs/next.md&ref=dev-demo');
+	await waitFor(() =>
+		expect(
+			api.GET.mock.calls.some(
+				([path, opts]) => path.endsWith('/blob') && opts.params.query.path === 'docs/next.md'
+			)
+		).toBe(true)
+	);
+	expect(api.POST).not.toHaveBeenCalled();
+});
+
+test('browser history clears an addressed unit and its activity controls at a path-less URL', async () => {
+	page.url = new URL(
+		'http://hub.test/projects/p?tab=repository&path=docs/proposals/PROP-demo/proposal.md&ref=main'
+	);
+	render(RepositoryView, { project });
+	await screen.findByRole('button', { name: 'Start Planning' });
+	page.url = new URL('http://hub.test/projects/p?tab=repository&ref=main');
+	await waitFor(() =>
+		expect(screen.queryByRole('region', { name: 'Selected SDD unit' })).toBeNull()
+	);
+	expect(screen.queryByRole('button', { name: 'Start Planning' })).toBeNull();
+	expect(api.POST).not.toHaveBeenCalled();
+});
+
+test('changing a document section clears its obsolete address without submitting work', async () => {
+	page.url = new URL(
+		'http://hub.test/projects/p?tab=repository&path=docs/proposals/PROP-demo/proposal.md&ref=main'
+	);
+	render(RepositoryView, { project });
+	await screen.findByRole('button', { name: 'Start Planning' });
+	await userEvent.setup().click(screen.getByRole('button', { name: 'Documents' }));
+	await waitFor(() => expect(page.url.searchParams.has('path')).toBe(false));
+	expect(screen.queryByRole('region', { name: 'Selected SDD unit' })).toBeNull();
+	expect(api.POST).not.toHaveBeenCalled();
+});
+
+test('Git Browser file selection synchronizes its address and restores it across mode switches and reload', async () => {
+	page.url = new URL('http://hub.test/projects/p?tab=repository&ref=main');
+	const original = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation((path, options) =>
+		path.endsWith('/tree')
+			? Promise.resolve({
+					data: {
+						items: [{ name: 'guide.md', path: 'docs/guide.md', type: 'file', size: 10, sha: 's' }]
+					}
+				})
+			: original(path, options)
+	);
+	const first = render(RepositoryView, { project });
+	const user = userEvent.setup();
+	await screen.findByRole('button', { name: 'Git Browser' });
+	await user.click(screen.getByRole('button', { name: 'Git Browser' }));
+	await user.click(await screen.findByText('guide.md'));
+	await waitFor(() => expect(page.url.searchParams.get('path')).toBe('docs/guide.md'));
+	await user.click(screen.getByRole('button', { name: 'SDD View' }));
+	await screen.findByRole('heading', { name: 'Addressed demo', level: 1 });
+	await user.click(screen.getByRole('button', { name: 'Git Browser' }));
+	await waitFor(() => expect(screen.getByText('docs/guide.md')).toBeTruthy());
+	first.unmount();
+	render(RepositoryView, { project });
+	await screen.findByRole('heading', { name: 'Addressed demo', level: 1 });
+	expect(page.url.searchParams.get('path')).toBe('docs/guide.md');
+	expect(api.POST).not.toHaveBeenCalled();
 });

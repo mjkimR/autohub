@@ -8,11 +8,13 @@
 		documents,
 		query = $bindable(''),
 		selectedPath = '',
+		loading = false,
 		onopen
 	}: {
 		documents: RepositoryDocument[];
 		query?: string;
 		selectedPath?: string;
+		loading?: boolean;
 		onopen: (path: string) => void;
 	} = $props();
 	const filtered = $derived(
@@ -30,13 +32,15 @@
 		/></label
 	>
 	<p class="text-xs text-muted-foreground">{filtered.length} of {documents.length} documents</p>
-	{#if !documents.length}<p class="text-sm text-muted-foreground">
+	{#if !documents.length && !loading}<p class="text-sm text-muted-foreground">
 			No documents in this section on the selected branch.
 		</p>
-	{:else if !filtered.length}<p class="text-sm text-muted-foreground">No matching documents.</p>
+	{:else if !filtered.length && !loading}<p class="text-sm text-muted-foreground">
+			No matching documents.
+		</p>
 		<Button variant="outline" size="sm" onclick={() => (query = '')}>Clear search</Button>
 	{:else}
-		<ul class="max-h-128 space-y-3 overflow-auto" aria-label="Repository documents">
+		<ul class="max-h-72 space-y-3 overflow-auto lg:max-h-128" aria-label="Repository documents">
 			{#each filtered as doc (doc.path)}<li class="space-y-1 border-b pb-3">
 					<Button
 						variant={selectedPath === doc.path ? 'secondary' : 'ghost'}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, untrack } from 'svelte';
+	import { onDestroy, untrack, type Snippet } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import type { RepositoryDataSource } from '../data-source';
@@ -12,12 +12,16 @@
 		dataSource,
 		branch,
 		initialPath = '',
-		onselectpath
+		onselectpath,
+		onclearpath,
+		unitActions
 	}: {
 		dataSource: RepositoryDataSource;
 		branch: string;
 		initialPath?: string;
 		onselectpath: (path: string) => void;
+		onclearpath?: () => void;
+		unitActions?: Snippet<[string]>;
 	} = $props();
 	const state = new DocumentViewerState((path) => onselectpath(path));
 	const sections: { id: DocumentSection; label: string }[] = [
@@ -30,16 +34,27 @@
 	];
 	$effect(() => {
 		const source = dataSource,
-			ref = branch,
-			path = initialPath;
-		untrack(() => state.configure(source, ref, path));
+			ref = branch;
+		untrack(() => state.configure(source, ref, initialPath));
+	});
+	$effect(() => {
+		const path = initialPath;
+		untrack(() => {
+			if (path && path !== state.blob?.path && path !== state.requestedPath) void state.open(path);
+			else if (!path && (state.blob || state.requestedPath))
+				void state.changeSection(state.section);
+		});
 	});
 	onDestroy(() => state.destroy());
 	const open = (path: string, fragment = '') => {
 		void state.open(path, fragment);
 	};
+	const directoryTo = (path: string) => {
+		onclearpath?.();
+		void state.directoryTo(path);
+	};
 	const parent = () =>
-		state.directoryTo((state.blob?.path || state.directory).split('/').slice(0, -1).join('/'));
+		directoryTo((state.blob?.path || state.directory).split('/').slice(0, -1).join('/'));
 </script>
 
 <section aria-label="SDD repository documents" class="space-y-5">
@@ -49,7 +64,10 @@
 					variant={state.section === section.id ? 'secondary' : 'ghost'}
 					size="sm"
 					aria-pressed={state.section === section.id}
-					onclick={() => state.changeSection(section.id)}>{section.label}</Button
+					onclick={() => {
+						onclearpath?.();
+						void state.changeSection(section.id);
+					}}>{section.label}</Button
 				>{/each}
 		</nav>
 		<p class="text-xs text-muted-foreground">
@@ -89,12 +107,13 @@
 				No release handbook on this branch. Choose Documents or Files to browse the repository.
 			</p>{/if}
 	{/if}
-	<div class="grid min-w-0 gap-6 lg:grid-cols-3">
+	<div class="grid min-w-0 gap-6 lg:grid-cols-3 xl:grid-cols-4">
 		<div class="min-w-0 space-y-4">
 			{#if ['documents', 'proposals', 'specs'].includes(state.section)}<DocumentList
 					documents={state.listing.documents}
 					bind:query={state.query}
 					selectedPath={state.blob?.path}
+					loading={state.loading}
 					onopen={open}
 				/>
 			{:else if state.section === 'roadmap'}<MilestoneList
@@ -116,8 +135,7 @@
 							<Button
 								variant="ghost"
 								size="sm"
-								onclick={() =>
-									file.type === 'dir' ? state.directoryTo(file.path) : open(file.path)}
+								onclick={() => (file.type === 'dir' ? directoryTo(file.path) : open(file.path))}
 								>{file.name}{file.type === 'dir' ? '/' : ''}</Button
 							>
 						</li>{/each}
@@ -140,7 +158,7 @@
 						fragment={state.fragment}
 						onopen={open}
 						onreference={(id) => state.reference(id)}
-						ondirectory={(path) => state.directoryTo(path)}
+						ondirectory={directoryTo}
 						onback={state.section === 'files'
 							? () => {
 									void parent();
@@ -153,5 +171,8 @@
 					Select a document to inspect it. Reading does not start work.
 				</p>{/if}
 		</div>
+		{#if state.blob && unitActions}<aside class="min-w-0 lg:col-span-3 xl:col-span-1">
+				{@render unitActions(state.blob.path)}
+			</aside>{/if}
 	</div>
 </section>
