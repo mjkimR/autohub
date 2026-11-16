@@ -10,6 +10,8 @@ created_at: 2026-11-13
 
 # [ADR-repository-owned-sdd-execution] Keep repository SDD execution outside Hub
 
+Superseded in part by `ADR-remove-native-sdd-compatibility`: the clauses requiring historical native evidence reads, old execution authority fences and retained SDK bridge records.
+
 - **Status**: Accepted
 - **Date**: 2026-11-13
 
