@@ -20,34 +20,6 @@ class RunInteractionService:
     def __init__(self):
         self.repo = RunInteractionRepository()
 
-    async def applied_context(self, session: AsyncSession, run_id: UUID) -> str:
-        """Carry applied decisions in application order, excluding merely saved answers."""
-        answers, receipts = await self.repo.applied_decisions(session, run_id)
-        entries = [
-            (
-                applied_at,
-                str(answer.id),
-                f"Question ({question.id}): {question.question}\nAnswer by {answer.actor}: {answer.answer}",
-            )
-            for question, answer, applied_at in answers
-        ]
-        for receipt in receipts:
-            decision = receipt.decision_evidence or {}
-            if decision.get("action") == "revise" and decision.get("feedback"):
-                entries.append(
-                    (
-                        receipt.created_at,
-                        str(receipt.id),
-                        f"Requested changes by {decision['actor']}: {decision['feedback']}",
-                    )
-                )
-        if not entries:
-            return ""
-        return (
-            "\n\nApplied operator decisions (chronological; retain these constraints in later stages):\n"
-            + "\n\n".join(entry[2] for entry in sorted(entries))
-        )
-
     async def ask(
         self,
         session: AsyncSession,

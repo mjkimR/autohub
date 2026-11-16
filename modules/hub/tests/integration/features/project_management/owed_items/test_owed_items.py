@@ -133,7 +133,6 @@ async def activity_question(session, run_id):
         run_id,
         state="blocked",
         sdd_snapshot={"provider": "repository-agent", "spec_dir": "docs/proposals/PROP-test"},
-        sdd_progress=None,
     )
     session.add(
         RunQuestion(

@@ -14,7 +14,7 @@ not a fresh check of the serving environment.
 | Operator task | Procedure |
 | --- | --- |
 | Provision hosting, secrets, queues and external scheduler | [Cloud Run deployment](cloud-run-deployment.md) |
-| Operate optimistic SDD activities and retired claims | [SDD activities](sdd-runtime.md) |
+| Operate repository-owned SDD activities and claim recovery | [SDD activities](sdd-runtime.md) |
 | Configure accounts, managed keys, MCP clients and Google login | [Access](access.md) |
 | Connect Codex/Jules accounts, select catalogs and verify a repository | [Provider connections](provider-connections.md) |
 | Bind generic HTTP workers | [Execution targets](execution-targets.md) |

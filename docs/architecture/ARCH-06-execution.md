@@ -111,7 +111,8 @@ version or retirement fences. `ADR-remove-native-sdd-compatibility` records the 
 Standalone activity claims retain exact publication artifacts, request identity and lease
 ownership. An uncertain no-Run publication requires explicit checkpoint acknowledgment
 before its reservation is released. Check: activity API and claim recovery integration tests.
-The schema removes unused native batch and SDK bridge link storage through a forward migration.
+The schema removes unused native batch and SDK bridge link storage, native progress and
+native decision evidence through a forward migration. Generic resume receipts remain.
 
 
 ## Work Item replacement evidence

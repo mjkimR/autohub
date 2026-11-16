@@ -180,7 +180,7 @@ for inspecting maintenance and retained history.
 
 ## 6. Retained activity history
 
-Native graph-based SDD batch admission is retired. Shared maintenance does not
+Shared maintenance does not
 interpret repository workflows or progress native batch phases.
 `CAP-SDD-native-delivery` owns optimistic activity claims and retained history.
 Retention MUST preserve unresolved claim evidence and its owner link until

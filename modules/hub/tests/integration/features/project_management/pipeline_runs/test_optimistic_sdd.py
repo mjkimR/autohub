@@ -33,7 +33,7 @@ async def enroll_activity(client, project, github, **options):
 
 async def test_enrollment_has_only_descriptive_intent_and_no_repository_readiness(client, project, github):
     run = await enroll_activity(client, project, github)
-    assert run["state"] == "queued" and run["sdd_progress"] is None
+    assert run["state"] == "queued" and "sdd_progress" not in run
     assert run["sdd_snapshot"] == {
         "provider": "repository-agent",
         "spec_dir": UNIT,

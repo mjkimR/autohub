@@ -12,6 +12,8 @@ targets:
     resolution: modified
   - file: docs/architecture/ARCH-08-crosscutting-concepts.md
     resolution: modified
+  - file: docs/architecture/ARCH-11-risks-and-technical-debt.md
+    resolution: modified
   - file: docs/architecture/README.md
     resolution: modified
   - file: docs/capabilities/README.md
@@ -21,6 +23,8 @@ targets:
   - file: docs/capabilities/delivery/CAP-PR-owed-items.md
     resolution: modified
   - file: docs/capabilities/delivery/CAP-PR-pull-request-delivery.md
+    resolution: modified
+  - file: docs/capabilities/execution/CAP-EXEC-scheduling-maintenance.md
     resolution: modified
   - file: docs/capabilities/mcp/CAP-MCP-tool-access.md
     resolution: modified
@@ -68,7 +72,13 @@ targets:
     resolution: modified
   - file: docs/usecases/README.md
     resolution: modified
+  - file: docs/usecases/delivery/UC-resolve-run-question.md
+    resolution: modified
+  - file: docs/usecases/notifications/UC-receive-decision-notice.md
+    resolution: modified
   - file: docs/usecases/sdd/UC-complete-sdd-workflow.md
+    resolution: modified
+  - file: docs/usecases/sdd/UC-start-sdd-activity.md
     resolution: modified
   - file: docs/usecases/sdk/UC-execute-task-flow.md
     resolution: modified
@@ -115,6 +125,6 @@ Deleted legacy-only contracts and screens:
 - `docs/ux/sdd/UX-sdd-workflow-request.md`
 
 Historical document IDs resolve through aliases on surviving owners; no serving compatibility remains.
-Migration revision identifiers remain valid, and a forward migration drops unused batch and bridge storage.
+Migration revision identifiers remain valid, and a forward migration drops unused batch and bridge storage, native progress and decision evidence.
 Completed specs remain unchanged apart from one reference-only repair in historical feedback,
 which retains a deleted screen name as literal historical evidence. No required work is deferred.

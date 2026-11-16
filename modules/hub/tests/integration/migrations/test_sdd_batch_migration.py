@@ -63,6 +63,8 @@ async def test_cleanup_preserves_standalone_activity_claims(session):
             migration.downgrade()
             assert "member_id" in {c["name"] for c in inspect(conn).get_columns("sdd_activity_claims")}
             migration.upgrade()
+        assert "sdd_progress" not in {c["name"] for c in inspect(conn).get_columns("pipeline_runs")}
+        assert "decision_evidence" not in {c["name"] for c in inspect(conn).get_columns("run_resume_receipts")}
         assert conn.scalar(text("SELECT count(*) FROM sdd_activity_claims")) == 1
         assert "member_id" not in {c["name"] for c in inspect(conn).get_columns("sdd_activity_claims")}
         assert "uq_sdd_activity_claim_live" in {i["name"] for i in inspect(conn).get_indexes("sdd_activity_claims")}

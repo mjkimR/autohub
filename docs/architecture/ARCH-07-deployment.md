@@ -46,7 +46,7 @@ anchor this boundary. SQLite tests do not prove PostgreSQL schema behavior.
 The serving image MUST carry no connected-repository SDD evaluator, installer,
 lock-derived cache, pinned source-build environment or evaluation sandbox
 requirement. Check: `docker/hub.Dockerfile`, CI/recipe inspection and
-`CAP-SDD-native-delivery` retired-surface tests.
+`CAP-SDD-native-delivery` supported-surface tests.
 
 The Hub process uses GitHub/provider connections for publication and observation.
 It does not fetch devkit packages or repository build sources. The working agent

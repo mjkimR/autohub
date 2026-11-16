@@ -27,7 +27,7 @@ run does not imply every architectural constraint is mechanically enforced.
 ## Compatibility ownership
 
 `CAP-SDK-task-flow-execution` owns the SDK/host protocol and immutable release
-identity. `CAP-SDD-native-delivery` identifies retired bridge authority.
+identity. `CAP-SDD-native-delivery` owns repository activity publication independently of SDK execution.
 `CAP-SDD-native-delivery` owns optimistic activity context and retained claims. Changes to one
 contract do not silently change the authority of the others.
 

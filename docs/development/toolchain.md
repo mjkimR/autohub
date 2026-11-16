@@ -84,7 +84,7 @@ A mismatch fails with `DEVKIT_PINS_INVALID`. Backend lint runs this check.
 
 The contributor's devkit changes do not provision connected repositories.
 [Activity operations](../operations/sdd-runtime.md#rollout-and-rollback) separately
-cover retired execution and uncertain external work during cutover.
+cover schema cleanup and uncertain activity publication.
 
 ## UI artifacts and generated declarations
 

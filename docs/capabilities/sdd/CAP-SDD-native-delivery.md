@@ -63,7 +63,8 @@ application authorization boundary.
 | `POST /claims/{claim_id}/reconcile` | `request_id`, `expected_checkpoint_digest`, `acknowledge_external_work: true`; releases the selected unleased uncertain no-Run publication reservation |
 
 The descriptive `sdd_snapshot` records `provider: repository-agent`, `spec_dir`, requested activity/handoff intent and
-optional effort. It is descriptive context, not a workflow/runtime contract.
+optional effort. It is descriptive context, not a workflow/runtime contract. Native progress JSON is absent
+from Run storage and API responses; generic resume receipts have no native decision evidence.
 Both activity kinds
 use `plan-<slug>` or `dev-<slug>` and the same ordinary PR owner. GitHub API
 publication makes an unchanged-tree intent commit so the Draft PR has an exact

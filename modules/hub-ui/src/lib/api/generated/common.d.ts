@@ -178,10 +178,6 @@ export interface components {
             sdd_snapshot?: {
                 [key: string]: unknown;
             } | null;
-            /** Sdd Progress */
-            sdd_progress?: {
-                [key: string]: unknown;
-            } | null;
             /** Project Revision */
             project_revision: number;
             /** Pull Number */

@@ -22,7 +22,7 @@ keep completed specs and superseded ADRs as history.
 
 ## 4. Storage & State Management
 
-Drop the activity claim member foreign key, native batch tables and SDK PR link table in dependency order.
+Drop native progress and decision-evidence columns, the activity claim member foreign key, native batch tables and SDK PR link table in dependency order.
 Keep durable standalone claims and generic flow/run receipts. Make the obsolete retirement data
 migration a no-op while retaining its revision in the Alembic graph.
 

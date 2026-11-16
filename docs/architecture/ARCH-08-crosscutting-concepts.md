@@ -27,8 +27,7 @@ PR dispatch reconciles a connector-authored marker for the planned delivery
 (`CAP-PR-agent-dispatch`). Activity publication records its exact branch/PR candidate and
 later reconciles that retained identity (`CAP-SDD-native-delivery`). SDK
 workers inspect the existing attempt before any authorized resubmission
-(`CAP-SDK-task-flow-execution`); retired bridge delivery only observes an exact existing owner's
-resume receipt (`CAP-SDD-native-delivery`). Connection diagnostics distinguish
+(`CAP-SDK-task-flow-execution`). Connection diagnostics distinguish
 provider ownership proof from a guessed or merely related PR
 (`CAP-CONN-connection-verification`).
 
@@ -84,8 +83,7 @@ Browser account approval, machine scopes, direct-PR ready status, proposal
 acceptance and SDK approval do not authorize one another.
 `CAP-ACCESS-authentication-authorization` and `CAP-MCP-tool-access` own entrypoint
 access. `CAP-PR-operator-decisions` and `CAP-SDK-task-flow-execution` own current
-Run/flow input. `CAP-SDD-native-delivery` and `CAP-SDD-native-delivery`
-identify retired authority rather than additional live approval subjects.
+Run/flow input. `CAP-SDD-native-delivery` owns descriptive activity intent and claim recovery.
 
 Repository workflow records are the repository/agent's responsibility and do
 not create Hub authority. Descriptive activity context never grants merge or

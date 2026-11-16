@@ -83,7 +83,6 @@ class PipelineRunRead(UUIDSchemaMixin, TimestampSchemaMixin):
     enrollment_source: Literal["unknown", "work_plan", "provider_session", "native_sdd", "multiple"] = "unknown"
     related_origins: list[RunOrigin] = Field(default_factory=list)
     sdd_snapshot: dict | None = None
-    sdd_progress: dict | None = None
     project_revision: int
     pull_number: int
     pull_url: str

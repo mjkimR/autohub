@@ -11,7 +11,6 @@ from app.features.project_management.pipeline_runs.models import (
     DecisionEntry,
     PipelineRun,
     RunQuestion,
-    RunResumeReceipt,
 )
 from app.features.project_management.pipeline_runs.requests import request_digest
 from app_layer_base.utils.time_util import get_current_utc_time
@@ -85,7 +84,7 @@ def _sync(mapper, connection, owner):
         set_committed_value(run, "has_pending_decision", pending)
 
 
-for model in (PipelineRun, RunQuestion, RunResumeReceipt):
+for model in (PipelineRun, RunQuestion):
     event.listen(model, "after_insert", _sync)
     event.listen(model, "after_update", _sync)
     if model is not PipelineRun:

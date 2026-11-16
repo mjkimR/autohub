@@ -52,7 +52,6 @@ On a narrow screen the two groups stack as two rows.
   | `work-item-recovery` | `1 Work Item recovery` | Plans (`?tab=plans`) |
   | `work-item-replacement` | `1 Work Item replacement` | Plans (`?tab=plans`) |
   | `work-item-attention` | `1 Work Item needing attention` | Plans (`?tab=plans`) |
-  | `sdd-batch-attention` | `1 retained SDD batch` | Repository (`?tab=repository`) |
   | `connection-test-cleanup` | `1 connection-test cleanup` | Connections (`?tab=connections`) |
   | `failed-run` | `1 failed PR run` | Runs (`?tab=runs`); a quiet outline chip without attention weight, never counted |
 

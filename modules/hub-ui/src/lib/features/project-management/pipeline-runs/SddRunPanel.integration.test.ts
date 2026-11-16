@@ -8,8 +8,7 @@ const run = {
 	pull_url: 'https://github.com/team/repo/pull/2',
 	state: 'blocked',
 	pull_snapshot: { head_sha: 'a'.repeat(40) },
-	sdd_snapshot: { provider: 'repository-agent', spec_dir: 'docs/proposals/PROP-demo' },
-	sdd_progress: { current: { stage: { human_gate: 'dev-integration' } }, reports: [] }
+	sdd_snapshot: { provider: 'repository-agent', spec_dir: 'docs/proposals/PROP-demo' }
 } as unknown as components['schemas']['PipelineRunRead'];
 test('optimistic context points to ordinary questions and CI without interpreting stages', () => {
 	render(SddRunPanel, {

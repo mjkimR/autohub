@@ -175,7 +175,6 @@ class PipelineRunUseCase:
                         pull_url=snapshot.url,
                         pull_snapshot=snapshot.model_dump(mode="json"),
                         sdd_snapshot=intent,
-                        sdd_progress=None,
                         state=PipelineRunState.AWAITING_CI if inspect_only else PipelineRunState.QUEUED,
                         branch=snapshot.head_ref,
                         revision=1,

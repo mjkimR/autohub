@@ -14,10 +14,9 @@ responsibility change is recorded.
 | Area | Implemented behavior | Owning reference |
 | --- | --- | --- |
 | SDD activities | Explicit Planning/Development intent, Draft PR publication and ordinary Run questions/CI; repository agent owns setup/workflow | `CAP-SDD-native-delivery`, `CAP-PR-pull-request-delivery` |
-| Retired native execution | Historical runtime/decision/batch evidence and fenced legacy authority; no evaluator runtime | [activity operations](sdd-runtime.md) |
 | Repository viewer | Branch-specific documents, proposal roadmap and recorded Proposal → Spec → Run/PR lineage | Viewer (`CAP-DOC-repository-viewer`) |
 | Pipeline progression | Shared tick/webhook/manual driver, bounded retries and preserved waits | Advancement (`CAP-PR-pull-request-delivery`) |
-| SDK flows | Durable generic host and scoped approval; built-in SDD/PR bridge new effects retired | `CAP-SDK-task-flow-execution`, `CAP-SDD-native-delivery` |
+| SDK flows | Durable generic host, scoped approval and configured HTTP workers | `CAP-SDK-task-flow-execution`, `CAP-SDD-native-delivery` |
 
 ### Latest recorded local verification
 

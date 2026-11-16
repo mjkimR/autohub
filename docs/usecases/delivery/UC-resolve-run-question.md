@@ -209,7 +209,7 @@ baseline for Auto Hub.
 
 - **Given** an observed pending decision in the shared inbox,
 - **When** the operator selects Review,
-- **Then** the exact ordinary question loads before its controls enable; an obsolete selection stays disabled until explicit reinspection, and native history exposes no mutation controls.
+- **Then** the exact ordinary question loads before its controls enable; an obsolete selection stays disabled until explicit reinspection.
 - **Covers**: 1z and the discovery entry.
 
 

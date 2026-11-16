@@ -52,7 +52,7 @@ An existing candidate branch remains a conflict for a distinct start.
 
 Deploy matching backend and UI artifacts and apply the database migrations. The
 cleanup migration removes unused native batch tables, the claim member link and
-SDK PR bridge links. Current activity claims and generic task-flow records remain.
+SDK PR bridge links, native progress and native decision evidence. Current activity claims and generic task-flow records remain.
 There is no legacy native work to migrate or acknowledge.
 
 ## Live canary after deployment

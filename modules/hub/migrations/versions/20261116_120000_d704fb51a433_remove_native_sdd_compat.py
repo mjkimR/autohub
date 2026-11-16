@@ -25,6 +25,10 @@ def upgrade():
     op.drop_table("sdd_batch_members")
     op.drop_table("sdd_batches")
     op.drop_table("sdk_flow_pr_links")
+    with op.batch_alter_table("pipeline_runs") as batch:
+        batch.drop_column("sdd_progress")
+    with op.batch_alter_table("run_resume_receipts") as batch:
+        batch.drop_column("decision_evidence")
 
 
 def identity_columns():
@@ -38,6 +42,8 @@ def identity_columns():
 def downgrade():
     # Freeze the migration schema; later model changes must not alter historical replay.
     json_type = sa.JSON().with_variant(postgresql.JSONB(), "postgresql")
+    op.add_column("pipeline_runs", sa.Column("sdd_progress", json_type, nullable=True))
+    op.add_column("run_resume_receipts", sa.Column("decision_evidence", json_type, nullable=True))
     op.create_table(
         "sdd_batches",
         *identity_columns(),
