@@ -19,7 +19,9 @@ export function diagrams(node: HTMLElement, options: { html: string; dark: boole
 			for (const block of blocks) {
 				if (id !== generation) return;
 				const sandbox = document.createElement('div');
-				sandbox.hidden = true;
+				// Mermaid measures SVG text while rendering, so retain layout without displaying the sandbox.
+				sandbox.className = 'absolute invisible pointer-events-none';
+				sandbox.setAttribute('aria-hidden', 'true');
 				document.body.append(sandbox);
 				try {
 					const { svg } = await mermaid.render(

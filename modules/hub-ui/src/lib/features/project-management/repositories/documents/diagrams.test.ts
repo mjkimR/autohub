@@ -14,8 +14,12 @@ function article() {
 	return node;
 }
 test.each([true, false])('diagrams follow Hub theme dark=%s and sanitize SVG', async (dark) => {
-	renderer.render.mockResolvedValue({
-		svg: '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><script>alert(1)</script><text>Safe diagram</text></svg>'
+	renderer.render.mockImplementation(async (_id, _text, container: HTMLElement) => {
+		expect(container.hidden).toBe(false);
+		expect(container.classList.contains('invisible')).toBe(true);
+		return {
+			svg: '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><script>alert(1)</script><text>Safe diagram</text></svg>'
+		};
 	});
 	const node = article();
 	const action = diagrams(node, { html: node.innerHTML, dark });
