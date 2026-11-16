@@ -1,7 +1,7 @@
 ---
 id: CAP-PR-pull-request-delivery
 title: Pull Request Delivery
-summary: "Deliver ordinary PRs through guarded implementation, CI and merge, preserving explicit recovery authority. Run reads project retained origin relationships in bounded queries without inventing original enrollment channels."
+summary: "Coordinates bounded PR delivery with prompt explicit resume, project admission, current-head CI and policy-controlled merging."
 area: delivery
 status: active
 usecases:

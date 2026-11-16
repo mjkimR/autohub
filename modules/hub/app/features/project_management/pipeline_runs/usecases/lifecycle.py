@@ -66,6 +66,7 @@ from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -219,18 +220,21 @@ class PipelineRunUseCase:
     async def prepare_implementation(
         self, run_id: UUID, request: PrepareImplementationAttempt
     ) -> PreparedImplementationAttempt:
-        now = get_current_utc_time()
         async with AsyncTransaction() as session:
+            # Read identity only; Project must precede Run in the mutation lock order.
+            project_id = await session.scalar(select(PipelineRun.project_id).where(PipelineRun.id == run_id))
+            if project_id is None:
+                await raise_lease_conflict(self.repo, session, run_id, "prepare attempt")
+            project = await self.projects.get(session, project_id, lock=True)
             run = await self.repo.get_leased(
                 session,
                 run_id,
                 owner=request.owner,
                 token=request.token,
-                now=now,
+                now=get_current_utc_time(),
             )
             if run is None:
                 await raise_lease_conflict(self.repo, session, run_id, "prepare attempt")
-            project = await self.projects.get(session, run.project_id, lock=True)
             if not project.enabled or project.revision != run.project_revision:
                 raise ProjectError(409, "Project changed after this pipeline run was enrolled")
             existing = await self.repo.active_attempt(session, run_id)

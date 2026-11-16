@@ -1323,3 +1323,61 @@ async def test_prompt_admission_retains_project_capacity(client, project, github
     assert len(mention_github) == 1
     attempts = await client.get(f"/api/v1/pipeline-runs/{second['id']}/attempts")
     assert attempts.json()["total_count"] == 0
+
+
+async def test_postgres_preparation_waits_for_project_without_locking_run(
+    client, project, github, session, monkeypatch
+):
+    import asyncio
+
+    from app.features.project_management.projects.repos import ProjectRepository
+    from app.features.project_management.projects.schemas import ProjectUpdate
+    from app.features.project_management.projects.services import ProjectService
+    from app_layer_base.core.database.transaction import AsyncTransaction
+    from sqlalchemy import select
+
+    if session.get_bind().dialect.name != "postgresql":
+        pytest.skip("PostgreSQL row-lock ordering")
+    run, lease = await TestImplementationAttemptPreparation().setup_run(client, project)
+    entered = asyncio.Event()
+    original_get = ProjectService.get
+
+    async def tracked_get(self, tx, project_id, *, lock=False):
+        if lock:
+            entered.set()
+        return await original_get(self, tx, project_id, lock=lock)
+
+    monkeypatch.setattr(ProjectService, "get", tracked_get)
+    pending = None
+    try:
+        async with AsyncTransaction() as tx:
+            await tx.get(ProjectConnection, UUID(project["id"]), with_for_update=True)
+            pending = asyncio.create_task(
+                client.post(
+                    f"/api/v1/pipeline-runs/{run['id']}/attempts/implementation",
+                    json={"owner": lease["owner"], "token": lease["token"], "expected_run_revision": run["revision"]},
+                )
+            )
+            await asyncio.wait_for(entered.wait(), 3)
+            # Preparation waiting for Project must leave Run available to its current owner.
+            await tx.execute(
+                select(PipelineRun.id).where(PipelineRun.id == UUID(run["id"])).with_for_update(nowait=True)
+            )
+            await ProjectService(ProjectRepository()).update(
+                tx,
+                UUID(project["id"]),
+                ProjectUpdate.model_validate(
+                    {
+                        **{key: project[key] for key in ("name", "github", "enabled")},
+                        "project_type": "sdd",
+                        "expected_revision": project["revision"],
+                    }
+                ),
+            )
+        response = await asyncio.wait_for(pending, 3)
+        assert response.status_code == 200, response.text
+        assert response.json()["created"] is True
+    finally:
+        if pending is not None and not pending.done():
+            pending.cancel()
+            await asyncio.gather(pending, return_exceptions=True)

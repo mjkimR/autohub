@@ -12,6 +12,7 @@ entrypoints:
   - modules/hub/app/features/project_management/sdd/api.py
   - modules/hub/app/features/project_management/sdd/activities.py
   - modules/hub/app/features/project_management/sdd/activity_claims.py
+  - modules/hub/app/features/project_management/sdd/usecases.py
 ---
 
 # [CAP-SDD-native-delivery] Repository-owned SDD activity delivery

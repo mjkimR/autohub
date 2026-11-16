@@ -1,7 +1,7 @@
 ---
 id: UC-run-due-work
 title: Run due scheduled work
-summary: "An external scheduler triggers one bounded dispatch cycle and obtains the count of claimed executions while Hub retains each job outcome and pending recovery work."
+summary: "An external scheduler triggers bounded dispatch with stable system-owned interval cadence while Hub retains job outcomes and pending recovery work."
 area: execution
 primary_actor: External scheduler
 supporting_actors:
@@ -9,6 +9,8 @@ supporting_actors:
 status: active
 capabilities:
   - CAP-EXEC-scheduling-maintenance
+entrypoints:
+  - modules/hub/app/features/execution/dispatchers/services.py
 ---
 
 # [UC-run-due-work] Run due scheduled work

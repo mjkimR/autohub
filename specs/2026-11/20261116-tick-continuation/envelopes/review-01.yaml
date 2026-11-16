@@ -1,0 +1,21 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T05:06:16.588561Z'
+status: completed
+summary: 'REVISE: immediate continuation works; project capacity locking can invert Project and Run locks'
+findings:
+- issue: Acquire Project before PipelineRun during implementation preparation
+  evidence: lifecycle.py:223-233 locks Run then Project; projects/services.py:76-110 locks Project then updates active Runs
+  failure_condition: Concurrent preparation and project mode update hold opposite locks and form a PostgreSQL deadlock
+  suggested_action: Read the project identity without a Run lock, acquire Project first and revalidate the leased Run; add a PostgreSQL barrier regression
+  resolution: open
+  severity: P2
+assumptions:
+- Emulated read-only isolated review; repository snapshot unchanged
+checks:
+  tests: PASS affected SQLite 342 tests; SDD 19 tests
+diff_scope:
+  base: c13b87999496c352c96fe98b68efee12e8af80a7
+  head: 1aad27130dfa106b963c6fe8fdba0020712d2914

@@ -1,7 +1,7 @@
 ---
 id: CAP-EXEC-scheduling-maintenance
 title: Scheduling and shared maintenance
-summary: "Auto Hub claims due schedules, records bounded task execution, continues installation-wide cleanup and derives verified schedule owners with bounded project filtering. It does not provide a resident timer or exactly-once remote effects."
+summary: "Claims due schedules with stable system-owned interval cadence, bounded task execution and shared maintenance. External triggers and domain execution retain their own timing and authority."
 area: execution
 status: active
 usecases:
@@ -9,6 +9,7 @@ usecases:
 entrypoints:
   - modules/hub/app/features/execution/dispatchers/usecases/dispatch.py
   - modules/hub/app/features/scheduling/schedule_configs/api/v1.py
+  - modules/hub/app/features/execution/dispatchers/services.py
 ---
 
 # [CAP-EXEC-scheduling-maintenance] Scheduling and shared maintenance

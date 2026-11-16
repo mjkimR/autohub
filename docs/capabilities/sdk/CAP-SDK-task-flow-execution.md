@@ -2,7 +2,7 @@
 id: CAP-SDK-task-flow-execution
 aliases: [CAP-SDK-existing-pr-bridge]
 title: Durable SDK Task and Flow Execution
-summary: "The SDK declares versioned sequential task flows, while Auto Hub admits immutable releases and executes durable, authorized runs through configured workers. It excludes worker deployment and built-in PR delivery bridges."
+summary: "Executes immutable SDK task and flow releases through bounded ready-step continuation, durable worker attempts and explicit approvals."
 area: sdk
 status: active
 usecases:
@@ -11,6 +11,7 @@ entrypoints:
   - packages/sdk/src/autohub_sdk/flow.py
   - packages/sdk/src/autohub_sdk/client.py
   - modules/hub/app/features/execution/flows/api.py
+  - modules/hub/app/features/execution/flows/worker.py
 ---
 
 # [CAP-SDK-task-flow-execution] Durable SDK Task and Flow Execution

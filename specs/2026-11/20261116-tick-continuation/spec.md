@@ -2,7 +2,7 @@
 id: SPEC-tick-continuation
 title: Continue ready work without idle scheduler ticks
 summary: "Bound immediate SDK flow transitions and SDD start/resume advancement while retaining admission limits and stable system schedule cadence."
-status: planned
+status: in-progress
 created: 2026-11-16
 related_capabilities: [CAP-SDK-task-flow-execution, CAP-SDD-native-delivery, CAP-PR-pull-request-delivery, CAP-EXEC-scheduling-maintenance]
 related_usecases: [UC-execute-task-flow, UC-start-sdd-activity, UC-complete-sdd-workflow, UC-run-due-work]
