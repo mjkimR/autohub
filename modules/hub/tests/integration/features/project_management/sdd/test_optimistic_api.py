@@ -252,3 +252,5 @@ async def test_openapi_contains_only_supported_sdd_surfaces(app):
         "expected_revision",
         "answer_id",
     }
+
+    assert not {"plan_accept_open", "decided"} & set(schema["components"]["schemas"]["ProposalRun"]["properties"])

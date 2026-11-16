@@ -177,10 +177,6 @@ export interface components {
             pull_number: number;
             /** Head Sha */
             head_sha?: string | null;
-            /** Plan Accept Open */
-            plan_accept_open: boolean;
-            /** Decided */
-            decided: boolean;
         };
         /** ProposalState */
         ProposalState: {

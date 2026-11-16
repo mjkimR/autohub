@@ -24,8 +24,6 @@ class ProposalRun(BaseModel):
     pause_reason: str | None = None
     pull_number: int
     head_sha: str | None = None
-    plan_accept_open: bool
-    decided: bool
 
 
 class ProposalState(BaseModel):
