@@ -127,3 +127,37 @@ test('handbook distinguishes absent, invalid and refused manifest', async () => 
 	};
 	await expect(loadHandbook(source, 'feature', signal)).rejects.toThrow('Forbidden');
 });
+
+test('discovery publishes usable documents before later reads finish', async () => {
+	const source = sourceFor(
+		Object.fromEntries(Array.from({ length: 8 }, (_, i) => [`docs/${i}.md`, `# Document ${i}`]))
+	);
+	const original = source.blob;
+	let release!: () => void;
+	const blocked = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	source.blob = vi.fn(async (path, ref, signal) => {
+		if (path === 'docs/7.md') await blocked;
+		return original(path, ref, signal);
+	});
+	const progress = vi.fn();
+	const pending = discoverDocuments(
+		source,
+		'main',
+		'documents',
+		new AbortController().signal,
+		false,
+		progress
+	);
+	// Wait for the batch containing the blocked read to start.
+	for (
+		let i = 0;
+		i < 30 && !vi.mocked(source.blob).mock.calls.some(([path]) => path === 'docs/7.md');
+		i++
+	)
+		await Promise.resolve();
+	expect(progress.mock.calls.some(([listing]) => listing.documents.length >= 6)).toBe(true);
+	release();
+	expect((await pending).documents).toHaveLength(8);
+});

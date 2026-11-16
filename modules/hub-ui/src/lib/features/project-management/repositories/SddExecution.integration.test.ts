@@ -17,8 +17,11 @@ test('starts existing-PR work directly without runtime or readiness probes', asy
 	api.POST.mockResolvedValue({ data: { id: 'run-1' } });
 	render(SddExecution, { projectId: 'project', selectedSpec: 'specs/2026-11/feature' });
 	const user = userEvent.setup();
+	expect(screen.getByLabelText('Pull request')).toHaveProperty('value', '');
+	expect(screen.getByRole('button', { name: 'Enroll PR' })).toHaveProperty('disabled', true);
+	await user.type(screen.getByLabelText('Pull request'), '1');
 	await user.selectOptions(screen.getByLabelText('Activity effort'), 'high');
-	await user.click(screen.getByRole('button', { name: 'Start execution' }));
+	await user.click(screen.getByRole('button', { name: 'Enroll PR' }));
 	await screen.findByRole('link', { name: 'Open PR run' });
 	expect(api.POST).toHaveBeenCalledExactlyOnceWith('/api/v1/projects/{project_id}/runs', {
 		params: { path: { project_id: 'project' } },
@@ -45,16 +48,24 @@ test('an unknown enrollment freezes the original PR/unit and retries unchanged',
 		selectedSpec: 'specs/2026-11/original'
 	});
 	const user = userEvent.setup();
-	await user.click(screen.getByRole('button', { name: 'Start execution' }));
+	await user.type(screen.getByLabelText('Pull request'), '1');
+	await user.click(screen.getByRole('button', { name: 'Enroll PR' }));
 	await screen.findByText('Start outcome unresolved');
 	await view.rerender({ projectId: 'project', selectedSpec: 'specs/2026-11/different' });
 	expect(screen.getByRole('region', { name: 'Original activity request' }).textContent).toContain(
 		'specs/2026-11/original'
 	);
-	expect(
-		(screen.getByRole('button', { name: 'Start execution' }) as HTMLButtonElement).disabled
-	).toBe(true);
+	expect((screen.getByRole('button', { name: 'Enroll PR' }) as HTMLButtonElement).disabled).toBe(
+		true
+	);
 	await user.click(screen.getByRole('button', { name: 'Retry same request' }));
 	await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(2));
 	expect(api.POST.mock.calls[1]).toEqual(api.POST.mock.calls[0]);
+});
+
+test('fractional PR numbers cannot be enrolled', async () => {
+	render(SddExecution, { projectId: 'project', selectedSpec: 'specs/2026-11/feature' });
+	await userEvent.setup().type(screen.getByLabelText('Pull request'), '1.5');
+	expect(screen.getByRole('button', { name: 'Enroll PR' })).toHaveProperty('disabled', true);
+	expect(api.POST).not.toHaveBeenCalled();
 });

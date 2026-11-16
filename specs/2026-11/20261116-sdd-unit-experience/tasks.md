@@ -6,11 +6,11 @@ plan: PLAN-sdd-unit-experience
 
 # Task Breakdown: `SPEC-sdd-unit-experience`
 
-- [ ] **Task 1**: Build contextual unit activity, enrollment and workspace outcome with integration regressions.
+- [x] **Task 1**: Build contextual unit activity, enrollment and workspace outcome with integration regressions.
   - **_Boundary**: `modules/hub-ui/src/lib/features/project-management/repositories/`
   - _Requirements: AC-01, AC-02, AC-03, AC-06_
   - **Verification**: Repository UI integration tests and Svelte checks.
-- [ ] **Task 2**: Preserve document addresses and progressively reuse successful viewer reads with regression tests.
+- [x] **Task 2**: Preserve document addresses and progressively reuse successful viewer reads with regression tests.
   - **_Boundary**: `modules/hub-ui/src/lib/features/project-management/repositories/`
   - _Requirements: AC-04, AC-05, AC-06_
   - **Verification**: Native viewer, discovery and host integration tests; production build.

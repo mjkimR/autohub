@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, untrack } from 'svelte';
+	import { onDestroy, untrack, type Snippet } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import type { RepositoryDataSource } from '../data-source';
@@ -12,12 +12,14 @@
 		dataSource,
 		branch,
 		initialPath = '',
-		onselectpath
+		onselectpath,
+		unitActions
 	}: {
 		dataSource: RepositoryDataSource;
 		branch: string;
 		initialPath?: string;
 		onselectpath: (path: string) => void;
+		unitActions?: Snippet<[string]>;
 	} = $props();
 	const state = new DocumentViewerState((path) => onselectpath(path));
 	const sections: { id: DocumentSection; label: string }[] = [
@@ -30,9 +32,15 @@
 	];
 	$effect(() => {
 		const source = dataSource,
-			ref = branch,
-			path = initialPath;
-		untrack(() => state.configure(source, ref, path));
+			ref = branch;
+		untrack(() => state.configure(source, ref, initialPath));
+	});
+	$effect(() => {
+		const path = initialPath;
+		if (path)
+			untrack(() => {
+				if (path !== state.blob?.path && path !== state.requestedPath) void state.open(path);
+			});
 	});
 	onDestroy(() => state.destroy());
 	const open = (path: string, fragment = '') => {
@@ -89,12 +97,13 @@
 				No release handbook on this branch. Choose Documents or Files to browse the repository.
 			</p>{/if}
 	{/if}
-	<div class="grid min-w-0 gap-6 lg:grid-cols-3">
+	<div class="grid min-w-0 gap-6 lg:grid-cols-3 xl:grid-cols-4">
 		<div class="min-w-0 space-y-4">
 			{#if ['documents', 'proposals', 'specs'].includes(state.section)}<DocumentList
 					documents={state.listing.documents}
 					bind:query={state.query}
 					selectedPath={state.blob?.path}
+					loading={state.loading}
 					onopen={open}
 				/>
 			{:else if state.section === 'roadmap'}<MilestoneList
@@ -153,5 +162,8 @@
 					Select a document to inspect it. Reading does not start work.
 				</p>{/if}
 		</div>
+		{#if state.blob && unitActions}<aside class="min-w-0 lg:col-span-3 xl:col-span-1">
+				{@render unitActions(state.blob.path)}
+			</aside>{/if}
 	</div>
 </section>
