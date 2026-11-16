@@ -2,7 +2,7 @@
 id: SPEC-native-sdd-viewer
 title: Native SDD repository viewer
 summary: "Replace the embedded devkit viewer with Hub-owned document navigation and rendering while preserving branch-specific inspection and execution context."
-status: in-progress
+status: completed
 created: 2026-11-16
 related_capabilities: [CAP-DOC-repository-viewer]
 related_usecases: [UC-inspect-repository-documents]
