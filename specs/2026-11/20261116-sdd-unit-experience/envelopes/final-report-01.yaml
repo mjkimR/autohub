@@ -1,0 +1,19 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T01:53:41.607452Z'
+status: completed
+summary: Unit-centered SDD workspace with reviewed activity/base, deliberate PR enrollment, persistent original-request recovery, address restoration/clearing and progressive cached reads. UX review and code review findings resolved; independent reconciliation passed.
+findings: []
+assumptions:
+- Clean shared checkout used with a dedicated branch; local integration selected under auto policy because no platform review was requested.
+unverified_areas:
+- 'Browser host unavailable: rendered desktop/mobile and live GitHub interactions were not verified.'
+checks:
+  tests: PASS just test-ui 615 tests; focused repository 70 tests
+  build: PASS just check; final just check hub-ui
+  lint: PASS just lint; final just lint hub-ui and just docs-check
+diff_scope:
+  base: bb0dcfc91e1b27dca81086778f128b07888c0b65
+  head: 40b5e7a4b78ade12b96154c6cbe1214268d518ba
