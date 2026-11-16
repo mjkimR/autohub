@@ -1,0 +1,21 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T00:28:49.555470Z'
+status: completed
+summary: Implemented Hub-owned SDD documents, roadmap and handbook; removed viewer distribution coupling. Independent code and reconcile reviews passed, fixes verified. Retain the main-based worktree for user review; no push or merge performed.
+findings: []
+assumptions:
+- User requested a new worktree from local main; base snapshot is 71fa79386efdf617396c5a85ea746a3bdde601d5. Original checkout held unrelated work, so Git created the isolated worktree directly from main.
+- No main integration, push, PR publication or worktree cleanup is part of this result; branch and worktree are retained.
+unverified_areas:
+- CUA browser host unavailable; no browser layout walkthrough, live GitHub reads or deployment validation
+checks:
+  tests: PASS just test-ui 624 tests; final diagram-only adjustment reverified with 4 diagram tests; Python devkit checker 7 tests
+  build: PASS just check backend/SDK/UI; final UI types zero errors/warnings and production build
+  lint: PASS just lint and final frontend lint zero warnings; docs and committed CI rules zero errors/warnings
+diff_scope:
+  base: 71fa79386efdf617396c5a85ea746a3bdde601d5
+  head: 6fdd4791d38dbf9fd7acea69bacf45da2ecfb34a
+activity_effort: medium

@@ -88,8 +88,11 @@ The UI policy registry is
 `modules/hub-ui/src/lib/features/configuration/ai-catalogs/catalog-kinds.ts`.
 Catalog capability flags drive connector, delivery and session controls.
 Connection-test UI reads serialized recipe options; it does not implement the
-backend's provider state machine. The shared devkit-viewer component renders
-repository documents through Hub's authenticated data source.
+backend's provider state machine. Hub's native repository documents module owns
+metadata/index discovery, Markdown/SVG sanitization, document links, roadmap and
+handbook presentation through the authenticated data source. Abort signals and
+generation fences scope asynchronous reads to the selected source/ref/document.
+The host owns validated unit/ref addresses and activity controls.
 
 [Provider extension instructions](../development/provider-extensions.md) own the
 contributor steps and tests for a new kind/adapter/recipe. These registry and

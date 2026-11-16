@@ -4,7 +4,7 @@ default_test_path := "modules/hub"
 default:
     @just --list
 
-# Check all reviewed Python devkit pins and the viewer source receipt/integrity offline
+# Check reviewed Python devkit source, override and lock pins offline
 check-devkit:
     @uv run --no-active --no-sync python scripts/check-devkit.py
 

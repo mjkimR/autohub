@@ -5,7 +5,7 @@
 	import { RepositorySelection, unitDirectory } from './repository-selection.svelte';
 	import { page } from '$app/state';
 	import { GitBranch, FolderGit2, Sparkles, RefreshCw, Layers } from '@lucide/svelte';
-	import { SddViewer } from 'devkit-viewer';
+	import NativeSddViewer from './documents/NativeSddViewer.svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
 	import { Button } from '$lib/components/ui/button';
@@ -26,6 +26,7 @@
 	let readmeBlob = $state<RepoBlob | null>(null);
 
 	let isSdd = $derived(project.project_type === 'sdd');
+	const documentSource = $derived(repositoryDataSource(project.id));
 	let selectedSpec = $state('');
 	const selection = new RepositorySelection();
 	const requestedUnit = $derived(page.url.searchParams.get('unit') || '');
@@ -352,14 +353,12 @@
 			<!-- Native Sdd Viewer -->
 			<section class="rounded-xl border bg-card p-4 shadow-xs">
 				{#if selection.status === 'ready'}{#key `${project.id}-${currentRef}-${requestedUnit}-${viewerRevision}`}
-						<SddViewer
-							dataSource={repositoryDataSource(project.id)}
+						<NativeSddViewer
+							dataSource={documentSource}
 							branch={currentRef || 'main'}
-							repoId={project.github?.repository || project.name}
-							initialView={selectedSpec ? 'files' : 'dashboard'}
-							initialPath={selectedSpec
-								? `${selectedSpec}/${selectedSpec.startsWith('specs/') ? 'spec.md' : 'proposal.md'}`
-								: 'docs/'}
+							initialPath={requestedUnit && selection.unit
+								? `${selection.unit}/${selection.unit.startsWith('specs/') ? 'spec.md' : 'proposal.md'}`
+								: ''}
 							onselectpath={(path) => {
 								const unit =
 									path.match(/^(specs\/\d{4}-\d{2}\/[^/]+|docs\/proposals\/PROP-[^/]+)/)?.[1] || '';

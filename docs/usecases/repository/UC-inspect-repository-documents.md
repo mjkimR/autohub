@@ -1,17 +1,17 @@
 ---
 id: UC-inspect-repository-documents
 title: Inspect repository documents and their executions
-summary: "A project operator opens branch-specific documents, including exact addressed units, and follows recorded execution links. Missing subjects and stale responses never replace the requested selection or grant authority."
+summary: "A project operator inspects branch-specific documents in Hub, including exact addressed units and release handbooks, and follows recorded execution links. Missing subjects and stale responses never replace the requested selection or grant authority."
 area: repository
 primary_actor: Project operator
 supporting_actors:
   - GitHub
-  - Embedded devkit viewer
 status: active
 capabilities:
   - CAP-DOC-repository-viewer
 entrypoints:
   - modules/hub-ui/src/lib/features/project-management/repositories/RepositoryView.svelte
+  - modules/hub-ui/src/lib/features/project-management/repositories/documents/NativeSddViewer.svelte
 ---
 
 # [UC-inspect-repository-documents] Inspect repository documents and their executions
@@ -20,7 +20,7 @@ entrypoints:
 
 - **Goal**: Understand the selected repository document and its recorded execution
   context, so the operator can choose subsequent work from the correct branch.
-- **Scope**: Auto Hub repository browser and embedded SDD document viewer.
+- **Scope**: Auto Hub repository browser and native SDD document viewer.
 - **Trigger**: The operator opens a project's repository view or an exact unit address from a Run.
 - **Preconditions**: The operator is authenticated to Auto Hub.
 
@@ -93,6 +93,15 @@ entrypoints:
 - **3b.** An addressed unit or branch is malformed, missing, inaccessible or unsupported: Hub names the unavailable subject and offers Browse repository; a transient read failure also offers Retry. No unknown unit is passed to activity controls. The operator returns to ordinary browsing or retries step 3.
    Interface: `UX-repository`.
 
+- **3c.** Search finds no document: Hub explains the filtered empty result and offers Clear search; resumes at step 3.
+   Interface: `UX-repository`.
+
+- **4c.** The operator chooses the release handbook: Hub displays its release tag and active language, then reads that language's page from the selected branch. An absent manifest offers Documents or Files; an invalid or refused manifest shows Retry. The operator resumes at step 4 or returns to step 3.
+   Interface: `UX-repository`.
+
+- **4d.** A relative link or document ID cannot be resolved: Hub shows the failed reference with Retry while preserving the selected branch; resumes at step 3. Duplicate IDs never choose a document arbitrarily.
+   Interface: `UX-repository`.
+
 ## 4. Postconditions
 
 - **Success guarantee**: The operator sees the chosen document or its available
@@ -130,7 +139,7 @@ roadmap navigation, lineage, read-only execution links and visible refusal.
 - **Covers**: 2a.
 - **Given**: GitHub branch pagination fails after partial results or reaches its cap.
 - **When**: Hub loads repository branches.
-- **Then**: `branches_complete` is false and the embedded ref loader reports
+- **Then**: `branches_complete` is false and the repository data source ref loader reports
   incomplete coverage while a known selected ref remains readable.
 
 ### DOC-INSPECT-04: Inspect an ordinary file
@@ -152,7 +161,7 @@ roadmap navigation, lineage, read-only execution links and visible refusal.
 
 - **Covers**: 4b.
 - **Given**: The authenticated repository API refuses a file read.
-- **When**: The embedded viewer requests the file.
+- **When**: The native viewer requests the file.
 - **Then**: The refusal reaches the viewer and no fabricated file replaces it.
 
 ### DOC-INSPECT-07: Keep an empty execution list read-only
@@ -191,12 +200,31 @@ roadmap navigation, lineage, read-only execution links and visible refusal.
 - **When** selection changes or lookup completes.
 - **Then** only the current subject or its unavailable explanation is shown; a missing explicit branch never silently falls back.
 
+### DOC-INSPECT-12: Recover an empty search
+
+- **Covers**: 3c.
+- **Given** a populated document section.
+- **When** the operator searches for an absent title or ID.
+- **Then** no matching documents and Clear search appear, and clearing restores the section.
+
+### DOC-INSPECT-13: Inspect a localized release handbook
+
+- **Covers**: 4c.
+- **Given** a valid handbook manifest and two language pages on the browse branch.
+- **When** the operator changes handbook language.
+- **Then** the active language and release tag accompany that branch's language-specific README and relative pages; absent, invalid and refused manifests remain distinct outcomes.
+
+### DOC-INSPECT-14: Refuse ambiguous document references
+
+- **Covers**: 4d.
+- **Given** an inline full document ID with two indexed matches.
+- **When** the operator opens the reference.
+- **Then** Hub explains the ambiguity without selecting either document or changing branches.
+
 ## 6. Source and Verification Boundary
 
 The backend, embedding and data-source evidence is linked in
 `CAP-DOC-repository-viewer`. UI selection/error handling also derives from
 [SddRunLinks.svelte](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddRunLinks.svelte)
 and its [integration tests](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddRunLinks.integration.test.ts).
-Binary rendering, missing-project binding and failed-link display are inspected
-source paths; the cited tests do not establish complete integration coverage for
-all three. No viewer-specific stable error code is introduced by these scenarios.
+Native binary rendering, document search, handbook language changes and ambiguous reference handling have simulated viewer integration tests. Missing-project binding and live-provider behavior remain separate verification boundaries. No viewer-specific stable error code is introduced by these scenarios.

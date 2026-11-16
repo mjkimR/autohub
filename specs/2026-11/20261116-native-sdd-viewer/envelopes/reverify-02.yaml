@@ -1,0 +1,18 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T00:27:31.088025Z'
+status: completed
+review: review-02.yaml
+summary: 'Author verified the final layout-only Mermaid sandbox adjustment: invisible positioned container retains SVG text measurement; no contract or scope change.'
+findings: []
+assumptions:
+- Medium policy permits author verification after initial independent review
+checks:
+  tests: PASS 4 diagram regressions after the adjustment; 624 UI tests passed before this isolated change
+  lint: PASS frontend lint zero warnings after adjustment; repository just lint passed on preceding source
+  build: PASS UI type check zero errors/warnings and production build after adjustment
+diff_scope:
+  base: 2455b9c4a70a4a9ff8e39f87e9750632c7f7f266
+  head: 155360f4b0e5986492f70fc0c20d090713570817

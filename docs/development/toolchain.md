@@ -72,7 +72,7 @@ devkit commit. Retain the backend's separate app-common pin when reviewing a
 toolchain update. There are no evaluator seed/build manifests to update.
 
 `just check-devkit` checks contributor source/override/lock consistency, release
-versions, viewer provenance receipt, artifact SHA-256 and npm integrity offline.
+versions offline. The repository viewer is Hub-owned source and has no devkit artifact receipt.
 A mismatch fails with `DEVKIT_PINS_INVALID`. Backend lint runs this check.
 
 1. Set the intended pushed refs explicitly in the manifests.
@@ -88,8 +88,6 @@ cover schema cleanup and uncertain activity publication.
 
 ## UI artifacts and generated declarations
 
-- [devkit viewer receipt](../../modules/hub-ui/vendor/devkit-viewer.md) owns the
-  viewer source identity and rebuild procedure.
 - [API codegen receipt](../../modules/hub-ui/vendor/api-codegen.md) owns the
   generator source and vendored artifact.
 - [UI contributor guide](../../modules/hub-ui/README.md) owns tag-based generated

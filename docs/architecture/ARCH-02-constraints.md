@@ -18,11 +18,13 @@ status: active
 | SDK isolation | The standalone SDK MUST remain importable without the backend and its database dependencies. | Review only for dependency direction; `packages/sdk/pyproject.toml` and standalone `just test-sdk` / `just build-sdk` |
 | UI contract | Authored UI MUST consume the generated typed API and MUST NOT hand-edit its generated declarations. | `just check-ui-api`, UI type checks; review for handwritten client usage |
 | Repository responsibility | Hub MUST leave connected-repository setup and workflow interpretation to its repository/agent and MUST NOT introduce an evaluator or sync service. | Source/import, activity request and serving-image inspection; `CAP-SDD-native-delivery` |
-| Runtime identity | Python source/override/lock refs and vendored viewer provenance MUST agree with the reviewed devkit pin. | `just check-devkit`, `modules/hub/tests/unit/scripts/test_check_devkit.py` |
+| Runtime identity | Python source/override/lock refs MUST agree with the reviewed devkit pin; repository UI is independent of this pin. | `just check-devkit`, `modules/hub/tests/unit/scripts/test_check_devkit.py` |
 | Secrets | Repository documentation and logs MUST NOT expose connector credentials, machine secrets or personal access tokens. | `RULE-secret-leak` checks explicit targets for credential filenames and recognized key patterns; review covers other disclosure and logs |
 
 A warning-level rule records a gap without failing the command. A passing lint
 run does not imply every architectural constraint is mechanically enforced.
+
+The viewer ownership boundary is recorded in `ADR-native-sdd-viewer`.
 
 ## Compatibility ownership
 

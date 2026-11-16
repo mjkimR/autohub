@@ -1,0 +1,20 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T00:24:14.510652Z'
+status: completed
+summary: 'Independent final-delta review PASS: same-ref parent listings are fenced and complete ID resolution includes proposal companion Markdown without changing navigation indexes.'
+findings: []
+assumptions:
+- Emulated read-only reviewer; pre/post HEAD and snapshot a20fe2978304057d652bd9f198c176938da21a61 unchanged
+unverified_areas:
+- Browser layout and live GitHub reads were not exercised
+checks:
+  tests: PASS 71 UI files and 624 tests
+  lint: PASS just lint zero warnings and reviewer CI rules zero errors/warnings
+  build: PASS final UI type check and production build
+diff_scope:
+  base: ddef3ca855a2dabc9e172143bdf88e9a139c694d
+  head: b083ac4dc1d2521fbeeaf1c871717555a1251c59
+activity_effort: medium

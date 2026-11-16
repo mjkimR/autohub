@@ -1,9 +1,8 @@
 import { api } from '$lib/api';
 import { apiErrorMessage } from '$lib/api/errors';
 import type { RepoBlob, RepoInfo, RepoTree } from './types';
-import type { RepositoryDataSource as ViewerDataSource } from 'devkit-viewer';
 
-export interface RepositoryDataSource extends ViewerDataSource {
+export interface RepositoryDataSource {
 	refs(signal: AbortSignal): Promise<{ default_branch: string; branches: string[] }>;
 	info(signal: AbortSignal): Promise<RepoInfo>;
 	tree(path: string, ref: string, signal: AbortSignal): Promise<RepoTree>;
