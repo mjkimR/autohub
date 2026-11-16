@@ -1,0 +1,28 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T00:11:28.699596Z'
+status: completed
+summary: Independent medium review found directory-link blob reads and cyclic YAML metadata rendering; both require regression fixes.
+findings:
+- issue: Repository-relative directory links attempt blob reads instead of opening the directory.
+  evidence: documents/model.ts:78-86, DocumentPreview.svelte:54 and viewer-state.svelte.ts:136 route directory links through blob; repositories/services.py:101-102 rejects directories.
+  failure_condition: Clicking a valid Markdown link such as subdir/ reports a file error on an existing directory.
+  suggested_action: Preserve directory intent and navigate Files on the same ref; test child and parent links.
+  resolution: open
+  severity: P2
+- issue: Cyclic YAML metadata throws during preview rendering.
+  evidence: DocumentPreview.svelte:102 JSON.stringify throws for self-referencing alias objects returned by installed yaml toJS.
+  failure_condition: A valid YAML self-alias parses but crashes metadata rendering outside the parse-error handler.
+  suggested_action: Reject cyclic metadata with a controlled error and retain Source; add regression coverage.
+  resolution: open
+  severity: P2
+assumptions:
+- Emulated read-only reviewer; snapshot trees unchanged at 244acec872bca107647f6fbf89d4cc7598a1bad1
+checks:
+  tests: PASS supplied 620 UI and 7 pin checker tests; reviewer confirmed additional edge failures
+  rules: PASS committed CI rules zero errors/warnings
+diff_scope:
+  base: 71fa79386efdf617396c5a85ea746a3bdde601d5
+  head: fb8ca950860d80597a3a8f475095fdb9fadfcdf8
