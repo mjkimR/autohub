@@ -28,7 +28,7 @@ export class DocumentViewerState {
 	private readController = new AbortController();
 	private generation = 0;
 	private readGeneration = 0;
-	private cache = new SvelteMap<DocumentSection, DocumentListing>();
+	private cache = new SvelteMap<DocumentSection | 'references', DocumentListing>();
 	private selected: (path: string) => void;
 	constructor(selected: (path: string) => void) {
 		this.selected = selected;
@@ -121,6 +121,24 @@ export class DocumentViewerState {
 			if (generation === this.generation) this.loading = false;
 		}
 	}
+	private async fileDirectory(path: string) {
+		this.controller.abort();
+		this.controller = new AbortController();
+		const generation = ++this.generation,
+			signal = this.controller.signal;
+		this.directory = path.split('/').slice(0, -1).join('/');
+		this.files = [];
+		this.error = '';
+		this.loading = true;
+		try {
+			await this.loadDirectory(this.directory, signal, generation);
+		} catch (error) {
+			if (generation === this.generation && !signal.aborted) this.error = message(error);
+		} finally {
+			if (generation === this.generation) this.loading = false;
+		}
+	}
+
 	async open(path: string, fragment = '') {
 		this.readController.abort();
 		this.readController = new AbortController();
@@ -135,6 +153,7 @@ export class DocumentViewerState {
 		this.selected('');
 		try {
 			if (!safePath(path)) throw new Error('Invalid repository path');
+			if (this.section === 'files') void this.fileDirectory(path);
 			const blob = await this.source.blob(path, this.ref, signal);
 			if (generation !== this.readGeneration || signal.aborted) return;
 			this.blob = blob;
@@ -155,14 +174,21 @@ export class DocumentViewerState {
 		this.readError = '';
 		this.reading = true;
 		try {
-			const sections = ['documents', 'proposals', 'specs'] as const;
+			const sections = ['documents', 'specs'] as const;
 			const listings = [];
 			for (const section of sections) {
+				const key = section === 'documents' ? 'references' : section;
 				const result =
-					this.cache.get(section) ||
-					(await discoverDocuments(this.source, this.ref, section, signal));
+					this.cache.get(key) ||
+					(await discoverDocuments(
+						this.source,
+						this.ref,
+						section,
+						signal,
+						section === 'documents'
+					));
 				if (generation !== this.readGeneration || signal.aborted) return;
-				if (!result.errors.length) this.cache.set(section, result);
+				if (!result.errors.length) this.cache.set(key, result);
 				listings.push(result);
 			}
 			if (listings.some((listing) => listing.errors.length))

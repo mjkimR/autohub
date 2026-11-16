@@ -35,7 +35,8 @@ export async function discoverDocuments(
 	source: RepositoryDataSource,
 	ref: string,
 	section: DocumentSection,
-	signal: AbortSignal
+	signal: AbortSignal,
+	includeProposalFiles = false
 ): Promise<DocumentListing> {
 	const documents: RepositoryDocument[] = [],
 		errors: string[] = [];
@@ -51,7 +52,7 @@ export async function discoverDocuments(
 			return /^docs\/(?:roadmap(?:\/_archive)?|proposals(?:\/PROP-[^/]+)?|packages(?:\/[^/]+(?:\/roadmap(?:\/_archive)?)?)?)$/.test(
 				path
 			);
-		return section === 'specs' || !path.startsWith('docs/proposals');
+		return section === 'specs' || includeProposalFiles || !path.startsWith('docs/proposals');
 	};
 	const include = (path: string) =>
 		section === 'proposals'

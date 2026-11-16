@@ -194,3 +194,44 @@ test('cyclic YAML metadata shows a controlled error and keeps Source usable', as
 	await fireEvent.click(screen.getByRole('tab', { name: 'Source' }));
 	expect(await screen.findByText(/custom: &self/)).toBeTruthy();
 });
+
+test('addressed and linked files show real same-ref parent listings rather than an unqueried empty directory', async () => {
+	const source = sourceFor({
+		'docs/guide.md': '# Guide\n\n[Root file](../README.md)',
+		'docs/sibling.md': '# Sibling',
+		'README.md': '# Root readme'
+	});
+	render(NativeSddViewer, {
+		dataSource: source,
+		branch: 'feature',
+		initialPath: 'docs/guide.md',
+		onselectpath: vi.fn()
+	});
+	expect(await screen.findByRole('button', { name: 'sibling.md' })).toBeTruthy();
+	expect(screen.queryByText(/Empty directory/)).toBeNull();
+	await fireEvent.click(await screen.findByRole('link', { name: 'Root file' }));
+	await screen.findByRole('heading', { name: 'Root readme', level: 1 });
+	expect(await screen.findByRole('button', { name: 'README.md' })).toBeTruthy();
+	expect(screen.queryByRole('button', { name: 'sibling.md' })).toBeNull();
+	expect(source.tree).toHaveBeenCalledWith('docs', 'feature', signal());
+	expect(source.tree).toHaveBeenCalledWith('', 'feature', signal());
+});
+
+test('unique ID references include proposal companion files beyond the proposal navigation anchors', async () => {
+	const source = sourceFor({
+		[doc]: '# Guide\n\n`PROP-native-target`',
+		'docs/proposals/PROP-native/proposal.md': '---\nid: PROP-native\n---\n# Proposal',
+		'docs/proposals/PROP-native/target-docs.md':
+			'---\nid: PROP-native-target\n---\n# Target documents'
+	});
+	const selected = vi.fn();
+	render(NativeSddViewer, {
+		dataSource: source,
+		branch: 'feature',
+		initialPath: doc,
+		onselectpath: selected
+	});
+	await fireEvent.click(await screen.findByRole('link', { name: 'PROP-native-target' }));
+	await screen.findByRole('heading', { name: 'Target documents', level: 1 });
+	expect(selected).toHaveBeenLastCalledWith('docs/proposals/PROP-native/target-docs.md');
+});

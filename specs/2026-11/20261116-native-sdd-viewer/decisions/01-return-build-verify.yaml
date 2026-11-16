@@ -1,0 +1,9 @@
+request: return:build-verify
+kind: return
+action: accept
+workflow: sdd-spec-feature
+stage: build-verify
+note: Final author inspection found addressed file mode could claim an empty directory
+  before loading its listing; load the selected file parent and fence stale sibling
+  results.
+at: '2026-11-16T00:18:43.222874Z'
