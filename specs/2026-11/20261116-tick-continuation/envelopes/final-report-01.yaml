@@ -1,0 +1,19 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T05:10:59.152481Z'
+status: completed
+summary: 'Ready for local integration: bounded continuation with authority, due-time, capacity and lock-order fences retained'
+findings: []
+assumptions:
+- Clean checkout used branch-only development; local integration under dev-integration=auto; no remote publication
+unverified_areas:
+- Live provider timing and deployment are not verified
+checks:
+  tests: PASS affected SQLite 311 passed 7 skipped; PostgreSQL 260 plus lock barrier 1
+  build: PASS just check; just check hub after lock-order fix
+  lint: PASS just lint; final just lint-check; docs-check and CI rules
+diff_scope:
+  base: c13b87999496c352c96fe98b68efee12e8af80a7
+  head: f8b377a43b957bc56a21710882e7eda9d3c81945
