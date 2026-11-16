@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-tick-continuation
-status: pending
+status: resolved
 targets:
   - file: docs/capabilities/delivery/CAP-PR-pull-request-delivery.md
     resolution: modified
@@ -31,3 +31,5 @@ No storage/API schema, domain terminology or architecture boundary changes. Exis
 Pipeline batch reordering was excluded at intake because evidence did not justify the concurrency complexity; it is not deferred required work.
 
 Verification: source and test inspection are distinct from executed SQLite/PostgreSQL checks reported in the workflow envelopes. No live provider or deployment claim is made.
+
+Entrypoint review retained feature doorway files. Mechanically suggested tests, helper paths and unrelated cross-feature candidates were excluded. Existing PR API entrypoints remain the public doorway for prompt resume.
