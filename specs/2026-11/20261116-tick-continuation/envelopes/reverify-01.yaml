@@ -1,0 +1,21 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T05:09:05.742802Z'
+status: completed
+review: review-01.yaml
+summary: Implementer verified Project-before-Run locking with PostgreSQL barrier and affected SQLite regression coverage
+findings:
+- issue: Acquire Project before PipelineRun during implementation preparation
+  evidence: lifecycle.py:223-233 locks Run then Project; projects/services.py:76-110 locks Project then updates active Runs
+  failure_condition: Concurrent preparation and project mode update hold opposite locks and form a PostgreSQL deadlock
+  suggested_action: Read the project identity without a Run lock, acquire Project first and revalidate the leased Run; add a PostgreSQL barrier regression
+  resolution: resolved
+  severity: P2
+checks:
+  tests: PASS PostgreSQL barrier 1; affected SQLite 311 passed 7 skipped
+  build: PASS just check hub
+diff_scope:
+  base: c13b87999496c352c96fe98b68efee12e8af80a7
+  head: 70180692df41ab88a0d509199012ee2dc3c6ff4b
