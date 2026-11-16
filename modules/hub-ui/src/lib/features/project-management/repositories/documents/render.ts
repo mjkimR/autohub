@@ -31,6 +31,7 @@ export function renderRepositoryMarkdown(doc: RepositoryDocument) {
 		if (location) {
 			link.dataset.repositoryPath = location.path;
 			link.dataset.fragment = location.fragment;
+			link.dataset.repositoryDirectory = String(location.directory);
 			link.href = '#';
 		} else {
 			link.removeAttribute('href');

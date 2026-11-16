@@ -25,7 +25,7 @@ test.each([
 	['/README.md', 'README.md', ''],
 	['%2e%2e/b.md', 'docs/b.md', '']
 ])('repository link %s resolves within repository', (href, path, fragment) =>
-	expect(resolveRepositoryLink('docs/sub/a.md', href)).toEqual({ path, fragment })
+	expect(resolveRepositoryLink('docs/sub/a.md', href)).toEqual({ path, fragment, directory: false })
 );
 test.each([
 	'../../../escape.md',

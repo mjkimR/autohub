@@ -153,3 +153,44 @@ test('ID references reject ambiguity rather than selecting the first document', 
 	expect(selected).not.toHaveBeenCalledWith('docs/a.md');
 	expect(selected).not.toHaveBeenCalledWith('docs/b.md');
 });
+
+test('child, parent and repository-root directory links open Files on the same branch', async () => {
+	const source = sourceFor({
+		'docs/guide.md': '# Guide\n\n[Child](subdir/)\n\n[Parent](../)\n\n[Root](/)',
+		'docs/subdir/page.md': '# Child page\n\n[Parent](../)'
+	});
+	render(NativeSddViewer, {
+		dataSource: source,
+		branch: 'feature',
+		initialPath: 'docs/guide.md',
+		onselectpath: vi.fn()
+	});
+	await fireEvent.click(await screen.findByRole('link', { name: 'Child' }));
+	await fireEvent.click(await screen.findByRole('button', { name: 'page.md' }));
+	await fireEvent.click(await screen.findByRole('link', { name: 'Parent' }));
+	expect(await screen.findByRole('button', { name: 'guide.md' })).toBeTruthy();
+	await fireEvent.click(screen.getByRole('button', { name: 'guide.md' }));
+	await fireEvent.click(await screen.findByRole('link', { name: 'Root' }));
+	expect(await screen.findByRole('button', { name: 'docs/' })).toBeTruthy();
+	expect(source.tree).toHaveBeenCalledWith('docs/subdir', 'feature', signal());
+	expect(source.tree).toHaveBeenCalledWith('docs', 'feature', signal());
+	expect(source.tree).toHaveBeenCalledWith('', 'feature', signal());
+	expect(source.blob).not.toHaveBeenCalledWith('docs/subdir', 'feature', signal());
+});
+
+test('cyclic YAML metadata shows a controlled error and keeps Source usable', async () => {
+	const raw = '---\ncustom: &self\n  nested: *self\n---\n# Cyclic document';
+	const source = sourceFor({ [doc]: raw });
+	render(NativeSddViewer, {
+		dataSource: source,
+		branch: 'feature',
+		initialPath: doc,
+		onselectpath: vi.fn()
+	});
+	expect(await screen.findByRole('alert')).toHaveProperty(
+		'textContent',
+		expect.stringContaining('cyclic values')
+	);
+	await fireEvent.click(screen.getByRole('tab', { name: 'Source' }));
+	expect(await screen.findByText(/custom: &self/)).toBeTruthy();
+});

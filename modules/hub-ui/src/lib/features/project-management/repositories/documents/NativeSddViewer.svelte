@@ -140,6 +140,7 @@
 						fragment={state.fragment}
 						onopen={open}
 						onreference={(id) => state.reference(id)}
+						ondirectory={(path) => state.directoryTo(path)}
 						onback={state.section === 'files'
 							? () => {
 									void parent();

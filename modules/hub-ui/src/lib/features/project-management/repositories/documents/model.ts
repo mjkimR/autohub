@@ -42,6 +42,11 @@ export function parseRepositoryDocument(
 		if (value !== null && (typeof value !== 'object' || Array.isArray(value)))
 			throw new Error(`${blob.path}: Metadata must be a mapping`);
 		meta = (value ?? {}) as Record<string, unknown>;
+		try {
+			JSON.stringify(meta);
+		} catch {
+			throw new Error(`${blob.path}: Metadata contains cyclic values; inspect Source`);
+		}
 	}
 	const body = match ? raw.slice(match[0].length) : raw;
 	const text = (key: string) => (typeof meta[key] === 'string' ? (meta[key] as string) : '');
@@ -63,7 +68,7 @@ export function parseRepositoryDocument(
 export function resolveRepositoryLink(
 	origin: string,
 	href: string
-): { path: string; fragment: string } | null {
+): { path: string; fragment: string; directory: boolean } | null {
 	if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(href)) return null;
 	try {
 		const hash = href.indexOf('#');
@@ -83,7 +88,8 @@ export function resolveRepositoryLink(
 			} else parts.push(part);
 		}
 		const path = parts.join('/');
-		return safePath(path) ? { path, fragment } : null;
+		const directory = /(?:\/|^\.\.?|\/\.\.?)$/.test(pathname);
+		return safePath(path) || (directory && path === '') ? { path, fragment, directory } : null;
 	} catch {
 		return null;
 	}

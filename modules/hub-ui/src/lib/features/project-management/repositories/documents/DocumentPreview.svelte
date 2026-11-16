@@ -13,12 +13,14 @@
 		fragment = '',
 		onopen,
 		onreference,
+		ondirectory,
 		onback
 	}: {
 		blob: RepoBlob;
 		fragment?: string;
 		onopen: (path: string, fragment?: string) => void;
 		onreference: (id: string) => void;
+		ondirectory: (path: string) => void;
 		onback?: () => void;
 	} = $props();
 	let tab = $state('preview');
@@ -48,9 +50,10 @@
 		if (link.dataset.documentId) {
 			event.preventDefault();
 			onreference(link.dataset.documentId);
-		} else if (link.dataset.repositoryPath) {
+		} else if (link.dataset.repositoryPath !== undefined) {
 			event.preventDefault();
-			if (link.dataset.repositoryPath === blob.path) scrollTo(link.dataset.fragment || '');
+			if (link.dataset.repositoryDirectory === 'true') ondirectory(link.dataset.repositoryPath);
+			else if (link.dataset.repositoryPath === blob.path) scrollTo(link.dataset.fragment || '');
 			else onopen(link.dataset.repositoryPath, link.dataset.fragment || '');
 		}
 	}

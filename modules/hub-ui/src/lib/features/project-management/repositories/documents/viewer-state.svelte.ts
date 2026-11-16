@@ -90,12 +90,14 @@ export class DocumentViewerState {
 		}
 	}
 	private async loadDirectory(path: string, signal: AbortSignal, generation: number) {
+		if (path && !safePath(path)) throw new Error('Invalid repository directory');
 		const files = await listChildren(this.source, path, this.ref, signal);
 		if (generation !== this.generation || signal.aborted) return;
 		this.files = files;
 		this.directory = path;
 	}
 	async directoryTo(path: string) {
+		this.section = 'files';
 		this.controller.abort();
 		this.controller = new AbortController();
 		this.readController.abort();
