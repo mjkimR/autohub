@@ -36,7 +36,10 @@ from app.features.project_management.pipeline_runs.schemas import (
     PreparedImplementationAttempt,
     PrepareImplementationAttempt,
 )
-from app.features.project_management.pipeline_runs.usecases.advancement import PipelineRunAdvancement
+from app.features.project_management.pipeline_runs.usecases.advancement import (
+    PROJECT_CAPACITY_WAIT_CODE,
+    PipelineRunAdvancement,
+)
 from app.features.project_management.pipeline_runs.usecases.catalogs import resolve_catalog
 from app.features.project_management.pipeline_runs.usecases.control import PipelineRunControl
 from app.features.project_management.pipeline_runs.usecases.delivery import PipelineRunDelivery
@@ -63,6 +66,7 @@ from app.features.project_management.projects.services import ProjectService
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 from fastapi import Depends
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -216,18 +220,21 @@ class PipelineRunUseCase:
     async def prepare_implementation(
         self, run_id: UUID, request: PrepareImplementationAttempt
     ) -> PreparedImplementationAttempt:
-        now = get_current_utc_time()
         async with AsyncTransaction() as session:
+            # Read identity only; Project must precede Run in the mutation lock order.
+            project_id = await session.scalar(select(PipelineRun.project_id).where(PipelineRun.id == run_id))
+            if project_id is None:
+                await raise_lease_conflict(self.repo, session, run_id, "prepare attempt")
+            project = await self.projects.get(session, project_id, lock=True)
             run = await self.repo.get_leased(
                 session,
                 run_id,
                 owner=request.owner,
                 token=request.token,
-                now=now,
+                now=get_current_utc_time(),
             )
             if run is None:
                 await raise_lease_conflict(self.repo, session, run_id, "prepare attempt")
-            project = await self.projects.get(session, run.project_id)
             if not project.enabled or project.revision != run.project_revision:
                 raise ProjectError(409, "Project changed after this pipeline run was enrolled")
             existing = await self.repo.active_attempt(session, run_id)
@@ -247,6 +254,9 @@ class PipelineRunUseCase:
                 raise ProjectError(409, "Pipeline run changed; reload before preparing an attempt")
             if run.state != PipelineRunState.QUEUED:
                 raise ProjectError(409, "Pipeline run is not ready for an implementation attempt")
+            limit = (project.automation or {}).get("max_in_flight_runs")
+            if limit is not None and await self.repo.count_started(session, project.id) >= limit:
+                raise ProjectError(409, "Waiting for project run capacity", code=PROJECT_CAPACITY_WAIT_CODE)
             implementation_request, digest, idempotency_key = build_implementation_request(
                 run, self._github_repository(project)
             )
@@ -355,9 +365,15 @@ class PipelineRunUseCase:
         request: ResumeRunRequest | None = None,
         actor: str = "operator",
     ) -> PipelineRunRead:
-        return await PipelineRunControl(self.repo, self.projects, self.observer).resume_run(
+        run, changed = await PipelineRunControl(self.repo, self.projects, self.observer).resume_run(
             run_id, expected_revision=expected_revision, request=request, actor=actor
         )
+        return await self.advance_promptly(run) if changed else run
+
+    async def advance_promptly(self, run: PipelineRunRead) -> PipelineRunRead:
+        from .prompt import advance_promptly
+
+        return await advance_promptly(self, run)
 
     async def cancel_run(self, run_id: UUID) -> PipelineRunRead:
         return await PipelineRunControl(self.repo, self.projects, self.observer).cancel_run(run_id)

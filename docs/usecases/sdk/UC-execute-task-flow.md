@@ -2,7 +2,7 @@
 id: UC-execute-task-flow
 aliases: [UC-resume-verified-pr]
 title: Execute a Versioned Task Flow
-summary: "A machine client registers and runs a versioned task flow, resolves any declared approval, and obtains its durable result. The host preserves identities and execution limits across retries and recovery."
+summary: "A machine client registers and activates a flow, submits immutable work and observes bounded continuation through worker results and explicit approvals."
 area: sdk
 primary_actor: Machine client
 supporting_actors:
@@ -12,6 +12,8 @@ supporting_actors:
 status: active
 capabilities:
   - CAP-SDK-task-flow-execution
+entrypoints:
+  - modules/hub/app/features/execution/flows/worker.py
 ---
 
 # [UC-execute-task-flow] Execute a Versioned Task Flow
@@ -183,3 +185,10 @@ The acceptance examples map to existing tests in
 and [SDK model/transport tests](../../../packages/sdk/tests/test_remote_contract.py).
 They were inspected during authoring; this document does not claim they were
 executed or that production workers/providers were contacted.
+
+### SDK-EXEC-13: Continue ready tasks in one maintenance invocation
+
+- **Covers**: 4c.
+- **Given** a flow with immediately completing tasks and no intervening approval.
+- **When** maintenance advances the run.
+- **Then** ready tasks and final output validation continue in the same invocation within 32 advances and 20 seconds; external waits retain their due times.

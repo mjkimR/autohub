@@ -36,7 +36,8 @@ class SddUseCase:
             claims = ActivityClaims(self.projects, self.observer, self.run_use_case)
             claim = await claims.reserve(session, project, activity, slug, request, actor)
             claim_id = claim.id
-        return await claims.execute(project_id, claim_id)
+        run = await claims.execute(project_id, claim_id)
+        return await self.run_use_case.advance_promptly(run)
 
     async def proposals(self, project_id, base_branch) -> ProposalList:
         from .proposals import list_proposals

@@ -106,7 +106,7 @@ async def test_agent_question_after_push_pauses_before_ci_and_uses_current_head(
         },
     )
     assert resumed.status_code == 200, resumed.text
-    assert resumed.json()["state"] == "dispatching"
+    assert resumed.json()["state"] == "implementing"
 
 
 @pytest.mark.parametrize("saved_number", [True, False])

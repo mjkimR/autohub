@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 ADVANCE_SECONDS = 90
 ADVANCE_MAX_STEPS = 8
 ADVANCE_LEASE_SECONDS = 120
+PROJECT_CAPACITY_WAIT_CODE = "PROJECT_CAPACITY_WAIT"
 
 
 def progress_key(run: PipelineRunRead) -> tuple:
@@ -65,12 +66,17 @@ class PipelineRunAdvancement:
                     ):
                         return run
                     if run.state == PipelineRunState.QUEUED:
-                        await self.lifecycle.prepare_implementation(
-                            run_id,
-                            PrepareImplementationAttempt(
-                                owner=owner, token=grant.token, expected_run_revision=run.revision
-                            ),
-                        )
+                        try:
+                            await self.lifecycle.prepare_implementation(
+                                run_id,
+                                PrepareImplementationAttempt(
+                                    owner=owner, token=grant.token, expected_run_revision=run.revision
+                                ),
+                            )
+                        except ProjectError as exc:
+                            if exc.code != PROJECT_CAPACITY_WAIT_CODE:
+                                raise
+                            return run
                         run = await self.lifecycle.get(run_id)
                         continue
                     if run.state == PipelineRunState.DISPATCHING:

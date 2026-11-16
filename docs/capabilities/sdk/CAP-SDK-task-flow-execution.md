@@ -2,7 +2,7 @@
 id: CAP-SDK-task-flow-execution
 aliases: [CAP-SDK-existing-pr-bridge]
 title: Durable SDK Task and Flow Execution
-summary: "The SDK declares versioned sequential task flows, while Auto Hub admits immutable releases and executes durable, authorized runs through configured workers. It excludes worker deployment and built-in PR delivery bridges."
+summary: "Executes immutable SDK task and flow releases through bounded ready-step continuation, durable worker attempts and explicit approvals."
 area: sdk
 status: active
 usecases:
@@ -11,6 +11,7 @@ entrypoints:
   - packages/sdk/src/autohub_sdk/flow.py
   - packages/sdk/src/autohub_sdk/client.py
   - modules/hub/app/features/execution/flows/api.py
+  - modules/hub/app/features/execution/flows/worker.py
 ---
 
 # [CAP-SDK-task-flow-execution] Durable SDK Task and Flow Execution
@@ -132,7 +133,11 @@ output and error. `AttemptView` exposes step ID, number, status, inputs, output
 and error; persisted `intent`/`ready` states appear publicly as `running`.
 
 Admission and GET do not execute workers. Maintenance selects up to 32 due runs
-per batch and advances each once, using a 60-second lease. External-result polls
+per batch. Each run continues immediately ready transitions for at most 32 advances
+or 20 seconds, using a fresh 60-second lease and revision check for each advance.
+Completed tasks proceed to the next step, including final output validation, in the same invocation.
+Authoritative absence permits same-ID resubmission within that budget.
+Approval waits, external-result due times, terminal states and ownership loss stop continuation. External-result polls
 are scheduled at least 5 seconds later; this minimum does not promise wall-clock
 completion before the scheduler next runs. An elapsed approval becomes
 `failed` / `approval-deadline` when advancement records the expiry.
@@ -210,3 +215,5 @@ Hub MUST resolve native `autohub.identity` and configured HTTP targets through t
 ordinary worker allowlist. Other native targets receive `422 worker-binding` on
 release registration. No SDD/PR bridge observer or retirement handler exists.
 Check: flow host binding validation tests and `ADR-remove-native-sdd-compatibility`.
+
+WHEN a flow has immediately ready transitions, maintenance MUST continue them within its step/time budget while preserving approval, due-time and fencing boundaries. Check: `modules/hub/tests/integration/features/execution/flows/test_continuation.py`.

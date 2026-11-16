@@ -219,7 +219,6 @@ async def test_agent_question_is_attempt_bound_and_delivery_failure_preserves_an
         "expected_revision": (await state(client, root))["revision"],
         "answer_id": saved["id"],
     }
-    assert (await client.post(root + "/resume", json=request)).status_code == 200
 
     async def stall(*args):
         await asyncio.Event().wait()
@@ -227,6 +226,7 @@ async def test_agent_question_is_attempt_bound_and_delivery_failure_preserves_an
     with monkeypatch.context() as patched:
         patched.setattr(delivery, "DISPATCH_IO_SECONDS", 0.05)
         patched.setattr(GitHubActionsReader, "reconcile_issue_comment", stall)
+        assert (await client.post(root + "/resume", json=request)).status_code == 200
         assert (await client.post(root + "/advance")).status_code == 504
     assert (await client.post(root + "/resume", json=request)).status_code == 200
     assert (await client.post(root + "/advance")).json()["state"] == "implementing"

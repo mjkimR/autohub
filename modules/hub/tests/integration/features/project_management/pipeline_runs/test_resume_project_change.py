@@ -173,4 +173,4 @@ async def test_resume_does_not_borrow_unrelated_or_missing_push_evidence(client,
     resumed = await resume(client, root)
 
     assert_status_code(resumed, 200)
-    assert resumed.json()["state"] == "dispatching"
+    assert resumed.json()["state"] == "implementing"

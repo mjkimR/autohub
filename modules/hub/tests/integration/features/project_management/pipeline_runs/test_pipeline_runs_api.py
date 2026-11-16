@@ -505,7 +505,7 @@ class TestRunRecovery:
         root = f"/api/v1/pipeline-runs/{run['id']}"
         resumed = await resume(client, root)
         assert_status_code(resumed, 200)
-        assert resumed.json()["state"] == "dispatching"
+        assert resumed.json()["state"] == "implementing"
         advanced = await client.post(f"{root}/advance")
         assert_status_code(advanced, 200)
         assert advanced.json()["state"] == "implementing"
@@ -891,7 +891,7 @@ async def test_resume_without_a_push_resends_and_preserves_previous_request(clie
 
     resumed = await resume(client, root)
     assert_status_code(resumed, 200)
-    assert resumed.json()["state"] == "dispatching"
+    assert resumed.json()["state"] == "implementing"
     assert (await client.post(f"{root}/advance")).json()["state"] == "implementing"
     assert (await client.post(f"{root}/advance")).json()["state"] == "implementing"
     attempts = (await client.get(f"{root}/attempts")).json()["items"]
@@ -1305,3 +1305,79 @@ async def test_implementation_observation_cannot_apply_stale_or_incomplete_resul
     assert_status_code(response, 504 if mutation == "timeout" else 409)
     assert (await client.get(root)).json()["state"] == ("paused" if mutation == "pause" else "implementing")
     assert len(mention_github) == 1
+
+
+async def test_prompt_admission_retains_project_capacity(client, project, github, mention_github):
+    changed = await client.patch(
+        f"/api/v1/projects/{project['id']}",
+        json={"expected_revision": project["revision"], "automation": {"max_in_flight_runs": 1}},
+    )
+    assert changed.status_code == 200, changed.text
+    first = (await enroll(client, changed.json())).json()
+    assert (await client.post(f"/api/v1/pipeline-runs/{first['id']}/advance")).json()["state"] == "implementing"
+    github.pulls[8] = {**github.pulls[7], "number": 8, "head": {**github.pulls[7]["head"], "ref": "second"}}
+    second = (await enroll(client, changed.json(), 8)).json()
+    response = await client.post(f"/api/v1/pipeline-runs/{second['id']}/advance")
+    assert response.status_code == 200, response.text
+    assert response.json()["state"] == "queued"
+    assert len(mention_github) == 1
+    attempts = await client.get(f"/api/v1/pipeline-runs/{second['id']}/attempts")
+    assert attempts.json()["total_count"] == 0
+
+
+async def test_postgres_preparation_waits_for_project_without_locking_run(
+    client, project, github, session, monkeypatch
+):
+    import asyncio
+
+    from app.features.project_management.projects.repos import ProjectRepository
+    from app.features.project_management.projects.schemas import ProjectUpdate
+    from app.features.project_management.projects.services import ProjectService
+    from app_layer_base.core.database.transaction import AsyncTransaction
+    from sqlalchemy import select
+
+    if session.get_bind().dialect.name != "postgresql":
+        pytest.skip("PostgreSQL row-lock ordering")
+    run, lease = await TestImplementationAttemptPreparation().setup_run(client, project)
+    entered = asyncio.Event()
+    original_get = ProjectService.get
+
+    async def tracked_get(self, tx, project_id, *, lock=False):
+        if lock:
+            entered.set()
+        return await original_get(self, tx, project_id, lock=lock)
+
+    monkeypatch.setattr(ProjectService, "get", tracked_get)
+    pending = None
+    try:
+        async with AsyncTransaction() as tx:
+            await tx.get(ProjectConnection, UUID(project["id"]), with_for_update=True)
+            pending = asyncio.create_task(
+                client.post(
+                    f"/api/v1/pipeline-runs/{run['id']}/attempts/implementation",
+                    json={"owner": lease["owner"], "token": lease["token"], "expected_run_revision": run["revision"]},
+                )
+            )
+            await asyncio.wait_for(entered.wait(), 3)
+            # Preparation waiting for Project must leave Run available to its current owner.
+            await tx.execute(
+                select(PipelineRun.id).where(PipelineRun.id == UUID(run["id"])).with_for_update(nowait=True)
+            )
+            await ProjectService(ProjectRepository()).update(
+                tx,
+                UUID(project["id"]),
+                ProjectUpdate.model_validate(
+                    {
+                        **{key: project[key] for key in ("name", "github", "enabled")},
+                        "project_type": "sdd",
+                        "expected_revision": project["revision"],
+                    }
+                ),
+            )
+        response = await asyncio.wait_for(pending, 3)
+        assert response.status_code == 200, response.text
+        assert response.json()["created"] is True
+    finally:
+        if pending is not None and not pending.done():
+            pending.cancel()
+            await asyncio.gather(pending, return_exceptions=True)

@@ -7,6 +7,7 @@ from tests.integration.features.project_management.pipeline_runs import test_pip
 
 project = scenarios.project
 github = scenarios.github
+mention_github = scenarios.mention_github
 pytestmark = [pytest.mark.integration, pytest.mark.real_commit]
 
 
@@ -254,3 +255,55 @@ async def test_openapi_contains_only_supported_sdd_surfaces(app):
     }
 
     assert not {"plan_accept_open", "decided"} & set(schema["components"]["schemas"]["ProposalRun"]["properties"])
+
+
+@pytest.mark.parametrize("deferred", [False, True])
+@pytest.mark.parametrize("activity", ["planning", "development"])
+async def test_bound_activity_starts_without_another_tick(
+    client, project, github, monkeypatch, activity, mention_github, deferred
+):
+    from app.features.project_management.pipeline_runs.schemas import EnrollPullRequest
+    from app.features.project_management.sdd.activities import ActivityStarter
+    from app_layer_base.core.database.transaction import AsyncTransaction
+
+    comments = mention_github
+    if deferred:
+        from unittest.mock import AsyncMock
+
+        from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
+        from app.features.project_management.projects.errors import ProjectError
+
+        monkeypatch.setattr(PipelineRunUseCase, "advance_until_wait", AsyncMock(side_effect=ProjectError(409, "held")))
+    changed = await client.patch(
+        f"/api/v1/projects/{project['id']}",
+        json={"expected_revision": project["revision"], "project_type": "sdd"},
+    )
+    assert changed.status_code == 200, changed.text
+    github.pulls[7]["head"]["ref"] = "plan-demo" if activity == "planning" else "dev-demo"
+    github.pulls[7]["draft"] = True
+
+    async def published(self, owner, kind, slug, request, actor, *, admission, **kwargs):
+        enrollment = EnrollPullRequest(pull_number=7, spec_dir="docs/proposals/PROP-demo", handoff=kind == "dev")
+        await kwargs["checkpoint"](
+            branch=github.pulls[7]["head"]["ref"],
+            pull_number=7,
+            initial_sha=github.pulls[7]["head"]["sha"],
+            enrollment_request=enrollment.model_dump(mode="json"),
+        )
+        return await self.runs.enroll(owner.id, enrollment, admission=admission)
+
+    monkeypatch.setattr(ActivityStarter, "start", published)
+    response = await client.post(
+        f"/api/v1/projects/{project['id']}/sdd/proposals/demo/{activity}",
+        json={"request_id": str(uuid4())},
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["state"] == ("queued" if deferred else "implementing")
+    assert len(comments) == (0 if deferred else 1)
+    async with AsyncTransaction() as session:
+        from sqlalchemy import select
+
+        claim = await session.scalar(
+            select(SddActivityClaim).where(SddActivityClaim.run_id == UUID(response.json()["id"]))
+        )
+        assert claim is not None and not claim.checkpoint["uncertain"]

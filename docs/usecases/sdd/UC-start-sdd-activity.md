@@ -1,7 +1,7 @@
 ---
 id: UC-start-sdd-activity
 title: Start repository-owned SDD work
-summary: "An operator requests Planning or Development intent, obtains a Draft activity PR and follows its ordinary PR Run without Hub evaluating repository readiness. Exact claim recovery preserves uncertain publication."
+summary: "An operator registers explicit repository-owned Planning or Development intent and receives its durable PR Run with a bounded first progression attempt."
 area: sdd
 primary_actor: Project operator
 supporting_actors: [GitHub, Repository agent]
@@ -11,6 +11,7 @@ entrypoints:
   - modules/hub/app/features/project_management/sdd/activities.py
   - modules/hub/app/features/project_management/sdd/api.py
   - modules/hub-ui/src/lib/features/project-management/repositories/SddUnitActions.svelte
+  - modules/hub/app/features/project_management/sdd/usecases.py
 ---
 
 # [UC-start-sdd-activity] Start repository-owned SDD work
@@ -108,3 +109,10 @@ Draft publication, exact recovery and uncertain reservation.
 
 Activity/API and claim tests are cited by `CAP-SDD-native-delivery`. Local fixture
 results do not establish provider delivery or a live GitHub merge.
+
+### SDD-START-05: Attempt first dispatch promptly
+
+- **Covers**: main success scenario.
+- **Given** a successfully registered activity with a bound claim.
+- **When** registration commits.
+- **Then** Hub attempts ordinary progression for up to 10 seconds; a deferred attempt preserves the registered Run for ticks.
