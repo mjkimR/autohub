@@ -289,7 +289,7 @@ async def test_disabled_subscription_baseline_then_one_matching_admission(client
     assert await worker.collect(UUID(channel["id"])) is None
 
 
-@pytest.mark.parametrize("exclusion", ["kind", "project"])
+@pytest.mark.parametrize("exclusion", ["project"])
 async def test_pending_digest_generation_recovers_after_filter_restoration(
     client, channel, project, github, session, exclusion
 ):

@@ -143,7 +143,7 @@ endpoint separation, tool scopes and typed arguments from `CAP-MCP-tool-access`.
 ### Scenario: Replay an uncertain owner command
 
 - **Covers**: 5e.
-- **Given**: a batch control, Work Item recovery or replacement command response
+- **Given**: a Work Item recovery or replacement command response
   was lost.
 - **When**: the same machine retries the exact request identity and payload.
 - **Then**: owner replay returns retained evidence without duplicating work;

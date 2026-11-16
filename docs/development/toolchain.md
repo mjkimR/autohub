@@ -80,11 +80,11 @@ A mismatch fails with `DEVKIT_PINS_INVALID`. Backend lint runs this check.
 3. Synchronize agent assets using matching installed packages and review generated receipts.
 4. Rebuild vendored artifacts whose source changed, following the owning receipts below.
 5. Run `just check-devkit`, `just lint`, `just check`, `just check-ui-api`, and the
-   affected backend, SDK, frontend and activity-retirement contracts.
+   affected backend, SDK, frontend and activity contracts.
 
 The contributor's devkit changes do not provision connected repositories.
 [Activity operations](../operations/sdd-runtime.md#rollout-and-rollback) separately
-cover retired execution and uncertain external work during cutover.
+cover schema cleanup and uncertain activity publication.
 
 ## UI artifacts and generated declarations
 

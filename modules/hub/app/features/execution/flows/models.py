@@ -5,7 +5,6 @@ from app.common.database import JSON_VARIANT
 from app.common.models import TimestampMixin
 from app_layer_base.base.models.mixin import Base
 from sqlalchemy import (
-    Boolean,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
@@ -107,15 +106,3 @@ class FlowCommand(Base, FlowIdMixin, TimestampMixin):
     digest: Mapped[str] = mapped_column(String(64), nullable=False)
     actor: Mapped[str] = mapped_column(String(128), nullable=False)
     receipt: Mapped[dict] = mapped_column(JSON_VARIANT, nullable=False)
-
-
-class FlowPRLink(Base, TimestampMixin):
-    __tablename__ = "sdk_flow_pr_links"
-    pipeline_run_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("pipeline_runs.id"), primary_key=True)
-    flow_run_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("sdk_flow_runs.id"), nullable=False, unique=True)
-    evidence: Mapped[dict] = mapped_column(JSON_VARIANT, nullable=False)
-    delivery_attempt_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
-    canceled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    approved_revision: Mapped[int | None] = mapped_column(Integer)
-    approved_digest: Mapped[str | None] = mapped_column(String(64))
-    approved_actor: Mapped[str | None] = mapped_column(String(128))

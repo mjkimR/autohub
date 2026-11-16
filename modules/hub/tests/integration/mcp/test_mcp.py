@@ -402,8 +402,6 @@ async def test_surfaces_expose_exact_tools_and_reject_cross_surface_calls(client
         {
             "decisions_list",
             "runs_decision_outcome",
-            "sdd_batches_list",
-            "sdd_batches_get",
             "work_items_recoveries",
             "work_items_replacements",
         }
@@ -465,7 +463,7 @@ async def test_surfaces_expose_exact_tools_and_reject_cross_surface_calls(client
                 )
             ).json()["result"]
             assert result["isError"] is True
-    assert len(discovered) == 42
+    assert len(discovered) == 40
     for removed in ("catalogs.list", "connectors.list"):
         assert removed not in discovered
         result = (await rpc(client, key, "tools/call", {"name": removed, "arguments": {}})).json()["result"]

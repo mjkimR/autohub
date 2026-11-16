@@ -37,13 +37,12 @@ PR retains its actual Draft state under the ordinary PR contract.
 - **loading**: enrollment/history is pending and duplicate submission is disabled.
 - **empty**: select a unit or supply an existing PR number.
 - **error**: show the exact request failure and offer retry without inventing an owner.
-- **retired**: legacy Run links remain inspectable; no native resume is offered.
 
 ## 4. Interactions
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
 | Enroll selected PR | `UC-complete-sdd-workflow` 1 | populated | loading | | `CAP-SDD-native-delivery` | Ordinary PR registration outcome appears. |
-| Open run | `UC-complete-sdd-workflow` 1 | populated, retired | populated | `UX-run-page` | `CAP-SDD-native-delivery` | The exact Run opens. |
+| Open run | `UC-complete-sdd-workflow` 1 | populated | populated | `UX-run-page` | `CAP-SDD-native-delivery` | The exact Run opens. |
 | Select unit / Browse repository | `UC-inspect-repository-documents` 5, `UC-inspect-repository-documents` 6 | empty, populated | populated | `UX-repository` | `CAP-DOC-repository-viewer` | Selected branch document remains visible. |
-| Refresh history | global: read retained unit executions | populated, retired, error | loading | | `CAP-SDD-native-delivery` | Stored Run links refresh without evaluation. |
+| Refresh history | global: read retained unit executions | populated, error | loading | | `CAP-SDD-native-delivery` | Stored Run links refresh without evaluation. |

@@ -367,7 +367,7 @@ export interface components {
             /** Project Ids */
             project_ids?: string[];
             /** Kinds */
-            kinds?: ("run-question" | "native-hub-question" | "native-worker-question" | "native-workflow" | "native-proposal" | "native-integration")[];
+            kinds?: "run-question"[];
             /**
              * Mode
              * @default immediate
@@ -401,7 +401,7 @@ export interface components {
             /** Project Ids */
             project_ids?: string[];
             /** Kinds */
-            kinds?: ("run-question" | "native-hub-question" | "native-worker-question" | "native-workflow" | "native-proposal" | "native-integration")[];
+            kinds?: "run-question"[];
             /**
              * Mode
              * @default immediate

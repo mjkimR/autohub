@@ -11,7 +11,7 @@ from app.features.project_management.pipeline_runs.models import (
     ExecutionReply,
     PipelineRun,
 )
-from app.features.project_management.sdd.batch_models import SddActivityClaim
+from app.features.project_management.sdd.claim_models import SddActivityClaim
 from app.features.project_management.work_plans.models import WorkItem
 from sqlalchemy import delete, exists, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert

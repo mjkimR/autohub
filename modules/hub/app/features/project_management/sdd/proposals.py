@@ -29,8 +29,6 @@ def waiting_run(runs) -> dict | None:
         "pause_reason": run.pause_reason,
         "pull_number": run.pull_number,
         "head_sha": (run.pull_snapshot or {}).get("head_sha"),
-        "plan_accept_open": False,
-        "decided": False,
     }
 
 

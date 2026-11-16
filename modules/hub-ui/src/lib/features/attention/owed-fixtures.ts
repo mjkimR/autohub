@@ -16,7 +16,6 @@ const ACTIONS: Record<
 	'work-item-recovery': ['inspect-recovery', 'Inspect recovery', 'work-item-recovery'],
 	'work-item-replacement': ['accept-replacement', 'Accept replacement', 'replacement-link'],
 	'work-item-attention': ['inspect-work-item', 'Inspect Work Item', 'work-item'],
-	'sdd-batch-attention': ['inspect-batch', 'Inspect batch', 'sdd-batch'],
 	'connection-test-cleanup': ['review-cleanup', 'Review cleanup', 'connection-test'],
 	'failed-run': ['inspect-run', 'Inspect run', 'pipeline-run']
 };
@@ -44,7 +43,6 @@ export function owedItem(
 			run_id: null,
 			work_plan_id: null,
 			work_item_id: null,
-			sdd_batch_id: null,
 			catalog_hold: null,
 			...overrides.context
 		}

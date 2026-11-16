@@ -1,0 +1,22 @@
+kind: review
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T00:05:07.039314Z'
+status: completed
+summary: Independent code review confirms current ownership safety; remove remaining native-only progress and decision-evidence storage
+findings:
+- issue: Complete removal still leaves native progress and decision-evidence compatibility
+  evidence: pipeline_runs/models.py:87,203; schemas.py:86; interaction_service.py:34-43; cleanup migration upgrade
+  failure_condition: Current Run schema and upgraded database still expose native-only evidence with no current writers
+  suggested_action: Remove unused native fields and obsolete reader/query, including DB columns and generated types
+  resolution: open
+  severity: P1
+assumptions:
+- Read-only Codex reviewer isolation is emulated; before and after snapshots and HEAD match
+checks:
+  tests: PASS supplied backend 335, notifications 28, frontend 575, PostgreSQL 42
+  lint: PASS committed rules and diff check
+diff_scope:
+  base: 71fa79386efdf617396c5a85ea746a3bdde601d5
+  head: 6b8f361891e8bd490bfd6a39c5e7fb726bad9984

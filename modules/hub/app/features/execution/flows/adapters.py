@@ -13,22 +13,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .errors import FlowError
 
-RETIRED_BRIDGE = "SDD_BRIDGE_RETIRED"
-BRIDGE_PREFIXES = ("autohub.sdd:", "autohub.pr_delivery:")
-
-
-def retired_binding(binding: dict) -> bool:
-    return binding.get("executor") == "native" and str(binding.get("target", "")).startswith(BRIDGE_PREFIXES)
-
-
-def retired_bindings(bindings: dict) -> bool:
-    return any(retired_binding(binding) for binding in bindings.values())
-
-
-def reject_retired_bindings(bindings: dict) -> None:
-    if retired_bindings(bindings):
-        raise FlowError(410, RETIRED_BRIDGE, "built-in repository delivery bridges have been retired")
-
 
 class HttpTarget(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -56,8 +40,6 @@ class WorkerBindings:
             key = f"{binding.task.key}@{binding.task.contract_version}"
             if binding.executor == "native" and binding.target == "autohub.identity":
                 resolved[key] = {"executor": "native", "target": binding.target}
-            elif retired_binding({"executor": binding.executor, "target": binding.target}):
-                raise FlowError(410, RETIRED_BRIDGE, "built-in repository delivery bridges have been retired")
             elif binding.executor == "http" and binding.target in self.targets:
                 resolved[key] = {
                     "executor": "http",
@@ -106,10 +88,6 @@ class WorkerAction:
 
 class WorkerAdapter:
     async def execute(self, action: WorkerAction) -> WorkerResult:
-        if retired_binding(action.binding):
-            from .bridge import PRBridgeWorker
-
-            return await PRBridgeWorker().execute(action)
         if action.binding["executor"] == "native" and action.binding["target"] != "autohub.identity":
             return WorkerResult(attempt_id=action.attempt_id, status="failed", error="worker-binding")
         if action.binding["executor"] == "native":

@@ -103,9 +103,6 @@ test('direct and reloaded URL select branch, unit and exact batch without mutati
 		(await screen.findAllByRole('heading', { name: 'Addressed demo' })).length
 	).toBeGreaterThan(0);
 	expect(
-		await screen.findByRole('heading', { name: `Batch ${batch} · stopped · revision 3` })
-	).toBeTruthy();
-	expect(
 		api.GET.mock.calls.some(([path]) => path === '/api/v1/projects/{project_id}/sdd/batches')
 	).toBe(false);
 	expect(
@@ -132,16 +129,13 @@ test('direct and reloaded URL select branch, unit and exact batch without mutati
 	expect(api.POST).not.toHaveBeenCalled();
 });
 
-test('missing and malformed unit cannot expose activity controls while batch remains independently inspectable', async () => {
+test('missing and malformed unit cannot expose activity controls ', async () => {
 	missing = true;
 	render(RepositoryView, { project });
 	expect(await screen.findByRole('heading', { name: 'Unit unavailable' })).toBeTruthy();
 	expect(screen.queryByRole('button', { name: 'Start execution' })).toBeNull();
-	expect(
-		await screen.findByRole('heading', { name: `Batch ${batch} · stopped · revision 3` })
-	).toBeTruthy();
 	await userEvent.setup().click(screen.getByRole('button', { name: 'Browse repository' }));
-	expect(goto).toHaveBeenCalledWith(expect.stringContaining(`batch=${batch}`), expect.anything());
+	expect(goto).toHaveBeenCalledWith(expect.stringContaining('tab=repository'), expect.anything());
 	expect(goto.mock.calls[0][0]).not.toContain('unit=');
 	expect(api.POST).not.toHaveBeenCalled();
 });
@@ -156,7 +150,7 @@ test('deleted recorded branch keeps its name and Browse resets the unavailable r
 	expect(api.POST).not.toHaveBeenCalled();
 });
 
-test('same-project browser query navigation replaces selected unit and preserves independent batch', async () => {
+test('same-project browser query navigation replaces selected unit', async () => {
 	render(RepositoryView, { project });
 	await waitFor(() =>
 		expect(
@@ -173,9 +167,6 @@ test('same-project browser query navigation replaces selected unit and preserves
 		).toBe(next)
 	);
 	expect((screen.getByLabelText('Repository branch') as HTMLSelectElement).value).toBe('main');
-	expect(
-		await screen.findByRole('heading', { name: `Batch ${batch} · stopped · revision 3` })
-	).toBeTruthy();
 	page.url = new URL(
 		`http://hub.test/projects/p?tab=repository&unit=${unit}&ref=dev-demo&batch=${batch}`
 	);

@@ -4,7 +4,6 @@ vi.mock('$lib/api', () => ({ api: {} }));
 import type { components } from '$lib/api';
 import {
 	canResume,
-	decisionWait,
 	decisionsFor,
 	primaryRunAction,
 	rowActionName,
@@ -30,15 +29,8 @@ describe('primaryRunAction', () => {
 		[
 			'saved answer',
 			run('paused'),
-			known(entry('native-hub-question', { question_state: 'answered' })),
+			known(entry('run-question', { question_state: 'answered' })),
 			'resume-saved'
-		],
-		['native approval', run('blocked'), known(entry('native-workflow')), 'review-approval'],
-		[
-			'publication pending',
-			run('paused'),
-			known(entry('native-worker-question', { actionable: false })),
-			'check-decision'
 		],
 		['failed', run('failed'), known(), 'next-step'],
 		['paused without decisions', run('paused'), known(), 'resume'],
@@ -49,12 +41,6 @@ describe('primaryRunAction', () => {
 		['completed', run('completed'), known(entry('run-question')), 'open']
 	])('%s', (_name, value, decisions, kind) => {
 		expect(primaryRunAction(value, decisions).kind).toBe(kind);
-	});
-
-	test('a question outranks an approval on the same run', () => {
-		expect(
-			decisionWait([entry('native-workflow'), entry('run-question', { question_state: 'open' })])
-		).toBe('question');
 	});
 });
 
@@ -76,7 +62,7 @@ test('unknown decisions keep plain Resume as a secondary action only', () => {
 });
 
 test('plain Resume is withheld while a known decision holds the run', () => {
-	expect(canResume(run('paused'), known(entry('native-proposal')))).toBe(false);
+	expect(canResume(run('paused'), known(entry('run-question')))).toBe(false);
 	expect(canResume(run('paused'), known())).toBe(true);
 	expect(canResume(run('implementing'), known())).toBe(false);
 });

@@ -85,18 +85,18 @@ their treatment to be reconsidered.
   publication boundaries change. Test selection and outcomes must identify the
   database actually exercised.
 
-## Repository execution and retired authority
+## Repository execution and uncertain publication
 
-- **Kind**: responsibility and cutover constraint.
+- **Kind**: responsibility and publication constraint.
 - **Boundary**: repository setup and internal workflow are owned by its working
   agent. Hub starts explicit intent without proving status, dependency or tooling
   readiness. An agent may discover setup failure after consuming an attempt.
 - **Consequence**: ordinary PR/CI success does not prove the repository followed
-  every internal SDD gate. Retired native Runs and claims can still name external
-  agent work that local cancellation cannot stop.
+  every internal SDD gate. An uncertain publication claim can name external
+  work that local acknowledgment cannot stop.
 - **Treatment**: retain questions and exact history under
   `CAP-PR-operator-decisions` and `CAP-SDD-native-delivery`. Require explicit
-  reconciliation of uncertain retired ownership before replacement. Repository
+  reconciliation of uncertain publication ownership before replacement. Repository
   owners configure actual checks in GitHub Actions. Reconsider only if a separate
   product requirement justifies a verified repository contract.
 

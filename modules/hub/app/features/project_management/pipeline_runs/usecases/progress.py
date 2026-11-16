@@ -25,7 +25,6 @@ from app.features.project_management.projects.errors import ProjectError
 from app.features.project_management.projects.models import Project
 from app.features.project_management.projects.schemas import ProjectRead
 from app.features.project_management.projects.services import ProjectService
-from app.features.project_management.sdd.execution import optimistic, require_current
 from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
@@ -113,7 +112,6 @@ class PipelineRunProgress:
             reject_test_refs(run.pull_snapshot)
             repository, connector_id, number = project.github_repository, project.github_connector_id, run.pull_number
             heads = await ConnectionTestRepository().protected_heads(session, repository or "")
-            require_current(run)
             from app.features.project_management.pipeline_runs.interaction_repo import RunInteractionRepository
 
             if await RunInteractionRepository().pending(session, run.id):
@@ -173,7 +171,6 @@ class PipelineRunProgress:
             run = await self.repo.get_leased(session, run_id, owner=owner, token=token, now=now)
             if run is None:
                 await raise_lease_conflict(self.repo, session, run_id, "advance run")
-            require_current(run)
             project = await self.projects.get(session, run.project_id)
             if (
                 not project.enabled
@@ -189,7 +186,7 @@ class PipelineRunProgress:
                 implementation_input = await implementing.prepare(session, run, target)
             else:
                 project_read = ProjectRead.model_validate(project)
-                if optimistic(run) and await self.repo.active_attempt(session, run.id) is not None:
+                if bool(run.sdd_snapshot) and await self.repo.active_attempt(session, run.id) is not None:
                     question_input = await implementing.prepare(session, run, target)
             pull_number = run.pull_number
             checkpoint = ProgressCheckpoint(

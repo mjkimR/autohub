@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import ProjectExceptionStrip from '$lib/features/project-management/projects/ProjectExceptionStrip.svelte';
 import AttentionView from './AttentionView.svelte';
 import { OWED_KINDS } from './owed-kinds';
-import { BATCH, ITEM, PLAN, PROJECT, RUN, owedItem } from './owed-fixtures';
+import { ITEM, PLAN, PROJECT, RUN, owedItem } from './owed-fixtures';
 import type { OwedItem } from './owed-links';
 import { OWED_COUNTS_CONTEXT, OwedCountsStore } from './owed-counts.svelte';
 
@@ -26,7 +26,6 @@ const pageOf = (items: OwedItem[], next: string | null = null): { data: Page } =
 const everyKind = (): OwedItem[] => [
 	owedItem('failed-run', { subject: { id: 'f1' }, context: { run_id: 'f1' } }),
 	owedItem('connection-test-cleanup'),
-	owedItem('sdd-batch-attention', { context: { sdd_batch_id: BATCH } }),
 	owedItem('work-item-attention', { context: { work_item_id: ITEM } }),
 	owedItem('work-item-replacement', { context: { work_item_id: ITEM } }),
 	owedItem('work-item-recovery', { context: { work_item_id: ITEM } }),
@@ -68,7 +67,7 @@ const group = (kind: string) =>
 
 test('groups every kind by consequence with failed runs last and quiet', async () => {
 	render(AttentionView);
-	await waitFor(() => expect(groupOrder()).toHaveLength(9));
+	await waitFor(() => expect(groupOrder()).toHaveLength(8));
 	expect(groupOrder()).toEqual(OWED_KINDS.map((entry) => entry.kind));
 	expect(group('decision').querySelector('[data-owed-count]')?.className).toContain('attention');
 	const quiet = group('failed-run').querySelector('[data-owed-count]')!;
@@ -89,7 +88,6 @@ test.each([
 		`/projects/${PROJECT}?tab=plans#work-item-${ITEM}`
 	],
 	['work-item-attention', 'Inspect Work Item', `/projects/${PROJECT}?tab=plans#work-item-${ITEM}`],
-	['sdd-batch-attention', 'Inspect batch', `/projects/${PROJECT}?tab=repository&batch=${BATCH}`],
 	['connection-test-cleanup', 'Review cleanup', `/projects/${PROJECT}?tab=connections`],
 	['failed-run', 'Inspect run', `/projects/${PROJECT}/runs/f1#next-step`]
 ])(
@@ -132,13 +130,9 @@ test('a decision without a known run opens the inbox', async () => {
 });
 
 test('only some kinds present renders only their groups', async () => {
-	pages = async () =>
-		pageOf([
-			owedItem('sdd-batch-attention', { context: { sdd_batch_id: BATCH } }),
-			owedItem('decision')
-		]);
+	pages = async () => pageOf([owedItem('decision')]);
 	render(AttentionView);
-	await waitFor(() => expect(groupOrder()).toEqual(['decision', 'sdd-batch-attention']));
+	await waitFor(() => expect(groupOrder()).toEqual(['decision']));
 	expect(document.querySelector('[data-owed-empty]')).toBeNull();
 });
 
@@ -169,12 +163,12 @@ test('loading shows a static skeleton with status text', async () => {
 
 test('an error shows a retry banner and keeps the last data', async () => {
 	render(AttentionView);
-	await waitFor(() => expect(groupOrder()).toHaveLength(9));
+	await waitFor(() => expect(groupOrder()).toHaveLength(8));
 	pages = async () => ({ error: { detail: 'Owed items are unavailable' } });
 	await fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
 	const alert = await screen.findByRole('alert');
 	expect(alert.textContent).toContain('Owed items are unavailable');
-	expect(groupOrder()).toHaveLength(9);
+	expect(groupOrder()).toHaveLength(8);
 	pages = async () => pageOf([owedItem('decision', { context: { run_id: RUN } })]);
 	await fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
 	await waitFor(() => expect(groupOrder()).toEqual(['decision']));
@@ -210,7 +204,7 @@ test('Load more appends the next keyset page with the cursor and the page limit'
 
 test('choosing a project restarts the list with that filter', async () => {
 	render(AttentionView);
-	await waitFor(() => expect(groupOrder()).toHaveLength(9));
+	await waitFor(() => expect(groupOrder()).toHaveLength(8));
 	await screen.findByRole('option', { name: 'Application' });
 	pages = async () => pageOf([]);
 	await fireEvent.change(screen.getByRole('combobox', { name: 'Project' }), {

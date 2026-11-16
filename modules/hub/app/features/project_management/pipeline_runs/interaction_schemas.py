@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -43,23 +42,8 @@ class QuestionDismiss(BaseModel):
     reason: str = Field(min_length=1, max_length=2000)
 
 
-class WorkflowAnswer(BaseModel):
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-    request: str = Field(min_length=1, max_length=200)
-    action: Literal["accept", "decline", "cancel"]
-    value: str | None = Field(default=None, max_length=200)
-
-
 class ResumeRunRequest(InteractionWrite):
-    workflow_answer: WorkflowAnswer | None = None
     answer_id: UUID | None = None
-    decision: Literal["approve", "revise", "reject", "revoke", "accept_plan", "reject_plan"] | None = None
-    feedback: str | None = Field(default=None, max_length=8000)
-    head_sha: str | None = Field(
-        default=None,
-        pattern=r"^[0-9a-f]{40}$",
-        description="accept_plan and reject_plan: the pull request head the person confirmed; another head refuses",
-    )
 
 
 class AnswerRead(BaseModel):

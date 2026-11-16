@@ -2,13 +2,13 @@
 
 Use this guide to configure a serving Auto Hub host before registering SDK
 releases. `CAP-SDK-task-flow-execution` owns the API/worker protocol and
-`CAP-SDK-existing-pr-bridge` identifies retired built-in bridge bindings. Configuration does
+`CAP-SDD-native-delivery` separately owns repository activity starts. Configuration does
 not create a release, deploy worker code or prove a live delivery.
 
 ## SDK flow host
 
 Deploy the backend and its matching migrations. The flow ledger was introduced
-by migration `d69f762c5465`; the existing-PR bridge adds `e70a873d6576`. The normal
+by migration `d69f762c5465`; `d704fb51a433` removes unused built-in bridge link storage. The normal
 container entrypoint applies `alembic upgrade head` before serving requests.
 For a manually managed environment, run `just db-upgrade` from the repository
 root against the intended database. Follow the
@@ -48,22 +48,7 @@ environment revision; an existing release replay preserves the original binding.
 Rotating the referenced credential's value does not require a new release.
 Native `autohub.identity` is available for a pure input-echo contract check.
 
-## Retired built-in PR bridge
+## Repository activities
 
-The `autohub.sdd:*` and `autohub.pr_delivery:*` namespaces reject new effects with
-`SDD_BRIDGE_RETIRED`. Do not provision an operator checkout, devkit runtime or
-`AUTOHUB_FLOW_DELIVERY_TARGETS` mapping for them. Existing idempotent history
-replays can return retained outcomes. Exact receipt-backed delivery can observe
-its old PR owner without a second resume; unreceipted work retires terminally.
-Completed results stay readable. `CAP-SDK-existing-pr-bridge` owns these bounds.
-
-## Operational verification
-
-Confirm the configured HTTP target and credential-variable availability, then
-register/activate the intended generic release. Observe run/attempt results
-through `UC-execute-task-flow`. Local echo/fixture results do not prove another
-worker's deployed receipt protocol or live GitHub behavior. Record live evidence
-and source/release identity in [delivery status](deployment-status.md).
-
-Contributor checks belong in [testing](../development/testing.md). Worker
-implementation and deployed service credentials remain operator-owned.
+Use repository-owned SDD activity starts or ordinary PR enrollment for repository
+work. Generic SDK workers have no built-in PR delivery bridge.

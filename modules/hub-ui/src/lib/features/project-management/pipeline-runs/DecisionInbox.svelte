@@ -8,7 +8,7 @@
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { displayLabel } from '$lib/labels';
 	import { cn } from '$lib/utils';
-	import { Clock, CornerDownRight } from '@lucide/svelte';
+	import { CornerDownRight } from '@lucide/svelte';
 	import RunDecisionsDialog from './RunDecisionsDialog.svelte';
 	import RunStateBadge from './RunStateBadge.svelte';
 	import { runHref } from './run-links';
@@ -18,12 +18,7 @@
 	type Kind = Entry['kind'];
 	/** Display labels for decision kinds; filter values stay the raw API kinds. */
 	const KIND_LABELS: Record<string, string> = {
-		'run-question': 'Run question',
-		'native-hub-question': 'SDD Hub question',
-		'native-worker-question': 'SDD worker question',
-		'native-workflow': 'SDD workflow request',
-		'native-proposal': 'SDD proposal decision',
-		'native-integration': 'SDD integration decision'
+		'run-question': 'Run question'
 	};
 	const kindLabel = (value: string) => displayLabel(value, KIND_LABELS);
 	const projectHref = (entry: Entry) => `/projects/${encodeURIComponent(entry.project_id)}`;
@@ -240,12 +235,7 @@
 					· {kindLabel(entry.kind)} · {entry.subject_id}
 				</p>
 				<div>
-					{#if !entry.actionable}
-						<Badge variant="info">
-							<Clock aria-hidden="true" />
-							Answer publication pending
-						</Badge>
-					{:else if entry.question_state === 'answered'}
+					{#if entry.question_state === 'answered'}
 						<Badge variant="attention">
 							<CornerDownRight aria-hidden="true" />
 							Answer saved — resume pending

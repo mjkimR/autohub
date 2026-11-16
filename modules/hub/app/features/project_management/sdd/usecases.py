@@ -1,7 +1,6 @@
 from typing import Annotated
 
 from app.features.project_management.pipeline_runs.origin_reads import read_runs
-from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
 from app.features.project_management.pipeline_runs.schemas import PipelineRunRead
 from app.features.project_management.pipeline_runs.usecases.lifecycle import PipelineRunUseCase
 from app.features.project_management.pipelines.deps import get_pipeline_observer
@@ -60,23 +59,3 @@ class SddUseCase:
             await self.projects.get(session, project_id)
             rows = await SddRepository().runs(session, project_id, spec_dir)
             return await read_runs(session, rows)
-
-    async def decisions(self, run_id):
-        async with AsyncTransaction() as session:
-            run = await PipelineRunRepository().get(session, run_id)
-            if run is None or not run.sdd_snapshot:
-                raise ProjectError(404, "Native sdd run not found")
-            records = await SddRepository().decisions(session, run_id)
-            rows = [
-                {"id": str(row.id), "created_at": row.created_at.isoformat(), **(row.decision_evidence or {})}
-                for row in records
-            ]
-            rows.sort(key=lambda r: (r.get("revision", 0), r.get("created_at", "")), reverse=True)
-            return rows
-
-    async def retired_operation(self, project_id):
-        from .execution import RETIRED_CODE, RETIRED_REASON
-
-        async with AsyncTransaction() as session:
-            await self.projects.get(session, project_id)
-        raise ProjectError(410, RETIRED_REASON, code=RETIRED_CODE)

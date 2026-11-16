@@ -24,13 +24,5 @@ class DecisionOutcome(BaseModel):
     execution_state: str | None = None
     delivery_state: Literal["posted", "pending"] | None = None
     delivery_at: datetime | None = None
-    native_channel: str | None = None
-    publication_state: str | None = None
-    candidate_heads: list[str] = []
-    candidate_head: str | None = None
-    resolved_envelope: str | None = None
     inspected_head: str | None = None
-    inspected_digest: str | None = None
-    current_authority: dict | None = None
-    current_hold: dict | None = None
     unavailable_reason: str | None = None

@@ -33,7 +33,7 @@ An operator can save an answer, prepare its application, publish a native decisi
 ## 4. Decision Outcome
 
 - Use the typed read-only lookup over owner records because exact recovery and authority preservation outweigh its API cost. → `CAP-PR-operator-decisions` outcome read contract (MUST).
-- Keep saved answers, prepared application, publication, delivery and current authority as separate facts. → `CAP-SDD-workflow-control` outcome disclosure (MUST).
+- Keep saved answers, prepared application, publication, delivery and current authority as separate facts. → CAP-SDD-workflow-control outcome disclosure (MUST).
 - Preserve original owner submission identity during uncertainty and use existing owner replay/reconciliation guards. → `CAP-SDD-native-delivery` decision recovery (MUST).
 - Reuse the accepted inbox inspection and subject selection foundation; revalidate it against the landed predecessor before Development.
 
@@ -43,4 +43,4 @@ The interface can retain a selected result after its pending row disappears. A m
 
 ## 6. Confirmation
 
-`CAP-PR-operator-decisions` exact owner outcomes, `CAP-SDD-workflow-control` outcome disclosure and `CAP-SDD-native-delivery` decision recovery restate this decision. `modules/hub/tests/integration/features/project_management/pipeline_runs/test_outcomes.py` checks exact scoped lookup, historical publication and candidate evidence. The owner UI integration tests check immutable replay, independent recovery identity and acknowledged refresh errors. These controlled tests do not establish live provider/deployment behavior.
+`CAP-PR-operator-decisions` exact owner outcomes, CAP-SDD-workflow-control outcome disclosure and `CAP-SDD-native-delivery` decision recovery restate this decision. `modules/hub/tests/integration/features/project_management/pipeline_runs/test_outcomes.py` checks exact scoped lookup, historical publication and candidate evidence. The owner UI integration tests check immutable replay, independent recovery identity and acknowledged refresh errors. These controlled tests do not establish live provider/deployment behavior.

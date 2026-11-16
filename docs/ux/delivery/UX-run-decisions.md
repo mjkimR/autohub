@@ -1,42 +1,39 @@
 ---
 id: UX-run-decisions
 title: Run Decisions
-summary: "The Decisions panel of a PR run separates saved Run question answers, explicit resumption and read-only native history while retaining current run context and history. Supports exact pending-decision navigation."
+summary: "The Decisions panel of a PR run separates saved Run question answers, explicit resumption while retaining current run context and history. Supports exact pending-decision navigation."
 area: delivery
 element: panel
 status: active
 usecases:
   - UC-resolve-run-question
-  - UC-decide-sdd-proposal
   - UC-complete-sdd-workflow
 capabilities:
   - CAP-PR-operator-decisions
   - CAP-PR-pull-request-delivery
   - CAP-SDD-native-delivery
-  - CAP-SDD-workflow-control
 ---
 
 # [UX-run-decisions] Run Decisions
 
 ## 1. Purpose
 
-- **Primary task**: Resolve a Run question or inspect a historical native decision.
-- **Facts to commit**: Current PR run revision, wait reason, pending question, saved answers and native evidence.
-- **Secondary items**: Native evidence stays in read-only disclosures; prior questions and approval activity are secondary history.
+- **Primary task**: Resolve a Run question.
+- **Facts to commit**: Current PR run revision, wait reason, pending question and saved answers.
+- **Secondary items**: Prior ordinary questions and their saved answers remain secondary history.
 - **Hosts**: the Decisions section of `UX-run-page`, and the Decision inbox review dialog in `UX-decision-inbox`, which adds the PR identity, Inspect pull request, Open run page and Close around this panel.
 
 ## 2. Content
 
-The current wait and Run question form are primary. Retired native evidence is
-secondary history; it provides no live workflow controls.
+The current wait and Run question form are primary. Prior ordinary questions
+and saved answers remain secondary history.
 
 - PR run (last successful local load time with Refresh decisions; in the inbox dialog also the wait reason and terminal notice, which `UX-run-page` shows in its header and next-step section instead).
 - Run question (pending text, saved answer list, application state).
   - Run question (Your answer editor with Save and resume and Save only; collapsed as Answer differently while a saved answer awaits resume).
   - Run question (reasoned dismissal; inside a disclosure).
 - Run question (earlier-question history with Previous/Next pagination).
-- `UX-sdd-run` (descriptive activity context or read-only retired evidence).
-- `UX-sdd-decision-history` (native approval/publication activity).
+- `UX-sdd-run` (descriptive activity context or activity context).
 
 Only the latest history page offers actions. Loading compares question and run
 revisions; mismatched data requires refresh rather than enabling stale controls.
@@ -57,10 +54,9 @@ The decision outcome region appears only for a retained submission or read
 subject. Otherwise the browser-reload explanation is a collapsed secondary
 disclosure that does not lead the decision content.
 
-Inbox entry supplies an exact current Run question identity. Historical native
-requests never become actionable through inbox inspection. A changed or resolved selection cannot inherit editors or authority. After an acknowledged mutation the inbox reloads its current cursor page before owner reload; a resolved selection remains disabled. Closing restores the originating row or nearest remaining row and retains filters.
+Inbox entry supplies an exact current Run question identity. A changed or resolved selection cannot inherit editors or authority. After an acknowledged mutation the inbox reloads its current cursor page before owner reload; a resolved selection remains disabled. Closing restores the originating row or nearest remaining row and retains filters.
 
-The selected decision outcome is retained beside its owner controls. It identifies the exact displayed request, saved answer text, applied attempt and independent delivery/publication evidence. Current Run/authority/hold remains distinct. Another history selection changes the displayed read subject without replacing an unresolved mutation intent. Parent review owns PR navigation and Close.
+The selected decision outcome is retained beside its owner controls. It identifies the exact displayed request, saved answer text, applied attempt and independent delivery evidence. Current Run state remains distinct. Another history selection changes the displayed read subject without replacing an unresolved mutation intent. Parent review owns PR navigation and Close.
 
 ## 3. States
 
@@ -76,13 +72,11 @@ The selected decision outcome is retained beside its owner controls. It identifi
 - **uncertain**: Outcome unknown offers Check outcome and eligible Retry same request; replacement submission is disabled while original intent exists.
 - **changed**: Changed basis disables old continuation; refresh current context before another action.
 - **acknowledged-refresh-error**: Recorded identity/text survives failed refresh; retry reads rather than replacing the mutation.
-- **retired**: native evidence is inspect-only; no workflow answer, approval or publication retry is offered.
 
 ## 4. Interactions
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Refresh decisions | `UC-resolve-run-question` 1, `UC-decide-sdd-proposal` 1 | populated | loading |  | `CAP-PR-operator-decisions` | Current run/questions replace the inspected basis or show a conflict. |
 | Save answer / Save only | `UC-resolve-run-question` 2 | populated | busy |  | `CAP-PR-operator-decisions` | A status confirms that the answer is saved and the run remains stopped. |
 | Save and resume | `UC-resolve-run-question` 2, `UC-resolve-run-question` 4 | populated | busy, saved |  | `CAP-PR-operator-decisions` | The answer is saved, then applied by a separate resume naming it; a failed resume leaves it saved with the run paused. |
 | Resume with saved answer | `UC-resolve-run-question` 4, `UC-complete-sdd-workflow` 5 | populated | busy |  | `CAP-PR-operator-decisions` | The selected answer is applied or a refusal is shown; delivery may remain pending. |
@@ -102,7 +96,7 @@ Last loaded identifies the last successful consistent Run/question read. A faile
 | Check outcome / Check saved answer outcome | global: inspect the exact saved owner request | uncertain | saved, applied, uncertain | | `CAP-PR-operator-decisions` | Exact selected request is read; missing records/read errors remain unknown. |
 | Retry same request | global: recover an uncertain ordinary submission | uncertain | applied, uncertain, changed | | `CAP-PR-operator-decisions` | Original ordinary request and payload replay only; owner guards remain authoritative. |
 
-Embedded panels retain the visible parent context and its Close exit; they add no Back button. Native history can select a retained request outcome for reading only.
+Embedded panels retain the visible parent context and its Close exit; they add no Back button. Saved-answer history can select an exact request outcome for reading only.
 
 ## 5. Evidence
 

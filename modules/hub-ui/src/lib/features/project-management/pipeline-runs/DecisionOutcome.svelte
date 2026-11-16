@@ -66,20 +66,7 @@
 				Applied to attempt <code>{outcome.applied_attempt_id}</code>
 			</p>{/if}
 		{#if outcome?.delivery_state}<p>Delivery: {outcome.delivery_state}</p>{/if}
-		{#if outcome?.publication_state}<p>
-				{outcome.publication_state === 'pending'
-					? 'Answer recorded — publication pending'
-					: `Publication: ${outcome.publication_state}`}
-			</p>{/if}
-		{#if outcome?.candidate_heads?.length}<p>
-				Retained candidates: {outcome.candidate_heads.join(', ')}
-			</p>{/if}
-		{#if outcome?.resolved_envelope}<p>Published envelope: {outcome.resolved_envelope}</p>{/if}
-		{#if outcome}<p>
-				Current run: {outcome.run_state}. Authority: {outcome.current_authority
-					? 'Recorded at current inspection'
-					: 'Unavailable'}
-			</p>{/if}
+		{#if outcome}<p>Current run: {outcome.run_state}.</p>{/if}
 		{#if changed}<p>Context changed. Review current context before another action.</p>{/if}
 		<Button size="sm" variant="outline" disabled={review.busy} onclick={read}>Check outcome</Button>
 		{#if review.unresolved && !review.intent?.rejected}<p>

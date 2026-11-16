@@ -392,3 +392,10 @@ async def test_expected_release_rejects_activation_race_before_creating_run(clie
         assert list(await session.scalars(select(FlowRun))) == []
     run = await start(client)
     assert run["release_id"] == "release-1"
+
+
+@pytest.mark.parametrize("target", ["autohub.sdd:plan", "autohub.pr_delivery:resume", "unknown.worker"])
+async def test_unsupported_native_targets_use_generic_binding_validation(client, owner, target):
+    response = await client.put(RELEASE_PATH, json=release(target=target).model_dump(mode="json"))
+    assert response.status_code == 422, response.text
+    assert response.json()["code"] == "worker-binding"

@@ -33,9 +33,8 @@ async def enroll_activity(client, project, github, **options):
 
 async def test_enrollment_has_only_descriptive_intent_and_no_repository_readiness(client, project, github):
     run = await enroll_activity(client, project, github)
-    assert run["state"] == "queued" and run["sdd_progress"] is None
+    assert run["state"] == "queued" and "sdd_progress" not in run
     assert run["sdd_snapshot"] == {
-        "execution_version": 2,
         "provider": "repository-agent",
         "spec_dir": UNIT,
         "activity_kind": "plan",
@@ -116,7 +115,7 @@ async def test_direct_enrollment_cannot_steal_an_unsettled_activity_candidate(
 ):
     from uuid import UUID, uuid4
 
-    from app.features.project_management.sdd.batch_models import SddActivityClaim
+    from app.features.project_management.sdd.claim_models import SddActivityClaim
 
     claim = SddActivityClaim(
         project_id=UUID(project["id"]),
@@ -126,7 +125,6 @@ async def test_direct_enrollment_cannot_steal_an_unsettled_activity_candidate(
         unit=UNIT,
         activity="plan",
         checkpoint={
-            "execution_version": 2,
             "uncertain": True,
             "pr_attempted": True,
             "branch": github.pulls[7]["head"]["ref"],

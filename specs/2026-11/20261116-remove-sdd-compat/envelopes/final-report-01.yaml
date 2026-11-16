@@ -1,0 +1,20 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T00:17:19.068278Z'
+status: completed
+summary: Remove unused native SDD compatibility across API MCP UI execution storage and current contracts; preserve current activity recovery and ordinary PR SDK flows
+findings: []
+assumptions:
+- User confirms no legacy native work; only native SDD compatibility removed
+- Clean checkout uses local activity branch and local integration under auto policy; no publication or deployment requested
+unverified_areas:
+- No production deployment or live provider/GitHub canary performed
+checks:
+  tests: PASS backend456 plus final focused SDD29; frontend575; PostgreSQL activity interaction25 and migration3; generic PostgreSQL flows42 earlier; SDK27
+  build: PASS just check backend SDK types and frontend production build; just build-sdk; generated API current
+  lint: PASS just lint, docs-check and committed rules
+diff_scope:
+  base: 71fa79386efdf617396c5a85ea746a3bdde601d5
+  head: f1178512a8d4a192ba33b4b71cd50d39d1cdded1

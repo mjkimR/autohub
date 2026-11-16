@@ -194,11 +194,9 @@ or repository runtime cache. Remove obsolete `AUTOHUB_SDD_*` variables and
 starts use the ordinary GitHub and agent-provider connections; they require no
 bubblewrap probe or evaluator-specific execution environment.
 
-Deploy the matching backend, UI and retirement migration together. The migration
-stops legacy local execution and preserves its history and unsettled ownership;
-it does not cancel already dispatched provider work. Follow the
-[activity rollout and rollback procedure](sdd-runtime.md#rollout-and-rollback)
-before admitting replacement work. Use the
+Deploy the matching backend, UI and schema cleanup migration together. The migration
+removes unused native batch and SDK bridge link storage. Follow the
+[activity schema update procedure](sdd-runtime.md#schema-update). Use the
 [live canary procedure](sdd-runtime.md#live-canary-after-deployment) to record
 ordinary Draft activity, question/resume and current-head CI behavior on the
 deployed revision. `ARCH-07-deployment` owns the serving boundary.

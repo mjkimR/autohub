@@ -47,7 +47,7 @@ entrypoints:
 
 4. Hub observes the provider's push and the repository's verification result through scheduled or webhook advancement (`CAP-PR-agent-dispatch`, `CAP-PR-ci-observation`, `CAP-PR-webhook-advancement`).
    Interface: `UX-pipeline-runs`, `UX-run-page`, `UX-attempt-history`.
-   The operator can inspect retained origins and follow their exact Work Item, SDD unit/batch or external Provider session (`CAP-PR-pull-request-delivery`).
+   The operator can inspect retained origins and follow their exact Work Item, SDD activity unit or external Provider session (`CAP-PR-pull-request-delivery`).
 
 5. The operator marks the PR ready when its work is acceptable (`CAP-PR-pull-request-delivery`).
    Off screen: the operator changes PR readiness in GitHub outside the Hub interface.

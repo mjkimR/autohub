@@ -14,7 +14,7 @@ Superseded in part by `ADR-repository-owned-sdd-execution`: all decisions defini
 
 ## 1. Context & Problem Statement
 
-Selected native units cross proposal Planning, handoff and spec Development. `CAP-SDD-native-delivery` and `CAP-SDD-workflow-control` assign each activity and PR its own authority. Repository anchors can disappear after handoff; a batch cannot infer scheduling authority from a similar spec name.
+Selected native units cross proposal Planning, handoff and spec Development. `CAP-SDD-native-delivery` and CAP-SDD-workflow-control assign each activity and PR its own authority. Repository anchors can disappear after handoff; a batch cannot infer scheduling authority from a similar spec name.
 
 ## 2. Decision Drivers
 

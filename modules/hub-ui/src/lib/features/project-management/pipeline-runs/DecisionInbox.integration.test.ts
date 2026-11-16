@@ -145,14 +145,7 @@ test('each row carries one labeled status and only operator work is marked for a
 				data: {
 					items: [
 						{ ...entry, key: 'open', title: 'Open question' },
-						{ ...entry, key: 'answered', title: 'Answered question', question_state: 'answered' },
-						{
-							...entry,
-							key: 'publishing',
-							title: 'Publishing answer',
-							kind: 'native-hub-question',
-							actionable: false
-						}
+						{ ...entry, key: 'answered', title: 'Answered question', question_state: 'answered' }
 					],
 					has_more: false,
 					next_cursor: null
@@ -166,10 +159,8 @@ test('each row carries one labeled status and only operator work is marked for a
 
 	expect(text(await row('Open question'))).toContain('Needs decision');
 	expect(text(await row('Answered question'))).toContain('Answer saved — resume pending');
-	expect(text(await row('Publishing answer'))).toContain('Answer publication pending');
 	expect((await row('Open question')).getAttribute('data-attention')).toBe('true');
 	expect((await row('Answered question')).getAttribute('data-attention')).toBe('true');
-	expect((await row('Publishing answer')).hasAttribute('data-attention')).toBe(false);
 	expect(document.querySelectorAll('[data-attention]')).toHaveLength(2);
 	expect(screen.queryByText('Answer saved', { exact: true })).toBeNull();
 });

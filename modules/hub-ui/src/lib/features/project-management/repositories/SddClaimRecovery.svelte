@@ -21,13 +21,7 @@
 		return !Number.isFinite(parsed) || parsed > Date.now();
 	});
 	let releasable = $derived(
-		!!claim &&
-			!claim.settled &&
-			!liveLease &&
-			(claim.retired ||
-				(!claim.run_id &&
-					claim.checkpoint.execution_version === 2 &&
-					claim.checkpoint.uncertain === true))
+		!!claim && !claim.settled && !liveLease && !claim.run_id && claim.checkpoint.uncertain === true
 	);
 
 	async function inspect() {
@@ -108,11 +102,9 @@
 			>{/if}
 		{#if releasable}
 			<p class="text-xs text-muted-foreground">
-				{claim.retired
-					? "Hub's native workflow execution is retired."
-					: 'The publication outcome is uncertain and no Run has been confirmed.'} Inspect any external
-				agent, branch and PR work before releasing this local reservation. Existing remote artifacts remain.
-				This does not stop an agent or resume work.
+				The publication outcome is uncertain and no Run has been confirmed. Inspect any external
+				agent, branch and PR work before releasing this local reservation. Existing remote artifacts
+				remain. This does not stop an agent or resume work.
 			</p>
 			<label class="flex items-center gap-2 text-sm"
 				><input type="checkbox" bind:checked={acknowledged} disabled={busy || !!pending} />I

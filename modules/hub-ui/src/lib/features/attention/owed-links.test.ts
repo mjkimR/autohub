@@ -7,7 +7,7 @@ import {
 	owedProjectHref
 } from './owed-links';
 import { OWED_KINDS } from './owed-kinds';
-import { BATCH, ITEM, PLAN, PROJECT, RUN, owedItem } from './owed-fixtures';
+import { ITEM, PLAN, PROJECT, RUN, owedItem } from './owed-fixtures';
 
 const project = `/projects/${PROJECT}`;
 const run = `${project}/runs/${RUN}`;
@@ -39,11 +39,6 @@ test.each([
 		{ subject: { id: ITEM }, context: { work_item_id: ITEM } },
 		`${project}?tab=plans#work-item-${ITEM}`
 	],
-	[
-		'sdd-batch-attention',
-		{ subject: { id: BATCH }, context: { sdd_batch_id: BATCH } },
-		`${project}?tab=repository&batch=${BATCH}`
-	],
 	['connection-test-cleanup', {}, `${project}?tab=connections`]
 ] as const)('%s resolves to its owner (%#)', (kind, overrides, href) => {
 	expect(owedHref(owedItem(kind, overrides))).toBe(href);
@@ -51,7 +46,7 @@ test.each([
 
 test('every kind has a landing section and a deep link', () => {
 	const kinds = OWED_KINDS.map((entry) => entry.kind);
-	expect(new Set(kinds).size).toBe(9);
+	expect(new Set(kinds).size).toBe(8);
 	for (const kind of kinds) expect(owedHref(owedItem(kind))).toMatch(/^\//);
 });
 
@@ -63,7 +58,6 @@ test.each([
 	['work-item-recovery', 'plans'],
 	['work-item-replacement', 'plans'],
 	['work-item-attention', 'plans'],
-	['sdd-batch-attention', 'repository'],
 	['connection-test-cleanup', 'connections']
 ] as const)('%s falls back to the project %s section', (kind, tab) => {
 	expect(owedProjectHref(kind, PROJECT)).toBe(`/projects/${PROJECT}?tab=${tab}`);

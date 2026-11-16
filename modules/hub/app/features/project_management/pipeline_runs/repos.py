@@ -52,10 +52,6 @@ class PipelineRunRepository:
             )
         ).scalar_one_or_none()
 
-        if run is not None:
-            from app.features.project_management.sdd.execution import require_current
-
-            require_current(run)
         return run
 
     async def get_active_for_pull(

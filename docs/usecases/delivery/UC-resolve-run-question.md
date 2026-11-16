@@ -25,7 +25,7 @@ entrypoints:
 - **Goal**: make an explicit clarification part of the intended PR execution,
   with a retained record of the question, chosen answer and application.
 - **Scope**: ordinary Auto Hub Run questions and answer application, including
-  optimistic SDD activities. Retained native workflow decisions are read-only.
+  repository-owned SDD activities.
 - **Trigger**: the operator inspects a Run requiring clarification.
 - **Preconditions**: the operator can access Hub and has identified the Run.
   Hub checks pending-question state, revisions, GitHub binding and current head.
@@ -50,9 +50,7 @@ entrypoints:
 The operator can locate the pending question through `UX-decision-inbox` before
 opening its exact Run review. Optional notice-link entry follows
 `UC-receive-decision-notice`; authentication and exact current identity are checked
-before the ordinary question controls enable. Retained native decisions provide
-history without approval or revocation controls. Existing per-run entry points
-remain available.
+before the ordinary question controls enable. Existing per-run entry points remain available.
 
 ## 3. Extensions
 
@@ -209,7 +207,7 @@ baseline for Auto Hub.
 
 - **Given** an observed pending decision in the shared inbox,
 - **When** the operator selects Review,
-- **Then** the exact ordinary question loads before its controls enable; an obsolete selection stays disabled until explicit reinspection, and native history exposes no mutation controls.
+- **Then** the exact ordinary question loads before its controls enable; an obsolete selection stays disabled until explicit reinspection.
 - **Covers**: 1z and the discovery entry.
 
 

@@ -1,7 +1,7 @@
 ---
 id: UX-sdd-claim-recovery
 title: Retained activity ownership
-summary: "Inspect a conflicting activity claim and explicitly acknowledge inspected external work before releasing a retained reservation. The acknowledgment cannot resume the old Run or create replacement work."
+summary: "Inspect a conflicting activity claim and explicitly acknowledge inspected external work before releasing a retained reservation. The acknowledgment cannot resume a Run or create replacement work."
 area: sdd
 element: panel
 status: active
@@ -21,18 +21,18 @@ capabilities: [CAP-SDD-native-delivery]
 
 - Native SDD activity (Retained activity owner heading and **Inspect retained owner**).
 - SDD activity claim (unit/activity/ID and exact **Open retained Run**/**Inspect original PR** links).
-- Retired reservation (external-work explanation, acknowledgment checkbox and **Release inspected reservation**).
+- Uncertain publication reservation (external-work explanation, acknowledgment checkbox and **Release inspected reservation**).
 
 The explanation states that release neither stops an external agent nor resumes
-the old Run. An active optimistic owner offers inspection rather than release.
+a Run. An active optimistic owner offers inspection rather than release.
 A settled owner offers **Review new activity**, which returns to intent review.
 
 ## 3. States
 
 - **uninspected**: Inspect retained owner loads exact evidence.
 - **loading**: competing inspection/release is disabled.
-- **reconcilable**: a retired claim or eligible unleased uncertain no-Run publication requires acknowledgment of inspected external work.
-- **active**: follow the owning Run; no retired-reservation release is offered.
+- **reconcilable**: an unleased uncertain no-Run publication requires acknowledgment of inspected external work.
+- **active**: follow the owning Run; no reservation release is offered.
 - **settled**: review new activity intent; no execution starts automatically.
 - **error**: show the exact read/refusal outcome and retry permitted inspection.
 - **uncertain**: retain the original acknowledgment UUID/digest; only **Retry same acknowledgment** can resend it.

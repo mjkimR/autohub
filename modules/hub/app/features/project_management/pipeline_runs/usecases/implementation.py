@@ -33,7 +33,6 @@ from app.features.project_management.pipeline_runs.usecases.transitions import (
 )
 from app.features.project_management.pipelines.services import PipelineObservationService
 from app.features.project_management.projects.errors import ProjectError
-from app.features.project_management.sdd.execution import optimistic
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -63,7 +62,7 @@ class ImplementationProgress:
             raise ProjectError(409, "Pipeline run has no active implementation attempt")
         delivery = await self.repo.latest_delivery(session, attempt.id)
         return ImplementationInput(
-            optimistic=optimistic(run),
+            optimistic=bool(run.sdd_snapshot),
             target=target,
             posted_at=as_utc(delivery.posted_at) if delivery is not None and delivery.posted_at is not None else None,
             delivered_head=PullRequestSnapshot.model_validate(attempt.request_snapshot["pull_request"]).head_sha,

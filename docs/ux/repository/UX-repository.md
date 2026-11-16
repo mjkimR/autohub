@@ -1,13 +1,13 @@
 ---
 id: UX-repository
+aliases: [UX-sdd-milestone-preview, UX-sdd-batch]
 title: Repository Browser
-summary: "Inspect branch-specific documents through Git Browser or SDD view with validated unit/ref addresses and independent retained batch selection. Unavailable subjects and stale reads preserve exact requested identity."
+summary: "Inspect branch-specific documents through Git Browser or SDD view with validated unit/ref addresses and activity Run links. Unavailable subjects and stale reads preserve exact requested identity."
 area: repository
 element: panel
 status: active
 usecases:
   - UC-inspect-repository-documents
-  - UC-execute-sdd-batch
 capabilities:
   - CAP-DOC-repository-viewer
   - CAP-SDD-native-delivery
@@ -31,13 +31,11 @@ An SDD Project connection initially uses Sdd View and can switch to Git Browser.
 - Repository viewer (embedded SDD document/milestone navigation in Sdd View).
 - `UX-sdd-execution` (unit intent and related-run links; SDD mode only).
 - `UX-sdd-proposals` (explicit activity starts; SDD mode only).
-- `UX-sdd-batch` (independently addressed read-only retained batch).
 
 Selecting a recognized proposal/spec path carries that unit directory to the
 execution panel. A browse ref is not represented as the execution PR’s head.
 A recognized `unit` query validates and opens its spec/proposal document and activity selection together.
 An explicit `ref` names the visible browse branch, including an unmerged Run branch; absence uses the default.
-A `batch` query selects retained history independently, and both subjects may coexist.
 Viewer-mode changes preserve the address; same-project browser query navigation replaces the requested selection.
 Optional README preview failure is silent; requested tree/file errors use the
 visible retry path. Binary file handling belongs to the Git file renderer.
@@ -50,7 +48,6 @@ visible retry path. Binary file handling belongs to the Git file renderer.
 - **error**: Requested repository reads show an alert and Retry; failed execution lookup is distinguished within the execution panel.
 
 - **unit-unavailable**: the requested unit/ref is invalid, missing, inaccessible or unsupported. Browse repository clears the unit and resets a missing addressed ref; read failures offer Retry unit. No start control for an unknown unit appears.
-- **batch-unavailable**: confined to `UX-sdd-batch`; valid unit inspection remains available.
 
 ## 4. Interactions
 
@@ -61,7 +58,6 @@ visible retry path. Binary file handling belongs to the Git file renderer.
 | Sdd View / Git Browser | global: choose a read-only repository representation | populated | populated |  | `CAP-DOC-repository-viewer` | The selected mode replaces the content surface while preserving the addressed unit and branch. |
 | Directory breadcrumb / file back | `UC-inspect-repository-documents` 3a | populated | loading |  | `CAP-DOC-repository-viewer` | The selected directory or parent listing is loaded. |
 | Open unit address / Retry unit | `UC-inspect-repository-documents` 1, `UC-inspect-repository-documents` 3b | populated, error, unit-unavailable | loading | | `CAP-DOC-repository-viewer` | Only the current recognized subject can reach viewer/activity selection. |
-| Open batch address | `UC-execute-sdd-batch` 1 | populated | loading | `UX-sdd-batch` | `CAP-SDD-native-delivery` | Exact retained detail loads independently of the selected unit. |
 | Browse repository | `UC-inspect-repository-documents` 3b | unit-unavailable, error | populated | | `CAP-DOC-repository-viewer` | The failed unit request is cleared and an unavailable ref resets to default. |
 
 ## 5. Evidence

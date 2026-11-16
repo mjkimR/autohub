@@ -81,146 +81,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/projects/{project_id}/sdd/batches": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Batches */
-        get: operations["list_batches_api_v1_projects__project_id__sdd_batches_get"];
-        put?: never;
-        /**
-         * Retired Sdd Evaluation
-         * @deprecated
-         * @description Embedded evaluation and executable native batches have been retired.
-         */
-        post: operations["retired_sdd_evaluation_api_v1_projects__project_id__sdd_batches_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/projects/{project_id}/sdd/milestone-preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Retired Sdd Evaluation
-         * @deprecated
-         * @description Embedded evaluation and executable native batches have been retired.
-         */
-        post: operations["retired_sdd_evaluation_api_v1_projects__project_id__sdd_milestone_preview_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/projects/{project_id}/sdd/milestones": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Retired Sdd Evaluation
-         * @deprecated
-         * @description Embedded evaluation and executable native batches have been retired.
-         */
-        get: operations["retired_sdd_evaluation_api_v1_projects__project_id__sdd_milestones_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/projects/{project_id}/sdd/readiness": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Retired Sdd Evaluation
-         * @deprecated
-         * @description Embedded evaluation and executable native batches have been retired.
-         */
-        post: operations["retired_sdd_evaluation_api_v1_projects__project_id__sdd_readiness_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/projects/{project_id}/sdd/runtime": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Retired Sdd Evaluation
-         * @deprecated
-         * @description Embedded evaluation and executable native batches have been retired.
-         */
-        get: operations["retired_sdd_evaluation_api_v1_projects__project_id__sdd_runtime_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/projects/{project_id}/sdd/batches/{batch_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Batch */
-        get: operations["get_batch_api_v1_projects__project_id__sdd_batches__batch_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/projects/{project_id}/sdd/batches/{batch_id}/controls": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Control Batch */
-        post: operations["control_batch_api_v1_projects__project_id__sdd_batches__batch_id__controls_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/projects/{project_id}/sdd/claims/{claim_id}": {
         parameters: {
             query?: never;
@@ -249,29 +109,9 @@ export interface paths {
         put?: never;
         /**
          * Reconcile Claim
-         * @description Acknowledge inspected external work and release only this retired reservation.
+         * @description Acknowledge inspected external work and release an uncertain publication reservation.
          */
         post: operations["reconcile_claim_api_v1_projects__project_id__sdd_claims__claim_id__reconcile_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/projects/{project_id}/sdd/runs/{run_id}/reconcile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Reconcile Retired Run
-         * @description Acknowledge retired external work without resuming the retained Run.
-         */
-        post: operations["reconcile_retired_run_api_v1_projects__project_id__sdd_runs__run_id__reconcile_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -281,38 +121,6 @@ export interface paths {
 }
 export interface components {
     schemas: {
-        /** BatchRead */
-        BatchRead: {
-            /** Id */
-            id: string;
-            /** Project Id */
-            project_id: string;
-            /** State */
-            state: string;
-            /** Revision */
-            revision: number;
-            /** Exclusion */
-            exclusion: boolean;
-            /** Detail */
-            detail: string | null;
-            /** Basis */
-            basis: {
-                [key: string]: unknown;
-            };
-            /** Evaluation */
-            evaluation: {
-                [key: string]: unknown;
-            };
-            /** Members */
-            members: {
-                [key: string]: unknown;
-            }[];
-            /**
-             * Retired
-             * @default true
-             */
-            retired: boolean;
-        };
         /** ClaimRead */
         ClaimRead: {
             /**
@@ -333,29 +141,12 @@ export interface components {
             run_id: string | null;
             /** Settled */
             settled: boolean;
-            /** Retired */
-            retired: boolean;
             /** Checkpoint Digest */
             checkpoint_digest: string;
             /** Checkpoint */
             checkpoint: {
                 [key: string]: unknown;
             };
-        };
-        /** ControlBatch */
-        ControlBatch: {
-            /**
-             * Request Id
-             * Format: uuid
-             */
-            request_id: string;
-            /** Expected Revision */
-            expected_revision: number;
-            /**
-             * Action
-             * @enum {string}
-             */
-            action: "pause" | "resume" | "stop";
         };
         HTTPValidationError: CommonComponents["schemas"]["HTTPValidationError"];
         LinkedIssue: CommonComponents["schemas"]["LinkedIssue"];
@@ -386,10 +177,6 @@ export interface components {
             pull_number: number;
             /** Head Sha */
             head_sha?: string | null;
-            /** Plan Accept Open */
-            plan_accept_open: boolean;
-            /** Decided */
-            decided: boolean;
         };
         /** ProposalState */
         ProposalState: {
@@ -441,21 +228,6 @@ export interface components {
             request_id: string;
             /** Expected Checkpoint Digest */
             expected_checkpoint_digest: string;
-            /**
-             * Acknowledge External Work
-             * @constant
-             */
-            acknowledge_external_work: true;
-        };
-        /** ReconcileRunRequest */
-        ReconcileRunRequest: {
-            /**
-             * Request Id
-             * Format: uuid
-             */
-            request_id: string;
-            /** Expected Revision */
-            expected_revision: number;
             /**
              * Acknowledge External Work
              * @constant
@@ -631,260 +403,6 @@ export interface operations {
             };
         };
     };
-    list_batches_api_v1_projects__project_id__sdd_batches_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                project_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BatchRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    retired_sdd_evaluation_api_v1_projects__project_id__sdd_batches_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                project_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    retired_sdd_evaluation_api_v1_projects__project_id__sdd_milestone_preview_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                project_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    retired_sdd_evaluation_api_v1_projects__project_id__sdd_milestones_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                project_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    retired_sdd_evaluation_api_v1_projects__project_id__sdd_readiness_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                project_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    retired_sdd_evaluation_api_v1_projects__project_id__sdd_runtime_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                project_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_batch_api_v1_projects__project_id__sdd_batches__batch_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                project_id: string;
-                batch_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BatchRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    control_batch_api_v1_projects__project_id__sdd_batches__batch_id__controls_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                project_id: string;
-                batch_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ControlBatch"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BatchRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_claim_api_v1_projects__project_id__sdd_claims__claim_id__get: {
         parameters: {
             query?: never;
@@ -940,42 +458,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClaimRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reconcile_retired_run_api_v1_projects__project_id__sdd_runs__run_id__reconcile_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                project_id: string;
-                run_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReconcileRunRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PipelineRunRead"];
                 };
             };
             /** @description Validation Error */
