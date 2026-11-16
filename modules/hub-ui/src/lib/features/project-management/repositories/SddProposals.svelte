@@ -29,7 +29,7 @@
 		void start();
 	}}
 >
-	<div class="grid gap-3 sm:grid-cols-2">
+	<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
 		<label class="space-y-1 text-sm"
 			><span class="font-medium">Activity</span>
 			<NativeSelect class="flex w-full" bind:value={activity} {disabled}>
