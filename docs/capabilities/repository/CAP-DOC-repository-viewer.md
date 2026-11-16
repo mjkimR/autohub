@@ -123,8 +123,7 @@ Hub compiles the pinned `devkit-viewer` tarball into its SPA. It does not downlo
 viewer bundle or install a plugin while serving a repository view. The library
 owns document parsing/rendering; Hub owns its repository data source, Proposals
 controls and descriptive activity panel. These controls remain separate from reading.
-The [artifact receipt and rebuild procedure](../../../modules/hub-ui/vendor/devkit-viewer.md)
-identify the library source and contributor update path.
+The Hub-owned source is [NativeSddViewer.svelte](../../../modules/hub-ui/src/lib/features/project-management/repositories/documents/NativeSddViewer.svelte).
 
 ## 5. Source and Verification Boundary
 

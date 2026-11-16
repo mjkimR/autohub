@@ -60,7 +60,7 @@
 	<div class="flex flex-wrap items-end gap-3">
 		<h3 class="mr-auto text-sm font-semibold">Proposals</h3>
 		<label class="text-sm"
-			>Base branch<Input
+			>Activity base branch<Input
 				class="mt-1 w-36"
 				bind:value={base}
 				disabled={starts.busy || !!starts.pending}
@@ -79,8 +79,9 @@
 		<Button variant="outline" disabled={loading} onclick={load}>Refresh proposals</Button>
 	</div>
 	<p class="text-xs text-muted-foreground">
-		Choose the work to request. Both activities open Draft PRs. Proposal status is descriptive; the
-		repository and agent own setup, prerequisites and workflow decisions.
+		The activity base branch is independent of the document browsing branch. Both activities open
+		Draft PRs. Proposal status is descriptive; the repository and agent own setup, prerequisites and
+		workflow decisions.
 	</p>
 	{#if loading}<p role="status" class="text-sm text-muted-foreground">Loading proposals…</p>{/if}
 	<ul class="divide-y">

@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
-"""Check reviewed devkit pins and the vendored viewer offline, without installing anything."""
+"""Check reviewed Python devkit pins offline, without installing anything."""
 
-import base64
-import hashlib
-import json
 import re
 import sys
 import tomllib
@@ -21,7 +18,6 @@ SUBDIRECTORIES = {
     },
 }
 DEVELOPMENT_PACKAGES = set(SUBDIRECTORIES)
-VIEWER = "devkit-viewer-0.1.0.tgz"
 
 
 class DevkitPinsError(AdvisoryError):
@@ -86,37 +82,7 @@ def check(root: Path) -> tuple[str, str]:
         versions.add(package["version"])
     require(len(versions) == 1, "Use one devkit release version in the root lock", path)
     version = versions.pop()
-    check_viewer(root, revision, version)
     return revision, version
-
-
-def check_viewer(root: Path, revision: str, version: str) -> None:
-    ui = root / "modules/hub-ui"
-    path = ui / "vendor/devkit-viewer.source.json"
-    source = json.loads(path.read_text())
-    require(
-        source["schema"] == 1
-        and source["repository"] == REPOSITORY
-        and source["commit"] == revision
-        and source["version"] == version
-        and source["artifact"] == VIEWER,
-        "Rebuild the viewer from the reviewed devkit commit and update its source receipt",
-        path,
-    )
-    artifact = (ui / "vendor" / VIEWER).read_bytes()
-    require(
-        hashlib.sha256(artifact).hexdigest() == source["sha256"],
-        "Viewer artifact differs from its source receipt",
-        path,
-    )
-    path = ui / "package-lock.json"
-    package = json.loads(path.read_text())["packages"]["node_modules/devkit-viewer"]
-    integrity = "sha512-" + base64.b64encode(hashlib.sha512(artifact).digest()).decode()
-    require(
-        package["resolved"] == f"file:vendor/{VIEWER}" and package["integrity"] == integrity,
-        "Reinstall the viewer tarball to refresh npm integrity",
-        path,
-    )
 
 
 def main() -> int:
@@ -126,7 +92,7 @@ def main() -> int:
         error = exc if isinstance(exc, DevkitPinsError) else DevkitPinsError(str(exc))
         print(error.render(), file=sys.stderr)
         return int(error.exit_code)
-    print(f"[DEVKIT_PINS: ok version={version} commit={revision} toolchain=root viewer=verified]")
+    print(f"[DEVKIT_PINS: ok version={version} commit={revision} toolchain=root]")
     return 0
 
 
