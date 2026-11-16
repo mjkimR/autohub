@@ -59,12 +59,6 @@
 					href={repositorySubjectHref(run.project_id, { unit: origin.unit, ref: run.branch })}
 					>{origin.unit}</a
 				>
-				{#if origin.batch_id}
-					· <a
-						class="underline underline-offset-4"
-						href={repositorySubjectHref(run.project_id, { batch: origin.batch_id })}
-						>SDD batch {origin.batch_id}</a
-					>{/if}
 			{/if}
 		</p>
 	{/each}

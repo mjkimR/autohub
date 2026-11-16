@@ -11,7 +11,6 @@ OwedItemKind = Literal[
     "work-item-recovery",
     "work-item-replacement",
     "work-item-attention",
-    "sdd-batch-attention",
     "connection-test-cleanup",
     "failed-run",
 ]
@@ -22,7 +21,6 @@ OwedSubjectType = Literal[
     "work-item-recovery",
     "replacement-link",
     "work-item",
-    "sdd-batch",
     "connection-test",
 ]
 OwedActionName = Literal[
@@ -32,7 +30,6 @@ OwedActionName = Literal[
     "inspect-recovery",
     "accept-replacement",
     "inspect-work-item",
-    "inspect-batch",
     "review-cleanup",
     "inspect-run",
 ]
@@ -60,7 +57,6 @@ class OwedContext(BaseModel):
     run_id: UUID | None = None
     work_plan_id: UUID | None = None
     work_item_id: UUID | None = None
-    sdd_batch_id: UUID | None = None
     catalog_hold: CatalogHold | None = Field(default=None, description="An AI catalog hold blocking the subject")
 
 

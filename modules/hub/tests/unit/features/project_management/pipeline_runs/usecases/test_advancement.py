@@ -117,15 +117,19 @@ async def test_initial_catalog_hold_is_reported(lifecycle):
     lifecycle.release_lease.assert_awaited_once()
 
 
-async def test_retired_approval_metadata_cannot_restart_a_paused_run(lifecycle):
-    lifecycle.get.return_value = state("paused", sdd_progress={"waiting_for_approval": True})
+async def test_activity_context_cannot_restart_a_paused_run(lifecycle):
+    lifecycle.get.return_value = state("paused", sdd_snapshot={"provider": "repository-agent", "activity_kind": "plan"})
     assert (await drive(lifecycle)).state == "paused"
     lifecycle.observe_run.assert_not_awaited()
 
 
-async def test_repository_workflow_metadata_never_drives_another_stage(lifecycle):
-    lifecycle.get.return_value = state("implementing", sdd_progress={"current": {"stage": {"id": "approval"}}})
-    lifecycle.observe_run.return_value = state("implementing", sdd_progress={"approval": {"actor": "policy"}})
+async def test_repository_activity_context_never_drives_another_stage(lifecycle):
+    lifecycle.get.return_value = state(
+        "implementing", sdd_snapshot={"provider": "repository-agent", "activity_kind": "plan"}
+    )
+    lifecycle.observe_run.return_value = state(
+        "implementing", sdd_snapshot={"provider": "repository-agent", "activity_kind": "plan"}
+    )
     assert (await drive(lifecycle)).state == "implementing"
     lifecycle.observe_run.assert_awaited_once()
 

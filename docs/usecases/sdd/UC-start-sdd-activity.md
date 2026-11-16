@@ -41,9 +41,9 @@ entrypoints:
 - **2a.** Project, connection, catalog or base is unavailable: Hub refuses before
   new publication; the operator corrects the configuration and restarts step 1.
   Interface: `UX-sdd-proposals`.
-- **2b.** Another owner or uncertain legacy claim exists: Hub identifies the
+- **2b.** Another owner or uncertain publication claim exists: Hub identifies the
   retained owner/evidence and refuses replacement; the operator inspects it and
-  explicitly reconciles the exact retired reservation before restarting step 1.
+  explicitly reconciles the exact uncertain no-Run reservation before restarting step 1.
   Interface: `UX-sdd-proposals`, `UX-sdd-claim-recovery`.
 - **3a.** An unrelated activity branch exists: Hub refuses without overwriting
   it; the use case ends. Interface: `UX-sdd-proposals`.
@@ -66,7 +66,7 @@ not create a Hub admission extension. The working agent handles those concerns.
 ## 5. Acceptance Criteria (Given / When / Then)
 
 Applicable rules: `CAP-SDD-native-delivery` optimistic dispatch, host admission,
-Draft publication, exact recovery and legacy reservation.
+Draft publication, exact recovery and uncertain reservation.
 
 ### SDD-START-01: Dispatch without repository readiness
 
@@ -85,7 +85,7 @@ Draft publication, exact recovery and legacy reservation.
 ### SDD-START-03: Preserve another owner
 
 - **Covers**: 2b, 3a.
-- **Given** an existing owner, uncertain retired claim or unrelated branch.
+- **Given** an existing owner, uncertain publication claim or unrelated branch.
 - **When** another start is requested.
 - **Then** Hub refuses replacement and preserves the exact retained evidence.
 

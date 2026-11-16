@@ -11,6 +11,8 @@ async def test_run_decisions_migration_roundtrip(session):
 
     def roundtrip(sync):
         with Operations.context(MigrationContext.configure(sync)):
+            cleanup = scripts().get_revision("d704fb51a433").module
+            cleanup.downgrade()
             naming = scripts().get_revision("ba3d1a6089a9").module
             naming.downgrade()
             sdd = scripts().get_revision("a92c095f8798").module
@@ -21,6 +23,7 @@ async def test_run_decisions_migration_roundtrip(session):
             migration.upgrade()
             sdd.upgrade()
             naming.upgrade()
+            cleanup.upgrade()
         context = MigrationContext.configure(
             sync,
             opts={
@@ -35,3 +38,4 @@ async def test_run_decisions_migration_roundtrip(session):
         assert compare_metadata(context, Base.metadata) == []
 
     await connection.run_sync(roundtrip)
+    await session.commit()

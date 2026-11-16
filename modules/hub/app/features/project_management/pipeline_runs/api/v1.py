@@ -33,7 +33,6 @@ from app.features.project_management.pipeline_runs.usecases.outcomes import Deci
 from app.features.project_management.pipeline_runs.usecases.queries import PipelineRunQueries
 from app.features.project_management.pipelines.deps import get_pipeline_observer
 from app.features.project_management.pipelines.services import PipelineObservationService
-from app.features.project_management.sdd.usecases import SddUseCase
 from app.features.project_management.work_plans.grouping import GroupFilter
 from fastapi import APIRouter, Depends, Query, Response, status
 
@@ -205,8 +204,3 @@ async def complete_attempt(
 ):
     """Worker callback: record attempt completion or failure."""
     return await use_case.complete_attempt(run_id, attempt_id, request)
-
-
-@router.get("/{run_id}/sdd-decisions", response_model=list[dict])
-async def list_sdd_decisions(run_id: UUID, use_case: Annotated[SddUseCase, Depends()]):
-    return await use_case.decisions(run_id)

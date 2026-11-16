@@ -1,0 +1,39 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T00:10:56.808647Z'
+status: completed
+summary: round 1; independent reconciliation finds stale batch, native evidence, bridge/version and MCP count contracts
+findings:
+- issue: Current contracts still promise removed SDD batch origins and navigation
+  evidence: CAP-PR-pull-request-delivery:73,113; CAP-DOC-repository-viewer:108; UC-deliver-pull-request:50; UX-pipeline-runs:52,91; UX-run-page:59; UX-sdd-proposals:20; UX-attention:107; visual-style:42
+  failure_condition: Readers expect batch references, batch query selection and disclosures removed from API and UI
+  suggested_action: Replace with current claim/unit lineage and unit/ref navigation; record all affected targets
+  resolution: open
+  severity: P1
+- issue: Use-case and UX documents still promise removed native evidence
+  evidence: UC-resolve-run-question:28,53; UX-run-decisions:22,23,28,99; docs/ux/README.md:21
+  failure_condition: Operators expect native workflow decision history or evidence disclosures no longer exposed
+  suggested_action: Describe ordinary question history, generic outcomes and descriptive activity context only
+  resolution: open
+  severity: P1
+- issue: Architecture retains removed bridge observation and execution-version metadata
+  evidence: ARCH-08-crosscutting-concepts:65-66; ARCH-06-execution:70
+  failure_condition: Maintainers rely on a removed observer and snapshot discriminator
+  suggested_action: Remove bridge observation and execution_version snapshot requirements
+  resolution: open
+  severity: P1
+- issue: MCP documentation retains obsolete registry counts and batch command subjects
+  evidence: CAP-MCP-tool-access:74,219; UC-connect-hub-tools:146; test_mcp.py:369-418
+  failure_condition: Clients expect old read/mutation counts or batch-control replay
+  suggested_action: Document 17 reads, 19 work mutations, 4 operations mutations and supported command identities
+  resolution: open
+  severity: P1
+assumptions:
+- Read-only Codex isolation emulated; head and snapshot matched
+checks:
+  docs: PASS deterministic docs checks; semantic findings require correction
+diff_scope:
+  base: 71fa79386efdf617396c5a85ea746a3bdde601d5
+  head: 67b767dab326d21be5f3ef9c9490fef959f08927

@@ -71,7 +71,6 @@ class RunOrigin(BaseModel):
     work_plan_id: UUID | None = None
     catalog_id: UUID | None = None
     unit: str | None = None
-    batch_id: UUID | None = None
     url: str | None = None
 
 
@@ -84,7 +83,6 @@ class PipelineRunRead(UUIDSchemaMixin, TimestampSchemaMixin):
     enrollment_source: Literal["unknown", "work_plan", "provider_session", "native_sdd", "multiple"] = "unknown"
     related_origins: list[RunOrigin] = Field(default_factory=list)
     sdd_snapshot: dict | None = None
-    sdd_progress: dict | None = None
     project_revision: int
     pull_number: int
     pull_url: str
@@ -99,7 +97,7 @@ class PipelineRunRead(UUIDSchemaMixin, TimestampSchemaMixin):
     next_action_at: datetime | None
     quota_block_count: int
     has_pending_decision: bool = Field(
-        default=False, description="The run has an actionable decision-inbox row (a Run question or Native SDD request)"
+        default=False, description="The run has an actionable decision-inbox row (a Run question)"
     )
 
 

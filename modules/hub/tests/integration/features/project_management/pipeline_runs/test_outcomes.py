@@ -1,7 +1,6 @@
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
-from app.features.project_management.pipeline_runs.models import PipelineRun, RunResumeReceipt
 
 from tests.integration.features.project_management.pipeline_runs import test_pipeline_runs_api as scenarios
 from tests.integration.features.project_management.pipeline_runs.test_interactions import answer, ask, state
@@ -65,79 +64,3 @@ async def test_application_outcome_survives_later_pause_and_receipt_replay(clien
     assert (await client.post(root + "/resume", json=request)).status_code == 200
     assert (await state(client, root))["state"] == "paused"
     assert (await client.get(root + "/attempts")).json()["total_count"] == 1
-
-
-async def test_historical_publication_uses_only_retained_receipt_proof(client, project, github, session):
-    run = (await enroll(client, project)).json()
-    row = await session.get(PipelineRun, UUID(run["id"]))
-    identity = uuid4()
-    record = {
-        "kind": "answer-envelope",
-        "id": str(identity),
-        "answers_to": "worker-01.yaml",
-        "question": "direction",
-        "operation": {"request": "question:worker-01.direction"},
-    }
-    receipt = RunResumeReceipt(
-        id=identity,
-        pipeline_run_id=row.id,
-        request_digest="hidden",
-        decision_evidence={
-            "workflow_answer": {"request": "question:worker-01.direction"},
-            "decision_records": [record],
-            "subject_context": {"workflow": "sdd-spec-feature", "segment": 0, "head_sha": "c" * 40},
-        },
-    )
-    session.add(receipt)
-    resolution = {
-        "file": "answer-01.yaml",
-        "answers_to": "worker-01.yaml",
-        "question": "wrong",
-        "workflow": "sdd-spec-feature",
-        "segment": 0,
-    }
-    row.sdd_progress = {
-        "head_sha": "c" * 40,
-        "current": {"workflow": "sdd-spec-feature", "segment": 0},
-        "answer_resolutions": [resolution],
-    }
-    await session.commit()
-    url = f"/api/v1/pipeline-runs/{row.id}/decision-outcomes/{identity}"
-    assert (await client.get(url, params={"operation": "resume"})).json()["publication_state"] == "pending"
-    # Current repository envelopes are no longer interpreted by Hub.
-    row.sdd_progress = {**row.sdd_progress, "answer_resolutions": [{**resolution, "question": "direction"}]}
-    await session.commit()
-    assert (await client.get(url, params={"operation": "resume"})).json()["publication_state"] == "pending"
-    receipt.decision_evidence = {**(receipt.decision_evidence or {}), "answer_publication": {"file": "answer-01.yaml"}}
-    await session.commit()
-    result = (await client.get(url, params={"operation": "resume"})).json()
-    assert result["publication_state"] == "published"
-    assert result["resolved_envelope"] == "answer-01.yaml"
-    row.sdd_progress = {**row.sdd_progress, "current": {"workflow": "sdd-proposal", "segment": 1}}
-    await session.commit()
-    assert (await client.get(url, params={"operation": "resume"})).json()["publication_state"] == "published"
-
-
-async def test_prepared_candidates_and_legacy_context_stay_truthful(client, project, github, session):
-    run = (await enroll(client, project)).json()
-    identity = uuid4()
-    receipt = RunResumeReceipt(
-        id=identity,
-        pipeline_run_id=UUID(run["id"]),
-        request_digest="hidden",
-        decision_evidence={
-            "action": "accept_plan",
-            "publication": {"state": "uncertain", "candidates": [{"commit_sha": "a" * 40}, {"commit_sha": "b" * 40}]},
-        },
-    )
-    session.add(receipt)
-    await session.commit()
-    url = f"/api/v1/pipeline-runs/{run['id']}/decision-outcomes/{identity}"
-    outcome = (await client.get(url, params={"operation": "resume"})).json()
-    assert outcome["candidate_heads"] == ["a" * 40, "b" * 40]
-    assert outcome["candidate_head"] is None
-    receipt.decision_evidence = {"workflow_answer": {"request": "question:worker-01.direction"}}
-    await session.commit()
-    outcome = (await client.get(url, params={"operation": "resume"})).json()
-    assert outcome["publication_state"] is None
-    assert "not retained" in outcome["unavailable_reason"]

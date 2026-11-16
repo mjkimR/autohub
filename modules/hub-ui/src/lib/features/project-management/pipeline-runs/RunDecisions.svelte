@@ -3,7 +3,6 @@
 	import DecisionOutcome from './DecisionOutcome.svelte';
 	import { decisionIntent, decisionBasis } from './decision-intents.svelte';
 	import SddRunPanel from './SddRunPanel.svelte';
-	import SddDecisionHistory from './SddDecisionHistory.svelte';
 	import DecisionQuestion from './DecisionQuestion.svelte';
 	import { RefreshCw, CircleHelp, CircleCheck, History } from '@lucide/svelte';
 	import { onMount, untrack } from 'svelte';
@@ -51,8 +50,7 @@
 				(q.state === 'open' || q.state === 'answered')
 		)
 	);
-	let legacy = $derived(!!current.sdd_snapshot && current.sdd_snapshot.execution_version !== 2);
-	let terminal = $derived(legacy || ['completed', 'failed', 'canceled'].includes(current.state));
+	let terminal = $derived(['completed', 'failed', 'canceled'].includes(current.state));
 	let pastQuestions = $derived(questions.filter((q) => q.id !== pending?.id));
 	const requests = new SvelteMap<string, string>();
 	function requestId(key: string) {
@@ -81,7 +79,7 @@
 			throw new Error('Run changed while loading decisions. Refresh before making a decision.');
 		}
 		questions = data.items;
-		if (selection && ['run-question', 'native-hub-question'].includes(selection.kind)) {
+		if (selection && selection.kind === 'run-question') {
 			const selected = responseData(
 				await api.GET('/api/v1/pipeline-runs/{run_id}/questions/{question_id}', {
 					params: { path: { run_id: run.id, question_id: selection.subject_id } }
@@ -327,7 +325,6 @@
 		class="min-w-0 space-y-5 md:w-70 md:shrink-0 md:border-l md:pl-5"
 		aria-label="Decision history"
 	>
-		{#if legacy}<SddDecisionHistory runId={run.id} {revision} />{/if}
 		<section class="space-y-3">
 			<h3 class="flex items-center gap-2 text-sm font-semibold">
 				<History class="size-4 text-muted-foreground" />Question history

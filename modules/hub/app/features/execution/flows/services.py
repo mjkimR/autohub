@@ -16,7 +16,7 @@ from autohub_sdk import (
 )
 from fastapi import Depends
 
-from .adapters import WorkerBindings, get_worker_bindings, reject_retired_bindings
+from .adapters import WorkerBindings, get_worker_bindings
 from .auth import FLOW_APPROVE, FLOW_READ, FLOW_WRITE, require_scope
 from .errors import FlowError
 from .models import FlowCommand, FlowEnvironment, FlowRelease, FlowRun, FlowStep
@@ -42,7 +42,6 @@ class FlowService:
 
     async def register(self, session, provider, environment, release_id, data: ReleaseSpec, principal):
         require_scope(principal, FLOW_WRITE)
-        reject_retired_bindings({str(index): binding.model_dump() for index, binding in enumerate(data.bindings)})
         await self.repo.insert_once(
             session,
             FlowEnvironment,
@@ -87,7 +86,6 @@ class FlowService:
         release = await self.repo.release(session, provider, environment, release_id)
         if release is None:
             raise FlowError(404, "release-not-found", "register the release first")
-        reject_retired_bindings(release.bindings)
         revision = await self.repo.activate(session, owner, release_id, expected, get_current_utc_time())
         return ActivationReceipt(**self.receipt(release).model_dump(), revision=revision)
 
@@ -114,7 +112,6 @@ class FlowService:
             getattr(data, "expected_release_digest", None) not in (None, release.digest)
         ):
             raise FlowError(409, "release-mismatch", "active release differs from the requested snapshot")
-        reject_retired_bindings(release.bindings)
         spec = ReleaseSpec.model_validate(release.definition)
         item = definition(spec, data.task)
         validate(item.input_schema, data.inputs)
@@ -209,8 +206,6 @@ class FlowService:
             return RunView.model_validate(prior.receipt)
         if run.revision != data.expected_revision:
             raise FlowError(409, "stale-revision", "run revision changed")
-        if data.action != "cancel":
-            reject_retired_bindings(run.snapshot.get("bindings", {}))
         from .runtime import command_transition
 
         now = get_current_utc_time()

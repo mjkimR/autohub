@@ -4,14 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-DecisionKind = Literal[
-    "run-question",
-    "native-hub-question",
-    "native-worker-question",
-    "native-workflow",
-    "native-proposal",
-    "native-integration",
-]
+DecisionKind = Literal["run-question",]
 
 
 class DecisionEntryRead(BaseModel):

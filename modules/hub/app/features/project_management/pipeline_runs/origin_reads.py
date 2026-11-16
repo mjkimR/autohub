@@ -15,14 +15,13 @@ async def read_runs(session, runs) -> list[PipelineRunRead]:
             origins[run_id].append(RunOrigin(kind="work_plan", id=item_id, work_plan_id=plan_id))
     for run_id, session_id, catalog_id, url in await repo.sessions(session, list(by_id)):
         origins[run_id].append(RunOrigin(kind="provider_session", id=session_id, catalog_id=catalog_id, url=url))
-    for run_id, claim_id, project_id, unit, batch_id, batch_project in await repo.claims(session, list(by_id)):
+    for run_id, claim_id, project_id, unit in await repo.claims(session, list(by_id)):
         if by_id[run_id].project_id == project_id:
             origins[run_id].append(
                 RunOrigin(
                     kind="native_sdd",
                     id=claim_id,
                     unit=unit,
-                    batch_id=batch_id if batch_project == project_id else None,
                 )
             )
     result = []

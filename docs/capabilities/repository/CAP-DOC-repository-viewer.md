@@ -113,7 +113,7 @@ Reload and viewer-mode changes preserve the address; browser query navigation re
 Invalid, missing, inaccessible or non-SDD unit requests show Unit unavailable, Retry for read failure and Browse repository.
 Browse clears the unit and resets an unavailable explicit ref to default.
 An unavailable unit supplies no activity-start control for that subject.
-An independent `batch` query selects the retained-history panel under `CAP-SDD-native-delivery`.
+Repository subject navigation supports unit/ref selection; SDD activity claim links resolve through their current unit.
 
 ### Native document views
 

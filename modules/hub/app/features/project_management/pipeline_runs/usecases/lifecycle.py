@@ -132,8 +132,6 @@ class PipelineRunUseCase:
         except TimeoutError:
             raise ProjectError(504, "Pull request read exceeded its time budget") from None
 
-        from app.features.project_management.sdd.execution import EXECUTION_VERSION
-
         intent = None
         if native:
             from app.features.project_management.branches import unit_branch_mismatch
@@ -144,7 +142,6 @@ class PipelineRunUseCase:
             if mismatch := unit_branch_mismatch(str(request.spec_dir), snapshot.head_ref, activity):
                 raise ProjectError(422, mismatch, code="SDD_BRANCH_MISMATCH")
             intent = {
-                "execution_version": EXECUTION_VERSION,
                 "provider": "repository-agent",
                 "spec_dir": request.spec_dir,
                 "activity_kind": "dev" if request.handoff or snapshot.head_ref.startswith("dev-") else "plan",
@@ -178,7 +175,6 @@ class PipelineRunUseCase:
                         pull_url=snapshot.url,
                         pull_snapshot=snapshot.model_dump(mode="json"),
                         sdd_snapshot=intent,
-                        sdd_progress=None,
                         state=PipelineRunState.AWAITING_CI if inspect_only else PipelineRunState.QUEUED,
                         branch=snapshot.head_ref,
                         revision=1,

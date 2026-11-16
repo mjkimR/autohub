@@ -17,7 +17,7 @@ capabilities:
 
 - **Primary task**: start one explicit repository activity and open its PR Run.
 - **Facts to commit**: project/repository, unit, base, activity and optional effort/catalog.
-- **Secondary items**: retained Run/PR links stay below each unit; historical batches are a separate disclosure.
+- **Secondary items**: retained Run/PR links stay below each unit.
 
 ## 2. Content
 
@@ -28,7 +28,6 @@ agent's responsibility. The Activity base branch field is independent of the bra
 - SDD unit (path/title/status on the selected base).
 - Native SDD activity (Planning/Development, base and effort/catalog preferences).
 - PR run (tracked Run and exact GitHub PR links).
-- SDD batch (read-only retained-history disclosure).
 - `UX-sdd-claim-recovery` (exact retained owner inspection and explicit acknowledgment; on an ownership conflict).
 
 No runtime card, readiness preview, acceptance/rejection control or executable
@@ -46,7 +45,7 @@ milestone selection appears here.
 - **ownership-conflict**: identify/link the active Run or retained claim; inspect that
   owner rather than retrying as replacement work.
 - **reconciliation-required**: identify retained evidence and explain that inspected
-  external work must be explicitly acknowledged before a retired reservation is released.
+  external work must be explicitly acknowledged before an uncertain publication reservation is released.
 
 ## 4. Interactions
 

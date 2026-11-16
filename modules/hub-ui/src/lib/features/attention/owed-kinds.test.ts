@@ -10,7 +10,6 @@ test('groups follow consequence order and failed runs close the list quietly', (
 		'work-item-recovery',
 		'work-item-replacement',
 		'work-item-attention',
-		'sdd-batch-attention',
 		'connection-test-cleanup',
 		'failed-run'
 	]);

@@ -28,7 +28,7 @@ separate resume operation that prepares execution with that direction.
 - **In-Scope**: operator questions, trusted agent question ingestion, stored
   answers, explicit dismissal, ordinary-run answer application and resume replay.
 - **Out-of-Scope**: `CAP-PR-pull-request-delivery` owns dispatch, pause/cancel,
-  CI and merge; `CAP-SDD-workflow-control` identifies retired native authority;
+  CI and merge; `CAP-SDD-native-delivery` owns activity intent;
   `CAP-MCP-tool-access`
   owns MCP access to the shared operations.
 - **Scope Excluded**: editing recorded question/answer text, automatic answer
@@ -37,8 +37,7 @@ separate resume operation that prepares execution with that direction.
 
 Optimistic SDD activities use these same ordinary question/answer and resume
 contracts. Descriptive `sdd_snapshot` does not select a second workflow owner.
-Legacy native resume and typed workflow mutations are retired; retained native
-decision evidence remains history rather than actionable discovery.
+The resume payload selects an optional saved `answer_id`; native workflow decision fields are unsupported.
 
 ## 3. Business Rules & Policies
 
@@ -76,7 +75,7 @@ WHEN an authenticated operator queries one request outcome, Hub MUST read the ex
 
 WHEN an application receipt exists, Hub MUST disclose its retained attempt and delivery facts separately from current Run state and authority. A later stop remains current. No attempt or delivery completion is inferred from a prepared receipt. Check: `test_application_outcome_survives_later_pause_and_receipt_replay` in the same file.
 
-WHILE a submission outcome is uncertain, the owner review MUST retain its original request ID and complete payload in memory across refresh and temporary close. Explicit retry replays that payload; replacement submissions remain disabled. A browser reload cannot restore unacknowledged intent. Structured request-validation rejection permits correction after current review; ambiguous owner errors, including publication runner timeout422, remain unknown. Check: [decision-intents.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/decision-intents.integration.test.ts).
+WHILE a submission outcome is uncertain, the owner review MUST retain its original request ID and complete payload in memory across refresh and temporary close. Explicit retry replays that payload; replacement submissions remain disabled. A browser reload cannot restore unacknowledged intent. Structured request-validation rejection permits correction after current review; ambiguous owner errors remain unknown. Check: [decision-intents.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/decision-intents.integration.test.ts).
 
 WHEN a mutation is acknowledged and a subsequent read fails, the interface MUST retain the recorded identity and saved text with a refresh error. Saving never selects an answer for application. Historical outcome selection has its own displayed request identity and read action. Check: [RunDecisionsDialog.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunDecisionsDialog.integration.test.ts).
 
@@ -104,7 +103,7 @@ Missing Runs return 404. State/identity/revision conflicts return 409. Invalid
 payloads return 422. A failed or timed-out PR read during question creation
 returns 502 or 504 respectively. No new stable error code is defined here.
 
-The outcome response includes question/answer identity and saved text, applied attempt, execution state, delivery state/time, native channel, publication state/candidate heads, matched envelope, inspected head/digest and current authority/hold. Missing facts are null with `unavailable_reason`. Multiple prepared candidates are listed without choosing one as authoritative. No request digest, credential or generic completion flag is returned. Retained results remain readable after the Run ends; existing retention still applies.
+The outcome response includes question/answer identity and saved text, applied attempt, execution state, delivery state/time and inspected PR head. Missing facts are null with `unavailable_reason`. No request digest, credential or generic completion flag is returned. Retained results remain readable after the Run ends; existing retention still applies.
 
 ### Records and transitions
 

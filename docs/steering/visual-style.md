@@ -38,9 +38,9 @@ or neutral grey, so an exception is the most salient element on a screen. Token 
 ## Attention
 
 Attention means operator debt: the counted owed items of `CAP-PR-owed-items`. They are decisions (a Run question
-or Native SDD request awaiting a decision, including an answered question whose run has not resumed), paused or
-blocked PR runs not held by a decision, proposed Work Plans, Work Item recovery, replacement or attention, SDD batches
-in attention and connection-test cleanup reviews. A deliberately paused run is attention too, because only the
+awaiting an answer or an answered question whose run has not resumed), paused or
+blocked PR runs not held by a decision, proposed Work Plans, Work Item recovery, replacement or attention,
+and connection-test cleanup reviews. A deliberately paused run is attention too, because only the
 operator can resume it. A failed run is a quiet owed item without count weight, and an AI catalog hold is never
 attention: it is quiet context on the run it holds. The shell Badge counts this owed set and links to the Attention
 landing (`UX-app-shell`, `UX-attention`); System › Health (`UX-dashboard`) shows run-state statistics without

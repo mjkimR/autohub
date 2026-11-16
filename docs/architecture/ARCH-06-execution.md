@@ -67,7 +67,7 @@ Hub reserves the exact unit/activity/request before GitHub ref and Draft PR
 publication. It records candidate artifacts and recovers the same owner after a
 lost response. It does not author repository state or evaluate a devkit stage.
 
-Optimistic snapshots carry `execution_version: 2` and `provider: repository-agent`.
+Activity snapshots carry `provider: repository-agent` and descriptive unit/activity intent.
 Repository setup, workflow gates and correctness belong to its working agent.
 Questions around pushes are processed before CI/merge continuation; a saved answer
 alone changes no merge authority. `CAP-SDD-native-delivery` and
@@ -80,10 +80,8 @@ A maintenance step then commits attempt intent, calls the bound worker outside
 the database transaction and fences the returned result. Recovery inspects the
 same attempt before deciding whether another submission is permitted.
 
-The built-in SDD/PR bridge namespaces are retired. Undispatched and unreceipted
-legacy work settles terminally; an exact receipt-backed delivery may observe its
-existing PR owner without repeating resume. `CAP-SDK-existing-pr-bridge` owns this
-retirement boundary. Generic SDK flow dispatch remains independent.
+SDK execution uses native identity or configured HTTP workers. It has no built-in
+SDD/PR bridge worker or retained PR link storage.
 
 ## Diagnostic completion and housekeeping
 
@@ -106,23 +104,16 @@ Implementation anchors include
 `ARCH-10-quality-requirements` connects these sequences to measurable regression
 scenarios; [deployment status](../operations/deployment-status.md) retains live evidence.
 
-## Legacy execution retirement
+## SDD activity execution
 
-Legacy native snapshots and retained batch/claim/decision tables remain historical.
-The data migration cancels nonterminal old Runs, revokes leases, settles local
-active attempts and stops old batches. It preserves immutable requests, selections,
-receipts, exact remote artifacts and uncertainty. A downgrade does not reactivate
-retired authority.
+Hub MUST use descriptive repository-owned activity context without native execution
+version or retirement fences. `ADR-remove-native-sdd-compatibility` records the boundary.
+Standalone activity claims retain exact publication artifacts, request identity and lease
+ownership. An uncertain no-Run publication requires explicit checkpoint acknowledgment
+before its reservation is released. Check: activity API and claim recovery integration tests.
+The schema removes unused native batch and SDK bridge link storage, native progress and
+native decision evidence through a forward migration. Generic resume receipts remain.
 
-Hub MUST refuse implicit conversion or resume of old native work and preserve an
-uncertain reservation until explicit project-scoped reconciliation acknowledges
-the exact retained checkpoint. Check: retirement migration and claim reconciliation
-tests; source discriminator in `project_management/sdd/execution.py`.
-
-The migration performs no GitHub mutation and cannot cancel previously dispatched
-external agent work. Explicit reconciliation releases only the selected reservation;
-it grants no resume, replacement start or merge authority. New starts retain their
-own request identity and ordinary active-PR exclusivity.
 
 ## Work Item replacement evidence
 

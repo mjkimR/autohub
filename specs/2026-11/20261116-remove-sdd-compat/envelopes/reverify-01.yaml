@@ -1,0 +1,21 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T00:10:56.532265Z'
+status: completed
+review: review-01.yaml
+summary: Independent second code reviewer confirms native-only fields, readers and storage removed; initial P1 resolved
+findings:
+- issue: Complete removal still leaves native progress and decision-evidence compatibility
+  evidence: pipeline_runs/models.py:87,203; schemas.py:86; interaction_service.py:34-43; cleanup migration upgrade
+  failure_condition: Current Run schema and upgraded database still expose native-only evidence with no current writers
+  suggested_action: Remove unused native fields and obsolete reader/query, including DB columns and generated types
+  resolution: resolved
+  severity: P1
+checks:
+  tests: PASS backend456 PostgreSQL25 and migration3 frontend575
+  lint: PASS just lint and just check
+diff_scope:
+  base: 6b8f361891e8bd490bfd6a39c5e7fb726bad9984
+  head: 67b767dab326d21be5f3ef9c9490fef959f08927

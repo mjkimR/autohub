@@ -61,7 +61,7 @@ export interface components {
              * @description The owner's existing action the operator takes next
              * @enum {string}
              */
-            name: "answer" | "resume-run" | "review-plan" | "inspect-recovery" | "accept-replacement" | "inspect-work-item" | "inspect-batch" | "review-cleanup" | "inspect-run";
+            name: "answer" | "resume-run" | "review-plan" | "inspect-recovery" | "accept-replacement" | "inspect-work-item" | "review-cleanup" | "inspect-run";
             /** Label */
             label: string;
         };
@@ -73,8 +73,6 @@ export interface components {
             work_plan_id?: string | null;
             /** Work Item Id */
             work_item_id?: string | null;
-            /** Sdd Batch Id */
-            sdd_batch_id?: string | null;
             /** @description An AI catalog hold blocking the subject */
             catalog_hold?: components["schemas"]["CatalogHold"] | null;
         };
@@ -120,7 +118,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "decision" | "stopped-run" | "work-plan-proposed" | "work-item-recovery" | "work-item-replacement" | "work-item-attention" | "sdd-batch-attention" | "connection-test-cleanup" | "failed-run";
+            kind: "decision" | "stopped-run" | "work-plan-proposed" | "work-item-recovery" | "work-item-replacement" | "work-item-attention" | "connection-test-cleanup" | "failed-run";
             /**
              * Counted
              * @description Whether the item carries owed-count weight; quiet items do not
@@ -143,7 +141,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "decision" | "pipeline-run" | "work-plan" | "work-item-recovery" | "replacement-link" | "work-item" | "sdd-batch" | "connection-test";
+            type: "decision" | "pipeline-run" | "work-plan" | "work-item-recovery" | "replacement-link" | "work-item" | "connection-test";
             /**
              * Id
              * @description The subject's own ID; a decision uses its decision_key
@@ -170,7 +168,7 @@ export interface operations {
         parameters: {
             query?: {
                 project_id?: string | null;
-                kind?: ("decision" | "stopped-run" | "work-plan-proposed" | "work-item-recovery" | "work-item-replacement" | "work-item-attention" | "sdd-batch-attention" | "connection-test-cleanup" | "failed-run") | null;
+                kind?: ("decision" | "stopped-run" | "work-plan-proposed" | "work-item-recovery" | "work-item-replacement" | "work-item-attention" | "connection-test-cleanup" | "failed-run") | null;
                 cursor?: string | null;
                 limit?: number;
             };

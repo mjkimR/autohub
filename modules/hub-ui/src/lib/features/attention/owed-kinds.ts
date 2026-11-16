@@ -13,7 +13,6 @@ export const OWED_KINDS: readonly KindPresentation[] = [
 	{ kind: 'work-item-recovery', label: 'Work Item recovery', quiet: false },
 	{ kind: 'work-item-replacement', label: 'Work Item replacement', quiet: false },
 	{ kind: 'work-item-attention', label: 'Work Items needing attention', quiet: false },
-	{ kind: 'sdd-batch-attention', label: 'SDD batches', quiet: false },
 	{ kind: 'connection-test-cleanup', label: 'Connection-test cleanup', quiet: false },
 	{ kind: 'failed-run', label: 'Failed PR runs', quiet: true }
 ];

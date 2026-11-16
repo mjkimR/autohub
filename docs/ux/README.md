@@ -18,7 +18,7 @@ tokens remain in `modules/hub-ui/src/routes/layout.css` and the UI components.
 | --- | --- |
 | Project connection | Connector/catalog selections, connection-test results, project/agent schedules, Work Plans, repository documents and PR runs |
 | Work Plan | Work Item requirements and dependencies, retained run/PR links, group, comments and activity |
-| PR run | Execution attempts, Run questions, attached PR and, for SDD activities, descriptive intent and retained legacy evidence |
+| PR run | Execution attempts, Run questions, attached PR and, for SDD activities, descriptive activity intent |
 | AI catalog | Connector selection, admission/quota policies and collected Provider sessions |
 | Provider session | Report or provider-session link and, when present, a PR or admitted PR run |
 | SDD unit | Selected repository branch/document, descriptive activity intent and related Run/PR links |

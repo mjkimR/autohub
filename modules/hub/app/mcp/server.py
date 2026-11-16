@@ -7,7 +7,6 @@ from app.mcp.interactions import register_interactions
 from app.mcp.projects import register_projects
 from app.mcp.runs import register_runs
 from app.mcp.sdd import register_sdd
-from app.mcp.sdd_batches import register_batches
 from app.mcp.work_item_recovery import register_recovery
 from app.mcp.work_item_replacements import register_replacements
 from app.mcp.work_plans import register_work_plans
@@ -19,7 +18,6 @@ def create_hub_mcp(*, ops: bool = False):
     definitions = ToolRegistry()
     deps = Dependencies()
     register_decisions(definitions, deps)
-    register_batches(definitions, deps)
     register_recovery(definitions, deps)
     register_replacements(definitions, deps)
     register_projects(definitions, deps)

@@ -21,7 +21,7 @@ flowchart TB
     Coordinators --> PR[PR lifecycle and advancement]
     PR --> Delivery[Registered delivery adapter]
     Delivery --> GitHub[GitHub transport]
-    Coordinators --> SDD[Activity intent and retained history]
+    Coordinators --> SDD[Activity intent and claim recovery]
     Coordinators --> Flow[SDK flow runtime and bound worker]
     Tick[Registered scheduler tasks] --> Coordinators
     Maintenance[Shared maintenance] --> Tests[Connection-test recipes]
@@ -48,8 +48,8 @@ exhaustive import graph. Existing feature handlers can use a service directly;
 | Provider sessions | `execution/tasks/domains/jules/`, `ai_catalogs/providers/` | Session orchestration and Jules HTTP client | `CAP-AGENT-provider-sessions` |
 | Diagnostic coordination | `project_management/connection_tests/` | `usecases.py`, `services.py`, `repos.py`, `configuration.py` | `CAP-CONN-connection-verification` |
 | Diagnostic resources/proof | `project_management/connection_tests/` | `github.py`, `ownership.py`, `guards.py` | `CAP-CONN-connection-verification` |
-| Repository activity | `project_management/sdd/` | GitHub activity publication, claim recovery and retired evidence reads | `CAP-SDD-native-delivery` |
-| SDK host | `execution/flows/` | API, services, runtime, adapters and retired bridge settlement | `CAP-SDK-task-flow-execution`, `CAP-SDK-existing-pr-bridge` |
+| Repository activity | `project_management/sdd/` | GitHub activity publication, claim recovery | `CAP-SDD-native-delivery` |
+| SDK host | `execution/flows/` | API, services, runtime, and generic worker adapters | `CAP-SDK-task-flow-execution`, `CAP-SDD-native-delivery` |
 | Dispatch/maintenance | `execution/dispatchers/`, `execution/tasks/domains/maintenance/` | Dispatch orchestration and shared housekeeping | `CAP-EXEC-scheduling-maintenance` |
 | Notices | `notifications/`, `execution/dispatchers/usecases/` | Notification service and `housekeeping.py` | `CAP-NOTIFY-operator-notifications` |
 

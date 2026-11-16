@@ -26,7 +26,7 @@ Deferred from the Phase 2b review of `UX-attention` (finding R4).
   Plans and Work Items already are (`#work-plan-<id>`, `#work-item-<id>`).
 - **Expected Benefit**: Every owed kind opens its exact subject; the batch's attention and cause are one click away.
 - **Cost & Risk**: A Repository tab change (load-on-anchor and scroll) plus a link mapping and tests; low risk.
-- **Attempted**: Hypothesis. Restart when the Repository tab or `UX-sdd-batch` next changes; acceptance: the
+- **Attempted**: Hypothesis. Restart when the Repository tab or UX-sdd-batch next changes; acceptance: the
   Attention "Inspect batch" link names the batch and the tab opens with that batch visible, covered by
   `owed-links.test.ts` and a Repository tab integration test; then update the `UX-attention` Interactions row.
 

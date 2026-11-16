@@ -35,64 +35,25 @@ a lost response. Check or retry that exact request. A new intent is not a safe
 substitute for resolving the original branch/PR candidate. An ownership conflict
 identifies the owner or retained evidence that must be inspected first.
 
-## Retired execution and claim reconciliation
+## Inspect and reconcile uncertain publication
 
-Legacy native Runs, typed decisions, executable milestone previews and automatic
-native batches cannot resume. Retained tombstones return `SDD_EXECUTION_RETIRED`;
-stored Run/decision/batch/claim evidence remains read-only. Local batch Stop, where
-exposed, only settles future admission and does not cancel external agent work.
+Inspect the claim at `GET /api/v1/projects/<project-id>/sdd/claims/<claim-id>`.
+After inspecting the exact saved branch/PR and external agent work, acknowledge the
+reservation at `POST /api/v1/projects/<project-id>/sdd/claims/<claim-id>/reconcile`.
+Supply the returned checkpoint digest, a stable request UUID and
+`acknowledge_external_work: true`. The claim is eligible only when publication is
+uncertain, no Run is bound and no live lease remains. A changed checkpoint requires
+fresh inspection. Replaying the identical acknowledgment returns its recorded result.
 
-Inspect a retained claim with:
+Release preserves remote artifacts. It neither stops an agent nor resumes a Run.
+An existing candidate branch remains a conflict for a distinct start.
 
-```sh
-curl -s "$SERVICE_URL/api/v1/projects/<project-id>/sdd/claims/<claim-id>"
-```
+## Schema update
 
-After inspecting the exact saved candidate, linked Run/PR and any externally
-posted work, explicitly reconcile the selected retired claim or eligible uncertain
-no-Run publication with its returned
-checkpoint digest, a stable request UUID and `acknowledge_external_work: true`.
-The endpoint is `POST /api/v1/projects/<project-id>/sdd/claims/<claim-id>/reconcile`.
-This acknowledgment releases only that reservation and acknowledges its exact
-linked terminal retired Run. It neither resumes the old Run nor creates another
-activity or merge authority. A current optimistic publication is eligible only if it is uncertain, has no
-bound Run and no live lease. Local release does not remove/adopt its remote branch;
-an existing candidate remains a conflict for a distinct new start. A changed
-checkpoint needs fresh inspection; an uncertain provider effect must not be described as canceled.
-
-A terminal retired Run without a claim can be acknowledged through
-`POST /api/v1/projects/<project-id>/sdd/runs/<run-id>/reconcile` with a stable
-`request_id`, its inspected `expected_revision` and
-`acknowledge_external_work: true`. The Run stays terminal; the recorded receipt
-clears only its unreconciled-external-work hold. An independently retained
-unsettled claim still needs its own exact claim reconciliation; Run acknowledgment
-alone does not release that reservation. An identical replay returns its retained
-outcome, while a changed request identity conflicts.
-
-## Rollout and rollback
-
-1. Stop accepting legacy-native work before deploying the matching backend/UI and
-   retirement migration.
-2. Inspect active provider work and saved native publication candidates. Local
-   migration cancellation cannot stop work already dispatched to a provider.
-3. Apply the migration. It cancels nonterminal old native Runs, revokes local
-   leases, stops legacy batches and preserves snapshots, attempts and exact claims.
-4. Confirm ordinary activity starts, retained history and explicit claim
-   reconciliation on the intended service revision.
-5. Register replacement work only after inspecting and acknowledging uncertain
-   old ownership. Never treat a canceled local Run as proof of remote absence.
-
-A downgrade does not reactivate retired Runs, batches or claims. Settled history
-is not converted into an optimistic Run.
-
-## SDK bridge retirement
-
-`autohub.sdd:*` and `autohub.pr_delivery:*` built-in bindings are retired under
-`CAP-SDK-existing-pr-bridge`. New effects return `SDD_BRIDGE_RETIRED`.
-Unreceipted old work settles terminally; an exact receipt-backed delivery can
-observe its existing PR owner without repeating resume. Completed results remain
-readable. Configure generic HTTP SDK workers through
-[execution targets](execution-targets.md) when that independent protocol is needed.
+Deploy matching backend and UI artifacts and apply the database migrations. The
+cleanup migration removes unused native batch tables, the claim member link and
+SDK PR bridge links, native progress and native decision evidence. Current activity claims and generic task-flow records remain.
+There is no legacy native work to migrate or acknowledge.
 
 ## Live canary after deployment
 

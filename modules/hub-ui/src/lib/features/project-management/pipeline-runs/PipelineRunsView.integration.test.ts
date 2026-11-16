@@ -286,7 +286,7 @@ test('an incomplete decisions page makes a stopped row open the run and keeps Re
 		if (path === '/api/v1/pipeline-runs/decisions')
 			return Promise.resolve({
 				data: {
-					items: [{ run_id: 'other', kind: 'native-workflow', actionable: true }],
+					items: [{ run_id: 'other', kind: 'run-question', actionable: true }],
 					has_more: true,
 					next_cursor: 'next'
 				}
