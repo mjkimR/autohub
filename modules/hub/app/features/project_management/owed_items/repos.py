@@ -11,7 +11,6 @@ from uuid import UUID
 from app.features.ai_catalogs.models import AICatalog
 from app.features.project_management.connection_tests.models import ACTIVE, ConnectionTest
 from app.features.project_management.pipeline_runs.models import FINAL_RUN_STATES, DecisionEntry, PipelineRun
-from app.features.project_management.sdd.batch_models import SddActivityClaim, SddBatch, SddBatchMember
 from app.features.project_management.work_plans.models import ItemDependency, WorkItem, WorkItemRecovery, WorkPlan
 from app.features.project_management.work_plans.replacement_models import ReplacementAcceptance, ReplacementLink
 from sqlalchemy import (
@@ -47,7 +46,6 @@ COLUMNS = (
     "run_id",
     "work_plan_id",
     "work_item_id",
-    "sdd_batch_id",
     "catalog_id",
     "catalog_hold",
     "catalog_available_at",
@@ -92,45 +90,6 @@ def _counted_replacement(item_id):
     return exists().where(link.original_item_id == item_id, link.active == true(), _waiting_edge(link.original_item_id))
 
 
-def _batch_tables():
-    return (
-        aliased(SddActivityClaim, name="owed_claim"),
-        aliased(SddBatchMember, name="owed_member"),
-        aliased(SddBatch, name="owed_batch"),
-    )
-
-
-def _run_in_attention_batch(run_id):
-    """The run is described by a listed batch: in attention and not itself yielding to a decision."""
-    claim, member, batch = _batch_tables()
-    return exists().where(
-        claim.run_id == run_id,
-        member.id == claim.member_id,
-        batch.id == member.batch_id,
-        batch.state == "attention",
-        ~_batch_held_by_decision(batch.id),
-    )
-
-
-def _attention_batch_of(run_id):
-    claim, member, batch = _batch_tables()
-    return (
-        select(batch.id)
-        .where(claim.run_id == run_id, member.id == claim.member_id, batch.id == member.batch_id)
-        .where(batch.state == "attention")
-        .order_by(batch.id)
-        .limit(1)
-        .scalar_subquery()
-    )
-
-
-def _batch_held_by_decision(batch_id):
-    claim = aliased(SddActivityClaim, name="decision_claim")
-    member = aliased(SddBatchMember, name="decision_member")
-    held = aliased(DecisionEntry, name="batch_decision")
-    return exists().where(member.batch_id == batch_id, claim.member_id == member.id, held.run_id == claim.run_id)
-
-
 def _branch(kind, subject, project_id, waiting_since, **values):
     """One union branch with the shared column order; absent context columns are typed NULLs."""
     defaults = {
@@ -140,7 +99,6 @@ def _branch(kind, subject, project_id, waiting_since, **values):
         "run_id": _none(Uuid),
         "work_plan_id": _none(Uuid),
         "work_item_id": _none(Uuid),
-        "sdd_batch_id": _none(Uuid),
         "catalog_id": _none(Uuid),
         "catalog_hold": _none(String),
         "catalog_available_at": _none(DateTime(timezone=True)),
@@ -171,7 +129,6 @@ class OwedItemRepository:
                 state=DecisionEntry.kind,
                 detail=DecisionEntry.question_state,
                 run_id=DecisionEntry.run_id,
-                sdd_batch_id=_attention_batch_of(DecisionEntry.run_id),
             )
             # The same predicate as the decision list's actionable count.
             statement = (
@@ -221,7 +178,6 @@ class OwedItemRepository:
                 .where(
                     PipelineRun.state.in_(("paused", "blocked")),
                     ~_held_by_decision(PipelineRun.id),
-                    ~_run_in_attention_batch(PipelineRun.id),
                     or_(
                         item.id.is_(None),
                         and_(item.state != "attention", ~_counted_recovery(item.id), ~_counted_replacement(item.id)),
@@ -250,7 +206,6 @@ class OwedItemRepository:
                 .outerjoin(item, item.pipeline_run_id == PipelineRun.id)
                 .where(
                     PipelineRun.state == "failed",
-                    ~_run_in_attention_batch(PipelineRun.id),
                     or_(
                         item.id.is_(None),
                         and_(item.state != "attention", ~_counted_recovery(item.id), ~_counted_replacement(item.id)),
@@ -342,23 +297,6 @@ class OwedItemRepository:
             )
             return statement, project
 
-        def sdd_batch_attention():
-            columns, project = _branch(
-                "sdd-batch-attention",
-                SddBatch.id,
-                SddBatch.project_id,
-                SddBatch.updated_at,
-                state=SddBatch.state,
-                detail=SddBatch.detail,
-                sdd_batch_id=SddBatch.id,
-            )
-            statement = (
-                select(*columns)
-                .select_from(SddBatch)
-                .where(SddBatch.state == "attention", ~_batch_held_by_decision(SddBatch.id))
-            )
-            return statement, project
-
         def connection_test_cleanup():
             columns, project = _branch(
                 "connection-test-cleanup",
@@ -403,7 +341,6 @@ class OwedItemRepository:
             "work-item-recovery": work_item_recovery,
             "work-item-replacement": work_item_replacement,
             "work-item-attention": work_item_attention,
-            "sdd-batch-attention": sdd_batch_attention,
             "connection-test-cleanup": connection_test_cleanup,
             "failed-run": failed_run,
         }

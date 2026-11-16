@@ -185,8 +185,8 @@ between reads. Disconnecting a client does not cancel the underlying work.
 
 ### Delivery decision and recovery tools
 
-The Work endpoint additionally registers six READ tools: `decisions_list`,
-`runs_decision_outcome`, `sdd_batches_list`, `sdd_batches_get`,
+The Work endpoint additionally registers four READ tools: `decisions_list`,
+`runs_decision_outcome`,
 `work_items_recoveries` and `work_items_replacements`. Five WRITE tools are
 `decisions_review`, `work_items_recover`,
 `work_items_replacement_link`, `work_items_replacement_accept` and
@@ -200,18 +200,14 @@ bounded owner-adapter decision.
   `machine:<authenticated machine UUID>` and retain the owner's supplied request,
   revision, replay and eligibility rules. No human impersonation, revision refresh
   or automatic command retry occurs. Replacement acceptance satisfies only its
-  existing local Item edge. Native batch mutation tools are not registered;
-  `sdd_batches_list` and `sdd_batches_get` return retained history only.
+  existing local Item edge. Native batch tools are not registered.
 - **Safe evidence**: WHEN these tools serialize owner results, Hub MUST return
   allowlisted typed views excluding raw task/answer text, snapshots, recovery
-  command/prior-outcome maps and event evidence maps. Current authority and hold
-  presence are observations, never new authorization.
+  command/prior-outcome maps and event evidence maps. Read projections grant no execution authorization.
 - **History disclosure**: WHEN nested evidence is bounded, Hub MUST disclose
-  count/omission metadata. Candidates cap at 50, recovery/replacement event
-  collections and acceptance/link projections at 100, batch members at 50 with
-  latest claim and retained claim count. Replacement current active/consumed
-  evidence precedes optional history. Batch lists expose a latest-50 window,
-  not complete history or arbitrary pagination. Existing owners may load more
+  count/omission metadata. Recovery/replacement event
+  collections and acceptance/link projections cap at 100. Replacement current active/consumed
+  evidence precedes optional history. Existing owners may load more
   evidence than is returned; this contract adds no database work bound.
 - **Exact outcomes**: WHEN a request outcome is read, Hub MUST retain exact run,
   operation and request namespaces and unknown/recorded distinction without

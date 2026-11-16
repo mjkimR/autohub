@@ -56,7 +56,7 @@ responsibility instead of relocating its evaluator.
 - Hub uses ordinary PR delivery, durable questions/answers and explicit resume; it does not select stages or author repository workflow decisions. → `CAP-PR-pull-request-delivery` SDD activity context (MUST).
 - Both activity kinds start Draft. Existing PR ready state, current-head GitHub checks and project merge policy govern delivery; Hub claims no enforcement of repository-internal gates. → `CAP-SDD-native-delivery` rule 8 (MUST).
 - Required repository verification executes in repository-owned GitHub Actions, whose results Hub observes through its existing CI contract. No Action or runner is introduced for devkit asset restoration or readiness evaluation. → `CAP-PR-pull-request-delivery` verification ownership (MUST).
-- Executable milestone readiness, graph-based native batches and the evaluator-coupled SDK bridge bindings are retired without replacement execution systems. → `CAP-SDD-native-delivery` rule 9 and `CAP-SDK-existing-pr-bridge` rule 1 (MUST).
+- Executable milestone readiness, graph-based native batches and the evaluator-coupled SDK bridge bindings are retired without replacement execution systems. → `CAP-SDD-native-delivery` rule 9 and CAP-SDK-existing-pr-bridge rule 1 (MUST).
 - Historical native evidence remains readable. Old execution authority is fenced and cannot implicitly convert into an optimistic Run. → `ARCH-06-execution` Legacy execution retirement (MUST).
 - The serving image carries no SDD devkit runtime, installer, build environment or evaluation sandbox requirement. Auto Hub's contributor devkit process remains repository-owned tooling. → `ARCH-07-deployment` Deployment boundary (MUST).
 

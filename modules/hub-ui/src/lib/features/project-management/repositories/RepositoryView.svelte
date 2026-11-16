@@ -13,7 +13,6 @@
 	import FileBlobViewer from './FileBlobViewer.svelte';
 	import SddExecution from './SddExecution.svelte';
 	import SddProposals from './SddProposals.svelte';
-	import SddBatch from './SddBatch.svelte';
 	import { repositoryDataSource } from './data-source';
 	import type { RepoBlob, RepoInfo, RepoItem, RepoTree } from './types';
 
@@ -31,7 +30,6 @@
 	const selection = new RepositorySelection();
 	const requestedUnit = $derived(page.url.searchParams.get('unit') || '');
 	const requestedRef = $derived(page.url.searchParams.get('ref') || '');
-	const requestedBatch = $derived(page.url.searchParams.get('batch') || '');
 	$effect(() => {
 		const id = project.id,
 			sdd = isSdd,
@@ -194,10 +192,9 @@
 		<div class="rounded-xl border bg-card p-8 text-center">
 			<FolderGit2 class="mx-auto h-10 w-10 text-muted-foreground/60" />
 			<h3 class="mt-3 font-semibold text-foreground">No Repository Connected</h3>
-			{#if requestedUnit || requestedBatch}
+			{#if requestedUnit}
 				<p role="alert" class="mt-2 text-sm">
-					{requestedUnit ? 'Unit unavailable' : 'Batch unavailable'}: no repository is connected for
-					the requested subject.
+					Unit unavailable: no repository is connected for the requested subject.
 				</p>
 				<Button variant="outline" size="sm" href={`/projects/${project.id}?tab=repository`}
 					>Browse repository</Button
@@ -323,12 +320,6 @@
 				<Button variant="outline" size="sm" onclick={browse}>Browse repository</Button>
 			</section>
 		{/if}
-		{#if requestedBatch && !isSdd}<p role="alert">
-				Batch unavailable: this project does not support SDD batch selection.
-			</p>
-			<Button variant="outline" size="sm" href={`/projects/${project.id}?tab=repository`}
-				>Browse repository</Button
-			>{/if}
 		{#if error}
 			<div
 				role="alert"
@@ -358,7 +349,6 @@
 						projectId={project.id}
 						repository={project.github?.repository ?? ''}
 					/>{/key}{/if}
-			{#if isSdd}<SddBatch projectId={project.id} selectedBatchId={requestedBatch} />{/if}
 			<!-- Native Sdd Viewer -->
 			<section class="rounded-xl border bg-card p-4 shadow-xs">
 				{#if selection.status === 'ready'}{#key `${project.id}-${currentRef}-${requestedUnit}-${viewerRevision}`}

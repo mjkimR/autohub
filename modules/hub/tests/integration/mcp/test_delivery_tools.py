@@ -1,8 +1,7 @@
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from app.auth import MCP_READ, MCP_WRITE
-from app.features.project_management.sdd.batch_models import SddBatch
 from tests.integration.features.project_management.pipeline_runs import test_pipeline_runs_api as runs
 from tests.integration.features.project_management.work_plans import conftest as work
 from tests.integration.features.project_management.work_plans import test_item_recovery as recovery
@@ -18,8 +17,6 @@ pytestmark = [pytest.mark.integration, pytest.mark.real_commit]
 READS = {
     "decisions_list",
     "runs_decision_outcome",
-    "sdd_batches_list",
-    "sdd_batches_get",
     "work_items_recoveries",
     "work_items_replacements",
 }
@@ -83,28 +80,6 @@ async def test_exact_discovery_review_outcome_and_refusal(client, key, project, 
         "code"
     ] == "NOT_FOUND"
     assert not github.paths
-
-
-async def test_retired_batch_history_projection_without_mutation_tool(client, key, project, session):
-    row = SddBatch(
-        project_id=UUID(project["id"]),
-        request_id=uuid4(),
-        request_digest="0" * 64,
-        actor="operator",
-        basis={},
-        evaluation={},
-        state="stopped",
-        exclusion=False,
-    )
-    session.add(row)
-    await session.commit()
-    ids = {"project_id": project["id"], "batch_id": str(row.id)}
-    listing = (await mcp.call(client, key, "sdd_batches_list", {"project_id": project["id"]}))["result"]
-    assert listing["items"][0]["id"] == str(row.id)
-    view = (await mcp.call(client, key, "sdd_batches_get", ids))["result"]
-    assert view["state"] == "stopped" and "basis" not in view
-    tools = (await mcp.rpc(client, key, "tools/list")).json()["result"]["tools"]
-    assert "sdd_batches_control" not in {tool["name"] for tool in tools}
 
 
 async def test_recovery_machine_replay_and_safe_history(client, key, setup_work):

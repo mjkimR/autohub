@@ -1,9 +1,6 @@
 import type { components } from '$lib/api';
 import { DECISIONS_HREF } from '$lib/components/shared/app-shell-nav';
-import {
-	repositorySubjectHref,
-	runHref
-} from '$lib/features/project-management/pipeline-runs/run-links';
+import { runHref } from '$lib/features/project-management/pipeline-runs/run-links';
 import { projectTabHref } from '$lib/features/project-management/projects/project-tabs';
 
 export type OwedItem = components['schemas']['OwedItemRead'];
@@ -31,8 +28,6 @@ export function owedHref(item: Pick<OwedItem, 'kind' | 'subject' | 'context'>): 
 		case 'work-item-replacement':
 		case 'work-item-attention':
 			return workItemId ? `${plans}#work-item-${encodeURIComponent(workItemId)}` : plans;
-		case 'sdd-batch-attention':
-			return repositorySubjectHref(project, { batch: item.context.sdd_batch_id ?? undefined });
 		case 'connection-test-cleanup':
 			return projectTabHref(project, 'connections');
 	}
@@ -49,7 +44,6 @@ export const OWED_KIND_NOUNS: Readonly<Record<OwedKind, { singular: string; plur
 		singular: 'Work Item needing attention',
 		plural: 'Work Items needing attention'
 	},
-	'sdd-batch-attention': { singular: 'SDD batch in attention', plural: 'SDD batches in attention' },
 	'connection-test-cleanup': {
 		singular: 'connection-test cleanup',
 		plural: 'connection-test cleanups'
@@ -75,7 +69,6 @@ export function owedProjectHref(kind: OwedKind, projectId: string): string {
 		case 'work-item-replacement':
 		case 'work-item-attention':
 			return projectTabHref(projectId, 'plans');
-		case 'sdd-batch-attention':
 			return projectTabHref(projectId, 'repository');
 		case 'connection-test-cleanup':
 			return projectTabHref(projectId, 'connections');

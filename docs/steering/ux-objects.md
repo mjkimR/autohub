@@ -27,9 +27,8 @@ summary: "Read before describing or changing Auto Hub interfaces; maps shared do
 | Run question | Operator | Decision inbox row/filter and exact owner subject, Pending question, answer editor, decision history | Ask, save answer, select answer for resume, dismiss, Check outcome, Retry same request ; Review exact decision, filter pending work |
 | Owed item | Operator | Attention landing row grouped by kind (cause, subject, project, waiting age, catalog-hold context), shell "Needs you" count Badge | Follow the item's primary action to its owner's existing control, filter by project, load more |
 | SDD unit | Operator | Branch document, descriptive proposal row, activity intent and related Run/PR links | Browse, select intent, start Planning, start Development, inspect execution history |
-| SDD batch | Operator | Addressed retained selection/order, retired state, member/claim evidence and owner outcomes | Load/open exact retained batch, refresh history, inspect owner |
 | SDD activity claim | Operator | Exact retained owner, candidate and checkpoint evidence, reconciliation acknowledgment | Inspect retained owner, open Run/PR, acknowledge inspected external work, release inspected reservation |
-| Native SDD activity | Operator | Descriptive unit/activity/effort context, ordinary PR Run, read-only retired evidence | Open Run/PR, inspect history, use ordinary Run question/resume controls |
+| Native SDD activity | Operator | Descriptive unit/activity/effort context, ordinary PR Run | Open Run/PR, inspect history, use ordinary Run question/resume controls |
 | Repository viewer | Operator | Branch selector, tree, file content, addressed unit selection and execution links, read-only milestone documents | Switch branch, browse file, refresh, open related Run/PR |
 | Webhook delivery | Operator | Event/outcome row, retained delivery identifiers | Filter noteworthy/status, page, refresh, inspect outcome |
 | Notification channel | Operator | Destination card, credential/configuration form, delivery status, decision effective gates and destination context | Add, edit, enable/disable, send test, delete, open Decision notices, inspect Notice history |

@@ -5,7 +5,6 @@ import pytest
 from app.features.ai_catalogs.models import AICatalog, AICatalogState
 from app.features.project_management.connection_tests.models import ConnectionTest
 from app.features.project_management.pipeline_runs.models import PipelineRun
-from app.features.project_management.sdd.batch_models import SddActivityClaim, SddBatch, SddBatchMember
 from app.features.project_management.work_plans.models import ItemDependency, WorkItem, WorkItemRecovery, WorkPlan
 from app.features.project_management.work_plans.replacement_models import ReplacementAcceptance, ReplacementLink
 from app_layer_base.utils.time_util import get_current_utc_time
@@ -29,7 +28,6 @@ ALL_KINDS = {
     "work-item-recovery",
     "work-item-replacement",
     "work-item-attention",
-    "sdd-batch-attention",
     "connection-test-cleanup",
     "failed-run",
 }
@@ -106,40 +104,6 @@ async def recovery(session, project, plan_row, item_row, state):
     return row
 
 
-async def batch(session, project, state="attention", run_id=None, exclusion=False, unit="specs/a"):
-    row = SddBatch(
-        project_id=UUID(project["id"]),
-        request_id=uuid4(),
-        request_digest="b" * 64,
-        actor="operator",
-        state=state,
-        exclusion=exclusion,
-        basis={},
-        detail="Member needs the operator",
-    )
-    session.add(row)
-    await session.flush()
-    if run_id:
-        member = SddBatchMember(batch_id=row.id, position=1, anchor_id=unit, path=unit, initial={}, phase="develop")
-        session.add(member)
-        await session.flush()
-        session.add(
-            SddActivityClaim(
-                project_id=row.project_id,
-                member_id=member.id,
-                request_id=uuid4(),
-                actor="operator",
-                request_digest="c" * 64,
-                unit=unit,
-                activity="dev",
-                checkpoint={},
-                run_id=UUID(run_id),
-            )
-        )
-        await session.flush()
-    return row
-
-
 async def connection_test(session, project, cleanup_status="pending", repository="owner/app"):
     now = get_current_utc_time()
     row = ConnectionTest(
@@ -168,7 +132,7 @@ async def activity_question(session, run_id):
         session,
         run_id,
         state="blocked",
-        sdd_snapshot={"provider": "repository-agent", "execution_version": 2, "spec_dir": "docs/proposals/PROP-test"},
+        sdd_snapshot={"provider": "repository-agent", "spec_dir": "docs/proposals/PROP-test"},
         sdd_progress=None,
     )
     session.add(
@@ -204,8 +168,6 @@ async def every_kind(client, github, session, project, offset=0):
     await set_run(session, recovered["id"], state="failed")
     attention_run = await enroll(client, github, project, n + 4)
     await set_run(session, attention_run["id"], state="paused")
-    batch_run = await enroll(client, github, project, n + 5)
-    await set_run(session, batch_run["id"], state="paused")
 
     proposed = await plan(session, project, state="proposed", title=f"Proposed {offset}")
     work = await plan(session, project, title=f"Work {offset}")
@@ -229,7 +191,6 @@ async def every_kind(client, github, session, project, offset=0):
         reason="Replaced by a new plan",
     )
     session.add(link)
-    held_batch = await batch(session, project, run_id=batch_run["id"], unit=f"specs/{offset}")
     cleanup = await connection_test(session, project)
     await session.commit()
     return {
@@ -246,8 +207,6 @@ async def every_kind(client, github, session, project, offset=0):
         "link_original": original.id,
         "link_dependent": dependent.id,
         "link_plan": work.id,
-        "batch": str(held_batch.id),
-        "batch_run": batch_run["id"],
         "cleanup": str(cleanup.id),
     }
 
@@ -271,7 +230,7 @@ async def test_every_kind_has_one_item_with_stable_shape(client, owed, github, s
         }
         assert row["key"] == f"{row['kind']}:{row['subject']['id']}"
         assert row["subject"]["project_id"] == owed["id"]
-        assert set(row["context"]) == {"run_id", "work_plan_id", "work_item_id", "sdd_batch_id", "catalog_hold"}
+        assert set(row["context"]) == {"run_id", "work_plan_id", "work_item_id", "catalog_hold"}
         assert row["counted"] is (row["kind"] != "failed-run")
         assert row["cause"]
     decision = by_kind(rows, "decision")[0]
@@ -295,7 +254,6 @@ async def test_every_kind_has_one_item_with_stable_shape(client, owed, github, s
     assert (
         attention["subject"]["id"] == ids["attention_item"] and attention["context"]["run_id"] == ids["attention_run"]
     )
-    assert by_kind(rows, "sdd-batch-attention")[0]["subject"]["id"] == ids["batch"]
     cleanup = by_kind(rows, "connection-test-cleanup")[0]
     assert cleanup["subject"]["id"] == ids["cleanup"] and cleanup["primary_action"]["name"] == "review-cleanup"
     failed = by_kind(rows, "failed-run")[0]
@@ -435,7 +393,6 @@ async def test_work_plan_and_work_item_kinds(client, owed, github, session):
         "run_id": paused["id"],
         "work_plan_id": str(work.id),
         "work_item_id": str(attention.id),
-        "sdd_batch_id": None,
         "catalog_hold": None,
     }
     proposed.state = "draft"
@@ -483,54 +440,6 @@ async def test_replacement_waits_until_the_edge_is_accepted(client, owed, github
     assert await items(client) == []
 
 
-async def test_batch_attention_suppresses_its_run_and_yields_to_decisions(client, owed, github, session):
-    # Enroll before uncommitted owner rows exist: PostgreSQL enrollment locks the project row.
-    paused = await enroll(client, github, owed, 7)
-    await set_run(session, paused["id"], state="paused")
-    decided = await enroll(client, github, owed, 8)
-    await activity_question(session, decided["id"])
-    first = await batch(session, owed, run_id=paused["id"], unit="specs/one")
-    second = await batch(session, owed, run_id=decided["id"], unit="specs/two")
-    await session.commit()
-    rows = await items(client)
-    assert sorted(row["kind"] for row in rows) == ["decision", "sdd-batch-attention"]
-    assert by_kind(rows, "sdd-batch-attention")[0]["subject"]["id"] == str(first.id)
-    decision = by_kind(rows, "decision")[0]
-    assert decision["context"]["run_id"] == decided["id"]
-    assert decision["context"]["sdd_batch_id"] == str(second.id)
-
-
-async def test_a_batch_yielding_to_a_decision_hides_no_other_stopped_run(client, owed, github, session):
-    decided = await enroll(client, github, owed, 7)
-    await activity_question(session, decided["id"])
-    paused = await enroll(client, github, owed, 8)
-    await set_run(session, paused["id"], state="paused")
-    shared = await batch(session, owed, run_id=decided["id"], unit="specs/one")
-    member = SddBatchMember(
-        batch_id=shared.id, position=2, anchor_id="specs/two", path="specs/two", initial={}, phase="develop"
-    )
-    session.add(member)
-    await session.flush()
-    session.add(
-        SddActivityClaim(
-            project_id=shared.project_id,
-            member_id=member.id,
-            request_id=uuid4(),
-            actor="operator",
-            request_digest="c" * 64,
-            unit="specs/two",
-            activity="dev",
-            checkpoint={},
-            run_id=UUID(paused["id"]),
-        )
-    )
-    await session.commit()
-    rows = await items(client)
-    # The batch yields to the decision, so the other paused run stays listed on its own.
-    assert sorted(row["kind"] for row in rows) == ["decision", "stopped-run"]
-    assert by_kind(rows, "stopped-run")[0]["subject"]["id"] == paused["id"]
-
-
 async def test_connection_cleanup_review_until_completed(client, owed, github, session):
     open_review = await connection_test(session, owed)
     done = await connection_test(session, owed, cleanup_status="completed", repository="owner/done")
@@ -567,8 +476,8 @@ async def test_counts_are_filtered_by_project(client, owed, github, session):
     await plan(session, other_project, state="proposed")
     await session.commit()
     everything = (await client.get(COUNTS)).json()
-    assert everything["by_project"] == {owed["id"]: 8, other_project["id"]: 1}
-    assert everything["total"] == 9 and everything["by_kind"]["work-plan-proposed"] == 2
+    assert everything["by_project"] == {owed["id"]: 7, other_project["id"]: 1}
+    assert everything["total"] == 8 and everything["by_kind"]["work-plan-proposed"] == 2
     scoped = (await client.get(COUNTS, params={"project_id": other_project["id"]})).json()
     assert scoped["total"] == 1 and scoped["by_project"] == {other_project["id"]: 1}
     assert scoped["by_kind"]["work-plan-proposed"] == 1 and scoped["by_kind"]["failed-run"] == 0
@@ -663,23 +572,18 @@ async def test_one_transaction_and_fixed_statements_without_provider_calls(clien
     large = await measure()
     assert small == large
     assert small == {"list": 1, "list-project": 2, "counts": 1, "counts-project": 2}
-    assert len((await client.get(URL, params={"limit": 100})).json()["items"]) == 27
+    assert len((await client.get(URL, params={"limit": 100})).json()["items"]) == 24
     assert not github.paths
 
 
-async def test_failed_runs_yield_to_batch_and_work_item_attention(client, owed, github, session):
-    batch_run = await enroll(client, github, owed, 7)
-    await set_run(session, batch_run["id"], state="failed")
+async def test_failed_runs_yield_to_work_item_attention(client, owed, github, session):
     item_run = await enroll(client, github, owed, 8)
     await set_run(session, item_run["id"], state="failed")
-    held = await batch(session, owed, run_id=batch_run["id"], unit="specs/one")
     work = await plan(session, owed)
     attention = await item(session, work, "attention", state="attention", run_id=item_run["id"])
     await session.commit()
     rows = await items(client)
-    assert sorted((row["kind"], row["subject"]["id"]) for row in rows) == sorted(
-        [("sdd-batch-attention", str(held.id)), ("work-item-attention", str(attention.id))]
-    )
+    assert [(row["kind"], row["subject"]["id"]) for row in rows] == [("work-item-attention", str(attention.id))]
 
 
 async def test_server_default_timestamps_page_without_gaps(client, owed, session):

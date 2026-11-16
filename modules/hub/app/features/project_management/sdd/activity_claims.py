@@ -1,4 +1,4 @@
-"""Durable optimistic activity publication and permanent legacy-owner fencing."""
+"""Durable repository-owned activity publication and exact owner fencing."""
 
 from datetime import datetime, timedelta
 from uuid import uuid4
@@ -8,32 +8,21 @@ from app.features.project_management.projects.errors import ProjectError
 from app_layer_base.core.database.transaction import AsyncTransaction
 from app_layer_base.utils.time_util import get_current_utc_time
 
-from .batch_models import SddActivityClaim
-from .batch_policy import project_basis, same_request
-from .batch_repo import BatchRepository
-from .execution import EXECUTION_VERSION, RETIRED_CODE, RETIRED_REASON
+from .claim_models import SddActivityClaim
+from .claim_policy import project_basis, same_request
+from .claim_repo import ClaimRepository
 
 
 class ActivityClaims:
     def __init__(self, projects, observer, runs):
-        self.projects, self.observer, self.runs, self.repo = projects, observer, runs, BatchRepository()
+        self.projects, self.observer, self.runs, self.repo = projects, observer, runs, ClaimRepository()
 
-    async def reserve(self, session, project, activity, slug, request, actor, *, member_id=None, expected_sha=None):
+    async def reserve(self, session, project, activity, slug, request, actor):
         digest = request_digest(request.model_dump(mode="json"))
         existing = await self.repo.claim_request(session, project.id, request.request_id)
         if existing:
-            if existing.checkpoint.get("execution_version") != EXECUTION_VERSION or existing.checkpoint.get("retired"):
-                raise ProjectError(
-                    410,
-                    f"{RETIRED_REASON}; inspect /api/v1/projects/{project.id}/sdd/claims/{existing.id}",
-                    code=RETIRED_CODE,
-                )
             same_request(existing, actor, digest)
-            if (
-                existing.member_id != member_id
-                or existing.unit != f"docs/proposals/PROP-{slug}"
-                or existing.activity != activity
-            ):
+            if existing.unit != f"docs/proposals/PROP-{slug}" or existing.activity != activity:
                 raise ProjectError(409, "Start request belongs to another activity owner")
             return existing
         unit = f"docs/proposals/PROP-{slug}"
@@ -48,16 +37,13 @@ class ActivityClaims:
             session,
             SddActivityClaim(
                 project_id=project.id,
-                member_id=member_id,
                 request_id=request.request_id,
                 actor=actor,
                 request_digest=digest,
                 unit=unit,
                 activity=activity,
                 checkpoint={
-                    "execution_version": EXECUTION_VERSION,
                     "project": project_basis(project),
-                    "expected_sha": expected_sha,
                     "request": request.model_dump(mode="json"),
                 },
             ),
@@ -65,7 +51,7 @@ class ActivityClaims:
 
     async def execute(self, project_id, claim_id):
         from .activities import ActivityStarter
-        from .batch_models import SddActivityClaim
+        from .claim_models import SddActivityClaim
         from .schemas import StartActivityRequest
 
         owner_reference = f"/api/v1/projects/{project_id}/sdd/claims/{claim_id}"
@@ -75,12 +61,6 @@ class ActivityClaims:
             claim = await session.get(SddActivityClaim, claim_id, with_for_update=True)
             if claim is None or claim.project_id != project_id:
                 raise ProjectError(404, "Native activity claim not found")
-            if claim.checkpoint.get("execution_version") != EXECUTION_VERSION or claim.checkpoint.get("retired"):
-                raise ProjectError(
-                    410,
-                    f"{RETIRED_REASON}; inspect /api/v1/projects/{project_id}/sdd/claims/{claim.id}",
-                    code=RETIRED_CODE,
-                )
             if claim.run_id:
                 claim.checkpoint = {**claim.checkpoint, "uncertain": False}
                 return await self.runs.get(claim.run_id)
@@ -127,7 +107,6 @@ class ActivityClaims:
                 unit.rsplit("PROP-", 1)[1],
                 request,
                 actor,
-                expected_base_sha=cp.get("expected_sha"),
                 checkpoint=checkpoint,
                 saved=cp,
                 admission=(claim_id, lease),
@@ -191,8 +170,6 @@ async def settle_individual_claims(projects, *, limit=20):
                 select(SddActivityClaim.project_id, SddActivityClaim.id)
                 .join(PipelineRun, PipelineRun.id == SddActivityClaim.run_id)
                 .where(
-                    SddActivityClaim.member_id.is_(None),
-                    SddActivityClaim.checkpoint["execution_version"].as_integer() == EXECUTION_VERSION,
                     ~SddActivityClaim.settled,
                     PipelineRun.state.in_(FINAL_RUN_STATES),
                 )
@@ -231,8 +208,6 @@ async def bind_enrollment(session, project, run, admission):
         row is None
         or row.project_id != project.id
         or row.run_id is not None
-        or row.checkpoint.get("execution_version") != EXECUTION_VERSION
-        or row.checkpoint.get("retired")
         or row.settled
         or row.checkpoint.get("lease") != lease
         or not lease_valid(row.checkpoint)
@@ -243,8 +218,7 @@ async def bind_enrollment(session, project, run, admission):
     enrollment = cp.get("enrollment_request") or {}
     snapshot = run.sdd_snapshot or {}
     if (
-        snapshot.get("execution_version") != EXECUTION_VERSION
-        or snapshot.get("provider") != "repository-agent"
+        snapshot.get("provider") != "repository-agent"
         or enrollment.get("pull_number") != run.pull_number
         or enrollment.get("spec_dir") != row.unit
         or enrollment.get("activity_effort") != snapshot.get("activity_effort")

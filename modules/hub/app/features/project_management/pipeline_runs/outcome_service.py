@@ -21,32 +21,6 @@ class DecisionOutcomeService:
             attempt_id = row.applied_attempt_id
         else:
             attempt_id = row.execution_attempt_id
-            data = row.decision_evidence or {}
-            workflow = data.get("workflow_answer") or {}
-            publication = data.get("publication") or {}
-            plan = data.get("plan_decision") or {}
-            candidates = list(
-                dict.fromkeys(
-                    c["commit_sha"]
-                    for c in publication.get("candidates") or []
-                    if isinstance(c, dict) and isinstance(c.get("commit_sha"), str)
-                )
-            )
-            result["candidate_heads"] = candidates
-            result.update(
-                native_channel=workflow.get("request") or data.get("action"),
-                publication_state=publication.get("state"),
-                candidate_head=plan.get("commit_sha") or (candidates[0] if len(candidates) == 1 else None),
-            )
-            if workflow.get("request", "").startswith("question:"):
-                result["publication_state"] = "pending"
-                # Historical proof is displayed only when the owner retained it.
-                proof = data.get("answer_publication")
-                if proof:
-                    result.update(publication_state="published", resolved_envelope=proof.get("file"))
-                elif not data.get("subject_context"):
-                    result["publication_state"] = None
-                    result["unavailable_reason"] = "Original worker question context was not retained"
         attempt, delivery = await self.repo.attempt(session, run.id, attempt_id)
         if attempt:
             result.update(

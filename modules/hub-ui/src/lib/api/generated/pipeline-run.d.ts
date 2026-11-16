@@ -329,23 +329,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/pipeline-runs/{run_id}/sdd-decisions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Sdd Decisions */
-        get: operations["list_sdd_decisions_api_v1_pipeline_runs__run_id__sdd_decisions_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export interface components {
     schemas: {
@@ -390,9 +373,9 @@ export interface components {
             project_id: string;
             /**
              * Kind
-             * @enum {string}
+             * @constant
              */
-            kind: "run-question" | "native-hub-question" | "native-worker-question" | "native-workflow" | "native-proposal" | "native-integration";
+            kind: "run-question";
             /** Subject Id */
             subject_id: string;
             /** Fingerprint */
@@ -463,31 +446,8 @@ export interface components {
             delivery_state?: ("posted" | "pending") | null;
             /** Delivery At */
             delivery_at?: string | null;
-            /** Native Channel */
-            native_channel?: string | null;
-            /** Publication State */
-            publication_state?: string | null;
-            /**
-             * Candidate Heads
-             * @default []
-             */
-            candidate_heads: string[];
-            /** Candidate Head */
-            candidate_head?: string | null;
-            /** Resolved Envelope */
-            resolved_envelope?: string | null;
             /** Inspected Head */
             inspected_head?: string | null;
-            /** Inspected Digest */
-            inspected_digest?: string | null;
-            /** Current Authority */
-            current_authority?: {
-                [key: string]: unknown;
-            } | null;
-            /** Current Hold */
-            current_hold?: {
-                [key: string]: unknown;
-            } | null;
             /** Unavailable Reason */
             unavailable_reason?: string | null;
         };
@@ -794,33 +754,11 @@ export interface components {
             request_id: string;
             /** Expected Revision */
             expected_revision: number;
-            workflow_answer?: components["schemas"]["WorkflowAnswer"] | null;
             /** Answer Id */
             answer_id?: string | null;
-            /** Decision */
-            decision?: ("approve" | "revise" | "reject" | "revoke" | "accept_plan" | "reject_plan") | null;
-            /** Feedback */
-            feedback?: string | null;
-            /**
-             * Head Sha
-             * @description accept_plan and reject_plan: the pull request head the person confirmed; another head refuses
-             */
-            head_sha?: string | null;
         };
         RunOrigin: CommonComponents["schemas"]["RunOrigin"];
         ValidationError: CommonComponents["schemas"]["ValidationError"];
-        /** WorkflowAnswer */
-        WorkflowAnswer: {
-            /** Request */
-            request: string;
-            /**
-             * Action
-             * @enum {string}
-             */
-            action: "accept" | "decline" | "cancel";
-            /** Value */
-            value?: string | null;
-        };
     };
     responses: never;
     parameters: never;
@@ -870,7 +808,7 @@ export interface operations {
         parameters: {
             query?: {
                 project_id?: string | null;
-                kind?: ("run-question" | "native-hub-question" | "native-worker-question" | "native-workflow" | "native-proposal" | "native-integration") | null;
+                kind?: "run-question" | null;
                 question_state?: ("open" | "answered") | null;
                 cursor?: string | null;
                 limit?: number;
@@ -1454,39 +1392,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExecutionAttemptRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_sdd_decisions_api_v1_pipeline_runs__run_id__sdd_decisions_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                run_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
                 };
             };
             /** @description Validation Error */

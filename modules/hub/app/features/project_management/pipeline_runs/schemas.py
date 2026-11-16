@@ -71,7 +71,6 @@ class RunOrigin(BaseModel):
     work_plan_id: UUID | None = None
     catalog_id: UUID | None = None
     unit: str | None = None
-    batch_id: UUID | None = None
     url: str | None = None
 
 
@@ -99,7 +98,7 @@ class PipelineRunRead(UUIDSchemaMixin, TimestampSchemaMixin):
     next_action_at: datetime | None
     quota_block_count: int
     has_pending_decision: bool = Field(
-        default=False, description="The run has an actionable decision-inbox row (a Run question or Native SDD request)"
+        default=False, description="The run has an actionable decision-inbox row (a Run question)"
     )
 
 

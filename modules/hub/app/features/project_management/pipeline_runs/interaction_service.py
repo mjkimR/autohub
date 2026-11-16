@@ -9,9 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def check_revision(run: PipelineRun, expected: int) -> None:
-    from app.features.project_management.sdd.execution import require_current
 
-    require_current(run)
     if run.revision != expected:
         raise ProjectError(409, "Run changed; reload before applying this decision")
     if run.state in FINAL_RUN_STATES:

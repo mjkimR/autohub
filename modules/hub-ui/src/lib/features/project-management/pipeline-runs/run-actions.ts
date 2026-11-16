@@ -10,9 +10,7 @@ const TERMINAL = ['completed', 'failed', 'canceled'];
 export function isTerminalRun(
 	run: Pick<Run, 'state'> & Partial<Pick<Run, 'sdd_snapshot'>>
 ): boolean {
-	return (
-		!!(run.sdd_snapshot && run.sdd_snapshot.execution_version !== 2) || TERMINAL.includes(run.state)
-	);
+	return TERMINAL.includes(run.state);
 }
 
 /**
@@ -21,22 +19,17 @@ export function isTerminalRun(
  */
 export type RunDecisions = { status: 'known'; entries: DecisionEntry[] } | { status: 'unknown' };
 
-const QUESTION_KINDS: DecisionEntry['kind'][] = [
-	'run-question',
-	'native-hub-question',
-	'native-worker-question'
-];
+const QUESTION_KINDS: DecisionEntry['kind'][] = ['run-question'];
 
 /** What a pending decision asks of the operator, from the most to the least urgent. */
-export type DecisionWait = 'question' | 'saved-answer' | 'approval' | 'publication';
+export type DecisionWait = 'question' | 'saved-answer';
 
 export function decisionWait(entries: DecisionEntry[]): DecisionWait | null {
 	const actionable = entries.filter((entry) => entry.actionable);
 	const questions = actionable.filter((entry) => QUESTION_KINDS.includes(entry.kind));
 	if (questions.some((entry) => entry.question_state !== 'answered')) return 'question';
 	if (questions.length) return 'saved-answer';
-	if (actionable.length) return 'approval';
-	return entries.length ? 'publication' : null;
+	return null;
 }
 
 /** Short marker text for a run row or header; null when nothing waits on the operator. */
@@ -46,22 +39,13 @@ export function decisionWaitLabel(wait: DecisionWait | null): string | null {
 			return 'Question waiting';
 		case 'saved-answer':
 			return 'Answer saved — resume pending';
-		case 'approval':
-			return 'Approval waiting';
 		default:
 			return null;
 	}
 }
 
 export type RunActionKind =
-	| 'answer'
-	| 'resume-saved'
-	| 'review-approval'
-	| 'check-decision'
-	| 'resume'
-	| 'next-step'
-	| 'attach-pr'
-	| 'open';
+	'answer' | 'resume-saved' | 'resume' | 'next-step' | 'attach-pr' | 'open';
 
 /**
  * `short` is the compact row label; `label` names the action in full (page, accessible name).
@@ -76,8 +60,6 @@ export type RunAction = { kind: RunActionKind; label: string; short: string; sec
  * Resume is only a secondary action.
  */
 export function primaryRunAction(run: Run, decisions: RunDecisions): RunAction {
-	if (run.sdd_snapshot && run.sdd_snapshot.execution_version !== 2)
-		return { kind: 'open', label: 'Inspect retired run', short: 'Inspect', section: 'decisions' };
 	const wait =
 		decisions.status === 'known' && !isTerminalRun(run) ? decisionWait(decisions.entries) : null;
 	if (wait === 'question')
@@ -87,20 +69,6 @@ export function primaryRunAction(run: Run, decisions: RunDecisions): RunAction {
 			kind: 'resume-saved',
 			label: 'Resume with saved answer',
 			short: 'Apply answer',
-			section: 'decisions'
-		};
-	if (wait === 'approval')
-		return {
-			kind: 'review-approval',
-			label: 'Review approval',
-			short: 'Review',
-			section: 'decisions'
-		};
-	if (wait === 'publication')
-		return {
-			kind: 'check-decision',
-			label: 'Check decision',
-			short: 'Check',
 			section: 'decisions'
 		};
 	if (run.state === 'failed')
@@ -122,7 +90,6 @@ export function rowActionName(action: RunAction, run: Pick<Run, 'pull_number'>):
 
 /** Plain Resume is offered only for a stopped run that no known decision holds. */
 export function canResume(run: Run, decisions: RunDecisions): boolean {
-	if (run.sdd_snapshot && run.sdd_snapshot.execution_version !== 2) return false;
 	if (run.state !== 'paused' && run.state !== 'blocked') return false;
 	return decisions.status === 'unknown' || decisionWait(decisions.entries) === null;
 }

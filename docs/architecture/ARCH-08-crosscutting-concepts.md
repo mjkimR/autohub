@@ -28,7 +28,7 @@ PR dispatch reconciles a connector-authored marker for the planned delivery
 later reconciles that retained identity (`CAP-SDD-native-delivery`). SDK
 workers inspect the existing attempt before any authorized resubmission
 (`CAP-SDK-task-flow-execution`); retired bridge delivery only observes an exact existing owner's
-resume receipt (`CAP-SDK-existing-pr-bridge`). Connection diagnostics distinguish
+resume receipt (`CAP-SDD-native-delivery`). Connection diagnostics distinguish
 provider ownership proof from a guessed or merely related PR
 (`CAP-CONN-connection-verification`).
 
@@ -67,7 +67,7 @@ response under its lease/revision. Retired bridge observation can use an already
 resume identity, but cannot create a fresh resume effect. Scheduling coordinates due-job selection in its
 own transaction; maintenance uses persisted cursors for its selected diagnostic
 and provider-session work. Their exact boundaries belong to
-`CAP-SDK-task-flow-execution`, `CAP-SDK-existing-pr-bridge` and
+`CAP-SDK-task-flow-execution`, `CAP-SDD-native-delivery` and
 `CAP-EXEC-scheduling-maintenance`.
 
 The enforcing regressions include
@@ -84,7 +84,7 @@ Browser account approval, machine scopes, direct-PR ready status, proposal
 acceptance and SDK approval do not authorize one another.
 `CAP-ACCESS-authentication-authorization` and `CAP-MCP-tool-access` own entrypoint
 access. `CAP-PR-operator-decisions` and `CAP-SDK-task-flow-execution` own current
-Run/flow input. `CAP-SDD-workflow-control` and `CAP-SDK-existing-pr-bridge`
+Run/flow input. `CAP-SDD-native-delivery` and `CAP-SDD-native-delivery`
 identify retired authority rather than additional live approval subjects.
 
 Repository workflow records are the repository/agent's responsibility and do

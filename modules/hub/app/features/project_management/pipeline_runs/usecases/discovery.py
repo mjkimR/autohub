@@ -66,7 +66,5 @@ class DecisionDiscoveryUseCase:
             project = await projects.get(session, run.project_id)
             if not project:
                 raise ProjectError(404, "Project not found")
-            from app.features.project_management.sdd.execution import require_current
 
-            require_current(run)
             return await read_run(session, run)

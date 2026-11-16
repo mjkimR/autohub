@@ -27,7 +27,7 @@ test('all retained references stay distinguishable and link exact subjects', () 
 					catalog_id: 'catalog',
 					url: 'https://jules.google.com/session/exact'
 				},
-				{ kind: 'native_sdd', id: 'claim', unit: 'docs/proposals/PROP-old', batch_id: 'batch' }
+				{ kind: 'native_sdd', id: 'claim', unit: 'docs/proposals/PROP-old' }
 			]
 		}
 	});
@@ -40,9 +40,6 @@ test('all retained references stay distinguishable and link exact subjects', () 
 	expect(
 		screen.getByRole('link', { name: 'specs/2026-11/current' }).getAttribute('href')
 	).toContain('ref=dev%2Fcurrent');
-	expect(screen.getByRole('link', { name: 'SDD batch batch' }).getAttribute('href')).toBe(
-		'/projects/p?tab=repository&batch=batch'
-	);
 	expect(screen.getByText(/Related SDD history/)).toBeTruthy();
 });
 test('session without exact URL remains text, not a misleading catalog link', () => {
@@ -60,7 +57,7 @@ test('session without exact URL remains text, not a misleading catalog link', ()
 
 test('snapshot-only native evidence remains known even without an available subject link', () => {
 	render(RunOrigins, {
-		run: { ...run, enrollment_source: 'native_sdd', sdd_snapshot: { execution_version: 1 } }
+		run: { ...run, enrollment_source: 'native_sdd', sdd_snapshot: { provider: 'repository-agent' } }
 	});
 	expect(screen.getByText('Related origin: Native SDD')).toBeTruthy();
 	expect(screen.queryByText(/Origin unknown/)).toBeNull();

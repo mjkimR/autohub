@@ -5,7 +5,7 @@ from app.features.ai_catalogs.models import AICatalogSession
 from app.features.project_management.pipeline_runs.models import PipelineRun
 from app.features.project_management.pipeline_runs.origin_reads import read_runs
 from app.features.project_management.projects.models import Project
-from app.features.project_management.sdd.batch_models import SddActivityClaim, SddBatch, SddBatchMember
+from app.features.project_management.sdd.claim_models import SddActivityClaim
 from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
@@ -30,21 +30,7 @@ async def seed_origins(session, project, run):
     session.add(plan)
     await session.flush()
     item = WorkItem(plan_id=plan.id, key="one", title="One", description="", acceptance="", pipeline_run_id=run.id)
-    batch = SddBatch(
-        project_id=owner.id,
-        request_id=uuid4(),
-        request_digest="0" * 64,
-        actor="operator",
-        basis={},
-        evaluation={},
-        exclusion=False,
-    )
-    session.add_all([item, batch])
-    await session.flush()
-    member = SddBatchMember(
-        batch_id=batch.id, position=0, anchor_id="one", path="docs/proposals/PROP-one", initial={}, phase="dev"
-    )
-    session.add(member)
+    session.add(item)
     await session.flush()
     sessions = [
         AICatalogSession(
@@ -59,7 +45,6 @@ async def seed_origins(session, project, run):
     claims = [
         SddActivityClaim(
             project_id=owner.id,
-            member_id=member.id if i == 0 else None,
             request_id=uuid4(),
             actor="operator",
             request_digest="1" * 64,
@@ -73,7 +58,7 @@ async def seed_origins(session, project, run):
     ]
     session.add_all(sessions + claims)
     await session.commit()
-    return item, plan, batch
+    return item, plan
 
 
 async def test_origin_projection_agrees_across_reads_and_mutations(client, project, session, github):
@@ -82,7 +67,7 @@ async def test_origin_projection_agrees_across_reads_and_mutations(client, proje
     initial = response.json()
     assert initial["enrollment_source"] == "unknown" and initial["related_origins"] == []
     run = await session.get(PipelineRun, UUID(initial["id"]))
-    item, plan, batch = await seed_origins(session, project, run)
+    item, plan = await seed_origins(session, project, run)
     root = f"/api/v1/pipeline-runs/{run.id}"
     detail = (await client.get(root)).json()
     refs = detail["related_origins"]
@@ -91,7 +76,6 @@ async def test_origin_projection_agrees_across_reads_and_mutations(client, proje
     assert refs == sorted(refs, key=lambda ref: (ref["kind"], ref["id"]))
     work = next(ref for ref in refs if ref["kind"] == "work_plan")
     assert work["id"] == str(item.id) and work["work_plan_id"] == str(plan.id)
-    assert {ref["batch_id"] for ref in refs if ref["kind"] == "native_sdd"} == {str(batch.id), None}
     assert sum(bool(ref["url"]) for ref in refs if ref["kind"] == "provider_session") == 1
     page = (await client.get("/api/v1/pipeline-runs", params={"project_id": project["id"]})).json()
     assert page["total_count"] == 1 and page["items"][0]["related_origins"] == refs
@@ -206,33 +190,6 @@ async def test_cross_project_reverse_owners_are_not_exposed(client, project, ses
     await session.commit()
     [view] = await read_runs(session, [run])
     assert view.related_origins == [] and view.enrollment_source == "unknown"
-
-
-async def test_old_batch_detail_is_project_scoped_and_observation_only(client, project, session, github):
-    batches = [
-        SddBatch(
-            project_id=UUID(project["id"]),
-            request_id=uuid4(),
-            request_digest="0" * 64,
-            actor="operator",
-            basis={},
-            evaluation={},
-            exclusion=False,
-            state="stopped",
-        )
-        for _ in range(55)
-    ]
-    session.add_all(batches)
-    await session.commit()
-    root = f"/api/v1/projects/{project['id']}/sdd/batches"
-    latest = (await client.get(root)).json()
-    old = next(row for row in batches if str(row.id) not in {entry["id"] for entry in latest})
-    github.paths.clear()
-    detail = await client.get(f"{root}/{old.id}")
-    assert detail.status_code == 200 and detail.json()["id"] == str(old.id)
-    wrong = await client.get(f"/api/v1/projects/{uuid4()}/sdd/batches/{old.id}")
-    assert wrong.status_code == 404
-    assert github.paths == []
 
 
 async def test_run_http_page_keeps_one_request_checkout(client, project, session, github):

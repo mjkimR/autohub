@@ -17,7 +17,7 @@ responsibility change is recorded.
 | Retired native execution | Historical runtime/decision/batch evidence and fenced legacy authority; no evaluator runtime | [activity operations](sdd-runtime.md) |
 | Repository viewer | Branch-specific documents, proposal roadmap and recorded Proposal → Spec → Run/PR lineage | Viewer (`CAP-DOC-repository-viewer`) |
 | Pipeline progression | Shared tick/webhook/manual driver, bounded retries and preserved waits | Advancement (`CAP-PR-pull-request-delivery`) |
-| SDK flows | Durable generic host and scoped approval; built-in SDD/PR bridge new effects retired | `CAP-SDK-task-flow-execution`, `CAP-SDK-existing-pr-bridge` |
+| SDK flows | Durable generic host and scoped approval; built-in SDD/PR bridge new effects retired | `CAP-SDK-task-flow-execution`, `CAP-SDD-native-delivery` |
 
 ### Latest recorded local verification
 
@@ -31,8 +31,8 @@ Actions execution were not performed for that follow-up.
 ### Remaining rollout evidence
 
 Before claiming deployment of the local changes, build the container, apply the
-matching retirement migration, and inspect previously dispatched work under the
-[rollout procedure](sdd-runtime.md#rollout-and-rollback). Check ordinary activity
+matching schema cleanup migration under the
+[schema update procedure](sdd-runtime.md#schema-update). Check ordinary activity
 start/questions and GitHub delivery through the [live canary](sdd-runtime.md#live-canary-after-deployment),
 and record the revision and exact Run/PR links. Actual provider
 replies, GitHub CI and merge behavior cannot be inferred from local fixtures.

@@ -1,7 +1,7 @@
 """Bulk reverse relationships for already-selected run pages."""
 
 from app.features.ai_catalogs.models import AICatalogSession
-from app.features.project_management.sdd.batch_models import SddActivityClaim, SddBatch, SddBatchMember
+from app.features.project_management.sdd.claim_models import SddActivityClaim
 from app.features.project_management.work_plans.models import WorkItem, WorkPlan
 from sqlalchemy import select
 
@@ -36,11 +36,6 @@ class RunOriginRepository:
                     SddActivityClaim.id,
                     SddActivityClaim.project_id,
                     SddActivityClaim.unit,
-                    SddBatch.id,
-                    SddBatch.project_id,
-                )
-                .outerjoin(SddBatchMember, SddBatchMember.id == SddActivityClaim.member_id)
-                .outerjoin(SddBatch, SddBatch.id == SddBatchMember.batch_id)
-                .where(SddActivityClaim.run_id.in_(ids))
+                ).where(SddActivityClaim.run_id.in_(ids))
             )
         ).all()

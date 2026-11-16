@@ -14,7 +14,6 @@ from app.features.project_management.pipeline_runs.models import (
     RunResumeReceipt,
 )
 from app.features.project_management.pipeline_runs.requests import request_digest
-from app.features.project_management.sdd.execution import retired
 from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy import Table, delete, event, select
 from sqlalchemy.orm import object_session
@@ -31,7 +30,7 @@ def sync_run(connection, run_id, now=None):
     table = cast(Table, DecisionEntry.__table__)
     previous = {r["key"]: r for r in connection.execute(select(table).where(table.c.run_id == run_id)).mappings()}
     rows = []
-    if run.state not in ("completed", "failed", "canceled") and not retired(run):
+    if run.state not in ("completed", "failed", "canceled"):
         questions = list(
             connection.execute(
                 select(RunQuestion.__table__).where(

@@ -1,5 +1,6 @@
 ---
 id: UC-complete-sdd-workflow
+aliases: [UC-decide-sdd-proposal, UC-preview-sdd-milestone, UC-execute-sdd-batch]
 title: Follow repository-owned SDD work through PR delivery
 summary: "An operator follows an SDD activity as ordinary PR work, answers agent questions and explicitly resumes it, then observes repository-owned GitHub CI and policy-controlled merging."
 area: sdd
@@ -52,10 +53,6 @@ entrypoints:
 - **7a.** CI fails, the head moves or project merge policy withholds merge: the
   ordinary PR owner repairs or waits under its existing limits; resumes at step 7
   or ends at an explicit blocked/failed outcome. Interface: `UX-run-page`.
-- **1a.** The Run contains legacy native authority: Hub shows retained evidence and
-  refuses live native resume with `SDD_EXECUTION_RETIRED`; the use case ends.
-  Interface: `UX-sdd-run`.
-
 ## 4. Postconditions
 
 - **Success guarantee**: the Run records its actual PR delivery outcome.
@@ -64,7 +61,7 @@ entrypoints:
 
 ## 5. Acceptance Criteria (Given / When / Then)
 
-Applicable rules: `CAP-SDD-native-delivery` descriptive context/retirement;
+Applicable rules: `CAP-SDD-native-delivery` descriptive activity context;
 `CAP-PR-operator-decisions` durable input and explicit resume;
 `CAP-PR-pull-request-delivery` Draft/current-head CI/merge policy.
 
@@ -88,10 +85,3 @@ Applicable rules: `CAP-SDD-native-delivery` descriptive context/retirement;
 - **Given** Draft status, changed head, failing CI or disabled auto-merge.
 - **When** Hub advances the Run.
 - **Then** it follows the ordinary PR refusal/wait contract without repository workflow reevaluation.
-
-### SDD-FOLLOW-04: Inspect retired work
-
-- **Covers**: 1a.
-- **Given** a legacy native Run.
-- **When** the operator inspects and attempts to resume it.
-- **Then** evidence stays readable and live native execution is refused.

@@ -27,17 +27,11 @@ PRESENTATION = {
     "work-item-recovery": ("work-item-recovery", "inspect-recovery", "Inspect recovery"),
     "work-item-replacement": ("replacement-link", "accept-replacement", "Accept replacement"),
     "work-item-attention": ("work-item", "inspect-work-item", "Inspect Work Item"),
-    "sdd-batch-attention": ("sdd-batch", "inspect-batch", "Inspect batch"),
     "connection-test-cleanup": ("connection-test", "review-cleanup", "Review cleanup"),
     "failed-run": ("pipeline-run", "inspect-run", "Inspect run"),
 }
 DECISION_CAUSES = {
     "run-question": "Run question awaits an answer",
-    "native-hub-question": "SDD question awaits an answer",
-    "native-worker-question": "SDD worker question awaits an answer",
-    "native-workflow": "SDD workflow awaits a decision",
-    "native-proposal": "SDD proposal awaits a decision",
-    "native-integration": "SDD integration awaits approval",
 }
 
 
@@ -94,8 +88,6 @@ def _cause(row) -> str:
         return "Replacement has a dependent edge awaiting acceptance"
     if kind == "work-item-attention":
         return f"Work Item needs attention: {detail}" if detail else "Work Item needs attention"
-    if kind == "sdd-batch-attention":
-        return f"SDD batch needs attention: {detail}" if detail else "SDD batch needs attention"
     return "Connection-test cleanup needs review"
 
 
@@ -129,7 +121,6 @@ def present(row) -> OwedItemRead:
                 "run_id": _uuid(row["run_id"]),
                 "work_plan_id": _uuid(row["work_plan_id"]),
                 "work_item_id": _uuid(row["work_item_id"]),
-                "sdd_batch_id": _uuid(row["sdd_batch_id"]),
                 "catalog_hold": hold,
             },
         }

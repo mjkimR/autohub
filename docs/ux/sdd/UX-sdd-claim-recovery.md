@@ -31,8 +31,8 @@ A settled owner offers **Review new activity**, which returns to intent review.
 
 - **uninspected**: Inspect retained owner loads exact evidence.
 - **loading**: competing inspection/release is disabled.
-- **reconcilable**: a retired claim or eligible unleased uncertain no-Run publication requires acknowledgment of inspected external work.
-- **active**: follow the owning Run; no retired-reservation release is offered.
+- **reconcilable**: an unleased uncertain no-Run publication requires acknowledgment of inspected external work.
+- **active**: follow the owning Run; no reservation release is offered.
 - **settled**: review new activity intent; no execution starts automatically.
 - **error**: show the exact read/refusal outcome and retry permitted inspection.
 - **uncertain**: retain the original acknowledgment UUID/digest; only **Retry same acknowledgment** can resend it.

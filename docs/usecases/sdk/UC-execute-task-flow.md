@@ -1,5 +1,6 @@
 ---
 id: UC-execute-task-flow
+aliases: [UC-resume-verified-pr]
 title: Execute a Versioned Task Flow
 summary: "A machine client registers and runs a versioned task flow, resolves any declared approval, and obtains its durable result. The host preserves identities and execution limits across retries and recovery."
 area: sdk

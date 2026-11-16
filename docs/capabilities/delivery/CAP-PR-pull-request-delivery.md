@@ -34,7 +34,7 @@ the same executor after `CAP-WORK-work-plan-execution` prepares an Item's PR.
   provider implementation occurs outside Hub. `CAP-PR-ci-observation` owns exact
   workflow/job evidence; `CAP-PR-agent-dispatch` owns mention rendering, delivery
   reconciliation and provider watchdogs. `CAP-PR-operator-decisions` owns Run
-  clarification; `CAP-SDD-native-delivery` owns descriptive activity intent and retired native history;
+  clarification; `CAP-SDD-native-delivery` owns descriptive activity intent;
   `CAP-SDK-task-flow-execution` owns SDK flow approval.
 - **Scope Excluded**: per-commit human review, remote-provider cancellation,
   exactly-once effects across Hub and GitHub, and automatic creation of a PR by
@@ -137,7 +137,7 @@ Ticks call the common advancement loop with `respect_due=true`. Events/manual
 advances may refresh their first implementation/CI observation early but never
 bypass a future queued/dispatching delivery. A new CI repair clears the obsolete
 observation delay. Selection orders observations before uncertain delivery and
-new work. Legacy native authority is permanently retired. Paused Runs do not
+new work. Paused Runs do not
 auto-resume without their ordinary explicit control.
 
 The project's task uses `MAX_CONCURRENT_TASKS` as its batch/semaphore bound

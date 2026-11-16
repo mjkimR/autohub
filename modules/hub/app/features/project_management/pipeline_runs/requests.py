@@ -26,9 +26,6 @@ def build_implementation_request(
         "Follow the repository instructions, run the required checks, and push the result to that branch."
     )
     if run.sdd_snapshot:
-        from app.features.project_management.sdd.execution import require_current
-
-        require_current(run)
         intent = run.sdd_snapshot
         instructions += (
             f"\nRequested repository activity: {intent.get('activity_kind', 'dev')}. "

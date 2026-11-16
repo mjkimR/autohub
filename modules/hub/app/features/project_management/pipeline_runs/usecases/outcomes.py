@@ -15,10 +15,7 @@ class DecisionOutcomeUseCase:
             run = await PipelineRunRepository().get(session, run_id, lock=True)
             if run is None:
                 raise ProjectError(404, "Pipeline run not found")
-            from app.features.project_management.sdd.execution import retired
 
-            historical = retired(run)
-            progress = run.sdd_progress or {}
             evidence = await DecisionOutcomeService().evidence(session, run, request_id, operation)
             return DecisionOutcome(
                 operation=operation,
@@ -27,9 +24,6 @@ class DecisionOutcomeUseCase:
                 run_revision=run.revision,
                 run_state=run.state,
                 observed_at=get_current_utc_time(),
-                inspected_head=progress.get("head_sha"),
-                inspected_digest=progress.get("evidence_digest"),
-                current_authority=None if historical else progress.get("approval"),
-                current_hold=None if historical else progress.get("hold"),
+                inspected_head=(run.pull_snapshot or {}).get("head_sha"),
                 **evidence,
             )

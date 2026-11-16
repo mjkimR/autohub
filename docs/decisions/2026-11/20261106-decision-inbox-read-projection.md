@@ -32,8 +32,8 @@ Ordinary question rows and native SDD evidence have different lifecycles. Per-ru
 
 - The normalized projection serves discovery and is rebuildable from owner records. → `ARCH-05-2-components` Components and owners (SHOULD).
 - Ordinary saved answers remain pending until explicitly applied or dismissed. → `CAP-PR-operator-decisions` discovery rules (MUST).
-- Native entries describe observed pending subjects and require refreshed owner review before mutation. → `CAP-SDD-native-delivery` discovery rules (MUST); `CAP-SDD-workflow-control` discovery rules (MUST).
-- The inbox introduces no mutation authority or automatic execution. → `CAP-PR-operator-decisions` discovery rules (MUST); `CAP-SDD-workflow-control` discovery rules (MUST).
+- Native entries describe observed pending subjects and require refreshed owner review before mutation. → `CAP-SDD-native-delivery` discovery rules (MUST); CAP-SDD-workflow-control discovery rules (MUST).
+- The inbox introduces no mutation authority or automatic execution. → `CAP-PR-operator-decisions` discovery rules (MUST); CAP-SDD-workflow-control discovery rules (MUST).
 - Native waiting age records first observation of a subject generation and does not claim the historical request creation time.
 
 ## 5. Consequences
@@ -42,6 +42,6 @@ The migration bootstraps older native subjects with an explicitly labeled observ
 
 ## 6. Confirmation
 
-`SPEC-operator-decision-inbox` implements the rebuildable projection, transaction-bound maintenance, bounded joined listing and exact owner review. `CAP-PR-operator-decisions` and `CAP-SDD-workflow-control` restate its guarantees.
+`SPEC-operator-decision-inbox` implements the rebuildable projection, transaction-bound maintenance, bounded joined listing and exact owner review. `CAP-PR-operator-decisions` and CAP-SDD-workflow-control restate its guarantees.
 
 Executed persistence, generation, authority/CAS and migration assertions are in `modules/hub/tests/integration/features/project_management/pipeline_runs/test_discovery.py` and `modules/hub/tests/integration/migrations/test_decision_discovery.py`. These passed with SQLite and disposable PostgreSQL. UI interaction tests, repository lint and types/production build passed on the source branch; final branch evidence is retained in the spec envelopes. This establishes no live deployment, external-provider result or measured performance improvement.

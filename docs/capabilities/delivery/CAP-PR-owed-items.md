@@ -29,8 +29,8 @@ label is "Needs you".
 - **In-Scope**: the owed-item model, its kinds and waiting predicates, root-cause suppression, the list and counts
   reads, and the per-run pending-decision flag on PR run reads.
 - **Out-of-Scope**: each owner keeps its lifecycle and actions: decisions in `CAP-PR-operator-decisions` and
-  `CAP-SDD-workflow-control`, PR runs in `CAP-PR-pull-request-delivery`, Work Plans in `CAP-WORK-work-plan-execution`,
-  retired native history in `CAP-SDD-native-delivery`, connection tests in `CAP-CONN-connection-verification` and catalog holds
+  `CAP-SDD-native-delivery`, PR runs in `CAP-PR-pull-request-delivery`, Work Plans in `CAP-WORK-work-plan-execution`,
+  activity intent in `CAP-SDD-native-delivery`, connection tests in `CAP-CONN-connection-verification` and catalog holds
   in `CAP-AGENT-catalog-admission`. Notices stay in `CAP-NOTIFY-operator-notifications`.
 - **Scope Excluded**: grouping owed items into threads or workspaces, owed-item notices, MCP exposure, a persisted
   owed projection and any action on the owed item itself. The app shell Badge reads the counts and the Attention
@@ -46,9 +46,7 @@ label is "Needs you".
    decision, then Work Item recovery or replacement, then Work Item `attention`, then run
    state. A run with any decision-inbox row is held by that decision. Check: `test_decisions_suppress_runs_and_match_the_inbox_count`,
    `test_failed_runs_are_quiet_and_recovery_wins`, `test_work_plan_and_work_item_kinds` and
-   `test_batch_attention_suppresses_its_run_and_yields_to_decisions` and
-   `test_a_batch_yielding_to_a_decision_hides_no_other_stopped_run` and
-   `test_failed_runs_yield_to_batch_and_work_item_attention`.
+   `test_failed_runs_yield_to_work_item_attention`.
 4. **Decision parity**: WHEN counting, Hub MUST report a `decision` count equal to `actionable_total_count` of the
    decision list for the same `project_id` scope. Check: `test_decisions_suppress_runs_and_match_the_inbox_count`.
 5. **Catalog holds are context**: Hub MUST never list an AI catalog as an item; WHEN a stopped run's catalog is held,
@@ -74,7 +72,6 @@ label is "Needs you".
 | `work-item-recovery` | yes | Recovery in `accepted` or `reconciling` (`CAP-WORK-work-plan-execution`) | `work-item-recovery` | `inspect-recovery` |
 | `work-item-replacement` | yes | Active link whose original has a `waiting` dependent edge without a live acceptance (`CAP-WORK-work-plan-execution`) | `replacement-link` | `accept-replacement` |
 | `work-item-attention` | yes | Work Item in `attention` (`CAP-WORK-work-plan-execution`) | `work-item` | `inspect-work-item` |
-| `sdd-batch-attention` | legacy only | Retained native batch evidence; no new admission (`CAP-SDD-native-delivery`) | `sdd-batch` | `inspect-batch` |
 | `connection-test-cleanup` | yes | Terminal test whose cleanup the operator can review (`CAP-CONN-connection-verification`) | `connection-test` | `review-cleanup` |
 | `failed-run` | no | `failed` PR run (`CAP-PR-pull-request-delivery`) | `pipeline-run` | `inspect-run` |
 
@@ -101,7 +98,7 @@ Both reads are authenticated and follow the decision list's visibility: admitted
 | `GET /api/v1/owed-items/counts` | `project_id` | `OwedItemCounts`: `total` (counted only), `by_kind` (every kind, zero included), `by_project` (counted, zero omitted) |
 
 An item carries `key`, `kind`, `counted`, `cause`, `subject` (`type`, `id`, `project_id`, `title`), `primary_action`
-(`name`, `label`), `waiting_since` and `context` (`run_id`, `work_plan_id`, `work_item_id`, `sdd_batch_id`,
+(`name`, `label`), `waiting_since` and `context` (`run_id`, `work_plan_id`, `work_item_id`,
 `catalog_hold` with `catalog_id`, `reason` `unavailable` or `quota-blocked` and `available_at`). An unknown project
 returns 404; an unknown kind, an out-of-range limit, a malformed cursor or a cursor with changed filters returns 422.
 

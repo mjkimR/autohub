@@ -353,7 +353,6 @@ test('optimistic SDD uses the ordinary question composer without a native gate',
 	const optimistic = {
 		...run,
 		sdd_snapshot: {
-			execution_version: 2,
 			provider: 'repository-agent',
 			spec_dir: 'docs/proposals/PROP-demo'
 		}

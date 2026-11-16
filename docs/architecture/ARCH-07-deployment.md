@@ -54,8 +54,7 @@ owns repository setup and workflow execution; configured repository verification
 runs in GitHub Actions. Auto Hub's contributor devkit environment stays separate.
 
 Old `AUTOHUB_SDD_*` cache/build/profile variables and sandbox-host probes are not
-serving prerequisites. The retired built-in SDK bridge needs no mounted checkout
-or `AUTOHUB_FLOW_DELIVERY_TARGETS` mapping. Generic HTTP worker targets retain
+serving prerequisites. Generic HTTP worker targets retain
 `CAP-SDK-task-flow-execution` and their configured credential boundary.
 
 ## Operational evidence boundary

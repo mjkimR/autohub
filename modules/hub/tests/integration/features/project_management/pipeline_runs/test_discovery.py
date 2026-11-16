@@ -85,7 +85,6 @@ async def test_keyset_bounded_and_cursor_filters(client, project, github, sessio
         ({"kind": "run-question"}, 105),
         ({"question_state": "open"}, 105),
         ({"question_state": "answered"}, 0),
-        ({"kind": "native-proposal"}, 0),
     ):
         filtered = (await client.get(URL, params={**params, "limit": 1})).json()
         assert filtered["actionable_total_count"] == total, params
@@ -155,33 +154,11 @@ async def test_projection_rolls_back_with_owner(client, project, github, session
     assert (await client.get(URL)).json()["items"] == []
 
 
-async def test_retired_native_evidence_never_creates_live_decisions(client, project, github, session):
-    enrolled = (await enroll(client, project)).json()
-    row = await session.get(PipelineRun, UUID(enrolled["id"]))
-    row.sdd_snapshot = {"provider": "devkit-spec", "spec_dir": "specs/historical"}
-    row.sdd_progress = {"current": {"requests": [{"id": "gate:plan-accept", "kind": "approve"}]}}
-    row.state = "blocked"
-    session.add(
-        RunQuestion(
-            pipeline_run_id=row.id,
-            head_sha="c" * 40,
-            question="Historical question",
-            actor="test",
-            source="agent",
-            state="open",
-        )
-    )
-    await session.commit()
-    assert (await client.get(URL)).json()["items"] == []
-    assert not (await client.get(f"/api/v1/pipeline-runs/{row.id}")).json()["has_pending_decision"]
-
-
 async def test_optimistic_activity_uses_ordinary_question_projection(client, project, github, session):
     enrolled = (await enroll(client, project)).json()
     row = await session.get(PipelineRun, UUID(enrolled["id"]))
     row.sdd_snapshot = {
         "provider": "repository-agent",
-        "execution_version": 2,
         "spec_dir": "docs/proposals/PROP-example",
     }
     await session.commit()

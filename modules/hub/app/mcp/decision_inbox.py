@@ -45,7 +45,6 @@ def register_decisions(registry: ToolRegistry, deps: Dependencies):
 
     async def review(args: Review) -> ReviewView:
         row = await owner.review(args, deps.observer)
-        progress = row.sdd_progress or {}
         return ReviewView(
             key=args.key,
             fingerprint=args.fingerprint,
@@ -53,8 +52,7 @@ def register_decisions(registry: ToolRegistry, deps: Dependencies):
             project_id=row.project_id,
             state=row.state,
             revision=row.revision,
-            inspected_head=progress.get("head_sha"),
-            inspected_digest=progress.get("evidence_digest"),
+            inspected_head=row.pull_snapshot.head_sha,
         )
 
     async def outcome(args: Outcome) -> OutcomeView:

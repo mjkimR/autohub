@@ -8,10 +8,9 @@ const claim = {
 	id: 'claim-1',
 	unit: 'docs/proposals/PROP-demo',
 	activity: 'plan',
-	run_id: 'old-run',
-	checkpoint: { pull_number: 3 },
+	run_id: null,
+	checkpoint: { pull_number: 3, uncertain: true },
 	checkpoint_digest: 'reviewed-digest',
-	retired: true,
 	settled: false
 };
 beforeEach(() => {
@@ -34,9 +33,7 @@ test('releases only the inspected retained reservation after explicit acknowledg
 	await user.click(screen.getByRole('button', { name: 'Inspect retained owner' }));
 	const release = await screen.findByRole('button', { name: 'Release inspected reservation' });
 	expect((release as HTMLButtonElement).disabled).toBe(true);
-	expect(screen.getByRole('link', { name: 'Open retained Run' }).getAttribute('href')).toBe(
-		'/projects/project/runs/old-run'
-	);
+
 	await user.click(screen.getByRole('checkbox'));
 	await user.click(release);
 	await screen.findByText('Lost acknowledgment response');
@@ -57,9 +54,7 @@ test('an expired uncertain optimistic publication can be acknowledged without a 
 	api.GET.mockResolvedValue({
 		data: {
 			...claim,
-			retired: false,
-			run_id: null,
-			checkpoint: { execution_version: 2, uncertain: true, lease_expires_at: null }
+			run_id: null
 		}
 	});
 	render(SddClaimRecovery, { projectId: 'project', claimId: 'claim-1', onresolved: vi.fn() });
@@ -71,10 +66,8 @@ test('a live optimistic publication lease has no release action', async () => {
 	api.GET.mockResolvedValue({
 		data: {
 			...claim,
-			retired: false,
 			run_id: null,
 			checkpoint: {
-				execution_version: 2,
 				uncertain: true,
 				lease_expires_at: '2999-01-01T00:00:00Z'
 			}

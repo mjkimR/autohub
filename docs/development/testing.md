@@ -68,15 +68,15 @@ These fixtures verify command wiring without installing dependencies or creating
 Git worktrees. A real `just init`, `just lint` and `just check` verify the installed
 contributor environment separately.
 
-## Repository activity and retirement contracts
+## Repository activity contracts
 
 Run the owning SDD activity/API, ordinary PR question/progression and migration
 paths with the standard backend recipes. These tests verify optimistic dispatch,
-exact claim recovery, history and permanent refusal of legacy execution; they do
+exact claim recovery and absence of native compatibility endpoints; they do
 not provision another repository's devkit runtime. PostgreSQL concurrency cases
 still require PostgreSQL coverage.
 
-## SDK host and retired bridge fixtures
+## SDK host worker fixtures
 
 Run the owning flow integration path with SQLite or PostgreSQL:
 
@@ -90,8 +90,6 @@ a `postgresql+psycopg` URL whose host is `127.0.0.1` and whose database name sta
 with `autohub_test_`. Fixtures create/drop model tables; use a dedicated test DB.
 Local worker HTTP tests bind loopback ports.
 
-Bridge tests cover deterministic retirement and receipt-backed observe-only
-recovery. They do not require a local repository checkout or devkit seed runtime.
 Generic flow/HTTP worker tests use their own controlled fixtures and do not
 establish deployed worker cooperation or live CI/merge.
 

@@ -28,7 +28,6 @@ agent's responsibility.
 - SDD unit (path/title/status on the selected base).
 - Native SDD activity (Planning/Development, base and effort/catalog preferences).
 - PR run (tracked Run and exact GitHub PR links).
-- SDD batch (read-only retained-history disclosure).
 - `UX-sdd-claim-recovery` (exact retained owner inspection and explicit acknowledgment; on an ownership conflict).
 
 No runtime card, readiness preview, acceptance/rejection control or executable
@@ -46,7 +45,7 @@ milestone selection appears here.
 - **ownership-conflict**: identify/link the active Run or retained claim; inspect that
   owner rather than retrying as replacement work.
 - **reconciliation-required**: identify retained evidence and explain that inspected
-  external work must be explicitly acknowledged before a retired reservation is released.
+  external work must be explicitly acknowledged before an uncertain publication reservation is released.
 
 ## 4. Interactions
 

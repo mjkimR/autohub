@@ -27,7 +27,6 @@ const zero = {
 	'work-item-recovery': 0,
 	'work-item-replacement': 0,
 	'work-item-attention': 0,
-	'sdd-batch-attention': 0,
 	'connection-test-cleanup': 0,
 	'failed-run': 0
 };
@@ -66,7 +65,6 @@ test('populated strip shows one chip per kind linking to where it is resolved', 
 				'stopped-run': 1,
 				'work-plan-proposed': 1,
 				'work-item-recovery': 1,
-				'sdd-batch-attention': 1,
 				'connection-test-cleanup': 1,
 				'failed-run': 3
 			},
@@ -81,7 +79,6 @@ test('populated strip shows one chip per kind linking to where it is resolved', 
 	expect(href('1 held PR run')).toBe('/projects/p1?tab=runs');
 	expect(href('1 Work Plan to review')).toBe('/projects/p1?tab=plans');
 	expect(href('1 Work Item recovery')).toBe('/projects/p1?tab=plans');
-	expect(href('1 SDD batch in attention')).toBe('/projects/p1?tab=repository');
 	expect(href('1 connection-test cleanup')).toBe('/projects/p1?tab=connections');
 	expect(href('View in Attention')).toBe('/?project=p1');
 	// Failed runs are listed quietly: outline chip, never the attention variant.
@@ -104,7 +101,6 @@ test('every counted kind maps to a project section and a readable label', () => 
 		['1 Work Item recovery', 'tab=plans', false],
 		['1 Work Item replacement', 'tab=plans', false],
 		['1 Work Item needing attention', 'tab=plans', false],
-		['1 SDD batch in attention', 'tab=repository', false],
 		['1 connection-test cleanup', 'tab=connections', false],
 		['1 failed PR run', 'tab=runs', true]
 	]);

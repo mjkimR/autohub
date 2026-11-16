@@ -208,7 +208,7 @@ export interface components {
             quota_block_count: number;
             /**
              * Has Pending Decision
-             * @description The run has an actionable decision-inbox row (a Run question or Native SDD request)
+             * @description The run has an actionable decision-inbox row (a Run question)
              * @default false
              */
             has_pending_decision: boolean;
@@ -278,8 +278,6 @@ export interface components {
             catalog_id?: string | null;
             /** Unit */
             unit?: string | null;
-            /** Batch Id */
-            batch_id?: string | null;
             /** Url */
             url?: string | null;
         };

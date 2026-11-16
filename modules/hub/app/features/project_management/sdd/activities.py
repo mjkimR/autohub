@@ -69,7 +69,6 @@ class ActivityStarter:
         request,
         actor,
         *,
-        expected_base_sha=None,
         checkpoint=None,
         saved=None,
         admission=None,
@@ -97,8 +96,6 @@ class ActivityStarter:
             if base is None:
                 raise ProjectError(422, f"Base branch {request.base_branch} is not on the remote")
             base_sha = saved.get("base_sha") or base["object"]["sha"]
-            if expected_base_sha and not saved.get("initial_sha") and base_sha != expected_base_sha:
-                raise ProjectError(409, "Base SHA changed before activity publication")
             existing = await github.optional(f"{root}/git/ref/heads/{quote(branch, safe='')}")
             pulls = await activity_pulls(github, repository, branch)
             known = saved.get("pull_number")

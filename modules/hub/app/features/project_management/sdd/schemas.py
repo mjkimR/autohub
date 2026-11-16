@@ -8,11 +8,6 @@ from .units import UNIT_PATTERN
 SPEC_PATTERN = UNIT_PATTERN  # a spec bundle or a proposal bundle; the name stays for the API fields that use it
 
 
-class SddInspectionRequest(BaseModel):
-    pull_number: int = Field(gt=0)
-    spec_dir: str = Field(pattern=SPEC_PATTERN, max_length=255)
-
-
 class StartActivityRequest(BaseModel):
     """Start Planning or Development of a proposal in the cloud: Hub makes the branch and pull request."""
 
@@ -66,7 +61,6 @@ class ClaimRead(BaseModel):
     activity: str
     run_id: UUID | None
     settled: bool
-    retired: bool
     checkpoint_digest: str
     checkpoint: dict
 
@@ -74,10 +68,4 @@ class ClaimRead(BaseModel):
 class ReconcileClaimRequest(BaseModel):
     request_id: UUID
     expected_checkpoint_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
-    acknowledge_external_work: Literal[True]
-
-
-class ReconcileRunRequest(BaseModel):
-    request_id: UUID
-    expected_revision: int = Field(ge=1)
     acknowledge_external_work: Literal[True]

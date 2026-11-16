@@ -6,7 +6,7 @@ from app.features.execution.tasks.domains.maintenance.history import HistoryRete
 from app.features.project_management.projects.repos import ProjectRepository
 from app.features.project_management.projects.services import ProjectService
 from app.features.project_management.sdd.activity_claims import settle_individual_claims
-from app.features.project_management.sdd.batch_models import SddActivityClaim
+from app.features.project_management.sdd.claim_models import SddActivityClaim
 from app_testing_base import utc_now
 from sqlalchemy import select, update
 from tests.integration.features.notifications.test_tick_housekeeping import make_run
@@ -23,7 +23,7 @@ async def test_unresolved_claim_protects_run_until_final_owner_tombstone(session
         request_digest="1" * 64,
         unit="docs/proposals/PROP-demo",
         activity="dev",
-        checkpoint={"execution_version": 2},
+        checkpoint={},
         run_id=run.id,
     )
     session.add(claim)

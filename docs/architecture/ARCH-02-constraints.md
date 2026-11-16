@@ -27,7 +27,7 @@ run does not imply every architectural constraint is mechanically enforced.
 ## Compatibility ownership
 
 `CAP-SDK-task-flow-execution` owns the SDK/host protocol and immutable release
-identity. `CAP-SDK-existing-pr-bridge` identifies retired bridge authority.
+identity. `CAP-SDD-native-delivery` identifies retired bridge authority.
 `CAP-SDD-native-delivery` owns optimistic activity context and retained claims. Changes to one
 contract do not silently change the authority of the others.
 
@@ -40,6 +40,6 @@ presence are not substitutes for executing the relevant regression tests.
 - [Backend checks](../../scripts/check-backend.sh) run pin, lint, sync and architecture checks.
 - [Project recipes](../../justfile) define lint, type, SDK and generated-client checks.
 - [Activity execution boundary](../../modules/hub/app/features/project_management/sdd/execution.py)
-  distinguishes new descriptive intent from retired native authority.
+  protects saved activity artifacts against duplicate enrollment.
 - [Pin checker tests](../../modules/hub/tests/unit/scripts/test_check_devkit.py)
   exercise supported pin inputs and mismatch failures.

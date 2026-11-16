@@ -249,7 +249,7 @@ test('an incomplete decisions page keeps the run page conservative', async () =>
 		if (path === '/api/v1/pipeline-runs/decisions')
 			return {
 				data: {
-					items: [{ run_id: 'other', kind: 'native-workflow', actionable: true }],
+					items: [{ run_id: 'other', kind: 'run-question', actionable: true }],
 					has_more: true,
 					next_cursor: 'next'
 				}

@@ -17,14 +17,7 @@ type Intent = {
 };
 type Outcome = components['schemas']['DecisionOutcome'];
 export function decisionBasis(run: components['schemas']['PipelineRunRead']) {
-	const p = run.sdd_progress || {};
-	return JSON.stringify([
-		p.head_sha || run.pull_snapshot?.head_sha || '',
-		p.approval,
-		p.hold,
-		run.project_id,
-		run.sdd_snapshot
-	]);
+	return JSON.stringify([run.pull_snapshot?.head_sha || '', run.project_id, run.sdd_snapshot]);
 }
 const reviews: Record<string, DecisionIntent> = {};
 export function decisionIntent(runId: string, recovery = false) {
