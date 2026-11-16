@@ -132,7 +132,11 @@ output and error. `AttemptView` exposes step ID, number, status, inputs, output
 and error; persisted `intent`/`ready` states appear publicly as `running`.
 
 Admission and GET do not execute workers. Maintenance selects up to 32 due runs
-per batch and advances each once, using a 60-second lease. External-result polls
+per batch. Each run continues immediately ready transitions for at most 32 advances
+or 20 seconds, using a fresh 60-second lease and revision check for each advance.
+Completed tasks proceed to the next step, including final output validation, in the same invocation.
+Authoritative absence permits same-ID resubmission within that budget.
+Approval waits, external-result due times, terminal states and ownership loss stop continuation. External-result polls
 are scheduled at least 5 seconds later; this minimum does not promise wall-clock
 completion before the scheduler next runs. An elapsed approval becomes
 `failed` / `approval-deadline` when advancement records the expiry.
@@ -210,3 +214,5 @@ Hub MUST resolve native `autohub.identity` and configured HTTP targets through t
 ordinary worker allowlist. Other native targets receive `422 worker-binding` on
 release registration. No SDD/PR bridge observer or retirement handler exists.
 Check: flow host binding validation tests and `ADR-remove-native-sdd-compatibility`.
+
+WHEN a flow has immediately ready transitions, maintenance MUST continue them within its step/time budget while preserving approval, due-time and fencing boundaries. Check: `modules/hub/tests/integration/features/execution/flows/test_continuation.py`.

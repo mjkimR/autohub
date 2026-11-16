@@ -1,5 +1,6 @@
 """Short DB transactions around worker I/O, with durable intents and fenced results."""
 
+import asyncio
 from uuid import UUID, uuid4
 
 from app_layer_base.core.database.transaction import AsyncTransaction
@@ -7,7 +8,10 @@ from app_layer_base.utils.time_util import get_current_utc_time
 
 from .adapters import RECOVERABLE_ERRORS, WorkerAdapter
 from .repos import FlowRepository
-from .runtime import FlowRuntime
+from .runtime import FlowRuntime, utc
+
+CONTINUE_SECONDS = 20
+CONTINUE_MAX_STEPS = 32
 
 
 class FlowWorker:
@@ -64,6 +68,27 @@ class FlowWorker:
             async with self.transaction() as session:
                 await self.repo.release_lease(session, run_id, token)
 
+    async def advance_until_wait(self, run_id: UUID) -> None:
+        """Drain immediately ready transitions; external waits and approvals keep their due time."""
+        try:
+            async with asyncio.timeout(CONTINUE_SECONDS):
+                for _ in range(CONTINUE_MAX_STEPS):
+                    if not await self.advance(run_id):
+                        return
+                    async with self.transaction() as session:
+                        run = await self.repo.run(session, run_id)
+                        now = get_current_utc_time()
+                        if (
+                            run is None
+                            or run.status not in ("queued", "running", "waiting", "canceling")
+                            or run.next_action_at is None
+                            or utc(run.next_action_at) > now
+                        ):
+                            return
+        except TimeoutError:
+            # A committed intent survives cancellation; the next tick inspects it before resubmission.
+            return
+
     async def tick(self, *, limit=32) -> None:
         async with self.transaction() as session:
             pending = await self.repo.ready(session, get_current_utc_time(), limit)
@@ -71,7 +96,7 @@ class FlowWorker:
         failures = 0
         for run_id in pending:
             try:
-                await self.advance(run_id)
+                await self.advance_until_wait(run_id)
             except Exception:
                 from app_layer_base.core.log import logger
 

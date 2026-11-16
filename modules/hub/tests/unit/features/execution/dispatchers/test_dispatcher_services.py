@@ -306,3 +306,23 @@ class TestRunDispatch:
             service.job_repo.get_by_pk = AsyncMock(return_value=None)  # job not found
 
             await service._run_dispatch(job, config, run_id=run_id)
+
+
+@pytest.mark.parametrize("task", ["system.maintain", "pipeline.dispatch_project"])
+@pytest.mark.parametrize("delay,expected", [(2, 60), (60, 120), (185, 240)])
+def test_owned_cadence_coalesces_delay_without_arrival_drift(task, delay, expected):
+    from datetime import timedelta
+
+    due = utc_now()
+    config = _make_schedule_config(interval_seconds=60)
+    config.task_func, config.next_run_at = task, due
+    assert DispatcherService.calc_next_run(config, due + timedelta(seconds=delay)) == due + timedelta(seconds=expected)
+
+
+def test_operator_interval_retains_arrival_based_calculation():
+    from datetime import timedelta
+
+    due = utc_now()
+    config = _make_schedule_config(interval_seconds=60)
+    config.task_func, config.next_run_at = "operator.custom", due
+    assert DispatcherService.calc_next_run(config, due + timedelta(seconds=2)) == due + timedelta(seconds=62)

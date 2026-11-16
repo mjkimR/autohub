@@ -187,3 +187,7 @@ Retention MUST preserve unresolved claim evidence and its owner link until
 explicit settlement; settled claim tombstones prevent old request replay from
 creating replacement artifacts. Check: activity-history maintenance tests and
 retention source inspection.
+
+## System-owned interval cadence
+
+WHEN a due system maintenance or project dispatch interval is claimed, Hub MUST calculate its next due time from the retained due instant, coalescing missed intervals to the first boundary after the current tick. Without a retained due instant, calculation starts from the current tick. Cron and other interval schedules retain their existing calculation. Check: `test_owned_cadence_coalesces_delay_without_arrival_drift` and `test_operator_interval_retains_arrival_based_calculation` in `modules/hub/tests/unit/features/execution/dispatchers/test_dispatcher_services.py`.

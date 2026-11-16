@@ -75,7 +75,7 @@ class PipelineRunControl:
         actor: str = "operator",
         expected_head_sha: str | None = None,
         guard=None,
-    ) -> PipelineRunRead:
+    ) -> tuple[PipelineRunRead, bool]:
         interactions = RunInteractionService()
         digest = (
             request_digest({"run_id": str(run_id), "actor": actor, "request": request.model_dump(mode="json")})
@@ -113,7 +113,7 @@ class PipelineRunControl:
             if guard is not None:
                 await guard(session, run)
             if result := await replay(session, run):
-                return result
+                return result, False
             if expected_revision is not None and run.revision != expected_revision:
                 raise ProjectError(
                     409,
@@ -180,7 +180,7 @@ class PipelineRunControl:
             if guard is not None and run is not None:
                 await guard(session, run)
             if run is not None and (result := await replay(session, run)):
-                return result
+                return result, False
             if run is None or run.revision != expected_revision:
                 raise ProjectError(409, "Pipeline run changed while resuming; reload and retry")
             project = await self.projects.get(session, run.project_id)
@@ -192,7 +192,7 @@ class PipelineRunControl:
                 await finish_closed_pull(self.repo, session, run, pr, now)
                 await remember(session)
                 await session.refresh(run)
-                return await read_run(session, run)
+                return await read_run(session, run), True
             if pull.head_ref != run.branch:
                 raise ProjectError(409, "Pull request branch changed; enroll it again")
             if response is not None and response[0].head_sha != pull.head_sha:
@@ -244,7 +244,7 @@ class PipelineRunControl:
                 await remember(session, active.id)
                 await session.flush()
                 await session.refresh(run)
-                return await read_run(session, run)
+                return await read_run(session, run), True
             if active is not None:
                 active.state = ExecutionAttemptState.FAILED
                 active.finished_at = now
@@ -293,7 +293,7 @@ class PipelineRunControl:
             run.revision += 1
             await session.flush()
             await session.refresh(run)
-            return await read_run(session, run)
+            return await read_run(session, run), True
 
     async def cancel_run(self, run_id: UUID) -> PipelineRunRead:
         now = get_current_utc_time()

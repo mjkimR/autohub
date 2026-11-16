@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from inspect import iscoroutinefunction
 from typing import Annotated
 from uuid import UUID
@@ -78,6 +78,17 @@ class DispatcherService:
         Raises:
             ValueError: If the config has neither a cron expression nor an interval.
         """
+        if (
+            config.task_func in ("system.maintain", "pipeline.dispatch_project")
+            and not config.cron_expression
+            and config.interval_seconds
+            and config.next_run_at is not None
+        ):
+            due = config.next_run_at
+            if due.tzinfo is None:
+                due = due.replace(tzinfo=now.tzinfo)
+            interval = timedelta(seconds=config.interval_seconds)
+            return due + max(1, (now - due) // interval + 1) * interval
         return _calc_next_run_util(config.cron_expression, config.interval_seconds, now)
 
     async def get_schedule_configs(self, session: AsyncSession, now: datetime) -> Sequence[ScheduleConfig]:

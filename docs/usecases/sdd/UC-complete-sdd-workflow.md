@@ -86,3 +86,10 @@ Applicable rules: `CAP-SDD-native-delivery` descriptive activity context;
 - **Given** Draft status, changed head, failing CI or disabled auto-merge.
 - **When** Hub advances the Run.
 - **Then** it follows the ordinary PR refusal/wait contract without repository workflow reevaluation.
+
+### SDD-FOLLOW-04: Continue after explicit resume
+
+- **Covers**: main success scenario, step 5.
+- **Given** a saved answer for the current Run question and revision.
+- **When** the operator explicitly resumes.
+- **Then** Hub attempts the committed continuation promptly; replay creates no further prompt attempt and deferred delivery remains recoverable.

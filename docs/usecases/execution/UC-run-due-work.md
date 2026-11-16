@@ -121,3 +121,10 @@ outcomes and failure isolation from `CAP-EXEC-scheduling-maintenance`.
 
 These acceptance references come from source/test inspection; this use case claims
 no newly executed test or live scheduler check.
+
+### Scenario: Preserve system cadence across delayed ticks
+
+- **Covers**: main success scenario.
+- **Given** a system-owned interval schedule due at 12:00:00 with a 60-second interval.
+- **When** a tick claims it at 12:00:02.
+- **Then** the next due instant is 12:01:00, so a tick at that instant can select it.

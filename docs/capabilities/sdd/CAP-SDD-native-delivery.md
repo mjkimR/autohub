@@ -2,7 +2,7 @@
 id: CAP-SDD-native-delivery
 aliases: [CAP-SDD-workflow-control, CAP-SDD-runtime-isolation]
 title: Repository-owned SDD activity delivery
-summary: "Start explicit repository-owned SDD activity intent through ordinary PR delivery. Durable publication claims preserve exact ownership and uncertain-effect recovery."
+summary: "Start explicit repository-owned SDD activity intent through prompt, bounded ordinary PR delivery. Durable publication claims preserve exact ownership and uncertain-effect recovery."
 area: sdd
 status: active
 usecases:
@@ -88,3 +88,5 @@ Tests cited above are enforcing-source pointers; their presence is not a claim
 that they were executed or that a live provider/GitHub deployment passed.
 `ARCH-06-execution` defines activity ownership and ordinary PR progression.
 `ADR-remove-native-sdd-compatibility` records removal of unused native compatibility.
+
+WHEN an activity claim is durably bound to its Run, Hub MUST attempt ordinary progression for up to 10 seconds without waiting for a scheduler tick. A deferred or failed prompt attempt preserves the successful registration and bound claim; ordinary ticks retain recovery ownership. Project admission, catalog limits and leases still apply. Check: `test_bound_activity_starts_without_another_tick` in `modules/hub/tests/integration/features/project_management/sdd/test_optimistic_api.py`.

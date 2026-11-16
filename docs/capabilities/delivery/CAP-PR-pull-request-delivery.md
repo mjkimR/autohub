@@ -212,3 +212,9 @@ configured results Hub observes through `CAP-PR-ci-observation`. Hub MUST NOT ad
 a devkit evaluator, runtime installer or asset-restoration service as a delivery
 prerequisite. Check: activity request, API/import and serving-image inspection.
 Repository-internal setup and SDD correctness remain with the working agent.
+
+## Prompt continuation
+
+WHEN an explicit resume commits a new continuation, Hub MUST attempt ordinary progression for up to 10 seconds before returning. A replay does not trigger another prompt attempt. Prompt refusal or timeout leaves the committed result and durable delivery identity recoverable by a tick. Checks: `test_answer_is_saved_without_execution_then_applied_once`, `test_resume_without_a_push_resends_and_preserves_previous_request`, and `modules/hub/tests/unit/features/project_management/pipeline_runs/usecases/test_prompt.py`.
+
+WHEN preparing a queued Run, Hub MUST check project capacity under the project lock before creating its first attempt. A full project leaves the Run queued without sending work. Check: `test_prompt_admission_retains_project_capacity` in `test_pipeline_runs_api.py`.

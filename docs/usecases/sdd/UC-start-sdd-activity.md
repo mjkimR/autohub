@@ -108,3 +108,10 @@ Draft publication, exact recovery and uncertain reservation.
 
 Activity/API and claim tests are cited by `CAP-SDD-native-delivery`. Local fixture
 results do not establish provider delivery or a live GitHub merge.
+
+### SDD-START-05: Attempt first dispatch promptly
+
+- **Covers**: main success scenario.
+- **Given** a successfully registered activity with a bound claim.
+- **When** registration commits.
+- **Then** Hub attempts ordinary progression for up to 10 seconds; a deferred attempt preserves the registered Run for ticks.
