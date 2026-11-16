@@ -2,7 +2,7 @@
 id: SPEC-remove-sdd-compat
 title: Remove unused native SDD compatibility
 summary: Remove native SDD history, retirement APIs and compatibility guards while preserving repository-owned activity publication and recovery.
-status: in-progress
+status: completed
 created: 2026-11-16
 related_capabilities: [CAP-SDD-native-delivery, CAP-SDK-task-flow-execution]
 related_usecases: [UC-start-sdd-activity, UC-complete-sdd-workflow]

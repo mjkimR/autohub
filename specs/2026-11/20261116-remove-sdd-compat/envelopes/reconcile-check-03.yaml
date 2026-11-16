@@ -1,0 +1,15 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T00:16:13.419480Z'
+status: completed
+summary: 'Independent narrow follow-up PASS: proposal acceptance flags removal matches existing descriptive SDD contracts; no further target required'
+findings: []
+assumptions:
+- Emulated read-only reviewer; clean before and after source state
+checks:
+  docs: PASS schema/projection/client/OpenAPI compared to current CAP UC and UX; previous findings remain closed
+diff_scope:
+  base: 11d6ef619457b2cc89c5d4f49e9f7930a7eea5ab
+  head: bfa376a3b6521d1ed00fa1ccddfec36f560d736e

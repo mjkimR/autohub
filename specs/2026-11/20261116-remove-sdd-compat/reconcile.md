@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-remove-sdd-compat
-status: pending
+status: resolved
 targets:
   - file: docs/architecture/ARCH-02-constraints.md
     resolution: modified
@@ -140,3 +140,8 @@ Historical document IDs resolve through aliases on surviving owners; no serving 
 Migration revision identifiers remain valid, and a forward migration drops unused batch and bridge storage, native progress and decision evidence.
 Completed specs remain unchanged apart from one reference-only repair in historical feedback,
 which retains a deleted screen name as literal historical evidence. No required work is deferred.
+
+Independent reviewers verified the final native proposal acceptance-field removal against the
+existing descriptive SDD contracts; no additional document target is required. Entrypoint
+derivation offered broad shared directory candidates, which were rejected in favor of the
+existing 1–3 concrete feature doorway files per contract.
