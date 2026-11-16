@@ -238,3 +238,58 @@ test('file URL restores its exact branch and browser navigation replaces the doc
 	);
 	expect(api.POST).not.toHaveBeenCalled();
 });
+
+test('browser history clears an addressed unit and its activity controls at a path-less URL', async () => {
+	page.url = new URL(
+		'http://hub.test/projects/p?tab=repository&path=docs/proposals/PROP-demo/proposal.md&ref=main'
+	);
+	render(RepositoryView, { project });
+	await screen.findByRole('button', { name: 'Start Planning' });
+	page.url = new URL('http://hub.test/projects/p?tab=repository&ref=main');
+	await waitFor(() =>
+		expect(screen.queryByRole('region', { name: 'Selected SDD unit' })).toBeNull()
+	);
+	expect(screen.queryByRole('button', { name: 'Start Planning' })).toBeNull();
+	expect(api.POST).not.toHaveBeenCalled();
+});
+
+test('changing a document section clears its obsolete address without submitting work', async () => {
+	page.url = new URL(
+		'http://hub.test/projects/p?tab=repository&path=docs/proposals/PROP-demo/proposal.md&ref=main'
+	);
+	render(RepositoryView, { project });
+	await screen.findByRole('button', { name: 'Start Planning' });
+	await userEvent.setup().click(screen.getByRole('button', { name: 'Documents' }));
+	await waitFor(() => expect(page.url.searchParams.has('path')).toBe(false));
+	expect(screen.queryByRole('region', { name: 'Selected SDD unit' })).toBeNull();
+	expect(api.POST).not.toHaveBeenCalled();
+});
+
+test('Git Browser file selection synchronizes its address and restores it across mode switches and reload', async () => {
+	page.url = new URL('http://hub.test/projects/p?tab=repository&ref=main');
+	const original = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation((path, options) =>
+		path.endsWith('/tree')
+			? Promise.resolve({
+					data: {
+						items: [{ name: 'guide.md', path: 'docs/guide.md', type: 'file', size: 10, sha: 's' }]
+					}
+				})
+			: original(path, options)
+	);
+	const first = render(RepositoryView, { project });
+	const user = userEvent.setup();
+	await screen.findByRole('button', { name: 'Git Browser' });
+	await user.click(screen.getByRole('button', { name: 'Git Browser' }));
+	await user.click(await screen.findByText('guide.md'));
+	await waitFor(() => expect(page.url.searchParams.get('path')).toBe('docs/guide.md'));
+	await user.click(screen.getByRole('button', { name: 'SDD View' }));
+	await screen.findByRole('heading', { name: 'Addressed demo', level: 1 });
+	await user.click(screen.getByRole('button', { name: 'Git Browser' }));
+	await waitFor(() => expect(screen.getByText('docs/guide.md')).toBeTruthy());
+	first.unmount();
+	render(RepositoryView, { project });
+	await screen.findByRole('heading', { name: 'Addressed demo', level: 1 });
+	expect(page.url.searchParams.get('path')).toBe('docs/guide.md');
+	expect(api.POST).not.toHaveBeenCalled();
+});

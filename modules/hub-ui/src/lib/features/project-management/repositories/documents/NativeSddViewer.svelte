@@ -13,12 +13,14 @@
 		branch,
 		initialPath = '',
 		onselectpath,
+		onclearpath,
 		unitActions
 	}: {
 		dataSource: RepositoryDataSource;
 		branch: string;
 		initialPath?: string;
 		onselectpath: (path: string) => void;
+		onclearpath?: () => void;
 		unitActions?: Snippet<[string]>;
 	} = $props();
 	const state = new DocumentViewerState((path) => onselectpath(path));
@@ -37,17 +39,22 @@
 	});
 	$effect(() => {
 		const path = initialPath;
-		if (path)
-			untrack(() => {
-				if (path !== state.blob?.path && path !== state.requestedPath) void state.open(path);
-			});
+		untrack(() => {
+			if (path && path !== state.blob?.path && path !== state.requestedPath) void state.open(path);
+			else if (!path && (state.blob || state.requestedPath))
+				void state.changeSection(state.section);
+		});
 	});
 	onDestroy(() => state.destroy());
 	const open = (path: string, fragment = '') => {
 		void state.open(path, fragment);
 	};
+	const directoryTo = (path: string) => {
+		onclearpath?.();
+		void state.directoryTo(path);
+	};
 	const parent = () =>
-		state.directoryTo((state.blob?.path || state.directory).split('/').slice(0, -1).join('/'));
+		directoryTo((state.blob?.path || state.directory).split('/').slice(0, -1).join('/'));
 </script>
 
 <section aria-label="SDD repository documents" class="space-y-5">
@@ -57,7 +64,10 @@
 					variant={state.section === section.id ? 'secondary' : 'ghost'}
 					size="sm"
 					aria-pressed={state.section === section.id}
-					onclick={() => state.changeSection(section.id)}>{section.label}</Button
+					onclick={() => {
+						onclearpath?.();
+						void state.changeSection(section.id);
+					}}>{section.label}</Button
 				>{/each}
 		</nav>
 		<p class="text-xs text-muted-foreground">
@@ -125,8 +135,7 @@
 							<Button
 								variant="ghost"
 								size="sm"
-								onclick={() =>
-									file.type === 'dir' ? state.directoryTo(file.path) : open(file.path)}
+								onclick={() => (file.type === 'dir' ? directoryTo(file.path) : open(file.path))}
 								>{file.name}{file.type === 'dir' ? '/' : ''}</Button
 							>
 						</li>{/each}
@@ -149,7 +158,7 @@
 						fragment={state.fragment}
 						onopen={open}
 						onreference={(id) => state.reference(id)}
-						ondirectory={(path) => state.directoryTo(path)}
+						ondirectory={directoryTo}
 						onback={state.section === 'files'
 							? () => {
 									void parent();

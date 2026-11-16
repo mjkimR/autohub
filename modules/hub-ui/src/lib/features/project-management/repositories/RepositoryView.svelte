@@ -39,7 +39,6 @@
 			sdd = isSdd,
 			unit = selectionUnit,
 			ref = requestedRef;
-		userSelectedMode = null;
 		++readVersion;
 		tree = activeBlob = readmeBlob = null;
 		currentPath = '';
@@ -54,12 +53,41 @@
 		loading = selection.status === 'loading';
 		if (selection.status === 'ready') untrack(() => void loadTree('', selection.ref));
 	});
+	$effect(() => {
+		void project.id;
+		userSelectedMode = null;
+	});
+	$effect(() => {
+		const status = selection.status,
+			path = requestedPath,
+			ref = currentRef,
+			mode = viewerMode;
+		if (status === 'ready' && mode === 'default')
+			untrack(() => {
+				if (path && (activeBlob?.path !== path || activeBlob.ref !== ref))
+					void openFile({
+						name: path.split('/').pop() || path,
+						path,
+						type: 'file',
+						size: 0,
+						sha: ''
+					});
+				else if (!path && activeBlob) void loadTree('', ref);
+			});
+	});
 	onDestroy(() => selection.destroy());
 	function selectDocument(path: string) {
 		if (!path || path === requestedPath) return;
 		const url = new URL(page.url);
 		url.searchParams.set('path', path);
 		url.searchParams.set('ref', currentRef);
+		url.searchParams.delete('unit');
+		void goto(`${url.pathname}${url.search}`, { noScroll: true, keepFocus: true });
+	}
+	function clearDocument() {
+		if (!requestedPath && !requestedUnit) return;
+		const url = new URL(page.url);
+		url.searchParams.delete('path');
 		url.searchParams.delete('unit');
 		void goto(`${url.pathname}${url.search}`, { noScroll: true, keepFocus: true });
 	}
@@ -163,6 +191,7 @@
 			if (res.data) {
 				activeBlob = res.data;
 				currentPath = item.path;
+				selectDocument(item.path);
 			}
 		} catch (err) {
 			if (version !== readVersion || projectId !== project.id) return;
@@ -382,6 +411,7 @@
 									? `${selection.unit}/${selection.unit.startsWith('specs/') ? 'spec.md' : 'proposal.md'}`
 									: '')}
 							onselectpath={selectDocument}
+							onclearpath={clearDocument}
 							unitActions={isSdd ? unitActions : undefined}
 						/>
 					{/key}{/if}
