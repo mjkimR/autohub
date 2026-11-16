@@ -1,0 +1,39 @@
+kind: ux-review
+stage: specify
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-16T01:32:33.427759Z'
+status: completed
+summary: 'Round 1 findings folded: persistent exact recovery, independent history states, reset intent on context changes and explicit interaction mappings.'
+findings:
+- issue: Recovery controls and retained evidence are unspecified.
+  evidence: spec.md Screens workspace and contextual unit states
+  failure_condition: Changing selection during uncertain work leaves no defined recovery action.
+  suggested_action: Specify persistent original identity, exact retry and UX-sdd-claim-recovery handoff.
+  resolution: resolved
+- issue: Execution history lacks distinct empty and failed lookup states.
+  evidence: spec.md Screens contextual unit work states
+  failure_condition: A loaded document has no available history evidence.
+  suggested_action: Specify independent history loading, empty and Retry history states.
+  resolution: resolved
+- issue: Intent invalidation on branch or unit change is unspecified.
+  evidence: spec.md AC-01 AC-06 and Screens
+  failure_condition: An edited base or selected unit changes during intent review.
+  suggested_action: Reset the form on context change and identify intentional browse/base differences.
+  resolution: resolved
+- issue: 'link check (reviewer judgment): document selection cites execution retrieval.'
+  evidence: spec.md Screens Repository workspace Interactions
+  failure_condition: Step 5 is cited for selecting a document.
+  suggested_action: Map selection/display to steps 3-4 and history to steps 5-6.
+  resolution: resolved
+- issue: 'link check (reviewer judgment): changed navigation controls lack mappings.'
+  evidence: spec.md Screens condensed interactions
+  failure_condition: History, refresh or recovery can lose context despite the happy path.
+  suggested_action: Add interaction tables, explicit use cases, targets and feedback.
+  resolution: resolved
+assumptions:
+- Host verified refined uncommitted Screens against reviewer findings.
+checks: {}
+diff_scope:
+  base: ''
+  head: bb0dcfc91e1b27dca81086778f128b07888c0b65
