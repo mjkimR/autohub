@@ -62,7 +62,7 @@ Contributors maintain the pinned packages, synchronized assets and installation
 receipt alongside normal code and document changes.
 
 Reconsider catalog selections when a concrete operation needs another entry.
-Package updates still require review against the runtime pins and viewer receipt.
+Package updates require review against the runtime pins. `ADR-native-sdd-viewer` owns the independent repository presentation decision.
 
 ## 6. Confirmation
 

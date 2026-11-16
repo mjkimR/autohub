@@ -48,9 +48,11 @@ database. The SDK manifest declares Pydantic as its runtime dependency. Reposito
 setup and workflow execution are external to Hub. Auto Hub's own contributor
 devkit dependencies do not provision an evaluator for connected repositories.
 
-The shared devkit-viewer component renders documents through a Hub-provided
-authenticated repository data source. Its source receipt and rebuild procedure
-remain in `modules/hub-ui/vendor/devkit-viewer.md`; product behavior belongs in
+Hub owns repository document discovery, navigation and rendering under
+`modules/hub-ui/src/lib/features/project-management/repositories/documents/`.
+The viewer consumes Hub's authenticated repository data source and shares its
+component/theme system. It has no devkit viewer artifact dependency.
+`ADR-native-sdd-viewer` records the ownership choice; behavior belongs in
 `CAP-DOC-repository-viewer`.
 
 The frontend consumes generated declarations under `src/lib/api/generated` and

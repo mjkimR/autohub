@@ -1,7 +1,7 @@
 ---
 id: CAP-DOC-repository-viewer
 title: Repository document and execution inspection
-summary: "Serve branch-specific repository documents and validate addressed unit/ref selections shared by the viewer and activity context. Inspection rejects stale or unavailable subjects without starting or approving work."
+summary: "Render branch-specific SDD documents in Hub with safe Markdown, document navigation and validated unit/ref selections. Inspection preserves execution context without starting or approving work."
 area: repository
 status: active
 usecases:
@@ -17,7 +17,7 @@ entrypoints:
 ## 1. Summary
 
 The repository browser reads GitHub through the project's connector. SDD projects
-also embed the pinned `devkit-viewer` component, with Hub-owned execution links and
+use Hub-owned document navigation and rendering, with execution links and
 separate activity-start controls. The selected branch determines the document view.
 Activity starts forward intent without evaluating repository readiness. Retained
 native decision evidence is read-only; ordinary PR questions use their Run controls.
@@ -25,9 +25,9 @@ native decision evidence is read-only; ordinary PR questions use their Run contr
 ## 2. Scope & Boundary
 
 - **In-Scope**: repository information, directory/file reads, authenticated viewer
-  transport, branch-specific roadmap inspection and recorded execution lineage.
-- **Out-of-Scope**: devkit-viewer's Markdown/diagram/index rendering internals;
-  GitHub repository storage; activity orchestration owned by
+  transport, native Markdown/diagram rendering, document indexes, release handbook,
+  branch-specific roadmap inspection and recorded execution lineage.
+- **Out-of-Scope**: GitHub repository storage; activity orchestration owned by
   `CAP-SDD-native-delivery`; document authoring; repository edits.
 - **Scope Excluded**: read-triggered execution or approval, cross-branch roadmap
   aggregation, inferred lineage from similar slugs, milestone batch execution and
@@ -39,7 +39,7 @@ native decision evidence is read-only; ordinary PR questions use their Run contr
    the repository and connector from the project or refuse missing GitHub
    configuration with HTTP 422 / `INVALID_REQUEST`.
    Source: [usecases.py](../../../modules/hub/app/features/project_management/repositories/usecases.py).
-2. **Read identity**: WHEN the embedded viewer reads files, its data source MUST
+2. **Read identity**: WHEN the native viewer reads files, its data source MUST
    preserve the project, path, selected ref and cancellation signal through the
    authenticated API client and its session renewal.
    Check: [data-source.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/data-source.test.ts), `viewer requests renew the session and preserve project, path, ref and cancellation`.
@@ -47,7 +47,7 @@ native decision evidence is read-only; ordinary PR questions use their Run contr
    limit without a short page, THEN Hub MUST mark `branches_complete: false`
    instead of presenting its branch list as complete.
    Check: [test_repository_services.py](../../../modules/hub/tests/unit/features/project_management/repositories/test_repository_services.py), `test_branch_listing_reads_later_pages_and_reports_incomplete_results`.
-4. **Viewer ref refusal**: IF branch enumeration is incomplete, THEN the embedded
+4. **Viewer ref refusal**: IF branch enumeration is incomplete, THEN the repository
    data source's `refs` operation MUST report an error rather than return complete
    reference coverage.
    Check: [data-source.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/data-source.test.ts), `roadmap refs include activity branches and disclose incomplete enumeration`.
@@ -55,7 +55,7 @@ native decision evidence is read-only; ordinary PR questions use their Run contr
    size, SHA and content with `encoding: utf-8` when decoding succeeds or
    `encoding: base64` otherwise.
    Source: [services.py](../../../modules/hub/app/features/project_management/repositories/services.py); schema/UTF-8 examples: [test_repository_services.py](../../../modules/hub/tests/unit/features/project_management/repositories/test_repository_services.py), `test_repo_blob_utf8_decode`.
-6. **Selected-branch roadmap**: WHEN opening a milestone member, the embedded
+6. **Selected-branch roadmap**: WHEN opening a milestone member, the native
    viewer MUST read its direct proposal anchor from the selected branch for global
    or package roadmap roots, including each root's `_archive`.
    Check: [Roadmap.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/Roadmap.integration.test.ts), `embedded roadmap opens selected-branch proposal members of %s`.
@@ -65,14 +65,22 @@ native decision evidence is read-only; ordinary PR questions use their Run contr
 8. **Read-only execution links**: WHEN listing a unit's related executions, Hub
    MUST return at most the latest 20 runs without advancing them.
    Check: activity history API tests; [SddRunLinks.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/SddRunLinks.integration.test.ts), `a selected proposal links its run and GitHub pull request`.
-9. **Visible refusal**: IF a repository API read is refused, THEN the embedded
+9. **Visible refusal**: IF a repository API read is refused, THEN the repository
    data source MUST propagate its error rather than supply fabricated contents.
-   Check: [data-source.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/data-source.test.ts), `repository refusals propagate to the embedded viewer`.
+   Check: [data-source.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/data-source.test.ts), `repository refusals propagate to the native viewer`.
 
 10. **Read-only milestone documents**: WHEN an SDD repository is inspected, Hub MUST keep milestone/document navigation separate from activity execution intent. It provides no executable readiness preview or eligible ordering. Check: repository UI integration tests and `RepositoryView.svelte` source inspection.
 
 11. **Addressed unit**: WHEN a Repository URL names a recognized proposal/spec directory, Hub MUST validate its document at the explicit browse ref or default branch before selecting it in both viewer and activity context. A missing explicit branch never falls back. Check: `repository-selection.integration.test.ts` and `RepositoryView.integration.test.ts`.
 12. **Selection isolation**: WHEN project or unit/ref address changes, Hub MUST reject older read results and retain the current requested subject or its explicit unavailable state. Check: `RepositoryView.integration.test.ts` pending-directory navigation regression.
+
+13. **Native presentation**: WHEN SDD documents are displayed, Hub MUST render its own controls with the shared component and theme system. Check: native viewer source, UI lint and `NativeSddViewer.integration.test.ts`.
+14. **Sanitized content**: WHEN Preview renders Markdown or Mermaid, Hub MUST sanitize the resulting HTML/SVG before insertion. Check: `documents.test.ts` and `diagrams.test.ts`.
+15. **Listing honesty**: IF directory or file discovery fails, THEN Hub MUST expose the incomplete listing and Retry instead of claiming an empty complete result. Check: `documents.test.ts` and native viewer state tests.
+16. **Document references**: IF an inline document ID is absent, duplicated or indexed only partially, THEN Hub MUST explain the unresolved reference without opening an arbitrary document. Check: `NativeSddViewer.integration.test.ts` and document model tests.
+17. **Read isolation**: WHEN the source, branch, section or selected file changes, Hub MUST prevent older asynchronous results from replacing the current document or selection callback. Check: native viewer and host integration tests.
+18. **Handbook identity**: WHEN a release handbook language is selected, Hub MUST read that language's README and linked pages from the selected branch. Check: native viewer handbook integration and manifest tests.
+19. **Binary presentation**: IF a selected file is base64 encoded, THEN the native viewer MUST show a binary explanation with a return action instead of parsing it as Markdown. Check: native viewer binary integration.
 
 ## 4. Interfaces & Data Contracts
 
@@ -89,7 +97,7 @@ entries are omitted. Branch enumeration reads at most 1,000 entries and retains
 the default branch even when enumeration is incomplete.
 
 `project_type: general` uses the Git browser; `project_type: sdd` defaults to
-`Sdd View` and permits `Git Browser`. The SDD viewer starts at `docs/` unless a unit address selects its exact document. Selecting
+`Sdd View` and permits `Git Browser`. The SDD viewer starts in Documents unless a unit address selects its exact document in Files. Selecting
 `docs/proposals/PROP-<slug>/proposal.md` or a file under `specs/YYYY-MM/<unit>/`
 fills the bound unit selector; it does not submit an execution request.
 Milestone roots are `docs/roadmap/` and `docs/packages/<name>/roadmap/`, each with
@@ -107,31 +115,28 @@ Browse clears the unit and resets an unavailable explicit ref to default.
 An unavailable unit supplies no activity-start control for that subject.
 An independent `batch` query selects the retained-history panel under `CAP-SDD-native-delivery`.
 
-### Embedded document views
+### Native document views
 
 | View | Available content |
 | --- | --- |
-| Dashboard | Default embedded view with repository document/work summaries |
-| Read | Release handbook from `handbook/manifest.json`; the Living Spec book indexes `docs/` when explicitly requested |
-| Proposals | Proposal bundles under `docs/proposals/` with document filtering |
-| Specs | Change-spec bundles under `specs/` with document filtering |
-| Roadmap | Selected-branch milestones, dependency-readiness display and direct proposal members, including archived milestones |
-| Files | Selected-branch directory/file inspection and document rendering |
-| Shared | The library exposes a Shared shell, but Hub's data source supplies no shared-artifact backend capability |
+| Documents | Default searchable Markdown index under `docs/`, excluding proposal bundles |
+| Proposals | Direct proposal anchors under `docs/proposals/PROP-<slug>/proposal.md` |
+| Specs | Markdown documents under dated `specs/` bundles |
+| Roadmap | Global/package milestones and archives, descriptive dependency statuses and direct proposal members |
+| Handbook | Release tag and language-specific pages from `handbook/manifest.json` |
+| Files | Directory/file inspection, including other files inside proposal bundles |
 
-Hub compiles the pinned `devkit-viewer` tarball into its SPA. It does not download a
-viewer bundle or install a plugin while serving a repository view. The library
-owns document parsing/rendering; Hub owns its repository data source, Proposals
-controls and descriptive activity panel. These controls remain separate from reading.
-The Hub-owned source is [NativeSddViewer.svelte](../../../modules/hub-ui/src/lib/features/project-management/repositories/documents/NativeSddViewer.svelte).
+Hub compiles its own viewer source into the SPA. Repository UI has no devkit-viewer package, tarball or provenance receipt. `ADR-native-sdd-viewer` records this ownership decision. Hub's repository data source, proposal activity controls and descriptive execution panel remain separate from reading. Activity base branch is explicitly independent of the document browse branch.
+
+Preview displays YAML metadata and sanitized Markdown; Source preserves escaped file content. Repository-relative links stay on the selected branch. Inline full document IDs are resolved on demand against complete Documents, Proposals and Specs indexes. Missing or duplicated IDs show an error instead of choosing an arbitrary match. External HTTP/HTTPS links open with `noopener noreferrer`. Relative images are represented by their alternative text because raw repository URLs do not carry the authenticated data-source contract.
+
+Handbook requires a string `tag` and safe `langs` including `en`; a language selects `handbook/<lang>/README.md`. Optional roots are discovered from successful parent listings. Missing roots are empty states; refused reads and malformed manifests remain errors. Mermaid uses Hub's active light/dark mode, strict rendering and sanitized SVG. Invalid diagrams retain source with an explanation. No separate viewer theme or Shared surface is exposed.
 
 ## 5. Source and Verification Boundary
 
 Backend interfaces derive from [repositories/api/v1.py](../../../modules/hub/app/features/project_management/repositories/api/v1.py)
 and [schemas.py](../../../modules/hub/app/features/project_management/repositories/schemas.py).
-Embedding and transport derive from [RepositoryView.svelte](../../../modules/hub-ui/src/lib/features/project-management/repositories/RepositoryView.svelte)
+Native presentation and transport derive from [RepositoryView.svelte](../../../modules/hub-ui/src/lib/features/project-management/repositories/RepositoryView.svelte)
 and [data-source.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/data-source.ts).
 Lineage and limits derive from [sdd/repos.py](../../../modules/hub/app/features/project_management/sdd/repos.py).
-The linked tests identify inspected regression evidence; schema-only or simulated
-UTF-8 tests do not establish binary-file integration coverage. No live repository,
-rendering or execution success is implied by source inspection alone.
+Native document/index, sanitizer, diagram and viewer integration tests use simulated repository reads. Binary presentation has native viewer integration coverage. These tests do not establish live GitHub reads, browser layout correctness or execution success. Actual command results and browser availability are recorded in the delivery spec envelopes.

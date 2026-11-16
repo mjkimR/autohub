@@ -23,7 +23,7 @@ capabilities:
 
 The selected activity intent is primary. Status is descriptive metadata, not a
 Hub-verified eligibility result. Repository setup and workflow are the working
-agent's responsibility.
+agent's responsibility. The Activity base branch field is independent of the branch used to browse repository documents.
 
 - SDD unit (path/title/status on the selected base).
 - Native SDD activity (Planning/Development, base and effort/catalog preferences).
