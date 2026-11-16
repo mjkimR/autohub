@@ -30,6 +30,8 @@ targets:
     resolution: modified
   - file: docs/capabilities/notifications/CAP-NOTIFY-operator-notifications.md
     resolution: modified
+  - file: docs/capabilities/repository/CAP-DOC-repository-viewer.md
+    resolution: modified
   - file: docs/capabilities/sdd/CAP-SDD-native-delivery.md
     resolution: modified
   - file: docs/capabilities/sdk/CAP-SDK-task-flow-execution.md
@@ -70,9 +72,15 @@ targets:
     resolution: modified
   - file: docs/steering/ux-objects.md
     resolution: modified
+  - file: docs/steering/visual-style.md
+    resolution: modified
   - file: docs/usecases/README.md
     resolution: modified
+  - file: docs/usecases/delivery/UC-deliver-pull-request.md
+    resolution: modified
   - file: docs/usecases/delivery/UC-resolve-run-question.md
+    resolution: modified
+  - file: docs/usecases/mcp/UC-connect-hub-tools.md
     resolution: modified
   - file: docs/usecases/notifications/UC-receive-decision-notice.md
     resolution: modified
@@ -82,9 +90,13 @@ targets:
     resolution: modified
   - file: docs/usecases/sdk/UC-execute-task-flow.md
     resolution: modified
+  - file: docs/ux/README.md
+    resolution: modified
   - file: docs/ux/delivery/UX-attention.md
     resolution: modified
   - file: docs/ux/delivery/UX-decision-inbox.md
+    resolution: modified
+  - file: docs/ux/delivery/UX-pipeline-runs.md
     resolution: modified
   - file: docs/ux/delivery/UX-run-decisions.md
     resolution: modified

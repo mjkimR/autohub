@@ -104,7 +104,7 @@ the read stays single-flight, so a shell read already in flight is reused rather
 
 ## 5. Evidence
 
-`owed-links.test.ts` and `AttentionView.integration.test.ts` enforce exact `context.sdd_batch_id` addresses. `RepositoryView.integration.test.ts` verifies direct detail selection without a list prerequisite or mutations.
+`owed-links.test.ts` and `AttentionView.integration.test.ts` enforce supported owed-item owner addresses. `RepositoryView.integration.test.ts` verifies exact unit/ref selection without activity mutations.
 
 
 Implementation inspected: `modules/hub-ui/src/routes/+page.svelte`,

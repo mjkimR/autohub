@@ -67,7 +67,7 @@ Hub reserves the exact unit/activity/request before GitHub ref and Draft PR
 publication. It records candidate artifacts and recovers the same owner after a
 lost response. It does not author repository state or evaluate a devkit stage.
 
-Optimistic snapshots carry `execution_version: 2` and `provider: repository-agent`.
+Activity snapshots carry `provider: repository-agent` and descriptive unit/activity intent.
 Repository setup, workflow gates and correctness belong to its working agent.
 Questions around pushes are processed before CI/merge continuation; a saved answer
 alone changes no merge authority. `CAP-SDD-native-delivery` and

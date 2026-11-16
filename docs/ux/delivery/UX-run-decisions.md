@@ -19,14 +19,14 @@ capabilities:
 ## 1. Purpose
 
 - **Primary task**: Resolve a Run question.
-- **Facts to commit**: Current PR run revision, wait reason, pending question, saved answers and native evidence.
-- **Secondary items**: Native evidence stays in read-only disclosures; prior questions and approval activity are secondary history.
+- **Facts to commit**: Current PR run revision, wait reason, pending question and saved answers.
+- **Secondary items**: Prior ordinary questions and their saved answers remain secondary history.
 - **Hosts**: the Decisions section of `UX-run-page`, and the Decision inbox review dialog in `UX-decision-inbox`, which adds the PR identity, Inspect pull request, Open run page and Close around this panel.
 
 ## 2. Content
 
-The current wait and Run question form are primary. Retired native evidence is
-secondary history; it provides no live workflow controls.
+The current wait and Run question form are primary. Prior ordinary questions
+and saved answers remain secondary history.
 
 - PR run (last successful local load time with Refresh decisions; in the inbox dialog also the wait reason and terminal notice, which `UX-run-page` shows in its header and next-step section instead).
 - Run question (pending text, saved answer list, application state).
@@ -96,7 +96,7 @@ Last loaded identifies the last successful consistent Run/question read. A faile
 | Check outcome / Check saved answer outcome | global: inspect the exact saved owner request | uncertain | saved, applied, uncertain | | `CAP-PR-operator-decisions` | Exact selected request is read; missing records/read errors remain unknown. |
 | Retry same request | global: recover an uncertain ordinary submission | uncertain | applied, uncertain, changed | | `CAP-PR-operator-decisions` | Original ordinary request and payload replay only; owner guards remain authoritative. |
 
-Embedded panels retain the visible parent context and its Close exit; they add no Back button. Native history can select a retained request outcome for reading only.
+Embedded panels retain the visible parent context and its Close exit; they add no Back button. Saved-answer history can select an exact request outcome for reading only.
 
 ## 5. Evidence
 

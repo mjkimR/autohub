@@ -17,7 +17,7 @@ capabilities:
 
 - **Primary task**: start one explicit repository activity and open its PR Run.
 - **Facts to commit**: project/repository, unit, base, activity and optional effort/catalog.
-- **Secondary items**: retained Run/PR links stay below each unit; historical batches are a separate disclosure.
+- **Secondary items**: retained Run/PR links stay below each unit.
 
 ## 2. Content
 

@@ -71,7 +71,7 @@ each tool call additionally checks the operation's required scope.
 
 | Surface | Admission scopes | Registered operations |
 | --- | --- | --- |
-| `/mcp/` | `autohub:mcp:read` or `autohub:mcp:write` | 19 read tools and 20 work mutations |
+| `/mcp/` | `autohub:mcp:read` or `autohub:mcp:write` | 17 read tools and 19 work mutations |
 | `/ops/mcp/` | `autohub:mcp:ops` | Four operations mutations |
 
 The transport uses stateless HTTP with JSON responses. Slashless endpoint paths
@@ -216,7 +216,7 @@ bounded owner-adapter decision.
 
 Checks: `modules/hub/tests/integration/mcp/test_delivery_tools.py` and
 `modules/hub/tests/unit/mcp/test_delivery_views.py`. Inputs use strict existing
-owner commands inside project/Plan/Item or project/batch identities; clients
+owner commands inside project/Plan/Item identities; clients
 supply request IDs and reviewed revisions. Actor fields are not accepted.
 Discovery filters include project/kind/question state, cursor and limit 1–100.
 Recovery pages use offset/limit 1–100; replacement reads retain candidate,

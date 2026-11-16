@@ -62,8 +62,7 @@ GitHub publication. Recovery does not infer absence from a missing response.
 Repository workflow publication is no longer a Hub transaction exception.
 
 SDK execution commits its intent before worker I/O and conditionally applies a
-response under its lease/revision. Retired bridge observation can use an already-recorded
-resume identity, but cannot create a fresh resume effect. Scheduling coordinates due-job selection in its
+response under its lease/revision. Scheduling coordinates due-job selection in its
 own transaction; maintenance uses persisted cursors for its selected diagnostic
 and provider-session work. Their exact boundaries belong to
 `CAP-SDK-task-flow-execution`, `CAP-SDD-native-delivery` and

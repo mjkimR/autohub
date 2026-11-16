@@ -42,8 +42,7 @@ The header and its action row are primary. Sections follow in this order: the ne
   next scheduled check.
 - PR run (action row): one state-driven primary action, then the secondary actions that apply.
   - Primary action, in priority order: Answer question (open Run question), Resume with saved answer (answered
-    question not yet applied), Check decision (answer application
-    pending), Next step (failed run), Resume (paused or blocked run whose decisions are known and none holds it),
+    question not yet applied), Next step (failed run), Resume (paused or blocked run whose decisions are known and none holds it),
     Attach PR (active run without a PR). Decision actions move to the Decisions section; a run held by a pending
     decision never offers a plain Resume. When the run's decisions are unknown (the read failed or was incomplete)
     no primary action is shown on the page (Open run is the page itself) and Resume is only a secondary action.
@@ -56,7 +55,7 @@ The header and its action row are primary. Sections follow in this order: the ne
     Item recovery to that item in `UX-work-plans` and Review attempt errors.
   - Replacement guidance (when no Work Item names this run): Enroll PR opens the project's Runs tab
     (`UX-pipeline-runs`) and Work Plans opens the Plans tab.
-- PR run (Related origin): the proven category or Origin unknown, followed by retained Work Plan/Work Item links, current SDD unit, related claim history/batch links and exact external Provider session URLs. Missing session URLs remain ID text; category evidence can be known without an available subject link.
+- PR run (Related origin): the proven category or Origin unknown, followed by retained Work Plan/Work Item links, current SDD unit, related activity claim unit links and exact external Provider session URLs. Missing session URLs remain ID text; category evidence can be known without an available subject link.
 - SDD unit links include the Run branch and open that unit in `UX-repository`; related history is labeled separately from the current unit.
 - `UX-run-decisions` (Decisions section; the run's wait reason stays in the header).
 - `UX-attempt-history` (Execution attempts section).

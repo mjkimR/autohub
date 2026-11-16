@@ -36,7 +36,7 @@ control is offered. Draft indicates an operator merge decision is still required
 - **populated**: follow the ordinary Run and its PR.
 - **waiting**: use the existing question editor and selected-answer resume.
 - **loading/error**: use existing refresh/retry feedback.
-- **empty**: explain that no native evidence exists; ordinary Run history remains available.
+- **empty**: omit the activity panel when no descriptive snapshot exists; ordinary Run history remains available.
 
 ## 4. Interactions
 
