@@ -1,7 +1,7 @@
 ---
 id: UX-sdd-execution
 title: Enroll repository activity work
-summary: "The execution panel enrolls an existing activity PR with descriptive unit intent and opens retained runs without a runtime or workflow preflight."
+summary: "The selected SDD unit shows execution history and a secondary existing-PR enrollment disclosure with an initially empty PR number."
 area: sdd
 element: panel
 status: active
@@ -18,14 +18,15 @@ capabilities:
 
 ## 1. Purpose
 
-- **Primary task**: enroll or inspect an existing unit PR.
-- **Facts to commit**: unit path, PR number and optional effort/catalog.
-- **Secondary items**: retained Run links appear below the enrollment control.
+- **Primary task**: inspect executions for the selected SDD unit.
+- **Facts to commit**: unit path, exact Run/PR; enrollment additionally requires an explicitly entered positive integer PR number and effort.
+- **Secondary items**: Enroll an existing PR is a collapsed disclosure inside the unit work panel. Its button is labeled Enroll PR.
 
 ## 2. Content
 
-- SDD unit (selected directory and branch).
-- PR run (existing PR number, preferences, enroll action and retained Run/PR links).
+- SDD unit (selected directory and document branch; changing unit/branch resets the enrollment form).
+- PR run (execution-history rows, independent loading/empty/error state, exact Run/PR links).
+- PR run (secondary enrollment disclosure, empty Pull request field, activity effort and Enroll PR).
 
 Enrollment is an explicit work request. It does not claim repository readiness,
 preview stages or execute devkit. Both new activity kinds use Draft PRs; an existing
@@ -34,15 +35,15 @@ PR retains its actual Draft state under the ordinary PR contract.
 ## 3. States
 
 - **populated**: enroll the named PR or open its existing Run.
-- **loading**: enrollment/history is pending and duplicate submission is disabled.
-- **empty**: select a unit or supply an existing PR number.
-- **error**: show the exact request failure and offer retry without inventing an owner.
+- **loading**: history names the pending lookup; enrollment disables duplicate submission. The selected document remains available.
+- **empty**: no executions found is distinct from failed lookup. Enrollment requires a positive integer PR number; blank, zero and fractional values keep submission disabled.
+- **error**: history offers Retry history without clearing the document. Enrollment outcomes and uncertain exact-request recovery remain in the workspace region above both viewer modes.
 
 ## 4. Interactions
 
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Enroll selected PR | `UC-complete-sdd-workflow` 1 | populated | loading | | `CAP-SDD-native-delivery` | Ordinary PR registration outcome appears. |
+| Enroll PR | `UC-complete-sdd-workflow` 1 | populated | loading | | `CAP-SDD-native-delivery` | Ordinary PR registration outcome appears. |
 | Open run | `UC-complete-sdd-workflow` 1 | populated | populated | `UX-run-page` | `CAP-SDD-native-delivery` | The exact Run opens. |
 | Select unit / Browse repository | `UC-inspect-repository-documents` 5, `UC-inspect-repository-documents` 6 | empty, populated | populated | `UX-repository` | `CAP-DOC-repository-viewer` | Selected branch document remains visible. |
-| Refresh history | global: read retained unit executions | populated, error | loading | | `CAP-SDD-native-delivery` | Stored Run links refresh without evaluation. |
+| Retry history | global: read retained unit executions | populated, error | loading | | `CAP-SDD-native-delivery` | Stored Run links refresh without evaluation. |

@@ -10,6 +10,7 @@ capabilities: [CAP-SDD-native-delivery]
 entrypoints:
   - modules/hub/app/features/project_management/sdd/activities.py
   - modules/hub/app/features/project_management/sdd/api.py
+  - modules/hub-ui/src/lib/features/project-management/repositories/SddUnitActions.svelte
 ---
 
 # [UC-start-sdd-activity] Start repository-owned SDD work
@@ -25,7 +26,7 @@ entrypoints:
 
 ## 2. Main Success Scenario
 
-1. The operator selects the unit, activity, base and optional effort/catalog
+1. The operator reads a proposal and reviews its contextual unit, activity, base and optional effort/catalog
    (`CAP-SDD-native-delivery`). Interface: `UX-sdd-proposals`.
 2. Hub validates its project connection, request and exclusive owner
    (`CAP-SDD-native-delivery`). Interface: `UX-sdd-proposals`.
@@ -95,6 +96,13 @@ Draft publication, exact recovery and uncertain reservation.
 - **Given** publication or enrollment lost its response.
 - **When** the identical request UUID/payload is retried.
 - **Then** Hub reconciles the original artifacts instead of creating replacements.
+
+### SDD-START-05: Keep intent beside its document
+
+- **Covers**: main success scenario steps 1–2 and 3b.
+- **Given** a selected proposal and a reviewed activity base.
+- **When** the operator starts work or changes the selected unit/branch.
+- **Then** the submitted intent uses the reviewed unit/base; context changes reset the editable form while unresolved original-request recovery remains available.
 
 ## 6. Verification Boundary
 

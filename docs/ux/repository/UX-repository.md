@@ -19,34 +19,33 @@ capabilities:
 
 - **Primary task**: Inspect repository content at the selected branch.
 - **Facts to commit**: Project connection repository identity, selected branch, file path and viewer mode.
-- **Secondary items**: Activity intent and proposal actions occupy linked panels above the native document viewer.
+- **Secondary items**: Activity intent, execution history and collapsed PR enrollment occupy the selected unit work panel. Original request recovery stays above both viewer modes.
 
 ## 2. Content
 
 The selected repository content is primary. Branch/path controls stay above it.
-An SDD Project connection initially uses Sdd View and can switch to Git Browser.
+An SDD Project connection initially uses SDD View and can switch to Git Browser.
 
 - Repository viewer (branch selector and path breadcrumbs).
 - Repository viewer (Git Browser directory rows, selected file and README preview).
-- Repository viewer (native Documents, Proposals, Specs, Roadmap, Handbook and Files navigation in Sdd View).
-- `UX-sdd-execution` (unit intent and related-run links; SDD mode only).
-- `UX-sdd-proposals` (explicit activity starts; SDD mode only).
+- Repository viewer (native Documents, Proposals, Specs, Roadmap, Handbook and Files navigation in SDD View).
+- `UX-sdd-execution` (selected-unit execution history and collapsed existing-PR enrollment; SDD mode only).
+- `UX-sdd-proposals` (contextual activity form for the selected proposal; SDD mode only).
 
-Selecting a recognized proposal/spec path carries that unit directory to the
-execution panel. A browse ref is not represented as the execution PR’s head.
+Selecting a recognized proposal/spec path shows that unit directory in the contextual work panel. A browse ref is not represented as the execution PR’s head.
 A recognized `unit` query validates and opens its spec/proposal document and activity selection together.
 An explicit `ref` names the visible browse branch, including an unmerged Run branch; absence uses the default.
-Viewer-mode changes preserve the address; same-project browser query navigation replaces the requested selection.
+Successful file selection stores path/ref in the URL. Viewer-mode changes and reload restore the addressed file. Same-project browser history replaces or clears the selected document; explicit section/directory navigation clears an obsolete native file address.
 Optional README preview failure is silent; requested tree/file errors use the
 visible retry path. Both viewers explain binary content without parsing it as Markdown.
 
-SDD content shares Hub theme and controls. A searchable title/ID/status/path list sits beside the primary document on wide screens and above it on narrow screens. Metadata, Preview/Source and heading navigation belong to the selected document. Roadmap exposes descriptive dependencies and direct proposal members. Handbook exposes the release tag, active language and home action. Activity base branch is labeled separately from the browse branch.
+SDD content shares Hub theme and controls. A searchable title/ID/status/path list sits beside the primary document on wide screens and above it on narrow screens. Metadata, Preview/Source and heading navigation belong to the selected document. Roadmap exposes descriptive dependencies and direct proposal members. Handbook exposes the release tag, active language and home action. Activity base branch defaults to the browse branch, remains editable, and discloses an intentional difference. Unit actions sit beside the document at extra-wide widths and below it on smaller screens.
 
 ## 3. States
 
 - **populated**: Browse files or SDD documents, change branch or refresh the selection.
 - **empty**: Without a GitHub binding, the panel directs the operator to Connections; an empty directory retains its branch/path controls.
-- **loading**: Git Browser announces initial repository loading; native SDD loading names the section or path and selected branch with static status text.
+- **loading**: Git Browser announces initial repository loading; native SDD loading names the section or path and selected branch. Completed discovery batches remain searchable/openable while later batches load.
 - **error**: Requested repository reads show an alert and Retry; failed execution lookup is distinguished within the execution panel.
 
 - **unit-unavailable**: the requested unit/ref is invalid, missing, inaccessible or unsupported. Browse repository clears the unit and resets a missing addressed ref; read failures offer Retry unit. No start control for an unknown unit appears.
@@ -61,10 +60,10 @@ SDD content shares Hub theme and controls. A searchable title/ID/status/path lis
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
 | Choose branch or file | `UC-inspect-repository-documents` 3 | populated | loading |  | `CAP-DOC-repository-viewer` | The selected ref/path content loads without mutating the repository. |
-| Refresh / Retry | `UC-inspect-repository-documents` 4 | error | loading |  | `CAP-DOC-repository-viewer` | The requested read is retried; SDD refresh reloads repository identity and remounts its viewer. |
-| Sdd View / Git Browser | global: choose a read-only repository representation | populated | populated |  | `CAP-DOC-repository-viewer` | The selected mode replaces the content surface while preserving the addressed unit and branch. |
+| Refresh / Retry | `UC-inspect-repository-documents` 4 | error | loading |  | `CAP-DOC-repository-viewer` | The requested read is retried; SDD refresh preserves the selected path while reloading identity and clearing session read caches. |
+| SDD View / Git Browser | global: choose a read-only repository representation | populated | populated |  | `CAP-DOC-repository-viewer` | The selected mode replaces the content surface while preserving the addressed unit and branch. |
 | Directory breadcrumb / file back | `UC-inspect-repository-documents` 3a | populated | loading |  | `CAP-DOC-repository-viewer` | The selected directory or parent listing is loaded. |
-| Open unit address / Retry unit | `UC-inspect-repository-documents` 1, `UC-inspect-repository-documents` 3b | populated, error, unit-unavailable | loading | | `CAP-DOC-repository-viewer` | Only the current recognized subject can reach viewer/activity selection. |
+| Open file/unit address / Retry unit | `UC-inspect-repository-documents` 1, `UC-inspect-repository-documents` 3b | populated, error, unit-unavailable | loading | | `CAP-DOC-repository-viewer` | Only a successful current file read can expose contextual unit actions. |
 | Browse repository | `UC-inspect-repository-documents` 3b | unit-unavailable, error | populated | | `CAP-DOC-repository-viewer` | The failed unit request is cleared and an unavailable ref resets to default. |
 
 | Search / Clear search | `UC-inspect-repository-documents` 3c | populated, filtered-empty | populated, filtered-empty | | `CAP-DOC-repository-viewer` | Filter title/ID/status/path locally; clearing restores the section. |
@@ -73,6 +72,8 @@ SDD content shares Hub theme and controls. A searchable title/ID/status/path lis
 | Handbook language / home | `UC-inspect-repository-documents` 4c | populated, error | loading | | `CAP-DOC-repository-viewer` | Name the requested language/path, display its page or offer Retry. |
 | Back to files | `UC-inspect-repository-documents` 4a | binary, populated | loading | | `CAP-DOC-repository-viewer` | Read the selected file's parent directory. |
 | Retry documents / document | `UC-inspect-repository-documents` 4b | error, partial-listing | loading | | `CAP-DOC-repository-viewer` | Repeat the failed directory, file or ID resolution. |
+
+| Select document section / clear address | global: navigate without retaining obsolete file selection | populated | populated | | `CAP-DOC-repository-viewer` | Clear the old preview, URL path and contextual unit actions; transient read callbacks do not clear the address. |
 
 ## 5. Evidence
 

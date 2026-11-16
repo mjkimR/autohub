@@ -48,6 +48,10 @@ its work, questions and GitHub outcome.
 9. **Supported interfaces**: Hub MUST expose only repository-owned activity starts, unit Run reads and current claim inspection/reconciliation under the SDD API. Removed evaluation, batch, typed native decision and retired-Run reconciliation routes have no compatibility handlers. Check: `modules/hub/tests/integration/features/project_management/sdd/test_optimistic_api.py` and OpenAPI inspection.
 10. **Uncertain reservation**: WHILE an unleased uncertain publication without a Run retains external ownership, Hub MUST require explicit project-scoped reconciliation before releasing that reservation. Check: `modules/hub/tests/integration/features/project_management/sdd/test_optimistic_api.py`.
 
+11. **Contextual intent**: WHEN a selected proposal requests Planning or Development, Hub MUST submit its reviewed unit/activity/base rather than a stale list selection. Check: `SddProposals.integration.test.ts` selected-unit and context-reset tests.
+12. **Explicit PR number**: WHEN enrolling an existing unit PR through the UI, Hub MUST keep submission disabled until the operator supplies a positive integer PR number. Check: `SddExecution.integration.test.ts` blank and fractional-number tests.
+13. **Workspace recovery**: WHILE an original request is unresolved, Hub MUST retain its exact recovery controls across document and viewer-mode changes. Check: `SddProposals.integration.test.ts` original-intent recovery; `RepositoryView.svelte` workspace outcome placement.
+
 ## 4. Interfaces & Data Contracts
 
 All paths are under `/api/v1/projects/{project_id}/sdd` and require the existing

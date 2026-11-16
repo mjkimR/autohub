@@ -10,6 +10,7 @@ status: active
 capabilities: [CAP-SDD-native-delivery, CAP-PR-pull-request-delivery, CAP-PR-operator-decisions]
 entrypoints:
   - modules/hub/app/features/project_management/pipeline_runs/api/v1.py
+  - modules/hub-ui/src/lib/features/project-management/repositories/SddUnitActions.svelte
 ---
 
 # [UC-complete-sdd-workflow] Follow repository-owned SDD work through PR delivery
@@ -24,7 +25,7 @@ entrypoints:
 
 ## 2. Main Success Scenario
 
-1. The operator enrolls or opens the unit PR Run and its descriptive activity context
+1. The operator opens the selected unit's execution history or deliberately enrolls an existing PR with an explicitly entered PR number and its descriptive activity context
    (`CAP-SDD-native-delivery`). Interface: `UX-sdd-execution`, `UX-run-page`, `UX-sdd-run`.
 2. Hub dispatches the request through the ordinary implementation owner
    (`CAP-PR-pull-request-delivery`). Interface: `UX-run-page`.

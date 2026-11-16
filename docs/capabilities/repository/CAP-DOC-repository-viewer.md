@@ -82,6 +82,11 @@ native decision evidence is read-only; ordinary PR questions use their Run contr
 18. **Handbook identity**: WHEN a release handbook language is selected, Hub MUST read that language's README and linked pages from the selected branch. Check: native viewer handbook integration and manifest tests.
 19. **Binary presentation**: IF a selected file is base64 encoded, THEN the native viewer MUST show a binary explanation with a return action instead of parsing it as Markdown. Check: native viewer binary integration.
 
+20. **Document addresses**: WHEN an operator selects a file in either viewer, Hub MUST synchronize its path/ref URL and restore that file across viewer modes and reload. Check: `RepositoryView.integration.test.ts` Git Browser address regression.
+21. **Cleared selection**: WHEN browser history removes the document address or native section navigation clears selection, Hub MUST remove the previous preview and contextual unit actions. Check: `RepositoryView.integration.test.ts` empty-address and section-navigation regressions.
+22. **Progressive discovery**: WHILE document discovery continues, Hub MUST expose completed sorted batches for inspection. Check: `documents.test.ts` progressive discovery case.
+23. **Viewer read cache**: WHEN a successful tree/blob read repeats in the same viewer session and ref, Hub MUST reuse its retained result until refresh/reconfiguration or bounded eviction. Check: `read-cache.test.ts` and native viewer address/cache integration test.
+
 ## 4. Interfaces & Data Contracts
 
 | Interface | Input / result |
@@ -97,19 +102,20 @@ entries are omitted. Branch enumeration reads at most 1,000 entries and retains
 the default branch even when enumeration is incomplete.
 
 `project_type: general` uses the Git browser; `project_type: sdd` defaults to
-`Sdd View` and permits `Git Browser`. The SDD viewer starts in Documents unless a unit address selects its exact document in Files. Selecting
+`SDD View` and permits `Git Browser`. The SDD viewer starts in Documents unless a file/unit address selects its exact document. Proposal anchors open in Proposals, spec files in Specs, and other addressed files in Files. Selecting
 `docs/proposals/PROP-<slug>/proposal.md` or a file under `specs/YYYY-MM/<unit>/`
-fills the bound unit selector; it does not submit an execution request.
+shows contextual unit actions and execution history; it does not submit an execution request.
 Milestone roots are `docs/roadmap/` and `docs/packages/<name>/roadmap/`, each with
 flat `_archive/`. Proposal anchors establish milestone membership; historical spec
 milestone fields do not.
 
 ### Repository subject addresses
 
+`?tab=repository&path=<file>&ref=<branch>` selects an exact file.
 `?tab=repository&unit=<directory>&ref=<branch>` selects a recognized `docs/proposals/PROP-<slug>` or `specs/YYYY-MM/<unit>` directory.
 The optional `ref` is the visible browse branch; run-generated addresses retain the Run branch for unmerged units.
 It is not immutable PR-head evidence or execution authority.
-Reload and viewer-mode changes preserve the address; browser query navigation replaces selection.
+Successful selection canonicalizes to path/ref. Reload and viewer-mode changes preserve the addressed file; browser query navigation replaces or clears selection. Native section/directory navigation clears obsolete file addresses.
 Invalid, missing, inaccessible or non-SDD unit requests show Unit unavailable, Retry for read failure and Browse repository.
 Browse clears the unit and resets an unavailable explicit ref to default.
 An unavailable unit supplies no activity-start control for that subject.
@@ -126,7 +132,9 @@ Repository subject navigation supports unit/ref selection; SDD activity claim li
 | Handbook | Release tag and language-specific pages from `handbook/manifest.json` |
 | Files | Directory/file inspection, including other files inside proposal bundles |
 
-Hub compiles its own viewer source into the SPA. Repository UI has no devkit-viewer package, tarball or provenance receipt. `ADR-native-sdd-viewer` records this ownership decision. Hub's repository data source, proposal activity controls and descriptive execution panel remain separate from reading. Activity base branch is explicitly independent of the document browse branch.
+Hub compiles its own viewer source into the SPA. Repository UI has no devkit-viewer package, tarball or provenance receipt. `ADR-native-sdd-viewer` records this ownership decision. Hub's repository data source, proposal activity controls and descriptive execution panel remain separate from reading. Activity base defaults to the document browse branch while remaining independently editable with a visible difference notice.
+
+Discovery publishes completed batches before its scan finishes. Successful tree/blob reads are cached separately by ref/path, up to 300 entries per read kind in one viewer session. Failed or canceled reads are not cached. Explicit Refresh creates a fresh session while preserving the addressed file. This does not establish a live-provider latency guarantee.
 
 Preview displays YAML metadata and sanitized Markdown; Source preserves escaped file content. Repository-relative links stay on the selected branch. Inline full document IDs are resolved on demand against all Markdown documents under `docs/` and `specs/`, including proposal bundle companion files. Missing or duplicated IDs show an error instead of choosing an arbitrary match. External HTTP/HTTPS links open with `noopener noreferrer`. Relative images are represented by their alternative text because raw repository URLs do not carry the authenticated data-source contract.
 
