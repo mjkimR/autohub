@@ -1,8 +1,8 @@
 ---
 id: SPEC-sdd-unit-experience
 title: Polish the SDD unit workspace
-summary: Unify repository documents, activity intent and execution history around the selected SDD unit.
-status: in-progress
+summary: "Unify repository documents, activity intent and execution history around the selected SDD unit."
+status: completed
 created: 2026-11-16
 related_capabilities: [CAP-SDD-native-delivery, CAP-DOC-repository-viewer]
 related_usecases: [UC-start-sdd-activity, UC-complete-sdd-workflow, UC-inspect-repository-documents]

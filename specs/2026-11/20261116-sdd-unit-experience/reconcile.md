@@ -1,6 +1,6 @@
 ---
 reconcile_id: REC-sdd-unit-experience
-status: pending
+status: resolved
 targets:
   - file: docs/steering/ux-objects.md
     resolution: modified
