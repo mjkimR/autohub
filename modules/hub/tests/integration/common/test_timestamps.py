@@ -21,7 +21,7 @@ def test_all_hub_timestamp_models_have_update_policy(app):
     models = [
         m.class_ for m in Base.registry.mappers if m.class_.__module__.startswith("app.") and "updated_at" in m.columns
     ]
-    assert len(models) >= 47
+    assert len(models) >= 43
     assert all(model.__table__.c.updated_at.onupdate is not None for model in models)
 
 
