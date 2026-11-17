@@ -14,7 +14,10 @@ Behavior is owned by `CAP-SDD-native-delivery`, `UC-start-sdd-activity`, `UC-com
 | `5284d7e` | `CAP-SDD-native-delivery` rules 16-17, start refusal body, use case citations |
 | `6fbd291` | P2: automatic claim evidence in one situation-titled card, Request details, actionable-only inbox attention, SDD run restart from its unit, display labels, separator wrapping, narrow composer |
 | `679bee1` | UX documents for the P2 change |
-| `5cb48a9` | Backend: last observed PR Draft and CI status on run reads (`CAP-PR-pull-request-delivery` rules 30-32); no UI uses it yet |
+| `5cb48a9` | Backend: last observed PR Draft and CI status on run reads (`CAP-PR-pull-request-delivery` rules 30-32) |
+| `23120bb`, `499824d` | Run page PR status line and gate delivery steps, with UX documents |
+| `5573e81` | Backend: Draft recorded from implementation reads (rules 33-34); SDD activity and unit on decision entries |
+| `f17aeda` | Decision inbox rows name the SDD activity and unit |
 
 ## Attachments
 
@@ -28,7 +31,7 @@ Screenshot outputs, `node_modules/` and logs were not retained. The harness exte
 ## Verification performed
 
 Each round ran `just lint-check`, `just check` and `just test-ui` on the changed tree; all exited `0`
-(630 tests after P1, 635 after P2). The harness captured the same shots and fixtures as `before`, `after` (P1)
+(630 tests after P1, 635 after P2, 641 after the inbox identity). The harness captured the same shots and fixtures as `before`, `after` (P1)
 and `after-p2`, in light and dark at 1440x900 and for selected shots at 390x844, with no unmocked requests or
 page errors in `report.json`. Representative captures were inspected by eye: start success and refusal beside
 Start, the gate evidence card, the claim card, the decision inbox and the narrow review dialog.
@@ -46,9 +49,7 @@ passed on `main`; PostgreSQL tests for the migration ran in the delegated worktr
 
 ## Deferred
 
-- UI for `pull_observation` on the run page and the gate progress track.
-- Draft recording during the implementation stage (today Draft is known only from `awaiting_ci`).
 - The project start lock while a retained owner is bound to a live Run (`CAP-SDD-native-delivery` rule 13).
-- SDD gate identity on decision inbox rows: `DecisionEntryRead` carries no activity or unit.
+- Older SDD snapshots without `activity_kind` show no activity on inbox rows; the request builder treats them as Development.
 - Enrollment effort default (repository recommendation versus required effort).
 - Browser keyboard, screen-reader and end-to-end checks against a real backend.

@@ -69,6 +69,10 @@ const sddShots = [
 	// PR run page (run-page/*, RunOrigins, RunDecisions, SddRunPanel)
 	{ name: 'sdd-run-gate-pending', path: runPage(RUN_GATE), ready: 'Evidence at head', main: true },
 	{ name: 'sdd-run-resume-pending', path: runPage(RUN_RESUME), ready: 'Resume with this answer' },
+	{ name: 'sdd-run-gate-earlier-head', path: runPage(RUN_GATE), scenario: { observation: 'earlier-head' }, ready: 'Observed on an earlier head', main: true },
+	{ name: 'sdd-run-draft-waiting', path: runPage(RUN_IMPL), scenario: { observation: 'draft-waiting' }, ready: 'Applied gate answer', main: true },
+	{ name: 'sdd-run-ready-failed', path: runPage(RUN_IMPL), scenario: { observation: 'ready-failed' }, ready: 'Applied gate answer' },
+	{ name: 'sdd-run-ready-passed', path: runPage(RUN_IMPL), scenario: { observation: 'ready-passed' }, ready: 'Applied gate answer' },
 	{ name: 'sdd-run-implementing', path: runPage(RUN_IMPL), ready: 'Attempt #2' },
 	{ name: 'sdd-run-failed', path: runPage(RUN_FAILED), ready: 'AGENT_NO_COMMIT' },
 	{ name: 'sdd-run-questions-error', path: runPage(RUN_GATE), scenario: { fail: [`/pipeline-runs/${RUN_GATE}/questions`] }, ready: "Couldn't load this run's decisions" },

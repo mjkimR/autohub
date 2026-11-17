@@ -43,9 +43,10 @@ Output: `out/<label>/<page>-<theme>.png` (viewport 1440x900, or 390x844 for
 Add a page to `pages` in `capture.mjs`, run once and read `report.json.unmocked`,
 then add handlers in `fixtures.mjs` using the shapes in
 `modules/hub-ui/src/lib/api/generated/*.d.ts`. Fixtures match the API at commit
-`679bee1`, except that runs carry no `pull_observation` (added in `5cb48a9`); update
-shapes after API changes. The `ready` texts and actions in `capture.mjs` match the
-hub-ui copy at `679bee1`; a copy change that a shot waits for needs its `ready` text updated.
+`f17aeda`; `scenario.observation` selects a `pull_observation` case (`none`, `draft-waiting`,
+`ready-failed`, `ready-passed`, `earlier-head`). Update shapes after API changes. The `ready`
+texts and actions in `capture.mjs` match the hub-ui copy at `f17aeda`; a copy change that a
+shot waits for needs its `ready` text updated.
 
 ## SDD extension
 

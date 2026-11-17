@@ -266,6 +266,8 @@ const entry = (run, question, o) => ({
 	observed_at: ago(2),
 	revision: run.revision,
 	head_sha: run.pull_snapshot.head_sha,
+	sdd_activity: run.sdd_snapshot?.activity_kind ?? null,
+	sdd_unit: run.sdd_snapshot?.spec_dir ?? null,
 	...o
 });
 export const sddDecisions = [entry(gate, questionsByRun[RUN_GATE][0], {}), entry(resumeRun, questionsByRun[RUN_RESUME][0], {})];
@@ -276,6 +278,16 @@ export const claims = {
 	live: { id: CLAIM, project_id: SDD_PROJECT, unit: PROP, activity: 'plan', run_id: null, settled: false, checkpoint_digest: 'reviewed-digest', checkpoint: { uncertain: true, lease_expires_at: later(10) } },
 	withRun: { id: CLAIM, project_id: SDD_PROJECT, unit: PROP, activity: 'plan', run_id: RUN_GATE, settled: false, checkpoint_digest: 'reviewed-digest', checkpoint: { pull_number: 431, uncertain: false } },
 	settled: { id: CLAIM, project_id: SDD_PROJECT, unit: PROP, activity: 'plan', run_id: RUN_GATE, settled: true, checkpoint_digest: 'reviewed-digest', checkpoint: { pull_number: 431 } }
+};
+
+// Observed PR status (pull_observation) per shot, chosen by scenario.observation.
+const PUSHED = 'e7a1c3b5d9f20468ace13579bdf02468ace13579';
+export const pullObservations = {
+	none: null,
+	'draft-waiting': { head_sha: PUSHED, draft: true, verification: 'waiting', reason: 'The PR is still a Draft; CI verification waits until it is Ready for review.', observed_at: ago(8) },
+	'ready-failed': { head_sha: PUSHED, draft: false, verification: 'failed', reason: 'Required job test failed on the configured workflow.', observed_at: ago(6) },
+	'ready-passed': { head_sha: PUSHED, draft: false, verification: 'passed', reason: 'All required jobs passed on the configured workflow.', observed_at: ago(4) },
+	'earlier-head': { head_sha: '0a1b2c3d4e5f60718293a4b5c6d7e8f901234567', draft: true, verification: 'waiting', reason: 'The PR is still a Draft; CI verification waits until it is Ready for review.', observed_at: ago(140) }
 };
 
 // Start outcomes for POST planning/development/runs, chosen per shot by scenario.start.
@@ -327,7 +339,10 @@ export function handleSdd(method, path, q, body, scenario = {}) {
 	if ((m = path.match(/^\/api\/v1\/projects\/([^/]+)\/sdd\/claims\/([^/]+)$/))) return { status: 200, body: claims[scenario.claim ?? 'releasable'] };
 	if ((m = path.match(/^\/api\/v1\/projects\/([^/]+)\/sdd\/claims\/([^/]+)\/reconcile$/))) return { status: 200, body: claims.settled };
 	// runs
-	if ((m = path.match(/^\/api\/v1\/pipeline-runs\/([^/]+)$/)) && runById(m[1])) return { status: 200, body: runById(m[1]) };
+	if ((m = path.match(/^\/api\/v1\/pipeline-runs\/([^/]+)$/)) && runById(m[1])) {
+		const observation = scenario.observation && pullObservations[scenario.observation];
+		return { status: 200, body: observation === undefined ? runById(m[1]) : { ...runById(m[1]), pull_observation: observation } };
+	}
 	if ((m = path.match(/^\/api\/v1\/pipeline-runs\/([^/]+)\/questions$/))) {
 		const run = runById(m[1]);
 		const items = run ? (questionsByRun[run.id] ?? []) : [];
