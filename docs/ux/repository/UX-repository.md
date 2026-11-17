@@ -28,7 +28,7 @@ An SDD Project connection initially uses SDD View and can switch to Git Browser 
 
 - Repository viewer (branch selector and path breadcrumbs).
 - Repository viewer (Git Browser directory rows, selected file and README preview).
-- Repository viewer (native Documents, Proposals, Specs, Roadmap, Handbook and Files navigation in SDD View).
+- Repository viewer (native Documents, Proposals, Specs, Progress, Handbook and Files navigation in SDD View).
 - `UX-sdd-execution` (selected-unit status, PR runs for the unit and collapsed existing-PR enrollment; SDD mode only).
 - `UX-sdd-proposals` (contextual activity form for the selected proposal; SDD mode only).
 
@@ -39,7 +39,7 @@ Successful file selection stores path/ref in the URL. Viewer-mode changes and re
 Optional README preview failure is silent; requested tree/file errors use the
 visible retry path. Both viewers explain binary content without parsing it as Markdown.
 
-SDD content shares Hub theme and controls. A searchable title/ID/status/path list sits beside the primary document on wide screens and above it on narrow screens. Metadata, Preview/Source and heading navigation belong to the selected document. Roadmap exposes descriptive dependencies and direct proposal members. Handbook exposes the release tag, active language and home action. Activity base branch defaults to the browse branch, remains editable, and discloses an intentional difference. Unit actions sit beside the document at extra-wide widths and below it on smaller screens, where a Work on this unit button above the document moves focus to them.
+SDD content shares Hub theme and controls. A searchable title/ID/status/path list sits beside the primary document on wide screens and above it on narrow screens. Metadata, Preview/Source and heading navigation belong to the selected document. Progress groups milestones (status, descriptive dependencies, direct proposal members), other proposals and specs newest first; each group shows unit, active-run and waiting-on-you counts, and each unit its document status badge, path and latest PR run per activity with state, Draft and Open decisions when the run waits on the operator. A note states that statuses neither decide readiness nor order work. While PR runs load or fail, document statuses stay visible with a status line or Retry PR runs. Handbook exposes the release tag, active language and home action. Activity base branch defaults to the browse branch, remains editable, and discloses an intentional difference. Unit actions sit beside the document at extra-wide widths and below it on smaller screens, where a Work on this unit button above the document moves focus to them.
 
 ## 3. States
 
@@ -69,7 +69,8 @@ SDD content shares Hub theme and controls. A searchable title/ID/status/path lis
 
 | Search / Clear search | `UC-inspect-repository-documents` 3c | populated, filtered-empty | populated, filtered-empty | | `CAP-DOC-repository-viewer` | Filter title/ID/status/path locally; clearing restores the section. |
 | Preview / Source / heading | `UC-inspect-repository-documents` 4 | populated | populated | | `CAP-DOC-repository-viewer` | Show sanitized content, escaped source or the requested heading. |
-| Open document link / milestone member | `UC-inspect-repository-documents` 3, `UC-inspect-repository-documents` 4d | populated | loading | | `CAP-DOC-repository-viewer` | Read the same branch; missing or ambiguous IDs show an error. |
+| Open document link / Progress unit or milestone | `UC-inspect-repository-documents` 3, `UC-inspect-repository-documents` 4d | populated | loading | | `CAP-DOC-repository-viewer` | Read the same branch; missing or ambiguous IDs show an error. |
+| Retry PR runs | global: reload the project's PR runs for Progress without discarding document statuses | error | loading | | `CAP-DOC-repository-viewer` | Document statuses stay; run lines return when the read succeeds. |
 | Handbook language / home | `UC-inspect-repository-documents` 4c | populated, error | loading | | `CAP-DOC-repository-viewer` | Name the requested language/path, display its page or offer Retry. |
 | Back to files | `UC-inspect-repository-documents` 4a | binary, populated | loading | | `CAP-DOC-repository-viewer` | Read the selected file's parent directory. |
 | Retry documents / document | `UC-inspect-repository-documents` 4b | error, partial-listing | loading | | `CAP-DOC-repository-viewer` | Repeat the failed directory, file or ID resolution. |
@@ -85,6 +86,7 @@ SDD content shares Hub theme and controls. A searchable title/ID/status/path lis
 - [FileBlobViewer.svelte](../../../modules/hub-ui/src/lib/features/project-management/repositories/FileBlobViewer.svelte).
 - [data-source.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/data-source.ts).
 - [data-source.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/data-source.test.ts); test assertions were inspected.
+- [progress.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/documents/progress.test.ts); test assertions were inspected.
 - [Roadmap.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/Roadmap.integration.test.ts); test assertions were inspected.
 
 Native viewer integration covers search, relative links, binary reads, retry, stale responses, handbook languages and ambiguous IDs. Diagram tests cover theme input, SVG sanitization and late-render cancellation. These simulated checks do not establish browser layout or live provider behavior; executed checks are recorded in the delivery spec envelopes.

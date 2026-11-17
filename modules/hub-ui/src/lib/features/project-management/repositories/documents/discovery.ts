@@ -12,6 +12,9 @@ export const isMilestonePath = (path: string) =>
 	safePath(path) && /^docs\/(?:packages\/[^/]+\/)?roadmap\/(?:_archive\/)?MS-[^/]+\.md$/.test(path);
 export const isProposalPath = (path: string) =>
 	/^docs\/proposals\/PROP-[^/]+\/proposal\.md$/.test(path);
+/** A spec unit's anchor document, `specs/<YYYY-MM>/<unit>/spec.md`. */
+export const isSpecAnchorPath = (path: string) =>
+	/^specs\/\d{4}-\d{2}\/[A-Za-z0-9_-]+\/spec\.md$/.test(path);
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 export async function listChildren(
@@ -43,15 +46,25 @@ export async function discoverDocuments(
 		errors: string[] = [];
 	const roots = await listChildren(source, '', ref, signal);
 	const jobs: { path: string; file: boolean }[] = roots
-		.filter((item) => item.type === 'dir' && item.path === (section === 'specs' ? 'specs' : 'docs'))
+		.filter(
+			(item) =>
+				item.type === 'dir' &&
+				(section === 'roadmap'
+					? item.path === 'docs' || item.path === 'specs'
+					: item.path === (section === 'specs' ? 'specs' : 'docs'))
+		)
 		.map((item) => ({ path: item.path, file: false }));
 	const seen = new Set<string>();
 	const descend = (path: string) => {
 		if (section === 'proposals')
 			return path === 'docs/proposals' || /^docs\/proposals\/PROP-[^/]+$/.test(path);
+		// Progress reads only each spec unit's anchor, never the unit's other records.
 		if (section === 'roadmap')
-			return /^docs\/(?:roadmap(?:\/_archive)?|proposals(?:\/PROP-[^/]+)?|packages(?:\/[^/]+(?:\/roadmap(?:\/_archive)?)?)?)$/.test(
-				path
+			return (
+				/^specs(?:\/\d{4}-\d{2}(?:\/[A-Za-z0-9_-]+)?)?$/.test(path) ||
+				/^docs\/(?:roadmap(?:\/_archive)?|proposals(?:\/PROP-[^/]+)?|packages(?:\/[^/]+(?:\/roadmap(?:\/_archive)?)?)?)$/.test(
+					path
+				)
 			);
 		return section === 'specs' || includeProposalFiles || !path.startsWith('docs/proposals');
 	};
@@ -59,7 +72,7 @@ export async function discoverDocuments(
 		section === 'proposals'
 			? isProposalPath(path)
 			: section === 'roadmap'
-				? isMilestonePath(path) || isProposalPath(path)
+				? isMilestonePath(path) || isProposalPath(path) || isSpecAnchorPath(path)
 				: path.endsWith('.md');
 	while (jobs.length && !signal.aborted) {
 		const batch = jobs.splice(0, 6).filter((job) => {

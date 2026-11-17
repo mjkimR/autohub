@@ -35,7 +35,7 @@ entrypoints:
    Interface: `UX-repository`.
 
 3. The operator selects a branch and a proposal or spec document, directly or
-   through a milestone member, or accepts an addressed file/unit and browse branch (`CAP-DOC-repository-viewer`).
+   through a Progress unit or milestone member, or accepts an addressed file/unit and browse branch (`CAP-DOC-repository-viewer`).
    Interface: `UX-repository`.
 
 4. Hub displays the selected document from that branch

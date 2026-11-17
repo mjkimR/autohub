@@ -15,6 +15,8 @@
 	import SddUnitActions from './SddUnitActions.svelte';
 	import SddStartOutcome from './SddStartOutcome.svelte';
 	import SddUnitJump from './SddUnitJump.svelte';
+	import UnitProgress from './UnitProgress.svelte';
+	import type { RepositoryDocument } from './documents/model';
 	import { sddStarts } from './sdd-starts.svelte';
 	import { repositoryDataSource } from './data-source';
 	import type { RepoBlob, RepoInfo, RepoItem, RepoTree } from './types';
@@ -412,6 +414,7 @@
 							onclearpath={clearDocument}
 							unitActions={isSdd ? unitActions : undefined}
 							unitJump={isSdd ? unitJump : undefined}
+							progress={isSdd ? progress : undefined}
 						/>
 					{/key}
 				</section>{/if}
@@ -459,3 +462,8 @@
 {/snippet}
 
 {#snippet unitJump(path: string)}<SddUnitJump {path} />{/snippet}
+{#snippet progress(documents: RepositoryDocument[], onopen: (path: string) => void)}<UnitProgress
+		projectId={project.id}
+		{documents}
+		{onopen}
+	/>{/snippet}

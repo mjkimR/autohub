@@ -4,10 +4,10 @@
 	import { Button } from '$lib/components/ui/button';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import type { RepositoryDataSource } from '../data-source';
-	import type { DocumentSection } from './model';
+	import type { DocumentSection, RepositoryDocument } from './model';
 	import { DocumentViewerState } from './viewer-state.svelte';
 	import DocumentList from './DocumentList.svelte';
-	import MilestoneList from './MilestoneList.svelte';
+	import ProgressList from './ProgressList.svelte';
 	import DocumentPreview from './DocumentPreview.svelte';
 	let {
 		dataSource,
@@ -16,7 +16,8 @@
 		onselectpath,
 		onclearpath,
 		unitActions,
-		unitJump
+		unitJump,
+		progress
 	}: {
 		dataSource: RepositoryDataSource;
 		branch: string;
@@ -26,13 +27,15 @@
 		unitActions?: Snippet<[string]>;
 		/** Rendered above the document where the unit panel sits after it (narrow layouts). */
 		unitJump?: Snippet<[string]>;
+		/** The Progress section with project data; without it, units show document status only. */
+		progress?: Snippet<[RepositoryDocument[], (path: string) => void]>;
 	} = $props();
 	const state = new DocumentViewerState((path) => onselectpath(path));
 	const sections: { id: DocumentSection; label: string }[] = [
 		{ id: 'documents', label: 'Documents' },
 		{ id: 'proposals', label: 'Proposals' },
 		{ id: 'specs', label: 'Specs' },
-		{ id: 'roadmap', label: 'Roadmap' },
+		{ id: 'roadmap', label: 'Progress' },
 		{ id: 'handbook', label: 'Handbook' },
 		{ id: 'files', label: 'Files' }
 	];
@@ -79,7 +82,7 @@
 		</p>
 	</div>
 	{#if state.loading}<p role="status" class="text-sm text-muted-foreground">
-			Loading {state.section} on {branch}…
+			Loading {sections.find((s) => s.id === state.section)?.label.toLowerCase()} on {branch}…
 		</p>{/if}
 	{#if state.error || state.listing.errors.length}
 		<div role="alert" class="space-y-2 rounded-lg border p-3 text-sm">
@@ -120,10 +123,10 @@
 					loading={state.loading}
 					onopen={open}
 				/>
-			{:else if state.section === 'roadmap'}<MilestoneList
-					documents={state.listing.documents}
-					onopen={open}
-				/>
+			{:else if state.section === 'roadmap'}{#if progress}{@render progress(
+						state.listing.documents,
+						open
+					)}{:else}<ProgressList documents={state.listing.documents} onopen={open} />{/if}
 			{:else if state.section === 'files'}
 				<p class="font-mono text-xs break-words text-muted-foreground">
 					<WrapAtSeparators text={`/${state.directory}`} />

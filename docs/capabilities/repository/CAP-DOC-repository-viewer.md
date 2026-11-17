@@ -58,7 +58,7 @@ native decision evidence is read-only; ordinary PR questions use their Run contr
 6. **Selected-branch roadmap**: WHEN opening a milestone member, the native
    viewer MUST read its direct proposal anchor from the selected branch for global
    or package roadmap roots, including each root's `_archive`.
-   Check: [Roadmap.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/Roadmap.integration.test.ts), `embedded roadmap opens selected-branch proposal members of %s`.
+   Check: [Roadmap.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/Roadmap.integration.test.ts), `embedded progress opens selected-branch proposal members of %s`.
 7. **Recorded lineage**: WHEN retrieving related executions, Hub MUST limit results
    to the requested project and exact unit or recorded `handoff_from` lineage.
    Check: `modules/hub/app/features/project_management/sdd/repos.py` and activity history API tests.
@@ -69,7 +69,7 @@ native decision evidence is read-only; ordinary PR questions use their Run contr
    data source MUST propagate its error rather than supply fabricated contents.
    Check: [data-source.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/data-source.test.ts), `repository refusals propagate to the native viewer`.
 
-10. **Read-only milestone documents**: WHEN an SDD repository is inspected, Hub MUST keep milestone/document navigation separate from activity execution intent. It provides no executable readiness preview or eligible ordering. Check: repository UI integration tests and `RepositoryView.svelte` source inspection.
+10. **Descriptive progress**: WHEN an SDD repository is inspected, Hub MUST keep milestone/document navigation separate from activity execution intent. Progress groups direct milestone members, other proposals and spec anchors (newest first) with their document status and the latest PR run per activity recorded for that exact unit, read from at most the project's latest 300 runs. It links to documents, runs and decisions only, never starts work, and provides no executable readiness preview, eligible ordering or inferred proposal-to-spec lineage. IF the runs cannot be read, THEN document statuses remain with a Retry. Check: [progress.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/documents/progress.test.ts), [Roadmap.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/Roadmap.integration.test.ts) and `ProgressList.svelte` source inspection.
 
 11. **Addressed unit**: WHEN a Repository URL names a recognized proposal/spec directory, Hub MUST validate its document at the explicit browse ref or default branch before selecting it in both viewer and activity context. A missing explicit branch never falls back. Check: `repository-selection.integration.test.ts` and `RepositoryView.integration.test.ts`.
 12. **Selection isolation**: WHEN project or unit/ref address changes, Hub MUST reject older read results and retain the current requested subject or its explicit unavailable state. Check: `RepositoryView.integration.test.ts` pending-directory navigation regression.
@@ -128,7 +128,7 @@ Repository subject navigation supports unit/ref selection; SDD activity claim li
 | Documents | Default searchable Markdown index under `docs/`, excluding proposal bundles |
 | Proposals | Direct proposal anchors under `docs/proposals/PROP-<slug>/proposal.md` |
 | Specs | Markdown documents under dated `specs/` bundles |
-| Roadmap | Global/package milestones and archives, descriptive dependency statuses and direct proposal members |
+| Progress | Global/package milestones and archives with descriptive dependency statuses and direct proposal members, other proposals and spec anchors, each with document status and latest PR runs |
 | Handbook | Release tag and language-specific pages from `handbook/manifest.json` |
 | Files | Directory/file inspection, including other files inside proposal bundles |
 
