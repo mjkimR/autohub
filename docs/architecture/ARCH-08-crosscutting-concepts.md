@@ -78,8 +78,9 @@ PostgreSQL contention assertions require PostgreSQL rather than a skipped SQLite
 ## Authority belongs to its subject
 
 Authentication establishes a caller; an operation still needs its own authority.
-Browser account approval, machine scopes, direct-PR ready status, proposal
-acceptance and SDK approval do not authorize one another.
+Browser account approval, machine scopes, direct-PR ready status and SDK
+approval do not authorize one another; a repository proposal's status is
+descriptive context, not a Hub approval (`CAP-SDD-native-delivery` rule 5).
 `CAP-ACCESS-authentication-authorization` and `CAP-MCP-tool-access` own entrypoint
 access. `CAP-PR-operator-decisions` and `CAP-SDK-task-flow-execution` own current
 Run/flow input. `CAP-SDD-native-delivery` owns descriptive activity intent and claim recovery.

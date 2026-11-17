@@ -52,7 +52,7 @@ can be processed through the configured queue or bounded recovery;
 
 ## Work Item recovery
 
-`ADR-work-item-recovery-lineage` retains the original Item and linked Run. `WorkItemRecovery` stores project-local request uniqueness, actor/reason, normalized command, accepted revisions, immutable prior outcome and mutable progress. `WorkItemRecoveryEvent` appends ordered outcome evidence. A partial unique index admits one pending recovery per Item. Recovery snapshots retain stable execution identities after eligible Run pruning; legacy Items receive no synthetic recovery rows.
+`DOMAIN-work-item-lineage` explains what recovery keeps. `WorkItemRecovery` stores project-local request uniqueness, actor/reason, normalized command, accepted revisions, immutable prior outcome and mutable progress. `WorkItemRecoveryEvent` appends ordered outcome evidence. A partial unique index admits one pending recovery per Item. Recovery snapshots retain stable execution identities after eligible Run pruning; legacy Items receive no synthetic recovery rows.
 
 Recovery MUST commit its intent and lease generation before remote I/O, and recheck Plan/Run revisions, Item lease token/expiry and recovery generation before applying observations. Check: `test_expired_recovery_observation_cannot_activate`, control-during-I/O regressions and PostgreSQL recovery races in the Work Plan integration suite. Source: `modules/hub/app/features/project_management/work_plans/recovery_tick.py`.
 
@@ -117,7 +117,7 @@ native decision evidence through a forward migration. Generic resume receipts re
 
 ## Work Item replacement evidence
 
-`ReplacementLink`, `ReplacementAcceptance`, `ReplacementEvent`, `ReplacementReceipt` and per-original `ReplacementEvidence` belong to the Work Plan owner. Replacement evidence structure MUST retain immutable merge snapshots and append-only consumption events under Project ownership with admission. The original Item, Plan outcomes and PR owner remain independent. Check: `test_exact_edge_release_consumption_and_replay`, PostgreSQL admission/withdrawal/control/recovery barriers and `test_activity_failure_rolls_back_acceptance` in `test_replacements.py`. Decision: `ADR-work-item-replacement-evidence`.
+`ReplacementLink`, `ReplacementAcceptance`, `ReplacementEvent`, `ReplacementReceipt` and per-original `ReplacementEvidence` belong to the Work Plan owner. Replacement evidence structure MUST retain immutable merge snapshots and append-only consumption events under Project ownership with admission. `DOMAIN-work-item-lineage` explains why original outcomes stay independent. Check: `test_exact_edge_release_consumption_and_replay`, PostgreSQL admission/withdrawal/control/recovery barriers and `test_activity_failure_rolls_back_acceptance` in `test_replacements.py`. Decision: `ADR-work-item-replacement-evidence`.
 
 Mutation locks use Project, deterministic Plans, deterministic Runs, deterministic Items, then evidence. Existing admission retains Project → Plan → catalog and commits consumed evidence with its conditional Item lease/admission write; no Run lock is acquired afterward. Project serialization prevents competing evidence/recovery/control owners from interleaving. Check: PostgreSQL barrier tests; acquisition order also receives code review.
 
