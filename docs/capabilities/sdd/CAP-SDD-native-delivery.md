@@ -13,6 +13,7 @@ entrypoints:
   - modules/hub/app/features/project_management/sdd/activities.py
   - modules/hub/app/features/project_management/sdd/activity_claims.py
   - modules/hub/app/features/project_management/sdd/usecases.py
+  - modules/hub/app/features/project_management/pipeline_runs/requests.py
 ---
 
 # [CAP-SDD-native-delivery] Repository-owned SDD activity delivery
@@ -53,6 +54,8 @@ its work, questions and GitHub outcome.
 12. **Explicit PR number**: WHEN enrolling an existing unit PR through the UI, Hub MUST keep submission disabled until the operator supplies a positive integer PR number. Check: `SddExecution.integration.test.ts` blank and fractional-number tests.
 13. **Workspace recovery**: WHILE an original request is unresolved, Hub MUST retain its exact recovery controls across document and viewer-mode changes. Check: `SddProposals.integration.test.ts` original-intent recovery; `RepositoryView.svelte` workspace outcome placement.
 14. **Abandoned claim**: WHEN a start retry finds its claim without a Run, a live lease, a recorded refusal or uncertainty and with a changed project basis, Hub MUST refuse the retry and record the claim as a settled no-effect refusal if no branch or PR write was attempted, otherwise as uncertain for reconciliation under rule 10. Check: `test_crashed_worker_claim_is_released_or_reconcilable_after_project_change` in `modules/hub/tests/integration/features/project_management/sdd/test_optimistic_api.py`.
+
+15. **Gate question instruction**: WHEN building an SDD activity request, Hub MUST instruct the working agent to raise a stop at a human approval or decision gate of the repository workflow through the attempt-bound question marker after pushing completed work, keeping the marker's attempt and head unchanged, with a decision summary and the expected answers (accept, request changes, reject); never to record or infer the operator's decision before an answer; and to apply a resumed gate answer, including requested changes, as the operator's decision while leaving the PR Draft. The instruction names no repository tool, gate or stage, and Hub neither reads gate state nor refuses Ready status or merge for an unanswered gate. Check: `test_sdd_activity_instructions_raise_repository_gates_as_questions`, `test_ordinary_instructions_have_no_gate_text` and `test_mention_comment_carries_the_gate_instruction_beside_the_question_marker` in `modules/hub/tests/unit/features/project_management/pipeline_runs/test_requests.py`.
 
 ## 4. Interfaces & Data Contracts
 
