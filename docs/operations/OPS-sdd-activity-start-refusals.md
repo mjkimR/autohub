@@ -38,7 +38,7 @@ claim existed.
 | PR published but no Run returned | HTTP `409` `CONFLICT` with `Saved enrollment intent differs` or `enrollment ... requires reconciliation`; the claim has `checkpoint.pull_number` and `run_id` `null` | `UC-start-sdd-activity` extension 4a; `CAP-SDD-native-delivery` rule 7 (Exact recovery) |
 | Retry refused while another attempt runs | HTTP `409` `Activity reconciliation is already in flight`; the claim's `checkpoint.lease_expires_at` is in the future | `CAP-SDD-native-delivery` §4 (retry with the same request UUID and payload) after the lease expires |
 | Retry refused as a different request | HTTP `409` `Request identity already binds a different actor or payload` or `Start request belongs to another activity owner`; the request UUID was reused with another payload, actor, unit or activity | `CAP-SDD-native-delivery` §4 (a start retry reuses its UUID and identical payload); [uncertain activity publication](../runbooks/sdd-runtime.md#uncertain-activity-publication) |
-| Retry refused after a project edit | HTTP `409` `Project changed after activity claim`; the claim's `checkpoint.project` basis (`DESIGN-sdd-activity-publication`, Claim datasheet) differs from the current project | `CAP-SDD-native-delivery` rule 10 when `checkpoint.uncertain` is `true`; otherwise the no-row fallback below |
+| Retry refused after a project edit | HTTP `409` `Project changed after activity claim`; the claim's `checkpoint.project` basis (`DESIGN-sdd-activity-publication`, Claim datasheet) differs from the current project | `CAP-SDD-native-delivery` rule 14: with `settled` `true` and `checkpoint.refusal`, start again with a new request UUID; with `checkpoint.uncertain` `true`, rule 10 and [inspect and reconcile](../runbooks/sdd-runtime.md#inspect-and-reconcile-uncertain-publication) |
 | Retry of a finished claim refused | HTTP `409` `Activity already settled ... Replay creates no new activity`; the claim shows `settled` `true` | `UX-sdd-claim-recovery` settled state; a new start is a new request under `UC-start-sdd-activity` |
 | Reconciliation refused as ineligible | HTTP `409` `Only an uncertain activity without a Run or live lease can be settled`; the claim has a `run_id`, no `checkpoint.uncertain` or a future `lease_expires_at` | `CAP-SDD-native-delivery` rule 10 (Uncertain reservation); `UX-sdd-claim-recovery` active state |
 | Reconciliation refused for changed evidence | HTTP `409` `Claim evidence changed; inspect the retained candidate again`; the current `checkpoint_digest` differs from the submitted `expected_checkpoint_digest` | [inspect and reconcile](../runbooks/sdd-runtime.md#inspect-and-reconcile-uncertain-publication) |
@@ -60,8 +60,6 @@ claim shows that `run_id` and `checkpoint.uncertain` `false`. A released reserva
 
 The claim records Hub's publication checkpoints, not the remote outcome. It cannot show whether an external agent
 is still working on a saved branch or PR, which the operator inspects in GitHub before acknowledging external work.
-A claim that is neither uncertain, settled nor bound to a Run, and whose project basis changed, has no documented
-release path in `CAP-SDD-native-delivery`.
 
 ## Update triggers
 
