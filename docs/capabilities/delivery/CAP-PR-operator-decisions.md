@@ -65,7 +65,9 @@ WHEN listing a changing worklist, Hub MUST use oldest waiting time and stable ke
 
 WHEN listing decisions, Hub MUST report `actionable_total_count`, the exact number of actionable rows the request's `project_id`, `kind` and `question_state` filters admit on visible nonterminal Runs, independent of `cursor` and `limit`, using one aggregate query in the same database transaction as the page rows. Historical native requests are not actionable discovery rows. The count covers decision-inbox rows only, not other operator-owed work. Check: `test_keyset_bounded_and_cursor_filters`, `test_discovery_question_lifecycle_and_exact_owner` and `test_count_shares_the_page_transaction` in the same test file.
 
-The authenticated `GET /api/v1/pipeline-runs/decisions` accepts optional `project_id`, `kind`, `question_state` (open/answered), `cursor` and `limit` (default 20, range 1–100). It returns `items`, `has_more`, `next_cursor` and `actionable_total_count`; malformed or filter-mismatched cursors return 422, unknown projects 404. It follows existing run-read visibility: admitted users share projects; no independent project ACL is introduced. Refresh restarts pagination because new generations may precede a retained cursor.
+WHEN returning a decision-inbox row, Hub MUST report `sdd_activity` and `sdd_unit` from the owning Run's retained `sdd_snapshot` (`activity_kind` when it is `plan` or `dev`, and a nonempty `spec_dir`), each null when the snapshot is absent or lacks that value, using the Run row already loaded with the page or selection and no additional query. Check: `test_sdd_activity_identity_is_read_from_the_owning_run` and `test_optimistic_activity_uses_ordinary_question_projection` in [test_discovery.py](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_discovery.py); [`test_decision_identity.py`](../../../modules/hub/tests/unit/features/project_management/pipeline_runs/test_decision_identity.py), `test_identity_comes_from_the_retained_snapshot`.
+
+The authenticated `GET /api/v1/pipeline-runs/decisions` accepts optional `project_id`, `kind`, `question_state` (open/answered), `cursor` and `limit` (default 20, range 1–100). It returns `items`, `has_more`, `next_cursor` and `actionable_total_count`; each item is a `DecisionEntryRead` (see Decision entry read below); malformed or filter-mismatched cursors return 422, unknown projects 404. It follows existing run-read visibility: admitted users share projects; no independent project ACL is introduced. Refresh restarts pagination because new generations may precede a retained cursor.
 
 `POST /api/v1/pipeline-runs/decisions/review` accepts an exact `key` and `fingerprint`. Missing/ended owners return 404; changed generations return 409. The Run question read `GET /api/v1/pipeline-runs/{run_id}/questions/{question_id}` resolves that exact owner question, including one outside the first history page. `UX-decision-inbox` opens `UX-run-decisions`; filters and loaded cursor page persist when it closes.
 
@@ -80,6 +82,20 @@ WHILE a submission outcome is uncertain, the owner review MUST retain its origin
 WHEN a mutation is acknowledged and a subsequent read fails, the interface MUST retain the recorded identity and saved text with a refresh error. Saving never selects an answer for application. Historical outcome selection has its own displayed request identity and read action. Check: [RunDecisionsDialog.integration.test.ts](../../../modules/hub-ui/src/lib/features/project-management/pipeline-runs/RunDecisionsDialog.integration.test.ts).
 
 ## 4. Interfaces & Data Contracts
+
+### Decision entry read
+
+`DecisionEntryRead` is returned by the decision list and exact selection. Besides its discovery fields
+(`key`, `fingerprint`, `kind`, `subject_id`, `question_state`, `actionable`, `waiting_since`,
+`observed_at`, `revision`, `head_sha`) and owning-Run fields (`run_id`, `project_id`, `run_state`,
+`pull_number`, `pull_url`), it carries the SDD activity identity:
+
+| Field | Meaning |
+| --- | --- |
+| `sdd_activity` | `plan` or `dev`, the `activity_kind` the owning Run retained at SDD enrollment; null for an ordinary Run or a snapshot without a recognized kind. It is not inferred from the branch. |
+| `sdd_unit` | The SDD unit `spec_dir` the owning Run retained; null for an ordinary Run |
+
+Both values change only if the owning Run's retained snapshot changes; they are not part of the row fingerprint.
 
 ### HTTP surface
 

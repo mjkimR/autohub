@@ -400,6 +400,16 @@ export interface components {
             revision: number;
             /** Head Sha */
             head_sha: string | null;
+            /**
+             * Sdd Activity
+             * @description plan or dev, as retained in the owning Run's sdd_snapshot; null for an ordinary Run or an unrecorded kind
+             */
+            sdd_activity?: ("plan" | "dev") | null;
+            /**
+             * Sdd Unit
+             * @description SDD unit (spec_dir) retained in the owning Run's sdd_snapshot; null for an ordinary Run
+             */
+            sdd_unit?: string | null;
         };
         /** DecisionOutcome */
         DecisionOutcome: {

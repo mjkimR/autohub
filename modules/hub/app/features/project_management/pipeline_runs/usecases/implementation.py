@@ -26,14 +26,23 @@ from app.features.project_management.pipeline_runs.repos import PipelineRunRepos
 from app.features.project_management.pipeline_runs.schemas import (
     PipelineRunRead,
     PullRequestSnapshot,
+    RunPullObservation,
 )
 from app.features.project_management.pipeline_runs.usecases.transitions import (
     as_utc,
     finish_closed_pull,
 )
+from app.features.project_management.pipelines.schemas import VerificationStatus
 from app.features.project_management.pipelines.services import PipelineObservationService
 from app.features.project_management.projects.errors import ProjectError
+from app_layer_base.utils.time_util import get_current_utc_time
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# The CI observer's own wording for a head whose configured workflow has not been inspected yet.
+UNVERIFIED_HEAD_REASON = "Awaiting verification"
+CLOSED_PULL_REASON = "PR is closed"
+# An open PR's unchanged head keeps these verdicts; `closed` no longer describes a PR read as open.
+KEPT_VERIFICATIONS = {status.value for status in VerificationStatus if status != VerificationStatus.CLOSED}
 
 
 @dataclass(frozen=True)
@@ -49,6 +58,34 @@ class ImplementationInput:
 class ImplementationObservation:
     pull: dict[str, Any]
     replies: list[AgentReply]
+    observed_at: datetime | None = None
+
+
+def record_implementation_observation(run: PipelineRun, pull: dict[str, Any], observed_at: datetime) -> None:
+    """Retain the Draft status and head this implementation-stage PR read saw, without another GitHub request.
+
+    This read carries no workflow results. The previous verification still describes an unchanged head of an
+    open PR, so it is kept; a new head has not been verified yet and reads `waiting`. The revision does not move.
+    """
+    head_sha = pull["head"]["sha"]
+    previous = run.pull_observation or {}
+    if pull.get("state") == "closed":
+        verification, reason = VerificationStatus.CLOSED, CLOSED_PULL_REASON
+    elif (
+        previous.get("head_sha") == head_sha
+        and previous.get("verification") in KEPT_VERIFICATIONS
+        and previous.get("reason")
+    ):
+        verification, reason = VerificationStatus(previous["verification"]), previous["reason"]
+    else:
+        verification, reason = VerificationStatus.WAITING, UNVERIFIED_HEAD_REASON
+    run.pull_observation = RunPullObservation(
+        head_sha=head_sha,
+        draft=pull.get("draft") is True,
+        verification=verification,
+        reason=reason,
+        observed_at=observed_at,
+    ).model_dump(mode="json")
 
 
 class ImplementationProgress:
@@ -74,12 +111,18 @@ class ImplementationProgress:
     ) -> ImplementationObservation:
         target = prepared.target
         pr = await observer.get_pull_request(target.connector_id, target.repository, target.pull_number)
+        observed_at = get_current_utc_time()
         if pr.get("state") == "closed" or (
             not prepared.optimistic and prepared.posted_at is not None and pr["head"]["sha"] != prepared.delivered_head
         ):
-            return ImplementationObservation(pr, [])
+            return ImplementationObservation(pr, [], observed_at)
         replies = await prepared.adapter.collect_replies(observer, target, prepared.posted_at)
-        return ImplementationObservation(pr, replies)
+        return ImplementationObservation(pr, replies, observed_at)
+
+    @staticmethod
+    def record(run: PipelineRun, result: ImplementationObservation) -> None:
+        if result.observed_at is not None:
+            record_implementation_observation(run, result.pull, result.observed_at)
 
     async def apply(
         self,
@@ -94,6 +137,7 @@ class ImplementationProgress:
             raise ProjectError(409, "Pipeline run has no active implementation attempt")
         delivery = await self.repo.latest_delivery(session, attempt.id)
         pr, replies = result.pull, result.replies
+        self.record(run, result)
         if pr.get("state") == "closed":
             await finish_closed_pull(self.repo, session, run, pr, now)
             return await read_run(session, run)

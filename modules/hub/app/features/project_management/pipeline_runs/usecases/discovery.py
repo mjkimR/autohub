@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from app.features.project_management.pipeline_runs.discovery_repo import DecisionDiscoveryRepository
-from app.features.project_management.pipeline_runs.discovery_service import decode_cursor, page_result
+from app.features.project_management.pipeline_runs.discovery_service import decode_cursor, entry_read, page_result
 from app.features.project_management.pipeline_runs.models import FINAL_RUN_STATES
 from app.features.project_management.pipeline_runs.origin_reads import read_run
 from app.features.project_management.pipeline_runs.repos import PipelineRunRepository
@@ -32,8 +32,6 @@ class DecisionDiscoveryUseCase:
             return page_result(rows, limit, filters, total)
 
     async def selection(self, key, fingerprint):
-        from app.features.project_management.pipeline_runs.discovery_schemas import DecisionEntryRead
-
         async with AsyncTransaction() as session:
             row = await self.repo.selection(session, key)
             if not row:
@@ -41,14 +39,7 @@ class DecisionDiscoveryUseCase:
             entry, run = row
             if entry.fingerprint != fingerprint:
                 raise ProjectError(409, "Decision changed; reopen the current inbox")
-            return DecisionEntryRead.model_validate(
-                {
-                    **{name: getattr(entry, name) for name in DecisionEntryRead.model_fields if hasattr(entry, name)},
-                    "run_state": run.state,
-                    "pull_number": run.pull_number,
-                    "pull_url": run.pull_url,
-                }
-            )
+            return entry_read(entry, run)
 
     async def review(self, request, observer):
         runs, projects = PipelineRunRepository(), ProjectRepository()

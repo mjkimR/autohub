@@ -75,7 +75,9 @@ the same executor after `CAP-WORK-work-plan-execution` prepares an Item's PR.
 29. **Bounded origin reads**: WHEN enriching a selected Run page, Hub MUST use at most three additional sequential bulk SELECTs on the caller session without changing page membership, ordering or total. Check: `test_origins.py` on SQLite/PostgreSQL, including one HTTP request checkout.
 30. **Retained PR observation**: WHEN Hub applies a CI observation to a Run, Hub MUST retain the observed head SHA, Draft status, verification status, reason and observation time as `pull_observation` without changing the Run `revision`. Check: [`test_pull_observation.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_pull_observation.py), `test_draft_wait_records_draft_and_current_head_verification`, `test_recording_does_not_move_the_revision`, `test_ready_and_failing_ci_replace_the_draft_observation`, `test_passing_ci_is_recorded_when_merge_policy_pauses` and `test_draft_found_by_the_merge_recheck_wins`.
 31. **Observation-only read**: WHEN returning a Run read, Hub MUST serve `pull_observation` from retained state without a GitHub request. Check: [`test_pull_observation.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_pull_observation.py), `test_draft_wait_records_draft_and_current_head_verification`.
-32. **Unobserved PR status**: WHILE no CI observation has been applied to a Run, Hub MUST return `pull_observation` as null. Check: [`test_pull_observation.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_pull_observation.py), `test_a_run_reads_empty_until_its_first_ci_observation`.
+32. **Unobserved PR status**: WHILE neither a CI observation nor an implementation-stage PR read has been applied to a Run, Hub MUST return `pull_observation` as null. Check: [`test_pull_observation.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_pull_observation.py), `test_a_run_reads_empty_until_its_first_ci_observation`.
+33. **Implementation-stage Draft**: WHEN Hub applies an implementation-stage PR read to a Run, Hub MUST retain the observed head SHA, Draft status and read time as `pull_observation` from that same read, without another GitHub request and without changing the Run `revision`. Check: [`test_pull_observation.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_pull_observation.py), `test_implementation_read_records_draft_and_keeps_the_head_verdict`; [`test_implementation_observation.py`](../../../modules/hub/tests/unit/features/project_management/pipeline_runs/usecases/test_implementation_observation.py), `test_first_read_records_draft_and_an_unverified_head`.
+34. **Implementation-stage verification**: WHEN an implementation-stage PR read is retained, Hub MUST keep the previous `verification` and `reason` if the open PR head is unchanged and the previous verification is not `closed`, report `closed` with `PR is closed` for a closed PR, and otherwise report `waiting` with `Awaiting verification`. Check: [`test_pull_observation.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_pull_observation.py), `test_implementation_read_records_draft_and_keeps_the_head_verdict` and `test_implementation_read_of_a_new_head_waits_for_verification`; [`test_implementation_observation.py`](../../../modules/hub/tests/unit/features/project_management/pipeline_runs/usecases/test_implementation_observation.py), `test_an_unchanged_head_keeps_its_last_verification`, `test_a_new_head_is_waiting_for_verification`, `test_a_closed_pull_reads_closed` and `test_a_reopened_pull_does_not_keep_closed`.
 
 ## 4. Interfaces & Data Contracts
 
@@ -132,10 +134,14 @@ The same value is returned by list/get, project-scoped unit history and mutation
 | `draft` | `true` when GitHub reported the PR as Draft, `false` when it was Ready for review |
 | `verification` | `waiting`, `failed`, `blocked`, `passed` or `closed`, as defined by `CAP-PR-ci-observation` |
 | `reason` | Hub's explanation of that verification status |
-| `observed_at` | Time of the GitHub observation |
+| `observed_at` | Time of the GitHub observation; for an implementation-stage read, the time its PR read returned |
 
-Only applied `awaiting_ci` observations update the value. An implementation-stage
-read, a failed or timed-out GitHub query and an observation discarded by a fence
+Applied `awaiting_ci` observations and applied implementation-stage PR reads update
+the value. The implementation-stage read is the PR read the implementing stage
+already makes, including the question check of an optimistic SDD activity in
+`awaiting_ci`; it carries Draft and head but no workflow results, so rule 34 sets
+`verification` from the previous value or reports `waiting`. `verification` stays
+non-null. A failed or timed-out GitHub query and an observation discarded by a fence
 leave the previous value in place. A Draft verdict found by the pre-merge recheck
 or a refused merge sets `draft` to `true`. The value is retained after the Run
 stops or ends, so it can describe an older head; `observed_at` and `head_sha`
@@ -198,6 +204,7 @@ the contributor's development guide owns verification commands.
 
 Source inspected: [`lifecycle.py`](../../../modules/hub/app/features/project_management/pipeline_runs/usecases/lifecycle.py),
 [`ci.py`](../../../modules/hub/app/features/project_management/pipeline_runs/usecases/ci.py),
+[`implementation.py`](../../../modules/hub/app/features/project_management/pipeline_runs/usecases/implementation.py),
 [`control.py`](../../../modules/hub/app/features/project_management/pipeline_runs/usecases/control.py),
 [`delivery.py`](../../../modules/hub/app/features/project_management/pipeline_runs/usecases/delivery.py),
 [`advancement.py`](../../../modules/hub/app/features/project_management/pipeline_runs/usecases/advancement.py),

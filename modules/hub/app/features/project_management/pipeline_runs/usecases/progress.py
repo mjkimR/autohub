@@ -214,6 +214,7 @@ class PipelineRunProgress:
             observed = await implementing.observe(question_input, observer)
             async with AsyncTransaction() as session:
                 run, _ = await self._validate(session, checkpoint)
+                implementing.record(run, observed)
                 if await implementing.apply_questions(session, run, question_input, observed):
                     return await read_run(session, run)
 

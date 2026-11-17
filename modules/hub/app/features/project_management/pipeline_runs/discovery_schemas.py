@@ -2,9 +2,10 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 DecisionKind = Literal["run-question",]
+SddActivityKind = Literal["plan", "dev"]
 
 
 class DecisionEntryRead(BaseModel):
@@ -25,6 +26,14 @@ class DecisionEntryRead(BaseModel):
     observed_at: datetime
     revision: int
     head_sha: str | None
+    sdd_activity: SddActivityKind | None = Field(
+        default=None,
+        description="plan or dev, as retained in the owning Run's sdd_snapshot; null for an ordinary Run or an unrecorded kind",
+    )
+    sdd_unit: str | None = Field(
+        default=None,
+        description="SDD unit (spec_dir) retained in the owning Run's sdd_snapshot; null for an ordinary Run",
+    )
 
 
 class DecisionPage(BaseModel):

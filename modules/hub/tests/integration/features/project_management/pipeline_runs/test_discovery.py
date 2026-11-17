@@ -4,7 +4,8 @@ import pytest
 from app.features.project_management.pipeline_runs.discovery_repo import DecisionDiscoveryRepository
 from app.features.project_management.pipeline_runs.models import DecisionEntry, PipelineRun, RunQuestion
 from app_layer_base.utils.time_util import get_current_utc_time
-from sqlalchemy import select
+from sqlalchemy import event, select
+from sqlalchemy.engine import Engine
 
 from tests.integration.features.project_management.pipeline_runs import test_pipeline_runs_api as scenarios
 from tests.integration.features.project_management.pipeline_runs.test_interactions import answer, ask, state
@@ -168,3 +169,59 @@ async def test_optimistic_activity_uses_ordinary_question_projection(client, pro
     [entry] = (await client.get(URL)).json()["items"]
     assert entry["kind"] == "run-question"
     assert entry["actionable"]
+    # A snapshot without an activity kind names its unit; the kind is never inferred from the branch.
+    assert (entry["sdd_activity"], entry["sdd_unit"]) == (None, "docs/proposals/PROP-example")
+
+
+async def observe_page(client, params=None):
+    statements, checkouts = [], []
+
+    def statement(conn, cursor, sql, parameters, context, many):
+        if sql.lstrip().upper().startswith("SELECT"):
+            statements.append(sql)
+
+    def checkout(*args):
+        checkouts.append(True)
+
+    event.listen(Engine, "before_cursor_execute", statement)
+    event.listen(Engine, "checkout", checkout)
+    try:
+        response = await client.get(URL, params=params)
+    finally:
+        event.remove(Engine, "before_cursor_execute", statement)
+        event.remove(Engine, "checkout", checkout)
+    assert response.status_code == 200, response.text
+    return response.json(), len(statements), len(checkouts)
+
+
+async def test_sdd_activity_identity_is_read_from_the_owning_run(client, project, github, session):
+    enrolled = (await enroll(client, project)).json()
+    root = f"/api/v1/pipeline-runs/{enrolled['id']}"
+    assert (await ask(client, root)).status_code == 200
+
+    ordinary, ordinary_selects, ordinary_checkouts = await observe_page(client)
+    [entry] = ordinary["items"]
+    assert (entry["sdd_activity"], entry["sdd_unit"]) == (None, None)
+
+    row = await session.get(PipelineRun, UUID(enrolled["id"]))
+    row.sdd_snapshot = {
+        "provider": "repository-agent",
+        "spec_dir": "docs/proposals/PROP-health",
+        "activity_kind": "plan",
+        "handoff_pending": False,
+    }
+    await session.commit()
+    github.paths.clear()
+    planned, planned_selects, planned_checkouts = await observe_page(client)
+    [entry] = planned["items"]
+    assert (entry["sdd_activity"], entry["sdd_unit"]) == ("plan", "docs/proposals/PROP-health")
+    # The identity comes from the Run row the page already joins: no extra query or connection.
+    assert planned_selects == ordinary_selects
+    assert planned_checkouts == ordinary_checkouts <= 1
+    assert not github.paths
+
+    row.sdd_snapshot = {**row.sdd_snapshot, "activity_kind": "dev", "spec_dir": "specs/0001-health"}
+    await session.commit()
+    selected = await client.get(URL + "/selection", params={"key": entry["key"], "fingerprint": entry["fingerprint"]})
+    assert selected.status_code == 200, selected.text
+    assert (selected.json()["sdd_activity"], selected.json()["sdd_unit"]) == ("dev", "specs/0001-health")
