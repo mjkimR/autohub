@@ -35,7 +35,7 @@ A settled owner offers **Review new activity**, which returns to intent review.
 - **loading**: the claim evidence loads when the card opens; competing inspection/release is disabled.
 - **publishing**: a live publication lease still owns the work; Inspect again after it ends, then Retry same request.
 - **reconcilable**: an unleased uncertain no-Run publication requires acknowledgment of inspected external work.
-- **active**: follow the owning Run; no reservation release is offered.
+- **active**: follow the owning Run; no reservation release is offered. With a retained original request, Dismiss request closes it, because replaying it cannot succeed, and new starts become available.
 - **settled**: review new activity intent; no execution starts automatically.
 - **error**: a plain sentence states what failed and that nothing was released, adding a specific server reason only; Inspect again retries the read.
 - **uncertain**: retain the original acknowledgment UUID/digest; only **Retry same acknowledgment** can resend it.
@@ -46,6 +46,7 @@ A settled owner offers **Review new activity**, which returns to intent review.
 | --- | --- | --- | --- | --- | --- | --- |
 | Inspect again | `UC-start-sdd-activity` 2b | populated, publishing, error | loading | | `CAP-SDD-native-delivery` | The exact claim and its evidence links are read again. |
 | Open retained Run / Original PR | `UC-start-sdd-activity` 2b | reconcilable, active, settled | populated | `UX-run-page` | `CAP-SDD-native-delivery` | The exact owner opens. |
+| Dismiss request | `UC-start-sdd-activity` 2b | active | populated | | `CAP-SDD-native-delivery` | The original request closes; the workspace states that its PR run still owns the activity. |
 | Acknowledge / Release inspected reservation | `UC-start-sdd-activity` 2b | reconcilable | loading | | `CAP-SDD-native-delivery` | The selected reservation settles without resume or new work. |
 | Retry same acknowledgment | `UC-start-sdd-activity` 2b | uncertain | loading | | `CAP-SDD-native-delivery` | The identical retained request is replayed. |
 | Review new activity | `UC-start-sdd-activity` 2b | settled | populated | `UX-sdd-proposals` | `CAP-SDD-native-delivery` | Intent review returns; a new start remains explicit. |

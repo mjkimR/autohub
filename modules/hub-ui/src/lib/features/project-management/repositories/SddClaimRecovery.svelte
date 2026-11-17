@@ -22,6 +22,7 @@
 		intent = null,
 		busy: requestBusy = false,
 		onretry,
+		ondismiss,
 		onresolved
 	}: {
 		projectId: string;
@@ -32,6 +33,8 @@
 		busy?: boolean;
 		/** Replays the exact original request (useful once a live publication lease ends). */
 		onretry?: () => void;
+		/** Closes the retained request once a live PR run is confirmed as the owner. */
+		ondismiss?: () => void;
 		onresolved: () => void;
 	} = $props();
 	let claim = $state<components['schemas']['ClaimRead'] | null>(null);
@@ -161,7 +164,19 @@
 			Its PR run owns this work. Follow that run; Hub refuses replacement work while it owns the
 			unit.
 		</p>
-		<Button size="sm" href={runHref(claim.run_id, projectId)}>Open retained Run</Button>
+		{#if intent && ondismiss}<p class="text-muted-foreground">
+				Retrying the original request cannot succeed while that run owns the activity. Dismiss it to
+				start other work.
+			</p>{/if}
+		<div class="flex flex-wrap gap-2">
+			<Button size="sm" href={runHref(claim.run_id, projectId)}>Open retained Run</Button>
+			{#if intent && ondismiss}<Button
+					size="sm"
+					variant="outline"
+					disabled={requestBusy}
+					onclick={ondismiss}>Dismiss request</Button
+				>{/if}
+		</div>
 	{:else if claim && releasable}
 		<p class="text-muted-foreground">
 			The publication outcome is uncertain and no Run has been confirmed. Inspect any external

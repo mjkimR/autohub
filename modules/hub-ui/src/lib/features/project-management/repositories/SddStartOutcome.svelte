@@ -32,6 +32,7 @@
 					intent={state.pending}
 					busy={state.busy}
 					onretry={() => state.retry()}
+					ondismiss={() => state.dismissOwned()}
 					onresolved={() => state.resolvedOwner()}
 				/>{/key}
 		{:else if state.pending}

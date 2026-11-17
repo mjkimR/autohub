@@ -180,6 +180,20 @@ export class SddStarts {
 				: readableLoadError(new Error(detail), 'Start outcome is unknown. Retry the same request.');
 	}
 
+	/**
+	 * Close a retained request whose claim is owned by a live PR run: replaying it cannot succeed,
+	 * so new starts become available again (CAP-SDD-native-delivery rule 18).
+	 */
+	dismissOwned() {
+		if (this.busy) return;
+		this.pending = null;
+		this.error = '';
+		this.claimId = '';
+		this.ownerConflict = false;
+		this.resolved =
+			'Original request closed. Its PR run still owns that activity; follow it there.';
+	}
+
 	resolvedOwner() {
 		this.pending = null;
 		this.error = '';

@@ -3,7 +3,8 @@ import { sddStarts } from './sdd-starts.svelte';
 export class SddExecutionState {
 	spec = $state('');
 	pull = $state<number | undefined>(undefined);
-	effort = $state<'low' | 'medium' | 'high'>('medium');
+	/** Empty follows the repository recommendation, as the activity start form does. */
+	effort = $state<'' | 'low' | 'medium' | 'high'>('');
 	constructor(private projectId: () => string) {}
 	get starts() {
 		return sddStarts(this.projectId());
@@ -24,7 +25,7 @@ export class SddExecutionState {
 			pull_number: this.pull!,
 			implemented: false,
 			handoff: false,
-			activity_effort: this.effort
+			...(this.effort ? { activity_effort: this.effort } : {})
 		});
 	}
 }

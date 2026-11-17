@@ -19,7 +19,7 @@ capabilities:
 ## 1. Purpose
 
 - **Primary task**: see what currently holds the selected SDD unit and follow its PR runs.
-- **Facts to commit**: unit path, exact Run/PR; enrollment additionally requires an explicitly entered positive integer PR number and effort.
+- **Facts to commit**: unit path, exact Run/PR; enrollment additionally requires an explicitly entered positive integer PR number and takes an optional effort.
 - **Secondary items**: Enroll an existing PR is a collapsed disclosure inside the unit work panel. Its button is labeled Enroll PR.
 
 ## 2. Content
@@ -27,7 +27,7 @@ capabilities:
 - SDD unit (selected directory and document branch; changing unit/branch resets the enrollment form).
 - PR run (unit status, shown when the unit has PR runs: the latest PR run per activity with its state badge and PR link; Open decisions on a paused or blocked run).
 - PR run ("PR runs for this unit" rows, newest first, with independent loading/empty/error state and exact Run/PR links).
-- PR run (secondary enrollment disclosure, empty Pull request field, activity effort labeled Low, Medium or High, and Enroll PR).
+- PR run (secondary enrollment disclosure, empty Pull request field, activity effort defaulting to Use repository recommendation with Low, Medium or High, and Enroll PR).
 
 Unit status sits above the activity form, so owed work is seen before a new start. The newest PR run that owes the operator carries the only primary Open decisions; other owed runs show it at secondary weight.
 

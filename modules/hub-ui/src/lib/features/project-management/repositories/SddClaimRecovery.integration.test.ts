@@ -114,3 +114,36 @@ test('a failed evidence read is plain and retryable', async () => {
 	await userEvent.setup().click(screen.getByRole('button', { name: 'Inspect again' }));
 	expect(await screen.findByRole('button', { name: 'Release inspected reservation' })).toBeTruthy();
 });
+test('a retained request owned by a live PR run can be dismissed', async () => {
+	api.GET.mockResolvedValue({ data: { ...claim, run_id: 'run-9' } });
+	const ondismiss = vi.fn();
+	const intent = {
+		kind: 'activity',
+		project: 'project',
+		slug: 'demo',
+		activity: 'plan',
+		body: { request_id: 'request', base_branch: 'main' }
+	};
+	render(SddClaimRecovery, {
+		projectId: 'project',
+		claimId: 'claim-1',
+		intent: intent as never,
+		ondismiss,
+		onresolved: vi.fn()
+	});
+	await screen.findByText(/cannot succeed while that run owns the activity/);
+	expect(screen.getByRole('link', { name: 'Open retained Run' })).toBeTruthy();
+	await userEvent.click(screen.getByRole('button', { name: 'Dismiss request' }));
+	expect(ondismiss).toHaveBeenCalledOnce();
+});
+test('without a retained request a run-owned claim offers no dismissal', async () => {
+	api.GET.mockResolvedValue({ data: { ...claim, run_id: 'run-9' } });
+	render(SddClaimRecovery, {
+		projectId: 'project',
+		claimId: 'claim-1',
+		ondismiss: vi.fn(),
+		onresolved: vi.fn()
+	});
+	await screen.findByRole('link', { name: 'Open retained Run' });
+	expect(screen.queryByRole('button', { name: 'Dismiss request' })).toBeNull();
+});

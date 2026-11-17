@@ -122,6 +122,12 @@ test('a retained owner keeps the exact request and explains the disabled form be
 	expect(reason.textContent).toContain(unit);
 	expect(screen.getByRole('button', { name: 'Start Planning' })).toHaveProperty('disabled', true);
 	expect(screen.getByRole('button', { name: 'Review the original request' })).toBeTruthy();
+	// A live PR run owns the activity: dismissing the request ends the project start lock.
+	await userEvent.setup().click(within(card).getByRole('button', { name: 'Dismiss request' }));
+	await waitFor(() =>
+		expect(screen.getByRole('button', { name: 'Start Planning' })).toHaveProperty('disabled', false)
+	);
+	expect(screen.getByText(/Original request closed/)).toBeTruthy();
 });
 
 test('success is confirmed beside Start with the PR run link', async () => {

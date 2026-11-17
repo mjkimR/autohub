@@ -20,6 +20,7 @@ test('starts existing-PR work directly without runtime or readiness probes', asy
 	expect(screen.getByLabelText('Pull request')).toHaveProperty('value', '');
 	expect(screen.getByRole('button', { name: 'Enroll PR' })).toHaveProperty('disabled', true);
 	await user.type(screen.getByLabelText('Pull request'), '1');
+	expect(screen.getByLabelText('Activity effort')).toHaveProperty('value', '');
 	await user.selectOptions(screen.getByLabelText('Activity effort'), 'high');
 	await user.click(screen.getByRole('button', { name: 'Enroll PR' }));
 	await screen.findByRole('link', { name: 'Open PR run' });
@@ -68,4 +69,14 @@ test('fractional PR numbers cannot be enrolled', async () => {
 	await userEvent.setup().type(screen.getByLabelText('Pull request'), '1.5');
 	expect(screen.getByRole('button', { name: 'Enroll PR' })).toHaveProperty('disabled', true);
 	expect(api.POST).not.toHaveBeenCalled();
+});
+
+test('enrollment without a chosen effort follows the repository recommendation', async () => {
+	api.POST.mockResolvedValue({ data: { id: 'run-3' } });
+	render(SddExecution, { projectId: 'project', selectedSpec: 'specs/2026-11/feature' });
+	const user = userEvent.setup();
+	await user.type(screen.getByLabelText('Pull request'), '4');
+	await user.click(screen.getByRole('button', { name: 'Enroll PR' }));
+	await screen.findByRole('link', { name: 'Open PR run' });
+	expect(api.POST.mock.calls[0][1].body).not.toHaveProperty('activity_effort');
 });

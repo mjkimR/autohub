@@ -45,7 +45,8 @@ entrypoints:
   Interface: `UX-sdd-proposals`.
 - **2b.** Another owner or uncertain publication claim exists: Hub identifies the
   retained owner/evidence and refuses replacement; the operator inspects it and
-  explicitly reconciles the exact uncertain no-Run reservation before restarting step 1.
+  explicitly reconciles the exact uncertain no-Run reservation before restarting step 1. When a PR run owns the
+  activity, the operator follows that run and may dismiss the original request; the use case ends.
   Interface: `UX-sdd-proposals`, `UX-sdd-claim-recovery`.
 - **3a.** An unrelated activity branch exists: Hub refuses without overwriting
   it and closes the request, so later starts stay available; the use case ends. Interface: `UX-sdd-proposals`.
@@ -68,7 +69,8 @@ not create a Hub admission extension. The working agent handles those concerns.
 ## 5. Acceptance Criteria (Given / When / Then)
 
 Applicable rules: `CAP-SDD-native-delivery` optimistic dispatch, host admission,
-Draft publication, exact recovery, uncertain reservation, closed refusal and retained owner request.
+Draft publication, exact recovery, uncertain reservation, closed refusal, retained owner request and run-owned
+request dismissal.
 
 ### SDD-START-01: Dispatch without repository readiness
 
