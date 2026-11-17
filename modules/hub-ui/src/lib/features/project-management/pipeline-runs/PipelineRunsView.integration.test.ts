@@ -171,6 +171,31 @@ test.each([
 	}
 );
 
+test('a run awaiting CI on a Draft PR says to mark it Ready beside its state', async () => {
+	const draftRun = {
+		...run,
+		state: 'awaiting_ci',
+		pull_observation: {
+			head_sha: 'a'.repeat(40),
+			draft: true,
+			verification: 'waiting',
+			reason: '',
+			observed_at: '2026-11-17T06:40:00Z'
+		}
+	};
+	api.GET.mockImplementation((path: string) => {
+		if (path === '/api/v1/projects')
+			return Promise.resolve({ data: { items: [project], total_count: 1 } });
+		if (path === '/api/v1/pipeline-runs')
+			return Promise.resolve({ data: { items: [draftRun], total_count: 1 } });
+		return Promise.resolve({ data: { items: [] } });
+	});
+	render(PipelineRunsView);
+
+	await screen.findByText('Ship the feature');
+	expect(screen.getByText('Awaiting CI', { selector: '[data-run-state]' })).toBeTruthy();
+	expect(screen.getByText('Draft · mark Ready', { selector: '[data-run-draft]' })).toBeTruthy();
+});
 test('a run held by a pending question offers Answer, a marker and no plain Resume', async () => {
 	const previous = api.GET.getMockImplementation()!;
 	api.GET.mockImplementation((path: string) => {

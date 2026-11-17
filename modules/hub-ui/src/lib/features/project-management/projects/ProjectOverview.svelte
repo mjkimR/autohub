@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import RunStateBadge from '../pipeline-runs/RunStateBadge.svelte';
+	import RunDraftBadge from '../pipeline-runs/RunDraftBadge.svelte';
 	import { runHref } from '../pipeline-runs/run-links';
 	let { project }: { project: components['schemas']['ProjectRead'] } = $props();
 	let runs = $state<components['schemas']['PipelineRunRead'][]>([]);
@@ -103,7 +104,9 @@
 							href={runHref(run.id, project.id)}
 							class="min-w-0 truncate text-sm text-primary underline"
 							>PR #{run.pull_number} · {run.branch}</a
-						><RunStateBadge state={run.state} />
+						><span class="flex shrink-0 flex-wrap items-center gap-2"
+							><RunStateBadge state={run.state} /><RunDraftBadge {run} /></span
+						>
 					</li>{/each}
 			</ul>{/if}
 	</section>

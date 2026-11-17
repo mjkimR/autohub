@@ -25,7 +25,7 @@ capabilities:
 ## 2. Content
 
 - SDD unit (selected directory and document branch; changing unit/branch resets the enrollment form).
-- PR run (unit status, shown when the unit has PR runs: the latest PR run per activity with its state badge and PR link; Open decisions on a paused or blocked run).
+- PR run (unit status, shown when the unit has PR runs: the latest PR run per activity with its state badge (a neutral "Draft · mark Ready" badge follows it when the run awaits CI and its PR was last observed as Draft) and PR link; Open decisions on a paused or blocked run).
 - PR run ("PR runs for this unit" rows, newest first, with independent loading/empty/error state and exact Run/PR links).
 - PR run (secondary enrollment disclosure, empty Pull request field, activity effort defaulting to Use repository recommendation with Low, Medium or High, and Enroll PR).
 

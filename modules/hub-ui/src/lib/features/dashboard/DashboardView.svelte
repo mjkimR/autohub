@@ -6,6 +6,7 @@
 	import DashboardHealth from './DashboardHealth.svelte';
 	import LoadError from '$lib/components/shared/LoadError.svelte';
 	import RunStateBadge from '$lib/features/project-management/pipeline-runs/RunStateBadge.svelte';
+	import RunDraftBadge from '$lib/features/project-management/pipeline-runs/RunDraftBadge.svelte';
 	import { getScheduleJobStatusPresentation } from '$lib/features/scheduling/schedule-jobs/presentation';
 	import {
 		Card,
@@ -305,6 +306,7 @@
 							</div>
 							<div class="flex items-center gap-2">
 								<RunStateBadge state={run.state} />
+								<RunDraftBadge {run} />
 							</div>
 						</div>
 					{/each}

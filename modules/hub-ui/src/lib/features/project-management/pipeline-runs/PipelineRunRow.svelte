@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { components } from '$lib/api';
 	import RunStateBadge from './RunStateBadge.svelte';
+	import RunDraftBadge from './RunDraftBadge.svelte';
 	import RunOrigins from './RunOrigins.svelte';
 	import RunActions from './RunActions.svelte';
 	import { decisionWait, decisionWaitLabel, type RunDecisions } from './run-actions';
@@ -99,6 +100,7 @@
 	<TableCell class={cell}>
 		<div class="flex flex-col items-start gap-1">
 			<RunStateBadge state={run.state} />
+			<RunDraftBadge {run} />
 			{#if waiting}
 				<Badge variant="attention"><MessageSquare aria-hidden="true" />{waiting}</Badge>
 			{/if}

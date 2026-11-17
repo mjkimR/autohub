@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { MessageSquare } from '@lucide/svelte';
 	import RunStateBadge from '../pipeline-runs/RunStateBadge.svelte';
+	import RunDraftBadge from '../pipeline-runs/RunDraftBadge.svelte';
 	import { runHref } from '../pipeline-runs/run-links';
 	import { ACTIVITY_LABELS, latestRunsByActivity, runOwesOperator } from './sdd-unit';
 	/**
@@ -22,6 +23,7 @@
 			<li class="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 py-2 text-sm">
 				<span class="font-medium">{activity ? ACTIVITY_LABELS[activity] : 'PR run'}</span>
 				<RunStateBadge state={run.state} />
+				<RunDraftBadge {run} />
 				<a
 					class="inline-flex min-h-6 items-center underline-offset-4 hover:underline"
 					href={runHref(run.id, projectId)}

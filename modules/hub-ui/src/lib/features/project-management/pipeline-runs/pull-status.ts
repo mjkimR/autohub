@@ -67,3 +67,12 @@ export function newerHead(observation: PullObservation, later: LaterHead[]): str
 		.sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
 	return newer && newer.head_sha !== observation.head_sha ? newer.head_sha : null;
 }
+
+/**
+ * A run waiting in CI whose PR was last observed as Draft: Hub's merge policy waits on the
+ * operator marking it Ready in GitHub, not on CI (CAP-PR-pull-request-delivery). Draft is a PR
+ * property, so the latest observation counts even if it saw an earlier head.
+ */
+export function awaitingReady(run: Pick<Run, 'state' | 'pull_observation'>): boolean {
+	return run.state === 'awaiting_ci' && run.pull_observation?.draft === true;
+}

@@ -34,7 +34,9 @@ detail screen. The page title is "PR runs" (glossary term).
   The state is the PR run state badge: a label plus a decorative icon, ranked as
   failure (failed), attention (paused, blocked), quiet progress (dispatching,
   implementing), quiet success (completed) or neutral (queued, awaiting CI,
-  canceled), per `docs/steering/visual-style.md`. The pause reason stays below the badge.
+  canceled), per `docs/steering/visual-style.md`. A neutral "Draft · mark Ready" badge
+  follows it when the run awaits CI and its PR was last observed as Draft, since merging
+  then waits on marking it Ready in GitHub rather than on CI. The pause reason stays below the badge.
   - Decision-wait marker (attention Badge beside the state; when the Decision inbox
     lists a pending decision for the run): Question waiting, Answer saved — resume
     pending.

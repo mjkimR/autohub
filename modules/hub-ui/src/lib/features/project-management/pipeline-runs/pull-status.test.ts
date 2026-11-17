@@ -1,5 +1,10 @@
 import { expect, test } from 'vitest';
-import { draftPresentation, newerHead, verificationPresentation } from './pull-status';
+import {
+	awaitingReady,
+	draftPresentation,
+	newerHead,
+	verificationPresentation
+} from './pull-status';
 
 const observation = {
 	head_sha: 'a'.repeat(40),
@@ -35,4 +40,14 @@ test('flags only a different head seen after the observation', () => {
 	expect(newerHead(observation, [{ head_sha: 'b'.repeat(40), at: '2026-11-12T10:00:00Z' }])).toBe(
 		'b'.repeat(40)
 	);
+});
+
+test('a run awaiting CI on a PR observed as Draft waits on marking it Ready', () => {
+	expect(awaitingReady({ state: 'awaiting_ci', pull_observation: observation })).toBe(true);
+	expect(
+		awaitingReady({ state: 'awaiting_ci', pull_observation: { ...observation, draft: false } })
+	).toBe(false);
+	expect(awaitingReady({ state: 'awaiting_ci', pull_observation: null })).toBe(false);
+	expect(awaitingReady({ state: 'awaiting_ci' })).toBe(false);
+	expect(awaitingReady({ state: 'paused', pull_observation: observation })).toBe(false);
 });

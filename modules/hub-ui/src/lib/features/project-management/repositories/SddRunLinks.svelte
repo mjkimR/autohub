@@ -3,6 +3,7 @@
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
 	import RunStateBadge from '../pipeline-runs/RunStateBadge.svelte';
+	import RunDraftBadge from '../pipeline-runs/RunDraftBadge.svelte';
 	import { unitRunHref } from './sdd-unit';
 	const LIMIT = 20;
 	let {
@@ -83,6 +84,7 @@
 						>
 							<span class="font-medium">PR #{run.pull_number}</span>
 							<RunStateBadge state={run.state} />
+							<RunDraftBadge {run} />
 							<span class="min-w-0 break-words">{run.pull_snapshot.title}</span>
 						</a>
 						<p class="mt-1 text-xs break-words text-muted-foreground">
