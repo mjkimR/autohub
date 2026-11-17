@@ -169,8 +169,8 @@ async def test_optimistic_activity_uses_ordinary_question_projection(client, pro
     [entry] = (await client.get(URL)).json()["items"]
     assert entry["kind"] == "run-question"
     assert entry["actionable"]
-    # A snapshot without an activity kind names its unit; the kind is never inferred from the branch.
-    assert (entry["sdd_activity"], entry["sdd_unit"]) == (None, "docs/proposals/PROP-example")
+    # A snapshot without an activity kind reads as dev, as its implementation request does; never from the branch.
+    assert (entry["sdd_activity"], entry["sdd_unit"]) == ("dev", "docs/proposals/PROP-example")
 
 
 async def observe_page(client, params=None):

@@ -6,7 +6,7 @@ import json
 from datetime import UTC, datetime
 
 from app.features.project_management.pipeline_runs.discovery_schemas import DecisionEntryRead, DecisionPage
-from app.features.project_management.pipeline_runs.requests import request_digest
+from app.features.project_management.pipeline_runs.requests import request_digest, requested_activity_kind
 from app.features.project_management.projects.errors import ProjectError
 
 
@@ -31,11 +31,16 @@ RUN_FIELDS = ("run_state", "pull_number", "pull_url", "sdd_activity", "sdd_unit"
 
 
 def sdd_identity(run) -> tuple[str | None, str | None]:
-    """The activity kind and unit an SDD activity Run retained at enrollment; never inferred from its branch."""
+    """The activity kind and unit an SDD activity Run retained at enrollment; never inferred from its branch.
+
+    The kind follows the implementation request: an SDD snapshot without one requests ``dev``.
+    """
     snapshot = run.sdd_snapshot if isinstance(run.sdd_snapshot, dict) else {}
-    activity = snapshot.get("activity_kind")
     unit = snapshot.get("spec_dir")
-    return (activity if activity in ("plan", "dev") else None, unit if isinstance(unit, str) and unit else None)
+    unit = unit if isinstance(unit, str) and unit else None
+    sdd = unit is not None and snapshot.get("provider") == "repository-agent"
+    activity = requested_activity_kind(snapshot) if sdd else None
+    return (activity if activity in ("plan", "dev") else None, unit)
 
 
 def entry_read(entry, run) -> DecisionEntryRead:

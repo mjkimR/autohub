@@ -25,6 +25,11 @@ SDD_GATE_INSTRUCTIONS = (
 )
 
 
+def requested_activity_kind(snapshot: dict) -> str:
+    """The activity an SDD snapshot requests; a snapshot without a recorded kind requests Development."""
+    return snapshot.get("activity_kind", "dev")
+
+
 def request_digest(snapshot: dict) -> str:
     canonical = json.dumps(snapshot, sort_keys=True, separators=(",", ":"))
     return sha256(canonical.encode()).hexdigest()
@@ -45,7 +50,7 @@ def build_implementation_request(
     if run.sdd_snapshot:
         intent = run.sdd_snapshot
         instructions += (
-            f"\nRequested repository activity: {intent.get('activity_kind', 'dev')}. "
+            f"\nRequested repository activity: {requested_activity_kind(intent)}. "
             f"SDD unit: {intent['spec_dir']}. "
             "The repository and its working agent own environment preparation, workflow interpretation "
             "and required repository checks. Follow its instructions through the requested work. "

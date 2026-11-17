@@ -402,7 +402,7 @@ export interface components {
             head_sha: string | null;
             /**
              * Sdd Activity
-             * @description plan or dev, as retained in the owning Run's sdd_snapshot; null for an ordinary Run or an unrecorded kind
+             * @description plan or dev, as retained in the owning Run's sdd_snapshot (dev when it records no kind); null for an ordinary Run or an unrecognized kind
              */
             sdd_activity?: ("plan" | "dev") | null;
             /**

@@ -28,7 +28,7 @@ class DecisionEntryRead(BaseModel):
     head_sha: str | None
     sdd_activity: SddActivityKind | None = Field(
         default=None,
-        description="plan or dev, as retained in the owning Run's sdd_snapshot; null for an ordinary Run or an unrecorded kind",
+        description="plan or dev, as retained in the owning Run's sdd_snapshot (dev when it records no kind); null for an ordinary Run or an unrecognized kind",
     )
     sdd_unit: str | None = Field(
         default=None,

@@ -142,3 +142,63 @@ async def test_direct_enrollment_cannot_steal_an_unsettled_activity_candidate(
         assert not github.paths
     else:
         assert set(github.paths) <= {"/repos/owner/app/pulls/7", "/repos/owner/app/issues/3"}
+
+
+async def test_question_check_during_ci_records_the_implementation_read(
+    client, project, github, mention_github, monkeypatch
+):
+    """The optimistic SDD question check retains the Draft status and head of its own PR read."""
+    from app.features.project_management.pipeline_runs.usecases.ci import CIProgress
+    from app.features.project_management.pipelines.github import GitHubActionsReader
+    from app.features.project_management.projects.errors import ProjectError
+
+    run = await enroll_activity(client, project, github)
+    root = f"/api/v1/pipeline-runs/{run['id']}"
+    assert (await client.post(root + "/advance")).json()["state"] == "implementing"
+    github.pulls[7]["head"]["sha"] = "e" * 40
+    waiting = await client.post(root + "/advance")
+    assert waiting.status_code == 200 and waiting.json()["state"] == "awaiting_ci", waiting.text
+    before = waiting.json()
+
+    observe = CIProgress.observe
+
+    async def unavailable(*args, **kwargs):
+        raise ProjectError(502, "GitHub observation unavailable")
+
+    # Stop the pass at the CI stage so only the optimistic question check's PR read is recorded.
+    monkeypatch.setattr(CIProgress, "observe", unavailable)
+    github.pulls[7]["head"]["sha"] = "f" * 40
+    github.pulls[7]["draft"] = False
+    github.paths.clear()
+    response = await client.post(root + "/advance")
+    assert response.status_code == 502, response.text
+
+    checked = (await client.get(root)).json()
+    recorded = checked["pull_observation"]
+    assert checked["state"] == "awaiting_ci"
+    assert checked["revision"] == before["revision"]
+    assert (recorded["head_sha"], recorded["draft"], recorded["verification"]) == ("f" * 40, False, "waiting")
+    assert recorded["reason"] == "Awaiting verification"
+    assert recorded["observed_at"] > before["pull_observation"]["observed_at"]
+    # Only the question check's own PR read; no extra PR or workflow request.
+    assert github.paths.count("/repos/owner/app/pulls/7") == 1
+    assert not any("/actions/" in path for path in github.paths)
+
+    # When CI is observed in the same pass, its later read overwrites the question check's record:
+    # the question check reads the PR ready, and the CI reader then sees it Draft again.
+    original = GitHubActionsReader.observe_pull
+
+    async def observe_draft(reader, config, number):
+        github.pulls[7]["draft"] = True
+        return await original(reader, config, number)
+
+    monkeypatch.setattr(CIProgress, "observe", observe)
+    monkeypatch.setattr(GitHubActionsReader, "observe_pull", observe_draft)
+    observed = await client.post(root + "/advance")
+    assert observed.status_code == 200, observed.text
+    final = observed.json()
+    recorded = final["pull_observation"]
+    assert final["state"] == "awaiting_ci" and final["revision"] == before["revision"]
+    assert (recorded["head_sha"], recorded["draft"], recorded["verification"]) == ("f" * 40, True, "waiting")
+    assert recorded["reason"] == "No workflow run for the current PR head"
+    assert recorded["observed_at"] > checked["pull_observation"]["observed_at"]
