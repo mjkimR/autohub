@@ -5,12 +5,12 @@ from typing import Any, Literal
 from urllib.parse import quote
 
 import httpx2
+from app.features.project_management.pipelines.conditional import conditional_cache, conditional_key
 from app.features.project_management.pipelines.github import (
     GitHubObservationError,
     create_github_client,
     github_http_error,
 )
-from app.features.project_management.repositories.conditional import conditional_cache, conditional_key
 from app.features.project_management.repositories.schemas import (
     RepoBlobRead,
     RepoInfoRead,

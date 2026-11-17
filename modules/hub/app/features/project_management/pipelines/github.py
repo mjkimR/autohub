@@ -1,10 +1,12 @@
 """GitHub Actions adapter. It never checks out or executes repository code."""
 
+import json
 import time
 from typing import Any
 from urllib.parse import quote
 
 import httpx2
+from app.features.project_management.pipelines.conditional import ConditionalCache, conditional_key
 from app.features.project_management.pipelines.gate import evaluate_verification
 from app.features.project_management.pipelines.logs import failure_log_excerpt
 from app.features.project_management.pipelines.schemas import (
@@ -22,6 +24,8 @@ GITHUB_FAILURE_UPSTREAM = "upstream"
 # GitHub asks for at least a minute after a secondary rate limit that names no delay.
 DEFAULT_RATE_LIMIT_DELAY_SECONDS = 60
 MAX_RATE_LIMIT_DELAY_SECONDS = 3600
+# Observation reads revalidate held responses; separate from repository browsing so neither evicts the other.
+observation_cache = ConditionalCache()
 
 
 class GitHubObservationError(RuntimeError):
@@ -87,9 +91,15 @@ class GitHubActionsReader:
     def __init__(self, client: httpx2.AsyncClient):
         self.client = client
 
-    async def _get(self, path: str, params: dict[str, str | int] | None = None) -> dict[str, Any]:
+    async def _fetch(self, path: str, params: dict[str, str | int] | None) -> Any:
+        """GET ``path`` as JSON, revalidating a held response with ``If-None-Match`` (304s spare the rate limit)."""
+        key = conditional_key(path, params)
+        held = observation_cache.get(key)
+        headers = {"If-None-Match": held[0]} if held else None
         try:
-            response = await self.client.get(path, params=params)
+            response = await self.client.get(path, params=params, headers=headers)
+            if held and response.status_code == httpx2.codes.NOT_MODIFIED:
+                return json.loads(held[1])
             response.raise_for_status()
         except httpx2.HTTPStatusError as exc:
             raise github_http_error("observation", exc.response) from None
@@ -99,22 +109,20 @@ class GitHubActionsReader:
             value = response.json()
         except ValueError:
             raise GitHubObservationError("GitHub observation returned invalid JSON") from None
+        if etag := response.headers.get("etag"):
+            observation_cache.put(key, etag, response.content)
+        else:
+            observation_cache.discard(key)
+        return value
+
+    async def _get(self, path: str, params: dict[str, str | int] | None = None) -> dict[str, Any]:
+        value = await self._fetch(path, params)
         if not isinstance(value, dict):
             raise GitHubObservationError("GitHub observation returned an invalid object")
         return value
 
     async def _get_list(self, path: str, params: dict[str, str | int] | None = None) -> list[dict[str, Any]]:
-        try:
-            response = await self.client.get(path, params=params)
-            response.raise_for_status()
-        except httpx2.HTTPStatusError as exc:
-            raise github_http_error("observation", exc.response) from None
-        except httpx2.RequestError:
-            raise GitHubObservationError("GitHub observation request failed") from None
-        try:
-            value = response.json()
-        except ValueError:
-            raise GitHubObservationError("GitHub observation returned invalid JSON") from None
+        value = await self._fetch(path, params)
         if not isinstance(value, list) or any(not isinstance(item, dict) for item in value):
             raise GitHubObservationError("GitHub observation returned an invalid list")
         return value

@@ -172,8 +172,8 @@ def test_blob_cache_evicts_least_recently_used_within_its_byte_budget():
 def _github(monkeypatch, respond):
     """Route the service's GitHub client through ``respond`` and give it a fresh conditional cache."""
     import httpx2
+    from app.features.project_management.pipelines.conditional import ConditionalCache
     from app.features.project_management.repositories import services
-    from app.features.project_management.repositories.conditional import ConditionalCache
 
     requests: list[httpx2.Request] = []
 
@@ -277,7 +277,7 @@ async def test_unsolicited_not_modified_is_an_error(monkeypatch):
 
 
 def test_conditional_cache_evicts_least_recently_used_within_its_bounds():
-    from app.features.project_management.repositories.conditional import ConditionalCache, conditional_key
+    from app.features.project_management.pipelines.conditional import ConditionalCache, conditional_key
 
     cache = ConditionalCache(max_entries=3, max_bytes=10, max_entry_bytes=6)
     a, b, c, d = (conditional_key(f"/{n}", {"page": 1}) for n in "abcd")
