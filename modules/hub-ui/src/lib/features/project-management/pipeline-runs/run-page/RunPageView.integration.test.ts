@@ -334,3 +334,38 @@ test('a failed SDD activity run restarts from its unit, with Enroll PR secondary
 		'/projects/project-1?tab=runs'
 	);
 });
+
+test('the header shows the last observed PR status, or that it was not observed yet', async () => {
+	renderPage();
+	const status = await screen.findByRole('group', { name: 'PR status' });
+	expect(status.textContent).toContain('Not observed yet');
+	cleanup();
+	current = {
+		...run,
+		pull_observation: {
+			head_sha: 'c'.repeat(40),
+			draft: false,
+			verification: 'failed',
+			reason: 'Required job test failed',
+			observed_at: '2026-09-14T00:30:00Z'
+		}
+	};
+	decisions = [
+		{
+			run_id: 'run-1',
+			kind: 'run-question',
+			question_state: 'open',
+			actionable: true,
+			head_sha: 'd'.repeat(40),
+			waiting_since: '2026-09-14T00:45:00Z'
+		}
+	];
+	renderPage();
+	const observed = await screen.findByRole('group', { name: 'PR status' });
+	expect(observed.textContent).toContain('Ready for review');
+	expect(observed.textContent).toContain('CI failed');
+	expect(observed.textContent).toContain('cccccccc');
+	expect(observed.textContent).toContain('Required job test failed');
+	expect(await screen.findByText(/Observed on an earlier head/)).toBeTruthy();
+	expect(observed.textContent).toContain('dddddddd');
+});

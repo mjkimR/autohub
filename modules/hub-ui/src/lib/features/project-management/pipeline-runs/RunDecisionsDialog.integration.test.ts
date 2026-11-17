@@ -399,3 +399,47 @@ test('an SDD gate question leads with its activity, unit, head evidence and gate
 	const wait = screen.getByText('Planning gate waiting');
 	expect(card.compareDocumentPosition(wait) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
+
+test('an applied SDD gate answer keeps its delivery track with the observed PR status', async () => {
+	const sddRun = {
+		...run,
+		state: 'awaiting_ci',
+		sdd_snapshot: { spec_dir: 'docs/proposals/PROP-demo', activity_kind: 'plan' },
+		pull_observation: {
+			head_sha: 'f'.repeat(40),
+			draft: true,
+			verification: 'waiting',
+			reason: 'Draft',
+			observed_at: '2026-10-01T00:00:00Z'
+		}
+	} as components['schemas']['PipelineRunRead'];
+	api.GET.mockImplementation(async (path: string) => ({
+		data: path.endsWith('/questions')
+			? {
+					items: [
+						{
+							...question,
+							state: 'applied',
+							source: 'agent',
+							head_sha: 'c'.repeat(40),
+							answers: [
+								{
+									id: 'answer-1',
+									answer: 'Accept',
+									actor: 'user',
+									created_at: '2026-09-30T01:00:00Z',
+									applied_attempt_id: 'attempt-2'
+								}
+							]
+						}
+					],
+					total_count: 1,
+					run_revision: 2
+				}
+			: sddRun
+	}));
+	render(RunDecisionsDialog, { run: sddRun, onclose: vi.fn(), onchange: vi.fn() });
+	expect(await screen.findByText('Applied gate answer')).toBeTruthy();
+	const track = screen.getByRole('list', { name: 'Gate progress' });
+	expect(track.textContent).toContain('Mark Ready in GitHub· observed as Draft(current step)');
+});

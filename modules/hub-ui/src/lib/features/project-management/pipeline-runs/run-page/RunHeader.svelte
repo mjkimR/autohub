@@ -4,6 +4,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { ChevronRight, CircleHelp, ExternalLink, MessageSquare } from '@lucide/svelte';
 	import RunStateBadge from '../RunStateBadge.svelte';
+	import RunPullStatus from '../RunPullStatus.svelte';
 	import { decisionWait, decisionWaitLabel, type RunDecisions } from '../run-actions';
 
 	type Run = components['schemas']['PipelineRunRead'];
@@ -12,6 +13,16 @@
 
 	let waiting = $derived(
 		decisions.status === 'known' ? decisionWaitLabel(decisionWait(decisions.entries)) : null
+	);
+	// Pending decisions bind to the head the agent pushed, so they are the newest head evidence here.
+	let later = $derived(
+		decisions.status === 'known'
+			? decisions.entries.flatMap((entry) =>
+					entry.run_id === run.id && entry.head_sha
+						? [{ head_sha: entry.head_sha, at: entry.waiting_since }]
+						: []
+				)
+			: []
 	);
 	let runsHref = $derived(`/projects/${run.project_id}?tab=runs`);
 	let prLabel = $derived(run.pull_number ? `PR #${run.pull_number}` : 'No PR yet');
@@ -84,6 +95,7 @@
 			</dd>
 		</div>
 	</dl>
+	<RunPullStatus {run} {later} />
 	{#if run.pause_reason}
 		<div class="flex max-w-prose gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
 			<CircleHelp aria-hidden="true" class="mt-0.5 size-4 shrink-0 text-muted-foreground" />

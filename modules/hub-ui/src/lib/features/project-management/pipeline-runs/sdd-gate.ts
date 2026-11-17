@@ -1,9 +1,15 @@
 import type { components } from '$lib/api';
+import { verificationPresentation } from './pull-status';
 import { isTerminalRun } from './run-actions';
 
 type Run = components['schemas']['PipelineRunRead'];
 type Question = components['schemas']['QuestionRead'];
-export type GateStep = { label: string; status: 'done' | 'current' | 'next' };
+export type GateStep = {
+	label: string;
+	status: 'done' | 'current' | 'next';
+	/** Observed detail shown beside the step, such as "CI failed". */
+	note?: string;
+};
 
 /** Free-text guidance only: Hub neither reads nor records gate state (CAP-SDD-native-delivery 15). */
 export const GATE_ANSWER_PLACEHOLDER =
@@ -30,13 +36,28 @@ export function sddQuestionHeading(run: Run, question: Question): string | null 
 }
 
 /**
- * The gate's path through the run, from data Hub already holds. Draft/Ready and CI are not
- * part of the run read, so delivery after the agent applies the answer stays out of this track.
+ * The gate's path through the run, then delivery, from data Hub already holds: the question and
+ * its answers, the run state and the last observed PR status. Hub records no gate state
+ * (CAP-SDD-native-delivery 15); the delivery steps only mirror what GitHub was last observed to
+ * report, and only an observation of a head pushed after the answer counts for them.
  */
 export function gateSteps(run: Run, question: Question): GateStep[] {
-	const answered = (question.answers ?? []).length > 0;
-	const applied = (question.answers ?? []).some((answer) => !!answer.applied_attempt_id);
+	const answers = question.answers ?? [];
+	const answered = answers.length > 0;
+	const applied = answers.some((answer) => !!answer.applied_attempt_id);
 	const finished = run.state === 'completed';
+	const observation = run.pull_observation ?? null;
+	const lastAnswer = Math.max(...answers.map((answer) => Date.parse(answer.created_at)), 0);
+	// The agent pushes its applied decision as a new head; an older head says nothing about it.
+	const fresh =
+		applied &&
+		!!observation &&
+		observation.head_sha !== question.head_sha &&
+		Date.parse(observation.observed_at) > lastAnswer
+			? observation
+			: null;
+	const ready = finished || (!!fresh && !fresh.draft);
+	const verification = fresh ? verificationPresentation(fresh.verification).label : null;
 	return [
 		{ label: 'Agent asked', status: 'done' },
 		{ label: 'Save an answer', status: answered ? 'done' : 'current' },
@@ -46,7 +67,23 @@ export function gateSteps(run: Run, question: Question): GateStep[] {
 		},
 		{
 			label: 'Agent applies the decision',
-			status: finished ? 'done' : applied && !isTerminalRun(run) ? 'current' : 'next'
+			status: finished || fresh ? 'done' : applied && !isTerminalRun(run) ? 'current' : 'next'
+		},
+		{
+			label: 'Mark Ready in GitHub',
+			status: ready ? 'done' : fresh?.draft ? 'current' : 'next',
+			note: fresh?.draft ? 'observed as Draft' : undefined
+		},
+		{
+			label: 'CI passes',
+			status:
+				finished || fresh?.verification === 'passed'
+					? 'done'
+					: fresh && !fresh.draft
+						? 'current'
+						: 'next',
+			note:
+				verification && !fresh?.draft && fresh?.verification !== 'passed' ? verification : undefined
 		}
 	];
 }

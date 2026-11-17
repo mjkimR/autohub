@@ -61,6 +61,19 @@
 	);
 	let terminal = $derived(['completed', 'failed', 'canceled'].includes(current.state));
 	let pastQuestions = $derived(questions.filter((q) => q.id !== pending?.id));
+	// After an SDD gate answer is applied the question leaves the pending slot; its delivery track
+	// (Ready, CI) stays visible until a newer question takes over.
+	let appliedGate = $derived(
+		!pending && current.sdd_snapshot
+			? questions
+					.filter(
+						(q) =>
+							q.source === 'agent' &&
+							(q.answers ?? []).some((answer) => !!answer.applied_attempt_id)
+					)
+					.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0]
+			: undefined
+	);
 	const requests = new SvelteMap<string, string>();
 	function requestId(key: string) {
 		if (!requests.has(key)) requests.set(key, crypto.randomUUID());
@@ -335,6 +348,7 @@
 				</details>
 			</section>
 		{/if}
+		{#if appliedGate}<SddRunPanel run={current} question={appliedGate} applied />{/if}
 		<DecisionOutcome runId={run.id} {head} {revision} {terminal} onrefresh={() => load(false)} />
 
 		{#if ready && !terminal && offset === 0 && !pending}

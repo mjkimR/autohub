@@ -4,15 +4,19 @@
 	import { gateSteps, sddUnit } from './sdd-gate';
 	/**
 	 * Evidence and progress for an SDD activity question, shown inside its question card: the
-	 * head the question is bound to, the unit and PR changes at that head, and the gate's path.
+	 * head the question is bound to, the unit and PR changes at that head, and the gate's path
+	 * through to the last observed Draft and CI status.
 	 * Hub does not interpret the repository workflow; the agent owns setup and stages.
 	 */
 	let {
 		run,
-		question
+		question,
+		applied = false
 	}: {
 		run: components['schemas']['PipelineRunRead'];
 		question: components['schemas']['QuestionRead'];
+		/** Shown on its own after the answer was applied, so it names the gate it follows. */
+		applied?: boolean;
 	} = $props();
 	let unit = $derived(sddUnit(run));
 	let head = $derived(question.head_sha || String(run.pull_snapshot?.head_sha || ''));
@@ -24,6 +28,12 @@
 </script>
 
 <section class="space-y-3 rounded-lg border p-3 text-sm" aria-label="Gate evidence and progress">
+	{#if applied}
+		<div class="space-y-1">
+			<h3 class="font-medium">Applied gate answer</h3>
+			<p class="line-clamp-2 break-words text-muted-foreground">{question.question}</p>
+		</div>
+	{/if}
 	<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
 		{#if head}<span class="text-xs text-muted-foreground"
 				>Evidence at head <code class="text-foreground">{head.slice(0, 8)}</code></span
@@ -58,12 +68,15 @@
 				{#if step.status === 'done'}<Check aria-hidden="true" class="size-3.5" />
 				{:else if step.status === 'current'}<CircleDot aria-hidden="true" class="size-3.5" />
 				{:else}<Circle aria-hidden="true" class="size-3.5" />{/if}
-				{step.label}<span class="sr-only">({STATUS_TEXT[step.status]})</span>
+				{step.label}{#if step.note}<span class="font-normal text-muted-foreground"
+						>· {step.note}</span
+					>{/if}<span class="sr-only">({STATUS_TEXT[step.status]})</span>
 			</li>
 		{/each}
 	</ol>
 	<p class="text-xs text-muted-foreground">
-		The agent leaves the PR as a Draft. Once it has applied your answer, mark the PR Ready in GitHub
-		to continue delivery.
+		The agent leaves the PR as a Draft. Once it has applied your answer, mark the PR Ready in
+		GitHub. The last two steps follow the PR status Hub last observed on a newer head; Hub does not
+		change Draft status itself.
 	</p>
 </section>
