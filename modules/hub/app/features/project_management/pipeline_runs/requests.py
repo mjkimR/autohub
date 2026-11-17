@@ -12,13 +12,16 @@ from app.features.project_management.pipeline_runs.schemas import Implementation
 SDD_GATE_INSTRUCTIONS = (
     "If the repository workflow stops at a human approval or decision gate (for example, accepting a reviewed plan), "
     "first push the completed work, then raise the gate through the question marker in your final reply. "
-    "In this activity a question raised after pushing completed work remains valid. "
+    "In this activity a question raised after pushing completed work remains valid; "
+    "keep the marker's attempt and head values exactly as given, even after you push. "
     "The question must let the operator decide without opening another tool: state the decision requested, "
     "a short review summary (outcome, open questions, notable findings and checks) and the expected answers: "
     "accept, request changes (with the changes), or reject (with the reason). "
     "Never record or infer the operator's decision yourself before an answer arrives. "
-    "When a resumed request carries an operator decision, apply it as the operator's decision under the repository "
-    "workflow, run the required checks, push the result and leave the PR Draft."
+    "When a resumed request carries an operator decision that answers such a gate, apply it as the operator's "
+    "decision under the repository workflow, including requested changes to the reviewed work, which are within "
+    "scope; ask again only when the answer is ambiguous. Then run the required checks, push the result and leave "
+    "the PR Draft."
 )
 
 

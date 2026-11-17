@@ -35,14 +35,21 @@ the tests assert their key phrases):
 ```text
 If the repository workflow stops at a human approval or decision gate (for example, accepting a reviewed plan),
 first push the completed work, then raise the gate through the question marker below in your final reply.
-In this activity a question raised after pushing completed work remains valid.
+In this activity a question raised after pushing completed work remains valid;
+keep the marker's attempt and head values exactly as given, even after you push.
 The question must let the operator decide without opening another tool: state the decision requested,
 a short review summary (outcome, open questions, notable findings and checks) and the expected answers:
 accept, request changes (with the changes), or reject (with the reason).
 Never record or infer the operator's decision yourself before an answer arrives.
-When a resumed request carries an operator decision, apply it as the operator's decision under the repository's
-workflow, run the required checks, push the result and leave the PR Draft.
+When a resumed request carries an operator decision that answers such a gate, apply it as the operator's decision
+under the repository workflow, including requested changes to the reviewed work, which are within scope;
+ask again only when the answer is ambiguous. Then run the required checks, push the result and leave the PR Draft.
 ```
+
+The marker sentence exists because `parse_question` binds the marker to the dispatched head; an agent that writes
+the pushed head would be silently ignored. The in-scope sentence exists because resume appends a generic "if it
+changes acceptance criteria, stop and ask again" suffix (`usecases/control.py`), which would otherwise loop on a
+"request changes" gate answer.
 
 The text names no tool, command, gate ID or stage (AC-02), so it stays repository-neutral.
 

@@ -60,10 +60,14 @@ GATE_OBLIGATIONS = (
     "human approval or decision gate",
     "first push the completed work, then raise the gate through the question marker",
     "a question raised after pushing completed work remains valid",
+    # The parser binds the marker to the dispatched head; a pushed head would silently drop the gate.
+    "keep the marker's attempt and head values exactly as given, even after you push",
     "short review summary",
     "accept, request changes (with the changes), or reject (with the reason)",
     "Never record or infer the operator's decision yourself before an answer arrives",
     "apply it as the operator's decision under the repository workflow",
+    # Resume appends a generic "stop and ask again" suffix; a gate answer's changes stay in scope.
+    "including requested changes to the reviewed work, which are within scope",
     "leave the PR Draft",
 )
 
