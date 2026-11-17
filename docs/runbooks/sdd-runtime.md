@@ -41,10 +41,11 @@ the failure as `checkpoint.refusal` (fields: `DESIGN-sdd-activity-publication`).
 refusal without a new attempt. After correcting the configuration, send the start
 with a new request UUID; the settled claim no longer blocks the unit.
 
-A claim that is neither uncertain, settled nor bound to a Run cannot be released
-through reconciliation. If its project changed after the claim was reserved, a
-retry of its request returns `Project changed after activity claim`; no documented
-procedure releases it.
+If a worker stopped without recording an outcome and the project changed since the
+claim was reserved, a retry of its request returns `Project changed after activity
+claim` and records the claim the same way (`CAP-SDD-native-delivery` rule 14): with
+no branch or PR write attempted it is settled with a refusal, so start again with a
+new request UUID; otherwise it becomes uncertain and is reconciled as below.
 
 ## Inspect and reconcile uncertain publication
 

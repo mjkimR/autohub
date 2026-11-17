@@ -79,12 +79,19 @@ class ActivityClaims:
             expires = cp.get("lease_expires_at")
             if expires and datetime.fromisoformat(expires) > get_current_utc_time():
                 raise ProjectError(409, f"Activity reconciliation is already in flight; inspect {owner_reference}")
-            if project_basis(project) != cp["project"]:
-                raise ProjectError(409, f"Project changed after activity claim; inspect {owner_reference}")
-            cp.update(lease=lease, lease_expires_at=(get_current_utc_time() + timedelta(minutes=5)).isoformat())
-            claim.checkpoint = cp
+            stale = project_basis(project) != cp["project"]
+            if stale and not cp.get("uncertain"):
+                # A worker that died without recording an outcome leaves only an expired lease. Settle it the
+                # way a failed start would, so the unit is never owned by a claim nothing can release.
+                claim.checkpoint = abandoned(cp, ProjectError(409, "Project changed after activity claim"))
+                claim.settled = "refusal" in claim.checkpoint
+            if not stale:
+                cp.update(lease=lease, lease_expires_at=(get_current_utc_time() + timedelta(minutes=5)).isoformat())
+                claim.checkpoint = cp
             request, activity, actor = StartActivityRequest(**cp["request"]), claim.activity, claim.actor
             unit = claim.unit
+        if stale:
+            raise ProjectError(409, f"Project changed after activity claim; inspect {owner_reference}")
 
         async def checkpoint(**values):
             async with AsyncTransaction() as session:
@@ -129,29 +136,32 @@ class ActivityClaims:
             async with AsyncTransaction() as session:
                 row = await session.get(SddActivityClaim, claim_id, with_for_update=True)
                 if row is not None and row.checkpoint.get("lease") == lease and lease_valid(row.checkpoint):
-                    no_effect = not row.checkpoint.get("ref_attempted") and not row.checkpoint.get("pull_number")
-                    refusal = {
-                        "status": exc.status if isinstance(exc, ProjectError) else 503,
-                        "code": exc.code if isinstance(exc, ProjectError) else None,
-                        "detail": exc.detail
-                        if isinstance(exc, ProjectError)
-                        else "Activity start failed before branch or PR publication",
-                    }
-                    row.checkpoint = {
-                        **row.checkpoint,
-                        "lease_expires_at": None,
-                        "uncertain": not no_effect,
-                        "uncertainty_observed_at": get_current_utc_time().isoformat(),
-                        "last_error": exc.detail
-                        if isinstance(exc, ProjectError)
-                        else "Activity publication was uncertain after retained artifacts (" + type(exc).__name__ + ")",
-                        **({"refusal": refusal} if no_effect else {}),
-                    }
-                    if no_effect:
-                        row.settled = True
+                    row.checkpoint = abandoned(row.checkpoint, exc)
+                    row.settled = "refusal" in row.checkpoint
             if isinstance(exc, ProjectError):
                 raise ProjectError(exc.status, f"{exc.detail}; inspect {owner_reference}", code=exc.code) from exc
             raise
+
+
+def abandoned(checkpoint, exc):
+    """Record a failed or abandoned start: a refusal before any remote write, otherwise uncertainty to reconcile."""
+    no_effect = not checkpoint.get("ref_attempted") and not checkpoint.get("pull_number")
+    known = isinstance(exc, ProjectError)
+    refusal = {
+        "status": exc.status if known else 503,
+        "code": exc.code if known else None,
+        "detail": exc.detail if known else "Activity start failed before branch or PR publication",
+    }
+    return {
+        **checkpoint,
+        "lease_expires_at": None,
+        "uncertain": not no_effect,
+        "uncertainty_observed_at": get_current_utc_time().isoformat(),
+        "last_error": exc.detail
+        if known
+        else "Activity publication was uncertain after retained artifacts (" + type(exc).__name__ + ")",
+        **({"refusal": refusal} if no_effect else {}),
+    }
 
 
 def lease_valid(checkpoint):

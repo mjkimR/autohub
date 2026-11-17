@@ -52,6 +52,7 @@ its work, questions and GitHub outcome.
 11. **Contextual intent**: WHEN a selected proposal requests Planning or Development, Hub MUST submit its reviewed unit/activity/base rather than a stale list selection. Check: `SddProposals.integration.test.ts` selected-unit and context-reset tests.
 12. **Explicit PR number**: WHEN enrolling an existing unit PR through the UI, Hub MUST keep submission disabled until the operator supplies a positive integer PR number. Check: `SddExecution.integration.test.ts` blank and fractional-number tests.
 13. **Workspace recovery**: WHILE an original request is unresolved, Hub MUST retain its exact recovery controls across document and viewer-mode changes. Check: `SddProposals.integration.test.ts` original-intent recovery; `RepositoryView.svelte` workspace outcome placement.
+14. **Abandoned claim**: WHEN a start retry finds its claim without a Run, a live lease, a recorded refusal or uncertainty and with a changed project basis, Hub MUST refuse the retry and record the claim as a settled no-effect refusal if no branch or PR write was attempted, otherwise as uncertain for reconciliation under rule 10. Check: `test_crashed_worker_claim_is_released_or_reconcilable_after_project_change` in `modules/hub/tests/integration/features/project_management/sdd/test_optimistic_api.py`.
 
 ## 4. Interfaces & Data Contracts
 

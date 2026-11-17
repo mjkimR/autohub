@@ -43,7 +43,10 @@ in this order:
 2. A stored `refusal` is raised again, unchanged.
 3. A settled claim refuses with `Activity already settled`.
 4. A future `lease_expires_at` refuses with `Activity reconciliation is already in flight`.
-5. A changed project basis refuses with `Project changed after activity claim`.
+5. A changed project basis refuses with `Project changed after activity claim`. A claim not yet marked uncertain is
+   first recorded the way a failed start is: `refusal` and `settled` when neither `ref_attempted` nor `pull_number`
+   is present, otherwise `uncertain`. An already uncertain claim is left unchanged, so its `checkpoint_digest` stays
+   stable for reconciliation.
 6. Otherwise the claim gets a new random `lease` token that expires five minutes later.
 
 Every later checkpoint write locks the project and the claim again. The write is refused unless the lease token is

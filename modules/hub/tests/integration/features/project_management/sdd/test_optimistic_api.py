@@ -307,3 +307,63 @@ async def test_bound_activity_starts_without_another_tick(
             select(SddActivityClaim).where(SddActivityClaim.run_id == UUID(response.json()["id"]))
         )
         assert claim is not None and not claim.checkpoint["uncertain"]
+
+
+@pytest.mark.parametrize("published", [False, True])
+async def test_crashed_worker_claim_is_released_or_reconcilable_after_project_change(
+    client, project, session, published
+):
+    """A worker that died without recording an outcome must not leave the unit owned forever."""
+    from datetime import timedelta
+    from unittest.mock import AsyncMock
+
+    from app.features.project_management.projects.errors import ProjectError
+    from app.features.project_management.projects.repos import ProjectRepository
+    from app.features.project_management.projects.services import ProjectService
+    from app.features.project_management.sdd.activity_claims import ActivityClaims
+    from app.features.project_management.sdd.schemas import StartActivityRequest
+    from app_testing_base import utc_now
+
+    projects = ProjectService(ProjectRepository())
+    claims = ActivityClaims(projects, AsyncMock(), AsyncMock())
+    owner = await projects.get(session, UUID(project["id"]))
+    claim = await claims.reserve(session, owner, "dev", "demo", StartActivityRequest(request_id=uuid4()), "operator")
+    claim.checkpoint = {
+        **claim.checkpoint,
+        "lease": str(uuid4()),
+        "lease_expires_at": (utc_now() - timedelta(seconds=1)).isoformat(),
+        **({"ref_attempted": True, "branch": "dev-demo"} if published else {}),
+    }
+    owner.revision += 1
+    claim_id = claim.id
+    await session.commit()
+
+    with pytest.raises(ProjectError, match="Project changed after activity claim") as refused:
+        await claims.execute(owner.id, claim_id)
+    assert refused.value.status == 409
+    await session.refresh(claim)
+    assert claim.run_id is None and claim.checkpoint.get("lease_expires_at") is None
+    if not published:
+        assert claim.settled and claim.checkpoint["refusal"]["status"] == 409
+        await session.refresh(owner)
+        replacement = await claims.reserve(
+            session, owner, "dev", "demo", StartActivityRequest(request_id=uuid4()), "operator"
+        )
+        assert replacement.id != claim_id
+        return
+    assert not claim.settled and claim.checkpoint["uncertain"] is True
+    root = f"/api/v1/projects/{project['id']}/sdd/claims/{claim_id}"
+    evidence = (await client.get(root)).json()
+    with pytest.raises(ProjectError, match="Project changed after activity claim"):
+        await claims.execute(owner.id, claim_id)
+    assert (await client.get(root)).json()["checkpoint_digest"] == evidence["checkpoint_digest"]
+    response = await client.post(
+        root + "/reconcile",
+        json={
+            "request_id": str(uuid4()),
+            "expected_checkpoint_digest": evidence["checkpoint_digest"],
+            "acknowledge_external_work": True,
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["settled"]
