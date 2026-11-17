@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/svelte';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import DecisionInbox from './DecisionInbox.svelte';
@@ -190,4 +190,22 @@ test('rows link the project and PR run in-app and label the run state and kind',
 	expect(row.textContent).not.toMatch(/\bblocked\b|run question/);
 	const kinds = [...(screen.getByLabelText('Kind') as HTMLSelectElement).options];
 	expect(kinds.map((option) => option.text)).toEqual(['All kinds', 'Run question']);
+});
+
+test('a failed list read names what failed and offers Retry inside the alert', async () => {
+	const base = api.GET.getMockImplementation()!;
+	let fail = true;
+	api.GET.mockImplementation(async (path: string) =>
+		path.endsWith('/decisions') && fail
+			? { error: { detail: 'Internal Server Error' } }
+			: base(path)
+	);
+	render(DecisionInbox);
+	const alert = await screen.findByRole('alert');
+	expect(alert.textContent).toContain("Couldn't load decisions. No decision changed");
+	expect(alert.textContent).not.toContain('Internal Server Error');
+	fail = false;
+	await userEvent.setup().click(within(alert).getByRole('button', { name: 'Retry' }));
+	expect(await screen.findByText('Choose behavior')).toBeTruthy();
+	expect(screen.queryByRole('alert')).toBeNull();
 });

@@ -64,6 +64,7 @@
 	</div>
 	<Button disabled={!state.canStart} onclick={() => state.start()}>Enroll PR</Button>
 	{#if !contextual && state.starts.lastKind === 'enroll'}<SddStartOutcome
+			results
 			state={state.starts}
 			{projectId}
 			{repository}

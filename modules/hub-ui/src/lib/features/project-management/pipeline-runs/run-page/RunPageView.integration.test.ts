@@ -293,3 +293,27 @@ test('header Refresh keeps the Decisions draft instead of remounting it', async 
 	expect(screen.getByLabelText('Your answer')).toBe(answer);
 	expect(answer.value).toBe('Draft reply');
 });
+
+test('a failed questions read never leaves the header pointing at a question it cannot show', async () => {
+	decisions = [{ run_id: 'run-1', kind: 'run-question', question_state: 'open', actionable: true }];
+	let failQuestions = true;
+	const base = api.GET.getMockImplementation()!;
+	api.GET.mockImplementation(async (path: string) =>
+		path === '/api/v1/pipeline-runs/{run_id}/questions' && failQuestions
+			? { error: { detail: 'Internal Server Error' } }
+			: base(path)
+	);
+	const user = userEvent.setup();
+	renderPage();
+	const [header, inAlert] = await screen.findAllByRole('button', { name: 'Retry decisions' });
+	expect(screen.getByRole('alert').contains(inAlert)).toBe(true);
+	expect(screen.getByRole('alert').contains(header)).toBe(false);
+	expect(screen.queryByRole('link', { name: 'Answer question' })).toBeNull();
+	const alert = screen.getByRole('alert');
+	expect(alert.textContent).toContain("Couldn't load this run's decisions");
+	expect(alert.textContent).not.toContain('Internal Server Error');
+	failQuestions = false;
+	await user.click(header);
+	expect(await screen.findByRole('link', { name: 'Answer question' })).toBeTruthy();
+	expect(screen.queryByRole('alert')).toBeNull();
+});

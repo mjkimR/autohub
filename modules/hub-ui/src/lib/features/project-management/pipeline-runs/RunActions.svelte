@@ -11,6 +11,7 @@
 		MessageSquare,
 		Pause,
 		Play,
+		RefreshCw,
 		XCircle
 	} from '@lucide/svelte';
 	import {
@@ -33,7 +34,9 @@
 		onpause,
 		onresume,
 		oncancel,
-		onattach
+		onattach,
+		decisionsUnavailable = false,
+		onretrydecisions
 	}: {
 		run: Run;
 		decisions: RunDecisions;
@@ -47,6 +50,9 @@
 		onresume: () => void;
 		oncancel: () => void;
 		onattach: () => void;
+		/** The run page's Decisions read failed: a decisions primary becomes a retry of that read. */
+		decisionsUnavailable?: boolean;
+		onretrydecisions?: () => void;
 	} = $props();
 
 	let primary = $derived(primaryRunAction(run, decisions));
@@ -65,6 +71,10 @@
 	{#if primary.kind === 'resume'}
 		<Button {size} disabled={operating} onclick={onresume} aria-label={name}>
 			<Play aria-hidden="true" />{text}
+		</Button>
+	{:else if decisionsUnavailable && onretrydecisions && primary.section === 'decisions'}
+		<Button {size} disabled={operating} onclick={onretrydecisions}>
+			<RefreshCw aria-hidden="true" />Retry decisions
 		</Button>
 	{:else if primary.kind === 'attach-pr'}
 		<Button {size} disabled={operating} onclick={onattach} aria-label={name}>

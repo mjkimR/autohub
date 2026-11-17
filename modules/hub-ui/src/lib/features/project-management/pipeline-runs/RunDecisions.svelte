@@ -3,6 +3,8 @@
 	import DecisionOutcome from './DecisionOutcome.svelte';
 	import { decisionIntent, decisionBasis } from './decision-intents.svelte';
 	import SddRunPanel from './SddRunPanel.svelte';
+	import { readableLoadError } from './load-errors';
+	import { GATE_ANSWER_PLACEHOLDER, sddQuestionHeading } from './sdd-gate';
 	import DecisionQuestion from './DecisionQuestion.svelte';
 	import { RefreshCw, CircleHelp, CircleCheck, History } from '@lucide/svelte';
 	import { onMount, untrack } from 'svelte';
@@ -18,7 +20,9 @@
 		onchange,
 		onrun,
 		onRunPage = false,
-		selection
+		selection,
+		onavailability,
+		retryRequest = 0
 	}: {
 		run: Run;
 		onchange: () => void;
@@ -27,6 +31,10 @@
 		/** On the PR run page the header shows the wait reason and the next-step section the ended-run guidance. */
 		onRunPage?: boolean;
 		selection?: components['schemas']['DecisionEntryRead'];
+		/** Reports whether the current decisions could be read, so a header never points at a failed read. */
+		onavailability?: (available: boolean) => void;
+		/** Incrementing it asks this section to read its decisions again. */
+		retryRequest?: number;
 	} = $props();
 	let current = $state(untrack(() => run));
 	let questions = $state<Question[]>([]);
@@ -36,6 +44,7 @@
 	let text = $state('');
 	let reason = $state('');
 	let error = $state('');
+	let loadFailed = $state(false);
 	let busy = $state(false);
 	let review = $derived(decisionIntent(run.id));
 	let head = $derived(decisionBasis(current));
@@ -102,7 +111,9 @@
 				await load();
 			} catch {
 				ready = false;
-				error = 'Recorded. Refresh failed; retry read.';
+				loadFailed = true;
+				onavailability?.(false);
+				error = 'Recorded. Refreshing the decisions failed; retry to see the current state.';
 			}
 			return;
 		}
@@ -113,6 +124,33 @@
 			saved ||= 'Decision recorded. Refresh failed. Retry read to review its current subject.';
 		}
 	}
+	/** Read the decisions; a failed read keeps the last data, disables mutations and offers a retry. */
+	async function reload(inspectSelection = true) {
+		busy = true;
+		error = '';
+		saved = '';
+		loadFailed = false;
+		try {
+			await load(inspectSelection);
+			onavailability?.(true);
+		} catch (e) {
+			loadFailed = true;
+			onavailability?.(false);
+			error = readableLoadError(
+				e,
+				"Couldn't load this run's decisions. Saved answers and the run are unchanged."
+			);
+		} finally {
+			busy = false;
+		}
+	}
+	let lastRetry = untrack(() => retryRequest);
+	$effect(() => {
+		const request = retryRequest;
+		if (request === lastRetry) return;
+		lastRetry = request;
+		untrack(() => void reload());
+	});
 	async function perform(action: () => Promise<void>) {
 		busy = true;
 		error = '';
@@ -206,21 +244,24 @@
 		await afterMutation();
 	}
 	onMount(() => {
-		void perform(() => load());
+		void reload();
 	});
 </script>
 
 <div class="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2">
-	<Button variant="ghost" size="sm" disabled={busy} onclick={() => perform(() => load())}
+	<Button variant="ghost" size="sm" disabled={busy} onclick={() => reload()}
 		><RefreshCw class={busy ? 'size-3.5 animate-spin' : 'size-3.5'} />Refresh decisions</Button
 	>
 	{#if loadedAt}<p class="text-xs text-muted-foreground">Last loaded: {loadedAt}</p>{/if}
 </div>
 {#if error}<div
 		role="alert"
-		class="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+		class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
 	>
-		{error}
+		<span class="min-w-0 break-words">{error}</span>
+		{#if loadFailed}<Button variant="outline" size="sm" disabled={busy} onclick={() => reload()}
+				>Retry decisions</Button
+			>{/if}
 	</div>{/if}
 {#if saved}<div
 		role="status"
@@ -238,6 +279,21 @@
 			>
 				{terminal ? 'No questions or SDD activity.' : 'No questions or SDD activity yet.'}
 			</p>{/if}
+		{#if pending}
+			<DecisionQuestion
+				question={pending}
+				actionable={!terminal && offset === 0}
+				disabled={locked || !ready}
+				onoutcome={(id) => void perform(() => review.check('answer', id))}
+				onresume={resumeAnswer}
+				onsave={saveAnswer}
+				heading={sddQuestionHeading(current, pending)}
+				context={current.sdd_snapshot ? gateContext : undefined}
+				placeholder={current.sdd_snapshot && pending.source === 'agent'
+					? GATE_ANSWER_PLACEHOLDER
+					: undefined}
+			/>
+		{/if}
 		{#if !onRunPage && current.pause_reason}
 			<div class="rounded-xl border bg-muted/40 p-4">
 				<p
@@ -256,16 +312,6 @@
 				This run has ended. For failed or canceled work, inspect the PR and register replacement
 				work. The original result is preserved.
 			</div>{/if}
-		{#if pending}
-			<DecisionQuestion
-				question={pending}
-				actionable={!terminal && offset === 0}
-				disabled={locked || !ready}
-				onoutcome={(id) => void perform(() => review.check('answer', id))}
-				onresume={resumeAnswer}
-				onsave={saveAnswer}
-			/>
-		{/if}
 		{#if ready && !terminal && offset === 0 && pending}
 			<section class="space-y-3" aria-label="Dismiss the pending question">
 				<details class="rounded-lg border p-3 text-sm">
@@ -286,7 +332,6 @@
 				</details>
 			</section>
 		{/if}
-		{#if current.sdd_snapshot}<SddRunPanel run={current} />{/if}
 		<DecisionOutcome runId={run.id} {head} {revision} {terminal} onrefresh={() => load(false)} />
 
 		{#if ready && !terminal && offset === 0 && !pending}
@@ -353,7 +398,7 @@
 						disabled={locked || offset === 0}
 						onclick={() => {
 							offset -= 20;
-							void perform(load);
+							void reload();
 						}}>Previous</Button
 					><span class="text-xs text-muted-foreground"
 						>{Math.floor(offset / 20) + 1} / {Math.ceil(total / 20)}</span
@@ -363,7 +408,7 @@
 						disabled={locked || offset + 20 >= total}
 						onclick={() => {
 							offset += 20;
-							void perform(load);
+							void reload();
 						}}>Next</Button
 					>
 				</div>{/if}
@@ -373,3 +418,5 @@
 		</p>
 	</aside>
 </div>
+
+{#snippet gateContext()}{#if pending}<SddRunPanel run={current} question={pending} />{/if}{/snippet}

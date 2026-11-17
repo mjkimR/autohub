@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { apiErrorMessage } from './errors';
+import { apiErrorCode, apiErrorMessage } from './errors';
 
 test('preserves a backend refusal', () => {
 	expect(apiErrorMessage({ detail: 'Project changed; reload' }, 'Failed')).toBe(
@@ -36,4 +36,13 @@ test.each([
 	{ detail: { input: 'private-input' } }
 ])('falls back for an unexpected error payload: %j', (error) => {
 	expect(apiErrorMessage(error, 'Request failed')).toBe('Request failed');
+});
+
+test('reads a refusal code only when the error carries one', () => {
+	expect(apiErrorCode({ detail: 'Branch exists', code: 'SDD_BRANCH_EXISTS' })).toBe(
+		'SDD_BRANCH_EXISTS'
+	);
+	expect(apiErrorCode({ detail: 'Conflict' })).toBeUndefined();
+	expect(apiErrorCode({ code: 42 })).toBeUndefined();
+	expect(apiErrorCode(null)).toBeUndefined();
 });

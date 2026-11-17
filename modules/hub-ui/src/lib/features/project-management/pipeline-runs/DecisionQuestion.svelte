@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import type { components } from '$lib/api';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -11,7 +12,10 @@
 		disabled = false,
 		onresume,
 		onoutcome = () => {},
-		onsave
+		onsave,
+		heading,
+		context,
+		placeholder
 	}: {
 		question: components['schemas']['QuestionRead'];
 		actionable?: boolean;
@@ -21,6 +25,11 @@
 		onoutcome?: (id: string) => void;
 		/** Save an answer and resolve with its saved answer ID; enables the answer composer. */
 		onsave?: (answer: string) => Promise<string | undefined | void>;
+		/** Names the question's subject, such as "Planning gate · <unit>", instead of the generic label. */
+		heading?: string | null;
+		/** Evidence shown between the question and its answers. */
+		context?: Snippet;
+		placeholder?: string;
 	} = $props();
 	let resumeError = $state<{ id: string; message: string } | null>(null);
 	async function resumeWith(id: string) {
@@ -36,7 +45,9 @@
 <article class="space-y-4 rounded-xl border bg-card p-4 sm:p-5">
 	<div class="flex items-center justify-between gap-3 text-xs text-muted-foreground">
 		<span class="flex items-center gap-2"
-			><MessageSquare class="size-4" />{actionable ? 'Your input is needed' : 'Question'}</span
+			><MessageSquare aria-hidden="true" class="size-4 shrink-0" /><span class="min-w-0 break-words"
+				>{heading || (actionable ? 'Your input is needed' : 'Question')}</span
+			></span
 		>
 		<Badge variant="outline">{questionStateLabel(question.state)}</Badge>
 	</div>
@@ -46,6 +57,7 @@
 	<p class="text-xs text-muted-foreground">
 		{question.actor} · {new Date(question.created_at).toLocaleString()}
 	</p>
+	{@render context?.()}
 	{#each question.answers as answer (answer.id)}
 		<div class="space-y-3 rounded-lg bg-muted/50 p-3">
 			<p class="text-sm leading-relaxed break-words whitespace-pre-wrap">{answer.answer}</p>
@@ -77,6 +89,7 @@
 			{disabled}
 			{onsave}
 			{onresume}
+			{placeholder}
 			secondary={(question.answers ?? []).some((answer) => !answer.applied_attempt_id)}
 		/>
 	{/if}

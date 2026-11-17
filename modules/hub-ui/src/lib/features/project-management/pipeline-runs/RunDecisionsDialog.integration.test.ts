@@ -371,3 +371,31 @@ test('optimistic SDD uses the ordinary question composer without a native gate',
 		screen.queryByRole('button', { name: /Approve integration|Review publication reconciliation/ })
 	).toBeNull();
 });
+
+test('an SDD gate question leads with its activity, unit, head evidence and gate guidance', async () => {
+	const sddRun = {
+		...run,
+		pause_reason: 'Planning gate waiting',
+		sdd_snapshot: { spec_dir: 'docs/proposals/PROP-demo', activity_kind: 'plan' }
+	} as components['schemas']['PipelineRunRead'];
+	api.GET.mockImplementation(async (path: string) => ({
+		data: path.endsWith('/questions')
+			? {
+					items: [{ ...question, source: 'agent', head_sha: 'c'.repeat(40) }],
+					total_count: 1,
+					run_revision: 2
+				}
+			: sddRun
+	}));
+	render(RunDecisionsDialog, { run: sddRun, onclose: vi.fn(), onchange: vi.fn() });
+	expect(await screen.findByText('Planning gate · docs/proposals/PROP-demo')).toBeTruthy();
+	expect(screen.getByRole('link', { name: /View PR changes/ }).getAttribute('href')).toBe(
+		'https://github.com/owner/app/pull/7/files'
+	);
+	expect(screen.getByLabelText('Your answer').getAttribute('placeholder')).toContain(
+		'request changes'
+	);
+	const card = screen.getByText('Keep existing behavior?');
+	const wait = screen.getByText('Planning gate waiting');
+	expect(card.compareDocumentPosition(wait) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});

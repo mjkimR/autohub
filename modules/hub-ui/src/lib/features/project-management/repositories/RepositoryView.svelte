@@ -13,6 +13,7 @@
 	import FileBlobViewer from './FileBlobViewer.svelte';
 	import SddUnitActions from './SddUnitActions.svelte';
 	import SddStartOutcome from './SddStartOutcome.svelte';
+	import SddUnitJump from './SddUnitJump.svelte';
 	import { sddStarts } from './sdd-starts.svelte';
 	import { repositoryDataSource } from './data-source';
 	import type { RepoBlob, RepoInfo, RepoItem, RepoTree } from './types';
@@ -413,6 +414,7 @@
 							onselectpath={selectDocument}
 							onclearpath={clearDocument}
 							unitActions={isSdd ? unitActions : undefined}
+							unitJump={isSdd ? unitJump : undefined}
 						/>
 					{/key}{/if}
 			</section>
@@ -458,3 +460,5 @@
 		branch={currentRef}
 	/>
 {/snippet}
+
+{#snippet unitJump(path: string)}<SddUnitJump {path} />{/snippet}

@@ -1,11 +1,16 @@
 <script lang="ts">
 	import type { components } from '$lib/api';
 	import { repositorySubjectHref } from './run-links';
+	import { sddActivityLabel } from './sdd-gate';
 	let { run }: { run: components['schemas']['PipelineRunRead'] } = $props();
 	let currentUnit = $derived(
 		typeof run.sdd_snapshot?.spec_dir === 'string' ? run.sdd_snapshot.spec_dir : ''
 	);
-	let refs = $derived(run.related_origins ?? []);
+	let activity = $derived(sddActivityLabel(run));
+	// The current unit is named once; a related origin that repeats it adds nothing.
+	let refs = $derived(
+		(run.related_origins ?? []).filter((origin) => !(currentUnit && origin.unit === currentUnit))
+	);
 	let evidence = $derived.by(() => {
 		if (run.enrollment_source) return run.enrollment_source;
 		const kinds = refs.map((origin) => origin.kind);
@@ -26,7 +31,8 @@
 	<span>Related origin: {labels[evidence]}</span>
 	{#if currentUnit}
 		<p class="break-all">
-			Current SDD unit <a
+			{activity ? `${activity} activity on` : 'Current SDD unit'}
+			<a
 				class="underline underline-offset-4"
 				href={repositorySubjectHref(run.project_id, { unit: currentUnit, ref: run.branch })}
 				>{currentUnit}</a

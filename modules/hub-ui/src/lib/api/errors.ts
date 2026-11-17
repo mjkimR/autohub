@@ -17,3 +17,9 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
 	}
 	return fallback;
 }
+
+/** Read the machine-readable refusal code an API error carries (for example `SDD_BRANCH_EXISTS`). */
+export function apiErrorCode(error: unknown): string | undefined {
+	if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
+	return typeof error.code === 'string' && error.code.trim() ? error.code : undefined;
+}

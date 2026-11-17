@@ -1,15 +1,23 @@
 <script lang="ts">
-	import { runHref } from '../pipeline-runs/run-links';
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
 	import RunStateBadge from '../pipeline-runs/RunStateBadge.svelte';
+	import { unitRunHref } from './sdd-unit';
+	const LIMIT = 20;
 	let {
 		projectId,
 		specDir,
 		refresh = '',
-		repository = ''
-	}: { projectId: string; specDir: string; refresh?: string; repository?: string } = $props();
-	let runs = $state<components['schemas']['PipelineRunRead'][]>([]);
+		repository = '',
+		runs = $bindable([])
+	}: {
+		projectId: string;
+		specDir: string;
+		refresh?: string;
+		repository?: string;
+		/** The unit's PR runs, newest first; bind it to summarise them elsewhere in the panel. */
+		runs?: components['schemas']['PipelineRunRead'][];
+	} = $props();
 	let error = $state('');
 	let loading = $state(false);
 	let retry = $state(0);
@@ -31,11 +39,11 @@
 					await api.GET('/api/v1/projects/{project_id}/sdd/runs', {
 						params: { path: { project_id: project }, query: { spec_dir: spec } }
 					}),
-					'Unable to load related executions'
+					''
 				);
 				if (active) runs = result;
-			} catch (e) {
-				if (active) error = e instanceof Error ? e.message : 'Unable to load related executions';
+			} catch {
+				if (active) error = "Couldn't load PR runs for this unit.";
 			} finally {
 				if (active) loading = false;
 			}
@@ -49,26 +57,28 @@
 
 {#if specDir}
 	<div class="space-y-2">
-		{#if loading}<p class="text-xs text-muted-foreground">Loading executions…</p>
-		{:else if error}<p role="status" class="text-xs text-destructive">
+		{#if loading}<p role="status" class="text-xs text-muted-foreground">Loading PR runs…</p>
+		{:else if error}<p role="alert" class="text-xs text-destructive">
 				{error}
 				<button
 					type="button"
-					class="underline"
+					class="underline underline-offset-4"
 					onclick={() => {
 						retry += 1;
 					}}>Retry history</button
 				>
 			</p>
 		{:else if !runs.length}<p class="text-xs text-muted-foreground">
-				No executions found. Start work from an existing PR or request a proposal activity.
+				No PR runs for this unit yet. {specDir.startsWith('docs/proposals/')
+					? 'Start Planning or Development, or enroll an existing PR.'
+					: 'Enroll an existing PR to follow its work in Hub.'}
 			</p>
 		{:else}
 			<ul class="space-y-2">
 				{#each runs as run (run.id)}<li>
 						<a
 							class="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted"
-							href={runHref(run.id, projectId, 'decisions')}
+							href={unitRunHref(run, projectId)}
 						>
 							<span class="font-medium">PR #{run.pull_number}</span>
 							<RunStateBadge state={run.state} />
@@ -88,7 +98,9 @@
 						{/if}
 					</li>{/each}
 			</ul>
-			<p class="text-xs text-muted-foreground">Latest {runs.length} executions · up to 20 shown</p>
+			{#if runs.length >= LIMIT}<p class="text-xs text-muted-foreground">
+					Showing the latest {LIMIT} PR runs.
+				</p>{/if}
 		{/if}
 	</div>
 {/if}

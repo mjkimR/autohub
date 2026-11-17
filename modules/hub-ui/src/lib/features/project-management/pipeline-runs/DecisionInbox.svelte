@@ -11,6 +11,7 @@
 	import { CornerDownRight } from '@lucide/svelte';
 	import RunDecisionsDialog from './RunDecisionsDialog.svelte';
 	import RunStateBadge from './RunStateBadge.svelte';
+	import { readableLoadError } from './load-errors';
 	import { runHref } from './run-links';
 	type Entry = components['schemas']['DecisionEntryRead'];
 	type Run = components['schemas']['PipelineRunRead'];
@@ -68,7 +69,10 @@
 			next = data.next_cursor;
 		} catch (e) {
 			if (own === generation) {
-				error = e instanceof Error ? e.message : 'Unable to load decisions';
+				error = readableLoadError(
+					e,
+					"Couldn't load decisions. No decision changed; retry to see the current list."
+				);
 				items = [];
 			}
 		} finally {
@@ -204,8 +208,13 @@
 			}}>Clear filters</Button
 		>
 	</div>
-	{#if error}<p role="alert">{error}</p>
-		<Button variant="outline" onclick={() => load()}>Retry</Button>{/if}
+	{#if error}<div
+			role="alert"
+			class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+		>
+			<span class="min-w-0 break-words">{error}</span>
+			<Button variant="outline" size="sm" disabled={busy} onclick={() => load()}>Retry</Button>
+		</div>{/if}
 	{#if busy}<p role="status">Loading observed decisions…</p>{/if}
 	{#if !busy && !error && !items.length}<p>No matching observed pending decisions.</p>{/if}
 	{#each items as entry, index (entry.key)}

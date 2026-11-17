@@ -14,7 +14,8 @@
 		initialPath = '',
 		onselectpath,
 		onclearpath,
-		unitActions
+		unitActions,
+		unitJump
 	}: {
 		dataSource: RepositoryDataSource;
 		branch: string;
@@ -22,6 +23,8 @@
 		onselectpath: (path: string) => void;
 		onclearpath?: () => void;
 		unitActions?: Snippet<[string]>;
+		/** Rendered above the document where the unit panel sits after it (narrow layouts). */
+		unitJump?: Snippet<[string]>;
 	} = $props();
 	const state = new DocumentViewerState((path) => onselectpath(path));
 	const sections: { id: DocumentSection; label: string }[] = [
@@ -143,6 +146,7 @@
 			{/if}
 		</div>
 		<div class="min-w-0 space-y-4 lg:col-span-2">
+			{#if state.blob && unitActions && unitJump}{@render unitJump(state.blob.path)}{/if}
 			{#if state.reading}<p role="status" class="text-sm text-muted-foreground">
 					Loading {state.requestedPath || 'document reference'} on {branch}…
 				</p>{/if}

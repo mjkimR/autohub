@@ -35,6 +35,10 @@
 	// A header action that changed the run remounts both sections. A plain Refresh only remounts
 	// attempts: the Decisions section keeps its draft and notices and has its own refresh.
 	let decisionsGeneration = $state(0);
+	// When the Decisions section cannot read its questions, the header must not send the operator
+	// to a question it cannot show; it offers to read them again instead.
+	let decisionsUnavailable = $state(false);
+	let decisionsRetry = $state(0);
 	let attemptsGeneration = $state(0);
 
 	async function loadRun() {
@@ -144,6 +148,8 @@
 				{run}
 				{decisions}
 				{operating}
+				{decisionsUnavailable}
+				onretrydecisions={() => (decisionsRetry += 1)}
 				layout="page"
 				href={(section) => (section ? `#${section}` : runHref(run!.id, run!.project_id))}
 				onadvance={() => operate(() => advanceRun(run!.id))}
@@ -182,7 +188,13 @@
 				class="scroll-mt-6 space-y-4 rounded-xl border bg-card p-5 sm:p-6"
 			>
 				<h2 id="run-decisions-heading" class="text-lg font-semibold">Decisions</h2>
-				<RunDecisions {run} onRunPage onchange={() => void refresh()} />
+				<RunDecisions
+					{run}
+					onRunPage
+					onchange={() => void refresh()}
+					onavailability={(available) => (decisionsUnavailable = !available)}
+					retryRequest={decisionsRetry}
+				/>
 			</section>
 		{/key}
 		{#key attemptsGeneration}

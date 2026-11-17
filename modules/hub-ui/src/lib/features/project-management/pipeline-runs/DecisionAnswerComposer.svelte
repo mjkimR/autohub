@@ -7,13 +7,15 @@
 		disabled = false,
 		secondary = false,
 		onsave,
-		onresume
+		onresume,
+		placeholder = 'Describe the decision and any constraints to keep.'
 	}: {
 		disabled?: boolean;
 		/** Render both actions as secondary when another action (a saved answer's resume) is owed. */
 		secondary?: boolean;
 		onsave: (answer: string) => Promise<string | undefined | void>;
 		onresume: (answerId: string) => void | Promise<unknown>;
+		placeholder?: string;
 	} = $props();
 	let text = $state('');
 	let working = $state<'save' | 'resume' | null>(null);
@@ -67,7 +69,7 @@
 		>Your answer<Textarea
 			class="min-h-28 leading-relaxed font-normal"
 			maxlength={8000}
-			placeholder="Describe the decision and any constraints to keep."
+			{placeholder}
 			disabled={locked}
 			bind:value={text}
 		/></label
