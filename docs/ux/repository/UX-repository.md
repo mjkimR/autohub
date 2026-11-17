@@ -19,7 +19,7 @@ capabilities:
 
 - **Primary task**: Inspect repository content at the selected branch.
 - **Facts to commit**: Project connection repository identity, selected branch, file path and viewer mode.
-- **Secondary items**: Activity intent, execution history and collapsed PR enrollment occupy the selected unit work panel. Original request recovery stays above both viewer modes.
+- **Secondary items**: Unit status, activity intent with its local start outcome, PR runs for the unit and collapsed PR enrollment occupy the selected unit work panel. Original request recovery stays above both viewer modes.
 
 ## 2. Content
 
@@ -29,7 +29,7 @@ An SDD Project connection initially uses SDD View and can switch to Git Browser.
 - Repository viewer (branch selector and path breadcrumbs).
 - Repository viewer (Git Browser directory rows, selected file and README preview).
 - Repository viewer (native Documents, Proposals, Specs, Roadmap, Handbook and Files navigation in SDD View).
-- `UX-sdd-execution` (selected-unit execution history and collapsed existing-PR enrollment; SDD mode only).
+- `UX-sdd-execution` (selected-unit status, PR runs for the unit and collapsed existing-PR enrollment; SDD mode only).
 - `UX-sdd-proposals` (contextual activity form for the selected proposal; SDD mode only).
 
 Selecting a recognized proposal/spec path shows that unit directory in the contextual work panel. A browse ref is not represented as the execution PR’s head.
@@ -39,7 +39,7 @@ Successful file selection stores path/ref in the URL. Viewer-mode changes and re
 Optional README preview failure is silent; requested tree/file errors use the
 visible retry path. Both viewers explain binary content without parsing it as Markdown.
 
-SDD content shares Hub theme and controls. A searchable title/ID/status/path list sits beside the primary document on wide screens and above it on narrow screens. Metadata, Preview/Source and heading navigation belong to the selected document. Roadmap exposes descriptive dependencies and direct proposal members. Handbook exposes the release tag, active language and home action. Activity base branch defaults to the browse branch, remains editable, and discloses an intentional difference. Unit actions sit beside the document at extra-wide widths and below it on smaller screens.
+SDD content shares Hub theme and controls. A searchable title/ID/status/path list sits beside the primary document on wide screens and above it on narrow screens. Metadata, Preview/Source and heading navigation belong to the selected document. Roadmap exposes descriptive dependencies and direct proposal members. Handbook exposes the release tag, active language and home action. Activity base branch defaults to the browse branch, remains editable, and discloses an intentional difference. Unit actions sit beside the document at extra-wide widths and below it on smaller screens, where a Work on this unit button above the document moves focus to them.
 
 ## 3. States
 
@@ -61,6 +61,7 @@ SDD content shares Hub theme and controls. A searchable title/ID/status/path lis
 | --- | --- | --- | --- | --- | --- | --- |
 | Choose branch or file | `UC-inspect-repository-documents` 3 | populated | loading |  | `CAP-DOC-repository-viewer` | The selected ref/path content loads without mutating the repository. |
 | Refresh / Retry | `UC-inspect-repository-documents` 4 | error | loading |  | `CAP-DOC-repository-viewer` | The requested read is retried; SDD refresh preserves the selected path while reloading identity and clearing session read caches. |
+| Work on this unit | global: reach the unit work panel that narrow layouts place after the document | populated | populated | | `CAP-DOC-repository-viewer` | Below the extra-wide breakpoint, the unit work panel scrolls into view and takes focus. |
 | SDD View / Git Browser | global: choose a read-only repository representation | populated | populated |  | `CAP-DOC-repository-viewer` | The selected mode replaces the content surface while preserving the addressed unit and branch. |
 | Directory breadcrumb / file back | `UC-inspect-repository-documents` 3a | populated | loading |  | `CAP-DOC-repository-viewer` | The selected directory or parent listing is loaded. |
 | Open file/unit address / Retry unit | `UC-inspect-repository-documents` 1, `UC-inspect-repository-documents` 3b | populated, error, unit-unavailable | loading | | `CAP-DOC-repository-viewer` | Only a successful current file read can expose contextual unit actions. |

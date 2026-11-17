@@ -46,6 +46,8 @@ The header and its action row are primary. Sections follow in this order: the ne
     Attach PR (active run without a PR). Decision actions move to the Decisions section; a run held by a pending
     decision never offers a plain Resume. When the run's decisions are unknown (the read failed or was incomplete)
     no primary action is shown on the page (Open run is the page itself) and Resume is only a secondary action.
+    When the Decisions section's read fails while the primary would be a decision action, the primary becomes
+    Retry decisions, which repeats that read; the same action also sits inside the Decisions section's alert.
   - Secondary actions: Resume (when not primary and allowed), Pause (active run), Advance now (re-evaluates the run
     instead of waiting for its next scheduled check; non-terminal run), Attach PR, Inspect PR, Cancel run
     (non-terminal run; confirmed). Refresh reloads the run, its decision status and attempts; it keeps the
@@ -55,7 +57,7 @@ The header and its action row are primary. Sections follow in this order: the ne
     Item recovery to that item in `UX-work-plans` and Review attempt errors.
   - Replacement guidance (when no Work Item names this run): Enroll PR opens the project's Runs tab
     (`UX-pipeline-runs`) and Work Plans opens the Plans tab.
-- PR run (Related origin): the proven category or Origin unknown, followed by retained Work Plan/Work Item links, current SDD unit, related activity claim unit links and exact external Provider session URLs. Missing session URLs remain ID text; category evidence can be known without an available subject link.
+- PR run (Related origin): the proven category or Origin unknown, followed by retained Work Plan/Work Item links, current SDD unit (labeled "Planning activity on" or "Development activity on" when the activity is known), related activity claim unit links that differ from the current unit, and exact external Provider session URLs. Missing session URLs remain ID text; category evidence can be known without an available subject link.
 - SDD unit links include the Run branch and open that unit in `UX-repository`; related history is labeled separately from the current unit.
 - `UX-run-decisions` (Decisions section; the run's wait reason stays in the header).
 - `UX-attempt-history` (Execution attempts section).
@@ -83,6 +85,7 @@ ink; Cancel run is the quiet destructive variant.
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
 | Answer question | `UC-resolve-run-question` 2 | populated | populated |  | `CAP-PR-operator-decisions` | The page moves to the Decisions section and its answer editor. |
+| Retry decisions | global: repeat a failed decisions read without changing the run | populated | populated |  | `CAP-PR-operator-decisions` | The Decisions section repeats its read; the primary returns to the decision action once the read succeeds. |
 | Resume with saved answer | `UC-resolve-run-question` 4 | populated | populated |  | `CAP-PR-operator-decisions` | The page moves to the saved answer in Decisions, where the answer is selected explicitly. |
 | Next step | `UC-deliver-pull-request` *d | ended | ended |  | `CAP-PR-pull-request-delivery` | The page moves to the next-step section. |
 | Open Work Item recovery | `UC-deliver-pull-request` *d | ended | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | The Plans tab opens with the owning Work Item expanded. |

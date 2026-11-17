@@ -25,15 +25,14 @@ capabilities:
 
 ## 2. Content
 
-The current wait and Run question form are primary. Prior ordinary questions
+The pending Run question and its form are primary and lead the panel, before the current wait. Prior ordinary questions
 and saved answers remain secondary history.
 
 - PR run (last successful local load time with Refresh decisions; in the inbox dialog also the wait reason and terminal notice, which `UX-run-page` shows in its header and next-step section instead).
-- Run question (pending text, saved answer list, application state).
+- Run question (pending text, saved answer list, application state; on an SDD activity run the card is headed by its activity and unit and carries `UX-sdd-run`).
   - Run question (Your answer editor with Save and resume and Save only; collapsed as Answer differently while a saved answer awaits resume).
   - Run question (reasoned dismissal; inside a disclosure).
 - Run question (earlier-question history with Previous/Next pagination).
-- `UX-sdd-run` (descriptive activity context or activity context).
 
 Only the latest history page offers actions. Loading compares question and run
 revisions; mismatched data requires refresh rather than enabling stale controls.
@@ -63,7 +62,7 @@ The selected decision outcome is retained beside its owner controls. It identifi
 - **populated**: Current decisions are loaded; select the applicable answer or action.
 - **empty**: No pending question; eligible nonterminal runs offer Ask and pause, and stopped runs can offer inspected recovery.
 - **loading**: Latest decisions load; actions stay disabled until the run/question revisions agree.
-- **error**: An inline alert explains the failure; Refresh decisions reloads current evidence.
+- **error**: An inline alert states in plain words that the decisions could not be loaded and that saved answers and the run are unchanged, adding a server reason only when it is specific. Retry decisions sits inside the alert; mutations stay disabled until a consistent read returns. On `UX-run-page` the header primary becomes Retry decisions while the read fails.
 - **busy**: A save/resume locks competing actions until it settles.
 - **terminal**: Ended runs retain evidence and history; inspect the PR and register replacement work when needed.
 
@@ -83,6 +82,7 @@ The selected decision outcome is retained beside its owner controls. It identifi
 | Ask and pause | `UC-resolve-run-question` 1a | empty | busy |  | `CAP-PR-operator-decisions` | The question is recorded and progression is blocked. |
 | Dismiss without resuming | `UC-resolve-run-question` 4c | populated | busy |  | `CAP-PR-operator-decisions` | The dismissal is retained; execution remains stopped. |
 | Resume after inspection | global: recover a stopped run without granting native integration authority | empty | busy |  | `CAP-PR-pull-request-delivery` | The current run is reloaded; no integration approval is implied. |
+| Retry decisions | `UC-complete-sdd-workflow` 4 | error | loading |  | `CAP-PR-operator-decisions` | The decisions are read again; the last loaded data stays until the read succeeds. |
 | Previous / Next questions | global: inspect retained question history without changing execution | populated | loading |  | `CAP-PR-operator-decisions` | The selected history page loads; older-page actions are disabled. |
 | Close (inbox dialog) | global: leave decision inspection without submitting further direction | populated | populated | close |  | The Decision inbox remains visible with its row focused. |
 | Open run page (inbox dialog) | global: continue from an inbox review to the run's home | populated | populated | `UX-run-page` | `CAP-PR-pull-request-delivery` | The PR run page opens. |

@@ -42,7 +42,7 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
 - **loading**: Explain that pending decisions are loading and show no attention marks; filters/navigation remain accessible, Review waits for data.
 - **populated**: Review any row; use the question's waiting age. Explain that new or changed decisions can precede the current cursor and Refresh restarts the list.
 - **empty**: No matching observed pending decisions and no attention marks; offer Clear filters and Refresh. This does not assert that every repository is live-evaluated.
-- **error**: Keep filters, show no attention marks and offer Retry (secondary weight); no stale row becomes actionable from the failure.
+- **error**: Keep filters, show no attention marks and show an alert stating in plain words that decisions could not be loaded and none changed, adding a server reason only when it is specific; Retry (secondary weight) sits inside the alert. No stale row becomes actionable from the failure.
 - **reviewing**: Owner dialog loads fresh context; all mutation controls disabled until exact subject validation succeeds.
 - **changed**: Subject resolved, changed or unavailable; explain the outcome, refresh the worklist and offer explicit Review again for any replacement.
 
