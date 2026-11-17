@@ -67,7 +67,7 @@ application authorization boundary.
 
 | Interface | Contract |
 | --- | --- |
-| `GET /proposals` | Descriptive proposal metadata and activity/run links on an explicit base; metadata is no eligibility proof |
+| `GET /proposals` | Descriptive proposal metadata and activity/run links on an explicit base; metadata is no eligibility proof. One recursive tree read of the base commit names the proposals and their anchor blob SHAs, and anchors are read by SHA through the shared repository blob cache; a truncated tree falls back to a directory listing and per-path anchor reads ([test_proposals.py](../../../modules/hub/tests/unit/features/project_management/sdd/test_proposals.py)) |
 | `POST /proposals/{slug}/planning` | Explicit Planning intent with client request UUID, base, optional effort/catalog |
 | `POST /proposals/{slug}/development` | Explicit Development intent with the same publication/recovery contract |
 | Start refusal body | `detail` and, for SDD refusals, `code`: `SDD_BRANCH_EXISTS` (an activity branch with another owner or head) or `SDD_ACTIVITY_OWNED` (a retained activity claim); a refusal raised after the claim exists ends `detail` with `; inspect /api/v1/projects/<project-id>/sdd/claims/<claim-id>` |
