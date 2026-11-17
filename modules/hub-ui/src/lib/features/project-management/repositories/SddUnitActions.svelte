@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WrapAtSeparators from '../pipeline-runs/WrapAtSeparators.svelte';
 	import type { components } from '$lib/api';
 	import { GitPullRequest, Play, History } from '@lucide/svelte';
 	import SddProposals from './SddProposals.svelte';
@@ -32,7 +33,9 @@
 			<h3 class="flex items-center gap-2 text-sm font-semibold">
 				<Play class="size-4 text-muted-foreground" aria-hidden="true" />Work on this unit
 			</h3>
-			<p class="font-mono text-xs break-all text-muted-foreground">{unit}</p>
+			<p class="font-mono text-xs break-words text-muted-foreground">
+				<WrapAtSeparators text={unit} />
+			</p>
 		</div>
 		<SddUnitStatus {projectId} {runs} />
 		{#key `${unit}:${branch}`}

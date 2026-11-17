@@ -1,3 +1,4 @@
+import { readableLoadError } from '../pipeline-runs/load-errors';
 import { repositoryDataSource } from './data-source';
 import type { RepoInfo } from './types';
 
@@ -60,8 +61,7 @@ export class RepositorySelection {
 		} catch (error) {
 			if (generation !== this.generation) return;
 			this.status = 'error';
-			this.error =
-				error instanceof Error ? error.message : 'The requested repository subject is unavailable.';
+			this.error = readableLoadError(error, "Couldn't open the requested repository subject.");
 		}
 	}
 

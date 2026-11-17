@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WrapAtSeparators from '../WrapAtSeparators.svelte';
 	import type { components } from '$lib/api';
 	import { Badge } from '$lib/components/ui/badge';
 	import { ChevronRight, CircleHelp, ExternalLink, MessageSquare } from '@lucide/svelte';
@@ -68,7 +69,7 @@
 			<dt class="text-xs text-muted-foreground">Lease</dt>
 			<dd>
 				{#if run.lease_owner}
-					<span class="break-all">{run.lease_owner}</span>
+					<span class="break-words"><WrapAtSeparators text={run.lease_owner} /></span>
 					{#if run.lease_expires_at}<span class="text-muted-foreground">
 							· until {new Date(run.lease_expires_at).toLocaleTimeString()}</span
 						>{/if}
@@ -92,8 +93,8 @@
 			</div>
 		</div>
 	{/if}
-	<p class="font-mono text-xs break-all text-muted-foreground">
-		Run {run.id} · created {time(run.created_at)}{run.next_action_at
+	<p class="font-mono text-xs break-words text-muted-foreground">
+		Run <WrapAtSeparators text={run.id} /> · created {time(run.created_at)}{run.next_action_at
 			? ` · next check ${time(run.next_action_at)}`
 			: ''}
 	</p>

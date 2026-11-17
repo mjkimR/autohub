@@ -5,8 +5,14 @@ import type { RepoBlob, RepoItem } from '../types';
 import { discoverDocuments, listChildren } from './discovery';
 import { loadHandbook, type HandbookManifest } from './handbook';
 import { safePath, type DocumentListing, type DocumentSection } from './model';
+import { readableLoadError } from '../../pipeline-runs/load-errors';
 
-const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+// Bare HTTP phrases become a plain read failure; specific reasons are kept.
+const message = (error: unknown) =>
+	readableLoadError(
+		error instanceof Error ? error : new Error(String(error)),
+		"Couldn't read this from the repository."
+	);
 export class DocumentViewerState {
 	section = $state<DocumentSection>('documents');
 	listing = $state<DocumentListing>({ documents: [], errors: [] });

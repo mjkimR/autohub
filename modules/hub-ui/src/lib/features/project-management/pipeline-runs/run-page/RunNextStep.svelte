@@ -1,10 +1,16 @@
 <script lang="ts">
 	import type { components } from '$lib/api';
 	import { Button } from '$lib/components/ui/button';
-	import { ArrowRight, ListChecks, Plus } from '@lucide/svelte';
+	import { ArrowRight, FolderGit2, ListChecks, Plus } from '@lucide/svelte';
+	import { repositorySubjectHref } from '../run-links';
+	import { sddActivityLabel, sddUnit } from '../sdd-gate';
+	import WrapAtSeparators from '../WrapAtSeparators.svelte';
 	let { run }: { run: components['schemas']['PipelineRunRead'] } = $props();
 	let owner = $derived((run.related_origins ?? []).find((origin) => origin.kind === 'work_plan'));
 	let plansHref = $derived(`/projects/${run.project_id}?tab=plans`);
+	// An SDD activity run restarts from its unit in the repository workspace (user decision 4).
+	let unit = $derived(run.sdd_snapshot ? sddUnit(run) : '');
+	let activity = $derived(sddActivityLabel(run));
 </script>
 
 <section
@@ -30,6 +36,20 @@
 				><ListChecks aria-hidden="true" />Open Work Item recovery</Button
 			>
 			<Button variant="outline" href="#attempts">Review attempt errors</Button>
+		</div>
+	{:else if unit}
+		<p class="max-w-prose text-sm break-words">
+			This {activity ? `${activity} ` : ''}activity ran for the SDD unit
+			<code><WrapAtSeparators text={unit} /></code>. Open the unit to review its PR runs and start
+			the activity again from there.
+		</p>
+		<div class="flex flex-wrap gap-2">
+			<Button href={repositorySubjectHref(run.project_id, { unit })}
+				><FolderGit2 aria-hidden="true" />Open unit</Button
+			>
+			<Button variant="outline" href={`/projects/${run.project_id}?tab=runs`}
+				><Plus aria-hidden="true" />Enroll PR</Button
+			>
 		</div>
 	{:else}
 		<p class="max-w-prose text-sm">

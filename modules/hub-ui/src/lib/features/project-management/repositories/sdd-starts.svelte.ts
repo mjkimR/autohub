@@ -1,6 +1,7 @@
 import { api, type components } from '$lib/api';
 import { apiErrorCode, apiErrorMessage } from '$lib/api/errors';
 import { session } from '$lib/stores/session.svelte';
+import { readableLoadError } from '../pipeline-runs/load-errors';
 
 type ActivityRequest = components['schemas']['StartActivityRequest'];
 type Enrollment = components['schemas']['EnrollPullRequest'];
@@ -143,10 +144,7 @@ export class SddStarts {
 			this.claimId = '';
 		} catch (error) {
 			// No response at all: the outcome is unknown and the exact request stays retained.
-			this.error =
-				error instanceof Error && error.message
-					? `${error.message}. Start outcome is unknown; retry the same request.`
-					: 'Start outcome is unknown. Retry the same request.';
+			this.error = readableLoadError(error, 'Start outcome is unknown. Retry the same request.');
 		} finally {
 			this.busy = false;
 			this.outcomeVersion += 1;
@@ -167,7 +165,7 @@ export class SddStarts {
 					intent.kind === 'activity'
 						? `${intentLabel(intent)} was not started`
 						: `PR #${intent.body.pull_number} was not enrolled`,
-				detail,
+				detail: readableLoadError(new Error(detail), 'Hub refused this request.'),
 				branch:
 					code === 'SDD_BRANCH_EXISTS' && intent.kind === 'activity'
 						? `${intent.activity}-${intent.slug}`
@@ -179,7 +177,7 @@ export class SddStarts {
 		this.error =
 			outcome === 'retained'
 				? 'This activity has a retained owner. Inspect its Run and external work before requesting replacement work.'
-				: detail;
+				: readableLoadError(new Error(detail), 'Start outcome is unknown. Retry the same request.');
 	}
 
 	resolvedOwner() {

@@ -79,7 +79,7 @@ test('filters reset paging and pages use the retained cursor', async () => {
 	const user = userEvent.setup();
 	render(DecisionInbox);
 	await screen.findByText('Choose behavior');
-	expect(screen.getByRole('link', { name: 'PR #7 ↗' }).getAttribute('href')).toBe(
+	expect(screen.getByRole('link', { name: /^PR #7\b.*new tab/ }).getAttribute('href')).toBe(
 		'https://github.com/owner/app/pull/7'
 	);
 	await user.selectOptions(screen.getByLabelText('Kind'), 'run-question');
@@ -102,7 +102,7 @@ test('closing exact owner review retains filters and returns row focus', async (
 	render(DecisionInbox);
 	await screen.findByText('Choose behavior');
 	await user.selectOptions(screen.getByLabelText('Kind'), 'run-question');
-	await user.click(screen.getByRole('button', { name: 'Review' }));
+	await user.click(screen.getByRole('button', { name: 'Review question: Choose behavior' }));
 	await screen.findByRole('dialog');
 	await waitFor(() =>
 		expect(api.POST).toHaveBeenCalledWith('/api/v1/pipeline-runs/decisions/review', {
@@ -115,7 +115,9 @@ test('closing exact owner review retains filters and returns row focus', async (
 	await user.keyboard('{Escape}');
 	await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 	await waitFor(() =>
-		expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Review' }))
+		expect(document.activeElement).toBe(
+			screen.getByRole('button', { name: 'Review question: Choose behavior' })
+		)
 	);
 	expect((screen.getByLabelText('Kind') as HTMLSelectElement).value).toBe('run-question');
 });
@@ -208,4 +210,39 @@ test('a failed list read names what failed and offers Retry inside the alert', a
 	await userEvent.setup().click(within(alert).getByRole('button', { name: 'Retry' }));
 	expect(await screen.findByText('Choose behavior')).toBeTruthy();
 	expect(screen.queryByRole('alert')).toBeNull();
+});
+
+test('rows are headings with uniquely named actions; a non-actionable row stays neutral and says why', async () => {
+	api.GET.mockImplementation(async (path: string) => {
+		if (path === '/api/v1/projects') return { data: { items: [] } };
+		if (path.endsWith('/decisions'))
+			return {
+				data: {
+					items: [
+						{ ...entry, key: 'open', title: 'Open question' },
+						{
+							...entry,
+							key: 'idle',
+							title: 'Applied question',
+							question_state: 'answered',
+							actionable: false,
+							run_state: 'implementing'
+						}
+					],
+					has_more: false,
+					next_cursor: null
+				}
+			};
+		return { data: run };
+	});
+	render(DecisionInbox);
+	expect(await screen.findByRole('heading', { level: 2, name: 'Open question' })).toBeTruthy();
+	const idle = screen.getByRole('article', { name: 'Applied question' });
+	expect(idle.getAttribute('data-attention')).toBeNull();
+	const review = within(idle).getByRole('button', { name: 'Review question: Applied question' });
+	expect((review as HTMLButtonElement).disabled).toBe(true);
+	expect(review.getAttribute('aria-describedby')).toBeTruthy();
+	expect(idle.textContent).toContain('Nothing to decide while the run is implementing.');
+	expect(idle.querySelector('[data-slot="badge"]')?.className).not.toContain('attention');
+	expect(document.querySelectorAll('[data-attention]')).toHaveLength(1);
 });

@@ -29,7 +29,7 @@
 				>Evidence at head <code class="text-foreground">{head.slice(0, 8)}</code></span
 			>{/if}
 		{#if unitUrl}<a
-				class="inline-flex items-center gap-1 underline underline-offset-4"
+				class="inline-flex min-h-6 items-center gap-1 underline underline-offset-4"
 				href={unitUrl}
 				target="_blank"
 				rel="noreferrer"
@@ -38,7 +38,7 @@
 				></a
 			>{/if}
 		{#if changesUrl}<a
-				class="inline-flex items-center gap-1 underline underline-offset-4"
+				class="inline-flex min-h-6 items-center gap-1 underline underline-offset-4"
 				href={changesUrl}
 				target="_blank"
 				rel="noreferrer"

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WrapAtSeparators from '../../pipeline-runs/WrapAtSeparators.svelte';
 	import { onDestroy, untrack, type Snippet } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { NativeSelect } from '$lib/components/ui/native-select';
@@ -124,7 +125,9 @@
 					onopen={open}
 				/>
 			{:else if state.section === 'files'}
-				<p class="font-mono text-xs break-all text-muted-foreground">/{state.directory}</p>
+				<p class="font-mono text-xs break-words text-muted-foreground">
+					<WrapAtSeparators text={`/${state.directory}`} />
+				</p>
 				{#if state.directory}<Button variant="ghost" size="sm" onclick={() => parent()}
 						>Parent directory</Button
 					>{/if}

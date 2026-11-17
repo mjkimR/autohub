@@ -67,7 +67,7 @@
 {#snippet form()}
 	<label class="block space-y-2 text-sm font-medium"
 		>Your answer<Textarea
-			class="min-h-28 leading-relaxed font-normal"
+			class="min-h-20 leading-relaxed font-normal sm:min-h-28"
 			maxlength={8000}
 			{placeholder}
 			disabled={locked}
@@ -78,7 +78,10 @@
 		<p class="text-xs text-muted-foreground">
 			Save and resume applies this answer and continues the run. Save only keeps the run paused.
 		</p>
-		<div class="flex flex-wrap gap-2">
+		<!-- On narrow screens the actions stay in view while the composer is on screen. -->
+		<div
+			class="flex flex-wrap gap-2 max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:w-full max-sm:bg-card max-sm:py-2"
+		>
 			<Button variant="outline" disabled={locked || !text.trim()} onclick={() => save(false)}
 				>Save only</Button
 			>

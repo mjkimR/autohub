@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WrapAtSeparators from '../pipeline-runs/WrapAtSeparators.svelte';
 	import { CircleAlert, ExternalLink } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { projectTabHref } from '../projects/project-tabs';
@@ -22,8 +23,8 @@
 	</p>
 	{#if refusal.branch}
 		<p>
-			The activity branch <code class="break-all">{refusal.branch}</code> already exists with another
-			owner or head. Hub did not overwrite it, and this request is closed.
+			The activity branch <code class="break-words"><WrapAtSeparators text={refusal.branch} /></code
+			> already exists with another owner or head. Hub did not overwrite it, and this request is closed.
 		</p>
 	{:else}
 		<p class="break-words">{refusal.detail}</p>

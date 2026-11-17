@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WrapAtSeparators from '../pipeline-runs/WrapAtSeparators.svelte';
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
 	import RunStateBadge from '../pipeline-runs/RunStateBadge.svelte';
@@ -62,7 +63,7 @@
 				{error}
 				<button
 					type="button"
-					class="underline underline-offset-4"
+					class="inline-flex min-h-6 items-center underline underline-offset-4"
 					onclick={() => {
 						retry += 1;
 					}}>Retry history</button
@@ -84,13 +85,15 @@
 							<RunStateBadge state={run.state} />
 							<span class="min-w-0 break-words">{run.pull_snapshot.title}</span>
 						</a>
-						<p class="mt-1 text-xs break-all text-muted-foreground">
-							{#if run.sdd_snapshot?.handoff_from}{String(run.sdd_snapshot.handoff_from)} →
-							{/if}{String(run.sdd_snapshot?.spec_dir || specDir)}
+						<p class="mt-1 text-xs break-words text-muted-foreground">
+							{#if run.sdd_snapshot?.handoff_from}<WrapAtSeparators
+									text={String(run.sdd_snapshot.handoff_from)}
+								/> →
+							{/if}<WrapAtSeparators text={String(run.sdd_snapshot?.spec_dir || specDir)} />
 						</p>
 						{#if /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)}
 							<a
-								class="text-xs underline"
+								class="inline-flex min-h-6 items-center text-xs underline underline-offset-4"
 								href={`https://github.com/${repository}/pull/${run.pull_number}`}
 								target="_blank"
 								rel="noreferrer">Open GitHub PR #{run.pull_number}</a

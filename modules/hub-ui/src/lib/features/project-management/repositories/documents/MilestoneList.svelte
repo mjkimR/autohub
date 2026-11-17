@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WrapAtSeparators from '../../pipeline-runs/WrapAtSeparators.svelte';
 	import { displayLabel } from '$lib/labels';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -23,7 +24,9 @@
 					>{row.document.title}</Button
 				><Badge variant="outline">{displayLabel(row.document.status || 'unknown')}</Badge>
 			</div>
-			<p class="font-mono text-xs break-all text-muted-foreground">{row.document.path}</p>
+			<p class="font-mono text-xs break-words text-muted-foreground">
+				<WrapAtSeparators text={row.document.path} />
+			</p>
 			{#if row.dependencies.length}<p class="text-sm">
 					Depends on: {row.dependencies
 						.map((dependency) => `${dependency.id} (${dependency.status})`)

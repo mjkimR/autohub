@@ -1,4 +1,5 @@
 import type { components } from '$lib/api';
+import { displayLabel } from '$lib/labels';
 import { isTerminalRun } from '../pipeline-runs/run-actions';
 import { runHref } from '../pipeline-runs/run-links';
 import { unitDirectory } from './repository-selection.svelte';
@@ -10,6 +11,18 @@ export const ACTIVITY_LABELS: Record<UnitActivity, string> = {
 	plan: 'Planning',
 	dev: 'Development'
 };
+
+/** Activity display label for a raw activity value (`plan`, `dev`), never the raw token. */
+export function activityLabel(value: string): string {
+	return displayLabel(value, ACTIVITY_LABELS);
+}
+
+const EFFORT_LABELS: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High' };
+
+/** Effort display label; an unset effort follows the repository recommendation. */
+export function effortLabel(value: string | null | undefined): string {
+	return value ? displayLabel(value, EFFORT_LABELS) : 'Repository recommendation';
+}
 
 /** The SDD unit directory that contains a repository path, or '' outside a unit. */
 export function unitFromPath(path: string): string {

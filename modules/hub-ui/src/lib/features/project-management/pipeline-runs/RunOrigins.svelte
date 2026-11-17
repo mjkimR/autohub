@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WrapAtSeparators from './WrapAtSeparators.svelte';
 	import type { components } from '$lib/api';
 	import { repositorySubjectHref } from './run-links';
 	import { sddActivityLabel } from './sdd-gate';
@@ -30,40 +31,43 @@
 <div aria-label="Related origins" class="space-y-1 text-xs text-muted-foreground">
 	<span>Related origin: {labels[evidence]}</span>
 	{#if currentUnit}
-		<p class="break-all">
+		<p class="break-words">
 			{activity ? `${activity} activity on` : 'Current SDD unit'}
 			<a
-				class="underline underline-offset-4"
+				class="inline-flex min-h-6 items-center underline underline-offset-4"
 				href={repositorySubjectHref(run.project_id, { unit: currentUnit, ref: run.branch })}
-				>{currentUnit}</a
+				><WrapAtSeparators text={currentUnit} /></a
 			>
 		</p>
 	{/if}
 	{#each refs as origin (`${origin.kind}-${origin.id}`)}
-		<p class="break-all">
+		<p class="break-words">
 			{#if origin.kind === 'work_plan'}
 				<a
-					class="underline underline-offset-4"
+					class="inline-flex min-h-6 items-center underline underline-offset-4"
 					href={`/projects/${run.project_id}?tab=plans#work-plan-${origin.work_plan_id}`}
 					>Work Plan {origin.work_plan_id}</a
 				>
 				·
 				<a
-					class="underline underline-offset-4"
+					class="inline-flex min-h-6 items-center underline underline-offset-4"
 					href={`/projects/${run.project_id}?tab=plans#work-item-${origin.id}`}
 					>Work Item {origin.id}</a
 				>
 			{:else if origin.kind === 'provider_session'}
 				{#if origin.url && /^https?:\/\//.test(origin.url)}
-					<a class="underline underline-offset-4" href={origin.url} target="_blank" rel="noreferrer"
-						>Provider session {origin.id}</a
+					<a
+						class="inline-flex min-h-6 items-center underline underline-offset-4"
+						href={origin.url}
+						target="_blank"
+						rel="noreferrer">Provider session {origin.id}</a
 					>
 				{:else}Provider session {origin.id}{/if}
 			{:else if origin.unit}
 				Related SDD history <a
-					class="underline underline-offset-4"
+					class="inline-flex min-h-6 items-center underline underline-offset-4"
 					href={repositorySubjectHref(run.project_id, { unit: origin.unit, ref: run.branch })}
-					>{origin.unit}</a
+					><WrapAtSeparators text={origin.unit} /></a
 				>
 			{/if}
 		</p>

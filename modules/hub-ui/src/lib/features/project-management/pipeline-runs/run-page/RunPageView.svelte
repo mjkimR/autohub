@@ -159,7 +159,10 @@
 				onattach={() => (attaching = true)}
 			/>
 			<Button variant="ghost" size="sm" disabled={refreshing} onclick={() => refresh('attempts')}
-				><RefreshCw aria-hidden="true" class={refreshing ? 'animate-spin' : ''} />Refresh</Button
+				><RefreshCw
+					aria-hidden="true"
+					class={refreshing ? 'motion-safe:animate-spin' : ''}
+				/>Refresh</Button
 			>
 		</div>
 		{#if error}

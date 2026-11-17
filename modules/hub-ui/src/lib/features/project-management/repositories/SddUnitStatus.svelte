@@ -23,7 +23,7 @@
 				<span class="font-medium">{activity ? ACTIVITY_LABELS[activity] : 'PR run'}</span>
 				<RunStateBadge state={run.state} />
 				<a
-					class="underline-offset-4 hover:underline"
+					class="inline-flex min-h-6 items-center underline-offset-4 hover:underline"
 					href={runHref(run.id, projectId)}
 					aria-label={`Open PR run for PR #${run.pull_number}`}>PR #{run.pull_number}</a
 				>

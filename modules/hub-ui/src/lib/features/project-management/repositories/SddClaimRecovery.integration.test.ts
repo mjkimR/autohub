@@ -30,16 +30,15 @@ test('releases only the inspected retained reservation after explicit acknowledg
 		onresolved
 	});
 	const user = userEvent.setup();
-	await user.click(screen.getByRole('button', { name: 'Inspect retained owner' }));
 	const release = await screen.findByRole('button', { name: 'Release inspected reservation' });
 	expect((release as HTMLButtonElement).disabled).toBe(true);
 
 	await user.click(screen.getByRole('checkbox'));
 	await user.click(release);
-	await screen.findByText('Lost acknowledgment response');
+	await screen.findByText(/Lost acknowledgment response/);
 	expect(onresolved).not.toHaveBeenCalled();
 	expect(
-		(screen.getByRole('button', { name: 'Inspect retained owner' }) as HTMLButtonElement).disabled
+		(screen.getByRole('button', { name: 'Inspect again' }) as HTMLButtonElement).disabled
 	).toBe(true);
 	await user.click(screen.getByRole('button', { name: 'Retry same acknowledgment' }));
 	await waitFor(() => expect(onresolved).toHaveBeenCalledOnce());
@@ -58,8 +57,11 @@ test('an expired uncertain optimistic publication can be acknowledged without a 
 		}
 	});
 	render(SddClaimRecovery, { projectId: 'project', claimId: 'claim-1', onresolved: vi.fn() });
-	await userEvent.setup().click(screen.getByRole('button', { name: 'Inspect retained owner' }));
 	expect(await screen.findByRole('button', { name: 'Release inspected reservation' })).toBeTruthy();
+	expect(screen.getByRole('heading').textContent?.replace(/\s+/g, ' ')).toContain(
+		'Planning for docs/proposals/PROP-demo has an uncertain reservation'
+	);
+	expect(screen.queryByText(/\bplan\b/)).toBeNull();
 });
 
 test('a live optimistic publication lease has no release action', async () => {
@@ -74,7 +76,41 @@ test('a live optimistic publication lease has no release action', async () => {
 		}
 	});
 	render(SddClaimRecovery, { projectId: 'project', claimId: 'claim-1', onresolved: vi.fn() });
-	await userEvent.setup().click(screen.getByRole('button', { name: 'Inspect retained owner' }));
 	await screen.findByText(/publication lease still owns the work/);
 	expect(screen.queryByRole('button', { name: 'Release inspected reservation' })).toBeNull();
+});
+
+test('a publication lease that ends while the card is open turns releasable without a reload', async () => {
+	vi.useFakeTimers({ shouldAdvanceTime: true });
+	try {
+		api.GET.mockResolvedValue({
+			data: {
+				...claim,
+				checkpoint: {
+					uncertain: true,
+					lease_expires_at: new Date(Date.now() + 5_000).toISOString()
+				}
+			}
+		});
+		render(SddClaimRecovery, { projectId: 'project', claimId: 'claim-1', onresolved: vi.fn() });
+		await screen.findByText(/publication lease still owns the work/);
+		expect(screen.queryByRole('button', { name: 'Release inspected reservation' })).toBeNull();
+		await vi.advanceTimersByTimeAsync(6_000);
+		expect(
+			await screen.findByRole('button', { name: 'Release inspected reservation' })
+		).toBeTruthy();
+		expect(api.GET).toHaveBeenCalledOnce();
+	} finally {
+		vi.useRealTimers();
+	}
+});
+
+test('a failed evidence read is plain and retryable', async () => {
+	api.GET.mockResolvedValueOnce({ error: { detail: 'Internal Server Error' } });
+	render(SddClaimRecovery, { projectId: 'project', claimId: 'claim-1', onresolved: vi.fn() });
+	const alert = await screen.findByRole('alert');
+	expect(alert.textContent).toContain("Couldn't load the retained owner");
+	expect(alert.textContent).not.toContain('Internal Server Error');
+	await userEvent.setup().click(screen.getByRole('button', { name: 'Inspect again' }));
+	expect(await screen.findByRole('button', { name: 'Release inspected reservation' })).toBeTruthy();
 });

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WrapAtSeparators from '../pipeline-runs/WrapAtSeparators.svelte';
 	import { tick, untrack } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { CircleCheck } from '@lucide/svelte';
@@ -41,7 +42,7 @@
 			<div role="status" class="space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
 				<p>
 					New starts are unavailable while the original {intentLabel(starts.pending)} request for
-					<code class="break-all">{intentUnit(starts.pending)}</code> is unresolved.
+					<code class="break-words"><WrapAtSeparators text={intentUnit(starts.pending)} /></code> is unresolved.
 				</p>
 				<Button size="sm" variant="outline" onclick={reviewRecovery}
 					>Review the original request</Button

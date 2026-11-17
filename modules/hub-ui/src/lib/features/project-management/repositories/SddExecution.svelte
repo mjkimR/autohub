@@ -56,8 +56,8 @@
 				bind:value={state.effort}
 				disabled={state.starts.busy || !!state.starts.pending}
 				aria-label="Activity effort"
-				><option value="low">low</option><option value="medium">medium</option><option value="high"
-					>high</option
+				><option value="low">Low</option><option value="medium">Medium</option><option value="high"
+					>High</option
 				></NativeSelect
 			></label
 		>

@@ -317,3 +317,20 @@ test('a failed questions read never leaves the header pointing at a question it 
 	expect(await screen.findByRole('link', { name: 'Answer question' })).toBeTruthy();
 	expect(screen.queryByRole('alert')).toBeNull();
 });
+
+test('a failed SDD activity run restarts from its unit, with Enroll PR secondary', async () => {
+	current = {
+		...run,
+		state: 'failed',
+		sdd_snapshot: { spec_dir: 'docs/proposals/PROP-demo', activity_kind: 'plan' }
+	};
+	renderPage();
+	const open = await screen.findByRole('link', { name: 'Open unit' });
+	expect(open.getAttribute('href')).toBe(
+		'/projects/project-1?tab=repository&unit=docs%2Fproposals%2FPROP-demo'
+	);
+	expect(screen.getByText(/This Planning activity ran for the SDD unit/)).toBeTruthy();
+	expect(screen.getByRole('link', { name: 'Enroll PR' }).getAttribute('href')).toBe(
+		'/projects/project-1?tab=runs'
+	);
+});

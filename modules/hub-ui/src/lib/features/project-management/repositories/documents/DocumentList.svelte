@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WrapAtSeparators from '../../pipeline-runs/WrapAtSeparators.svelte';
 	import { displayLabel } from '$lib/labels';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
@@ -54,7 +55,9 @@
 						{#if doc.id}<span class="text-xs text-muted-foreground">{doc.id}</span
 							>{/if}{#if doc.status}<Badge variant="outline">{displayLabel(doc.status)}</Badge>{/if}
 					</div>
-					<p class="font-mono text-xs break-all text-muted-foreground">{doc.path}</p>
+					<p class="font-mono text-xs break-words text-muted-foreground">
+						<WrapAtSeparators text={doc.path} />
+					</p>
 				</li>{/each}
 		</ul>
 	{/if}

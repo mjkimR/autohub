@@ -8,6 +8,7 @@
 	import NativeSddViewer from './documents/NativeSddViewer.svelte';
 	import { api, type components } from '$lib/api';
 	import { apiErrorMessage } from '$lib/api/errors';
+	import { readableLoadError } from '../pipeline-runs/load-errors';
 	import { Button } from '$lib/components/ui/button';
 	import FileTreeTable from './FileTreeTable.svelte';
 	import FileBlobViewer from './FileBlobViewer.svelte';
@@ -150,7 +151,7 @@
 			}
 		} catch (err) {
 			if (version !== readVersion || projectId !== project.id) return;
-			error = err instanceof Error ? err.message : 'Failed to load directory';
+			error = readableLoadError(err, "Couldn't load this directory.");
 		} finally {
 			if (version === readVersion && projectId === project.id) loading = false;
 		}
@@ -196,7 +197,7 @@
 			}
 		} catch (err) {
 			if (version !== readVersion || projectId !== project.id) return;
-			error = err instanceof Error ? err.message : 'Failed to load file';
+			error = readableLoadError(err, "Couldn't load this file.");
 		} finally {
 			if (version === readVersion && projectId === project.id) loading = false;
 		}
@@ -305,29 +306,25 @@
 			<!-- View Mode & Action Controls -->
 			<div class="flex flex-wrap items-center gap-2">
 				{#if isSdd}
-					<div class="flex rounded-lg border bg-muted/40 p-0.5 text-xs">
-						<button
-							type="button"
-							onclick={() => (userSelectedMode = 'sdd')}
+					<div
+						class="flex rounded-lg border p-0.5"
+						role="group"
+						aria-label="Repository viewer mode"
+					>
+						<Button
+							size="sm"
+							variant={viewerMode === 'sdd' ? 'secondary' : 'ghost'}
 							aria-pressed={viewerMode === 'sdd'}
-							class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'sdd' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+							onclick={() => (userSelectedMode = 'sdd')}
+							><Sparkles aria-hidden="true" />SDD View</Button
 						>
-							<Sparkles
-								class="h-3.5 w-3.5 {viewerMode === 'sdd'
-									? 'text-primary-foreground'
-									: 'text-muted-foreground'}"
-							/>
-							SDD View
-						</button>
-						<button
-							type="button"
-							onclick={() => (userSelectedMode = 'default')}
+						<Button
+							size="sm"
+							variant={viewerMode === 'default' ? 'secondary' : 'ghost'}
 							aria-pressed={viewerMode === 'default'}
-							class={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${viewerMode === 'default' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+							onclick={() => (userSelectedMode = 'default')}
+							><Layers aria-hidden="true" />Git Browser</Button
 						>
-							<Layers class="h-3.5 w-3.5" />
-							Git Browser
-						</button>
 					</div>
 				{/if}
 
@@ -401,9 +398,9 @@
 				Loading repository…
 			</div>
 		{:else if viewerMode === 'sdd'}
-			<!-- Native SDD Viewer -->
-			<section class="rounded-xl border bg-card p-4 shadow-xs">
-				{#if selection.status === 'ready'}{#key `${project.id}-${currentRef}-${viewerRevision}`}
+			<!-- Native SDD Viewer: only a ready selection has a workspace; other states show their message above. -->
+			{#if selection.status === 'ready'}<section class="rounded-xl border bg-card p-4 shadow-xs">
+					{#key `${project.id}-${currentRef}-${viewerRevision}`}
 						<NativeSddViewer
 							dataSource={documentSource}
 							branch={currentRef || 'main'}
@@ -416,8 +413,8 @@
 							unitActions={isSdd ? unitActions : undefined}
 							unitJump={isSdd ? unitJump : undefined}
 						/>
-					{/key}{/if}
-			</section>
+					{/key}
+				</section>{/if}
 		{:else if activeBlob}
 			<!-- File Content Viewer -->
 			<FileBlobViewer

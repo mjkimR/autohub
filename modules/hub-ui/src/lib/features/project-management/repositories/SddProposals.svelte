@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WrapAtSeparators from '../pipeline-runs/WrapAtSeparators.svelte';
 	import { untrack } from 'svelte';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { Input } from '$lib/components/ui/input';
@@ -75,9 +76,9 @@
 	<div class="space-y-2 rounded-lg bg-muted/40 p-3">
 		<p class="text-sm">
 			<span class="font-medium">{activity === 'plan' ? 'Planning' : 'Development'}</span> · base
-			<code class="break-all">{base.trim() || 'Choose a branch'}</code>
+			<code class="break-words"><WrapAtSeparators text={base.trim() || 'Choose a branch'} /></code>
 		</p>
-		<p class="text-xs break-all text-muted-foreground">{unit}</p>
+		<p class="text-xs break-words text-muted-foreground"><WrapAtSeparators text={unit} /></p>
 		{#if base.trim() !== branch}<p role="status" class="text-xs text-muted-foreground">
 				This activity uses a different base from the document branch ({branch}).
 			</p>{/if}

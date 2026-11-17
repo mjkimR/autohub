@@ -250,7 +250,10 @@
 
 <div class="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2">
 	<Button variant="ghost" size="sm" disabled={busy} onclick={() => reload()}
-		><RefreshCw class={busy ? 'size-3.5 animate-spin' : 'size-3.5'} />Refresh decisions</Button
+		><RefreshCw
+			aria-hidden="true"
+			class={busy ? 'size-3.5 motion-safe:animate-spin' : 'size-3.5'}
+		/>Refresh decisions</Button
 	>
 	{#if loadedAt}<p class="text-xs text-muted-foreground">Last loaded: {loadedAt}</p>{/if}
 </div>

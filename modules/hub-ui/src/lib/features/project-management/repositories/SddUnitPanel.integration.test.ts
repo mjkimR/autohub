@@ -89,10 +89,35 @@ test('a retained owner keeps the exact request and explains the disabled form be
 			'SDD_ACTIVITY_OWNED'
 		)
 	);
+	api.GET.mockImplementation(async (path: string) =>
+		path.endsWith('/claims/{claim_id}')
+			? {
+					data: {
+						id: claim,
+						unit,
+						activity: 'plan',
+						run_id: 'owner-run',
+						settled: false,
+						checkpoint_digest: 'digest',
+						checkpoint: {}
+					}
+				}
+			: { data: [] }
+	);
 	renderPanel();
 	await userEvent.setup().click(screen.getByRole('button', { name: 'Start Planning' }));
-	await screen.findByRole('region', { name: 'Original activity request' });
-	expect(screen.getByRole('button', { name: 'Inspect retained owner' })).toBeTruthy();
+	const card = await screen.findByRole('region', { name: 'Retained activity ownership' });
+	expect(await within(card).findByRole('link', { name: 'Open retained Run' })).toBeTruthy();
+	expect(within(card).getAllByRole('heading')).toHaveLength(1);
+	expect(card.textContent).toContain('is owned by a PR run');
+	expect(within(card).getByText('Request details')).toBeTruthy();
+	// Claim evidence loads on its own (user decision C).
+	await waitFor(() =>
+		expect(api.GET).toHaveBeenCalledWith('/api/v1/projects/{project_id}/sdd/claims/{claim_id}', {
+			params: { path: { project_id: 'project', claim_id: claim } }
+		})
+	);
+	expect(screen.queryByRole('button', { name: 'Inspect retained owner' })).toBeNull();
 	const reason = screen.getByText(/New starts are unavailable while the original Planning request/);
 	expect(reason.textContent).toContain(unit);
 	expect(screen.getByRole('button', { name: 'Start Planning' })).toHaveProperty('disabled', true);

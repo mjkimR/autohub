@@ -3,26 +3,20 @@
 	import { noticeSelection, clearNoticeReturn } from '$lib/features/auth/login/notice-return';
 	import { api, type components } from '$lib/api';
 	import { responseData } from '$lib/api/pagination';
-	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { displayLabel } from '$lib/labels';
-	import { cn } from '$lib/utils';
-	import { CornerDownRight } from '@lucide/svelte';
 	import RunDecisionsDialog from './RunDecisionsDialog.svelte';
-	import RunStateBadge from './RunStateBadge.svelte';
+	import DecisionInboxRow from './DecisionInboxRow.svelte';
 	import { readableLoadError } from './load-errors';
-	import { runHref } from './run-links';
 	type Entry = components['schemas']['DecisionEntryRead'];
 	type Run = components['schemas']['PipelineRunRead'];
-	type RunState = components['schemas']['PipelineRunState'];
 	type Kind = Entry['kind'];
 	/** Display labels for decision kinds; filter values stay the raw API kinds. */
 	const KIND_LABELS: Record<string, string> = {
 		'run-question': 'Run question'
 	};
 	const kindLabel = (value: string) => displayLabel(value, KIND_LABELS);
-	const projectHref = (entry: Entry) => `/projects/${encodeURIComponent(entry.project_id)}`;
 	const kinds: Kind[] = ['run-question'];
 	let items = $state<Entry[]>([]);
 	let kind = $state<Kind | ''>('');
@@ -94,7 +88,7 @@
 			);
 			selected = { entry, run };
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Unable to open owner';
+			error = readableLoadError(e, "Couldn't open this decision. Refresh the list and try again.");
 		} finally {
 			busy = false;
 		}
@@ -133,7 +127,7 @@
 			);
 			selected = { entry, run };
 		} catch (e) {
-			noticeError = e instanceof Error ? e.message : 'Decision unavailable';
+			noticeError = readableLoadError(e, "Couldn't open the decision from this notice.");
 		} finally {
 			landing = false;
 		}
@@ -218,58 +212,12 @@
 	{#if busy}<p role="status">Loading observed decisions…</p>{/if}
 	{#if !busy && !error && !items.length}<p>No matching observed pending decisions.</p>{/if}
 	{#each items as entry, index (entry.key)}
-		<article
-			data-attention={entry.actionable ? 'true' : undefined}
-			class={cn(
-				'flex items-center justify-between gap-4 rounded-lg border p-4',
-				entry.actionable && 'border-l-3 border-l-attention-text'
-			)}
-		>
-			<div class="min-w-0 space-y-1">
-				<p class="font-medium break-words">{entry.title}</p>
-				<p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-					<a class="underline" href={runHref(entry.run_id, entry.project_id)} data-run-link
-						>Open PR run <span class="sr-only">for PR #{entry.pull_number}</span></a
-					>
-					<!-- `run_state` is an open string; unknown states fall back to a neutral label. -->
-					<RunStateBadge state={entry.run_state as RunState} />
-					<a class="underline" href={entry.pull_url} target="_blank" rel="noreferrer"
-						>PR #{entry.pull_number} ↗</a
-					>
-				</p>
-				<p class="text-sm">
-					<a class="underline" href={projectHref(entry)} data-project-link
-						>{projects.find((p) => p.id === entry.project_id)?.name ?? entry.project_id}</a
-					>
-					· {kindLabel(entry.kind)} · {entry.subject_id}
-				</p>
-				<div>
-					{#if entry.question_state === 'answered'}
-						<Badge variant="attention">
-							<CornerDownRight aria-hidden="true" />
-							Answer saved — resume pending
-						</Badge>
-					{:else}
-						<Badge variant="attention">
-							<span aria-hidden="true" class="size-1.5 rounded-full bg-attention-text"></span>
-							Needs decision
-						</Badge>
-					{/if}
-				</div>
-				<p class="text-xs text-muted-foreground">
-					{entry.kind === 'run-question' ? 'Waiting since' : 'First observed waiting'}
-					{new Date(entry.waiting_since).toLocaleString()} · Evidence observed {new Date(
-						entry.observed_at
-					).toLocaleString()}{entry.head_sha ? ` · ${entry.head_sha.slice(0, 8)}` : ''}
-				</p>
-			</div>
-			<Button
-				variant="outline"
-				data-key={entry.key}
-				disabled={busy || !entry.actionable}
-				onclick={() => review(entry, index)}>Review</Button
-			>
-		</article>
+		<DecisionInboxRow
+			{entry}
+			projectName={projects.find((p) => p.id === entry.project_id)?.name ?? entry.project_id}
+			{busy}
+			onreview={() => review(entry, index)}
+		/>
 	{/each}
 	<div class="flex gap-3">
 		<Button

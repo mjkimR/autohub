@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WrapAtSeparators from '../../pipeline-runs/WrapAtSeparators.svelte';
 	import { displayLabel } from '$lib/labels';
 	import { mode } from 'mode-watcher';
 	import { Button } from '$lib/components/ui/button';
@@ -69,7 +70,9 @@
 			<h3 class="text-base font-semibold">
 				{parsed?.document?.title || blob.path.split('/').at(-1)}
 			</h3>
-			<p class="font-mono text-xs break-all text-muted-foreground">{blob.path}</p>
+			<p class="font-mono text-xs break-words text-muted-foreground">
+				<WrapAtSeparators text={blob.path} />
+			</p>
 			{#if parsed?.document?.id}<Badge variant="outline">{parsed.document.id}</Badge>{/if}
 			{#if parsed?.document?.status}<Badge variant="secondary"
 					>{displayLabel(parsed.document.status)}</Badge
