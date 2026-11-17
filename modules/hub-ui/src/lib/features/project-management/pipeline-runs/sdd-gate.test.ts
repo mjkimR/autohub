@@ -6,6 +6,7 @@ const run = (state: string, snapshot: Record<string, unknown> | null = {}) =>
 	({
 		state,
 		sdd_snapshot: snapshot && {
+			provider: 'repository-agent',
 			spec_dir: 'docs/proposals/PROP-demo',
 			activity_kind: 'plan',
 			...snapshot
@@ -25,13 +26,16 @@ test('names the activity gate and unit only for SDD runs', () => {
 });
 
 test('a snapshot without an activity kind reads as Development, like the request builder', () => {
-	expect(sddActivityKind(run('paused', { activity_kind: undefined }))).toBe('dev');
+	const withoutKind: Record<string, unknown> = { ...run('paused').sdd_snapshot };
+	delete withoutKind.activity_kind;
+	expect(sddActivityKind({ sdd_snapshot: withoutKind } as never)).toBe('dev');
+	expect(sddActivityKind(run('paused', { activity_kind: null }))).toBeNull();
 	expect(sddActivityKind(run('paused', { activity_kind: 'review' }))).toBeNull();
 	expect(sddActivityKind(run('paused', { spec_dir: '' }))).toBeNull();
 	expect(sddActivityKind(run('paused', null))).toBeNull();
-	expect(sddQuestionHeading(run('paused', { activity_kind: undefined }), question('agent'))).toBe(
-		'Development gate · docs/proposals/PROP-demo'
-	);
+	expect(
+		sddQuestionHeading({ state: 'paused', sdd_snapshot: withoutKind } as never, question('agent'))
+	).toBe('Development gate · docs/proposals/PROP-demo');
 });
 
 const asked = 'a'.repeat(40);

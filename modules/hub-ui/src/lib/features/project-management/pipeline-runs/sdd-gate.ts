@@ -27,8 +27,8 @@ export function sddUnit(run: Run): string {
 export function sddActivityKind(run: Pick<Run, 'sdd_snapshot'>): 'plan' | 'dev' | null {
 	const snapshot = run.sdd_snapshot;
 	if (!snapshot || typeof snapshot.spec_dir !== 'string' || !snapshot.spec_dir) return null;
-	const kind = snapshot.activity_kind;
-	if (kind === undefined || kind === null || kind === '') return 'dev';
+	// Only an absent kind defaults, as in the request builder's `get('activity_kind', 'dev')`.
+	const kind = 'activity_kind' in snapshot ? snapshot.activity_kind : 'dev';
 	return kind === 'plan' || kind === 'dev' ? kind : null;
 }
 
