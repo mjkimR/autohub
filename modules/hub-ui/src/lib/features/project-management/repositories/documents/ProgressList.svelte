@@ -10,7 +10,7 @@
 	import RunDraftBadge from '../../pipeline-runs/RunDraftBadge.svelte';
 	import { runHref } from '../../pipeline-runs/run-links';
 	import { ACTIVITY_LABELS, runOwesOperator } from '../sdd-unit';
-	import { groupSummary, progressGroups } from './progress';
+	import { groupSummary, isOpenMilestone, progressGroups } from './progress';
 	import type { RepositoryDocument } from './model';
 	/**
 	 * Units on the branch grouped by milestone, each with its document status and latest PR run per
@@ -22,7 +22,8 @@
 		onopen,
 		runs = null,
 		projectId = '',
-		status
+		status,
+		openMilestonesOnly = false
 	}: {
 		documents: RepositoryDocument[];
 		onopen: (path: string) => void;
@@ -31,8 +32,14 @@
 		projectId?: string;
 		/** Loading, error or truncation notice for the PR runs. */
 		status?: Snippet;
+		/** Only open milestones and their members, as on the project's Milestones tab. */
+		openMilestonesOnly?: boolean;
 	} = $props();
-	const groups = $derived(progressGroups(documents, runs ?? new Map()));
+	const groups = $derived(
+		progressGroups(documents, runs ?? new Map()).filter(
+			(group) => !openMilestonesOnly || (group.milestone && isOpenMilestone(group.milestone))
+		)
+	);
 	const statusLabel = (value: string) => displayLabel(value || 'unknown');
 </script>
 
@@ -43,7 +50,9 @@
 	</p>
 	{@render status?.()}
 	{#if !groups.length}<p class="text-sm text-muted-foreground">
-			No milestones, proposals or specs on the selected branch.
+			{openMilestonesOnly
+				? 'No open milestones on this branch. Planned and active milestones in docs/roadmap/ appear here.'
+				: 'No milestones, proposals or specs on the selected branch.'}
 		</p>{/if}
 	{#each groups as group (group.key)}
 		<section class="space-y-2 rounded-lg border p-3" aria-label={group.title}>

@@ -21,6 +21,14 @@ export type ProgressGroup = {
 	rows: ProgressRow[];
 };
 
+/**
+ * A milestone still at its roadmap root and neither `done` nor `dropped`: devkit moves closed
+ * milestones into the root's `_archive/` with one of those statuses.
+ */
+export function isOpenMilestone(document: RepositoryDocument): boolean {
+	return !document.path.includes('/_archive/') && !['done', 'dropped'].includes(document.status);
+}
+
 const unitOf = (path: string) => path.split('/').slice(0, -1).join('/');
 
 /** PR runs grouped by the unit they were requested for, newest first as listed. */

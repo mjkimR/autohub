@@ -7,6 +7,7 @@
 	import { ChevronLeft } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import WorkPlansPanel from '../work-plans/WorkPlansPanel.svelte';
+	import MilestonesPanel from '../repositories/MilestonesPanel.svelte';
 	import ProjectOverview from './ProjectOverview.svelte';
 	import ProjectConnections from './ProjectConnections.svelte';
 	import ProjectSettingsForm from './ProjectSettingsForm.svelte';
@@ -90,11 +91,16 @@
 				<ProjectExceptionStrip {projectId} refreshKey={`${tab}:${loads}`} />
 			{/snippet}
 		</ProjectHeader>
-		<ProjectSectionNav {projectId} {tab} />
+		<ProjectSectionNav {projectId} {tab} sdd={project.project_type === 'sdd'} />
 		{#key `${project.id}:${project.revision}:${tab}`}
 			{#if tab === 'overview'}<ProjectOverview {project} />
 			{:else if tab === 'repository'}<RepositoryView {project} />
 			{:else if tab === 'plans'}<WorkPlansPanel {project} />
+			{:else if tab === 'milestones'}{#if project.project_type === 'sdd'}<MilestonesPanel
+						{project}
+					/>{:else}<p class="text-sm text-muted-foreground">
+						Milestones come from an SDD repository's roadmap. This project is not an SDD project.
+					</p>{/if}
 			{:else if tab === 'runs'}<PipelineRunsView scopedProject={project} />
 			{:else if tab === 'connections'}<ProjectConnections
 					{project}

@@ -12,9 +12,14 @@
 	let {
 		projectId,
 		documents,
-		onopen
-	}: { projectId: string; documents: RepositoryDocument[]; onopen: (path: string) => void } =
-		$props();
+		onopen,
+		openMilestonesOnly = false
+	}: {
+		projectId: string;
+		documents: RepositoryDocument[];
+		onopen: (path: string) => void;
+		openMilestonesOnly?: boolean;
+	} = $props();
 	let runs = $state<Map<string, components['schemas']['PipelineRunRead'][]> | null>(null);
 	let loading = $state(false);
 	let error = $state('');
@@ -57,7 +62,7 @@
 	});
 </script>
 
-<ProgressList {documents} {onopen} {runs} {projectId}>
+<ProgressList {documents} {onopen} {runs} {projectId} {openMilestonesOnly}>
 	{#snippet status()}
 		{#if loading}<p role="status" class="text-xs text-muted-foreground">Loading PR runs…</p>
 		{:else if error}<p role="alert" class="text-xs text-destructive">

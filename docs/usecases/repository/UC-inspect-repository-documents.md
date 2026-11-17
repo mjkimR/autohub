@@ -26,9 +26,9 @@ entrypoints:
 
 ## 2. Main Success Scenario
 
-1. The operator opens the connected project's repository view
-   (`CAP-DOC-repository-viewer`, rules 1–2).
-   Interface: `UX-repository`.
+1. The operator opens the connected project's repository view, or for an SDD project its open
+   milestones (`CAP-DOC-repository-viewer`, rules 1–2, 10).
+   Interface: `UX-repository`, `UX-milestones`.
 
 2. Hub retrieves repository identity and available branches
    (`CAP-DOC-repository-viewer`, rules 1–4).
@@ -36,7 +36,7 @@ entrypoints:
 
 3. The operator selects a branch and a proposal or spec document, directly or
    through a Progress unit or milestone member, or accepts an addressed file/unit and browse branch (`CAP-DOC-repository-viewer`).
-   Interface: `UX-repository`.
+   Interface: `UX-repository`, `UX-milestones`.
 
 4. Hub displays the selected document from that branch
    (`CAP-DOC-repository-viewer`, rules 2, 5–6).

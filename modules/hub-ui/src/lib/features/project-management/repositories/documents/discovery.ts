@@ -58,10 +58,11 @@ export async function discoverDocuments(
 	const descend = (path: string) => {
 		if (section === 'proposals')
 			return path === 'docs/proposals' || /^docs\/proposals\/PROP-[^/]+$/.test(path);
-		// Progress reads only each spec unit's anchor, never the unit's other records.
-		if (section === 'roadmap')
+		// Progress reads only each spec unit's anchor, never the unit's other records; the
+		// milestones view reads milestones and proposal anchors only.
+		if (section === 'roadmap' || section === 'milestones')
 			return (
-				/^specs(?:\/\d{4}-\d{2}(?:\/[A-Za-z0-9_-]+)?)?$/.test(path) ||
+				(section === 'roadmap' && /^specs(?:\/\d{4}-\d{2}(?:\/[A-Za-z0-9_-]+)?)?$/.test(path)) ||
 				/^docs\/(?:roadmap(?:\/_archive)?|proposals(?:\/PROP-[^/]+)?|packages(?:\/[^/]+(?:\/roadmap(?:\/_archive)?)?)?)$/.test(
 					path
 				)
@@ -71,8 +72,10 @@ export async function discoverDocuments(
 	const include = (path: string) =>
 		section === 'proposals'
 			? isProposalPath(path)
-			: section === 'roadmap'
-				? isMilestonePath(path) || isProposalPath(path) || isSpecAnchorPath(path)
+			: section === 'roadmap' || section === 'milestones'
+				? isMilestonePath(path) ||
+					isProposalPath(path) ||
+					(section === 'roadmap' && isSpecAnchorPath(path))
 				: path.endsWith('.md');
 	while (jobs.length && !signal.aborted) {
 		const batch = jobs.splice(0, 6).filter((job) => {

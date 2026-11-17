@@ -1,7 +1,7 @@
 ---
 id: UX-project-detail
 title: Project Detail
-summary: "Inspect one project connection and what it owes the operator, and move between its Work sections (overview, PR runs, Work Plans, repository) and Setup sections (connections, automation with server-filtered owned schedules, settings)."
+summary: "Inspect one project connection and what it owes the operator, and move between its Work sections (overview, PR runs, Work Plans, open milestones for SDD projects, repository) and Setup sections (connections, automation with server-filtered owned schedules, settings)."
 area: projects
 element: screen
 status: active
@@ -62,6 +62,7 @@ On a narrow screen the two groups stack as two rows.
     recent PR runs; a recent run opens `UX-run-page`.
   - Runs (`runs`): `UX-pipeline-runs` scoped to this project.
   - Plans (`plans`): `UX-work-plans`.
+  - Milestones (`milestones`, SDD projects only): `UX-milestones`.
   - Repository (`repository`): `UX-repository`.
 - Setup sections:
   - Connections (`connections`): `UX-project-connections`.

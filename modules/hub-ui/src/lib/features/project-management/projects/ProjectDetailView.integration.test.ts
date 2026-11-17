@@ -5,7 +5,7 @@ import ProjectDetailView from './ProjectDetailView.svelte';
 import ProjectSettingsForm from './ProjectSettingsForm.svelte';
 import ConnectionTestsPanel from './ConnectionTestsPanel.svelte';
 import type { components } from '$lib/api';
-import { projectTab, projectTabGroups } from './project-tabs';
+import { projectTab, projectTabGroups, tabApplies } from './project-tabs';
 import { toast } from 'svelte-sonner';
 
 const { api } = vi.hoisted(() => ({
@@ -243,13 +243,14 @@ test('unknown tab falls back to overview and every grouped tab keeps its query v
 		'repository',
 		'runs',
 		'plans',
+		'milestones',
 		'connections',
 		'automation',
 		'settings'
 	])
 		expect(projectTab(id)).toBe(id);
 	expect(projectTabGroups.map((group) => group.tabs.map((tab) => tab.id))).toEqual([
-		['overview', 'runs', 'plans', 'repository'],
+		['overview', 'runs', 'plans', 'milestones', 'repository'],
 		['connections', 'automation', 'settings']
 	]);
 });
@@ -621,4 +622,11 @@ test('project deletion lives in Settings, asks first and explains a refusal', as
 	expect(api.DELETE).not.toHaveBeenCalled();
 	await user.click(screen.getByRole('button', { name: 'Delete project' }));
 	await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Project still has pipeline runs'));
+});
+
+test('Milestones applies only to SDD projects', () => {
+	const milestones = projectTabGroups[0].tabs.find((tab) => tab.id === 'milestones')!;
+	expect(tabApplies(milestones, true)).toBe(true);
+	expect(tabApplies(milestones, false)).toBe(false);
+	expect(tabApplies(projectTabGroups[0].tabs[0], false)).toBe(true);
 });

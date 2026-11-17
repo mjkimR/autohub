@@ -11,7 +11,7 @@ export interface RepositoryDocument {
 	raw: string;
 }
 export type DocumentSection =
-	'documents' | 'proposals' | 'specs' | 'roadmap' | 'handbook' | 'files';
+	'documents' | 'proposals' | 'specs' | 'roadmap' | 'milestones' | 'handbook' | 'files';
 export interface DocumentListing {
 	documents: RepositoryDocument[];
 	errors: string[];

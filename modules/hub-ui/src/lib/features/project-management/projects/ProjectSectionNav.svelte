@@ -1,7 +1,11 @@
 <script lang="ts">
-	import { projectTabGroups, projectTabHref, type ProjectTab } from './project-tabs';
+	import { projectTabGroups, projectTabHref, tabApplies, type ProjectTab } from './project-tabs';
 
-	let { projectId, tab }: { projectId: string; tab: ProjectTab } = $props();
+	let {
+		projectId,
+		tab,
+		sdd = false
+	}: { projectId: string; tab: ProjectTab; sdd?: boolean } = $props();
 	let current = $state<HTMLAnchorElement | null>(null);
 
 	// If a group row is narrower than its tabs it scrolls; keep the selected section in view.
@@ -26,7 +30,7 @@
 				class="flex w-12 shrink-0 items-center text-xs font-medium text-muted-foreground sm:w-auto sm:pr-1"
 				>{group.label}</span
 			>
-			{#each group.tabs as item (item.id)}
+			{#each group.tabs.filter((entry) => tabApplies(entry, sdd)) as item (item.id)}
 				{#if tab === item.id}
 					<a
 						bind:this={current}

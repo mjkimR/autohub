@@ -11,6 +11,7 @@ export const projectTabGroups = [
 			{ id: 'overview', label: 'Overview' },
 			{ id: 'runs', label: 'Runs' },
 			{ id: 'plans', label: 'Plans' },
+			{ id: 'milestones', label: 'Milestones', sddOnly: true },
 			{ id: 'repository', label: 'Repository' }
 		]
 	},
@@ -26,6 +27,11 @@ export const projectTabGroups = [
 ] as const;
 
 type ProjectTabEntry = (typeof projectTabGroups)[number]['tabs'][number];
+
+/** Whether a tab applies to the project: Milestones read SDD repository roadmaps only. */
+export function tabApplies(tab: ProjectTabEntry, sdd: boolean): boolean {
+	return sdd || !('sddOnly' in tab && tab.sddOnly);
+}
 export type ProjectTab = ProjectTabEntry['id'];
 export const projectTabs: readonly ProjectTabEntry[] = projectTabGroups.flatMap(
 	(group): readonly ProjectTabEntry[] => group.tabs
