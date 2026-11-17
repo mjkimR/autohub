@@ -12,12 +12,6 @@ supersedes: [ADR-repository-locked-runtime]
 
 Superseded in part by `ADR-repository-owned-sdd-execution`: all decisions assigning path-source capture, identity and installation to Hub.
 
-- **Status**: Superseded by `ADR-repository-owned-sdd-execution`
-- **Date**: 2026-11-13
-- **Involved Components/Capabilities**: `capabilities/sdd/`
-
----
-
 ## 1. Context & Problem Statement
 
 Repositories develop their own devkit bundles in the repository, or copy them with devkit's bundle snapshot, and

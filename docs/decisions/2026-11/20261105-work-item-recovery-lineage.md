@@ -9,11 +9,6 @@ created_at: 2026-11-05
 
 # [ADR-work-item-recovery-lineage] Preserve Work Item recovery lineage
 
-- **Status**: Accepted
-- **Date**: 2026-11-05
-
----
-
 ## 1. Context & Problem Statement
 
 A Work Item has one linked PR run. Replacing that link on retry would separate

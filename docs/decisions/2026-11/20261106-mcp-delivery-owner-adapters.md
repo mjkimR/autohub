@@ -11,11 +11,6 @@ created_at: 2026-11-06
 
 Superseded in part by `ADR-repository-owned-sdd-execution`: the exact native decision inspection tool and its write-scope requirement.
 
-- **Status**: Accepted
-- **Date**: 2026-11-06
-
----
-
 ## 1. Context & Problem Statement
 
 Owner endpoints expose rich execution snapshots while MCP credentials represent machines. Proxying raw REST shapes would blur scope risk and disclose internal snapshot maps. Exact decision review persists inspection even though it does not submit a decision.

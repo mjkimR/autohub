@@ -14,11 +14,6 @@ Superseded in part by `ADR-repository-owned-sdd-execution`: all in-force decisio
 
 Superseded in part by `ADR-repository-path-sources`: the clause that the runtime identity is the digest of the uv export of that group plus the interpreter minor version.
 
-- **Status**: Superseded by `ADR-repository-owned-sdd-execution`
-- **Date**: 2026-11-13
-
----
-
 ## 1. Context & Problem Statement
 
 Native SDD evaluation restores a checkout's managed assets with `devkit sync --locked`, which needs the package

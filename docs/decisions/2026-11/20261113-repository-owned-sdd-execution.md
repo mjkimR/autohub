@@ -12,9 +12,6 @@ created_at: 2026-11-13
 
 Superseded in part by `ADR-remove-native-sdd-compatibility`: the clauses requiring historical native evidence reads, old execution authority fences and retained SDK bridge records.
 
-- **Status**: Accepted
-- **Date**: 2026-11-13
-
 ## 1. Context & Problem Statement
 
 Hub installs and executes each evaluated commit's devkit, restores generated
