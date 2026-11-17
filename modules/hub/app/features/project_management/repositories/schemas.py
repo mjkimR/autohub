@@ -33,3 +33,14 @@ class RepoInfoRead(BaseModel):
         default=True, description="False when branch enumeration failed or exceeded 1000 branches"
     )
     branches: list[str] = Field(default_factory=list, description="Available branch names")
+
+
+class RepoPathsRead(BaseModel):
+    ref: str = Field(description="Requested branch, tag, or commit reference; empty for the default branch")
+    sha: str = Field(default="", description="Root tree SHA the listing describes")
+    truncated: bool = Field(
+        default=False, description="True when GitHub or Hub cut the listing short; list directories one by one instead"
+    )
+    items: list[RepoItemRead] = Field(
+        default_factory=list, description="Every file and directory in the tree, in GitHub's path order"
+    )

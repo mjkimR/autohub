@@ -86,6 +86,7 @@ native decision evidence is read-only; ordinary PR questions use their Run contr
 21. **Cleared selection**: WHEN browser history removes the document address or native section navigation clears selection, Hub MUST remove the previous preview and contextual unit actions. Check: `RepositoryView.integration.test.ts` empty-address and section-navigation regressions.
 22. **Progressive discovery**: WHILE document discovery continues, Hub MUST expose completed sorted batches for inspection. Check: `documents.test.ts` progressive discovery case.
 23. **Viewer read cache**: WHEN a successful tree/blob read repeats in the same viewer session and ref, Hub MUST reuse its retained result until refresh/reconfiguration or bounded eviction. Check: `read-cache.test.ts` and native viewer address/cache integration test.
+24. **Read economy**: WHEN the native viewer lists directories of a ref, it MUST answer them from one whole-tree listing per ref and viewer session, and MUST fall back to directory reads when that listing fails or is truncated. WHEN a file read names a blob SHA from that listing, Hub MAY answer it from an in-process cache keyed by repository and blob SHA (immutable content, least-recently-used within 32 MiB); it caches only successful reads of files up to 1 MiB and never shares entries across repositories. A read without a SHA always goes to GitHub. Check: [read-cache.test.ts](../../../modules/hub-ui/src/lib/features/project-management/repositories/documents/read-cache.test.ts) and [test_repository_services.py](../../../modules/hub/tests/unit/features/project_management/repositories/test_repository_services.py), `test_whole_tree_listing_maps_entries_and_reports_truncation`, `test_blob_read_with_a_known_sha_reuses_cached_content`.
 
 ## 4. Interfaces & Data Contracts
 
@@ -93,7 +94,8 @@ native decision evidence is read-only; ordinary PR questions use their Run contr
 | --- | --- |
 | `GET /api/v1/projects/{project_id}/repository/info` | `repository`, `default_branch`, `branches_complete`, `branches` |
 | `GET /api/v1/projects/{project_id}/repository/tree` | Optional `path` and `ref`; returns path/ref and items with name/path/type/size/SHA |
-| `GET /api/v1/projects/{project_id}/repository/blob` | Required `path`, optional `ref`; returns path/ref/size/SHA/encoding/content |
+| `GET /api/v1/projects/{project_id}/repository/paths` | Optional `ref` (default branch when empty); one recursive GitHub tree read returning the root tree SHA, `truncated` and every file/directory item (symbolic links and submodules omitted); a GitHub-truncated or over-20,000-entry tree returns `truncated: true` with no items |
+| `GET /api/v1/projects/{project_id}/repository/blob` | Required `path`, optional `ref` and 40-hex `sha` from a listing of the same ref; returns path/ref/size/SHA/encoding/content |
 | `GET /api/v1/projects/{project_id}/sdd/runs` | Required `spec_dir`; returns latest 20 project-scoped related `PipelineRunRead` records |
 
 An empty `ref` leaves branch selection to GitHub's Contents API. Directory listings

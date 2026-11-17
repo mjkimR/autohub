@@ -41,6 +41,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/repository/paths": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Repository Paths
+         * @description List every file and directory of the ref's tree in one GitHub request; truncated when too large.
+         */
+        get: operations["get_repository_paths_api_v1_projects__project_id__repository_paths_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/repository/blob": {
         parameters: {
             query?: never;
@@ -155,6 +175,31 @@ export interface components {
              */
             sha: string;
         };
+        /** RepoPathsRead */
+        RepoPathsRead: {
+            /**
+             * Ref
+             * @description Requested branch, tag, or commit reference; empty for the default branch
+             */
+            ref: string;
+            /**
+             * Sha
+             * @description Root tree SHA the listing describes
+             * @default
+             */
+            sha: string;
+            /**
+             * Truncated
+             * @description True when GitHub or Hub cut the listing short; list directories one by one instead
+             * @default false
+             */
+            truncated: boolean;
+            /**
+             * Items
+             * @description Every file and directory in the tree, in GitHub's path order
+             */
+            items?: components["schemas"]["RepoItemRead"][];
+        };
         /** RepoTreeRead */
         RepoTreeRead: {
             /**
@@ -250,6 +295,40 @@ export interface operations {
             };
         };
     };
+    get_repository_paths_api_v1_projects__project_id__repository_paths_get: {
+        parameters: {
+            query?: {
+                /** @description Git branch, tag, or commit reference; empty for the default branch */
+                ref?: string;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepoPathsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_repository_blob_api_v1_projects__project_id__repository_blob_get: {
         parameters: {
             query: {
@@ -257,6 +336,8 @@ export interface operations {
                 path: string;
                 /** @description Git branch, tag, or commit reference */
                 ref?: string;
+                /** @description The file's blob SHA from a listing of the same ref; a cached copy then avoids a GitHub read */
+                sha?: string;
             };
             header?: never;
             path: {

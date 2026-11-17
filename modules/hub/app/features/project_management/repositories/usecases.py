@@ -8,6 +8,7 @@ from app.features.project_management.projects.usecases.crud import ProjectUseCas
 from app.features.project_management.repositories.schemas import (
     RepoBlobRead,
     RepoInfoRead,
+    RepoPathsRead,
     RepoTreeRead,
 )
 from app.features.project_management.repositories.services import RepositoryService
@@ -35,10 +36,15 @@ class RepositoryUseCase:
         assert project.github is not None
         return await self.repo_service.get_tree(token, project.github.repository, path=path, ref=ref)
 
-    async def get_blob(self, project_id: UUID, path: str, ref: str = "") -> RepoBlobRead:
+    async def get_paths(self, project_id: UUID, ref: str = "") -> RepoPathsRead:
         project, token = await self._get_context(project_id)
         assert project.github is not None
-        return await self.repo_service.get_blob(token, project.github.repository, path=path, ref=ref)
+        return await self.repo_service.get_paths(token, project.github.repository, ref=ref)
+
+    async def get_blob(self, project_id: UUID, path: str, ref: str = "", sha: str = "") -> RepoBlobRead:
+        project, token = await self._get_context(project_id)
+        assert project.github is not None
+        return await self.repo_service.get_blob(token, project.github.repository, path=path, ref=ref, sha=sha)
 
     async def _get_context(self, project_id: UUID):
         project = await self.projects.get(project_id)

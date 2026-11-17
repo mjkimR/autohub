@@ -76,3 +76,94 @@ async def test_branch_listing_reads_later_pages_and_reports_incomplete_results(m
     info = await service.get_info("token", "owner/repo")
     assert not info.branches_complete
     assert info.branches[0] == "main"
+
+
+async def test_whole_tree_listing_maps_entries_and_reports_truncation(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.features.project_management.repositories import services
+    from app.features.project_management.repositories.services import RepositoryService
+
+    service = RepositoryService()
+    tree = [
+        {"path": "docs", "type": "tree", "mode": "040000", "sha": "t1"},
+        {"path": "docs/a.md", "type": "blob", "mode": "100644", "sha": "b1", "size": 12},
+        {"path": "docs/link", "type": "blob", "mode": "120000", "sha": "b2", "size": 5},
+        {"path": "vendor/lib", "type": "commit", "mode": "160000", "sha": "c1"},
+    ]
+    get = AsyncMock(return_value={"sha": "root", "truncated": False, "tree": tree})
+    monkeypatch.setattr(service, "_get", get)
+    listing = await service.get_paths("token", "owner/repo", ref="autohub/work/x")
+    assert get.call_args.args[1] == "/repos/owner/repo/git/trees/autohub/work/x"
+    assert get.call_args.kwargs["params"] == {"recursive": 1}
+    assert [(i.path, i.name, i.type, i.size) for i in listing.items] == [
+        ("docs", "docs", "dir", 0),
+        ("docs/a.md", "a.md", "file", 12),
+    ]
+    assert not listing.truncated
+
+    await service.get_paths("token", "owner/repo")
+    assert get.call_args.args[1] == "/repos/owner/repo/git/trees/HEAD"
+
+    get.return_value = {"sha": "root", "truncated": True, "tree": tree}
+    assert (await service.get_paths("token", "owner/repo")).model_dump()["truncated"] is True
+    monkeypatch.setattr(services, "PATHS_LIMIT", 1)
+    get.return_value = {"sha": "root", "truncated": False, "tree": tree}
+    cut = await service.get_paths("token", "owner/repo")
+    assert cut.truncated and cut.items == []
+
+
+async def test_blob_read_with_a_known_sha_reuses_cached_content(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.features.project_management.repositories import services
+    from app.features.project_management.repositories.services import BlobCache, RepositoryService
+
+    monkeypatch.setattr(services, "blob_cache", BlobCache())
+    service = RepositoryService()
+    sha = "a" * 40
+    body = {"type": "file", "size": 5, "sha": sha, "content": base64.b64encode(b"hello").decode()}
+    get = AsyncMock(return_value=body)
+    monkeypatch.setattr(service, "_get", get)
+
+    first = await service.get_blob("token", "Owner/Repo", "docs/a.md", ref="main", sha=sha)
+    again = await service.get_blob("token", "owner/repo", "/docs/a.md", ref="main", sha=sha)
+    assert get.await_count == 1
+    assert (
+        again.model_dump()
+        == first.model_dump()
+        == {
+            "path": "docs/a.md",
+            "ref": "main",
+            "size": 5,
+            "sha": sha,
+            "encoding": "utf-8",
+            "content": "hello",
+        }
+    )
+    # Without a SHA the read always goes to GitHub; another repository never shares the entry.
+    await service.get_blob("token", "owner/repo", "docs/a.md", ref="main")
+    await service.get_blob("token", "other/repo", "docs/a.md", ref="main", sha=sha)
+    assert get.await_count == 3
+
+    # Files past GitHub's inline limit are never cached.
+    big = "b" * 40
+    get.return_value = {**body, "sha": big, "size": services.INLINE_BLOB_LIMIT + 1}
+    await service.get_blob("token", "owner/repo", "big.bin", sha=big)
+    await service.get_blob("token", "owner/repo", "big.bin", sha=big)
+    assert get.await_count == 5
+
+
+def test_blob_cache_evicts_least_recently_used_within_its_byte_budget():
+    from app.features.project_management.repositories.services import BlobCache
+
+    cache = BlobCache(max_bytes=10)
+    cache.put("o/r", "1", 4, "utf-8", "aaaa")
+    cache.put("o/r", "2", 4, "utf-8", "bbbb")
+    assert cache.get("o/r", "1")  # 1 becomes the most recent
+    cache.put("o/r", "3", 4, "utf-8", "cccc")
+    assert cache.get("o/r", "2") is None
+    assert cache.get("o/r", "1") and cache.get("o/r", "3")
+    assert cache.bytes == 8
+    cache.put("o/r", "4", 11, "utf-8", "d" * 11)
+    assert cache.get("o/r", "4") is None
