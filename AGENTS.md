@@ -70,7 +70,7 @@ See [README](README.md) and [documentation guide](docs/README.md) for scope.
 <!-- DEVKIT:START -->
 ## devkit
 
-- Before using a bundle's assets, run `uv run devkit get-context <bundle>` once per agent context. Installed: `advisory`, `app-common`, `app-uiux-improve`, `command-design`, `devkit`, `docs`, `harness`, `maintenance`, `spec`.
+- Installed: `advisory`, `app-common`, `app-uiux-improve`, `command-design`, `devkit`, `docs`, `harness`, `maintenance`, `spec`. Before using assets from the following bundles, run `uv run devkit get-context <bundle>` once per agent context and again after context loss: `advisory`, `command-design`, `devkit`, `docs`, `harness`, `spec`.
 - Never edit `.devkit/managed/` or projected agent files; change the source bundle or use `devkit override`.
 - app-common packages: read the `app-common` skill before changing code that uses them; its architecture rules run in `devkit rules check`, and `devkit app guide list` lists the topics for this project.
 - Before document work, run `uv run devkit get-context docs`.

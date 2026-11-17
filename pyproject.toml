@@ -1,17 +1,17 @@
 [tool.uv]
 # Review the app-common toolchain against the same immutable devkit release commit.
 override-dependencies = [
-    "devkit-agt @ git+https://github.com/mjkimR/devkit@a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#subdirectory=packages/devkit",
-    "devkit-dist @ git+https://github.com/mjkimR/devkit@a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#subdirectory=packages/devkit-dist",
-    "devkit-advisory @ git+https://github.com/mjkimR/devkit@a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef#subdirectory=packages/devkit-advisory",
+    "devkit-agt @ git+https://github.com/mjkimR/devkit@86ec4b5dc919b3ff190ee1b191e12155a9ad2ff3#subdirectory=packages/devkit",
+    "devkit-dist @ git+https://github.com/mjkimR/devkit@86ec4b5dc919b3ff190ee1b191e12155a9ad2ff3#subdirectory=packages/devkit-dist",
+    "devkit-advisory @ git+https://github.com/mjkimR/devkit@86ec4b5dc919b3ff190ee1b191e12155a9ad2ff3#subdirectory=packages/devkit-advisory",
 ]
 
 [tool.uv.sources]
-devkit-dist = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-dist", rev = "a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
-devkit-agt = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit", rev = "a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
-devkit-advisory = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-advisory", rev = "a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
-devkit-spec = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-spec", rev = "a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
-devkit-catalog = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-catalog", rev = "a1ffedafd49ccd4bb6298bacacca1c25c0cf48ef" }
+devkit-dist = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-dist", rev = "86ec4b5dc919b3ff190ee1b191e12155a9ad2ff3" }
+devkit-agt = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit", rev = "86ec4b5dc919b3ff190ee1b191e12155a9ad2ff3" }
+devkit-advisory = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-advisory", rev = "86ec4b5dc919b3ff190ee1b191e12155a9ad2ff3" }
+devkit-spec = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-spec", rev = "86ec4b5dc919b3ff190ee1b191e12155a9ad2ff3" }
+devkit-catalog = { git = "https://github.com/mjkimR/devkit", subdirectory = "packages/devkit-catalog", rev = "86ec4b5dc919b3ff190ee1b191e12155a9ad2ff3" }
 
 [tool.uv.workspace]
 members = ["modules/hub", "packages/sdk"]
