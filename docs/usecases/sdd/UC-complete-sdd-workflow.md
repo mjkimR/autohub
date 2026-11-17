@@ -36,7 +36,8 @@ entrypoints:
 5. The operator explicitly resumes with the selected saved answer
    (`CAP-PR-operator-decisions`). Interface: `UX-run-decisions`, `UX-decision-inbox`.
 6. The operator marks the PR ready when it may merge
-   (`CAP-PR-pull-request-delivery`). Off screen: the operator changes Draft status in GitHub.
+   (`CAP-PR-pull-request-delivery`). Off screen: the operator changes Draft status in GitHub; Hub shows its next
+   observation on the run page.
 7. Hub observes current-head GitHub checks and the policy-controlled merge outcome
    (`CAP-PR-pull-request-delivery`). Interface: `UX-run-page`, `UX-pipeline-runs`.
 

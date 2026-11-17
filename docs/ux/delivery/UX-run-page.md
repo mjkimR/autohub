@@ -40,6 +40,11 @@ The header and its action row are primary. Sections follow in this order: the ne
 - PR run (header): state badge, decision-wait marker when a decision is pending, SDD badge for SDD runs, PR title,
   PR link, branch, lease holder and expiry, last update with revision, wait reason, run identifier, creation time and
   next scheduled check.
+- PR run (PR status line, labelled "PR status"): "Not observed yet" before Hub's first observation; otherwise a Draft or
+  Ready for review badge, the CI verification badge (CI passed, CI failed, CI blocked, CI waiting or PR closed, with roles
+  per `docs/steering/visual-style.md`), the observed short head and time, and Hub's reason. When a pending decision names
+  a newer head than the observation, a notice says the observation is from an earlier head and the newer head is not
+  observed yet. The line never calls an observation current.
 - PR run (action row): one state-driven primary action, then the secondary actions that apply.
   - Primary action, in priority order: Answer question (open Run question), Resume with saved answer (answered
     question not yet applied), Next step (failed run), Resume (paused or blocked run whose decisions are known and none holds it),

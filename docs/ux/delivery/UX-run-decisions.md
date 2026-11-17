@@ -30,6 +30,7 @@ and saved answers remain secondary history.
 
 - PR run (last successful local load time with Refresh decisions; in the inbox dialog also the wait reason and terminal notice, which `UX-run-page` shows in its header and next-step section instead).
 - Run question (pending text, saved answer list, application state; on an SDD activity run the card is headed by its activity and unit and carries `UX-sdd-run`).
+- Run question (Applied gate answer: on an SDD activity run with no pending question, the latest applied agent question with `UX-sdd-run`, until a newer question takes over).
   - Run question (Your answer editor with Save and resume and Save only; collapsed as Answer differently while a saved answer awaits resume).
   - Run question (reasoned dismissal; inside a disclosure).
 - Run question (earlier-question history with Previous/Next pagination).
