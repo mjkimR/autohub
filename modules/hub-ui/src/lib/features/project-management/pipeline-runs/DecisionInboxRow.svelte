@@ -7,7 +7,7 @@
 	import { CornerDownRight, ExternalLink } from '@lucide/svelte';
 	import { getRunStatePresentation } from './presentation';
 	import RunStateBadge from './RunStateBadge.svelte';
-	import { runHref } from './run-links';
+	import { repositorySubjectHref, runHref } from './run-links';
 	import WrapAtSeparators from './WrapAtSeparators.svelte';
 	type Entry = components['schemas']['DecisionEntryRead'];
 	type RunState = components['schemas']['PipelineRunState'];
@@ -35,6 +35,14 @@
 		`Nothing to decide while the run is ${getRunStatePresentation(entry.run_state as RunState).label.toLowerCase()}.`
 	);
 	let headingId = $derived(`decision-${entry.key}`);
+	/** SDD activity runs name their activity and unit, so a gate is recognisable before Review. */
+	let sddActivity = $derived(
+		entry.sdd_activity === 'plan'
+			? 'Planning'
+			: entry.sdd_activity === 'dev'
+				? 'Development'
+				: 'SDD'
+	);
 </script>
 
 <article
@@ -70,6 +78,14 @@
 				><WrapAtSeparators text={entry.subject_id} /></span
 			>
 		</p>
+		{#if entry.sdd_unit}<p class="text-sm break-words" data-sdd-unit>
+				{sddActivity} activity on
+				<a
+					class={cn(linkClass, 'font-mono text-xs')}
+					href={repositorySubjectHref(entry.project_id, { unit: entry.sdd_unit })}
+					><WrapAtSeparators text={entry.sdd_unit} /></a
+				>
+			</p>{/if}
 		<div>
 			<Badge variant={entry.actionable ? 'attention' : 'outline'}>
 				{#if answered}<CornerDownRight aria-hidden="true" />{:else}<span

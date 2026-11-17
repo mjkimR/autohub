@@ -29,6 +29,7 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
 - Run question (kind filter and Question state filter: "All states", "Needs decision" for open questions and "Answer saved — resume pending" for answered ones).
 - PR run (row): "Open PR run" in-app link to the PR run page `/projects/<projectId>/runs/<runId>` (accessible name "Open PR run for PR #N"), the run state as the shared PR run state badge (label, icon and emphasis per `docs/steering/visual-style.md`; never the raw lowercase value), and the external "PR #N" GitHub link with an external-link icon and a new-tab announcement.
 - Project connection (row): the project name as an in-app link to `UX-project-detail` (`/projects/<projectId>`), then the kind display label and subject ID.
+- SDD unit (row; SDD activity runs only): "<Planning|Development> activity on <unit>", with the unit linking to it in `UX-repository`.
   - Decision status (one labeled badge; the icon or dot is decorative, emphasis by role per `docs/steering/visual-style.md`):
     - "Needs decision" (attention emphasis, dot, attention left rule) when the row is actionable and its question state is not answered.
     - "Answer saved — resume pending" (attention emphasis, corner-down-right icon, attention left rule) when the Run question is answered but the Run has not resumed; the operator still owes `UC-resolve-run-question` 4.
@@ -61,6 +62,7 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
 | Refresh / Retry / Clear filters | global: recover discovery | error, empty, populated | loading | | | First page reloads with selected filters or cleared filters. |
 | Close owner dialog | global: return from inspection | reviewing, changed | populated | close | | Filters/page persist; focus returns to row or nearest remaining neighbor. |
 | Leave Decisions | global: navigate to another task | populated, empty, error | populated | `UX-app-shell` | | Selected destination opens. |
+| Open SDD unit | global: inspect the unit a gate question concerns before reviewing it | populated | populated | `UX-repository` | `CAP-DOC-repository-viewer` | The unit opens in the repository SDD workspace. |
 | Follow authenticated notice link | `UC-receive-decision-notice` 1, `UC-receive-decision-notice` 2 | populated | link-reviewing | | `CAP-PR-operator-decisions` | Exact review identity loads even outside the first page. |
 | Exact owner review succeeds | `UC-receive-decision-notice` 3 | link-reviewing | reviewing | `UX-run-decisions` | `CAP-PR-operator-decisions` | Only the selected current question opens. |
 | Retry review | `UC-receive-decision-notice` 2b | link-error | link-reviewing | | `CAP-PR-operator-decisions` | Repeats exact authenticated inspection, not a decision mutation. |

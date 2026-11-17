@@ -166,6 +166,41 @@ test('each row carries one labeled status and only operator work is marked for a
 	expect(document.querySelectorAll('[data-attention]')).toHaveLength(2);
 	expect(screen.queryByText('Answer saved', { exact: true })).toBeNull();
 });
+test('an SDD activity row names its activity and links its unit', async () => {
+	api.GET.mockImplementation(async (path: string) => {
+		if (path === '/api/v1/projects') return { data: { items: [] } };
+		if (path.endsWith('/decisions'))
+			return {
+				data: {
+					items: [
+						{
+							...entry,
+							key: 'gate',
+							title: 'Gate question',
+							sdd_activity: 'plan',
+							sdd_unit: 'docs/proposals/PROP-refunds'
+						},
+						{ ...entry, key: 'plain', title: 'Plain question' }
+					],
+					has_more: false,
+					next_cursor: null
+				}
+			};
+		return { data: run };
+	});
+	render(DecisionInbox);
+	const gate = (await screen.findByText('Gate question')).closest('article')!;
+	expect(gate.querySelector('[data-sdd-unit]')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+		'Planning activity on docs/proposals/PROP-refunds'
+	);
+	expect(
+		within(gate as HTMLElement)
+			.getByRole('link', { name: 'docs/proposals/PROP-refunds' })
+			.getAttribute('href')
+	).toBe('/projects/project?tab=repository&unit=docs%2Fproposals%2FPROP-refunds');
+	const plain = (await screen.findByText('Plain question')).closest('article')!;
+	expect(plain.querySelector('[data-sdd-unit]')).toBeNull();
+});
 test('question state filter options use the inbox status labels', async () => {
 	render(DecisionInbox);
 	await screen.findByText('Choose behavior');
