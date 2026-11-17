@@ -44,6 +44,13 @@ entrypoints:
 
 - **3a.** A correlated question is observed before or after a push: Hub pauses
   progression for input; resumes at step 4. Interface: `UX-run-decisions`, `UX-decision-inbox`.
+- **3b.** The repository workflow stops at a human approval or decision gate after the agent pushed completed
+  work: the agent raises the gate as a correlated question with a decision summary and the expected answers
+  (accept, request changes, reject); Hub pauses progression; resumes at step 4. On resume the agent applies the
+  answer, including requested changes, as the operator's decision and pushes while the PR stays Draft; the operator
+  marks the PR Ready only after that result (step 6). Marking Ready without an applied gate answer is the
+  operator's choice; Hub does not refuse it and the repository workflow reports the missing decision later.
+  Interface: `UX-run-decisions`, `UX-decision-inbox`.
 - **4a.** The operator saves no answer or leaves it unapplied: work stays waiting;
   the use case ends without implicit resume. Interface: `UX-run-decisions`, `UX-decision-inbox`.
 - **5a.** The question/head/revision changed: Hub refuses the stale resume; the
@@ -62,7 +69,7 @@ entrypoints:
 
 ## 5. Acceptance Criteria (Given / When / Then)
 
-Applicable rules: `CAP-SDD-native-delivery` descriptive activity context;
+Applicable rules: `CAP-SDD-native-delivery` descriptive activity context and gate question instruction;
 `CAP-PR-operator-decisions` durable input and explicit resume;
 `CAP-PR-pull-request-delivery` Draft/current-head CI/merge policy.
 
@@ -93,3 +100,10 @@ Applicable rules: `CAP-SDD-native-delivery` descriptive activity context;
 - **Given** a saved answer for the current Run question and revision.
 - **When** the operator explicitly resumes.
 - **Then** Hub attempts the committed continuation promptly; replay creates no further prompt attempt and deferred delivery remains recoverable.
+
+### SDD-FOLLOW-05: Decide a repository gate before Ready
+
+- **Covers**: 3b.
+- **Given** an SDD activity whose agent pushed completed work and stopped at a repository approval gate.
+- **When** Hub builds the activity request and later observes the agent's correlated gate question.
+- **Then** the request asked for the gate question with the marker's attempt and head unchanged, the Run blocks on one question bound to the pushed head, and only an explicit resume with a saved answer continues it while the PR stays Draft.

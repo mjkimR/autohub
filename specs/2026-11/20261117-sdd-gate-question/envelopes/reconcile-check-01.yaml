@@ -1,0 +1,16 @@
+kind: reconcile-check
+stage: living-spec-draft
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-17T01:57:18.711998Z'
+status: completed
+summary: 'Self-verified: CAP-SDD-native-delivery rule 15 and UC-complete-sdd-workflow 3b/SDD-FOLLOW-05 match requests.py SDD_GATE_INSTRUCTIONS and the three cited tests; no other contract affected.'
+findings: []
+assumptions:
+- 'reconcile-reviewer skipped at medium: one package (modules/hub) and one capability area (sdd); every affected contract identified in reconcile.md with diff agreement; nothing open to interpretation'
+checks:
+  rules: PASS devkit rules check --staged
+diff_scope:
+  base: 43c63bedac5f08139b3829ee83b4a1f5c0314ef9
+  head: 6e6e6ab7521066e57816388fe4313467a867be87
+activity_effort: medium

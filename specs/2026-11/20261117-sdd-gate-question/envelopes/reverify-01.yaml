@@ -1,0 +1,28 @@
+kind: reverify
+stage: review-refine
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-17T01:56:13.194782Z'
+status: completed
+review: review-01.yaml
+summary: 'Implementer verified both fixes: gate text keeps marker attempt/head and treats gate-answer changes as in scope; tests assert both phrases.'
+findings:
+- issue: Gate text says push first, then raise the marker, but never says to keep the marker's attempt and head values; a marker carrying the pushed head is silently dropped.
+  evidence: requests.py:14; dispatch.py:58; questions.py:21; usecases/implementation.py:109,200-202
+  failure_condition: An SDD agent pushes its Planning result and sets the marker head to the pushed SHA; Hub records no question and the Run goes to awaiting_ci with no visible gate.
+  suggested_action: Tell the agent to keep the marker's attempt and head values exactly as given, even after pushing; assert the phrase in tests.
+  resolution: resolved
+  severity: P2
+- issue: The resume suffix in control.py says to stop and ask again when an answer changes acceptance criteria, which conflicts with a request-changes gate answer.
+  evidence: usecases/control.py:262; requests.py:20-21
+  failure_condition: The operator requests changes to the reviewed plan's acceptance criteria; the resumed agent asks again instead of applying them, looping.
+  suggested_action: State in the SDD gate text that a gate answer is the operator's direction for that gate, including changes to the reviewed unit, and ask again only when it is ambiguous.
+  resolution: resolved
+  severity: P3
+checks:
+  tests: PASS 106 passed (pipeline_runs unit + test_optimistic_sdd, implementer-run)
+  lint: PASS just lint-check (implementer-run)
+diff_scope:
+  base: 43c63bedac5f08139b3829ee83b4a1f5c0314ef9
+  head: 11e8d620aa067e40e0dc6bb6e7c4d0094e936405
+activity_effort: medium
