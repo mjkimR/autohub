@@ -94,7 +94,9 @@ Tool inventory and typed arguments come from discovery and `CAP-MCP-tool-access`
 Issue a replacement key on the same intended machine, switch the client and
 confirm discovery, then revoke the previous key. Revoked/expired keys and disabled
 machines fail on the next request. A valid key with the wrong endpoint scope
-returns HTTP `403`; a missing/invalid key returns HTTP `401`.
+returns HTTP `403`, including a dispatcher-only `autohub:dispatch` key on either
+endpoint. A missing/invalid key, a root administration key or a human login
+token returns HTTP `401`.
 
 Keep request IDs when invoking operations with durable replay identities. After
 uncertain enrollment, find the Run by project and PR number before retrying.
@@ -149,7 +151,8 @@ account version and optional reason before submitting an action; reload after a
 conflict. The view displays the latest 50 access changes for the selected account.
 
 Google identity does not automatically link an existing local account by email.
-If Google reports an existing-account result, use that account's password login.
+If Hub returns the existing-account result (`google=existing_account` on the
+sign-in page), use that account's password login.
 Do not use Google's Testing app mode as Hub's access gate. Account activation
 requires a fresh login; it does not restore sessions invalidated by prior changes.
 

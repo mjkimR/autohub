@@ -231,10 +231,29 @@ Project dispatch intervals are evaluated when this external tick arrives; a
 The deployment helper invokes the command above when scheduler setup is enabled.
 It registers `<service>-scheduler`, issues a key once, saves `{machine_id,key_id,key}`
 in the separate `<service>-scheduler-credential` Secret Manager secret, and configures
-Scheduler with that key. Subsequent deploys reuse the credential. An unreadable secret,
-inactive machine, revoked/expired key, or unexpected scope stops provisioning; none
-is silently replaced. If saving a newly issued secret fails, the helper revokes it.
-No root or workload credential is printed.
+Scheduler with that key. Subsequent deploys reuse the credential. No root or workload
+credential is printed, and no credential or key is silently replaced.
+
+Provisioning stops with one sanitized message when:
+
+- the bundle has no `APP_API_KEY_ROOT_KEY` (`run just setup-secrets and redeploy`);
+- the management API rejects the root key with `Machine management API returned HTTP 401`,
+  for example when the serving instances started before `just setup-secrets` added or
+  changed the key; redeploy or restart every instance, then rerun provisioning;
+- a saved credential exists but no `<service>-scheduler` machine does
+  (`Stored scheduler credential has no machine`);
+- the machine is inactive or its scopes are not exactly `autohub:dispatch`;
+- the saved key is missing from the machine's keys, revoked or expired, or the saved
+  `key` does not carry that key ID's prefix (`Stored scheduler secret does not match its key ID`);
+- the machine has key history but no credential secret exists
+  (`Scheduler key history exists without a saved secret`); reconcile the orphaned keys
+  as described below;
+- a `gcloud` call fails (`gcloud <group> <command> failed`), for example an unreadable
+  secret or a missing permission.
+
+If saving a newly issued secret fails, the helper revokes that key. If the revocation
+also fails, it names the key to revoke manually through
+`DELETE /api/v1/machines/{id}/keys/{key_id}`.
 
 Before upgrading an existing deployment, pause the Scheduler job, run
 `just setup-secrets` to add the root setting, then deploy/provision and resume it.
