@@ -1,0 +1,19 @@
+kind: final-report
+stage: final-change-report
+workflow: sdd-spec-feature
+segment: 0
+created_at: '2026-11-17T01:59:45.592647Z'
+status: completed
+summary: SDD activity instructions now ask the repository agent to raise a stopped human gate as an attempt-bound question after pushing, keep marker attempt/head, and apply the relayed answer before Ready; CAP-SDD-native-delivery rule 15 and UC-complete-sdd-workflow 3b reflect it.
+findings: []
+assumptions:
+- 'worktree=auto: clean checkout, no other task, so --no-worktree on dev-sdd-gate-question'
+- Live canary observation deferred until deployment
+checks:
+  tests: PASS 395 passed, 6 skipped (project_management unit, pipeline_runs and sdd integration)
+  build: PASS just check
+  lint: PASS just lint-check; devkit rules check --staged
+diff_scope:
+  base: 43c63bedac5f08139b3829ee83b4a1f5c0314ef9
+  head: 5243fbacd04def642fc3ac9623751d956e89553f
+activity_effort: medium
