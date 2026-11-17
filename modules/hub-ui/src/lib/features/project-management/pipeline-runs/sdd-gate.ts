@@ -20,9 +20,21 @@ export function sddUnit(run: Run): string {
 	return typeof unit === 'string' ? unit : '';
 }
 
+/**
+ * The repository activity an SDD run was asked to perform. A snapshot without a kind was sent
+ * as Development by the request builder, so it reads as `dev`; an unknown kind stays null.
+ */
+export function sddActivityKind(run: Pick<Run, 'sdd_snapshot'>): 'plan' | 'dev' | null {
+	const snapshot = run.sdd_snapshot;
+	if (!snapshot || typeof snapshot.spec_dir !== 'string' || !snapshot.spec_dir) return null;
+	const kind = snapshot.activity_kind;
+	if (kind === undefined || kind === null || kind === '') return 'dev';
+	return kind === 'plan' || kind === 'dev' ? kind : null;
+}
+
 /** Display label of the run's repository activity, or null outside SDD activity runs. */
 export function sddActivityLabel(run: Run): string | null {
-	const kind = run.sdd_snapshot?.activity_kind;
+	const kind = sddActivityKind(run);
 	return kind === 'plan' ? 'Planning' : kind === 'dev' ? 'Development' : null;
 }
 

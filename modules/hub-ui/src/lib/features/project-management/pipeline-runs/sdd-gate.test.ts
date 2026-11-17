@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { components } from '$lib/api';
-import { gateSteps, sddQuestionHeading } from './sdd-gate';
+import { gateSteps, sddActivityKind, sddQuestionHeading } from './sdd-gate';
 
 const run = (state: string, snapshot: Record<string, unknown> | null = {}) =>
 	({
@@ -22,6 +22,16 @@ test('names the activity gate and unit only for SDD runs', () => {
 		'Development question · docs/proposals/PROP-demo'
 	);
 	expect(sddQuestionHeading(run('paused', null), question('agent'))).toBeNull();
+});
+
+test('a snapshot without an activity kind reads as Development, like the request builder', () => {
+	expect(sddActivityKind(run('paused', { activity_kind: undefined }))).toBe('dev');
+	expect(sddActivityKind(run('paused', { activity_kind: 'review' }))).toBeNull();
+	expect(sddActivityKind(run('paused', { spec_dir: '' }))).toBeNull();
+	expect(sddActivityKind(run('paused', null))).toBeNull();
+	expect(sddQuestionHeading(run('paused', { activity_kind: undefined }), question('agent'))).toBe(
+		'Development gate · docs/proposals/PROP-demo'
+	);
 });
 
 const asked = 'a'.repeat(40);

@@ -2,6 +2,7 @@ import type { components } from '$lib/api';
 import { displayLabel } from '$lib/labels';
 import { isTerminalRun } from '../pipeline-runs/run-actions';
 import { runHref } from '../pipeline-runs/run-links';
+import { sddActivityKind } from '../pipeline-runs/sdd-gate';
 import { unitDirectory } from './repository-selection.svelte';
 
 type Run = components['schemas']['PipelineRunRead'];
@@ -33,8 +34,7 @@ export function unitFromPath(path: string): string {
 
 /** The repository activity a PR run performs, from its retained SDD intent. */
 export function runActivity(run: Run): UnitActivity | null {
-	const kind = run.sdd_snapshot?.activity_kind;
-	return kind === 'plan' || kind === 'dev' ? kind : null;
+	return sddActivityKind(run);
 }
 
 /** A run owes the operator a decision or recovery only while it is paused or blocked. */
