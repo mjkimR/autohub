@@ -9,11 +9,6 @@ created_at: 2026-11-05
 
 # [ADR-decision-continuation-outcomes] Expose owner outcomes beside explicit continuation
 
-- **Status**: Accepted
-- **Date**: 2026-11-05
-
----
-
 ## 1. Context & Problem Statement
 
 An operator can save an answer, prepare its application, publish a native decision, or record integration authority. Their durable records belong to different owners. Current broad history cannot reliably locate an ordinary resume receipt or a native receipt beyond the history cap after a lost response.

@@ -113,7 +113,7 @@ A deliberate resume without a push can create a new attempt and send new work.
 Each reference has `kind` and `id`; Work Items include `work_plan_id`, Provider sessions include `catalog_id` and optional exact `url`, and SDD activity claims include `unit`.
 The same projection applies to list/get, project-scoped unit history and mutations returning a Run.
 A nonempty SDD snapshot proves a native SDD binding independently of available subject links.
-These are retained relationships, not immutable original-entry provenance; owner retention can remove them.
+`DOMAIN-pr-run-lineage` explains why these are current relationships rather than original-entry provenance.
 Lookup failures fail the read instead of producing a false unknown result.
 The run page and list show compact secondary links; an absent external URL stays text.
 Ended Work Item recovery consumes returned IDs without scanning Work Plans.

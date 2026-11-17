@@ -158,4 +158,4 @@ The one-hour lost-create timeout is source-inspected in `JulesSessionService._ob
 the cited reconciliation test does not independently exercise that timeout.
 These references report source/test inspection, not a fresh test execution or
 live provider run. Detailed procedures remain in
-[provider connections](../../operations/provider-connections.md).
+[provider connections](../../runbooks/provider-connections.md).

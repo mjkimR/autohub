@@ -52,7 +52,7 @@ can be processed through the configured queue or bounded recovery;
 
 ## Work Item recovery
 
-`ADR-work-item-recovery-lineage` retains the original Item and linked Run. `WorkItemRecovery` stores project-local request uniqueness, actor/reason, normalized command, accepted revisions, immutable prior outcome and mutable progress. `WorkItemRecoveryEvent` appends ordered outcome evidence. A partial unique index admits one pending recovery per Item. Recovery snapshots retain stable execution identities after eligible Run pruning; legacy Items receive no synthetic recovery rows.
+`DOMAIN-work-item-lineage` explains what recovery keeps. `WorkItemRecovery` stores project-local request uniqueness, actor/reason, normalized command, accepted revisions, immutable prior outcome and mutable progress. `WorkItemRecoveryEvent` appends ordered outcome evidence. A partial unique index admits one pending recovery per Item. Recovery snapshots retain stable execution identities after eligible Run pruning; legacy Items receive no synthetic recovery rows.
 
 Recovery MUST commit its intent and lease generation before remote I/O, and recheck Plan/Run revisions, Item lease token/expiry and recovery generation before applying observations. Check: `test_expired_recovery_observation_cannot_activate`, control-during-I/O regressions and PostgreSQL recovery races in the Work Plan integration suite. Source: `modules/hub/app/features/project_management/work_plans/recovery_tick.py`.
 
@@ -65,7 +65,8 @@ The recovery worker releases DB locks for PR/ref/comment reads. Pending records 
 Planning and Development are explicit activity intent over ordinary PR delivery.
 Hub reserves the exact unit/activity/request before GitHub ref and Draft PR
 publication. It records candidate artifacts and recovers the same owner after a
-lost response. It does not author repository state or evaluate a devkit stage.
+lost response; `DESIGN-sdd-activity-publication` explains the write order and claim
+checkpoint. It does not author repository state or evaluate a devkit stage.
 
 Activity snapshots carry `provider: repository-agent` and descriptive unit/activity intent.
 Repository setup, workflow gates and correctness belong to its working agent.
@@ -102,7 +103,7 @@ Implementation anchors include
 [SDK runtime](../../modules/hub/app/features/execution/flows/runtime.py) and
 [connection coordination](../../modules/hub/app/features/project_management/connection_tests/services.py).
 `ARCH-10-quality-requirements` connects these sequences to measurable regression
-scenarios; [deployment status](../operations/deployment-status.md) retains live evidence.
+scenarios; [deployment status](../runbooks/deployment-status.md) retains live evidence.
 
 ## SDD activity execution
 
@@ -110,14 +111,15 @@ Hub MUST use descriptive repository-owned activity context without native execut
 version or retirement fences. `ADR-remove-native-sdd-compatibility` records the boundary.
 Standalone activity claims retain exact publication artifacts, request identity and lease
 ownership. An uncertain no-Run publication requires explicit checkpoint acknowledgment
-before its reservation is released. Check: activity API and claim recovery integration tests.
+before its reservation is released (`CAP-SDD-native-delivery` rule 10; checkpoint fields in
+`DESIGN-sdd-activity-publication`). Check: activity API and claim recovery integration tests.
 The schema removes unused native batch and SDK bridge link storage, native progress and
 native decision evidence through a forward migration. Generic resume receipts remain.
 
 
 ## Work Item replacement evidence
 
-`ReplacementLink`, `ReplacementAcceptance`, `ReplacementEvent`, `ReplacementReceipt` and per-original `ReplacementEvidence` belong to the Work Plan owner. Replacement evidence structure MUST retain immutable merge snapshots and append-only consumption events under Project ownership with admission. The original Item, Plan outcomes and PR owner remain independent. Check: `test_exact_edge_release_consumption_and_replay`, PostgreSQL admission/withdrawal/control/recovery barriers and `test_activity_failure_rolls_back_acceptance` in `test_replacements.py`. Decision: `ADR-work-item-replacement-evidence`.
+`ReplacementLink`, `ReplacementAcceptance`, `ReplacementEvent`, `ReplacementReceipt` and per-original `ReplacementEvidence` belong to the Work Plan owner. Replacement evidence structure MUST retain immutable merge snapshots and append-only consumption events under Project ownership with admission. `DOMAIN-work-item-lineage` explains why original outcomes stay independent. Check: `test_exact_edge_release_consumption_and_replay`, PostgreSQL admission/withdrawal/control/recovery barriers and `test_activity_failure_rolls_back_acceptance` in `test_replacements.py`. Decision: `ADR-work-item-replacement-evidence`.
 
 Mutation locks use Project, deterministic Plans, deterministic Runs, deterministic Items, then evidence. Existing admission retains Project → Plan → catalog and commits consumed evidence with its conditional Item lease/admission write; no Run lock is acquired afterward. Project serialization prevents competing evidence/recovery/control owners from interleaving. Check: PostgreSQL barrier tests; acquisition order also receives code review.
 
@@ -125,8 +127,8 @@ Evidence tables reference retained Plan/Item lifetimes and preserve replacement 
 
 ## Decision notification maintenance boundary
 
-`DecisionSubscription`, `DecisionNotice`, `DecisionNoticeAttempt`, `DecisionNoticeRequest` and the queue cursor belong to Notifications. Shared maintenance MUST run notification collection after its existing execution owners and bound the notification pass to45 seconds. Each pass rotates at most four channels, scans at most100 persisted discovery entries per channel and admits at most one message per channel. Check: Review only for notification ordering, bound and cursor constants in `decision_worker.py` and maintenance `task.py`; existing maintenance regression tests cover the preceding owners.
+`DecisionSubscription`, `DecisionNotice`, `DecisionNoticeAttempt`, `DecisionNoticeRequest` and the queue cursor belong to Notifications. Shared maintenance MUST run notification collection after its existing execution owners and bound the notification pass in time. `DESIGN-decision-notice-collection` explains the per-pass channel rotation, scan, message and lease bounds. Check: review of the call order in maintenance `task.py`; existing maintenance regression tests cover the preceding owners.
 
-Admission MUST serialize through the Notification channel before subscription and attempt state. Network delivery follows durable admission outside the database transaction; outcome persistence checks the exact token, state and60-second lease. Expiry preserves unknown rather than repeating transport. PostgreSQL admission and late-result tests in `modules/hub/tests/integration/features/notifications/test_decision_notices.py` enforce this fence. Per-channel exceptions remain isolated from existing work; a persisted cursor advances fairness across passes. The contract is bounded maintenance work, not a wall-clock delivery guarantee.
+Admission MUST serialize through the Notification channel before subscription and attempt state. Network delivery follows durable admission outside the database transaction under the outcome fence described in `DESIGN-decision-notice-collection`. PostgreSQL admission and late-result tests in `modules/hub/tests/integration/features/notifications/test_decision_notices.py` enforce this fence. Per-channel exceptions remain isolated from existing work. The contract is bounded maintenance work, not a wall-clock delivery guarantee.
 
 The migration freezes its schema definitions. Decision generation tombstones and immutable command receipts survive detailed attempt compaction; deletion of the owning channel cascades notice evidence. Check: `modules/hub/tests/integration/migrations/test_decision_notices.py`. `ADR-decision-notice-delivery` records why polling and retained uncertainty are used.

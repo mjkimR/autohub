@@ -61,8 +61,8 @@ serving prerequisites. Generic HTTP worker targets retain
 
 A successful local build or fixture does not establish the currently
 serving revision, real provider replies or a live merge. Use the
-[deployment procedure](../operations/cloud-run-deployment.md),
-[activity operations guide](../operations/sdd-runtime.md) and
-[delivery status](../operations/deployment-status.md) for actual operations and
+[deployment procedure](../runbooks/cloud-run-deployment.md),
+[activity operations guide](../runbooks/sdd-runtime.md) and
+[delivery status](../runbooks/deployment-status.md) for actual operations and
 recorded verification. This document describes the source-defined deployment
 structure; it does not assert a new deployment.

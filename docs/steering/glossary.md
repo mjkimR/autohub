@@ -43,7 +43,6 @@ summary: "Read before naming product concepts or distinguishing scheduler, PR, S
 | Work MCP endpoint | The fixed tool surface for ordinary work and its scoped mutations. | `CAP-MCP-tool-access` | operations endpoint | `/mcp/` |
 | Operations MCP endpoint | The separate surface for project configuration and connection-test mutations. | `CAP-MCP-tool-access` | ordinary work endpoint | `/ops/mcp/` |
 
-Approval belongs to the operation being authorized. PR ready status, an SDD
-proposal decision, account approval and SDK approval do not authorize one another.
-Use the owning contract when naming an approval subject; retain exact API field
-names in code and payload examples.
+Approval belongs to the operation being authorized; `ARCH-08-crosscutting-concepts`
+explains which approvals stay separate. Use the owning contract when naming an
+approval subject; retain exact API field names in code and payload examples.

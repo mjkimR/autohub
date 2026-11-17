@@ -10,11 +10,6 @@ created_at: 2026-11-05
 
 # [ADR-milestone-readiness-boundary] Keep milestone readiness separate from execution
 
-- **Status**: Superseded
-- **Date**: 2026-11-05
-
----
-
 ## 1. Context & Problem Statement
 
 The repository viewer shows branch-specific milestone proposals. Native activity admission evaluates workflow policy independently. A displayed document or local selection supplies no execution authority. Operators need one review of eligible milestone work before a later sequential executor exists.

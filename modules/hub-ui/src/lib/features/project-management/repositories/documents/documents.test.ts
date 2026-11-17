@@ -42,7 +42,7 @@ test('Markdown sanitization removes active content and forged routing attributes
 	const doc = parseRepositoryDocument(
 		blob(
 			'docs/a.md',
-			'# Title\n\n## Same\n\n## Same\n\n[relative](b.md#part) [external](https://example.com) [bad](javascript:alert(1))\n\n`CAP-DOC-example`\n\n<script>alert(1)</script><img src=x onerror=alert(2)><a data-repository-path="secrets" href="https://example.com">forged</a>'
+			'# Title\n\n## Same\n\n## Same\n\n[relative](b.md#part) [external](https://example.com) [bad](javascript:alert(1))\n\n`CAP-DOC-example` `OPS-example` `DESIGN-example` `DOMAIN-example` `NOPE-example`\n\n<script>alert(1)</script><img src=x onerror=alert(2)><a data-repository-path="secrets" href="https://example.com">forged</a>'
 		)
 	);
 	const result = renderRepositoryMarkdown(doc);
@@ -53,7 +53,12 @@ test('Markdown sanitization removes active content and forged routing attributes
 	expect(root.querySelector('a[data-repository-path]')?.getAttribute('data-repository-path')).toBe(
 		'docs/b.md'
 	);
-	expect(root.querySelector('a[data-document-id]')?.textContent).toBe('CAP-DOC-example');
+	expect([...root.querySelectorAll('a[data-document-id]')].map((a) => a.textContent)).toEqual([
+		'CAP-DOC-example',
+		'OPS-example',
+		'DESIGN-example',
+		'DOMAIN-example'
+	]);
 	expect(root.textContent).toContain('forged');
 	expect(root.querySelector('a[data-repository-path="secrets"]')).toBeNull();
 	expect(root.querySelector('a[target="_blank"]')?.getAttribute('rel')).toBe('noopener noreferrer');

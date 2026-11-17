@@ -9,11 +9,6 @@ created_at: 2026-11-13
 
 # [ADR-owed-items-aggregate-read] Read owed items through one aggregate repository
 
-- **Status**: Accepted
-- **Date**: 2026-11-13
-
----
-
 ## 1. Context & Problem Statement
 
 The owed-item read (`SPEC-owed-item-contract`) lists and counts items from several features: PR runs and their

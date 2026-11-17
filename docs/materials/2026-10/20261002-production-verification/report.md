@@ -3,7 +3,7 @@
 This report consolidates live checks from 2026-09-21 through 2026-10-02 against
 Cloud Run and `mjkimR/test-sandbox`. The last recorded production baseline is
 **2026-10-02**, revision `autohub-00015-4l4`, DB schema `autohub`; this is not a
-check of the currently serving deployment. See [delivery status](../../../operations/deployment-status.md)
+check of the currently serving deployment. See [delivery status](../../../runbooks/deployment-status.md)
 for the distinction between local implementation, production evidence and rollout gaps.
 GitHub links provide external evidence; Hub run history may expire under retention.
 
@@ -93,7 +93,7 @@ fresh login and did not revive old tokens. Regular users could not administer
 accounts, and the bootstrap account could not be disabled or demoted. Existing
 local superadmin login also passed. The retained record gives no separate date,
 revision or external run link for these checks. The repeatable procedure remains
-in [Google authentication](../../../operations/access.md#live-validation).
+in [Google authentication](../../../runbooks/access.md#live-validation).
 
 ## Limitations
 

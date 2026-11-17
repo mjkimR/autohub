@@ -54,8 +54,23 @@ an instance without traffic does not independently monitor itself.
 Open **Operations → Webhook deliveries** or query
 `GET /api/v1/github-webhook-deliveries`. Filter by `repository`, `status` or
 `noteworthy=true`; identify the delivery before repeating an enrollment request.
-Read `failure_detail` to distinguish skipped enrollment, deferred first dispatch,
-failed processing and an ordinary successful notification.
+Read `failure_detail` to distinguish the outcomes:
+
+- `Enrollment skipped: ...`: enrollment refused the trigger.
+- `Enrolled; first dispatch deferred: ...`: the run exists and the scheduler
+  dispatches it once the reason clears.
+- `Advance deferred: ...`: another holder of the run's lease advances it, and
+  polling covers anything it misses.
+- `Webhook processing failed`: an unexpected error; find
+  `Processing GitHub webhook delivery <delivery_id> failed` in the server log.
+- No detail: an ordinary successful notification. If the delivery carries
+  `@auto-run` and the PR still has no run, then no enabled project matches the
+  repository or the project's `@auto-run` enrollment is off; check the project
+  settings, then enroll the PR from Hub.
+
+A delivery that stays `retrying` was claimed by a replay pass that never
+finished. The sweep does not select it again (`CAP-PR-webhook-advancement`,
+Scheduler replay boundary), so enroll the PR from Hub instead.
 
 For queued processing, inspect Cloud Tasks callback HTTP results alongside the
 stored delivery. Use [queue provisioning](cloud-run-deployment.md#61-webhook-processing-queue-cloud-tasks-recommended)

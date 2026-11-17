@@ -3,7 +3,7 @@
 This directory covers changes to Auto Hub itself: the contributor environment,
 code generation, tests, dependency updates and extension points. Product behavior
 belongs in capability/use-case contracts; deployed-service setup and recovery
-belong in [operations](../operations/README.md).
+belong in [runbooks](../runbooks/README.md).
 
 ## Change workflow
 
@@ -110,7 +110,7 @@ through the Vite proxy, set both frontend and callback origins to
 `http://localhost:5173`, retain `/api/v1/auth/google/callback` as the callback path,
 and set `GOOGLE_AUTH_COOKIE_SECURE=false` only for this local HTTP setup.
 Production identity-provider and cookie setup belongs in
-[access operations](../operations/access.md).
+[access operations](../runbooks/access.md).
 
 ## Contributor guides
 

@@ -10,11 +10,6 @@ created_at: 2026-11-05
 
 Superseded in part by `ADR-native-sdd-viewer`: viewer receipt review during package updates.
 
-- **Status**: Accepted
-- **Date**: 2026-11-05
-- **Deciders**: Repository owner
-- **Involved Components/Capabilities**: Repository contributor tooling, backend, UI and SDK development
-
 ## 1. Context & Problem Statement
 
 Auto Hub coordinates PR delivery, native SDD activities and SDK flows with

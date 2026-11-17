@@ -159,5 +159,5 @@ The shared dependency's source/ref is pinned in
 [Hub's manifest](../../../modules/hub/pyproject.toml); generated host interfaces
 remain in `modules/hub-ui/src/lib/api/generated/users.d.ts` and
 `modules/hub-ui/src/lib/api/generated/google-authentication.d.ts`.
-The [access operations guide](../../operations/access.md) owns machine/client
+The [access operations guide](../../runbooks/access.md) owns machine/client
 setup, Google configuration and repeatable live validation.

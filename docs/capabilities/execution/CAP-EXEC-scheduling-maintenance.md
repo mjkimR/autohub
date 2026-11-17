@@ -77,7 +77,8 @@ of whether a project or agent schedule remains enabled.
 12. **Retention boundaries**: WHEN hourly pruning is eligible, Hub MUST expire
     successful jobs after 3 days, failed jobs after 7 days, terminal PR runs after
     30 days and webhook deliveries after 90 days, while preserving pending work,
-    eligible job retries, valid run leases and unresolved Work Item evidence.
+    eligible job retries, valid run leases and Runs that
+    `CAP-WORK-work-plan-execution` rule 25 protects.
     Tests: `modules/hub/tests/integration/features/execution/maintenance/test_retention.py`,
     `modules/hub/tests/integration/features/project_management/work_plans/test_work_plans.py`.
 13. **Retention transaction**: IF pruning fails, THEN Hub MUST roll back its
@@ -94,11 +95,8 @@ of whether a project or agent schedule remains enabled.
     `started_at`.
     Test: `modules/hub/tests/integration/features/execution/maintenance/test_retention.py`,
     `test_pending_and_retryable_jobs_survive_and_retention_uses_finish_time`.
-16. **Work Item protection**: IF a linked Work Item lacks succeeded state, a merge
-    SHA or completion evidence older than the run-retention boundary, THEN
-    maintenance MUST preserve its Run.
-    Test: `modules/hub/tests/integration/features/project_management/work_plans/test_work_plans.py`,
-    `test_retention_requires_durable_success_and_preserves_failed_work`.
+16. **Work Item protection**: `CAP-WORK-work-plan-execution` rule 25 owns which
+    Work Item-linked Runs retention preserves.
 
 17. **Maintained owner clocks**: WHEN a Hub ORM or mapped Core write omits `updated_at`, Hub MUST supply its current UTC write time.
     Explicit business timestamps and same-column preservation expressions take precedence.
@@ -157,13 +155,11 @@ Raw SQL and reflected tables without Hub's mapped metadata do not receive this a
 The SQLite/PostgreSQL owner regression `test_operator_terminal_and_failed_owed_read_use_maintained_time`
 verifies that an old run canceled now is retained using its maintained timestamp.
 
-Pruning deletes at most 1,000 jobs and 200 PR runs per invocation. Retiring a run
-preserves provider session/report and Work Item completion information, removes
-attempt/delivery/reply rows and marks retired links to prevent re-adoption. A
-terminal run's age uses `updated_at`; a valid lease prevents deletion. Run expiry
-removes its detail/resume surface but does not delete remote PRs, branches or
-provider sessions. The retention tests exercise these local-record boundaries;
-no remote cleanup is implied.
+Pruning deletes at most 1,000 jobs and 200 PR runs per invocation. A terminal
+run's age uses `updated_at`; a valid lease prevents deletion.
+`DOMAIN-pr-run-lineage` explains which records retire with a Run and what its
+Work Item, Provider session and SDD claim keep. The retention tests exercise
+these local-record boundaries; no remote cleanup is implied.
 
 ## 5. Evidence and operational guidance
 
@@ -175,8 +171,8 @@ were inspected as enforcement evidence; this document records no new test run,
 production tick or deletion of production history. PostgreSQL lock-concurrency
 cases require PostgreSQL and cannot be established by SQLite tests alone.
 
-See [deployment operations](../../operations/cloud-run-deployment.md#6-register-cloud-scheduler-periodic-trigger)
-for external trigger provisioning and [operator diagnostics](../../operations/operator-notices.md)
+See [deployment operations](../../runbooks/cloud-run-deployment.md#6-register-cloud-scheduler-periodic-trigger)
+for external trigger provisioning and [operator diagnostics](../../runbooks/operator-notices.md)
 for inspecting maintenance and retained history.
 
 ## 6. Retained activity history

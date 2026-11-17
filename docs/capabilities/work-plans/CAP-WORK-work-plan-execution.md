@@ -192,13 +192,11 @@ semantic duplicates under different IDs. Active create/edit/resume calls perform
 a bounded immediate kick after committing; unfinished work stays due for ticks.
 `scheduled_at` is an earliest time, not an exact-time execution guarantee.
 
-Replacement work is another registration with a new `request_id`, descriptive
-links to the original work and, when reusing its branch, `attach_branch`. There
-are no `replaces_*` fields or successor-substitution API. Completion belongs to
-the replacement graph; independently enrolling a PR does not satisfy the
-original Item's dependency because its recorded execution/merge evidence is
-still evaluated separately. Registration identity remains on its Plan row for
-the lifetime of that Plan.
+Replacement work is an ordinary registration with a new `request_id` and, when
+it reuses the original branch, `attach_branch`; there are no `replaces_*` fields
+or successor-substitution API. `DOMAIN-work-item-lineage` distinguishes it from
+recovery, replacement links and edge acceptance; rules 9, 28 and 37–43 own what
+releases a dependency.
 
 ### Explicit Work Item recovery
 
@@ -210,7 +208,7 @@ Acceptance atomically stores the command/snapshot, one Plan revision increment a
 
 Unknown remote reads and delivery outcomes remain reconciling, retaining original delivery markers. A definitive pre-write refusal closes the record and requires another explicit request after repair. Waiting for admission preserves historical `started_at`, so recovery cannot make started specifications editable. Admission rechecks the recovery identity, Plan revision and project mode. An expired or replaced worker lease cannot apply observations. The shared lock protocol is in `ARCH-06-execution`.
 
-Terminal recovery delegates to the guarded owner in `CAP-PR-pull-request-delivery`. It retains epoch, attempt numbers, detailed delivery history and counters. Schedule/dependency/project/catalog/capacity gates still apply. A competing active owner closes the accepted record as refused with zero losing dispatch. The UI in `UX-work-plans` distinguishes accepted, awaiting-admission, reconciling, running and refused states and preserves a response-loss request through status lookup/replay.
+Terminal recovery delegates to the guarded owner in `CAP-PR-pull-request-delivery`, which retains the Run's lineage under its §3 rule 23. Schedule/dependency/project/catalog/capacity gates still apply. A competing active owner closes the accepted record as refused with zero losing dispatch. The UI in `UX-work-plans` distinguishes accepted, awaiting-admission, reconciling, running and refused states and preserves a response-loss request through status lookup/replay.
 
 ### Explicit replacement evidence
 
@@ -218,7 +216,7 @@ The original Plan owns GET/POST `/{plan_id}/items/{item_id}/replacement-links`, 
 
 Stopped originals are `preparation_failed`, `failed`, `canceled` or `revoked`, with no live Item/Run lease, pending recovery, nonterminal Run or retained success. Terminal original Plans remain inspectable and retain their holds. Linking can precede replacement success. Acceptance requires retained PR number/URL, branch, merge SHA, execution identity and completion time; detailed Run retirement preserves this evidence. These commands perform no provider I/O, PR mutation or dispatch. Operator review supplies semantic equivalence; Hub validates identity and merge facts.
 
-An original has one active link. A replacement endpoint is bound for its retained lifetime, and endpoint roles never switch. Withdrawing an unconsumed link allows a distinct unused candidate. An unconsumed edge acceptance can be withdrawn and accepted again on the same live link. Consumed evidence is irreversible admission history. Original recovery success remains ordinary evidence; no original outcome becomes successful merely through replacement acceptance.
+`DOMAIN-work-item-lineage` explains the link and acceptance lifecycle, including withdrawal before consumption and why an original outcome never changes through replacement; rules 37–41 own its guarantees and refusals.
 
 Responses distinguish the immutable command result from current relations, edge decisions and consumption history. GET keeps active relation/acceptance evidence available independently of historical pages. Inactive link history uses `offset` and `limit` (default 10, maximum 50). Event history uses `event_link_id` and `event_offset`, with 20 revision-ordered events per page; active/consumed acceptances and those referenced by the page accompany it. UI paging retains earlier historical context while applying current active/consumed flags.
 

@@ -60,7 +60,8 @@ See [README](README.md) and [documentation guide](docs/README.md) for scope.
   examples in `docs/usecases/`, structure in `docs/architecture/`, and background
   terminology in `docs/steering/`. `docs/development/` covers Auto Hub contributor
   setup, checks, toolchain changes and extension work. Put deployed-service/client
-  configuration and recovery procedures in `docs/operations/`.
+  configuration, deployment and recovery procedures in `docs/runbooks/`, and
+  symptom-to-owner routing in formal `docs/operations/OPS-<slug>.md` documents.
 - Derive contracts from implementation and enforcing tests. Use full document IDs,
   English summaries and reciprocal capability/use-case relationships. Record test
   inspection separately from actual check execution and live deployment evidence.
@@ -70,7 +71,7 @@ See [README](README.md) and [documentation guide](docs/README.md) for scope.
 <!-- DEVKIT:START -->
 ## devkit
 
-- Before using a bundle's assets, run `uv run devkit get-context <bundle>` once per agent context. Installed: `advisory`, `app-common`, `app-uiux-improve`, `command-design`, `devkit`, `docs`, `harness`, `maintenance`, `spec`.
+- Installed: `advisory`, `app-common`, `app-uiux-improve`, `command-design`, `devkit`, `docs`, `harness`, `maintenance`, `spec`. Before using assets from the following bundles, run `uv run devkit get-context <bundle>` once per agent context and again after context loss: `advisory`, `command-design`, `devkit`, `docs`, `harness`, `spec`.
 - Never edit `.devkit/managed/` or projected agent files; change the source bundle or use `devkit override`.
 - app-common packages: read the `app-common` skill before changing code that uses them; its architecture rules run in `devkit rules check`, and `devkit app guide list` lists the topics for this project.
 - Before document work, run `uv run devkit get-context docs`.

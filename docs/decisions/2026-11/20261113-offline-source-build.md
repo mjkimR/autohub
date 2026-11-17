@@ -12,11 +12,6 @@ created_at: 2026-11-13
 
 Superseded in part by `ADR-repository-owned-sdd-execution`: all decisions assigning source fetch, build and isolated evaluation to Hub.
 
-- **Status**: Superseded by `ADR-repository-owned-sdd-execution`
-- **Date**: 2026-11-13
-
----
-
 ## 1. Context & Problem Statement
 
 Installing from a repository lock (`ADR-repository-locked-runtime`) must fetch private Git sources such as

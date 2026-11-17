@@ -41,7 +41,12 @@ export function renderRepositoryMarkdown(doc: RepositoryDocument) {
 	for (const code of root.querySelectorAll('code')) {
 		if (code.closest('pre, a')) continue;
 		const id = code.textContent?.trim() || '';
-		if (!/^(?:CAP|UC|ADR|SPEC|PROP|MS|UX|ARCH|FB|PLAN|TASKS)-[\w.-]+$/.test(id)) continue;
+		if (
+			!/^(?:CAP|UC|ADR|PADR|SPEC|PROP|MS|UX|ARCH|FB|PLAN|TASKS|REC|DESIGN|DOMAIN|OPS)-[\w.-]+$/.test(
+				id
+			)
+		)
+			continue;
 		const link = document.createElement('a');
 		link.href = '#';
 		link.dataset.documentId = id;

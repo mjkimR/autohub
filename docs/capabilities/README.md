@@ -3,7 +3,7 @@
 Each capability owns implemented guarantees, interfaces, code entrypoints and
 enforcing checks for one bounded area. Full IDs resolve the contracts independently
 of their location. Source/test inspection does not establish a fresh test run or
-production rollout; see [delivery status](../operations/deployment-status.md).
+production rollout; see [delivery status](../runbooks/deployment-status.md).
 
 | Area | Capability IDs |
 | --- | --- |
@@ -24,5 +24,5 @@ production rollout; see [delivery status](../operations/deployment-status.md).
 | Scoped MCP surfaces | `CAP-MCP-tool-access` |
 
 [Use cases](../usecases/README.md) describe the actor goals these contracts serve.
-[Operations guides](../operations/README.md) retain setup and client instructions;
+[Runbooks](../runbooks/README.md) retain setup and client instructions;
 they do not replace the owning capability.

@@ -7,7 +7,11 @@ English and preserve literal UI labels and localized examples.
 ## Authoring instructions
 
 Follow devkit's `document-writing`, `living-spec-writing`, `contract-authoring`
-and the applicable capability/use-case/architecture instruction and template.
+and the applicable per-kind instruction and template: capability, use case, UX,
+architecture, decision, or `operations-writing` for `docs/operations/OPS-<slug>.md`.
+Formal design and domain documents, when one is warranted, follow `design-writing`
+(`docs/designs/<area>/DESIGN-<slug>/design.md`) and `domain-writing`
+(`docs/domain/<area>/DOMAIN-<slug>.md`); do not create empty layers.
 The root development environment installs the `docs` bundle through
 `devkit-spec`. Load its context before document work:
 
@@ -26,7 +30,8 @@ refer to ID-bearing documents by full ID. A code path or cited test identifies
 evidence to inspect; it does not assert a fresh execution or production result.
 
 `development/` covers work on Auto Hub itself. Put serving-host/client setup,
-deployment and recovery procedures in `operations/`. Keep dated check evidence
+deployment and recovery procedures in `runbooks/`, and route observed symptoms
+to their owners in formal `operations/OPS-<slug>.md` documents. Keep dated check evidence
 in materials only when it supports an active compatibility/deployment claim.
 
 ## Validate the documents

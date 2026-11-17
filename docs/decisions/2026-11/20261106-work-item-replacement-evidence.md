@@ -9,11 +9,6 @@ created_at: 2026-11-05
 
 # [ADR-work-item-replacement-evidence] Accept replacement evidence for one dependency
 
-- **Status**: Accepted
-- **Date**: 2026-11-05
-
----
-
 ## 1. Context & Problem Statement
 
 Replacement registrations retain independent execution. Operators cannot release

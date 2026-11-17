@@ -44,6 +44,9 @@ that the remote account can complete work.
 
 1. Connect the repository in Jules and obtain its API key using the provider's
    account setup. Hub resolves the repository's actual Source during preflight.
+   If a connection test fails with "Connect this repository in Jules before
+   starting work", it created no GitHub resources or session; connect the
+   repository in Jules and start a new test.
 2. Register **Jules (API Key)** in **Connectors**, placing the API key in
    **Secret Token**. Keep the connector enabled.
 3. In **Settings → AI Catalogs**, assign that connector to the intended Jules
@@ -79,8 +82,12 @@ choices: catalog creation does not select it for a project or schedule.
    the selected current connection; rerun after credential, repository or CI changes.
 
 If delivery waits, inspect the catalog's availability and active execution count.
-For a Codex reply without a verification push, read the reply and check the
-agent-phase `GH_TOKEN` and network setup. If CI skips the Draft or fixture path,
+A Codex reply without a verification push fails the test five minutes after
+the reply is observed ("Codex replied without pushing the test change"); read
+the reply and check the agent-phase `GH_TOKEN` and network setup. A Codex
+usage-limit reply fails the test at once ("Codex reported its usage limit") and
+the catalog waits for quota recovery; see
+[Adjust a Codex availability hold](#adjust-a-codex-availability-hold). If CI skips the Draft or fixture path,
 fix that repository's workflow before repeating verification.
 
 ## Cancel or review cleanup
@@ -88,7 +95,8 @@ fix that repository's workflow before repeating verification.
 Use **Cancel test** to stop Hub's diagnostic progression. An already dispatched
 remote task can still finish. Read the terminal test and its separate cleanup
 state; leave shared maintenance running to close owned output and retry cleanup.
-Failed/canceled tests keep their isolated branch for at least 24 hours.
+Every nonsuccessful test (`failed`, `canceled` or `timed_out`) keeps its
+isolated branch for at least 24 hours after it finishes.
 
 If Jules remote output cannot be confirmed, restore provider access first.
 Already proven PRs can still be closed through usable GitHub credentials.

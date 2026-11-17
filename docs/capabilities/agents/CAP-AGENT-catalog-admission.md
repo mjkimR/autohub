@@ -120,7 +120,7 @@ The contract is derived from `modules/hub/app/features/ai_catalogs/{api/v1.py,sc
 and `policies/{registry.py,codex_window.py,daily_quota.py}`, together with the tests
 cited above. The cited tests are existing verification coverage; this document
 reports source/test inspection, not a new execution or live provider quota test.
-Detailed operator procedures are in [provider connections](../../operations/provider-connections.md).
+Detailed operator procedures are in [provider connections](../../runbooks/provider-connections.md).
 
 ## Owed items
 

@@ -141,11 +141,8 @@ this propagation is source-inspected in `PipelineRunControl.resume_run` and
 `CIProgress.apply`, rather than separately established by the initial-answer and
 delivery-recovery examples above.
 
-The schema links questions and resume receipts to their Run with `ON DELETE
-CASCADE`, and answers to their question with the same cascade. Their history
-therefore follows Run retention and is not an independent permanent archive.
-The Work Item protection conditions in `CAP-WORK-work-plan-execution` still
-govern whether its linked Run can be pruned.
+Question, answer and resume-receipt history belongs to the Run and retires
+with it; `DOMAIN-pr-run-lineage` explains that lifecycle.
 
 ### Agent question signal
 

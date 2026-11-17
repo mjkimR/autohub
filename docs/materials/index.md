@@ -2,7 +2,7 @@
 
 Retain evidence needed to distinguish local implementation from production
 behavior. These reports record past checks; neither proves the current source or
-serving revision. See [delivery status](../operations/deployment-status.md) for
+serving revision. See [delivery status](../runbooks/deployment-status.md) for
 rollout gaps and the owning behavior references.
 
 | Record | Why it remains |

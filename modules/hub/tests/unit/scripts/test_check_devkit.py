@@ -35,14 +35,23 @@ def test_root_git_pin_cannot_drift(project, name):
     assert refused.value.code == "DEVKIT_PINS_INVALID"
 
 
-def test_transitive_package_version_cannot_drift(project):
-    _, version = check(project)
+def set_lock_version(project, name, version):
     path = project / "uv.lock"
-    path.write_text(
-        path.read_text().replace(
-            f'name = "devkit-core"\nversion = "{version}"', 'name = "devkit-core"\nversion = "0.0.0"'
-        )
-    )
+    text = path.read_text()
+    start = text.index(f'\nname = "{name}"\nversion = "') + len(f'\nname = "{name}"\nversion = "')
+    end = text.index('"', start)
+    path.write_text(text[:start] + version + text[end:])
+
+
+def test_selective_package_versions_share_the_release_series(project):
+    _, release = check(project)
+    set_lock_version(project, "devkit-core", release.rsplit(".", 1)[0] + ".0")
+    assert check(project)[1] == release
+
+
+@pytest.mark.parametrize("drifted", ["0.0.0", "0.1.99", "0.2.0", "0.1.7rc1"])
+def test_transitive_package_version_cannot_drift(project, drifted):
+    set_lock_version(project, "devkit-core", drifted)
     with pytest.raises(PinsError):
         check(project)
 
