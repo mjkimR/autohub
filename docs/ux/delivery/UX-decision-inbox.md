@@ -27,13 +27,14 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
 
 - Project connection (all-visible-projects default; optional project filter).
 - Run question (kind filter and Question state filter: "All states", "Needs decision" for open questions and "Answer saved — resume pending" for answered ones).
-- PR run (row): "Open PR run" in-app link to the PR run page `/projects/<projectId>/runs/<runId>` (accessible name "Open PR run for PR #N"), the run state as the shared PR run state badge (label, icon and emphasis per `docs/steering/visual-style.md`; never the raw lowercase value), and the external "PR #N ↗" GitHub link.
+- PR run (row): "Open PR run" in-app link to the PR run page `/projects/<projectId>/runs/<runId>` (accessible name "Open PR run for PR #N"), the run state as the shared PR run state badge (label, icon and emphasis per `docs/steering/visual-style.md`; never the raw lowercase value), and the external "PR #N" GitHub link with an external-link icon and a new-tab announcement.
 - Project connection (row): the project name as an in-app link to `UX-project-detail` (`/projects/<projectId>`), then the kind display label and subject ID.
   - Decision status (one labeled badge; the icon or dot is decorative, emphasis by role per `docs/steering/visual-style.md`):
     - "Needs decision" (attention emphasis, dot, attention left rule) when the row is actionable and its question state is not answered.
     - "Answer saved — resume pending" (attention emphasis, corner-down-right icon, attention left rule) when the Run question is answered but the Run has not resumed; the operator still owes `UC-resolve-run-question` 4.
-  - Run question (title, question ID; exact waiting age).
-  - Review (secondary-weight button; opens exact owner subject after freshness verification). The row background stays neutral, so the status badge, not the button, carries the row's emphasis.
+    - A neutral outline status when the row is not actionable, with the reason "Nothing to decide while the run is <state>." beside the disabled Review.
+  - Run question (title as the row heading, question ID; exact waiting age).
+  - Review (secondary-weight button named "Review question: <title>"; opens exact owner subject after freshness verification). The row background stays neutral, so the status badge, not the button, carries the row's emphasis.
 - Pagination (Next; loaded previous cursor pages; Refresh restarts at first page).
 - Application shell (global navigation to other screens; the Decisions link's neutral count is the decision part of the owed counts and equals the rows that carry the attention left rule here, while the Attention link carries the owed total, per `UX-app-shell`).
 
@@ -42,7 +43,7 @@ The filtered mixed worklist is primary. Filters sit above it, and cursor navigat
 - **loading**: Explain that pending decisions are loading and show no attention marks; filters/navigation remain accessible, Review waits for data.
 - **populated**: Review any row; use the question's waiting age. Explain that new or changed decisions can precede the current cursor and Refresh restarts the list.
 - **empty**: No matching observed pending decisions and no attention marks; offer Clear filters and Refresh. This does not assert that every repository is live-evaluated.
-- **error**: Keep filters, show no attention marks and show an alert stating in plain words that decisions could not be loaded and none changed, adding a server reason only when it is specific; Retry (secondary weight) sits inside the alert. No stale row becomes actionable from the failure.
+- **error**: Keep filters, show no attention marks and show an alert stating in plain words that decisions could not be loaded and none changed (review and notice errors use the same plain wording), adding a server reason only when it is specific; Retry (secondary weight) sits inside the alert. No stale row becomes actionable from the failure.
 - **reviewing**: Owner dialog loads fresh context; all mutation controls disabled until exact subject validation succeeds.
 - **changed**: Subject resolved, changed or unavailable; explain the outcome, refresh the worklist and offer explicit Review again for any replacement.
 

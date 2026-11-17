@@ -55,7 +55,9 @@ The header and its action row are primary. Sections follow in this order: the ne
 - PR run (next step; failed or canceled run): states that the run cannot be resumed and that its record is kept.
   - Work Item (owning item; when a Work Plan item names this run): item and Work Plan IDs from the Run read, with Open Work
     Item recovery to that item in `UX-work-plans` and Review attempt errors.
-  - Replacement guidance (when no Work Item names this run): Enroll PR opens the project's Runs tab
+  - SDD activity restart (SDD activity run that no Work Item names): states that the activity ran for its unit; Open unit
+    (primary) opens that unit in `UX-repository`, and Enroll PR (secondary) opens the project's Runs tab.
+  - Replacement guidance (other runs that no Work Item names): Enroll PR opens the project's Runs tab
     (`UX-pipeline-runs`) and Work Plans opens the Plans tab.
 - PR run (Related origin): the proven category or Origin unknown, followed by retained Work Plan/Work Item links, current SDD unit (labeled "Planning activity on" or "Development activity on" when the activity is known), related activity claim unit links that differ from the current unit, and exact external Provider session URLs. Missing session URLs remain ID text; category evidence can be known without an available subject link.
 - SDD unit links include the Run branch and open that unit in `UX-repository`; related history is labeled separately from the current unit.
@@ -88,6 +90,7 @@ ink; Cancel run is the quiet destructive variant.
 | Retry decisions | global: repeat a failed decisions read without changing the run | populated | populated |  | `CAP-PR-operator-decisions` | The Decisions section repeats its read; the primary returns to the decision action once the read succeeds. |
 | Resume with saved answer | `UC-resolve-run-question` 4 | populated | populated |  | `CAP-PR-operator-decisions` | The page moves to the saved answer in Decisions, where the answer is selected explicitly. |
 | Next step | `UC-deliver-pull-request` *d | ended | ended |  | `CAP-PR-pull-request-delivery` | The page moves to the next-step section. |
+| Open unit (failed or canceled SDD activity run) | `UC-complete-sdd-workflow` 7a | ended | populated | `UX-repository` | `CAP-SDD-native-delivery` | The run's unit opens in the repository SDD workspace, where a new start stays explicit. |
 | Open Work Item recovery | `UC-deliver-pull-request` *d | ended | populated | `UX-work-plans` | `CAP-WORK-work-plan-execution` | The Plans tab opens with the owning Work Item expanded. |
 | Enroll PR / Work Plans | global: register replacement work for an ended run that no Work Item owns | ended | populated | `UX-pipeline-runs` | `CAP-PR-pull-request-delivery` | The project's Runs or Plans tab opens. |
 | Resume | `UC-deliver-pull-request` *c | populated | operating |  | `CAP-PR-pull-request-delivery` | A blocked-run reason is confirmed when present; the resumed state or refusal is shown. |

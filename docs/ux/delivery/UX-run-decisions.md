@@ -41,7 +41,7 @@ Saving an answer does not resume; selecting a saved answer is a separate action.
 ### Answer composer
 
 When the parent supplies a save operation, the question card owns the answer
-editor. Save and resume issues two owner requests: it saves the answer, then
+editor. On narrow screens Save and resume and Save only stay pinned below the composer while it is on screen. Save and resume issues two owner requests: it saves the answer, then
 resumes with that saved answer explicitly selected; Save only stops after the
 save. An unconfirmed save keeps the text and sends no resume. If the resume
 fails, or the saved answer cannot be identified, the answer stays saved, the run

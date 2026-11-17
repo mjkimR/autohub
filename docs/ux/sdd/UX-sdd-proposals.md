@@ -36,7 +36,7 @@ Activity base defaults to the document branch and remains independently editable
 
 The owner notice is non-blocking: Start stays enabled because Hub's activity admission, not the form, refuses a competing start. When the owning run owes the operator a decision, the unit status's Open decisions stays the single primary action.
 
-The original request recovery is mounted above both repository viewer modes. It identifies the original unit/activity/base or PR, effort and request identity. It never changes to match a subsequently selected document. Exact-request retry uses the retained payload.
+The original request recovery is mounted above both repository viewer modes. It identifies the original unit/activity/base or PR; request identity, effort and catalog sit in its Request details disclosure. A retained owner shows only the `UX-sdd-claim-recovery` card, not a separate request card. It never changes to match a subsequently selected document. Exact-request retry uses the retained payload.
 
 The local start outcome sits below Start for the unit the request named:
 

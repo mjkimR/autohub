@@ -24,7 +24,7 @@ capabilities:
 ## 2. Content
 
 The selected repository content is primary. Branch/path controls stay above it.
-An SDD Project connection initially uses SDD View and can switch to Git Browser.
+An SDD Project connection initially uses SDD View and can switch to Git Browser through a labelled two-button mode group whose selected mode uses the secondary variant.
 
 - Repository viewer (branch selector and path breadcrumbs).
 - Repository viewer (Git Browser directory rows, selected file and README preview).
@@ -46,9 +46,9 @@ SDD content shares Hub theme and controls. A searchable title/ID/status/path lis
 - **populated**: Browse files or SDD documents, change branch or refresh the selection.
 - **empty**: Without a GitHub binding, the panel directs the operator to Connections; an empty directory retains its branch/path controls.
 - **loading**: Git Browser announces initial repository loading; native SDD loading names the section or path and selected branch. Completed discovery batches remain searchable/openable while later batches load.
-- **error**: Requested repository reads show an alert and Retry; failed execution lookup is distinguished within the execution panel.
+- **error**: Requested repository reads show an alert in plain words with Retry; failed PR run lookup is distinguished within the unit work panel.
 
-- **unit-unavailable**: the requested unit/ref is invalid, missing, inaccessible or unsupported. Browse repository clears the unit and resets a missing addressed ref; read failures offer Retry unit. No start control for an unknown unit appears.
+- **unit-unavailable**: the requested unit/ref is invalid, missing, inaccessible or unsupported. Only the alert, Browse repository and, for read failures, Retry unit appear; the SDD viewer card is not rendered. Browse repository clears the unit and resets a missing addressed ref. No start control for an unknown unit appears.
 - **filtered-empty**: No matching documents offers Clear search.
 - **binary**: The file path and binary explanation offer Back to files.
 - **handbook-empty**: No release handbook directs the operator to Documents or Files.
