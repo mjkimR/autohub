@@ -23,9 +23,10 @@ requirement. The explicit advisory dependency supports repository scripts.
 | `app-common:all` | Existing backend/UI package guidance and architecture checks |
 | `command-design:core` | Conditional guidance for justfile recipes, CLI commands and MCP tools |
 | `maintenance:upkeep` | `drift-reconciliation` and `review-refactor` playbooks for bounded consistency and cleanup work |
+| `app-uiux-improve:core` | UI/UX improvement skill and the impeccable context link script |
 
 Catalog installation exposes optional bundles; only selected presets deploy.
-The catalog choices are limited to `command-design` and `maintenance:upkeep`.
+The catalog choices are limited to `command-design`, `maintenance:upkeep` and `app-uiux-improve:core`.
 Keep `adaptive-dev` unselected while using SDD. `cli-tool` imposes a CLI-specific
 structure that does not fit the FastAPI application and independent SDK.
 Research, UI/design exploration and response-style entries remain unselected
