@@ -2,7 +2,7 @@
 id: SPEC-sdd-gate-question
 title: Surface repository workflow gates through the question channel
 summary: SDD activity instructions ask the repository agent to raise a stopped human workflow gate as an attempt-bound question so the operator's explicit answer, resume and Ready status keep acceptance before merge.
-status: planned
+status: in-progress
 created: 2026-11-17
 related_capabilities: [CAP-SDD-native-delivery, CAP-PR-operator-decisions]
 related_usecases: [UC-complete-sdd-workflow]
