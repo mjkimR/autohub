@@ -64,16 +64,16 @@ application authorization boundary.
 | `POST /proposals/{slug}/planning` | Explicit Planning intent with client request UUID, base, optional effort/catalog |
 | `POST /proposals/{slug}/development` | Explicit Development intent with the same publication/recovery contract |
 | `GET /runs?spec_dir=...` | Retained unit-bound Run history |
-| `GET /claims/{claim_id}` | Exact retained claim and checkpoint digest |
+| `GET /claims/{claim_id}` | Exact retained claim and checkpoint digest; `DESIGN-sdd-activity-publication` defines the checkpoint fields and digest |
 | `POST /claims/{claim_id}/reconcile` | `request_id`, `expected_checkpoint_digest`, `acknowledge_external_work: true`; releases the selected unleased uncertain no-Run publication reservation |
 
 The descriptive `sdd_snapshot` records `provider: repository-agent`, `spec_dir`, requested activity/handoff intent and
 optional effort. It is descriptive context, not a workflow/runtime contract. Native progress JSON is absent
 from Run storage and API responses; generic resume receipts have no native decision evidence.
 Both activity kinds
-use `plan-<slug>` or `dev-<slug>` and the same ordinary PR owner. GitHub API
-publication makes an unchanged-tree intent commit so the Draft PR has an exact
-activity candidate; it does not edit proposal content or status.
+use `plan-<slug>` or `dev-<slug>` and the same ordinary PR owner. Publication
+edits no proposal content or status; `DESIGN-sdd-activity-publication` explains
+its intent commit, write order and claim checkpoint.
 
 A start retry reuses its UUID and identical payload. An unrelated branch or
 active owner remains a conflict. Unknown remote effects are retained, not treated

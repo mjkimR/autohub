@@ -9,6 +9,8 @@ related_capabilities:
 related_usecases:
   - UC-configure-operator-notifications
   - UC-receive-decision-notice
+related_designs:
+  - DESIGN-decision-notice-collection
 ---
 
 # [OPS-operator-notice-absence-routing] Missing operator notice diagnosis and routing
@@ -36,7 +38,7 @@ for retained attempts (`CAP-NOTIFY-operator-notifications` §6, Decision interfa
 | Run stop not announced | `scheduler` is `ok` and the channel admits `error`, but the run's stopped revision is older than 24 hours, or it was already announced and has not changed revision since | `CAP-NOTIFY-operator-notifications` §4 (24-hour horizon, per-revision announcement); open the run itself through `UX-run-page`. |
 | Decision notice never admitted | `decision-subscription` shows the subscription disabled, a blocking gate, a project or kind outside its selection, or a changed destination generation after a chat or token change | `UX-decision-subscription`; `CAP-NOTIFY-operator-notifications` §6 rules 12, 13 and 20; `UC-configure-operator-notifications` extension 6c. |
 | Decision notice admitted but not delivered | `decision-notices` lists the generation with transport state `failed` or `unknown` | `UX-decision-notice-history` for a reviewed resend; `UC-receive-decision-notice` extension 4a; `CAP-NOTIFY-operator-notifications` §6 rules 18 and 22. |
-| Decision notice still pending | `decision-notices` has no attempt for the decision; the subscription uses the 15-minute digest, the batch reached its ten-link or 3,500-character cap, or no maintenance pass ran since the decision appeared | `CAP-NOTIFY-operator-notifications` §6 rules 16 and 17; the trigger row above when maintenance is not running. |
+| Decision notice still pending | `decision-notices` has no attempt for the decision; the subscription uses the 15-minute digest, the batch reached its ten-link or 3,500-character cap, the four-channel rotation or the subscription's discovery scan has not reached it yet, or no maintenance pass ran since the decision appeared | `CAP-NOTIFY-operator-notifications` §6 rules 16 and 17; `DESIGN-decision-notice-collection` for the per-pass bounds; the trigger row above when maintenance is not running. |
 | Notice accepted but not seen | `last_sent_at` advanced at the expected time, or the decision attempt shows `accepted` | Telegram and the destination chat; acceptance is not reading (`CAP-NOTIFY-operator-notifications` §4). |
 
 Check the channel row first, because a set `last_error` explains every category at once; check `scheduler` before

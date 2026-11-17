@@ -112,11 +112,12 @@ Generic schedule reads identify retained project dispatch and CI observation con
 
 The credential patch boundary is determined by fields actually supplied in the
 request. Omitting `credentials` preserves existing ciphertext; supplying it
-re-encrypts the replacement object with a fresh nonce. Source review:
+reseals the replacement object (`DESIGN-credential-sealing` explains the stored
+layout and associated data). Source review:
 `modules/hub/app/features/configuration/connectors/services.py`; the omission
 branch has no dedicated assertion in the inspected API tests. Decryption also
 requires an enabled connector of the expected provider and a nonempty string
-`token`. Key configuration and rotation procedures belong in the
+`token`. Key configuration and the re-encryption a key change requires belong in the
 [connector operations guide](../../../modules/hub/README.md#connector-credential-encryption).
 
 A check can return HTTP `200` with `ready: false`; successful transport is not

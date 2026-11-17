@@ -12,11 +12,17 @@ See [development and operations](../../docs/development/README.md) for verificat
 
 ## Connector credential encryption
 
-Connector credentials are encrypted with AES-256-GCM before they are stored in the database. The base64-encoded
-32-byte key is supplied as `CONNECTOR_CREDENTIAL_KEY`, normally as one field in the application's `APP_SECRETS_JSON`
-bundle. Generate it with `openssl rand -base64 32`. The `CONNECTOR_CREDENTIAL_KEY_VERSION` label remains stored with
-each encrypted row for future re-encryption support; changing the key currently requires re-encrypting the stored
-connector credentials before removing the old key.
+Connector credentials and notification channel bot tokens are encrypted with AES-256-GCM under one key before they
+are stored in the database. The base64-encoded 32-byte key is supplied as `CONNECTOR_CREDENTIAL_KEY`, normally as one
+field in the application's `APP_SECRETS_JSON` bundle. Generate it with `openssl rand -base64 32`. The
+`CONNECTOR_CREDENTIAL_KEY_VERSION` label is stored with each encrypted row. `DESIGN-credential-sealing` describes the
+stored layout and associated data.
+
+Only the configured key version decrypts; a row sealed under any other label fails, so old and new keys never work
+side by side. Changing the key therefore requires re-encrypting every row of both `connectors` and
+`notification_channels` before the new key and label are served. The repository provides no re-encryption command.
+Re-encrypting a connector changes its stored credential bytes, so earlier successful connection tests that use it
+become non-current (`configuration_current: false`) until they run again.
 
 
 ## Shared PostgreSQL database

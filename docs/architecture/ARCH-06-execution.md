@@ -65,7 +65,8 @@ The recovery worker releases DB locks for PR/ref/comment reads. Pending records 
 Planning and Development are explicit activity intent over ordinary PR delivery.
 Hub reserves the exact unit/activity/request before GitHub ref and Draft PR
 publication. It records candidate artifacts and recovers the same owner after a
-lost response. It does not author repository state or evaluate a devkit stage.
+lost response; `DESIGN-sdd-activity-publication` explains the write order and claim
+checkpoint. It does not author repository state or evaluate a devkit stage.
 
 Activity snapshots carry `provider: repository-agent` and descriptive unit/activity intent.
 Repository setup, workflow gates and correctness belong to its working agent.
@@ -110,7 +111,8 @@ Hub MUST use descriptive repository-owned activity context without native execut
 version or retirement fences. `ADR-remove-native-sdd-compatibility` records the boundary.
 Standalone activity claims retain exact publication artifacts, request identity and lease
 ownership. An uncertain no-Run publication requires explicit checkpoint acknowledgment
-before its reservation is released. Check: activity API and claim recovery integration tests.
+before its reservation is released (`CAP-SDD-native-delivery` rule 10; checkpoint fields in
+`DESIGN-sdd-activity-publication`). Check: activity API and claim recovery integration tests.
 The schema removes unused native batch and SDK bridge link storage, native progress and
 native decision evidence through a forward migration. Generic resume receipts remain.
 
@@ -125,8 +127,8 @@ Evidence tables reference retained Plan/Item lifetimes and preserve replacement 
 
 ## Decision notification maintenance boundary
 
-`DecisionSubscription`, `DecisionNotice`, `DecisionNoticeAttempt`, `DecisionNoticeRequest` and the queue cursor belong to Notifications. Shared maintenance MUST run notification collection after its existing execution owners and bound the notification pass to45 seconds. Each pass rotates at most four channels, scans at most100 persisted discovery entries per channel and admits at most one message per channel. Check: Review only for notification ordering, bound and cursor constants in `decision_worker.py` and maintenance `task.py`; existing maintenance regression tests cover the preceding owners.
+`DecisionSubscription`, `DecisionNotice`, `DecisionNoticeAttempt`, `DecisionNoticeRequest` and the queue cursor belong to Notifications. Shared maintenance MUST run notification collection after its existing execution owners and bound the notification pass in time. `DESIGN-decision-notice-collection` explains the per-pass channel rotation, scan, message and lease bounds. Check: review of the call order in maintenance `task.py`; existing maintenance regression tests cover the preceding owners.
 
-Admission MUST serialize through the Notification channel before subscription and attempt state. Network delivery follows durable admission outside the database transaction; outcome persistence checks the exact token, state and60-second lease. Expiry preserves unknown rather than repeating transport. PostgreSQL admission and late-result tests in `modules/hub/tests/integration/features/notifications/test_decision_notices.py` enforce this fence. Per-channel exceptions remain isolated from existing work; a persisted cursor advances fairness across passes. The contract is bounded maintenance work, not a wall-clock delivery guarantee.
+Admission MUST serialize through the Notification channel before subscription and attempt state. Network delivery follows durable admission outside the database transaction under the outcome fence described in `DESIGN-decision-notice-collection`. PostgreSQL admission and late-result tests in `modules/hub/tests/integration/features/notifications/test_decision_notices.py` enforce this fence. Per-channel exceptions remain isolated from existing work. The contract is bounded maintenance work, not a wall-clock delivery guarantee.
 
 The migration freezes its schema definitions. Decision generation tombstones and immutable command receipts survive detailed attempt compaction; deletion of the owning channel cascades notice evidence. Check: `modules/hub/tests/integration/migrations/test_decision_notices.py`. `ADR-decision-notice-delivery` records why polling and retained uncertainty are used.

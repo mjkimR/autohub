@@ -18,6 +18,7 @@ keeps that evidence separate.
 | Color roles, Badge variants and emphasis for hub-ui | [Visual style](steering/visual-style.md) |
 | Implemented screens, modals, panels and task-flow links | [UX](ux/README.md) |
 | Concept relationships, identities and lifecycles that span contracts | Domain documents: `DOMAIN-pr-run-lineage`, `DOMAIN-work-item-lineage` |
+| Implementation mechanisms and persisted formats read back later | Design documents: `DESIGN-sdd-activity-publication`, `DESIGN-credential-sealing`, `DESIGN-decision-notice-collection` |
 | System boundaries, runtime structure and constraints | [Architecture](architecture/README.md) |
 | Development approach decision | `ADR-sdd-development` |
 | Contributor environment, checks and extension work | [Developing Auto Hub](development/README.md) |

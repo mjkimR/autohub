@@ -92,7 +92,9 @@ without a matching catalog fingerprint does not verify another selected catalog.
 
 The fingerprint covers recipe identity, catalog identity/enabled state, project
 repository/enabled state, verification settings and connector identity/configuration/
-credential version. Catalog names, quota state and catalog revision alone do not
+credential version. The credential version is derived from the sealed credential
+bytes (`DESIGN-credential-sealing`), so resealing a connector, including for a key
+change, also invalidates it. Catalog names, quota state and catalog revision alone do not
 invalidate it. Only the digest is persisted/returned as the configuration identity.
 
 The isolated branch is `autohub-connection-test/{test_id}` and the fixture is

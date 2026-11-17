@@ -34,8 +34,9 @@ the underlying work depend on successful notification delivery.
 ## 3. Business Rules & Policies
 
 1. **Secret storage**: WHEN a channel is created or its token is rotated, Hub MUST
-   seal the token using the channel identity and notification-specific encryption
-   scope rather than store it in the public configuration.
+   seal the token bound to the channel identity and a notification-specific scope,
+   so it cannot be read as a connector credential, rather than store it in the public
+   configuration. `DESIGN-credential-sealing` explains the derivation.
    Test: `modules/hub/tests/integration/features/notifications/test_notification_channels_api.py`.
 2. **Secret omission**: WHEN returning a channel, Hub MUST omit its bot token and
    encrypted credential fields from the response.

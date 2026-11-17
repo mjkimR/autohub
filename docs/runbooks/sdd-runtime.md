@@ -37,7 +37,7 @@ identifies the owner or retained evidence that must be inspected first.
 
 A start can fail before any branch or PR write, for example HTTP `422`
 `Base branch <name> is not on the remote`. Hub then settles its claim and records
-the failure as `checkpoint.refusal`. Retrying that request UUID returns the same
+the failure as `checkpoint.refusal` (fields: `DESIGN-sdd-activity-publication`). Retrying that request UUID returns the same
 refusal without a new attempt. After correcting the configuration, send the start
 with a new request UUID; the settled claim no longer blocks the unit.
 
@@ -51,8 +51,9 @@ procedure releases it.
 Inspect the claim at `GET /api/v1/projects/<project-id>/sdd/claims/<claim-id>`.
 After inspecting the exact saved branch/PR and external agent work, acknowledge the
 reservation at `POST /api/v1/projects/<project-id>/sdd/claims/<claim-id>/reconcile`.
-Supply the returned checkpoint digest, a stable request UUID and
-`acknowledge_external_work: true`. The claim is eligible only when publication is
+Supply the returned checkpoint digest unchanged (it also covers fields the view
+omits, so it cannot be recomputed; see `DESIGN-sdd-activity-publication`), a stable
+request UUID and `acknowledge_external_work: true`. The claim is eligible only when publication is
 uncertain, no Run is bound and no live lease remains. A changed checkpoint requires
 fresh inspection. Replaying the identical acknowledgment returns its recorded result.
 
