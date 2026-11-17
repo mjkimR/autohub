@@ -73,6 +73,9 @@ the same executor after `CAP-WORK-work-plan-execution` prepares an Item's PR.
 27. **Retained origins**: WHEN returning a Run read, Hub MUST project every distinct retained Work Item/Plan, Provider session and project-scoped SDD activity claim reference in deterministic kind/ID order. Check: `modules/hub/tests/integration/features/project_management/pipeline_runs/test_origins.py`.
 28. **Evidence categories**: WHEN no retained relationship or nonempty SDD snapshot proves a category, Hub MUST label the origin unknown rather than infer manual, webhook or SDK enrollment. One proven category is returned directly; several return multiple. Check: `test_origins.py` and `RunOrigins.integration.test.ts`.
 29. **Bounded origin reads**: WHEN enriching a selected Run page, Hub MUST use at most three additional sequential bulk SELECTs on the caller session without changing page membership, ordering or total. Check: `test_origins.py` on SQLite/PostgreSQL, including one HTTP request checkout.
+30. **Retained PR observation**: WHEN Hub applies a CI observation to a Run, Hub MUST retain the observed head SHA, Draft status, verification status, reason and observation time as `pull_observation` without changing the Run `revision`. Check: [`test_pull_observation.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_pull_observation.py), `test_draft_wait_records_draft_and_current_head_verification`, `test_recording_does_not_move_the_revision`, `test_ready_and_failing_ci_replace_the_draft_observation`, `test_passing_ci_is_recorded_when_merge_policy_pauses` and `test_draft_found_by_the_merge_recheck_wins`.
+31. **Observation-only read**: WHEN returning a Run read, Hub MUST serve `pull_observation` from retained state without a GitHub request. Check: [`test_pull_observation.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_pull_observation.py), `test_draft_wait_records_draft_and_current_head_verification`.
+32. **Unobserved PR status**: WHILE no CI observation has been applied to a Run, Hub MUST return `pull_observation` as null. Check: [`test_pull_observation.py`](../../../modules/hub/tests/integration/features/project_management/pipeline_runs/test_pull_observation.py), `test_a_run_reads_empty_until_its_first_ci_observation`.
 
 ## 4. Interfaces & Data Contracts
 
@@ -117,6 +120,26 @@ A nonempty SDD snapshot proves a native SDD binding independently of available s
 Lookup failures fail the read instead of producing a false unknown result.
 The run page and list show compact secondary links; an absent external URL stays text.
 Ended Work Item recovery consumes returned IDs without scanning Work Plans.
+
+### Observed PR status read
+
+`PipelineRunRead.pull_observation` is null or a `RunPullObservation` with these fields.
+The same value is returned by list/get, project-scoped unit history and mutations returning a Run.
+
+| Field | Meaning |
+| --- | --- |
+| `head_sha` | PR head the observation describes; the immutable `pull_snapshot.head_sha` is the enrollment head instead |
+| `draft` | `true` when GitHub reported the PR as Draft, `false` when it was Ready for review |
+| `verification` | `waiting`, `failed`, `blocked`, `passed` or `closed`, as defined by `CAP-PR-ci-observation` |
+| `reason` | Hub's explanation of that verification status |
+| `observed_at` | Time of the GitHub observation |
+
+Only applied `awaiting_ci` observations update the value. An implementation-stage
+read, a failed or timed-out GitHub query and an observation discarded by a fence
+leave the previous value in place. A Draft verdict found by the pre-merge recheck
+or a refused merge sets `draft` to `true`. The value is retained after the Run
+stops or ends, so it can describe an older head; `observed_at` and `head_sha`
+state its age and subject.
 
 ### Work Item recovery owner
 

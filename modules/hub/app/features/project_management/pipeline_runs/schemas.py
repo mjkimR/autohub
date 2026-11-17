@@ -7,6 +7,7 @@ from app.features.project_management.pipeline_runs.models import (
     ExecutionAttemptState,
     PipelineRunState,
 )
+from app.features.project_management.pipelines.schemas import VerificationStatus
 from app_layer_base.base.schemas.mixin import TimestampSchemaMixin, UUIDSchemaMixin
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -74,6 +75,18 @@ class RunOrigin(BaseModel):
     url: str | None = None
 
 
+class RunPullObservation(BaseModel):
+    """The PR's Draft status and CI verification as Hub last observed them; a retained fact, not a live read."""
+
+    head_sha: str = Field(description="The PR head these facts describe; a later push makes them stale")
+    draft: bool = Field(description="The PR was Draft when observed; false means Ready for review")
+    verification: VerificationStatus = Field(
+        description="Configured-workflow verification of head_sha, as defined by CAP-PR-ci-observation"
+    )
+    reason: str = Field(description="Hub's explanation of the verification status")
+    observed_at: datetime
+
+
 class PipelineRunRead(UUIDSchemaMixin, TimestampSchemaMixin):
     model_config = ConfigDict(from_attributes=True)
 
@@ -98,6 +111,10 @@ class PipelineRunRead(UUIDSchemaMixin, TimestampSchemaMixin):
     quota_block_count: int
     has_pending_decision: bool = Field(
         default=False, description="The run has an actionable decision-inbox row (a Run question)"
+    )
+    pull_observation: RunPullObservation | None = Field(
+        default=None,
+        description="Last observed Draft status and current-head CI verification; empty until the first CI observation",
     )
 
 

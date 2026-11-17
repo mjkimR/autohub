@@ -208,6 +208,8 @@ export interface components {
              * @default false
              */
             has_pending_decision: boolean;
+            /** @description Last observed Draft status and current-head CI verification; empty until the first CI observation */
+            pull_observation?: components["schemas"]["RunPullObservation"] | null;
         };
         /**
          * PipelineRunState
@@ -276,6 +278,34 @@ export interface components {
             unit?: string | null;
             /** Url */
             url?: string | null;
+        };
+        /**
+         * RunPullObservation
+         * @description The PR's Draft status and CI verification as Hub last observed them; a retained fact, not a live read.
+         */
+        RunPullObservation: {
+            /**
+             * Head Sha
+             * @description The PR head these facts describe; a later push makes them stale
+             */
+            head_sha: string;
+            /**
+             * Draft
+             * @description The PR was Draft when observed; false means Ready for review
+             */
+            draft: boolean;
+            /** @description Configured-workflow verification of head_sha, as defined by CAP-PR-ci-observation */
+            verification: components["schemas"]["VerificationStatus"];
+            /**
+             * Reason
+             * @description Hub's explanation of the verification status
+             */
+            reason: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
         };
         /** RunSnapshot */
         RunSnapshot: {

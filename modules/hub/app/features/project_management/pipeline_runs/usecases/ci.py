@@ -20,6 +20,7 @@ from app.features.project_management.pipeline_runs.requests import request_diges
 from app.features.project_management.pipeline_runs.schemas import (
     ImplementationRequest,
     PipelineRunRead,
+    RunPullObservation,
 )
 from app.features.project_management.pipeline_runs.usecases.transitions import (
     finish_closed_pull,
@@ -69,6 +70,22 @@ class CIObservation:
     merge: dict[str, Any] | None = None
     mergeable_state: str | None = None
     head_changed: bool = False
+
+
+def record_pull_observation(run: PipelineRun, observed: CIObservation) -> None:
+    """Retain what this observation saw for run reads; a read never re-queries GitHub.
+
+    The revision does not move: an observation is not a workflow change. A Draft verdict from the pre-merge
+    recheck or a refused merge is later evidence than the first read, so it wins.
+    """
+    pull = observed.report.pulls[0]
+    run.pull_observation = RunPullObservation(
+        head_sha=pull.head_sha,
+        draft=pull.draft or observed.mergeable_state == "draft",
+        verification=pull.result.status,
+        reason=pull.result.reason,
+        observed_at=observed.report.observed_at,
+    ).model_dump(mode="json")
 
 
 class CIProgress:
@@ -154,6 +171,7 @@ class CIProgress:
             raise ProjectError(422, "Project missing GitHub connection for pipeline run")
         observation = observed.report
         pull_result = observation.pulls[0].result
+        record_pull_observation(run, observed)
         if observation.pulls[0].draft and pull_result.status in (
             VerificationStatus.WAITING,
             VerificationStatus.BLOCKED,

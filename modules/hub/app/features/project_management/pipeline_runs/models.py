@@ -105,6 +105,9 @@ class PipelineRun(Base, UUIDMixin, TimestampMixin):
     quota_block_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # The revision whose stop the operator was last told about; a later stop has a later revision.
     notified_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The PR's Draft status and CI verification as the last applied CI observation saw them (RunPullObservation).
+    # Recorded without moving the revision; empty until the run's first CI observation. Reads never query GitHub.
+    pull_observation: Mapped[dict | None] = mapped_column(JSON_VARIANT, nullable=True)
 
 
 class ExecutionAttempt(Base, UUIDMixin, TimestampMixin):

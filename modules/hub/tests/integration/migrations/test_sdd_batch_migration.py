@@ -27,7 +27,7 @@ async def test_sdd_batch_migration_roundtrip_preserves_projects(session):
         assert "member_id" not in {c["name"] for c in inspect(conn).get_columns("sdd_activity_claims")}
         assert conn.scalar(text("SELECT count(*) FROM projects")) == before
         assert "uq_sdd_activity_claim_live" in {r["name"] for r in inspect(conn).get_indexes("sdd_activity_claims")}
-        assert scripts().get_heads() == ["d704fb51a433"]
+        assert scripts().get_heads() == ["e81f4c2a9b37"]
 
     await connection.run_sync(roundtrip)
     await session.commit()

@@ -112,6 +112,7 @@ def create_mock_run(
     run.next_action_at = None
     run.quota_block_count = 0
     run.sdd_snapshot = None
+    run.pull_observation = None
     run.created_at = utc_now()
     run.updated_at = utc_now()
     return run

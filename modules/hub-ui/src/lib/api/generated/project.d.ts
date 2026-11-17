@@ -413,6 +413,7 @@ export interface components {
         PullObservation: CommonComponents["schemas"]["PullObservation"];
         PullRequestSnapshot: CommonComponents["schemas"]["PullRequestSnapshot"];
         RunOrigin: CommonComponents["schemas"]["RunOrigin"];
+        RunPullObservation: CommonComponents["schemas"]["RunPullObservation"];
         RunSnapshot: CommonComponents["schemas"]["RunSnapshot"];
         /** TemplateRead */
         TemplateRead: {

@@ -758,7 +758,9 @@ export interface components {
             answer_id?: string | null;
         };
         RunOrigin: CommonComponents["schemas"]["RunOrigin"];
+        RunPullObservation: CommonComponents["schemas"]["RunPullObservation"];
         ValidationError: CommonComponents["schemas"]["ValidationError"];
+        VerificationStatus: CommonComponents["schemas"]["VerificationStatus"];
     };
     responses: never;
     parameters: never;

@@ -235,6 +235,7 @@ export interface components {
             acknowledge_external_work: true;
         };
         RunOrigin: CommonComponents["schemas"]["RunOrigin"];
+        RunPullObservation: CommonComponents["schemas"]["RunPullObservation"];
         /**
          * StartActivityRequest
          * @description Start Planning or Development of a proposal in the cloud: Hub makes the branch and pull request.
@@ -257,6 +258,7 @@ export interface components {
             catalog?: string | null;
         };
         ValidationError: CommonComponents["schemas"]["ValidationError"];
+        VerificationStatus: CommonComponents["schemas"]["VerificationStatus"];
     };
     responses: never;
     parameters: never;
