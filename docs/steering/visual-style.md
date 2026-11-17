@@ -74,8 +74,9 @@ attention.
 ## Contrast
 
 - Text pairs meet at least 4.5:1, including status text on its Badge tint over the card and over the background.
-- UI component pairs meet at least 3:1: the focus ring, the ink primary and every attention stroke or dot against
-  the surface it sits on.
+- UI component pairs meet at least 3:1: the focus ring as painted at 50% over the background, card and muted
+  surfaces, the ink primary and every attention stroke or dot against the surface it sits on.
+- Status Badge text also meets 4.5:1 on its tint over the sidebar, which carries the API session Badge.
 - `modules/hub-ui/src/routes/layout-contrast.test.ts` parses `layout.css`, composites Badge tints over their surface
   and fails `just test-ui` when a key pair in either theme falls below its threshold. Add a pair to that test when a
   new token pair carries text or a required UI mark.

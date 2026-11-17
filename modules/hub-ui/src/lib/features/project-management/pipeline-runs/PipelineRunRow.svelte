@@ -69,16 +69,17 @@
 						href={run.pull_url}
 						target="_blank"
 						rel="noreferrer"
-						class="text-muted-foreground hover:text-foreground"
+						class="inline-flex size-6 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
 						title="Open on GitHub"
+						aria-label={`Open PR #${run.pull_number} on GitHub (opens in a new tab)`}
 					>
-						<ExternalLink class="size-3" />
+						<ExternalLink aria-hidden="true" class="size-3" />
 					</a>
 				{/if}
 			</div>
 			<a
 				href={runHref(run.id, run.project_id)}
-				class="block text-sm font-medium text-foreground underline-offset-4 hover:underline md:line-clamp-1 md:text-xs"
+				class="block min-h-6 text-sm/6 font-medium text-foreground underline-offset-4 hover:underline md:line-clamp-1 md:text-xs/6"
 			>
 				{run.pull_snapshot?.title || 'No title'}
 			</a>

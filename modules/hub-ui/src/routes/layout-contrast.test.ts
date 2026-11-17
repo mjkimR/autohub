@@ -121,6 +121,13 @@ function pairs(theme: Theme): Pair[] {
 		text('attention-foreground', 'attention'),
 		...['background', 'card', 'attention-surface'].map((bg) => text('attention-text', bg)),
 		ui('ring', 'background'),
+		// Focus indicators paint the ring at 50% (`outline-ring/50`, `ring-ring/50`).
+		...['background', 'card', 'muted'].map((surface) => ({
+			label: `ring at 50% over ${surface}`,
+			fg: tint(theme, 'ring', 0.5, surface),
+			bg: c(surface),
+			min: 3
+		})),
 		ui('primary', 'background'),
 		// The attention stroke (inbox left rule, chip dot) is drawn with attention-text.
 		ui('attention-text', 'card'),
@@ -133,7 +140,8 @@ function pairs(theme: Theme): Pair[] {
 	];
 	for (const status of ['success', 'info', 'warning', 'destructive']) {
 		list.push(text(status, 'card'));
-		for (const surface of ['card', 'background']) {
+		// The shell's sidebar carries a status Badge (the API session state) too.
+		for (const surface of ['card', 'background', 'sidebar']) {
 			list.push({
 				label: `${status} on its badge tint over ${surface}`,
 				fg: c(status),
