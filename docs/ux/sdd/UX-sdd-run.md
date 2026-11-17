@@ -48,5 +48,5 @@ control is offered. Draft indicates an operator merge decision is still required
 | Trigger | Step | From | To | Target | Capability | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
 | Open context / observe request and reply | `UC-complete-sdd-workflow` 1 | populated | populated | | `CAP-PR-pull-request-delivery` | Existing attempt progression remains visible. |
-| Open unit at this head / View PR changes | `UC-complete-sdd-workflow` 1 | populated, saved | populated, saved | end | `CAP-SDD-native-delivery` | The unit at the bound head or the PR diff opens in GitHub in a new tab. |
+| Open unit at this head / View PR changes | `UC-complete-sdd-workflow` 4 | populated, saved | populated, saved | end | `CAP-SDD-native-delivery` | The unit at the bound head or the PR diff opens in GitHub in a new tab. |
 | Open PR / observe CI | global: open the exact PR for readiness outside Hub | populated | populated | end | `CAP-PR-pull-request-delivery` | Exact GitHub PR and current-head CI outcome. |

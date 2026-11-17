@@ -25,14 +25,14 @@ entrypoints:
 
 ## 2. Main Success Scenario
 
-1. The operator opens the selected unit's execution history or deliberately enrolls an existing PR with an explicitly entered PR number and its descriptive activity context
+1. The operator opens the selected unit's PR runs or deliberately enrolls an existing PR with an explicitly entered PR number and its descriptive activity context
    (`CAP-SDD-native-delivery`). Interface: `UX-sdd-execution`, `UX-run-page`, `UX-sdd-run`.
 2. Hub dispatches the request through the ordinary implementation owner
    (`CAP-PR-pull-request-delivery`). Interface: `UX-run-page`.
 3. The agent follows repository instructions and publishes work or a question
    (`CAP-PR-pull-request-delivery`). Interface: `UX-run-page`.
 4. The operator saves an answer if the agent needs input
-   (`CAP-PR-operator-decisions`). Interface: `UX-run-decisions`, `UX-decision-inbox`.
+   (`CAP-PR-operator-decisions`). Interface: `UX-run-decisions`, `UX-decision-inbox`, `UX-sdd-run`.
 5. The operator explicitly resumes with the selected saved answer
    (`CAP-PR-operator-decisions`). Interface: `UX-run-decisions`, `UX-decision-inbox`.
 6. The operator marks the PR ready when it may merge

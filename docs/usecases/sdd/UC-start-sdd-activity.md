@@ -48,7 +48,7 @@ entrypoints:
   explicitly reconciles the exact uncertain no-Run reservation before restarting step 1.
   Interface: `UX-sdd-proposals`, `UX-sdd-claim-recovery`.
 - **3a.** An unrelated activity branch exists: Hub refuses without overwriting
-  it; the use case ends. Interface: `UX-sdd-proposals`.
+  it and closes the request, so later starts stay available; the use case ends. Interface: `UX-sdd-proposals`.
 - **3b.** Publication response is unknown: Hub retains the original request and
   candidate evidence; the operator checks/retries that exact request and resumes
   at step 3. Competing starts remain unavailable. Interface: `UX-sdd-proposals`.
@@ -68,7 +68,7 @@ not create a Hub admission extension. The working agent handles those concerns.
 ## 5. Acceptance Criteria (Given / When / Then)
 
 Applicable rules: `CAP-SDD-native-delivery` optimistic dispatch, host admission,
-Draft publication, exact recovery and uncertain reservation.
+Draft publication, exact recovery, uncertain reservation, closed refusal and retained owner request.
 
 ### SDD-START-01: Dispatch without repository readiness
 
@@ -105,12 +105,19 @@ Draft publication, exact recovery and uncertain reservation.
 - **When** the operator starts work or changes the selected unit/branch.
 - **Then** the submitted intent uses the reviewed unit/base; context changes reset the editable form while unresolved original-request recovery remains available.
 
+### SDD-START-06: Close a refusal without a retained owner
+
+- **Covers**: 2a, 3a.
+- **Given** a start refused for project configuration or an existing activity branch, with no retained claim named.
+- **When** the refusal reaches the operator.
+- **Then** the refusal is shown beside Start with its cause, the request is closed, and a later start in the project is not blocked.
+
 ## 6. Verification Boundary
 
 Activity/API and claim tests are cited by `CAP-SDD-native-delivery`. Local fixture
 results do not establish provider delivery or a live GitHub merge.
 
-### SDD-START-05: Attempt first dispatch promptly
+### SDD-START-07: Attempt first dispatch promptly
 
 - **Covers**: main success scenario.
 - **Given** a successfully registered activity with a bound claim.
