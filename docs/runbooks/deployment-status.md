@@ -73,5 +73,5 @@ The following behavior was recorded as deployed with automated coverage only:
 - Plan registration issues many queries (query-counter warning); behavior is not
   affected.
 
-Operational procedures belong in [operations](README.md). Product guarantees
+Operational procedures belong in [runbooks](README.md). Product guarantees
 belong in their capability contracts rather than being repeated in this status.

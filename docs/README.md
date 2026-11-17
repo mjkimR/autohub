@@ -3,7 +3,7 @@
 Use the capability contracts for implemented guarantees and the use cases for
 actor goals, alternative outcomes and acceptance examples. They are derived from
 source and enforcing tests. A documented test is not a claim that it was executed
-or that the code is deployed; [deployment status](operations/deployment-status.md)
+or that the code is deployed; [deployment status](runbooks/deployment-status.md)
 keeps that evidence separate.
 
 ## Read by purpose
@@ -20,9 +20,10 @@ keeps that evidence separate.
 | System boundaries, runtime structure and constraints | [Architecture](architecture/README.md) |
 | Development approach decision | `ADR-sdd-development` |
 | Contributor environment, checks and extension work | [Developing Auto Hub](development/README.md) |
-| Serving-host and client configuration/recovery | [Operations](operations/README.md) |
-| Deployment and notices | [Cloud Run](operations/cloud-run-deployment.md), [operator notices](operations/operator-notices.md) |
-| Recorded local/production verification and rollout gaps | [Deployment status](operations/deployment-status.md), [retained evidence](materials/index.md) |
+| Serving-host and client configuration/recovery procedures | [Runbooks](runbooks/README.md) |
+| Routing an observed symptom to its owning contract or procedure | [Operations](operations/README.md) |
+| Deployment and notices | [Cloud Run](runbooks/cloud-run-deployment.md), [operator notices](runbooks/operator-notices.md) |
+| Recorded local/production verification and rollout gaps | [Deployment status](runbooks/deployment-status.md), [retained evidence](materials/index.md) |
 
 Auto Hub's support for repository-owned SDD activities in connected repositories is defined by
 `CAP-SDD-native-delivery`. Its own development approach, installed tooling and
@@ -44,8 +45,11 @@ lifecycle are described in [contributor guidance](development/README.md#change-w
   Put behavior in capabilities and verification evidence in materials.
 - Refer to ID-bearing documents by full ID in prose and relationship fields.
   Ordinary links remain appropriate for code, external sources and ID-free guides.
+- Put symptom routing in `docs/operations/OPS-<slug>.md`: each row routes an
+  observed symptom and its discriminating evidence to the owning contract or
+  runbook section, without restating either.
 - Update the owning contract and its use-case examples when behavior changes.
-  Operations guides carry serving-host/client procedures. Development guides
+  Runbooks under `docs/runbooks/` carry serving-host/client procedures. Development guides
   cover changing Auto Hub itself. Both refer to the owning contracts rather than
   keeping competing guarantees. Contributor commands follow the root [justfile](../justfile).
 - Write documentation in English. Preserve literal UI labels, localized examples

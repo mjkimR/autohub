@@ -175,8 +175,8 @@ were inspected as enforcement evidence; this document records no new test run,
 production tick or deletion of production history. PostgreSQL lock-concurrency
 cases require PostgreSQL and cannot be established by SQLite tests alone.
 
-See [deployment operations](../../operations/cloud-run-deployment.md#6-register-cloud-scheduler-periodic-trigger)
-for external trigger provisioning and [operator diagnostics](../../operations/operator-notices.md)
+See [deployment operations](../../runbooks/cloud-run-deployment.md#6-register-cloud-scheduler-periodic-trigger)
+for external trigger provisioning and [operator diagnostics](../../runbooks/operator-notices.md)
 for inspecting maintenance and retained history.
 
 ## 6. Retained activity history

@@ -83,7 +83,7 @@ A mismatch fails with `DEVKIT_PINS_INVALID`. Backend lint runs this check.
    affected backend, SDK, frontend and activity contracts.
 
 The contributor's devkit changes do not provision connected repositories.
-[Activity operations](../operations/sdd-runtime.md#rollout-and-rollback) separately
+[Activity operations](../runbooks/sdd-runtime.md#rollout-and-rollback) separately
 cover schema cleanup and uncertain activity publication.
 
 ## UI artifacts and generated declarations

@@ -102,7 +102,7 @@ Implementation anchors include
 [SDK runtime](../../modules/hub/app/features/execution/flows/runtime.py) and
 [connection coordination](../../modules/hub/app/features/project_management/connection_tests/services.py).
 `ARCH-10-quality-requirements` connects these sequences to measurable regression
-scenarios; [deployment status](../operations/deployment-status.md) retains live evidence.
+scenarios; [deployment status](../runbooks/deployment-status.md) retains live evidence.
 
 ## SDD activity execution
 

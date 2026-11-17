@@ -5,7 +5,7 @@ provider session type or isolated connection-test recipe. Current product behavi
 belongs to `CAP-AGENT-catalog-admission`, `CAP-AGENT-provider-sessions`,
 `CAP-CONN-connection-verification` and `CAP-PR-pull-request-delivery`.
 `ARCH-05-2-components` owns the component map. Operator setup belongs in
-[provider connections](../operations/provider-connections.md).
+[provider connections](../runbooks/provider-connections.md).
 
 ## Choose the extension boundary
 

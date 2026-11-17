@@ -1,30 +1,18 @@
-# Operating Auto Hub
+# Operations routing
 
-Use these procedures to configure a serving Hub, connect clients/providers and
-investigate deployment or execution problems. Product guarantees belong in the
-capabilities and actor flows in the use cases; this directory carries the concrete
-operator steps. Changes to Auto Hub itself follow [development](../development/README.md).
+Each `OPS-<slug>` document starts from an observed symptom and routes it, by
+discriminating evidence, to the existing owner: a capability or use-case contract,
+or the [runbook](../runbooks/README.md) section that holds the executable steps.
+Routing documents restate neither the guarantees nor the procedures they cite;
+write them with devkit's `operations-writing` instruction.
 
-Keep repeatable setup, deployment and recovery procedures here. Put dated check
-results, revision identities and investigation evidence in
-[materials](../materials/index.md); link the report from a procedure when needed.
-The deployment-status guide is an index of recorded evidence and rollout gaps,
-not a fresh check of the serving environment.
-
-| Operator task | Procedure |
+| Symptom | Routing |
 | --- | --- |
-| Provision hosting, secrets, queues and external scheduler | [Cloud Run deployment](cloud-run-deployment.md) |
-| Operate repository-owned SDD activities and claim recovery | [SDD activities](sdd-runtime.md) |
-| Configure accounts, managed keys, MCP clients and Google login | [Access](access.md) |
-| Connect Codex/Jules accounts, select catalogs and verify a repository | [Provider connections](provider-connections.md) |
-| Bind generic HTTP workers | [Execution targets](execution-targets.md) |
-| Configure Telegram and inspect heartbeat, deliveries and history | [Operator notices](operator-notices.md) |
-| Distinguish recorded deployment from local implementation | [Deployment status](deployment-status.md) |
-
-For work-specific flows, use `UC-configure-project-connection`,
-`UC-deliver-pull-request`, `UC-resolve-run-question`, `UC-execute-work-plan`,
-`UC-start-sdd-activity`, `CAP-SDD-native-delivery` and `UC-complete-sdd-workflow`.
-Their owning CAPs define exact fields, refusals and approval subjects.
-
-Retain the serving revision and actual Run/PR/approval links after live checks.
-A successful local test or guide walkthrough is not deployment evidence.
+| A Cloud Run helper, secret setup or scheduler provisioning stops | `OPS-deployment-helper-refusals` |
+| A repository-owned SDD activity start or claim reconciliation is refused or uncertain | `OPS-sdd-activity-start-refusals` |
+| An operator cannot obtain or keep a browser session | `OPS-operator-sign-in-refusals` |
+| An MCP client cannot connect to, discover or call Hub tools | `OPS-mcp-client-connection-refusals` |
+| A project connection test is refused, stalls, fails or leaves cleanup unresolved | `OPS-connection-test-outcomes` |
+| An SDK flow run bound to an HTTP worker is refused, waits or fails | `OPS-sdk-worker-run-routing` |
+| A GitHub event or `@auto-run` mention does not enroll or advance a PR run | `OPS-webhook-trigger-routing` |
+| An expected Telegram operator notice does not arrive | `OPS-operator-notice-absence-routing` |

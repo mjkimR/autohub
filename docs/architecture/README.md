@@ -13,7 +13,7 @@
 | 11. Risks and technical debt | `ARCH-11-risks-and-technical-debt`: active constraints, consequences, treatments and reopening conditions |
 
 Capability contracts own feature guarantees; [development](../development/README.md)
-owns contributor instructions and [operations](../operations/README.md) owns
-serving-host/client procedures. [Deployment status](../operations/deployment-status.md)
+owns contributor instructions and [runbooks](../runbooks/README.md) own
+serving-host/client procedures. [Deployment status](../runbooks/deployment-status.md)
 records tested/deployed scope. Decisions belong in ADRs when a retained decision
 needs one; terminology is maintained in [the glossary](../steering/glossary.md).

@@ -239,5 +239,5 @@ Typed wrapper, page, preview and recovery coverage is in
 defined in `modules/hub/app/mcp/contracts.py` and
 `modules/hub/app/mcp/work_plans.py`. The two-second waiting interval is
 source-inspected in `modules/hub/app/mcp/waiting.py`, not a live latency guarantee.
-The [access operations guide](../../operations/access.md#mcp-connections) contains
+The [access operations guide](../../runbooks/access.md#mcp-connections) contains
 credential/client setup and rotation procedures.

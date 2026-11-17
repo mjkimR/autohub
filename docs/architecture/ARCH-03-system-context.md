@@ -56,4 +56,4 @@ Product contracts are `CAP-PR-pull-request-delivery`,
   cover endpoint discovery and scoped calls.
 
 These are implementation and enforcing-test anchors. Deployment evidence remains
-in [delivery status](../operations/deployment-status.md).
+in [delivery status](../runbooks/deployment-status.md).

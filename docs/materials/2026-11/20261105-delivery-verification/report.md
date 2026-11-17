@@ -3,7 +3,7 @@
 This report retains the primary upgrade and subsequent compatibility follow-up
 recorded on 2026-11-05. The checks were not rerun during documentation cleanup.
 The two runs and their suites overlap; their counts are not additive.
-See [delivery status](../../../operations/deployment-status.md) for the distinction
+See [delivery status](../../../runbooks/deployment-status.md) for the distinction
 between local implementation and recorded production evidence.
 
 ## Reviewed inputs
@@ -75,5 +75,5 @@ or live GitHub canary. The follow-up did not execute GitHub Actions remotely or
 deploy to production. Actual provider replies, GitHub CI and merge behavior
 remain separate live evidence.
 
-Follow the [runtime transition procedure](../../../operations/sdd-runtime.md#assign-repositories)
+Follow the [runtime transition procedure](../../../runbooks/sdd-runtime.md#assign-repositories)
 when switching the serving host and settling active runs.

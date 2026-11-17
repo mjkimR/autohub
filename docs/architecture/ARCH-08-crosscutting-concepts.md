@@ -105,7 +105,7 @@ owns this responsibility boundary.
 Configured SDK HTTP workers remain a separate trust boundary. The host calls
 approved addresses and resolves configured credential-variable names. Registration
 does not deploy worker code. `CAP-SDK-task-flow-execution` owns that protocol;
-operational configuration belongs in [execution targets](../operations/execution-targets.md).
+operational configuration belongs in [execution targets](../runbooks/execution-targets.md).
 
 ## Errors, correlation and bounded disclosure
 

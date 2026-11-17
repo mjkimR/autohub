@@ -141,7 +141,7 @@ The existing tests cited above exercise the contract; this document does not
 report their execution or a new live GitHub/provider check. Historical live scope
 and manual-intervention limits remain in the
 [production evidence](../../materials/2026-10/20261002-production-verification/report.md).
-Operational details are in [provider connections](../../operations/provider-connections.md).
+Operational details are in [provider connections](../../runbooks/provider-connections.md).
 
 ## Owed items
 

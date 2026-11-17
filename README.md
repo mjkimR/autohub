@@ -22,15 +22,15 @@ Work plans (`CAP-WORK-work-plan-execution`) accept task batches before PRs exist
 dependencies and dependencies between items in the same plan. Registration requests
 execution; eligible items create ready PRs and follow the project's merge policy.
 Plan pause/revoke controls unstarted work. GitHub Issues mirror specifications and
-history without controlling execution. See [delivery status](docs/operations/deployment-status.md)
+history without controlling execution. See [delivery status](docs/runbooks/deployment-status.md)
 for the dated production evidence and later additions.
 
 Saved runs retain task snapshots and delivery history; dispatch reconciles comment
-markers to avoid duplicate requests. See [delivery status](docs/operations/deployment-status.md)
+markers to avoid duplicate requests. See [delivery status](docs/runbooks/deployment-status.md)
 for implemented behavior and deferred work. [CI templates](templates/github-actions/README.md)
 are manually installed starter files.
 
-[SDD activities](docs/operations/sdd-runtime.md) carry explicit Planning or
+[SDD activities](docs/runbooks/sdd-runtime.md) carry explicit Planning or
 Development intent through ordinary PR runs. Repository agents own setup and
 internal workflow; Hub starts work without a devkit runtime or readiness check.
 Both activity kinds start Draft. The repository viewer links documents to runs;
@@ -71,7 +71,8 @@ and [selected tooling](docs/development/toolchain.md#selected-agent-assets).
 - [Documentation guide](docs/README.md): architecture, protocols, AI catalogs, and operator notices.
 - [Capability contracts](docs/capabilities/README.md) and [use cases](docs/usecases/README.md): implemented guarantees, actor goals, acceptance examples and source/test ownership.
 - [Developing Auto Hub](docs/development/README.md): contributor setup, checks, migrations, toolchain updates and extension guides.
-- [Operations](docs/operations/README.md): deployment, accounts/clients, provider connections, repository activity and recovery.
+- [Runbooks](docs/runbooks/README.md): deployment, accounts/clients, provider connections, repository activity and recovery procedures.
+- [Operations](docs/operations/README.md): symptom routing to the owning contract or runbook.
 - [Connector encryption](modules/hub/README.md#connector-credential-encryption): key configuration and rotation constraints.
 - [Frontend](modules/hub-ui/README.md): UI tooling and API generation.
 - [Agent guide](AGENTS.md): code boundaries and required checks.

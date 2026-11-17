@@ -60,7 +60,8 @@ See [README](README.md) and [documentation guide](docs/README.md) for scope.
   examples in `docs/usecases/`, structure in `docs/architecture/`, and background
   terminology in `docs/steering/`. `docs/development/` covers Auto Hub contributor
   setup, checks, toolchain changes and extension work. Put deployed-service/client
-  configuration and recovery procedures in `docs/operations/`.
+  configuration, deployment and recovery procedures in `docs/runbooks/`, and
+  symptom-to-owner routing in formal `docs/operations/OPS-<slug>.md` documents.
 - Derive contracts from implementation and enforcing tests. Use full document IDs,
   English summaries and reciprocal capability/use-case relationships. Record test
   inspection separately from actual check execution and live deployment evidence.

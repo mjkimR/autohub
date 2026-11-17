@@ -148,6 +148,6 @@ Source inspected: `modules/hub/app/features/project_management/github_webhooks/`
 contract. They use local database and controlled HTTP/provider boundaries; they
 do not establish deployed Cloud Tasks delivery or live GitHub event processing.
 
-Use [deployment operations](../../operations/cloud-run-deployment.md#61-webhook-processing-queue-cloud-tasks-recommended)
-for queue provisioning and [operator diagnosis](../../operations/operator-notices.md)
+Use [deployment operations](../../runbooks/cloud-run-deployment.md#61-webhook-processing-queue-cloud-tasks-recommended)
+for queue provisioning and [operator diagnosis](../../runbooks/operator-notices.md)
 for delivery-history inspection.

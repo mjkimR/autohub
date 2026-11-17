@@ -29,6 +29,7 @@ boundaries:
   - docs/usecases/
   - docs/ux/
   - docs/operations/
+  - docs/runbooks/
   - docs/steering/
   excludes:
   - .github/

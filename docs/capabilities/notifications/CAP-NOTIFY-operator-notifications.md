@@ -130,7 +130,7 @@ Sources inspected: `modules/hub/app/features/notifications/`,
 controlled Telegram responses and were inspected as enforcement evidence. This
 document claims neither a newly executed test nor live Telegram delivery.
 
-See [operator notices](../../operations/operator-notices.md) for Telegram setup
+See [operator notices](../../runbooks/operator-notices.md) for Telegram setup
 and diagnosis. Transport settings above are established
 by source inspection; no separate live transport coverage is asserted.
 
