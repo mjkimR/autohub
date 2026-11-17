@@ -167,3 +167,135 @@ def test_blob_cache_evicts_least_recently_used_within_its_byte_budget():
     assert cache.bytes == 8
     cache.put("o/r", "4", 11, "utf-8", "d" * 11)
     assert cache.get("o/r", "4") is None
+
+
+def _github(monkeypatch, respond):
+    """Route the service's GitHub client through ``respond`` and give it a fresh conditional cache."""
+    import httpx2
+    from app.features.project_management.repositories import services
+    from app.features.project_management.repositories.conditional import ConditionalCache
+
+    requests: list[httpx2.Request] = []
+
+    def handle(request: httpx2.Request) -> httpx2.Response:
+        requests.append(request)
+        return respond(request)
+
+    monkeypatch.setattr(services, "conditional_cache", ConditionalCache())
+    monkeypatch.setattr(
+        services,
+        "create_github_client",
+        lambda token: httpx2.AsyncClient(base_url="https://api.github.com", transport=httpx2.MockTransport(handle)),
+    )
+    return requests
+
+
+async def test_repository_reads_revalidate_with_etags_and_reuse_bodies_on_not_modified(monkeypatch):
+    import httpx2
+    from app.features.project_management.repositories import services
+    from app.features.project_management.repositories.services import RepositoryService
+
+    tree = {"sha": "root", "truncated": False, "tree": [{"path": "a.md", "type": "blob", "mode": "100644", "sha": "b"}]}
+    replies = [
+        httpx2.Response(200, json=tree, headers={"ETag": '"v1"'}),
+        httpx2.Response(304, headers={"ETag": '"v1"'}),
+        httpx2.Response(200, json={**tree, "sha": "root2"}, headers={"ETag": '"v2"'}),
+        httpx2.Response(304, headers={"ETag": '"v2"'}),
+    ]
+    requests = _github(monkeypatch, lambda request: replies.pop(0))
+    service = RepositoryService()
+
+    first = await service.get_paths("token", "owner/repo", ref="main")
+    assert "if-none-match" not in requests[0].headers
+    held = services.conditional_cache.get(("/repos/owner/repo/git/trees/main", (("recursive", "1"),)))
+    assert held and held[0] == '"v1"'
+
+    unchanged = await service.get_paths("token", "owner/repo", ref="main")
+    assert requests[1].headers["if-none-match"] == '"v1"'
+    assert unchanged.model_dump() == first.model_dump()
+
+    changed = await service.get_paths("token", "owner/repo", ref="main")
+    assert requests[2].headers["if-none-match"] == '"v1"'
+    assert changed.sha == "root2"
+
+    again = await service.get_paths("token", "owner/repo", ref="main")
+    assert requests[3].headers["if-none-match"] == '"v2"'
+    assert again.sha == "root2"
+    # Other parameters are another request: no validator is sent for them.
+    replies.append(httpx2.Response(200, json=tree))
+    await service.get_paths("token", "owner/repo", ref="dev")
+    assert "if-none-match" not in requests[4].headers
+
+
+async def test_repository_read_errors_are_never_cached_and_keep_their_classification(monkeypatch):
+    import httpx2
+    import pytest
+    from app.features.project_management.pipelines.github import GITHUB_FAILURE_RATE_LIMITED, GitHubObservationError
+    from app.features.project_management.repositories import services
+    from app.features.project_management.repositories.services import RepositoryService
+
+    file = {"type": "file", "size": 5, "sha": "s", "content": base64.b64encode(b"hello").decode()}
+    replies = [
+        httpx2.Response(404, json={"message": "Not Found"}, headers={"ETag": '"e404"'}),
+        httpx2.Response(403, headers={"x-ratelimit-remaining": "0", "ETag": '"e403"'}),
+        httpx2.Response(200, json=file, headers={"ETag": '"v1"'}),
+        httpx2.Response(404, json={"message": "Not Found"}),
+        httpx2.Response(304),
+    ]
+    requests = _github(monkeypatch, lambda request: replies.pop(0))
+    service = RepositoryService()
+
+    with pytest.raises(GitHubObservationError) as missing:
+        await service.get_blob("token", "owner/repo", "a.md")
+    assert missing.value.status_code == 404
+    with pytest.raises(GitHubObservationError) as limited:
+        await service.get_blob("token", "owner/repo", "a.md")
+    assert limited.value.kind == GITHUB_FAILURE_RATE_LIMITED
+    assert "if-none-match" not in requests[1].headers and not services.conditional_cache.entries
+
+    assert (await service.get_blob("token", "owner/repo", "a.md")).content == "hello"
+    # A caller GitHub refuses gets its own error even though a body is held for the same URL.
+    with pytest.raises(GitHubObservationError) as denied:
+        await service.get_blob("other-token", "owner/repo", "a.md")
+    assert requests[3].headers["if-none-match"] == '"v1"'
+    assert denied.value.status_code == 404
+    held = services.conditional_cache.get(("/repos/owner/repo/contents/a.md", ()))
+    assert held and held[0] == '"v1"'
+    assert (await service.get_blob("token", "owner/repo", "a.md")).content == "hello"
+
+
+async def test_unsolicited_not_modified_is_an_error(monkeypatch):
+    import httpx2
+    import pytest
+    from app.features.project_management.pipelines.github import GitHubObservationError
+    from app.features.project_management.repositories.services import RepositoryService
+
+    _github(monkeypatch, lambda request: httpx2.Response(304))
+    with pytest.raises(GitHubObservationError) as exc:
+        await RepositoryService().get_tree("token", "owner/repo")
+    assert exc.value.status_code == 304
+
+
+def test_conditional_cache_evicts_least_recently_used_within_its_bounds():
+    from app.features.project_management.repositories.conditional import ConditionalCache, conditional_key
+
+    cache = ConditionalCache(max_entries=3, max_bytes=10, max_entry_bytes=6)
+    a, b, c, d = (conditional_key(f"/{n}", {"page": 1}) for n in "abcd")
+    assert conditional_key("/a", {"z": 1, "a": "x"}) == ("/a", (("a", "x"), ("z", "1")))
+    cache.put(a, '"a"', b"aaaa")
+    cache.put(b, '"b"', b"bbbb")
+    assert cache.get(a)  # a becomes the most recent
+    cache.put(c, '"c"', b"cc")
+    cache.put(d, '"d"', b"dd")  # over the byte budget: b goes first
+    assert cache.get(b) is None and cache.get(a) and cache.get(c) and cache.get(d)
+    assert cache.bytes == 8
+
+    small = ConditionalCache(max_entries=2)
+    for key in (a, b, c):
+        small.put(key, '"x"', b"x")
+    assert list(small.entries) == [b, c]
+
+    cache.put(a, '"a2"', b"aaaaaaa")  # oversized body: not stored, stale entry dropped
+    assert cache.get(a) is None and cache.bytes == 4
+    cache.put(c, "", b"c")  # no ETag: nothing to revalidate
+    assert cache.get(c) is None

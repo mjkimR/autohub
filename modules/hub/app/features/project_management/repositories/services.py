@@ -1,4 +1,5 @@
 import base64
+import json
 from collections import OrderedDict
 from typing import Any, Literal
 from urllib.parse import quote
@@ -9,6 +10,7 @@ from app.features.project_management.pipelines.github import (
     create_github_client,
     github_http_error,
 )
+from app.features.project_management.repositories.conditional import conditional_cache, conditional_key
 from app.features.project_management.repositories.schemas import (
     RepoBlobRead,
     RepoInfoRead,
@@ -214,14 +216,25 @@ class RepositoryService:
         path: str,
         params: dict[str, str | int] | None = None,
     ) -> Any:
+        """GET ``path`` as JSON, revalidating a held response with ``If-None-Match`` (304s spare the rate limit)."""
+        key = conditional_key(path, params)
+        held = conditional_cache.get(key)
+        headers = {"If-None-Match": held[0]} if held else None
         try:
-            response = await client.get(path, params=params)
+            response = await client.get(path, params=params, headers=headers)
+            if held and response.status_code == httpx2.codes.NOT_MODIFIED:
+                return json.loads(held[1])
             response.raise_for_status()
         except httpx2.HTTPStatusError as exc:
             raise github_http_error("repository browsing", exc.response) from None
         except httpx2.RequestError:
             raise GitHubObservationError("GitHub repository request failed") from None
         try:
-            return response.json()
+            data = response.json()
         except ValueError:
             raise GitHubObservationError("Invalid JSON in GitHub response") from None
+        if etag := response.headers.get("etag"):
+            conditional_cache.put(key, etag, response.content)
+        else:
+            conditional_cache.discard(key)
+        return data
