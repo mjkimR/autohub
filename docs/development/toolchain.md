@@ -79,18 +79,18 @@ A mismatch fails with `DEVKIT_PINS_INVALID`. Backend lint runs this check.
 1. Set the intended pushed refs explicitly in the manifests.
 2. Refresh environments and locks from those refs.
 3. Synchronize agent assets using matching installed packages and review generated receipts.
-4. Rebuild vendored artifacts whose source changed, following the owning receipts below.
-5. Run `just check-devkit`, `just lint`, `just check`, `just check-ui-api`, and the
+4. Run `just check-devkit`, `just lint`, `just check`, `just check-ui-api`, and the
    affected backend, SDK, frontend and activity contracts.
 
 The contributor's devkit changes do not provision connected repositories.
 [Activity operations](../runbooks/sdd-runtime.md#rollout-and-rollback) separately
 cover schema cleanup and uncertain activity publication.
 
-## UI artifacts and generated declarations
+## UI API generator and generated declarations
 
-- [API codegen receipt](../../modules/hub-ui/vendor/api-codegen.md) owns the
-  generator source and vendored artifact.
+- The API declaration generator is Hub-owned source in
+  `modules/hub-ui/scripts/api-codegen/`, copied once from app-common and customized
+  here; app-common updates are not adopted automatically.
 - [UI contributor guide](../../modules/hub-ui/README.md) owns tag-based generated
   declarations. Use `just gen-ui-api` after a backend wire change and
   `just check-ui-api` to verify freshness.

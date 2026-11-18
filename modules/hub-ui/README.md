@@ -76,16 +76,19 @@ just gen-ui-api
 
 ## API contract generation
 
-`npm run gen:api` exports the backend schema and uses the pinned
-`@app-common/api-codegen` development package to generate declarations by tag.
+`npm run gen:api` exports the backend schema and runs the project-owned generator in
+`scripts/api-codegen/` to generate declarations by tag.
 `npm run check:api` verifies freshness without rewriting files, including added or
 removed tags. Commit the generated directory after changing a backend contract.
 Shared schemas live in `generated/common.d.ts`; `generated/index.d.ts` exports the
 aggregate `paths` and `components`. Existing imports through `schema.d.ts` keep
 working via its type re-export. Do not format or hand-edit generated declarations.
 
-The package source commit and rebuild instructions are recorded in
-[vendor/api-codegen.md](vendor/api-codegen.md); npm integrity is in the lockfile.
+The generator was copied once from app-common commit `bf441d0`
+(`packages/ui/app-ui-api-codegen`) and is now owned and customized here; edit it in
+place rather than re-vendoring. It is plain Node ESM that uses the `openapi-typescript`
+and `typescript` dev dependencies. `npm run test:api-codegen` runs its `node:test`
+suite, which `npm test` also runs.
 
 The exporter retains the backend's documentation tags unchanged. For generated
 filenames, it normalizes the first tag to lowercase kebab case; secondary labels
